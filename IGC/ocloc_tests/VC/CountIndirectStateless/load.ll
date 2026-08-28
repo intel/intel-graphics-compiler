@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: regkeys, pvc-supported, llvm-14-plus
+; REQUIRES: regkeys, pvc-supported
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc

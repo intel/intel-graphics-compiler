@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys, pvc-supported, llvm-14-plus
+; REQUIRES: regkeys, pvc-supported
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc compile -file %t.bc -llvm_input -options "-igc_opts 'EnableOpaquePointersBackend=1,VISAOptions=-asmToConsole'" -device pvc | FileCheck %s --check-prefix=CHECK
 

@@ -5,7 +5,6 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus
 ;
 ; Default test run w/o AddImplicitArgs is for sanity reasons(so module won't break)
 ; RUN: igc_opt -opaque-pointers -igc-legalization -S -dce -disable-output < %s

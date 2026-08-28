@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: bmg-supported, opaque-pointers, llvm-14-plus
+; REQUIRES: bmg-supported, opaque-pointers
 
 ; RUN: llvm-as < %s -o %t.bc %OPAQUE_PTR_FLAG%
 ; RUN: ocloc compile -llvm_input -file %t.bc -device bmg | FileCheck %s

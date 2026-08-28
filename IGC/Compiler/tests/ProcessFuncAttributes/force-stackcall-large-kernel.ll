@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ;
 ; Test ForceStackCallForLargeKernel: with FunctionControl default, functions of a kernel whose
 ; estimated size exceeds the large-kernel threshold default to stack calls.

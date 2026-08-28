@@ -8,7 +8,6 @@
 
 ; Check that we don't dereference nullptr
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt %s -S -o - -generate-block-mem-ops -platformpvc | FileCheck %s
 
 

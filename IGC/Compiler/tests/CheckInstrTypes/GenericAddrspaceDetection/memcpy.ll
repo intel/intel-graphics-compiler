@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --regkey PrintToConsole --CheckInstrTypes -igc-serialize-metadata --enable-instrtypes-print -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; CheckInstrTypes

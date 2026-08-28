@@ -29,7 +29,7 @@
 ; The depth-delta heuristic is shader-type-agnostic,
 ; so these RUN lines deliberately mix RT, pixel, and compute contexts.
 
-; REQUIRES: llvm-14-plus, regkeys, shader-types
+; REQUIRES: regkeys, shader-types
 
 ; RUN: igc_opt --opaque-pointers %s -S -o - -inputrt -platformdg2 --regkey ConstantCoalescingMaxBBDepthDelta=1,ConstantCoalescingDepthCheckMinBytes=64 -igc-constant-coalescing | FileCheck %s --check-prefixes=CHECK,MERGE
 ; RUN: igc_opt --opaque-pointers %s -S -o - -inputps -platformdg2 --regkey ConstantCoalescingMaxBBDepthDelta=1,ConstantCoalescingDepthCheckMinBytes=16 -igc-constant-coalescing | FileCheck %s --check-prefixes=CHECK,SPLIT

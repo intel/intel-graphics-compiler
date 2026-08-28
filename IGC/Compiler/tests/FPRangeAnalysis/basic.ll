@@ -5,7 +5,6 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt -print-fp-range-analysis -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ;

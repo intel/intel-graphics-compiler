@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ;
 ; RUN: igc_opt --opaque-pointers -regkey ForceHoistDp3=1  -igc-custom-safe-opt -S < %s | FileCheck %s
 ; ------------------------------------------------

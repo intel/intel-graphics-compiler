@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-generic-address-dynamic-resolution | FileCheck %s
 
 ; This test verifies whether cyclic call graph is properly handled by CastToGASAnalysis.

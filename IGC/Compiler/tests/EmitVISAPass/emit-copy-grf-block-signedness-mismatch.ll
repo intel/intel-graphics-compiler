@@ -17,7 +17,7 @@
 ; 'ud' source) and that alias is the value written into the ARGV block.
 
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers -GenXCodeGenModule -platformCri -inputocl \
 ; RUN:         -igc-emit-visa -simd-mode 16 -regkey DumpVISAASMToConsole %s | FileCheck %s
 

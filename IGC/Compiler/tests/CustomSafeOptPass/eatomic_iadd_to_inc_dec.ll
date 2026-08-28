@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --platformbmg -igc-custom-safe-opt -S < %s --dce | FileCheck %s
 
 target datalayout = "e-p:64:64:64-p3:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:32-f32:32:32-f64:32:32-v64:32:32-v128:32:32-a0:0:32-n8:16:32-S32"

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ;
 ; Test: Two uniform i32 muls with distinct operands are coalesced into a
 ; single vector mul. Both muls use Arguments so each operand slot is

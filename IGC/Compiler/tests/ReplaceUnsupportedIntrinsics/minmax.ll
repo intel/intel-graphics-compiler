@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 
 ; RUN: igc_opt -igc-replace-unsupported-intrinsics -dce -S < %s 2>&1 | FileCheck %s
 

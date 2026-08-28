@@ -5,7 +5,6 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-opencl-printf-resolution -S < %s | FileCheck %s
 
 ; A format string in local (SLM) memory is a global without a constant-string

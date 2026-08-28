@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-address-arith-sinking  -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; AddressArithmeticSinking

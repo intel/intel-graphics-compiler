@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -decompose-2d-block-funcs-with-hoisting -dce -platformbmg -S < %s 2>&1 | FileCheck %s
 
 declare void @llvm.genx.GenISA.LSC2DBlockPrefetch.p0(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)

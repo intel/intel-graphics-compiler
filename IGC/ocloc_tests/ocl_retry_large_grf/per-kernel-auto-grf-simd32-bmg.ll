@@ -9,7 +9,7 @@
 ; Regression test: per-kernel "num-thread-per-eu 0" annotation must be honoured
 ; by the SIMD32-vs-SIMD16 selection heuristic on XE2 (BMG).
 ;
-; REQUIRES: regkeys, bmg-supported, llvm-14-plus
+; REQUIRES: regkeys, bmg-supported
 ;
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device bmg -options "-igc_opts 'EnableOpaquePointersBackend=1,AllowSIMD16DropForXE2Plus=1,VISAOptions=-asmToConsole'" | FileCheck %s

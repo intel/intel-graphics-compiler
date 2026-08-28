@@ -10,7 +10,6 @@
 ; are kept as is in bindful mode
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-conv-ocl-to-common | FileCheck %s
 
 %spirv.Image._void_0_0_1_0_0_0_0 = type opaque

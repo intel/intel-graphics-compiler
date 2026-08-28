@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-runtimevalue-legalization-pass -S %s | FileCheck %s
 
 define void @main(i32 %idx) #0 {

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers -igc-propagate-cmp-uniformity -S < %s 2>&1 | FileCheck %s
 
 @ThreadGroupSize_X = constant i32 64

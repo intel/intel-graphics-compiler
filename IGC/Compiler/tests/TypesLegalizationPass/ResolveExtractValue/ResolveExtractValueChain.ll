@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: igc_opt %s --opaque-pointers -S -o - -types-legalization-pass -dce | FileCheck %s
-; REQUIRES: llvm-14-plus
 
 
 ; CHECK-LABEL: define spir_kernel void @test_ResolveExtractValueChain()

@@ -9,7 +9,6 @@
 ; This test checks printf with phi input.
 ; NB: this only works with the default ZEBin format.
 ;
-; REQUIRES: llvm-14-plus
 ; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -igc-opencl-printf-resolution | FileCheck %s
 

@@ -9,7 +9,7 @@
 ; To test using vector as the final value. The sub-values have constant, which
 ; is taken as either float or int.
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=1 \
 ; RUN:           -platformbmg \

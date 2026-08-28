@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys, pvc-supported, llvm-14-plus
+; REQUIRES: regkeys, pvc-supported
 
 ; COM: The cost-model loop analysis diverges on LLVM 22+: the loops are collapsed
 ; COM: so only one arg symbol and one loop-count expression remain (NEW), whereas

@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -enable-debugify --igc-lsc-funcs-translation -platformdg2 -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; LSCFuncsResolution

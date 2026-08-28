@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 ;
 ; ------------------------------------------------
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -debugify --igc-gep-lowering -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; GEPLowering

@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus, regkeys, system-linux
+; REQUIRES: regkeys, system-linux
 ; RUN: igc_opt --opaque-pointers --regkey ForceLoopSink=1 --regkey LoopSinkMinSave=1 --regkey LoopSinkThresholdDelta=10 --regkey CodeLoopSinkingMinSize=10 --regkey PrepopulateLoadChainLoopSink=1 --igc-wi-analysis --basic-aa --igc-code-loop-sinking -S %s > %t.test1.ll
 ; RUN: igc_opt --opaque-pointers --regkey ForceLoopSink=1 --regkey LoopSinkMinSave=1 --regkey LoopSinkThresholdDelta=10 --regkey CodeLoopSinkingMinSize=10 --regkey PrepopulateLoadChainLoopSink=1 --igc-wi-analysis --basic-aa --igc-code-loop-sinking -S %s > %t.test2.ll
 

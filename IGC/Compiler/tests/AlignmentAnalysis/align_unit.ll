@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: opaque-ptr-fix
 ; RUN: igc_opt --opaque-pointers -igc-fix-alignment -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 

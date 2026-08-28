@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-constant-coalescing -dce -S < %s | FileCheck %s
 
 ; This test verifies that two loads with an offset difference of 4, where

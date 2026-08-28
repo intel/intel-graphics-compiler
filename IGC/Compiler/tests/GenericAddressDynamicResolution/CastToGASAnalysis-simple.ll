@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-generic-address-dynamic-resolution | FileCheck %s
 
 ; This test verifies whether optimization which allows to avoid additional control flow

@@ -8,7 +8,6 @@
 
 ; FIXME: update & re-enable the test for LLVM 23
 ; UNSUPPORTED: llvm-23-plus
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --typed-pointers -igc-builtin-import -disable-verify -S < %s | FileCheck %s
 
 ; CHECK-NOT: call {{.*}}* @__builtin_IB_cast_object_to_generic_ptr

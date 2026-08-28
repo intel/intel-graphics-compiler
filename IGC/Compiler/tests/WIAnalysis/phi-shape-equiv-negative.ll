@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers -S -igc-propagate-cmp-uniformity -print-wia-check --disable-output --regkey=PrintToConsole=1,EnableWIPhiStructuralEquivalence=1 < %s 2>&1 | FileCheck %s
 
 @ThreadGroupSize_X = constant i32 64

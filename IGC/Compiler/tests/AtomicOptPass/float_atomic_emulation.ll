@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers %s -S -o - -opt-atomics-pass | FileCheck %s
 
 declare i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1.p1(ptr addrspace(1), ptr addrspace(1), i32, i32)

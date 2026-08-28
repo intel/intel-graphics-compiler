@@ -9,7 +9,6 @@
 ; Check address mode of bindless inline sampler is parsed from implicit arg and
 ; inlineSamplersMD metadata.
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-image-func-resolution -S %s -o - | FileCheck %s
 
 define spir_kernel void @test(i32 %inlineSampler) {

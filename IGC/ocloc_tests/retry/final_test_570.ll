@@ -1,7 +1,8 @@
-; REQUIRES: regkeys, pvc-supported, llvm-14-plus
+; REQUIRES: regkeys, debug, pvc-supported
 
 ; RematRPELimit lowered from 93: LLVM 22 estimates this kernel at 117 GRF instead of
 ; 121, below the default cutoff of 119, so remat was skipped and the retry kept the spill.
+; RematRPELimit flag is only settable on Debug builds, otherwise it's set to the default value.
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc

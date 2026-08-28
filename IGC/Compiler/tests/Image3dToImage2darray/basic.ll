@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -debugify --igc-3d-to-2darray -igc-serialize-metadata -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; Image3dToImage2darray

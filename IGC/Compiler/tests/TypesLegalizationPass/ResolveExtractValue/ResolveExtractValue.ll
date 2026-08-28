@@ -8,7 +8,6 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: igc_opt %s --opaque-pointers -S -o - -types-legalization-pass | FileCheck %s
-; REQUIRES: llvm-14-plus
 
 %simple.struct.type = type { i64, float }
 %nested.struct.type = type { i32, %simple.struct.type }

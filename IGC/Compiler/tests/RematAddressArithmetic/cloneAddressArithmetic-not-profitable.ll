@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ; RUN: igc_opt %s -S -opaque-pointers --igc-clone-address-arithmetic --regkey=RematLog=1 --regkey=RematLogToErr=1 --dce 2>&1 | FileCheck %s
 
 ; CHECK: ValueSetSize: 1 ValueSet Reg_Size: 16

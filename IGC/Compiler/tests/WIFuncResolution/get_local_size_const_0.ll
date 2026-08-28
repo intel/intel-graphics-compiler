@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-wi-func-resolution -instsimplify -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 

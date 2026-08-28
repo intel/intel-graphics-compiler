@@ -9,7 +9,6 @@
 ;
 ; REQUIRES: regkeys
 ; RUN: igc_opt --igc-scalarize --opaque-pointers -S --regkey=EnableSelectiveScalarizer=1 < %s | FileCheck %s
-; REQUIRES: llvm-14-plus
 ; ------------------------------------------------
 ; ScalarizeFunction
 ; ------------------------------------------------

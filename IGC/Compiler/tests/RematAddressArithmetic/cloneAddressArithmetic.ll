@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ; UNSUPPORTED: system-windows
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-clone-address-arithmetic --regkey=RematChainLimit=10 --regkey=RematSingleFlowRematEnabled=0 --regkey=RematFlowThreshold=100 --regkey=RematRPELimit=0 --dce | FileCheck %s
 

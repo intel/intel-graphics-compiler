@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers -platformpvc \
 ; RUN:         --regkey LoopSinkEnableVectorShuffle=1,ForceLoopSink=1,LoopSinkForceRollback=1 \
 ; RUN:         --regkey LoopSinkAvoidSplittingDPAS=0,LoopSinkEnable2dBlockReads=1,LoopSinkEnableLoadsRescheduling=1 \

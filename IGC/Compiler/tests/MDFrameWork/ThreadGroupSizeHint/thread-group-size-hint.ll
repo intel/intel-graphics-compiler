@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-serialize-metadata -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; Verifies that ModuleMetaData::FuncMD[F].threadGroupSizeHint round-trips

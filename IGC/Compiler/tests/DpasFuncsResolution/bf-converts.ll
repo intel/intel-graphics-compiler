@@ -5,7 +5,6 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --enable-debugify -platformdg2 --igc-arith-funcs-translation -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; DpasFuncsResolution

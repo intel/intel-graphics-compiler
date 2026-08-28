@@ -9,7 +9,6 @@
 ; Check __builtin_IB_get_snap_wa_reqd is replaced with implicit arg %smpSnapWA
 ; for bindless sampler (offset is or'ed with 1).
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-image-func-resolution -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 

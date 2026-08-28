@@ -12,7 +12,7 @@
 ; may change from time to time. To avoid wasting time to modifying this test,
 ; this test is only for non-default cases.
 ;
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ;
 ; 1. Test EmulationFunctionControl=1, forcing inline
 ; RUN: igc_opt --opaque-pointers %s -regkey TestIGCPreCompiledFunctions=1,EmulationFunctionControl=1 \

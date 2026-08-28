@@ -8,7 +8,7 @@
 ; The test checks if stack overflow detection builtins are inserted to entry point
 ; in the presense of appropriate registry key.
 ;
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --igc-stackoverflow-detection -regkey StackOverflowDetection -S %s | FileCheck %s
 ;
 

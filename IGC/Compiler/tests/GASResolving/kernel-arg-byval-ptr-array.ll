@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: regkeys, llvm-14-plus, opaque-ptr-fix
+; REQUIRES: regkeys, opaque-ptr-fix
 ;
 ; Pointers held in an array member of a by-value kernel argument are reconstructed
 ; by a typed `load ptr addrspace(4)` (no inttoptr). With EnableGASKernelByValArgPtrInference

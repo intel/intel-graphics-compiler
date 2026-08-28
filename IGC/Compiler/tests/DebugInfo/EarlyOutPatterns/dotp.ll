@@ -8,7 +8,7 @@
 
 
 ; FIXME: make this test work without shader type
-; REQUIRES: llvm-14-plus, shader-types
+; REQUIRES: shader-types
 ; RUN: igc_opt --opaque-pointers -igc-early-out-patterns-pass -S -inputcs < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; EarlyOutPatterns

@@ -10,7 +10,6 @@
 ; multiple allocas and one of the users is storing null value. In this case
 ; findAllocaValue should continue to search until a valid value is found.
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-conv-ocl-to-common -S < %s -o - | FileCheck %s
 
 ; CHECK: call void @llvm.genx.GenISA.typedwrite.p131073(

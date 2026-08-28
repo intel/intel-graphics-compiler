@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; RUN: igc_opt --igc-scalarize --opaque-pointers -S < %s | FileCheck %s
-; REQUIRES: llvm-14-plus, opaque-ptr-fix
+; REQUIRES: opaque-ptr-fix
 ; ------------------------------------------------
 ; ScalarizeFunction
 ; ------------------------------------------------

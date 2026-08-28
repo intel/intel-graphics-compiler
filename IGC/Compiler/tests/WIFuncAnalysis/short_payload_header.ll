@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers -igc-wi-func-analysis -regkey ShortImplicitPayloadHeader=0 -igc-serialize-metadata -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-LONG-PAYLOAD
 ; RUN: igc_opt --opaque-pointers -igc-wi-func-analysis -regkey ShortImplicitPayloadHeader=1 -igc-serialize-metadata -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-SHORT-PAYLOAD

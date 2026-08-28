@@ -8,8 +8,8 @@
 
 ; RUN: igc_opt -igc-replace-unsupported-intrinsics -instcombine -verify -S %s -o %t
 ; RUN: FileCheck %s < %t
-; RUN: %if llvm-14-plus %{ igc_opt --opaque-pointers -igc-replace-unsupported-intrinsics -instcombine -verify -S %s -o %t %}
-; RUN: %if llvm-14-plus %{ FileCheck %s < %t %}
+; RUN: igc_opt --opaque-pointers -igc-replace-unsupported-intrinsics -instcombine -verify -S %s -o %t
+; RUN: FileCheck %s < %t
 
 ; ===========================================================================
 ; Structural checks (parametric — verifies transformation pattern)

@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-minimum-valid-address-checking -igc-minimum-valid-address-checking_arg 0x100 -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 

@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --platformdg2 --igc-emu64ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; Emu64Ops : Unaffected instructions check

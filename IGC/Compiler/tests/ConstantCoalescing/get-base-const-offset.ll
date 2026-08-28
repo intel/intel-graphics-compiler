@@ -5,7 +5,6 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-constant-coalescing -dce -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ConstantCoalescing

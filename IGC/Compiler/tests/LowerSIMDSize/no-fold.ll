@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-lower-simd-size -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; LowerSIMDSize: no-op when SIMD mode is UNKNOWN or END

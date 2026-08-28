@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --igc-split-phis-of-alloca-pointers -igc-priv-mem-to-reg --platformPtl \
 ; RUN:         --regkey ByPassAllocaSizeHeuristic=132,EnablePHIOfAllocaPtrSplit=1 -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------

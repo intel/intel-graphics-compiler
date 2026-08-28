@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; Was reduced for llvm-14, different loop-unroll results for llvm9
-; REQUIRES: debug, llvm-14-plus
+; REQUIRES: debug
 
 ; RUN: igc_opt --opaque-pointers -igc-disable-loop-unroll -loop-unroll -gen-tti -debug-only="loop-unroll" -disable-output 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------

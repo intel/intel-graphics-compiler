@@ -8,7 +8,7 @@
 
 ; The target-function dropping controls are unavailable in Linux Release builds.
 ; UNSUPPORTED: release
-; REQUIRES: regkeys,pvc-supported,llvm-14-plus, typed-pointers
+; REQUIRES: regkeys,pvc-supported,typed-pointers
 
 ; Check that function body is correctly emptied and replaced with store to null address.
 

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers  --regkey DumpLoopSink=1 --regkey PrintToConsole=1 --regkey CodeSinkingLoadSchedulingInstr=1 --regkey LoopSinkMinSave=0 --regkey ForceLoadsLoopSink=1 --regkey ForceLoopSink=1 --basic-aa --igc-code-loop-sinking -disable-output -S %s 2>&1 | FileCheck %s
 
 ; CHECK: Loop pressure increased after sinking.

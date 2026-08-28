@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -enable-debugify --igc-replace-unsupported-intrinsics -S 2>&1 < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
 ; ------------------------------------------------
 ; ReplaceUnsupportedIntrinsics: funnel shifts

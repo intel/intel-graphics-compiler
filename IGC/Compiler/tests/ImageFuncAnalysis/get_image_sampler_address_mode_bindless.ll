@@ -9,7 +9,7 @@
 ; Check new implicit arg is added for __builtin_IB_get_address_mode when
 ; sampler is bindless (offset is or'ed with 1).
 
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: opaque-ptr-fix
 ; RUN: igc_opt --opaque-pointers -igc-image-func-analysis -igc-serialize-metadata -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 

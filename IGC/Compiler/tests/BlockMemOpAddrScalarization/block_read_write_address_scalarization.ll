@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -block-memop-addr-scalar -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 

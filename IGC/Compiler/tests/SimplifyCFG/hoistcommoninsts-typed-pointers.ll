@@ -11,7 +11,6 @@
 ;
 ; Checks that SimplyCFG pass hoists common instructions
 ;
-; REQUIRES: llvm-14-plus
 ;
 ; CHECK: entry:
 ; CHECK-NOT: br

@@ -12,7 +12,7 @@
 ; be done easily and can detect aliasing precisely without using basicaa. This test
 ; is to test such overlappin checking in store combining.
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers -S --basic-aa -platformbmg \
 ; RUN:          -igc-ldstcombine -regkey=EnableLdStCombine=1 %s | FileCheck %s

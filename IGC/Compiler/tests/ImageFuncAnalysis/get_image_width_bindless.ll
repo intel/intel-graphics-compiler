@@ -9,7 +9,6 @@
 ; Negative test checks that no implicit args are captured in bindless mode
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-image-func-analysis -S %s -o - | FileCheck %s
 
 %opencl.image2d_t = type opaque

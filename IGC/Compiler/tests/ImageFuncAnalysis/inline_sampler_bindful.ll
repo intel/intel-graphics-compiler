@@ -8,7 +8,6 @@
 
 ; Check new implicit arg is not added for bindful inline sampler.
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-image-func-analysis -S %s -o - | FileCheck %s
 
 %spirv.Sampler = type opaque

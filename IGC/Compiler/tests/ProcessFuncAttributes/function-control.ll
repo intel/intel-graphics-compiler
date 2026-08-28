@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus, regkeys, opaque-ptr-fix
+; REQUIRES: regkeys, opaque-ptr-fix
 ; RUN: igc_opt --opaque-pointers --igc-process-func-attributes -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK-FC0
 ; RUN: igc_opt --opaque-pointers --igc-process-func-attributes -S -regkey FunctionControl=1 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK-FC1
 ; RUN: igc_opt --opaque-pointers --igc-process-func-attributes -S -regkey FunctionControl=2 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK-FC2

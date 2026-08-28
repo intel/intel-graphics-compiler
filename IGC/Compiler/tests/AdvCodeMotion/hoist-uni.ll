@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -debugify -adv-codemotion-cm=1 -igc-advcodemotion -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; AdvCodeMotion

@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-int-type-legalizer -S < %s | FileCheck %s
 
 ; Shl legalization for an illegal integer wider than the largest legal int.

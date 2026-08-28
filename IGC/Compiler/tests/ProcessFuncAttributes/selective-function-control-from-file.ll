@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus, regkeys, opaque-ptr-fix
+; REQUIRES: regkeys, opaque-ptr-fix
 ; RUN: split-file %s %t
 ; RUN: igc_opt --opaque-pointers --igc-process-func-attributes -S -regkey FunctionControl=3,SelectiveFunctionControl=1,PrintStackCallDebugInfo=1,SelectiveFunctionControlFile=%t/sfc1.ll < %t/test.ll | FileCheck %s --check-prefixes=CHECK-SFC1
 ; RUN: igc_opt --opaque-pointers --igc-process-func-attributes -S -regkey FunctionControl=3,SelectiveFunctionControl=1,PrintStackCallDebugInfo=1,SelectiveFunctionControlFile=%t/sfc2.ll < %t/test.ll | FileCheck %s --check-prefixes=CHECK-SFC2

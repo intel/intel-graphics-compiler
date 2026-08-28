@@ -14,7 +14,7 @@
 
 ; Note: this test is from ocl test test_spir half (test.vstore_half_private_float3)
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers -S --basic-aa -platformbmg \
 ; RUN:          -igc-ldstcombine -regkey=EnableLdStCombine=1 %s | FileCheck %s

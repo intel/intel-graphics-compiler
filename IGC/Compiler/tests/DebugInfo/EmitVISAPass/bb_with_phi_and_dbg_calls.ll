@@ -9,7 +9,7 @@
 ; The test checks if the BB with phi and dbg calls is treated as empty BB and
 ; the compiler doesn't emit this BB in visaasm.
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers -platformdg2 -igc-emit-visa %s -regkey DumpVISAASMToConsole | FileCheck %s
 

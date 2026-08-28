@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers %s -S --platformPtl -simd-mode 16 -igc-emit-visa -regkey DumpVISAASMToConsole=1 | FileCheck %s
 

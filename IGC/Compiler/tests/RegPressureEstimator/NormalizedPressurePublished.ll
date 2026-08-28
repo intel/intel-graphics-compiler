@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt -opaque-pointers -S --regkey=ForceOCLSIMDWidth=16 --igc-code-loop-sinking -igc-serialize-metadata < %s 2>&1 | FileCheck %s
 
 ; CHECK: !{!"maxRegUniformPressure", i32 5152

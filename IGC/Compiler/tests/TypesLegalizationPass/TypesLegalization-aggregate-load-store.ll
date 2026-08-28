@@ -8,7 +8,6 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: igc_opt %s --opaque-pointers -S -o - -types-legalization-pass | FileCheck %s
-; REQUIRES: llvm-14-plus
 
 ; Test that aggregate load splitting preserves correct alignment for scalar loads.
 ; This test verifies the fix for a correctness bug where aggregate loads were split

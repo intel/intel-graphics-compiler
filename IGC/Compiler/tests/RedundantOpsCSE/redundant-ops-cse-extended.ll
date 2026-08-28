@@ -9,7 +9,7 @@
 target datalayout = "e-p:32:32:32-p1:64:64:64-p2:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:32-f32:32:32-f64:32:32-v64:32:32-v128:32:32-a0:0:32-n8:16:32-S32"
 target triple = "dxil-ms-dx"
 
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 
 ; Default run: unlimited distance (MaxDist=0), CSE should fire everywhere
 ; RUN: igc_opt --opaque-pointers -platformPtl -redundant-ops-cse -regkey EnableRedundantOpsCSE=1 -regkey EnableRedundantOpsCrossBBCSE=1 -regkey RedundantOpsIntraBBMaxDist=0 -S %s | FileCheck %s --check-prefix=CHECK

@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 ; Ensure that there are no calls to the llvm.memcpy intrinsics
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-replace-unsupported-intrinsics -verify -S < %s | FileCheck %s
 
 ; CHECK-NOT: "llvm.memcpy"

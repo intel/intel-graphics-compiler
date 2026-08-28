@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: opaque-ptr-fix, regkeys, llvm-14-plus
+; REQUIRES: opaque-ptr-fix, regkeys
 ;
 ; RUN: igc_opt --typed-pointers -simd-mode 8 -platformdg2 -igc-emit-visa -regkey DumpVISAASMToConsole < %s | FileCheck %s -check-prefixes=CHECK-BOTH,CHECK-RGBA
 ; RUN: igc_opt --typed-pointers -simd-mode 8 -platformdg2 -igc-emit-visa -regkey HandlePhiNodeInChannelPrune=1 -regkey DumpVISAASMToConsole < %s | FileCheck %s -check-prefixes=CHECK-BOTH,CHECK-ONLYR

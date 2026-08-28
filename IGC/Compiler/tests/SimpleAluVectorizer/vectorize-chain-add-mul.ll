@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ;
 ; Test: Three stacked groups of 4 isomorphic uniform i32 binary ops.
 ;

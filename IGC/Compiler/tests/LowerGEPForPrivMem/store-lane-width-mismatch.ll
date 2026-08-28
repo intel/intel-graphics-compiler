@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-priv-mem-to-reg -S < %s 2>&1 | FileCheck %s
 
 ; This test verifies that the pass can handle storing <3 x i16> (48 bits total with i16 lanes) into <2 x i32> (64 bits total with i32 lanes).

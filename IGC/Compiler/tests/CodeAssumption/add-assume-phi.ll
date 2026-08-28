@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ;
 ; RUN: igc_opt --opaque-pointers -enable-debugify -regkey EnableCodeAssumption=2 -igc-stateless-to-stateful-resolution -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK%if llvm-22-plus %{,CHECK-LLVM22%}
 ; ------------------------------------------------

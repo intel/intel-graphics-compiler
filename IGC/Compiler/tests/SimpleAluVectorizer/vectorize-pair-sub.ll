@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ;
 ; Test: Two uniform i32 subs sharing the same operands are coalesced into a
 ; single vector sub. Both subs use the same pair of runtime-value operands

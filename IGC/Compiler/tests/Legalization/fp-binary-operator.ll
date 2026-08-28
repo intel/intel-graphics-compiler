@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ; due to bfloat ty
-; REQUIRES: llvm-14-plus
 ;
 ; RUN: igc_opt -igc-legalization -S < %s | FileCheck %s
 ; ------------------------------------------------

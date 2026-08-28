@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// REQUIRES: regkeys,bmg-supported,llvm-14-plus
+// REQUIRES: regkeys,bmg-supported
 
 // Verify that local IDs are not removed when subroutines/stackcalls are used.
 

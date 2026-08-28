@@ -11,7 +11,7 @@
 ; implied warranties, other than those that are expressly stated in the License.
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --regkey LoopSinkMinSave=1 --regkey LoopSinkDisableRollback=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s | FileCheck %s
 
 ; check the inttoptr instructions are sinked

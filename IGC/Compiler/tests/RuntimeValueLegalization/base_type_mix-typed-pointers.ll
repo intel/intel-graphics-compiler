@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt  --opaque-pointers -igc-runtimevalue-legalization-pass -S %s | FileCheck %s
 
 target datalayout = "e-p0:32:32-p2:64:64"

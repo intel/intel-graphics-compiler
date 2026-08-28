@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-image-sampler-resolution %s -S -o - | FileCheck %s
 
 ; Check sampler from __translate_sampler_initializer call is resolved from first

@@ -11,7 +11,6 @@
 ; (without a GEP) from the struct pointer. This tests the ValueTracker's
 ; ability to match implicit offset-0 access with explicit [0, 0] GEP.
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-conv-ocl-to-common | FileCheck %s
 
 ; CHECK-NOT: __builtin_IB_write_2d_u4i

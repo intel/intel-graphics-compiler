@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-custom-safe-opt -igc-gen-specific-pattern -dce -S < %s | FileCheck %s
 
 ; Test that CustomSafeOptPass correctly simplifies redundant pointer conversion

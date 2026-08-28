@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 ; TODO: remove nop bitcasts from signed sat intrinsics
 ;
-; REQUIRES: llvm-14-plus
 ;
 ; RUN: igc_opt -igc-legalization -S -dce < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
 ; ------------------------------------------------

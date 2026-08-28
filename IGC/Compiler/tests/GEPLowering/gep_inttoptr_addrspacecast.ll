@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-gep-lowering -S < %s | FileCheck %s
 
 ; Test that GEPLowering looks through addrspacecast to reuse the integer base

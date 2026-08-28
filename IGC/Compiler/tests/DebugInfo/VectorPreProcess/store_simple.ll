@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-vectorpreprocess -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; VectorPreProcess : store aligned

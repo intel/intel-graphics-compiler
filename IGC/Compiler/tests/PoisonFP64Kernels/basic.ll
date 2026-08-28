@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-poison-fp64-kernels -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; PoisonFP64Kernels

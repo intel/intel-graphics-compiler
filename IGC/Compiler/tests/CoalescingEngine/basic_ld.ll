@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ;
 ; RUN: igc_opt --opaque-pointers -regkey PrintToConsole=1 -CoalescingEngine -S 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------

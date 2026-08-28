@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt -opaque-pointers -igc-divrem-increment-reduction -regkey SanitizeDivRemIncrementDivisorIsZero=1 -S < %s | FileCheck %s
 ; RUN: igc_opt -opaque-pointers -igc-divrem-increment-reduction -regkey GuardDivRemIncrementDividendOverflow=1 -S < %s | FileCheck %s --check-prefix=OVF
 ; ------------------------------------------------

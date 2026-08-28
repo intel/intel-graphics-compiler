@@ -10,7 +10,7 @@
 ; loaded value.  However, as vector has been extensively optmized. Load combining specially
 ; generates vector instead of struct for those tests, thus result in less instructions.
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers -S -igc-ldstcombine -regkey=EnableLdStCombine=5 -platformbmg %s \
 ; RUN: | FileCheck %s

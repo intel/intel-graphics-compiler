@@ -8,7 +8,7 @@
 ; This test runs vISA EmitPass and checks if d8/d16 2d block transpose have
 ; been emulated correctly.
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers -platformpvc -igc-emit-visa %s -regkey DumpVISAASMToConsole -regkey EnableDebugging \
 ; RUN:   -simd-mode 16 | FileCheck %s

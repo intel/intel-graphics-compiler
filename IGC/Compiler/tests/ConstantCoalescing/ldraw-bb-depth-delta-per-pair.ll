@@ -29,7 +29,7 @@
 ; depth-delta check fires on every candidate, regardless of merged-chunk size.
 ; This isolates the per-PAIR behavior we are testing here.
 
-; REQUIRES: llvm-14-plus, regkeys, shader-types
+; REQUIRES: regkeys, shader-types
 ; Run as a compute shader: the guard is shader-type-agnostic, not RT-gated.
 ; RUN: igc_opt --opaque-pointers %s -S -o - -inputcs -platformdg2 --regkey ConstantCoalescingMaxBBDepthDelta=1,ConstantCoalescingDepthCheckMinBytes=0 -igc-constant-coalescing | FileCheck %s
 

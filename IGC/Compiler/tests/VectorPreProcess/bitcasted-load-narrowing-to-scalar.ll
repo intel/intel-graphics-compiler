@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ;
 ; Bitcasted load narrowing is forced on (EnableBitcastedLoadNarrowing=1) for both
 ; runs so the bitcast pattern is recognized; the EnableBitcastedLoadNarrowingToScalar

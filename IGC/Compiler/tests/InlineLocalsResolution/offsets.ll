@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: opaque-ptr-fix
 ; RUN: igc_opt --opaque-pointers -igc-resolve-inline-locals -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; InlineLocalsResolution

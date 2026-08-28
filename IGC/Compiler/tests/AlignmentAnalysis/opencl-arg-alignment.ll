@@ -9,7 +9,6 @@
 ; The test checks if the FixAlignmentPass is able to correctly set argument alignment
 ; for the OpenCL kernel arguments. They should be set based on kernel_arg_type metadata
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-fix-alignment -S %s -o %t
 ; RUN: FileCheck %s --input-file=%t
 ; ------------------------------------------------

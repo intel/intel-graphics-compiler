@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; UNSUPPORTED: system-windows
-; REQUIRES: debug, llvm-14-plus
+; REQUIRES: debug
 ; RUN: not igc_opt --opaque-pointers -platformpvc --igc-arith-funcs-translation -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; DpasFuncsResolution

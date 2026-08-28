@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-14-plus, debug
+; REQUIRES: debug
 ;
 ; RUN: not igc_opt -platformdg2 --igc-PartialEmuI64Ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------

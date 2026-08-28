@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -enable-debugify --igc-vector-bitcast-opt -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; VectorBitCastOpt

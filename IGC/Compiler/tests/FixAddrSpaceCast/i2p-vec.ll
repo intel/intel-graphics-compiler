@@ -5,7 +5,6 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus
 ; COM: check that vector of pointers compiles wo assert
 ; RUN: igc_opt --opaque-pointers --igc-addrspacecast-fix -S < %s
 ; ------------------------------------------------

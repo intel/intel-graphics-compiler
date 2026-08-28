@@ -17,7 +17,6 @@
 ; provided by the user. The handle is a runtime value and cannot be tracked to a kernel argument at compile-time.
 ; Therefore, implementing snap_wa would require a completely new approach.
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-image-func-resolution -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 

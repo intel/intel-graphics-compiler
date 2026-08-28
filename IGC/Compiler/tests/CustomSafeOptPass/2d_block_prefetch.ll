@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ;
 ; RUN: igc_opt %s -S -o - -igc-custom-safe-opt | FileCheck %s
 

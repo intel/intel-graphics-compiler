@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-loop-alloca-upperbound -S %s | FileCheck %s
 ; InstCombine may strip a GEP's leading zero index. Recover the array bound
 ; from the alloca when the remaining GEP indexes its element type.

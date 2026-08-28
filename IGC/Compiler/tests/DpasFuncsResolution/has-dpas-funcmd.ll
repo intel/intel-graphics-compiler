@@ -5,7 +5,6 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -platformCri --igc-arith-funcs-translation -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; DpasFuncsResolution records per-function DPAS presence in FunctionMetaData

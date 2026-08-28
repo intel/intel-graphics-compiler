@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers -igc-custom-unsafe-opt-pass -S %s | FileCheck %s
 ; RUN: igc_opt --opaque-pointers -igc-custom-unsafe-opt-pass -S %s -regkey AllowNonMulMemOpMadChainReassoc=1 | FileCheck %s --check-prefix=CHECK-MEMOP
 

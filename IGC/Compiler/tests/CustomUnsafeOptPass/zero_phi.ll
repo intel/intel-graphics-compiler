@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-custom-unsafe-opt-pass | FileCheck %s
 
 ; tests CustomUnsafeOptPass::visitPHINode

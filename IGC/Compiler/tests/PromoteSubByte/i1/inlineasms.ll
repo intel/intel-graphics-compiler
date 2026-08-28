@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-promote-sub-byte -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 

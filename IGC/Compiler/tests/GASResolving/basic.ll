@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: igc_opt --igc-gas-resolve --opaque-pointers -S < %s | FileCheck %s
-; REQUIRES: llvm-14-plus, opaque-ptr-fix
+; REQUIRES: opaque-ptr-fix
 
 
 ;the pass should remove addrspacecast to addrspace(4) and replace uses with origin type

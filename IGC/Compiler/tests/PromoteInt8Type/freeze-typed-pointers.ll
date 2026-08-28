@@ -11,7 +11,6 @@
 ; PromoteInt8Type : Freeze
 ; ------------------------------------------------
 
-; REQUIRES: llvm-14-plus
 
 ; Debug-info related check
 ; CHECK-NOT: WARNING

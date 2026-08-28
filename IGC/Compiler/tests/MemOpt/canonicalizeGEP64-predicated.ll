@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-memopt -instcombine | FileCheck %s
 
 define void @f0(i32 %arg1, i32 %arg2, ptr addrspace(1) %src, ptr addrspace(1) %dst) {

@@ -8,7 +8,7 @@
 
 ; To vector alias on inline asm
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers --CheckInstrTypes --igc-update-instrtypes-on-run --neo \
 ; RUN:         -platformpvc -igc-emit-visa -regkey DumpVISAASMToConsole,VectorAlias=1 -simd-mode 16 %s  \

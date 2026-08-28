@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; FIXME: make this test work without shader type
-; REQUIRES: llvm-14-plus, shader-types
+; REQUIRES: shader-types
 ; RUN: igc_opt --opaque-pointers --igc-push-analysis --inputds --igc-collect-domain-shader-properties -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; PushAnalysis

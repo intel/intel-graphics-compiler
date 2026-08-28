@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-legalization -verify -S %s -o - | FileCheck %s
 
 define i8 @f1(i8 %a) #0 {

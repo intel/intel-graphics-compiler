@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -enable-debugify -igc-handle-devicelib-assert -S < %s 2>&1 | FileCheck %s
 
 ; Debug-info related check

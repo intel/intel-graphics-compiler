@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --regkey LoopSinkMinSave=0 --regkey LoopSinkEnable2dBlockReads=1 --regkey LoopSinkCoarserLoadsRescheduling=0 --regkey LoopSinkEnableLoadsRescheduling=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey LoopSinkDisableRollback=1 --regkey CodeSinking2dLoadSchedulingInstr=0 --basic-aa --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s --check-prefix=CHECK
 ; RUN: igc_opt --typed-pointers --regkey LoopSinkMinSave=0 --regkey LoopSinkEnable2dBlockReads=1 --regkey LoopSinkCoarserLoadsRescheduling=1 --regkey LoopSinkEnableLoadsRescheduling=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey LoopSinkDisableRollback=1 --regkey CodeSinking2dLoadSchedulingInstr=0 --basic-aa --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s --check-prefix=CHECK-COARSE

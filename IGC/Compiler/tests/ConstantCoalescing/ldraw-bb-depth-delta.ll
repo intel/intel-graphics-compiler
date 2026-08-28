@@ -26,7 +26,7 @@
 ; below delta-3, or threshold >= 3) or leaves them as two separate <4 x float>
 ; reads (threshold in (0, 3)).
 
-; REQUIRES: llvm-14-plus, regkeys, shader-types
+; REQUIRES: regkeys, shader-types
 
 ; delta = 0 disables the check -> merge as before
 ; Run as a pixel shader: the guard is shader-type-agnostic, not RT-gated.

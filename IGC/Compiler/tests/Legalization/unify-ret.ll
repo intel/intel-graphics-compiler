@@ -5,7 +5,6 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus
 ;
 ; RUN: igc_opt -opaque-pointers -igc-legalization -S -dce < %s | FileCheck %s
 ; ------------------------------------------------

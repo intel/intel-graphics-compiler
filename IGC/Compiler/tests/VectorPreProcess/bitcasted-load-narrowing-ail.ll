@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ;
 ; The DisableBitcastedLoadNarrowing module flag, set from the
 ; WaDisableBitcastedLoadNarrowing AIL, opts a workload out of bitcasted load

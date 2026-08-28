@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-insert-dummy-kernel-for-symbol-table -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; InsertDummyKernelForSymbolTable

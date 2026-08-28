@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 // Basic test that verifies predicated load/store
 
-// REQUIRES: regkeys,pvc-supported,llvm-14-plus
+// REQUIRES: regkeys,pvc-supported
 
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'EnablePromoteToPredicatedMemoryAccess=1 VISAOptions=-asmToConsole'" 2>&1 | FileCheck %s --check-prefixes=CHECK-ASM
 

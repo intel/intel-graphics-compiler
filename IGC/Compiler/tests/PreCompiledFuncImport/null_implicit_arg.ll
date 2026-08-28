@@ -15,7 +15,7 @@
 ; null and the value must be materialized as an intrinsic (getR0 / getPrivateBase)
 ; instead of pushing a null operand.
 ;
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ;
 ; RUN: igc_opt --opaque-pointers %s -regkey TestIGCPreCompiledFunctions=1,EmulationFunctionControl=2 \
 ; RUN:            --platformdg2 --igc-precompiled-import -S 2>&1 | FileCheck %s

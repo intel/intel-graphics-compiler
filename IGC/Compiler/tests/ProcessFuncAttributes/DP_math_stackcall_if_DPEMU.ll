@@ -12,7 +12,7 @@
 ;         When igc_opt's output will include "visaStackCall", this test shall
 ;         test 'visaStackCall"
 ;
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ;
 ; RUN: igc_opt --opaque-pointers %s -ocl -regkey EnableDPEmulation=1 \
 ; RUN:            --platformdg2 --igc-process-func-attributes -S \

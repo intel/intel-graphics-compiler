@@ -1,6 +1,6 @@
 ; ShaderDumpTranslationOnly is unavailable in Linux Release builds.
 ; UNSUPPORTED: system-windows, release
-; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-14-plus
+; REQUIRES: llvm-spirv, regkeys, dg2-supported
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc

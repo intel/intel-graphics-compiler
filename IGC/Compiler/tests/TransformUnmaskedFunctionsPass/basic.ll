@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --transform-unmasked -S < %s | FileCheck %s
 ; ------------------------------------------------
 

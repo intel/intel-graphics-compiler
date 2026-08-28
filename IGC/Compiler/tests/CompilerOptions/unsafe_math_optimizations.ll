@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-process-func-attributes -igc-set-fast-math-flags -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ;
 ; DG2 is below Xe3 (PTL), so bitcasted load narrowing is off by default. It only
 ; happens when the EnableBitcastedLoadNarrowing regkey is explicitly enabled.

@@ -11,7 +11,7 @@
 ; implied warranties, other than those that are expressly stated in the License.
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --igc-code-sinking --regkey CodeSinkingMinSize=1 -S %s | FileCheck %s
 
 ;CHECK-LABEL: entry:

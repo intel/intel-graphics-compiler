@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-legalization -verify -S %s -o - | FileCheck %s
 
 ; Test checks that igc-legalization lowers llvm.bswap of an illegal bit width by

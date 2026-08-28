@@ -1,6 +1,6 @@
 ; ShaderDumpTranslationOnly is unavailable in Linux Release builds.
 ; UNSUPPORTED: release
-; REQUIRES: regkeys, spirv-as, dg2-supported, llvm-14-plus
+; REQUIRES: regkeys, spirv-as, dg2-supported
 
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
 

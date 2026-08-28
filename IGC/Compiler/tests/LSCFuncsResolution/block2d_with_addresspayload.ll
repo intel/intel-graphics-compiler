@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-lsc-funcs-translation -platformpvc -S  %s | FileCheck %s
 
 ; Check lowering of LSC 2D block messages with address payload

@@ -7,7 +7,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers -igc-InsertBranchOpt -regkey EnableAtomicBranch=192 -S %s | FileCheck %s
 
 ; EnableAtomicBranch=192 enables OrZero (0x40) and AndFF (0x80) modes.

@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-image-func-resolution %s -S -o - | FileCheck %s
 
 ; Check that __builtin_IB_get_address_mode, __builtin_IB_get_snap_wa_reqd and

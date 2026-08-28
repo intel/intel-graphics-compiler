@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --regkey CodeSinkingMinSize=0 -igc-code-sinking -S < %s | FileCheck %s
 
 define spir_kernel void @repro(i32 %x, i32 %sel, ptr %out) {

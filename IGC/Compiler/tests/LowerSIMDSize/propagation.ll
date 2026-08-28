@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-lower-simd-size --igc-lower-simd-size-override=16 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; LowerSIMDSize: constant propagation into users

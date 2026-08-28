@@ -8,7 +8,7 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: igc_opt -debugify --igc-gas-resolve --opaque-pointers -S < %s | FileCheck %s
-; REQUIRES: llvm-14-plus, opaque-ptr-fix
+; REQUIRES: opaque-ptr-fix
 
 %st = type {ptr addrspace(4)}
 

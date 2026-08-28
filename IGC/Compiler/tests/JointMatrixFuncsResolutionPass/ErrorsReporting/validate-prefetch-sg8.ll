@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: opaque-ptr-fix
 ; RUN: igc_opt --opaque-pointers -igc-joint-matrix-resolution --platformdg2 -S 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------
 ; JointMatrixFuncsResolutionPass

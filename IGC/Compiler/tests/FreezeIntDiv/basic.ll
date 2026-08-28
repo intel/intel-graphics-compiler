@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-freeze-int-div-pass -S %s | FileCheck %s --check-prefixes=CHECK
 ; ------------------------------------------------
 ; FreezeIntDiv

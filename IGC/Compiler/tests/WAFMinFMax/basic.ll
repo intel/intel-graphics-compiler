@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-wa-fminmax  -ocl -enable-debugify -enable-fmax-fmin-plus-zero -retain-denormals -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; WAFMinFMax

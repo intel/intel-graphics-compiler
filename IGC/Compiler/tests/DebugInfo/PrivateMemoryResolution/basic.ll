@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --igc-private-mem-resolution -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; RUN: igc_opt --opaque-pointers --igc-private-mem-resolution --regkey DumpDbgVarStorageInfo=1 -S < %s 2>&1 | FileCheck %s --check-prefix=DUMP
 ; ------------------------------------------------

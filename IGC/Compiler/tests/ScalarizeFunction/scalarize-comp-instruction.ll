@@ -8,7 +8,6 @@
 ;============================ end_copyright_notice =============================
 ;
 ; RUN: igc_opt --igc-scalarize --opaque-pointers -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
-; REQUIRES: llvm-14-plus
 ; ------------------------------------------------
 ; ScalarizeFunction
 ; ------------------------------------------------

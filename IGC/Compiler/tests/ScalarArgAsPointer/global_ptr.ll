@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-programscope-constant-analysis -igc-add-implicit-args --igc-scalar-arg-as-pointer-analysis -igc-serialize-metadata -S %s | FileCheck %s
 ;
 ; Global pointer, translated to offset from implicit arg globalBase.

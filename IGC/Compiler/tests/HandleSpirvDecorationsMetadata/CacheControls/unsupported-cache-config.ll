@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers %s -platformpvc -S -o - -igc-handle-spirv-decoration-metadata --igc-error-check -igc-serialize-metadata < %s 2>&1 | FileCheck %s
 
 ; The below test tries to set { L1 cached, L3 streaming } cache controls configuration that is not supported on PVC.

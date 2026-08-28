@@ -34,7 +34,7 @@
 ;
 ; Then the test was passed through llvm-reduce.
 
-; REQUIRES: llvm-as, llvm-spirv, regkeys, llvm-14-plus
+; REQUIRES: llvm-as, llvm-spirv, regkeys
 
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; RUN: llvm-spirv %OPAQUE_PTR_FLAG% %t.bc --spirv-ext=SPV_INTEL_bindless_images -o %t.spv

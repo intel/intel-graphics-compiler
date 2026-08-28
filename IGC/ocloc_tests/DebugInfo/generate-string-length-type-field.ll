@@ -11,7 +11,7 @@
 
 ; UNSUPPORTED: sys32
 
-; REQUIRES: regkeys, oneapi-readelf, llvm-14-plus, dg2-supported
+; REQUIRES: regkeys, oneapi-readelf, dg2-supported
 
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t
 ; RUN: ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'"

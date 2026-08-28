@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ;
 ; On Panther Lake (Xe3) bitcasted load narrowing is enabled by default, with no
 ; regkey needed. An explicitly set EnableBitcastedLoadNarrowing=0 regkey still

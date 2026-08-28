@@ -10,7 +10,6 @@
 ; These tests verify that values computed inside the loop body but with zero SCEV step
 ; (effectively loop-invariant) are properly hoisted to payload creation.
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -decompose-2d-block-funcs-with-hoisting -dce -platformbmg -S < %s 2>&1 | FileCheck %s
 
 declare <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)

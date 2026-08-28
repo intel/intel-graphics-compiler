@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-lower-simd-size --igc-lower-simd-size-override=8  -S < %s | FileCheck %s --check-prefix=SIMD8
 ; RUN: igc_opt --opaque-pointers --igc-lower-simd-size --igc-lower-simd-size-override=16 -S < %s | FileCheck %s --check-prefix=SIMD16
 ; RUN: igc_opt --opaque-pointers --igc-lower-simd-size --igc-lower-simd-size-override=32 -S < %s | FileCheck %s --check-prefix=SIMD32

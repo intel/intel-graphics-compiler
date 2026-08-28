@@ -9,7 +9,6 @@
 ; Test checks that fshl/fshr intrinsics are preserved on platforms with ror/rol 64bit support
 ; and replaced with equivalent operations on other platforms
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --platformpvc --opaque-pointers -igc-replace-unsupported-intrinsics -verify -S < %s 2>&1 | FileCheck %s --check-prefix=CHECK64
 ; RUN: igc_opt --platformPtl --opaque-pointers -igc-replace-unsupported-intrinsics -verify -S < %s 2>&1 | FileCheck %s --check-prefix=CHECK64
 ; RUN: igc_opt --platformmtl --opaque-pointers -igc-replace-unsupported-intrinsics -verify -S < %s 2>&1 | FileCheck %s --check-prefix=CHECK32

@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --regkey PrintToConsole --CheckInstrTypes --enable-instrtypes-print -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; CheckInstrTypes sets SInstrTypes::hasDPAS when a GenISA DPAS intrinsic is present.

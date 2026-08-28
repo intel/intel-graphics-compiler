@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -GenOptLegalizer -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GenOptLegalizer

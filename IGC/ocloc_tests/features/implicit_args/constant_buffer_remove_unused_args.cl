@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// REQUIRES: regkeys,pvc-supported,llvm-14-plus
+// REQUIRES: regkeys,pvc-supported
 
 // Verify that implicit kernel arguments are removed when unused.
 

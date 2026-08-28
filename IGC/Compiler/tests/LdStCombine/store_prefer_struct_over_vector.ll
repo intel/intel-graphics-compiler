@@ -10,7 +10,7 @@
 ; This test is test that a struct is prefered over a vector to avoid additional
 ; bitcast instructions.
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=1 \
 ; RUN:           -platformbmg \

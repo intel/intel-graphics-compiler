@@ -10,7 +10,7 @@
 ; When some extractvalue users are optimized away, the emit pass must still
 ; allocate valid vISA variables for those outputs (not emit "null").
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers --CheckInstrTypes --igc-update-instrtypes-on-run --neo \
 ; RUN:         -platformbmg -igc-emit-visa -regkey DumpVISAASMToConsole -simd-mode 16 %s \

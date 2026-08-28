@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --cap-loop-iterations-pass -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CapLoopIterations

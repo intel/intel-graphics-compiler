@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: regkeys, llvm-14-plus
+; REQUIRES: regkeys
 ;
 ; RUN: igc_opt --opaque-pointers -igc-error-check --platformdg2 -S 2>&1 < %s \
 ; RUN:   --regkey DisableDuplicateWarnings=0 --regkey ForceDPEmulation=1 | FileCheck %s --check-prefixes=CHECK,CHECK_DUP

@@ -8,7 +8,6 @@
 ;
 ; FIXME: update & re-enable the test for LLVM 23
 ; UNSUPPORTED: llvm-23-plus
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-builtin-import -disable-verify -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; BIImport

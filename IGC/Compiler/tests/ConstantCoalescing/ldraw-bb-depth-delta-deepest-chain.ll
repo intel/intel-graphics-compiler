@@ -29,7 +29,7 @@
 ;   cb[32] delta = 4-2 = 2 -> ALLOW. deepestLvl bumped to 4.
 ;   Result: chunk = cb[0..32], no narrow remainders.
 
-; REQUIRES: llvm-14-plus, regkeys, shader-types
+; REQUIRES: regkeys, shader-types
 
 ; Expect ONE wide ldraw merge spanning all three reads.
 ; Run as a pixel shader: the guard is shader-type-agnostic, not RT-gated.

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; FIXME: make this test work without shader type
-; REQUIRES: regkeys, llvm-14-plus, shader-types
+; REQUIRES: regkeys, shader-types
 ;
 ; RUN: igc_opt -platformbmg -igc-emit-visa -simd-mode 16 -inputrt -regkey DumpVISAASMToConsole -S %s | FileCheck %s
 ; ------------------------------------------------

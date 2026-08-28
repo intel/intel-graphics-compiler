@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --platformdg2 --igc-emu64ops -S < %s | FileCheck %s
 
 ; Test Emu64Ops optimization that avoids redundant conversions between pointers/pairs

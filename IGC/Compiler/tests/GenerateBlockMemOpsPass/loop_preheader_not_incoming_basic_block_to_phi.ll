@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers %s -S -o - -generate-block-mem-ops -platformpvc
 
 ; The test passes if `igc_opt` does not crash on this input.

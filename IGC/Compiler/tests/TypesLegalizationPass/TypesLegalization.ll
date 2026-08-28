@@ -8,7 +8,6 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: igc_opt %s --opaque-pointers -S -o - -types-legalization-pass | FileCheck %s
-; REQUIRES: llvm-14-plus
 
 define spir_kernel void @f0(ptr addrspace(1) %arg) {
 ; CHECK-LABEL: define spir_kernel void @f0(

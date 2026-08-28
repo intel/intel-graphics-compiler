@@ -11,7 +11,6 @@
 ; the SetFields are NOT cleared - otherwise payload fields initialized with zero
 ; placeholders would never be properly set before the IO intrinsic.
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -decompose-2d-block-funcs-with-hoisting -dce -platformbmg -S < %s 2>&1 | FileCheck %s
 
 declare <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)

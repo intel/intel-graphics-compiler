@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --platformdg2 --igc-emu64ops -regkey EnableAggresiveEmuFolding=1 -S < %s 2>&1 | FileCheck %s
 ; RUN: igc_opt --opaque-pointers --platformdg2 --igc-PartialEmuI64Ops -regkey EnableAggresiveEmuFolding=1 -S < %s 2>&1 | FileCheck %s
 ;

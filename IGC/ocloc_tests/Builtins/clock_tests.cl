@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// REQUIRES: pvc-supported, regkeys, llvm-14-plus
+// REQUIRES: pvc-supported, regkeys
 
 // RUN: ocloc compile -file %s -internal_options "-cl-ext=-all,+cl_khr_kernel_clock" -options "-igc_opts 'DumpVISAASMToConsole=1'" -device pvc | FileCheck %s
 

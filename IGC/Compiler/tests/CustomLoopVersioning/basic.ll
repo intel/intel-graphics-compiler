@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -debugify -igc-custom-loop-opt -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; CustomLoopVersioning

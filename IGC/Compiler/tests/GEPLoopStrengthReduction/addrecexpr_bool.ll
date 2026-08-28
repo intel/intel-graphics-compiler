@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-gep-loop-strength-reduction -S < %s 2>&1 | FileCheck %s
 ;
 ; Don't optimize SCEVAddRecExpr based on boolean type.

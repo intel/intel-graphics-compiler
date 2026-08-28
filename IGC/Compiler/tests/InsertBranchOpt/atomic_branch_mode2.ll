@@ -7,7 +7,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers -igc-InsertBranchOpt -regkey EnableAtomicBranch=2 -S %s | FileCheck %s
 
 

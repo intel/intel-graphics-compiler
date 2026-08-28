@@ -32,7 +32,7 @@
 ;     ret (M1, 1)
 
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers -platformdg2 -igc-emit-visa %s -regkey DumpVISAASMToConsole | FileCheck %s
 

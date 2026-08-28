@@ -15,7 +15,7 @@
 
 ; The test checks if we follow the IND0 restriction, that the surface base address must be aligned to data size.
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers -platformCri -simd-mode 32 -igc-emit-visa %s -regkey DumpVISAASMToConsole -regkey EnableEfficient64b | FileCheck %s
 ; CHECK:      .kernel "test_fn"

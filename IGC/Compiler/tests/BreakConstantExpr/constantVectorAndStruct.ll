@@ -14,7 +14,6 @@
 ; (with a nested getelementptr), which remain valid constexprs across LLVM versions.
 ;
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-break-const-expr -S %s | FileCheck %s
 ;=========================== begin_copyright_notice ============================
 ;

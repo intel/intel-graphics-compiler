@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --half-promotion  -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; HalfPromotion

@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-int-type-legalizer -S < %s | FileCheck %s
 
 ; Tests for array of i1 types.

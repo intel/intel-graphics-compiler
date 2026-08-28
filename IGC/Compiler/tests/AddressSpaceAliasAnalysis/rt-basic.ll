@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ; COM: Due to different aa options naming
-; REQUIRES: llvm-14-plus
 ;
 ; COM: LLVM 22 removed the legacy pass-manager wrapper for the alias-analysis
 ; COM: accuracy evaluator, so igc_opt's legacy PassManager no longer registers

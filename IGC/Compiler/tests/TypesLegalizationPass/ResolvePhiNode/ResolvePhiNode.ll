@@ -8,7 +8,6 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: igc_opt %s --opaque-pointers -S -o - -types-legalization-pass | FileCheck %s
-; REQUIRES: llvm-14-plus
 
 ; should replace phi instruction with alloca store and load instructions
 

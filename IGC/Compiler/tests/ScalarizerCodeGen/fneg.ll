@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt -enable-debugify %s -S -o - --igc-scalarizer-in-codegen 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; ScalarizerCodeGen

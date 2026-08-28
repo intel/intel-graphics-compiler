@@ -7,7 +7,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers -igc-InsertBranchOpt -regkey EnableAtomicBranch=768 -S %s | FileCheck %s
 
 ; EnableAtomicBranch=768 enables CheckOr (0x100) and CheckAnd (0x200) modes.

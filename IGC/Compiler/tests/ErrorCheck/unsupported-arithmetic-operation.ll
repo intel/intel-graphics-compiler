@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -ocl -platformdg2 -igc-error-check -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; ErrorCheck

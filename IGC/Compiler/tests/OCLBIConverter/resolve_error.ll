@@ -10,7 +10,6 @@
 ; built-ins like __builtin_IB_get_image_width are still erased after resolving
 ; for bindless images
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -platformdg1 -igc-error-check -igc-conv-ocl-to-common -S %s 2>&1 | FileCheck %s
 
 ; CHECK: define spir_kernel void @kernel(ptr addrspace(1) %img) {

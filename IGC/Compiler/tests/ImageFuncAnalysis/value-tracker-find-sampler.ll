@@ -10,7 +10,6 @@
 ; ValueTracker when there is struct containing image and sampler pointers
 ; and while searching for value memcpy instruction is found.
 
-; REQUIRES: llvm-14-plus
 
 ; RUN: igc_opt --typed-pointers -igc-image-func-analysis -igc-serialize-metadata -S < %s -o - | FileCheck %s
 

@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-private-mem-resolution --platformbmg -S %s | FileCheck %s
 
 ; A dynamically indexed typed GEP followed by a constant byte-offset ("ptradd")

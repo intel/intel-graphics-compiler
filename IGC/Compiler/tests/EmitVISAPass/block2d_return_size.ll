@@ -8,7 +8,7 @@
 ; This test runs vISA EmitPass and checks if 2d block read needs zero padding.
 ; It checks warning messages
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 
 ; RUN: igc_opt --opaque-pointers -platformpvc -igc-emit-visa %s -regkey EnableDebugging \
 ; RUN:   -simd-mode 16 | FileCheck %s

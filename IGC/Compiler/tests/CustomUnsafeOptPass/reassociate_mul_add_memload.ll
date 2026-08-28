@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers -igc-custom-unsafe-opt-pass -S %s | FileCheck %s
 
 ; Tests for the memory load dependency enhancement in reassociateMulAdd.

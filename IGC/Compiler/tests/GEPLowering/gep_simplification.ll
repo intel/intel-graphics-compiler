@@ -8,7 +8,7 @@
 ;
 ; ------------------------------------------------
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus, regkeys
+; REQUIRES: opaque-ptr-fix, regkeys
 ;
 ; RUN: igc_opt --opaque-pointers -platformpvc --igc-gep-lowering -regkey=EnableGEPSimplification=1,TestGEPSimplification=1 -S %s  | FileCheck %s
 ; ------------------------------------------------

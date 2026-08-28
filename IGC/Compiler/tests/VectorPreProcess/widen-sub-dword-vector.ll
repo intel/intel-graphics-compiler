@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-vectorpreprocess -S %s -o - | FileCheck %s
 
 target triple = "igil_32_GEN12"

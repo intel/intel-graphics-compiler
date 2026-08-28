@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 
-; REQUIRES: llvm-14-plus, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --match-common-kernel-patterns --regkey EnableInterpreterPatternMatching=1 --print-codegencontext --platformdg2 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-V1
 ; CHECK-V1: Kernel with forced retry: kernel_interpreter_v1
 
