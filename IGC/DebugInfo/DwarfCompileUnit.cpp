@@ -1660,6 +1660,11 @@ IGC::DIE *CompileUnit::getOrCreateSubprogramDIE(DISubprogram *SP) {
     addFlag(SPDie, dwarf::DW_AT_external);
   }
 
+#if LLVM_VERSION_MAJOR >= 15
+  if (!SP->getTargetFuncName().empty())
+    addString(SPDie, dwarf::DW_AT_trampoline, SP->getTargetFuncName());
+#endif
+
   return SPDie;
 }
 
