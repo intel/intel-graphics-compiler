@@ -55,10 +55,14 @@ using namespace vISA;
   (s1 <= sa->leftOff && sa->rightOff <= e1)
 
 #define IS_FLAG_RANGE_OVERLAP(s1, e1, sa)                                      \
-  (!(e1 < sa->linearizedStart || sa->linearizedEnd < s1))
+  (!(e1 <= sa->linearizedStart || sa->linearizedEnd <= s1))
 
 #define IS_FLAG_RANGE_OVERWRITE(t, s, e)                                       \
   ((s <= t->linearizedStart && t->linearizedEnd <= e))
+
+#define IS_SAME_FLAG_SIZE(t, p)                                                \
+  (t->linearizedEnd - t->linearizedStart ==                                    \
+   p->linearizedEnd - p->linearizedStart)
 
 void FlagSpillCleanup::FlagLineraizedStartAndEnd(G4_Declare *topdcl,
                                                  unsigned &linearizedStart,
@@ -864,6 +868,11 @@ bool FlagSpillCleanup::flagScratchDefineUse(
             scratchAccess->directKill = true;
             scratchTraceList->push_back(scratchAccess);
             return true;
+          }
+          if (IS_SAME_FLAG_SIZE(scratchAccess, preScratchAccess)) {
+            // Different flag, same value: rename the uses onto it. No early
+            // return, this fill still defines a flag range of its own.
+            scratchAccess->directKill = true;
           }
         }
       }
