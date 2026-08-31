@@ -320,6 +320,14 @@ public:
 
   bool hasLSCBase() const { return hasEfficient64b(); }
 
+  bool needWaLscA32SNegativeOffset() const {
+    return TargetId == Xe3P || TargetId == Xe3PLPG;
+  }
+
+  bool needWaLscA32SUniformBase() const {
+    return false;
+  }
+
   unsigned getLSCScaleMax() const { return hasEfficient64b() ? 32 : 1; }
 
   bool translateLegacyMessages() const {

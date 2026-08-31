@@ -97,7 +97,9 @@ define <32 x i64> @test8(i8 addrspace(1)* %base, <32 x i32> %index) {
   %scale = shl <32 x i64> %ext, <i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3>
   %offset = sub <32 x i64> %scale, <i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256>
   %addr = add <32 x i64> %broadcast, %offset
-; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i32(<32 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 5, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i32> %index, i16 8, i32 -256, <32 x i64> undef)
+; COM: The negative global offset keeps this message on a64, see
+; COM: lsc_a32s_negative_offset_wa.ll.
+; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i64(<32 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i64> %ext, i16 8, i32 -256, <32 x i64> undef)
   %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i64(<32 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 0, <32 x i64> %addr, i16 1, i32 0, <32 x i64> undef)
   ret <32 x i64> %data
 }

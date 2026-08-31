@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024-2025 Intel Corporation
+Copyright (C) 2024-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -52,6 +52,8 @@ private:
   bool foldLscAddrCalculation(CallInst &CI);
   bool foldLscAddrBase(CallInst &CI);
   bool foldLscAddrExtend(CallInst &CI);
+
+  bool needsA32SWorkaround(CallInst &CI) const;
 
   Value *applyLscAddrConstFolding(Value *Offsets, APInt &Scale, APInt &Offset);
 
@@ -512,6 +514,27 @@ Value *GenXLscAddrCalcFolding::applyLscAddrConstFolding(Value *Offsets,
   return ConstantVector::get(NewOffsets);
 }
 
+bool GenXLscAddrCalcFolding::needsA32SWorkaround(CallInst &Inst) const {
+  constexpr unsigned BaseIdx = 5, OffsetIdx = 8;
+
+  if (vc::InternalIntrinsic::isSlmIntrinsic(&Inst))
+    return false;
+
+  if (ST->needWaLscA32SUniformBase()) {
+    auto *Base = dyn_cast<ConstantInt>(Inst.getArgOperand(BaseIdx));
+    if (!Base || !Base->isZero())
+      return true;
+  }
+
+  if (ST->needWaLscA32SNegativeOffset()) {
+    auto Offset = cast<ConstantInt>(Inst.getArgOperand(OffsetIdx))->getValue();
+    if (Offset.isNegative())
+      return true;
+  }
+
+  return false;
+}
+
 bool GenXLscAddrCalcFolding::foldLscAddrExtend(CallInst &Inst) {
   IGC_ASSERT(vc::InternalIntrinsic::isInternalMemoryIntrinsic(&Inst));
   constexpr unsigned AddrIdx = 6;
@@ -551,6 +574,15 @@ bool GenXLscAddrCalcFolding::foldLscAddrExtend(CallInst &Inst) {
   auto *NewTy = NewAddr->getType();
   if (!NewTy->isIntOrIntVectorTy(32))
     return false;
+
+  if (NewAddrSize == LSC_ADDR_SIZE_32bS && needsA32SWorkaround(Inst)) {
+    // A non-negative index has the same value under both extensions, so a32u
+    // is a free substitute; otherwise keep the a64 address.
+    if (!llvm::computeKnownBits(NewAddr, Inst.getModule()->getDataLayout())
+             .isNonNegative())
+      return false;
+    NewAddrSize = LSC_ADDR_SIZE_32bU;
+  }
 
   auto IID = vc::getAnyIntrinsicID(&Inst);
   unsigned AddrSizeIdx = IID == vc::InternalIntrinsic::lsc_atomic_ugm ? 2 : 1;
