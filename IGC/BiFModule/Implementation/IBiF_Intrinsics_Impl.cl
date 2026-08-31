@@ -683,19 +683,20 @@ double __attribute__((overloadable)) __spirv_ocl_ceil(double x ){
     //the fractional part of the number.This is done by finding out the position of the
     //fractional bits of the mantissa and masking them out with zeros.
 
-    double roundedToZeroVal = __spirv_ocl_trunc(x);
-    unsigned high32Bit = (int)(as_ulong( x ) >> 32);
-    ulong fraction = as_ulong(x) - as_ulong(roundedToZeroVal);    // getting fraction
+    double   roundedToZeroVal = __spirv_ocl_trunc(x);
+    unsigned high32Bit        = (int)(as_ulong(x) >> 32);
+    ulong    fraction = as_ulong(x) - as_ulong(roundedToZeroVal); // getting fraction
 
     // Second part is to calculate exponent adjustment based on sign of source
 
-    uint temp5 = (uint)(as_ulong( fraction ));
-    uint temp6 = (uint)(as_ulong( fraction ) >> 32);
-    uint sign = high32Bit & 0x80000000;
-    uint expBias = (sign == 0) ? 0x3ff00000 : 0x80000000;
-    uint orDst = temp5 | temp6;
-    ulong signAdjustedVal = (orDst == 0) ? sign : (expBias);
-    return as_double(signAdjustedVal << 32) + as_double(roundedToZeroVal);
+    uint   temp5           = (uint)(as_ulong(fraction));
+    uint   temp6           = (uint)(as_ulong(fraction) >> 32);
+    uint   sign            = high32Bit & 0x80000000;
+    uint   expBias         = (sign == 0) ? 0x3ff00000 : 0;
+    uint   orDst           = temp5 | temp6;
+    ulong  signAdjustedVal = (orDst == 0) ? 0 : (expBias);
+    double output = as_double(signAdjustedVal << 32) + as_double(roundedToZeroVal);
+    return output;
 }
 
 INLINE
@@ -713,18 +714,19 @@ double __attribute__((overloadable)) __spirv_ocl_floor(double x ){
 
     double roundedToZeroVal = __spirv_ocl_trunc(x);
 
-    ulong fraction = as_ulong(x) - as_ulong( roundedToZeroVal );       // getting fraction
+    ulong fraction = as_ulong(x) - as_ulong(roundedToZeroVal); // getting fraction
 
     // Second part is to calculate exponent adjustment based on sign of source
 
-    uint temp5 = (uint)( fraction );
-    uint temp6 = (uint)(fraction >> 32);
-    unsigned high32Bit = (uint)(as_ulong( x ) >> 32);
-    uint sign = high32Bit & 0x80000000;
-    uint expBias = (sign != 0) ? 0xbff00000 : 0;
-    uint orDst = temp5 | temp6;
-    ulong signAdjustedVal = (orDst == 0) ? sign : (expBias);
-    return as_double(signAdjustedVal << 32) + as_double(roundedToZeroVal);
+    uint     temp5           = (uint)(fraction);
+    uint     temp6           = (uint)(fraction >> 32);
+    unsigned high32Bit       = (uint)(as_ulong(x) >> 32);
+    uint     sign            = high32Bit & 0x80000000;
+    uint     expBias         = (sign != 0) ? 0xbff00000 : 0;
+    uint     orDst           = temp5 | temp6;
+    ulong    signAdjustedVal = (orDst == 0) ? 0 : (expBias);
+    double   output = as_double(signAdjustedVal << 32) + as_double(roundedToZeroVal);
+    return output;
 }
 
 INLINE double __attribute__((overloadable)) __spirv_ocl_native_sqrt(double x ){
