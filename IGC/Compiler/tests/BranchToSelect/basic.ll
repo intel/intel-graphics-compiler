@@ -129,3 +129,62 @@ merge:                                            ; preds = %pad, %inb
   %r = phi i32 [ %pv, %pad ], [ %val, %inb ]
   ret i32 %r
 }
+
+; Shared landing pad holding only PHIs. The value the pad feeds the merge is one of
+; its own PHIs, so peeling %cont off the pad must select the value that PHI carries
+; along %cont's edge (%v) -- not %pv, which is not available in %cont. Peeling drops
+; the pad to a single predecessor, after which it folds as a private successor too,
+; so the region fully linearizes.
+define i32 @test_shared_pad_phi_only(i1 %c0, i1 %c1, i32 %val, i32 %x) {
+; CHECK-LABEL: define i32 @test_shared_pad_phi_only(
+; CHECK:         %v = add i32 %x, 7
+; CHECK:         select i1 %c1, i32 %val, i32 %v
+; CHECK:         select i1 %c0,
+; CHECK-NOT:     br i1
+; CHECK-NOT:   pad:
+entry:
+  br i1 %c0, label %cont, label %pad
+
+cont:                                             ; preds = %entry
+  %v = add i32 %x, 7
+  br i1 %c1, label %inb, label %pad
+
+inb:                                              ; preds = %cont
+  br label %merge
+
+pad:                                              ; preds = %entry, %cont
+  %pv = phi i32 [ 0, %entry ], [ %v, %cont ]
+  br label %merge
+
+merge:                                            ; preds = %pad, %inb
+  %r = phi i32 [ %pv, %pad ], [ %val, %inb ]
+  ret i32 %r
+}
+
+; Negative: PHIs being allowed in a shared pad must not make the pad's other
+; instructions acceptable. %pw still has to run for the pad's remaining predecessor,
+; so it can only be cloned into %cont, not moved -- the pass leaves the region alone.
+define i32 @test_shared_pad_phi_and_inst(i1 %c0, i1 %c1, i32 %val, i32 %x) {
+; CHECK-LABEL: define i32 @test_shared_pad_phi_and_inst(
+; CHECK:         br i1 %c1
+; CHECK:         %pw = add i32 %pv, 3
+; CHECK:         phi i32
+entry:
+  br i1 %c0, label %cont, label %pad
+
+cont:                                             ; preds = %entry
+  %v = add i32 %x, 7
+  br i1 %c1, label %inb, label %pad
+
+inb:                                              ; preds = %cont
+  br label %merge
+
+pad:                                              ; preds = %entry, %cont
+  %pv = phi i32 [ 0, %entry ], [ %v, %cont ]
+  %pw = add i32 %pv, 3
+  br label %merge
+
+merge:                                            ; preds = %pad, %inb
+  %r = phi i32 [ %pw, %pad ], [ %val, %inb ]
+  ret i32 %r
+}

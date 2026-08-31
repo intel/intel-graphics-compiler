@@ -1702,12 +1702,6 @@ void OptimizeIR(CodeGenContext *const pContext) {
       }
       GFX_ONLY_PASS { mpm.add(new GenUpdateCB()); }
 
-      // Flatten small memory-free branch regions (e.g. short-circuit || chains) into selects so the backend gets
-      // straight-line code.
-      if (pContext->platform.supportBranchToSelect() && IGC_IS_FLAG_ENABLED(EnableBranchToSelect)) {
-        mpm.add(createBranchToSelectPass());
-      }
-
       // Inserting PromoteToPredicatedMemoryAccess after GVN and several
       // other passes, to not block optimizations changing LLVM
       // load/stores, but before multiple SimplifyCFGs to allow more
@@ -1740,6 +1734,13 @@ void OptimizeIR(CodeGenContext *const pContext) {
         mpm.add(llvm::createJumpThreadingPass(false, BBDuplicateThreshold));
 #endif // LLVM_VERSION_MAJOR
       }
+
+      // Flatten small memory-free branch regions (e.g. short-circuit || chains) into selects so the backend gets
+      // straight-line code.
+      if (pContext->platform.supportBranchToSelect() && IGC_IS_FLAG_ENABLED(EnableBranchToSelect)) {
+        mpm.add(createBranchToSelectPass());
+      }
+
       mpm.add(llvm::createCFGSimplificationPass());
       mpm.add(llvm::createEarlyCSEPass());
       if (pContext->m_instrTypes.hasNonPrimitiveAlloca) {

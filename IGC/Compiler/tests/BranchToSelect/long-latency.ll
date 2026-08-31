@@ -7,16 +7,14 @@
 ;============================ end_copyright_notice =============================
 
 ; A region is linearized only if every instruction in the speculated arm is on the
-; hoist allow-list. Each allow-listed op counts 1 toward the summed cost bounded by
-; BranchToSelectMaxSpeculatedCost; anything else -- memory, fdiv/frem,
-; transcendentals, wide (double) FP -- is not speculatable at all
-; (speculationLatencyCost returns no cost), so the arm is rejected regardless of
-; budget while a purely cheap region still linearizes. The budget is pinned so the
-; cheap controls are independent of default tuning.
+; hoist allow-list. Memory, fdiv/frem, transcendentals and wide (double) FP are not on
+; it, so isSpeculatable rejects them and the arm is refused outright -- no budget can
+; buy them in -- while a purely cheap region still linearizes. The instruction-count
+; backstop is pinned so the controls here are independent of default tuning.
 
 ; REQUIRES: regkeys
-; RUN: igc_opt --typed-pointers -igc-branch-to-select -regkey BranchToSelectMaxSpeculatedCost=40 -S < %s 2>&1 | FileCheck %s
-; RUN: igc_opt --opaque-pointers -igc-branch-to-select -regkey BranchToSelectMaxSpeculatedCost=40 -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-branch-to-select -regkey BranchToSelectMaxSpeculatedInsts=40 -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-branch-to-select -regkey BranchToSelectMaxSpeculatedInsts=40 -S < %s 2>&1 | FileCheck %s
 
 ; A degeneracy guard around a reciprocal (fdiv): fdiv is not on the hoist
 ; allow-list, so the arm is not speculatable and the region is NOT linearized
@@ -42,9 +40,9 @@ merge:                                            ; preds = %entry, %then
 }
 
 ; Transcendental intrinsics (sqrt) are not on the hoist allow-list -- only
-; positively-vetted, cheap intrinsics are -- so speculationLatencyCost reports them
-; as not speculatable and the region is left branchy. Confirms the SAFE-BY-DEFAULT
-; posture: an unrecognized intrinsic is never speculated.
+; positively-vetted, cheap intrinsics are -- so isSpeculatable rejects them and the
+; region is left branchy. Confirms the SAFE-BY-DEFAULT posture: an unrecognized
+; intrinsic is never speculated.
 define float @test_no_flatten_sqrt(i1 %c, float %a) {
 ; CHECK-LABEL: define float @test_no_flatten_sqrt(
 ; CHECK:         br i1 %c
@@ -64,8 +62,8 @@ merge:                                            ; preds = %entry, %then
   ret float %v
 }
 
-; Control: a purely cheap region (float mul/add, cost 1 each) stays well under
-; the budget and still linearizes to a select.
+; Control: a purely cheap region (float mul/add, both allow-listed) is well inside the
+; instruction backstop and adds no pressure, so it still linearizes to a select.
 define float @test_flatten_cheap(i1 %c, float %a, float %b) {
 ; CHECK-LABEL: define float @test_flatten_cheap(
 ; CHECK:         fmul float %a, %b
@@ -85,8 +83,9 @@ merge:                                            ; preds = %entry, %then
 }
 
 ; Wide-FP arithmetic is emulated/rate-limited, so a guarded double fmul is off the
-; allow-list (only float/half/bfloat FP arithmetic is cheap) and scored at the full
-; budget, leaving the region branchy -- even though the same fmul at fp32 is cheap.
+; allow-list (only float/half/bfloat FP arithmetic is a single native op) and is
+; rejected as illegal to speculate, leaving the region branchy -- even though the same
+; fmul at fp32 folds (see test_flatten_cheap).
 define double @test_no_flatten_double_fmul(i1 %c, double %a, double %b) {
 ; CHECK-LABEL: define double @test_no_flatten_double_fmul(
 ; CHECK:         br i1 %c
@@ -106,7 +105,7 @@ merge:                                            ; preds = %entry, %then
   ret double %v
 }
 
-; Control: an fp32 fmul of the same shape is cheap (cost 1) and still linearizes,
+; Control: an fp32 fmul of the same shape is speculatable and still linearizes,
 ; confirming the wide-FP handling keys off type, not opcode.
 define float @test_flatten_float_fmul(i1 %c, float %a, float %b) {
 ; CHECK-LABEL: define float @test_flatten_float_fmul(
@@ -126,7 +125,7 @@ merge:                                            ; preds = %entry, %then
   ret float %v
 }
 
-; Control: a cheap intrinsic on the allowlist (fabs) is charged 1 and still
+; Control: a cheap intrinsic on the allow-list (fabs) is speculatable and still
 ; linearizes -- the safe-by-default rule does not over-block recognized ops.
 define float @test_flatten_cheap_intrinsic(i1 %c, float %a) {
 ; CHECK-LABEL: define float @test_flatten_cheap_intrinsic(
@@ -148,7 +147,7 @@ merge:                                            ; preds = %entry, %then
 
 ; A load is a memory instruction and is not on the hoist allow-list, so the
 ; region is left branchy even when the pointer is dereferenceable: memory is
-; never speculated, regardless of cost.
+; never speculated, regardless of how cheap the surrounding region is.
 define float @test_no_flatten_load(i1 %c, float* dereferenceable(4) %p, float %a) {
 ; CHECK-LABEL: define float @test_no_flatten_load(
 ; CHECK:         br i1 %c

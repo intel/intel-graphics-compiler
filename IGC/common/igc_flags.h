@@ -698,16 +698,25 @@ DECLARE_IGC_REGKEY(DWORD, WaveShuffleIndexSinkingMaxIterations, 3,
 DECLARE_IGC_REGKEY(bool, EnableWaveAllJointReduction, true, "Enable Joint Reduction Optimization.", false)
 DECLARE_IGC_REGKEY(bool, EnablePromoteToPredicatedMemoryAccess, false, "Enable predicated load/store if conversion.",
                    true)
-DECLARE_IGC_REGKEY(bool, EnableBranchToSelect, false,
-                   "Enable flattening of small speculatable branch regions into selects", false)
-DECLARE_IGC_REGKEY(DWORD, BranchToSelectMaxSpeculatedCost, 10,
-                   "Max speculatable-instruction count of a single branch successor BranchToSelect will hoist; bounds "
-                   "the inst count of one speculated branch.",
+DECLARE_IGC_REGKEY(bool, EnableBranchToSelect, true,
+                   "Enable flattening of small speculatable branch regions into selects", true)
+DECLARE_IGC_REGKEY(DWORD, BranchToSelectMaxSpeculatedInsts, 30,
+                   "Max instruction count of a single branch successor BranchToSelect will hoist. A backstop against "
+                   "linearizing a pathologically large arm, not the profitability test -- for a divergent branch both "
+                   "arms already execute under a lane mask, so profitability is decided on register pressure "
+                   "(BranchToSelectMaxPressureDelta). Mirrors LLVM EarlyIfConversion's BlockInstrLimit.",
                    false)
-DECLARE_IGC_REGKEY(DWORD, BranchToSelectMaxRegionCost, 40,
-                   "Max cumulative speculatable-instruction count accrued into one linearized region across folds "
-                   "(including bodies absorbed by merging); bounds register pressure. Set to 2 times "
-                   "BranchToSelectMaxSpeculatedCost at minimum to allow folding diamond patterns.",
+DECLARE_IGC_REGKEY(DWORD, BranchToSelectMaxPressureDelta, 256,
+                   "Max net register pressure one BranchToSelect fold may add, in bytes of register file at the "
+                   "SIMD16 reference width: a divergent i32 weighs 64, a uniform i32 weighs 4, a divergent i64 128. "
+                   "The default admits four divergent i32 values. A triangle scores 0 and always fits; a diamond is "
+                   "charged the smaller of its two arms' live-out weights. Merge PHIs replaced 1:1 by a select are "
+                   "not charged, so a chain of independent regions does not accumulate against this budget.",
+                   false)
+DECLARE_IGC_REGKEY(bool, BranchToSelectDivergentOnly, true,
+                   "Restrict BranchToSelect to branches with a divergent (non work-item-uniform) condition. A uniform "
+                   "branch is a scalar jump that runs only one arm, so flattening it just makes the not-taken arm's "
+                   "work unconditional. Disable to flatten uniform branches too.",
                    false)
 DECLARE_IGC_REGKEY(bool, EnableIntDivRemIncrementReduction, true,
                    "Enable consecutive Int DivRem increment by constant optimization", false)
