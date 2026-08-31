@@ -11,4 +11,7 @@ REQUIRES: regkeys
 # RUN: env IGC_EnableVISANoSchedule=1 IGC_ForceOCLSIMDWidth=8 \
 # RUN: IGCOCLInterfaceTester regkey 2>&1 | FileCheck %s
 
-# CHECK: EnableVISANoSchedule=1,ForceOCLSIMDWidth=8
+# Check each env-provided regkey independently so unrelated registry-persisted
+# keys interleaved in the override list don't break the match.
+# CHECK: EnableVISANoSchedule=1
+# CHECK: ForceOCLSIMDWidth=8
