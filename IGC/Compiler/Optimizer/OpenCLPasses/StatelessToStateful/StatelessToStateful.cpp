@@ -978,18 +978,10 @@ void StatelessToStateful::addToPromotionMap(Instruction &I, Value *Ptr,
 
     const bool isLoadPromotionCandidate = I.getOpcode() == Instruction::Load;
     const bool isBindfulMode = m_targetAddressing == TargetAddressing::BINDFUL;
-    // Identify MTL-H (Xe-LPG, release=GFX_GMD_ARCH_12_RELEASE_XE_LP_LG) as the platform
-    // with slow bindless loads. MTL-H is the only variant where bindless load promotion
-    // regresses performance (arch=12, release=71).
-    // Use both enum (IGFX_METEORLAKE) and ip_version (release=XE_LP_LG=71) checks to
-    // exclude ARL-S which is mapped to IGFX_METEORLAKE offline but has release=XE_LP_MD=70.
-    // ARL-H uses Xe-LPG+ and is not affected anyway (different release value).
-    const auto &platform = m_ctx->platform.getPlatformInfo();
-    const bool isSlowBindlessLoadPlatform =
-        platform.eProductFamily == IGFX_METEORLAKE && platform.sRenderBlockID.GmdID.GMDArch == GFX_GMD_ARCH_12 &&
-        platform.sRenderBlockID.GmdID.GMDRelease == GFX_GMD_ARCH_12_RELEASE_XE_LP_LG;
+    const bool isSlowBindlessLoadPlatform = m_ctx->platform.hasSlowBindlessLoads();
 
-    // Keep MTL-H on the conservative path: bindless load promotion regresses performance there.
+    // Keep MTL and ARL-S on the conservative path: bindless load promotion regresses
+    // performance there.
     if (skipLoadPromotionForBindlessBufferOffset && isLoadPromotionCandidate &&
         (isBindfulMode || isSlowBindlessLoadPlatform)) {
       return;
@@ -1100,14 +1092,10 @@ void StatelessToStateful::visitLoadInst(LoadInst &I) {
                                                         modMD->compOpt.HasBufferOffsetArg &&
                                                         !modMD->compOpt.GreaterThan4GBBufferRequired;
 
-  // Skip only bindful a32 loads and MTL-H bindless loads in bindless+buffer_offset no-large mode.
-  // Use both enum (IGFX_METEORLAKE) and ip_version (release=XE_LP_LG=71) checks to
-  // exclude ARL-S which is mapped to IGFX_METEORLAKE offline but has release=XE_LP_MD=70.
+  // Skip only bindful a32 loads, and bindless loads on MTL and ARL-S, in
+  // bindless+buffer_offset no-large mode.
   const bool isBindfulMode = m_targetAddressing == TargetAddressing::BINDFUL;
-  const auto &platform = m_ctx->platform.getPlatformInfo();
-  const bool isSlowBindlessLoadPlatform = platform.eProductFamily == IGFX_METEORLAKE &&
-                                          platform.sRenderBlockID.GmdID.GMDArch == GFX_GMD_ARCH_12 &&
-                                          platform.sRenderBlockID.GmdID.GMDRelease == GFX_GMD_ARCH_12_RELEASE_XE_LP_LG;
+  const bool isSlowBindlessLoadPlatform = m_ctx->platform.hasSlowBindlessLoads();
 
   if (skipLoadPromotionForBindlessBufferOffset && pointerIsFromKernelArgument(*ptr) &&
       (isBindfulMode || isSlowBindlessLoadPlatform)) {

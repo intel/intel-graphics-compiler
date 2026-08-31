@@ -8,14 +8,16 @@
 ;
 ; REQUIRES: llvm-16-plus
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless | FileCheck %s
-; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless -platformmtl | FileCheck %s --check-prefix=MTL_H
+; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless -platformmtl | FileCheck %s --check-prefix=SLOWBL
+; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless -platformarl --device-id 0x7D67 | FileCheck %s --check-prefix=SLOWBL
 ;
 ; In bindless + buffer-offset no-large mode, load promotion is allowed for
-; bindless addressing mode on non-MTL-H platforms (fast ldraw.indexed).
-; On MTL-H (eProductFamily==IGFX_METEORLAKE, sRenderBlockID: GMDArch=12,
-; GMDRelease=XE_LP_LG=71), load promotion is disabled to avoid performance
-; regression. ARL-S maps to IGFX_METEORLAKE offline but has GMDRelease=70
-; (XE_LP_MD), so it is correctly excluded. Store promotion remains enabled.
+; bindless addressing mode (fast ldraw.indexed) on most platforms - the first RUN
+; line covers that. On MTL (eProductFamily==IGFX_METEORLAKE) and on ARL-S
+; (eProductFamily==IGFX_ARROWLAKE with an ARL-S device ID) load promotion is
+; disabled to avoid a performance regression; both are checked with the SLOWBL
+; prefix. ARL-H and ARL-U are not affected. Store promotion remains enabled
+; everywhere.
 
 ; CHECK-LABEL: @test_no_load_promotion
 ; CHECK: [[SRCOFF:%.*]] = inttoptr i32 %bindlessOffset to ptr addrspace(2490368)
@@ -23,11 +25,11 @@
 ; CHECK: [[BASEPTR1:%.*]] = inttoptr i32 %bindlessOffset2 to ptr addrspace(2490368)
 ; CHECK: call void @llvm.genx.GenISA.storeraw.indexed{{.*}}(ptr addrspace(2490368) [[BASEPTR1]], i32
 
-; MTL_H-LABEL: @test_no_load_promotion
-; MTL_H-NOT: call i32 @llvm.genx.GenISA.ldraw.indexed
-; MTL_H: load i32, ptr addrspace(1)
-; MTL_H: [[BASEPTR1:%.*]] = inttoptr i32 %bindlessOffset2 to ptr addrspace(2490368)
-; MTL_H: call void @llvm.genx.GenISA.storeraw.indexed{{.*}}(ptr addrspace(2490368) [[BASEPTR1]], i32
+; SLOWBL-LABEL: @test_no_load_promotion
+; SLOWBL-NOT: call i32 @llvm.genx.GenISA.ldraw.indexed
+; SLOWBL: load i32, ptr addrspace(1)
+; SLOWBL: [[BASEPTR1:%.*]] = inttoptr i32 %bindlessOffset2 to ptr addrspace(2490368)
+; SLOWBL: call void @llvm.genx.GenISA.storeraw.indexed{{.*}}(ptr addrspace(2490368) [[BASEPTR1]], i32
 
 define spir_kernel void @test_no_load_promotion(i32 addrspace(1)* %src, i32 addrspace(1)* %dst, i32 %runtimeOffset,
                                                 <8 x i32> %r0, <8 x i32> %payloadHeader, i32 %bufferOffset,

@@ -766,6 +766,15 @@ public:
            m_platformInfo.eProductFamily == IGFX_DG2;
   }
 
+  // Bindless stateful loads (ldraw.indexed) can be slower than plain stateless loads on
+  // MTL and ARL-S, so StatelessToStateful keeps them on the conservative path.
+  // ARL-S is matched by device ID, which is how the rest of IGC identifies it (see
+  // supportDpasInstruction()), and works the same for offline and online compilation.
+  // ARL-H and ARL-U are not affected.
+  bool hasSlowBindlessLoads() const {
+    return m_platformInfo.eProductFamily == IGFX_METEORLAKE || GFX_IS_ARL_S(m_platformInfo.usDeviceID);
+  }
+
   bool L3CacheCoherentCrossTiles() const { return isCoreChildOf(IGFX_XE_HPC_CORE); }
 
   // if RayTracing fence WA for LSCBackupMode (DG2.A0 only actually) is enabled.
