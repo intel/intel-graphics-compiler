@@ -8,7 +8,7 @@
 
 ; REQUIRES: regkeys,llvm-16-plus
 ;
-; RUN: igc_opt --ocl --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=1 --regkey EnableOpaquePointersBackend=1 -S %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --ocl --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=1 --regkey EnableOpaquePointersBackend=1 -S %s | FileCheck %s
 ;
 ; This test is testing "MismatchDetected" algorithm in LowerGEPForPrivMem.cpp
 ; The purpose of this test is to validate whether various combinations of allocas/geps/load/stores

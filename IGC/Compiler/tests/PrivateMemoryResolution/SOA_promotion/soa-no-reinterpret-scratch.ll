@@ -8,7 +8,7 @@
 
 ; REQUIRES: regkeys,llvm-16-plus
 ;
-; RUN: igc_opt --ocl --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=1 --regkey EnableOpaquePointersBackend=1 -S %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --ocl --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=1 --regkey EnableOpaquePointersBackend=1 -S %s | FileCheck %s
 ;
 ; Regression test: the SOA layout checker's same-size reinterpret relaxation
 ; must NOT apply under UseScratchSpacePrivateMemoryOrUseStatelessStrategy.

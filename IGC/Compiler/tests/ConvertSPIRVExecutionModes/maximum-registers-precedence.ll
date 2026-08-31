@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm-16-plus
-; RUN: igc_opt --platformbmg -igc-convert-spirv-execution-modes -S %s | FileCheck %s
-; RUN: igc_opt --platformbmg -igc-convert-spirv-execution-modes -S %s 2>&1 | FileCheck %s --check-prefix=WARN
+; RUN: igc_opt --opaque-pointers --platformbmg -igc-convert-spirv-execution-modes -S %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --platformbmg -igc-convert-spirv-execution-modes -S %s 2>&1 | FileCheck %s --check-prefix=WARN
 
 define spir_kernel void @kernel_conflict() #0 {
   ret void

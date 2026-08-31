@@ -13,7 +13,7 @@
 
 ; REQUIRES: regkeys, llvm-22-plus
 
-; RUN: llvm-as < %s -o %t.bc
+; RUN: llvm-as %OPAQUE_PTR_FLAG% < %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device cri -options "-igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s
 
 ; CHECK-NOT: boolean cannot have alias

@@ -49,6 +49,6 @@ entry:
 declare spir_func void @_Z32__spirv_Subgroup2DBlockLoadINTELiiiiPU3AS1KviiiDv2_iPv(i32, i32, i32, i32, i8 addrspace(1)*, i32, i32, i32, <2 x i32>, i8*)
 
 !igc.functions = !{!0}
-!0 = !{ptr @main, !1}
+!0 = !{void (i8 addrspace(1)*, <2 x i32>, i8*)* @main, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}

@@ -8,7 +8,7 @@
 
 ; REQUIRES: regkeys, llvm-16-plus
 ;
-; RUN: igc_opt --regkey "EnableOpaquePointersBackend=1" --igc-predefined-constant-resolve 2>&1 -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --regkey "EnableOpaquePointersBackend=1" --igc-predefined-constant-resolve 2>&1 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; PredefinedConstantResolving
 ; ------------------------------------------------

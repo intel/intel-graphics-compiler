@@ -21,7 +21,7 @@
 ; UNSUPPORTED: sys32
 ; REQUIRES: regkeys, oneapi-readelf, dg2-supported, llvm-17-plus
 
-; RUN: llvm-as %s -o %t
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t
 ; RUN: ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'"
 ; RUN: oneapi-readelf --debug-dump=info %t_OCL_simd8_folded_block.elf | FileCheck %s
 

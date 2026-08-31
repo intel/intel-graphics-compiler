@@ -10,15 +10,15 @@
 ; variable - here a 24-byte class - so assert and emit no location instead.
 
 ; UNSUPPORTED: sys32
-; REQUIRES: dg2-supported, llvm-16-plus
+; REQUIRES: dg2-supported, llvm-16-plus, regkeys
 
-; RUN: llvm-as %s -o %t
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t
 
 ; The assert exits on some builds and aborts on others, so ignore how it died.
-; RUN: %if debug %{ ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable" &> %t.log || true %}
+; RUN: %if debug %{ ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'EnableOpaquePointersBackend=1'" &> %t.log || true %}
 ; RUN: %if debug %{ FileCheck %s --check-prefix=ASSERT --input-file %t.log %}
 
-; RUN: %if release && regkeys && oneapi-readelf %{ ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'" %}
+; RUN: %if release && regkeys && oneapi-readelf %{ ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'EnableOpaquePointersBackend=1, ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'" %}
 ; RUN: %if release && regkeys && oneapi-readelf %{ oneapi-readelf --debug-dump=info %t_OCL_simd32_size_mismatch.elf | FileCheck %s --check-prefix=DWARF %}
 
 ; ASSERT: {{[Aa]ssertion.*(DW_AT_const_value size does not match the variable type size|SizeMatches)}}

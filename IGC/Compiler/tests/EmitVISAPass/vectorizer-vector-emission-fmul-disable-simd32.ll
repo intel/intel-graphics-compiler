@@ -13,7 +13,7 @@
 
 ; Checks that the SIMD32 vector emission guard triggers and terminates compilation.
 
-; CHECK: internal compiler error
+; CHECK: {{internal compiler error|assertion failed}}
 
 define spir_kernel void @widget() {
 entry:

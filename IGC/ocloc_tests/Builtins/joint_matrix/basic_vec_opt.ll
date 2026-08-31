@@ -8,7 +8,7 @@
 
 ; REQUIRES: pvc-supported, regkeys, llvm-16-plus
 
-; RUN: llvm-as %s -o %t.bc
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-cl-intel-enable-auto-large-GRF-mode -igc_opts 'EnableOpaquePointersBackend=1,PrintToConsole=1,PrintAfter=Layout,JointMatrixLoadStoreOpt=2'" 2>&1 | FileCheck %s
 
 target triple = "spir64-unknown-unknown"
