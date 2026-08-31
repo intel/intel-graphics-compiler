@@ -1,6 +1,8 @@
 ; ShaderDumpTranslationOnly is unavailable in Linux Release builds.
 ; UNSUPPORTED: system-windows, release
-; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-15-or-older
+; Not just a pointer-mode gate: from LLVM 16 the translator maps OpTypePipeStorage to
+; i8 addrspace(1)* instead of the named opaque struct the CHECK lines expect.
+; REQUIRES: llvm-spirv, regkeys, dg2-supported, !llvm-16-plus
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_fpga_reg -o %t.spv

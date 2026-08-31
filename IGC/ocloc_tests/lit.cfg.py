@@ -128,9 +128,6 @@ if config.spirv_as_enabled:
   config.available_features.add('spirv-as')
   llvm_config.add_tool_substitutions([ToolSubst('spirv-as', unresolved='fatal')], config.spirv_as_dir)
 
-if llvm_ver <= 15:
-  config.available_features.add('llvm-15-or-older')
-
 if llvm_ver >= 15:
   config.available_features.add('llvm-15-plus')
 

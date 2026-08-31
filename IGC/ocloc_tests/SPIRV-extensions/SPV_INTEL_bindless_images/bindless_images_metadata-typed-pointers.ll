@@ -8,7 +8,7 @@
 
 ; This test won't work with LLVM 16+ due to different representation of OpenCL builtin types (pointers to opaque structs vs TargetExtTy).
 ; It would work on LLVM 16 with typed pointers forced (in CMake), but not on a default build of IGC with LLVM 16.
-; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-15-or-older
+; REQUIRES: llvm-spirv, regkeys, dg2-supported, !llvm-16-plus
 
 ; LLVM with typed pointers/default pointer typing:
 ; RUN: llvm-as %s -o %t.bc

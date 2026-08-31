@@ -35,7 +35,7 @@
 
 ; ShaderDumpTranslationOnly is unavailable in Linux Release builds.
 ; UNSUPPORTED: system-windows, release
-; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-15-or-older
+; REQUIRES: llvm-spirv, regkeys, dg2-supported, typed-pointers
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_subgroups -o %t.spv
