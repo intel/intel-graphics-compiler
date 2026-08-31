@@ -22,34 +22,59 @@ using namespace llvm;
 #include <dlfcn.h>
 #include <stdio.h>
 
+void *getIgcHandle() {
+  Dl_info dlInfo;
+  // Find path to IGC dynamic lib.
+  if (dladdr((void *)getIgcHandle, &dlInfo) != 0) {
+    void *h = dlopen(dlInfo.dli_fname, RTLD_LAZY);
+    return h;
+  }
+  return NULL;
+}
+
 MemoryBuffer *llvm::LoadBufferFromResource(const char *pResName, const char *pResType) {
   // Symbol Name is <type>_<number>
   char name[73];      // 64 + 9 for prefix
   char size_name[78]; // 64 + 9 for prefix + 5 for suffix
-  void *module;
-  void *symbol;
-  uint32_t size;
+  void *module = RTLD_DEFAULT;
+  void *sizeSymbol;
+  void *symbol = NULL;
+  MemoryBuffer *buffer = NULL;
 
   snprintf(name, sizeof(name), "_igc_bif_%s_%s", pResType, &pResName[1]);
   snprintf(size_name, sizeof(size_name), "_igc_bif_%s_%s_size", pResType, &pResName[1]);
 
-  module = RTLD_DEFAULT;
-
-  symbol = dlsym(module, size_name);
-  if (!symbol) {
-    IGC_ASSERT_EXIT_MESSAGE(0, "LoadBufferFromResource: [%s]\n", dlerror());
-    return NULL;
-  }
-  size = *(uint32_t *)symbol;
-
-  symbol = dlsym(module, name);
-  if (!symbol) {
-    IGC_ASSERT_EXIT_MESSAGE(0, "LoadBufferFromResource: [%s]\n", dlerror());
-    return NULL;
+  // Test if RTLD_DEFAULT works for the current module. If not, try to load the IGC module explicitly.
+  sizeSymbol = dlsym(module, size_name);
+  if (!sizeSymbol) {
+    module = getIgcHandle();
+    if (module == NULL) {
+      IGC_ASSERT_EXIT_MESSAGE(0, "Failed  to open IGC\n");
+      return NULL;
+    }
+    sizeSymbol = dlsym(module, size_name);
   }
 
-  // Create a copy of the buffer for the caller. This copy is managed
-  return MemoryBuffer::getMemBufferCopy(StringRef((char *)symbol, size)).release();
+  if (sizeSymbol) {
+    symbol = dlsym(module, name);
+  }
+
+  if (symbol) {
+    // Create a copy of the buffer for the caller. This copy is managed
+    buffer = MemoryBuffer::getMemBufferCopy(StringRef((char *)symbol, *(uint32_t *)sizeSymbol)).release();
+  }
+
+  // Drop the reference taken by getIgcHandle. The module stays mapped, as it is the one
+  // currently executing, and the buffer above is already a copy.
+  if (module != RTLD_DEFAULT) {
+    dlclose(module);
+  }
+
+  if (!buffer) {
+    IGC_ASSERT_EXIT_MESSAGE(0, "LoadBufferFromResource: symbol not found [%s]\n", sizeSymbol ? name : size_name);
+    return NULL;
+  }
+  return buffer;
 }
 
 #endif
