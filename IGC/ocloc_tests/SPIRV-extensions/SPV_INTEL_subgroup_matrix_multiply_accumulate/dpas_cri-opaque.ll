@@ -6,12 +6,12 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-spirv, cri-supported, opaque-pointers
+; REQUIRES: llvm-spirv, regkeys, debug, cri-supported, llvm-16-plus
 
-; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_subgroup_matrix_multiply_accumulate -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options " -igc_opts 'PrintToConsole=1 PrintAfter=ArithmeticFuncsTranslation'" 2>&1 | FileCheck %s --check-prefix=CHECK-GENISA
-; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options " -igc_opts 'DumpVISAASMToConsole=1'"                                 2>&1 | FileCheck %s --check-prefix=CHECK-VISAASM
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
+; RUN: llvm-spirv %OPAQUE_PTR_FLAG% %t.bc --spirv-ext=+SPV_INTEL_subgroup_matrix_multiply_accumulate,+SPV_INTEL_subgroup_matrix_multiply_accumulate_float8,+SPV_INTEL_subgroup_matrix_multiply_accumulate_float4 -o %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options " -igc_opts 'PrintToConsole=1, PrintAfter=ArithmeticFuncsTranslation, EnableOpaquePointersBackend=1'" 2>&1 | FileCheck %s --check-prefix=CHECK-GENISA
+; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options " -igc_opts 'DumpVISAASMToConsole=1, EnableOpaquePointersBackend=1'"                                 2>&1 | FileCheck %s --check-prefix=CHECK-VISAASM
 
 target triple = "spir64-unknown-unknown"
 

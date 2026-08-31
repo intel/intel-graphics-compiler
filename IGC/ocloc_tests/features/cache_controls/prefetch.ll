@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-spirv, regkeys, pvc-supported, llvm-16-plus, opaque-pointers
+; REQUIRES: llvm-spirv, regkeys, pvc-supported, llvm-16-plus
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc

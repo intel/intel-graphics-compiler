@@ -574,8 +574,8 @@ bool AlignmentAnalysis::SetInstAlignment(MemCpyInst &I) {
       if (!GV->isConstant())
         return false;
 
-      if (auto *initializer = GV->getInitializer())
-        return IGCLLVM::Constant::isNullValue(initializer);
+      if (GV->hasInitializer())
+        return IGCLLVM::Constant::isNullValue(GV->getInitializer());
     }
 
     return false;

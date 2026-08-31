@@ -6,9 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// REQUIRES: opaque-pointers
+// REQUIRES: regkeys, debug, dg2-supported, llvm-16-plus
 // UNSUPPORTED: sys32
-// RUN: ocloc compile -file %s -options "-cl-std=CL2.0 -cl-opt-disable -igc_opts 'PrintToConsole=1 PrintAfter=GenericNullPtrPropagation'" -device dg2 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM
+// RUN: ocloc compile -file %s -options "-cl-std=CL2.0 -cl-opt-disable -igc_opts 'PrintToConsole=1, PrintAfter=GenericNullPtrPropagation, EnableOpaquePointersBackend=1'" -device dg2 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM
 
 __kernel void foo() {
   // CHECK-LLVM: [[PRV_PTR:%.*]] = load ptr, ptr %prv_ptr

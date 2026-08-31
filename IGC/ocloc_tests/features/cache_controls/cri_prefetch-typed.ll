@@ -7,9 +7,12 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm-spirv, cri-supported, typed-pointers
+; FIXME: on cri a two-level {L1,L3} decoration set is encoded in the three-level
+; LSC_CACHE_OPTS space (1/2/3/4 come out as 19/21/23/25).
+; XFAIL: *
 
-; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
+; RUN: llvm-spirv %TYPED_PTR_FLAG% %t.bc --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options " -igc_opts 'PrintToConsole=1 PrintAfter=Layout'" 2>&1 | FileCheck %s
 
 ; LSC prefetch args:

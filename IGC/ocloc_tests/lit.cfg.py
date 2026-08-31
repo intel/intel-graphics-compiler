@@ -137,6 +137,17 @@ if llvm_ver >= 15:
 if llvm_ver >= 16:
   config.available_features.add('llvm-16-plus')
 
+# Opaque pointers are usable from LLVM 14 on, either as the build default or
+# per test via EnableOpaquePointersBackend=1.
+if llvm_ver >= 14:
+  config.available_features.add('opaque-pointers')
+
+# LLVM 17 removed typed pointers. A typed-pointer build can still be switched to
+# opaque pointers per test with EnableOpaquePointersBackend=1, but an opaque
+# build cannot go back to typed.
+if llvm_ver <= 16 and config.api_opaque_pointers != "1":
+  config.available_features.add('typed-pointers')
+
 if llvm_ver >= 17:
   config.available_features.add('llvm-17-plus')
 

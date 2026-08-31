@@ -13,10 +13,10 @@ SPDX-License-Identifier: MIT
 // but logic that checks for Efficient64bit.
 
 // UNSUPPORTED: sys32
-// REQUIRES: cri-supported, opaque-pointers
+// REQUIRES: regkeys, debug, cri-supported
 
 // RUN: ocloc compile -file %s -device cri \
-// RUN: -options "-cl-std=CL3.0 -igc_opts 'EnableEfficient64b=1 PrintToConsole=1 PrintAfter=EmitPass'" \
+// RUN: -options "-cl-std=CL3.0 -igc_opts 'EnableEfficient64b=1, PrintToConsole=1, PrintAfter=EmitPass, EnableOpaquePointersBackend=1'" \
 // RUN: -internal_options "-cl-intel-force-disable-4GB-buffer" \
 // RUN: -out_dir /dev/null 2>&1 | FileCheck %s
 

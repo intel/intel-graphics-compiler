@@ -8,13 +8,15 @@
 
 ; The target-function dropping controls are unavailable in Linux Release builds.
 ; UNSUPPORTED: release
-; REQUIRES: regkeys,pvc-supported,llvm-16-plus, opaque-pointers
+; REQUIRES: regkeys,pvc-supported,llvm-16-plus
 
 ; Check that function body is correctly emptied and replaced with store to null address.
 
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
-; RUN: echo "testInlineFn2" > %T/testKernel.txt
-; RUN: ocloc compile -llvm_input -file %t.bc -options "-igc_opts 'DisableInlining=1, EnableDropTargetFunctions=1, VerboseDropTargetFunctions=1, CrashOnDroppedFnAccess=1, DropTargetFnListPath=%T, PrintToConsole=1, PrintBefore=EmitPass EnableOpaquePointersBackend=1'" -device pvc > %t.output 2>&1
+; RUN: rm -rf %t.dir || true
+; RUN: mkdir -p %t.dir
+; RUN: echo "testInlineFn2" > %t.dir/testKernel.txt
+; RUN: ocloc compile -llvm_input -file %t.bc -options "-igc_opts 'DisableInlining=1, EnableDropTargetFunctions=1, VerboseDropTargetFunctions=1, CrashOnDroppedFnAccess=1, DropTargetFnListPath=%t.dir, PrintToConsole=1, PrintBefore=EmitPass, EnableOpaquePointersBackend=1'" -device pvc > %t.output 2>&1
 ; RUN: cat %t.output | FileCheck %s --check-prefix=FUN1
 ; RUN: cat %t.output | FileCheck %s --check-prefix=FUN2
 ; RUN: cat %t.output | FileCheck %s

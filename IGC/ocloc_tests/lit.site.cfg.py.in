@@ -33,6 +33,7 @@ config.spirv_as_dir = "@IGC_SPIRV_AS_DIR@"
 config.llvm_spirv_enabled = "@IGC_BUILD__PROJ__llvm_spirv@"
 config.llvm_spirv_dir = "@IGC_LLVM_SPIRV_DIR@"
 config.llvm_version_major = "@LLVM_VERSION_MAJOR@"
+config.api_opaque_pointers = "$<BOOL:@IGC_OPTION__API_ENABLE_OPAQUE_POINTERS@>"
 config.is32b = "$<BOOL:$<EQUAL:@CMAKE_SIZEOF_VOID_P@,4>>"
 config.debug_build = $<CONFIG:Debug>
 config.release_build = $<CONFIG:Release>

@@ -12,14 +12,15 @@
 ; must tolerate that spill and keep the kernel at 128 GRF (8 threads/EU) instead
 ; of bumping to 256 GRF (4 threads/EU) and halving occupancy.
 
-; REQUIRES: regkeys, pvc-supported, opaque-pointers
+; VISASpillAllowed is not available on release builds.
+; REQUIRES: regkeys, debug, pvc-supported, llvm-16-plus
 
 ; Fix: default spill threshold keeps the kernel at 128 GRF.
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
-; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -internal_options "-cl-intel-enable-auto-large-GRF-mode" -options "-igc_opts 'DumpASMToConsole=1'" 2>&1 | FileCheck %s
+; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -internal_options "-cl-intel-enable-auto-large-GRF-mode" -options "-igc_opts 'DumpASMToConsole=1, EnableOpaquePointersBackend=1'" 2>&1 | FileCheck %s
 
 ; Negative control: with the threshold disabled (VISASpillAllowed=1) the same kernel bumps to 256 GRF.
-; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -internal_options "-cl-intel-enable-auto-large-GRF-mode" -options "-igc_opts 'DumpASMToConsole=1,VISASpillAllowed=1'" 2>&1 | FileCheck %s --check-prefix=NOFIX
+; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -internal_options "-cl-intel-enable-auto-large-GRF-mode" -options "-igc_opts 'DumpASMToConsole=1, VISASpillAllowed=1, EnableOpaquePointersBackend=1'" 2>&1 | FileCheck %s --check-prefix=NOFIX
 
 ; CHECK: numGRF=128
 ; NOFIX: numGRF=256
