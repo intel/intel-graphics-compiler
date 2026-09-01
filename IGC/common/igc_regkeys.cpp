@@ -25,12 +25,12 @@ struct UmdRegkeyDescriptor {
 #define UMD_REGKEY_TYPE_int UmdRegkeyType::Int
 #define UMD_REGKEY_TYPE_DWORD UmdRegkeyType::Uint
 #define UMD_REGKEY_TYPE_debugString UmdRegkeyType::String
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)
-#define DECLARE_IGC_REGKEY_UMD(dataType, regkeyName, defaultValue, description, releaseMode)                           \
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, flagAvailability)
+#define DECLARE_IGC_REGKEY_UMD(dataType, regkeyName, defaultValue, description, flagAvailability)                      \
   {#regkeyName, UMD_REGKEY_TYPE_##dataType, {}},
-#define DECLARE_IGC_REGKEY_ENUM_UMD(regkeyName, defaultValue, description, values, releaseMode)                        \
+#define DECLARE_IGC_REGKEY_ENUM_UMD(regkeyName, defaultValue, description, values, flagAvailability)                   \
   {#regkeyName, UmdRegkeyType::Enum, values},
-#define DECLARE_IGC_REGKEY_BITMASK_UMD(regkeyName, defaultValue, description, values, releaseMode)                     \
+#define DECLARE_IGC_REGKEY_BITMASK_UMD(regkeyName, defaultValue, description, values, flagAvailability)                \
   {#regkeyName, UmdRegkeyType::Bitmask, values},
 constexpr UmdRegkeyDescriptor UmdRegkeyDescriptors[] = {
     {{}, UmdRegkeyType::Uint, {}},
@@ -229,8 +229,8 @@ const UmdRegkeyMap *GetCurrentUmdRegkeys() { return CurrentUmdRegkeys; }
 #define IGC_REGISTRY_KEY "SOFTWARE\\INTEL\\IGFX\\IGC"
 
 IGCFlagsArray g_IGCFlagsArray = {{
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
-  IGCFlag((unsigned)defaultValue, #regkeyName, releaseMode, IGCFlagType_##dataType),
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, flagAvailability)                          \
+  IGCFlag((unsigned)defaultValue, #regkeyName, flagAvailability, IGCFlagType_##dataType),
 #include "igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY
 }};
@@ -576,14 +576,14 @@ static void DumpIGCRegistryKeyDefinitions(const char *registryKeyPath, const cha
     return;
   }
 
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, descriptionText, releaseMode)                           \
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, descriptionText, flagAvailability)                      \
   fprintf(fp, "    <Key name=\"%s\" type=\"%s\" location=\"%s\" default=\"%s\" description=\"%s\" />\n", #regkeyName,  \
           ConvertType(#dataType), registryKeyPath,                                                                     \
           ConvertDefault(ConvertType(#dataType), defaultValue, #defaultValue).c_str(), descriptionText);
-#define DECLARE_IGC_REGKEY_ENUM(regkeyName, defaultValue, description, values, releaseMode)                            \
-  DECLARE_IGC_REGKEY(enum, regkeyName, defaultValue, description "[VALUES]" values, releaseMode)
-#define DECLARE_IGC_REGKEY_BITMASK(regkeyName, defaultValue, description, values, releaseMode)                         \
-  DECLARE_IGC_REGKEY(bitmask, regkeyName, defaultValue, description "[VALUES]" values, releaseMode)
+#define DECLARE_IGC_REGKEY_ENUM(regkeyName, defaultValue, description, values, flagAvailability)                       \
+  DECLARE_IGC_REGKEY(enum, regkeyName, defaultValue, description "[VALUES]" values, flagAvailability)
+#define DECLARE_IGC_REGKEY_BITMASK(regkeyName, defaultValue, description, values, flagAvailability)                    \
+  DECLARE_IGC_REGKEY(bitmask, regkeyName, defaultValue, description "[VALUES]" values, flagAvailability)
 #define DECLARE_IGC_GROUP(groupName)                                                                                   \
   if (!firstGroup) {                                                                                                   \
     fprintf(fp, "  </Group>\n");                                                                                       \
@@ -1000,7 +1000,7 @@ static void LoadDebugFlagsFromFile() {
       continue;
     ParseHashRange(line, hashes);
     ParseEntryPoint(line, entry_points);
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, flagAvailability)                          \
   {                                                                                                                    \
     declareIGCKey(line, #dataType, #regkeyName, hashes, entry_points, &IGC_GET_REGKEY(regkeyName));                    \
   }
@@ -1028,7 +1028,7 @@ static void LoadDebugFlagsFromString(const char *input) {
       continue;
     ParseHashRange(line, hashes);
     ParseEntryPoint(line, entry_points);
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, flagAvailability)                          \
   {                                                                                                                    \
     declareIGCKey(line, #dataType, #regkeyName, hashes, entry_points, &IGC_GET_REGKEY(regkeyName));                    \
   }

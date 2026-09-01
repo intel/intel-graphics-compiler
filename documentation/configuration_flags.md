@@ -1,6 +1,6 @@
 
 <!---======================= begin_copyright_notice ============================
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2026 Intel Corporation
 SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
@@ -24,6 +24,13 @@ For example - to enable `ShaderDumpEnable` flag in shell:
 $ export IGC_ShaderDumpEnable=1
 ```
 
+### Release build column meaning
+| Value | Meaning |
+|:----: | :---- |
+| `-` | Flag requires debug build to be available |
+| `Available` | Available in release builds |
+| `Diagnostic` | Available in release builds with IGC_OPTION__ENABLE_DIAGNOSTIC_FLAGS_IN_RELEASE CMake option |
+
 ## VISA optimization
 | Flag  | Description | Release builds |
 |:---- | :---- | :----: |
@@ -32,6 +39,7 @@ $ export IGC_ShaderDumpEnable=1
 | `AvoidDstSrcGRFOverlap` | avoid GRF overlap for destination and source operands of an SIMD16/SIMD32 instruction | - |
 | `AvoidSrc1Src2Overlap` | avoid src1 and src2 GRF overlap to avoid the conflict without read suppression | - |
 | `BCRAluDensityThreshold` | Min percent of bank-conflict-candidate ALU instructions (2-/3-source ops) required to force BCR                   for low register pressure OCL shaders. 0 disables the check. | Available |
+| `BCRBumpGRFMaxRegPressure` | Max register pressure, in GRFs, for which force BCR with GRF mode bump is applied to OCL shaders. | Available |
 | `BumpGRFForForceBCR` | Bump up GRF mode for force BCR. | Available |
 | `CSSIMD16_SpillThreshold` | Percentage of instructions allowed for spilling on CS SIMD16 | - |
 | `CSSIMD32_HighThresholdInstCount` | Instructions count limit to allow higher spill threshold on CS SIMD32 | - |
@@ -162,6 +170,8 @@ $ export IGC_ShaderDumpEnable=1
 |:---- | :---- | :----: |
 | `AllowMem2Reg` | Setting this to true makes IGC run mem2reg even when optimizations are disabled | Available |
 | `BlockPushConstantGRFThreshold` | Set the maximum limit for block push constants i.e. UBO data pushed.<br/>                                                                Set to 0xFFFFFFFF to use the default threshold for the platform.<br/>                                                                Note that for small pixel shaders the PayloadSizeThreshold may be the limiting factor. | - |
+| `BranchToSelectMaxRegionCost` | Max cumulative speculatable-instruction count accrued into one linearized region across folds                   (including bodies absorbed by merging); bounds register pressure. Set to 2 times                   BranchToSelectMaxSpeculatedCost at minimum to allow folding diamond patterns. | - |
+| `BranchToSelectMaxSpeculatedCost` | Max speculatable-instruction count of a single branch successor BranchToSelect will hoist; bounds                   the inst count of one speculated branch. | - |
 | `CodeLoopSinkingMinSize` | Don't sink in the loop if the number of instructions in the kernel is less | - |
 | `CodeSchedulingAttemptsLimit` | Limit the number of scheduling attempts | Available |
 | `CodeSchedulingCommitGreedyRP` | Commit greedy regpressure scheduling in case better                   scheduling has not succeed | Available |
@@ -236,11 +246,12 @@ $ export IGC_ShaderDumpEnable=1
 | `DumpCodeScheduling` | Dump code scheduling | Available |
 | `DumpLatencyHidingEarly` | Dump latency hiding analysis after code scheduling (1=summary, 2=verbose with IR) | Available |
 | `DumpLatencyHidingFinal` | Dump latency hiding analysis at end of pipeline (1=summary, 2=verbose with IR) | Available |
-| `EnableAtomicBranch` | Bitmask to enable Atomic branch optimization that predicates atomic with if/else. 1: if Val == 0                   ignore iadd/sub/umax 0. 2: checks if memory is lower than Val for umax. 4: checks if memory if                   greater than Val for umin. 8: generate ld_lz for untyped atomics, otherwise load_ugm | - |
+| `EnableAtomicBranch` | Bitmask to enable Atomic branch optimization that predicates the atomic with if/else.                   Modes 1/0x40/0x80 skip the atomic based on the source value only (no memory read).                   Modes 2/4/0x100/0x200 first read the current memory value and skip the atomic when it                   would not change memory.                   1: if Val == 0 skip iadd/sub/umax (source-only).                   2: read memory, skip umax when memory is already >= Val.                   4: read memory, skip umin when memory is already <= Val.                   8: generate ld_lz for untyped atomics, otherwise load_ugm.                   0x10: split stateless atomics.                   0x20: also handle 64-bit atomics.                   0x40: if Val == 0 skip AtomicOr (source-only).                   0x80: if Val == all-ones skip AtomicAnd (source-only).                   0x100: read memory, skip AtomicOr when it would set no new bits.                   0x200: read memory, skip AtomicAnd when it would clear no bits. | - |
 | `EnableBarrierControlFlowOptimizationPass` | Enable barrier control flow optimization pass | - |
 | `EnableBitcastedLoadNarrowing` | Enable narrowing of vector loads in bitcasts patterns. | - |
 | `EnableBitcastedLoadNarrowingToScalar` | Enable narrowing of vector loads to scalar ones in bitcasts patterns. | - |
 | `EnableBlendToDiscard` | Enable blend to discard based on blend state. | - |
+| `EnableBranchToSelect` | Enable flattening of small speculatable branch regions into selects | - |
 | `EnableCodeAssumption` | If set (> 0), generate llvm.assume to help certain optimizations. It is OCL only for now.<br/>     Only 1 and 2 are valid. 2 will be 1 plus additional assumption. It also does other minor changes. | - |
 | `EnableCodeSchedulingIfNoSpills` | Try rescheduling also when there are no spills | Available |
 | `EnableDeSSA` | Setting this to 0/false adds a compiler switch to disable De-SSA | - |
@@ -264,6 +275,7 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableIntegerMad` | Setting this to 1/true adds a compiler switch to enable integer mul+add = mad optimization | - |
 | `EnableInterpreterPatternMatching` | Enable Interpreter pattern matching and force retry if the pattern was found. | - |
 | `EnableJumpThreading` | Setting this to 1/true adds a compiler switch to enable llvm jumpThreading pass. | Available |
+| `EnableLICMInvariantSwitchDispatchDetection` | Enable detection of invariant switch dispatch in LICM. | Available |
 | `EnableLSCFence` | Enable LSC Fence in ConvertDXIL for the device has LSC | - |
 | `EnableLoadChainLoopSink` | Allow sinking of load address calculation when the load was sinked to the loop, even if the needed                   regpressure is achieved (only single use instructions) | - |
 | `EnableLoadsLoopSink` | Allow sinking of loads in the loop | - |
@@ -271,6 +283,7 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableLoopHoistConstant` | Enables pass to check for specific loop patterns where variables are constant across all but the                   last iteration, and hoist them out of the loop. | - |
 | `EnableMatchDecomposedHalfExtract` | Reconstruct LLVM16+ decomposed half extraction | - |
 | `EnableNewTileYCheck` | Enable new TileY check. 0 - off, 1 - on, 2 - platform default | - |
+| `EnableOCLNewPassManager` | Enable the LLVM New Pass Manager for compute IGC passes | Available |
 | `EnableOCLNewPassManager` | Enable the LLVM New Pass Manager for compute IGC passes | Available |
 | `EnableOptReportLoadNarrowing` | Generate opt report for narrowing of vector loads. | - |
 | `EnablePingPongTextureOpt` | Enables the Ping Pong texture optimization which is used only for Compute Shaders for back to back dispatches | - |
@@ -283,6 +296,7 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableSampleResultLatencySink` | Sink the consumer chain of a long-latency sampler/ld/gather send toward its distant use to hide                   send latency, leaving the send in place. May increase register pressure. | Available |
 | `EnableSamplerBackingByLSC` | Bit mask to enable sampler backing by LSC per shader. Bit 1 = VS, Bit 2 = HS, Bit 3 =                   DS, Bit 4 = GS, Bit 5 = TS, BIT 6 = MESH, BIT 7 = PS, BIT 8 = CS, BIT 9 = OCL, BIT 10 = RT | - |
 | `EnableSamplerChannelReturn` | Setting this to 1/true adds a compiler switch to enable using header to return selective channels from sampler.    Setting this to 2 makes it always use the selected channels, without heuristic. | - |
+| `EnableSamplerLoopSpeculation` | Enable forced partial unrolling and speculative clustering of sampler loop iterations | - |
 | `EnableSimpleAluVectorizer` | Enable coalescing of ALU SIMD1/SIMD2 uniform operations into wider SIMD | - |
 | `EnableSimplePushSizeBasedOpimization` | Enable the simplepush optimization to do push based on size | - |
 | `EnableSimplifyGEP` | Enable IGC to simplify indices expr of GEP. | - |
@@ -368,6 +382,7 @@ $ export IGC_ShaderDumpEnable=1
 | `SetLoopUnrollThreshold` | Set the loop unroll threshold. Value 0 will use the default threshold. | - |
 | `SetLoopUnrollThresholdForHighRegPressure` | Set the loop unroll threshold for shaders with high reg pressure. | - |
 | `SetRegisterPressureThresholdForLoopUnroll` | Set the register pressure threshold for limiting the loop unroll to smaller loops | - |
+| `SetSelectPHICountThresholdForUnrollAnalysis` | Skip LLVM's SCEV based full unroll cost analysis in functions with at least this many                   select-like (two-way) PHIs, where ScalarEvolution recursion can overflow the stack.                   Value 0 disables the limit. | - |
 | `SetURBFullWriteGranularity` | Overrides the minimum access granularity for URB full writes.                   Valid values are 0, 16 and 32, value 0 means use default for the platform. | Available |
 | `SplitIndirectEEtoSelThreshold` | Split indirect extractelement cost threshold | - |
 | `StateIndexAddrChainCanonicalizeInstThreshold` | Disable StateIndexAddrChainCanonicalize when the function instruction count exceeds this                   threshold. 0 = never disable based on inst count. | - |
@@ -378,6 +393,7 @@ $ export IGC_ShaderDumpEnable=1
 | `UseTiledCSThreadOrder` | Use 4x4 disaptch for CS order when it seems beneficial | - |
 | `WaAllowMatchMadOptimizationforVS` | Setting this to 1/true adds a compiler switch to enable mul+add = mad optimization for VS | - |
 | `WaveShuffleIndexSinkingMaxIterations` | Max number of iterations to run iterative WaveShuffleIndexSinking | - |
+| `ZeroInactiveLanesForWaveShuffle` | Force-enable the ZeroInactiveLanesForWaveShuffle AIL: make WaveShuffleIndex read zero from                   source lanes that are inactive instead of stale register contents. Useful for testing without                   UMD AIL detection. | Available |
 | `forcePushConstantMode` | set the push constant mode, 0 is default behavior, 1 is simple push, 2 is gather constant, 3 is                   none/pull constants | - |
 ## Shader debugging
 | Flag  | Description | Release builds |
@@ -423,7 +439,7 @@ $ export IGC_ShaderDumpEnable=1
 | `ShaderDebugHashCodeInKernel` | Add hash code to the binary | Available |
 | `ShaderDisableOptPassesAfter` | Will only run first N optimization passes, any further passes will be ignored. This flag can be                   used to bisect optimization passes. | - |
 | `ShaderDisplayAllPassesNames` | Display to console all passes name with their ID and occurrence number. | - |
-| `ShaderOverride` | Will override any LLVM shader with matching name in c:\\Intel\\IGC\\ShaderOverride | - |
+| `ShaderOverride` | Will override any LLVM shader with matching name in c:\\Intel\\IGC\\ShaderOverride or /tmp/IntelIGC/ShaderOverride | Diagnostic |
 | `ShaderPassDisable` | Disable specific passes eg. '9;17-19;239-;Error Check;ResolveOCLAtomics:2;Dead Code Elimination:3-5;BreakConstantExprPass:7-'<br/>                                                                disable pass 9, disable passes from 17 to 19, disable all passes after 238, disable all occurrences of pass Error Check,<br/>                                                                disable second occurrence of ResolveOCLAtomics, disable pass Dead Code Elimination occurrences from 3 to 5,<br/>                                                                disable all BreakConstantExprPass after his 6 occurrence<br/>                                                                To show a list of pass names and their occurrence set ShaderDisplayAllPassesNames.<br/>                                                                Must be used with ShaderDumpEnableAll flag. | - |
 | `Splitld2dmsAfterFirst` | Instead of splitting after second ld2dms message, split after first to avoid waiting | - |
 | `SystemThreadEnable` | This key forces software to create a system thread. The system thread may still be created by software even<br/>                                                                if this control is set to false.The system thread is invoked if either the software requires<br/>                                                                exception handling or if kernel debugging is active and a breakpoint is hit. | - |
@@ -481,7 +497,7 @@ $ export IGC_ShaderDumpEnable=1
 | `ShaderDumpInstNamer` | dump all unnamed LLVM IR instruction with variable names 'tmp' which makes easier for shaderoverriding | Available |
 | `ShaderDumpPidDisable` | disabled adding PID to the name of shader dump directory | Available |
 | `ShaderDumpRegexFilter` | Only dump files matching the given regex | Available |
-| `ShaderOverrideFromDir` | Override shaders from a custom directory instead of the default DumpDir/ShaderOverride/.                   The directory must exist. The OverrideLog.txt is also written here. | Available |
+| `ShaderOverrideFromDir` | Override shaders from a custom directory instead of the default DumpDir/ShaderOverride/.                   The directory must exist. The OverrideLog.txt is also written here. | Diagnostic |
 | `ShaderSendInfoRework` | Temporary Regkey for reworking sendinfo | - |
 | `ShowFullVectorsInShaderDumps` | print all elements of vectors in ShaderDumps, can dramatically increase ShaderDumps size | Available |
 | `SpvAsmDumpEnable` | Dump spvasm file | Available |
@@ -674,6 +690,7 @@ $ export IGC_ShaderDumpEnable=1
 | `UniformMemOpt4OW` | increase uniform memory optimization from 2 owords to 4 owords | Available |
 | `ValidateSPIRVExtensionSupport` | When enabled, validate each SPIR-V OpExtension against device support and fail compilation if any are    unsupported. | Available |
 | `VectorizerAllowADD` | Allow ADD instructions inside vectorizer | Available |
+| `VectorizerAllowBITCAST` | Allow BITCAST instructions inside vectorizer | Available |
 | `VectorizerAllowCMP` | Allow CMP instructions inside vectorizer | Available |
 | `VectorizerAllowEXP2` | Allow EXP2 instructions inside vectorizer | Available |
 | `VectorizerAllowFADD` | Allow FADD instructions inside vectorizer | Available |
@@ -695,7 +712,7 @@ $ export IGC_ShaderDumpEnable=1
 | `VectorizerAllowWAVEBROADCAST` | Allow WAVEBROADCAST instructions inside vectorizer | Available |
 | `VectorizerCheckScalarizer` | Add scalariser after vectorizer to check performance | Available |
 | `VectorizerDepWindowMultiplier` | Multiplier for the slice size to account for vectorizer dependency check window | Available |
-| `VectorizerEnablePartialVectorization` | Not fully tested option, allows to substitute scalar part with partially vectorized through extract elements | Available |
+| `VectorizerEnableVirtualSeeds` | Enable virtual seed creation | Available |
 | `VectorizerInsertElAsSeed` | IGCVectorizer treats every insert element as a seed | Available |
 | `VectorizerList` | Vectorize only one seed instruction with the provided number | Available |
 | `VectorizerNameFilter` | Only run IGCVectorizer for functions matching the given regex | Available |
@@ -743,7 +760,7 @@ $ export IGC_ShaderDumpEnable=1
 | `DisableFastestGopt` | Disable global optimizations for stage 1 shaders. | - |
 | `DisableFastestLinearScan` | Disable LinearScanRA in FastestSIMD. | - |
 | `DisableInlining` | Disable inlining of all functions | - |
-| `DisablePredicatedLoadForAllocaPtrSelectSplit` | If true, the select-of-alloca-pointer split always emits regular loads, even when                   private memory is in stateless global, instead of the predicated-load WA.                   For testing/debugging the WA. May cause OOB reads in stateless global. | Available |
+| `DisablePredicatedLoadForAllocaPtrSelectSplit` | If true, EnableSelectOfAllocaPtrSplit always emits regular loads, even when                   private memory is in stateless global, instead of the predicated-loads.                   For testing/debugging. May cause OOB reads in stateless global. | - |
 | `DisableResourceLoopUnrollExclusiveLoad` | Disable visa ExclusiveLoad for the SBID in Unroll resource loop | - |
 | `DisableResourceLoopUnrollNestedLsc` | Disable unroll nested for lsc load. | - |
 | `DisableResourceLoopUnrollNestedSampler` | Disable unroll nested for sampler. | - |
@@ -766,6 +783,7 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableA64WA` | Guarantee A64 load/store addres-hi is uniform | Available |
 | `EnableAccSub` | Enable accumulator substitution | - |
 | `EnableByValStructArgPromotion` | If enabled, byval/sret struct arguments are promoted to pass-by-value if possible. | Available |
+| `EnableCRIDefault512GRF` | Raise the default VRT GRF ceiling to 512 on CRI | Available |
 | `EnableConstantPromotion` | Enable global constant data to register promotion | - |
 | `EnableDisableMidThreadPreemptionOpt` | Disable mid thread preemption | - |
 | `EnableDropTargetBBs` | Enables pass for dropping targeted BBs | - |
@@ -784,12 +802,12 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableLargeFunctionCallMerging` | Merge mutually exclusive calls to large functions to enable inlining | - |
 | `EnableLateRPRepublish` | Experimental flag: republish metadata for early retry in the end of pipeline,                   instead of reusing the existing if the existing shows that early recompilation is needed | Available |
 | `EnableLeafCollapsing` | Collapse leaf functions in order to avoid trimming small leaf functions | Available |
-| `EnableLowerGEPPtrHoisting` | Enable hoisting loads past pointer-typed phi instructions | Available |
 | `EnableMixIntOperands` | Enable generating mix-sized operands for int ALU | - |
 | `EnableOCL512GRFForDPAS` | On OCL recompilation, lift the GRF ceiling to 512 for SIMD16 (not forced-SIMD32) DPAS                   kernels | Available |
 | `EnableOCL512GRFForSIMD16` | On OCL recompilation, lift the GRF ceiling to 512 for SIMD16 kernels: required/forced                   sub-group size 16, or high register pressure that drops to SIMD16 | Available |
 | `EnableOpaquePointersBackend` | [Experimental] Force opaque pointers' usage within IGC/LLVM passes | - |
 | `EnableOptReportPrivateMemoryToSLM` | [POC] Generate opt report file for moving private memory allocations to SLM. | - |
+| `EnablePHIOfAllocaPtrSplit` | If true, enables splitting PHI instruction containing pointers                   where at least one incoming value is alloca-derived (per-predecessor load + value phi).                   Enables SoA promotion for allocas otherwise blocked by PHI pattern. | Available |
 | `EnablePreRAAccSchedAndSub` | Enable accumulator substitution | - |
 | `EnablePrivMemNewSOAForScalarArrays` | Enables new SOA algorithm also for scalar float/int arrays. | Available |
 | `EnablePrivMemNewSOATranspose` | 0 : disable new algo; 1 and up : enable new algo.                   1 : enable new algo for structs and scalar (float/int) arrays;                   2 : 1 plus new algo for array of dw[xn]/qw[xn],etc                   3 : 2 plus new algo for array of complicated struct. | Available |
@@ -802,7 +820,7 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableSampleTailDeAlias` | When a sample-ld return component escapes the sample's basic block (a long-lived tail) while                   a sibling component dies inside the block, keep the tail in its own variable (do not                   payload-coalesce it) so the payload declare dies early and its dead sibling GRFs are reclaimed. | Available |
 | `EnableSamplerSplit` | Split Sampler 3d message to odd and even | - |
 | `EnableScalarPipe` | for scalar-pipe experiment, N specifies the number of scalar registers in Nx16 dwords | - |
-| `EnableSelectOfAllocaPtrSplit` | If true, pre-pass in PrivateMemoryResolution splits select-of-pointer                   where one operand is alloca-derived (load duplication / store branching).                   Enables SoA promotion for allocas otherwise blocked by SELECT pattern. | Available |
+| `EnableSelectOfAllocaPtrSplit` | If true, enables splitting SELECT instruction containing pointers                   where one operand is alloca-derived (load duplication / store branching).                   Enables SoA promotion for allocas otherwise blocked by SELECT pattern. | Available |
 | `EnableSizeContributionOptimization` | Put more weight on a function when the potential size contirubion is big | Available |
 | `EnableSkipUnusedColorPayload` | Enables skipping unused color phases of render target write. | Available |
 | `EnableStackCallFuncCall` | If enabled, the default function call mode will be set to stack call. Otherwise, subroutine call is used. | Available |
@@ -841,7 +859,7 @@ $ export IGC_ShaderDumpEnable=1
 | `ForceScratchSpaceSize` | Override Scratch Space Size in bytes for perf testing | - |
 | `ForceSendsSupportOnSKLA0` | Allow sends on SKL A0, may be unsafe | - |
 | `ForceStackCallForLargeKernel` | When FunctionControl is default, force functions of kernels whose estimated size exceeds the                   large-kernel threshold (KernelTotalSizeThreshold * LargeKernelThresholdMultiplier) to use stack                   calls by default. | Available |
-| `ForceVRTGRFCeiling` | Override to set maximum GRF of VRT ceiling number for vISA (default is 256).                   The value can be from { 320, 448, 512 } | - |
+| `ForceVRTGRFCeiling` | Override to set maximum GRF of VRT ceiling number for vISA.                   The value can be from { 256, 320, 448, 512 } | Available |
 | `FrequencyWeightForSPGT` | Frequency weight for a trimming threshold | Available |
 | `FunctionCloningThreshold` | Limits the number of cloned functions when called from multiple function groups.                   If number of cloned functions exceeds the threshold, compile the function only once and use                   address relocation instead.                   Setting this to '0' allows IGC to choose the default threshold. | Available |
 | `FunctionControl` | Control function inlining/subroutine/stackcall. See value defs in igc_flags.hpp. | Available |
@@ -879,6 +897,7 @@ $ export IGC_ShaderDumpEnable=1
 | `OverrideCsWalkOrder` | Override compute walker walk order | Available |
 | `OverrideCsWalkOrderEnable` | Enable overriding compute walker walk order | Available |
 | `OverrideOCLMaxParamSize` | Override the value imposed on the kernel by CL_DEVICE_MAX_PARAMETER_SIZE. Value in bytes, if                   value==0 no override happens. | Available |
+| `PHIOfAllocaPtrSplitMinSize` | Minimum alloca size in bytes to be considered worthwhile for the                   EnablePHIOfAllocaPtrSplit pass. | Available |
 | `ParameterForColdFuncThreshold` | C/10-STD for a normal distribution / low K% for a long-tail distribution | Available |
 | `PartitionUnit` | Partition compilation unit | Available |
 | `PartitionWithFastHybridRA` | Enable FastRA and HybridRA when partition is enabled | Available |
@@ -916,6 +935,7 @@ $ export IGC_ShaderDumpEnable=1
 | `ResourceLoopUnrollNested` | Unroll resource loop iterations (larger than 0): 0 (default) - no nested loop | - |
 | `RetryRevertExcessiveSpillingKernelCoefficient` | Sets the coefficient for Retry Manager to know whether we should revert back to a previously compiled kernel | - |
 | `RetryRevertExcessiveSpillingKernelThreshold` | Sets the threshold for Retry Manager to know which kernel is considered as Excessive Spilling and                   applies different set of rules | - |
+| `RetryStackCallSpillCostThreshold` | Only retry if the percentage of spills (over total instructions) is more than this value | - |
 | `SSOShifter` | Adjust ScratchSurfaceOffset with shl(hwtid, shifter). 0 menas disabling padding | - |
 | `SWManagedStackNumStacks` | Forces the number of syncRT stacks per DSS. If explicitly set to 0, 2048 is assumed to maintain                   backward compatibility. | Available |
 | `SampleTailDeAliasRPThreshold` | Minimum register pressure as a percentage of the GRF file size to enable                   sample tail de-aliasing. 0 disables the pressure gate (always fire when the                   flag is enabled). Default 100 means fire only when maxRegPressure -GE- 100 percent of GRFs. | Available |
@@ -968,7 +988,6 @@ $ export IGC_ShaderDumpEnable=1
 | `ConstantCoalescingMaxBBDepthDelta` | How many basic block levels the merged chunk is allowed to stretch across, avoiding wide-load                   coalescing. 0 disables the check. Gated on ConstantCoalescingDepthCheckMinBytes | Available |
 | `DisableCrossFillRemat` | Rematerialize values if they use already spilled values | Available |
 | `DisableDPSE` | Disable Dead PayloadStore Elimination. | Available |
-| `DisableDynamicPrintfFormatStringAbort` | TEMPORARY: set to 1 to skip the abort on the inline dynamic printf format-string path. | Available |
 | `DisableEarlyRemat` | Disable quick remats to avoid some spills | Available |
 | `DisableEntryFences` | Don't emit the evict and invalidate fences for A0 WA | - |
 | `DisableExamineRayFlag` | Don't do IPO to see if we can fold control flow given knowledge of possible rayflag values | - |
@@ -1044,7 +1063,6 @@ $ export IGC_ShaderDumpEnable=1
 | `ForceSWHotZoneStoreCacheCtrl` | Enables SWHotZoneStoreCacheCtrl regkey for custom lsc store cache controls in the SWHotZone | Available |
 | `ForceSWStackLoadCacheCtrl` | Enables SWStackLoadCacheCtrl regkey for custom lsc load cache controls in the SWStack | Available |
 | `ForceSWStackStoreCacheCtrl` | Enables SWStackStoreCacheCtrl regkey for custom lsc store cache controls in the SWStack | Available |
-| `OverrideRayQueryThrottling` | Force rayquery throttling (dynamic ray management) to be enabled or disabled. Default value of                   this key is ignored | Available |
 | `OverrideTMax` | Force TMax to the given value. When 0, do nothing. | - |
 | `RTInValidDefaultIndex` | If MemHit::valid is false, the default value to return for some intrinsics like GeometryIndex or                   PrimitiveIndex etc. | Available |
 | `RayTracingDumpYaml` | Dump yaml input/output files | Available |

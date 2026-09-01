@@ -13,32 +13,32 @@ SPDX-License-Identifier: MIT
 #endif
 
 #ifndef DECLARE_IGC_REGKEY_UMD
-#define DECLARE_IGC_REGKEY_UMD(dataType, regkeyName, defaultValue, description, releaseMode)                           \
-  DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)
+#define DECLARE_IGC_REGKEY_UMD(dataType, regkeyName, defaultValue, description, flagAvailability)                      \
+  DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, flagAvailability)
 #define UNDEF_DECLARE_IGC_REGKEY_UMD
 #endif
 
 // If these enum and bitmask regkeys have not been explicitly opted-in to,
 // default back to using DWORD which is understood by all users.
 #ifndef DECLARE_IGC_REGKEY_ENUM
-#define DECLARE_IGC_REGKEY_ENUM(regkeyName, defaultValue, description, values, releaseMode)                            \
-  DECLARE_IGC_REGKEY(DWORD, regkeyName, defaultValue, description ". " values, releaseMode)
+#define DECLARE_IGC_REGKEY_ENUM(regkeyName, defaultValue, description, values, flagAvailability)                       \
+  DECLARE_IGC_REGKEY(DWORD, regkeyName, defaultValue, description ". " values, flagAvailability)
 #endif
 
 #ifndef DECLARE_IGC_REGKEY_ENUM_UMD
-#define DECLARE_IGC_REGKEY_ENUM_UMD(regkeyName, defaultValue, description, values, releaseMode)                        \
-  DECLARE_IGC_REGKEY_ENUM(regkeyName, defaultValue, description, values, releaseMode)
+#define DECLARE_IGC_REGKEY_ENUM_UMD(regkeyName, defaultValue, description, values, flagAvailability)                   \
+  DECLARE_IGC_REGKEY_ENUM(regkeyName, defaultValue, description, values, flagAvailability)
 #define UNDEF_DECLARE_IGC_REGKEY_ENUM_UMD
 #endif
 
 #ifndef DECLARE_IGC_REGKEY_BITMASK
-#define DECLARE_IGC_REGKEY_BITMASK(regkeyName, defaultValue, description, values, releaseMode)                         \
-  DECLARE_IGC_REGKEY(DWORD, regkeyName, defaultValue, description ". " values, releaseMode)
+#define DECLARE_IGC_REGKEY_BITMASK(regkeyName, defaultValue, description, values, flagAvailability)                    \
+  DECLARE_IGC_REGKEY(DWORD, regkeyName, defaultValue, description ". " values, flagAvailability)
 #endif
 
 #ifndef DECLARE_IGC_REGKEY_BITMASK_UMD
-#define DECLARE_IGC_REGKEY_BITMASK_UMD(regkeyName, defaultValue, description, values, releaseMode)                     \
-  DECLARE_IGC_REGKEY_BITMASK(regkeyName, defaultValue, description, values, releaseMode)
+#define DECLARE_IGC_REGKEY_BITMASK_UMD(regkeyName, defaultValue, description, values, flagAvailability)                \
+  DECLARE_IGC_REGKEY_BITMASK(regkeyName, defaultValue, description, values, flagAvailability)
 #define UNDEF_DECLARE_IGC_REGKEY_BITMASK_UMD
 #endif
 

@@ -166,7 +166,7 @@ EnumStr IGC_DEBUG_API_CALL str(DumpLoc value) {
 
 void IGC_DEBUG_API_CALL SetCompilerOption(OptionFlag flag, debugString s) {
   switch (flag) {
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, flagAvailability)                          \
   case OptionFlag::OPTION_##regkeyName:                                                                                \
     strcpy_s(IGC_GET_REGKEY(regkeyName).m_string, sizeof(debugString), s);                                             \
     IGC_GET_REGKEY(regkeyName).isSet = true;                                                                           \
@@ -180,7 +180,7 @@ void IGC_DEBUG_API_CALL SetCompilerOption(OptionFlag flag, debugString s) {
 
 void IGC_DEBUG_API_CALL SetCompilerOption(OptionFlag flag, int value) {
   switch (flag) {
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, flagAvailability)                          \
   case OptionFlag::OPTION_##regkeyName:                                                                                \
     IGC_GET_REGKEY(regkeyName).m_Value = value;                                                                        \
     IGC_GET_REGKEY(regkeyName).isSet = true;                                                                           \
@@ -203,7 +203,7 @@ template <typename RegkeyT> inline void SetCompilerOptionOpaqueHelper(RegkeyT &r
 
 void IGC_DEBUG_API_CALL SetCompilerOptionOpaque(OptionFlag flag, void *data) {
   switch (flag) {
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, flagAvailability)                          \
   case OptionFlag::OPTION_##regkeyName:                                                                                \
     SetCompilerOptionOpaqueHelper(IGC_GET_REGKEY(regkeyName), reinterpret_cast<dataType *>(data));                     \
     IGC_GET_REGKEY(regkeyName).isSet = true;                                                                           \

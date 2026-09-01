@@ -301,6 +301,7 @@ option(IGC_OPTION__ENABLE_BF16_BIF "Enables BF16 support in BiF (requires patche
 
 option(IGC_OPTION__ENABLE_LIT_TESTS "Enable lit testing for IGC compiler. May require additional tools like llvm lit and opt" OFF)
 option(IGC_OPTION__ENABLE_ADDRESS_SANITIZER "Enable AddressSanitizer instrumentation for IGC binaries and their linked static libraries." OFF)
+option(IGC_OPTION__ENABLE_DIAGNOSTIC_FLAGS_IN_RELEASE "Make diagnostic IGC flags available in Release build, e.g. ShaderOverride" OFF)
 
 set(IGC_OPTION__BIF_SRC_OCL_DIR "${IGC_SOURCE_DIR}/BiFModule"
     CACHE PATH "Built-in Functions: Root directory where sources for OpenCL builtins are located.")
@@ -1406,6 +1407,13 @@ add_compile_definitions(
 if(IGC_OPTION__BIF_LINK_BC)
   add_compile_definitions(
     BIF_LINK_BC
+  )
+endif()
+
+if(IGC_OPTION__ENABLE_DIAGNOSTIC_FLAGS_IN_RELEASE)
+  message(STATUS "[IGC] Diagnostic flags enabled in the release build.")
+  add_compile_definitions(
+    IGC_ENABLE_DIAGNOSTIC_FLAGS_IN_RELEASE
   )
 endif()
 

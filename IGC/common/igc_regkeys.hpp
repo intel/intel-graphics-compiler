@@ -73,13 +73,13 @@ template <bool AllowPerPsoUmdOverride> bool IsUmdRegkeySet(const char *name) {
 }
 
 namespace UmdRegkeyMetadata {
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, flagAvailability)                          \
   inline constexpr bool regkeyName = false;
-#define DECLARE_IGC_REGKEY_UMD(dataType, regkeyName, defaultValue, description, releaseMode)                           \
+#define DECLARE_IGC_REGKEY_UMD(dataType, regkeyName, defaultValue, description, flagAvailability)                      \
   inline constexpr bool regkeyName = true;
-#define DECLARE_IGC_REGKEY_ENUM_UMD(regkeyName, defaultValue, description, values, releaseMode)                        \
+#define DECLARE_IGC_REGKEY_ENUM_UMD(regkeyName, defaultValue, description, values, flagAvailability)                   \
   inline constexpr bool regkeyName = true;
-#define DECLARE_IGC_REGKEY_BITMASK_UMD(regkeyName, defaultValue, description, values, releaseMode)                     \
+#define DECLARE_IGC_REGKEY_BITMASK_UMD(regkeyName, defaultValue, description, values, flagAvailability)                \
   inline constexpr bool regkeyName = true;
 #include "igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY
@@ -140,6 +140,12 @@ enum IGCFlagType {
   IGCFlagType_debugString = 1,
 };
 
+enum IGCFlagAvailability {
+  DEBUG_ONLY,        // Available only in Debug builds
+  ALWAYS,            // Available in all build types
+  RELEASE_DIAGNOSTIC // Available in release builds when IGC_OPTION__ENABLE_DIAGNOSTIC_FLAGS_IN_RELEASE is set to ON
+};
+
 struct IGCFlag {
   union {
     unsigned m_Value;
@@ -148,13 +154,29 @@ struct IGCFlag {
   std::vector<HashRange> hashes;
   std::vector<EntryPoint> entry_points;
   bool isSet = false;
-  const bool isReleaseMode = false;
+  const IGCFlagAvailability availability = IGCFlagAvailability::DEBUG_ONLY;
   const char *name;
   const unsigned defaultValue;
   IGCFlagType type;
 
-  IGCFlag(unsigned value, const char *name_, bool releaseMode, IGCFlagType type_)
-      : m_Value(value), isReleaseMode(releaseMode), name(name_), defaultValue(value), type(type_) {}
+  IGCFlag(unsigned value, const char *name_, IGCFlagAvailability availability_, IGCFlagType type_)
+      : m_Value(value), availability(availability_), name(name_), defaultValue(value), type(type_) {}
+
+  bool IsAvailable() const {
+    switch (availability) {
+    case ALWAYS:
+      return true;
+    case RELEASE_DIAGNOSTIC:
+#if defined(IGC_ENABLE_DIAGNOSTIC_FLAGS_IN_RELEASE)
+      return true;
+#else
+      return false;
+#endif
+    case DEBUG_ONLY:
+    default:
+      return false;
+    }
+  }
 
   bool IsNumber() { return type == IGCFlagType_int; }
 
@@ -174,7 +196,7 @@ struct IGCFlag {
 #endif
 
 // XMACRO defining the regkeys
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) regkeyName,
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, flagAvailability) regkeyName,
 enum class IGCFlagIndex {
 #include "igc_regkeys.h"
   IGCFlagIndexCount
@@ -206,10 +228,10 @@ template <bool AllowPerPsoUmdOverride> inline bool IsUmdAwareFlagSet(IGCFlag &fl
 #define IGC_GET_FLAG_VALUE(name)                                                                                       \
   (GetUmdAwareFlagValue<IGC::UmdRegkeyMetadata::name>(                                                                 \
       IGC_GET_REGKEY(name), (CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name))) &&         \
-                                IGC_GET_REGKEY(name).isReleaseMode))
+                                IGC_GET_REGKEY(name).IsAvailable()))
 #define IGC_GET_REGKEYSTRING(name)                                                                                     \
   (((CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name))) &&                                 \
-    IGC_GET_REGKEY(name).isReleaseMode)                                                                                \
+    IGC_GET_REGKEY(name).IsAvailable())                                                                                \
        ? IGC_GET_REGKEY(name).m_string                                                                                 \
        : "")
 #define IGC_IS_FLAG_SET(name)                                                                                          \
@@ -281,7 +303,7 @@ static inline void LoadRegistryKeys(const std::string &options = "", std::string
   IGC_UNUSED(optionsParseError);
 }
 #define IGC_SET_FLAG_VALUE(name, regkeyValue) true
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, flagAvailability)                          \
   static const unsigned int regkeyName##default = (unsigned int)defaultValue;
 namespace IGC {
 class DebugVariable {

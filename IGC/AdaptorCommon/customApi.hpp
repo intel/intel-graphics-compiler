@@ -21,7 +21,7 @@ namespace IGC {
 namespace Debug {
 /// enum to set the compiler flags from the custom API
 enum class OptionFlag {
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) OPTION_##regkeyName,
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, flagAvailability) OPTION_##regkeyName,
 #include "common/igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY
   END,
