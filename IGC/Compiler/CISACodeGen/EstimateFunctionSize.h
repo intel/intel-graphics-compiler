@@ -126,7 +126,8 @@ private:
   void getFunctionsToTrim(llvm::Function *root, TotalTrimmingPool &pools, bool ignoreStackCallBoundary,
                           uint32_t &func_cnt);
   void updateStaticFuncFreq();
-  void estimateTotalLoopIteration(llvm::Function &F, llvm::LoopInfo *LI);
+
+  size_t estimateSizeWithLoopIteration(llvm::Function &F, llvm::LoopInfo *LI);
 
   /// \brief Run the core analysis once the getters/MetaDataUtils are set up.
   bool runAnalysis(llvm::Module &Mod);
@@ -178,7 +179,6 @@ private:
   llvm::SmallVector<void *, 64> addressTakenFuncs;
   llvm::ScaledNumber<uint64_t> threshold_func_freq;
   llvm::ScaledNumber<uint64_t> thresholdForTrimming;
-  std::unordered_map<llvm::Loop *, llvm::ScaledNumber<uint64_t>> LoopIterCnts;
 
   // Flags for Kernel trimming
   bool ControlKernelTotalSize;

@@ -310,10 +310,12 @@ struct FunctionNode {
   Scaled64 EntryFreq;
   std::unordered_map<llvm::BasicBlock *, Scaled64> blockFreqs;
 
-  /// \brief All functions directly called in this function.
+  /// \brief All functions directly called in this function, mapped to the number of call sites.
+  /// Structural count only: every reader multiplies a code size by it, so one call site means
+  /// one inlined copy regardless of how often it executes.
   std::unordered_map<FunctionNode *, uint16_t> CalleeList;
 
-  /// \brief All functions that call this function F.
+  /// \brief All functions that call this function F, mapped to the number of call sites.
   std::unordered_map<FunctionNode *, uint16_t> CallerList;
 
   bool EnableLeafCollapsing;
@@ -371,18 +373,18 @@ struct FunctionNode {
 
   /// \brief Add a caller or callee.
   // A caller may call the same callee multiple times, e.g. A->{B,B,B}: A->CalleeList(B,B,B), B->CallerList(A,A,A)
-  void addCallee(FunctionNode *G, unsigned weight) {
+  void addCallee(FunctionNode *G, unsigned numCallSites) {
     IGC_ASSERT(G);
     if (CalleeList.find(G) == CalleeList.end()) // First time added, Initialize it
       CalleeList[G] = 0;
-    CalleeList[G] += weight;
+    CalleeList[G] += numCallSites;
     CallingSubroutine = true;
   }
-  void addCaller(FunctionNode *G, unsigned weight) {
+  void addCaller(FunctionNode *G, unsigned numCallSites) {
     IGC_ASSERT(G);
     if (CallerList.find(G) == CallerList.end()) // First time added, Initialize it
       CallerList[G] = 0;
-    CallerList[G] += weight;
+    CallerList[G] += numCallSites;
   }
 
   void setKernelEntry() {
@@ -831,8 +833,11 @@ void EstimateFunctionSize::runStaticAnalysis() {
   PrintStaticProfileGuidedKernelSizeReduction(0x1, "------------------Static analysis end------------------\n") return;
 }
 
-void EstimateFunctionSize::estimateTotalLoopIteration(llvm::Function &F, LoopInfo *LI) {
+size_t EstimateFunctionSize::estimateSizeWithLoopIteration(llvm::Function &F, LoopInfo *LI) {
   auto &SE = m_getSE(F);
+  // Must stay function-local. Every m_getLI()/m_getSE() call recomputes LoopInfo, which
+  // invalidates the Loop pointers of the previously processed function.
+  DenseMap<Loop *, Scaled64> LoopIterCnts;
   for (Loop *L : LI->getLoopsInPreorder()) {
     Scaled64 ParentLCnt = Scaled64::getOne();
     Loop *ParentL = L->getParentLoop();
@@ -867,7 +872,17 @@ void EstimateFunctionSize::estimateTotalLoopIteration(llvm::Function &F, LoopInf
     PrintFunctionSizeAnalysis(0x2, "Loop " << L->getName().str() << ": Loop Count = " << LoopIterCnts[L].toString()
                                            << ", Parent Loop Count = " << ParentLCnt.toString() << LoopCntAttr)
   }
-  return;
+
+  size_t Size = 0;
+  for (BasicBlock &BB : F) {
+    size_t BlkSize = IGCLLVM::sizeWithoutDebug(&BB);
+    if (Loop *L = LI->getLoopFor(&BB)) {
+      IGC_ASSERT(LoopIterCnts.count(L));
+      BlkSize *= LoopIterCnts[L].toInt<size_t>();
+    }
+    Size += BlkSize;
+  }
+  return Size;
 }
 
 void EstimateFunctionSize::analyze() {
@@ -875,19 +890,6 @@ void EstimateFunctionSize::analyze() {
     std::size_t Size = 0;
     for (auto &BB : F) {
       std::size_t BlkSize = IGCLLVM::sizeWithoutDebug(&BB);
-      Size += BlkSize;
-    }
-    return Size;
-  };
-
-  auto getSizeWithLoopCnt = [&](llvm::Function &F, LoopInfo &LI) {
-    std::size_t Size = 0;
-    for (auto &BB : F) {
-      std::size_t BlkSize = IGCLLVM::sizeWithoutDebug(&BB);
-      Loop *L = LI.getLoopFor(&BB);
-      if (L) {
-        BlkSize = BlkSize * LoopIterCnts[L].toInt<size_t>();
-      }
       Size += BlkSize;
     }
     return Size;
@@ -901,9 +903,8 @@ void EstimateFunctionSize::analyze() {
     FunctionNode *node = nullptr;
     if (LoopCountAwareTrimming) {
       auto &LI = m_getLI(F);
-      estimateTotalLoopIteration(F, &LI);
+      size_t FuncSizeWithLoopCnt = estimateSizeWithLoopIteration(F, &LI);
       size_t FuncSize = getSize(F);
-      size_t FuncSizeWithLoopCnt = getSizeWithLoopCnt(F, LI);
       node = new FunctionNode(&F, FuncSizeWithLoopCnt);
       PrintFunctionSizeAnalysis(0x1, "Function " << F.getName().str() << " Original Size: " << FuncSize
                                                  << " Size with Loop Iter: " << FuncSizeWithLoopCnt);
@@ -941,7 +942,6 @@ void EstimateFunctionSize::analyze() {
     if (F.empty())
       continue;
     FunctionNode *Node = get<FunctionNode>(&F);
-    auto &LI = m_getLI(F);
     for (auto U : F.users()) {
       // Other users (like bitcast/store) are ignored.
       if (auto *CI = dyn_cast<CallInst>(U)) {
@@ -949,16 +949,12 @@ void EstimateFunctionSize::analyze() {
         BasicBlock *BB = CI->getParent();
         Function *G = BB->getParent();
         FunctionNode *GN = get<FunctionNode>(G);
-        unsigned LoopCnt = 1;
-        if (LoopCountAwareTrimming) {
-          Loop *L = LI.getLoopFor(BB);
-          if (L) {
-            IGC_ASSERT(LoopIterCnts.find(L) != LoopIterCnts.end());
-            LoopCnt = LoopIterCnts[L].toInt<size_t>();
-          }
-        }
-        GN->addCallee(Node, LoopCnt);
-        Node->addCaller(GN, LoopCnt);
+        // One per call site, not scaled by the loop iteration count of BB. Every reader of
+        // these maps multiplies a code size by the value, and inlining a call site inside a
+        // loop still produces a single copy of the callee. Scaling here would also need the
+        // caller's LoopInfo, which this walk does not have: it iterates callees.
+        GN->addCallee(Node, 1);
+        Node->addCaller(GN, 1);
       }
     }
   }
