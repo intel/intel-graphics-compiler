@@ -12,8 +12,10 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/IR/IRBuilder.h>
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/Dominators.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -23,11 +25,11 @@ using namespace llvm;
 using namespace IGC;
 
 namespace {
-class GenericNullPtrPropagation : public FunctionPass, public InstVisitor<GenericNullPtrPropagation> {
+class GenericNullPtrPropagation : public ModulePass, public InstVisitor<GenericNullPtrPropagation> {
 public:
   static char ID;
 
-  GenericNullPtrPropagation() : FunctionPass(ID) {
+  GenericNullPtrPropagation() : ModulePass(ID) {
     ::initializeGenericNullPtrPropagationPass(*PassRegistry::getPassRegistry());
   }
   ~GenericNullPtrPropagation() = default;
@@ -35,16 +37,16 @@ public:
   StringRef getPassName() const override { return "GenericNullPtrPropagation"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<CodeGenContextWrapper>();
-    AU.addRequired<llvm::DominatorTreeWrapperPass>();
     AU.setPreservesCFG();
   }
-  bool runOnFunction(Function &F) override;
+  bool runOnModule(Module &M) override;
   void visitAddrSpaceCastInst(AddrSpaceCastInst &I);
 
   void releaseMemory() override { toVisit.clear(); }
 
 private:
-  DominatorTree *dt = nullptr;
+  bool processFunction(Function &F);
+
   CodeGenContext *m_ctx = nullptr;
   SmallVector<AddrSpaceCastInst *> toVisit;
 };
@@ -128,17 +130,34 @@ static void addChecks(AddrSpaceCastInst &I, DominatorTree *DT) {
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(GenericNullPtrPropagation, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_END(GenericNullPtrPropagation, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char GenericNullPtrPropagation::ID = 0;
 
-bool GenericNullPtrPropagation::runOnFunction(Function &F) {
+bool GenericNullPtrPropagation::runOnModule(Module &M) {
   m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  dt = &getAnalysis<llvm::DominatorTreeWrapperPass>().getDomTree();
+
+  bool modified = false;
+  for (Function &F : M) {
+    if (F.isDeclaration()) {
+      continue;
+    }
+    modified |= processFunction(F);
+  }
+  return modified;
+}
+
+bool GenericNullPtrPropagation::processFunction(Function &F) {
+  toVisit.clear();
   visit(F);
-  llvm::for_each(toVisit, [this](AddrSpaceCastInst *I) { addChecks(*I, dt); });
-  return !toVisit.empty();
+  if (toVisit.empty()) {
+    return false;
+  }
+
+  DominatorTree DT;
+  DT.recalculate(F);
+  llvm::for_each(toVisit, [&DT](AddrSpaceCastInst *I) { addChecks(*I, &DT); });
+  return true;
 }
 
 void GenericNullPtrPropagation::visitAddrSpaceCastInst(AddrSpaceCastInst &I) {
@@ -152,5 +171,5 @@ void GenericNullPtrPropagation::visitAddrSpaceCastInst(AddrSpaceCastInst &I) {
 }
 
 namespace IGC {
-FunctionPass *createGenericNullPtrPropagationPass() { return new GenericNullPtrPropagation; }
+ModulePass *createGenericNullPtrPropagationPass() { return new GenericNullPtrPropagation; }
 } // namespace IGC

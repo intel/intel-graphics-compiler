@@ -14,6 +14,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
-llvm::FunctionPass *createGenericNullPtrPropagationPass();
+llvm::ModulePass *createGenericNullPtrPropagationPass();
 void initializeGenericNullPtrPropagationPass(llvm::PassRegistry &);
 } // namespace IGC

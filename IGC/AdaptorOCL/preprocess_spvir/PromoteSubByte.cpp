@@ -585,6 +585,10 @@ Function *PromoteSubByte::promoteFunction(Function *function) {
   auto newFunction = Function::Create(cast<FunctionType>(getOrCreatePromotedType(function->getFunctionType())),
                                       function->getLinkage(), function->getName() + ".promoted", function->getParent());
 
+  // Move the new function next to the old function to preserve original function order.
+  auto &functionList = function->getParent()->getFunctionList();
+  functionList.splice(function->getIterator(), functionList, newFunction->getIterator());
+
   newFunction->setCallingConv(function->getCallingConv());
 
   AttributeList attributeList = function->getAttributes();
@@ -663,7 +667,7 @@ GlobalVariable *PromoteSubByte::promoteGlobalVariable(GlobalVariable *globalVari
   auto newGlobalVariable = new GlobalVariable(
       *globalVariable->getParent(), getOrCreatePromotedType(globalVariable->getValueType()),
       globalVariable->isConstant(), globalVariable->getLinkage(), promoteConstant(globalVariable->getInitializer()),
-      globalVariable->getName() + ".promoted", nullptr, GlobalValue::ThreadLocalMode::NotThreadLocal,
+      globalVariable->getName() + ".promoted", globalVariable, GlobalValue::ThreadLocalMode::NotThreadLocal,
       globalVariable->getType()->getPointerAddressSpace());
 
   // Clone metadatas

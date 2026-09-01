@@ -12,16 +12,14 @@
 
 target triple = "spir64-unknown-unknown"
 
-; CHECK-LABEL: define spir_func float @readSrcPixelSingle() {
-; CHECK-NEXT:  call spir_func zeroext i8 @isBorder()
-
 ; CHECK-LABEL: define spir_func zeroext i8 @isBorder() {
 ; CHECK-NEXT:  ret i8 0
-
 define spir_func zeroext i1 @isBorder() {
   ret i1 false
 }
 
+; CHECK-LABEL: define spir_func float @readSrcPixelSingle() {
+; CHECK-NEXT:  call spir_func zeroext i8 @isBorder()
 define spir_func float @readSrcPixelSingle() {
   %call = call spir_func zeroext i1 @isBorder()
   ret float 0.000000e+00

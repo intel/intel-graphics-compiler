@@ -9,14 +9,6 @@
 ; RUN: igc_opt --opaque-pointers -igc-promote-sub-byte -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
 
-; CHECK-LABEL: define spir_func void @test_vector_cond_from_memory(ptr %cptr, ptr %ptr)
-; CHECK-NEXT: %1 = load <2 x i8>, ptr %cptr, align 1
-; CHECK-NEXT: %2 = trunc <2 x i8> %1 to <2 x i1>
-; CHECK-NEXT: %3 = select <2 x i1> %2, <2 x i8> <i8 3, i8 5>, <2 x i8> <i8 1, i8 6>
-; CHECK-NEXT: %res = call <1 x i8> @llvm.genx.GenISA.Int4VectorPack.v1i8.v2i8(<2 x i8> %3)
-; CHECK-NEXT: store <1 x i8> %res, ptr %ptr, align 1
-; CHECK-NEXT: ret void
-
 ; A scalar condition selects the whole value, so both operands can stay in the
 ; packed "i4" representation and no pack/unpack is needed.
 
@@ -195,6 +187,14 @@ define spir_func void @test_vector_cond_memory2(<2 x i1> %cond, ptr %ptr, ptr %p
 
 ; A vector condition that is itself promoted to <N x i8> has to be truncated
 ; back to <N x i1>, there is no zext to peel off in this case.
+
+; CHECK-LABEL: define spir_func void @test_vector_cond_from_memory(ptr %cptr, ptr %ptr)
+; CHECK-NEXT: %1 = load <2 x i8>, ptr %cptr, align 1
+; CHECK-NEXT: %2 = trunc <2 x i8> %1 to <2 x i1>
+; CHECK-NEXT: %3 = select <2 x i1> %2, <2 x i8> <i8 3, i8 5>, <2 x i8> <i8 1, i8 6>
+; CHECK-NEXT: %res = call <1 x i8> @llvm.genx.GenISA.Int4VectorPack.v1i8.v2i8(<2 x i8> %3)
+; CHECK-NEXT: store <1 x i8> %res, ptr %ptr, align 1
+; CHECK-NEXT: ret void
 define spir_func void @test_vector_cond_from_memory(ptr %cptr, ptr %ptr) {
   %cond = load <2 x i1>, ptr %cptr, align 1
   %res = select <2 x i1> %cond, <2 x i4> <i4 3, i4 5>, <2 x i4> <i4 1, i4 6>
