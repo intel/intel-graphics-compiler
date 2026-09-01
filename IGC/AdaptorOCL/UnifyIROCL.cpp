@@ -131,6 +131,7 @@ SPDX-License-Identifier: MIT
 #include "preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
 #include "preprocess_spvir/ConvertSPIRVExecutionModes.h"
 #include "preprocess_spvir/PromoteSubByte.h"
+#include "AdaptorCommon/FreezeOutOfRangeShifts.h"
 #include "preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.h"
 #include "LowerInvokeSIMD.hpp"
 #include "ResolveConstExprCalls.h"
@@ -308,6 +309,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
 
   IGC_ADD_PASS_AUTO(npmSPIR, lpmSPIR, PreprocessSPVIR);
   IGC_ADD_PASS_AUTO(npmSPIR, lpmSPIR, PromoteSubByte);
+  IGC_ADD_PASS(npmSPIR, lpmSPIR, FreezeOutOfRangeShiftsNPM(), createFreezeOutOfRangeShiftsPass());
   IGC_ADD_PASS(npmSPIR, lpmSPIR, TypesLegalizationPassNPM(), new TypesLegalizationPassLPM());
   IGC_ADD_PASS_AUTO(npmSPIR, lpmSPIR, SPIRMetaDataTranslation);
   IGC_ADD_PASS_AUTO(npmSPIR, lpmSPIR, ConvertUserSemanticDecoratorOnFunctions);

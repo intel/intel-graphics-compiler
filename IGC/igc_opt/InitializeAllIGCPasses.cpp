@@ -56,6 +56,7 @@ void initializeCloneAddressArithmeticPass(llvm::PassRegistry &);
 void initializeShrinkArrayAllocaPassPass(llvm::PassRegistry &);
 void initializeIndirectCallOptimizationPass(llvm::PassRegistry &);
 void initializeFreezeIntDivLPMPass(llvm::PassRegistry &);
+void initializeFreezeOutOfRangeShiftsLPMPass(llvm::PassRegistry &);
 void initializeEvaluateFreezePass(llvm::PassRegistry &);
 void initializeGenerateFrequencyDataPass(llvm::PassRegistry &);
 void initializeEmitPassPass(llvm::PassRegistry &);
@@ -337,6 +338,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeMinimumValidAddressCheckingLPMPass(Registry);
   initializeDynamicRayManagementPassPass(Registry);
   IGC::initializeFreezeIntDivLPMPass(Registry);
+  IGC::initializeFreezeOutOfRangeShiftsLPMPass(Registry);
   IGC::initializeEvaluateFreezePass(Registry);
   IGC::initializeGenerateFrequencyDataPass(Registry);
   IGC::initializeEmitPassPass(Registry);
