@@ -578,6 +578,7 @@ void PromoteInt8Type::promoteInstructions() {
         case Instruction::PtrToInt:
         case Instruction::Load:
         case Instruction::Trunc:
+        case Instruction::ExtractValue:
         case Instruction::Call: {
           newVal = createSI16Value(Inst);
           isDead = false;
@@ -625,6 +626,7 @@ void PromoteInt8Type::promoteInstructions() {
         }
         default:
           IGC_ASSERT_MESSAGE(0, "Unexpected inst of i8");
+          return;
         } // Switch
       }
 

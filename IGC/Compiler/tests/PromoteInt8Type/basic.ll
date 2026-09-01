@@ -1,13 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify --igc-promoteint8type -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -enable-debugify --igc-promoteint8type -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; PromoteInt8Type : Instructions
 ; ------------------------------------------------
@@ -164,15 +163,19 @@ define i1 @test_icmp(i8 %src1, i8 %src2) {
   ret i1 %1
 }
 
-define i8 @test_ptrtoint(i8* %src) {
-; CHECK-LABEL: @test_ptrtoint(
-; CHECK:    [[P2B:%.*]] = ptrtoint i8* %src to i8
-; CHECK:    [[B2S:%.*]] = sext i8 [[P2B]] to i16
-; CHECK:    [[AND:%.*]] = and i16 [[B2S]], 7
-; CHECK:    [[TRUNC:%.*]] = trunc i16 [[AND]] to i8
-; CHECK:    ret i8 [[TRUNC]]
+%struct.S = type { i8, i32 }
 
-  %1 = ptrtoint i8* %src to i8
-  %2 = and i8 %1, 7
-  ret i8 %2
+define %struct.S @test_extract_insert_value(%struct.S %src1) {
+; CHECK-LABEL: @test_extract_insert_value(
+; CHECK:    [[EV:%.*]] = extractvalue %struct.S %src1, 0
+; CHECK:    [[B2S:%.*]] = sext i8 [[EV]] to i16
+; CHECK:    [[AND:%.*]] = and i16 [[B2S]], 1
+; CHECK:    [[TRUNC:%.*]] = trunc i16 [[AND]] to i8
+; CHECK:    [[IV:%.*]] = insertvalue %struct.S %src1, i8 [[TRUNC]], 0
+; CHECK:    ret %struct.S [[IV]]
+
+  %1 = extractvalue %struct.S %src1, 0
+  %2 = and i8 %1, 1
+  %3 = insertvalue %struct.S %src1, i8 %2, 0
+  ret %struct.S %3
 }
