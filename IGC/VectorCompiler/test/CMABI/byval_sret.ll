@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm_11_or_less
 ; COM: default behavior: structure is passed by value if possible + size is less then threshold (see vc-max-cmabi-byval-size option).
 ; COM: all structures of the test are supposed to be less then this threshold.
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABILegacy -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=SMALL-ON,SMALL-ON-TYPED-PTRS,BIG-ON,BIG-ON-TYPED-PTRS,COMMON,COMMON-TYPED-PTRS

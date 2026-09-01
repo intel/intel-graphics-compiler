@@ -174,11 +174,6 @@ if llvm_ver >= 17:
 else:
   config.substitutions.append(('%use_old_pass_manager%', '-enable-new-pm=0'))
 
-if llvm_ver < 12:
-  config.available_features.add('llvm_11_or_less')
-else:
-  config.available_features.add('llvm_12_or_greater')
-
 if llvm_ver >= 15:
   config.available_features.add('llvm_15_or_greater')
 

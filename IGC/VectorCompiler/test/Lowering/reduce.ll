@@ -8,7 +8,6 @@
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown -S < %s | FileCheck --check-prefixes=SIMD16,CHECK %s
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck --check-prefixes=SIMD32,CHECK %s
-; REQUIRES: llvm_12_or_greater
 
 declare i32 @llvm.vector.reduce.add.v96i32(<96 x i32>)
 declare i32 @llvm.vector.reduce.mul.v96i32(<96 x i32>)

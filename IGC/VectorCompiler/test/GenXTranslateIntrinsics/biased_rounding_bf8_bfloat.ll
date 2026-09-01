@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm_12_or_greater
 ; RUN: %opt %use_old_pass_manager% -GenXTranslateIntrinsics -march=genx64 -mcpu=Xe3P -mtriple=spir64-unknown-unknown  -S < %s | FileCheck %s
 ; RUN: %opt_new_pm_typed -passes=GenXTranslateIntrinsics -march=genx64 -mcpu=Xe3P -mtriple=spir64-unknown-unknown  -S < %s | FileCheck %s
 

@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm_12_or_greater
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare <128 x i16> @llvm.genx.dpas.v128i16.v128i32.v64i32(<128 x i16>, <128 x i32>, <64 x i32>, i32)

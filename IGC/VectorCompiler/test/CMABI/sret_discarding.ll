@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm_11_or_less
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABILegacy -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK-TYPED-PTRS
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMABILegacy -march=genx64 -mcpu=XeHPG -S < %s | FileCheck %s --check-prefixes=CHECK-OPAQUE-PTRS
 

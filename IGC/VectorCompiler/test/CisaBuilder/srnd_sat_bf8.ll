@@ -8,7 +8,6 @@
 
 ; COM: ;;;;;;;;;; RUNNERS ;;;;;;;;;;
 
-; REQUIRES: llvm_12_or_greater
 ; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Xe3P -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
 ; RUN: | FileCheck %s
 ; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Xe3P -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
