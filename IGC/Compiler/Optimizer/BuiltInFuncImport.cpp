@@ -593,6 +593,44 @@ void BIImport::addOCLObjectCastFunctionDefinitions(llvm::Module &M) {
   }
 }
 
+// A SPIR-V module may declare a size_t BuiltIn narrower than BiFModule defines it (e.g.
+// LocalInvocationId as OpTypeVector %uint 3 under Physical64). Itanium mangling omits the return
+// type, so linking BiF silently replaces the i32 declaration with the i64 definition, leaving
+// calls whose FunctionType disagrees with their callee. getCalledFunction() type-checks and
+// returns null for such calls, so they read as indirect: the builtin's implicit arguments
+// (LOCAL_ID_X/Y/Z) are never propagated to the kernel and AddImplicitArgs installs a null call
+// operand (SIGSEGV), or, for builtins needing no implicit argument (WorkgroupId, GlobalOffset),
+// the i64 results are legalized and bitcast back into narrow lanes and silently miscompiled.
+// Rebuild such calls against the linked-in definition and convert the result back to the declared
+// width; every builtin reachable here is an unsigned id or size, so zext is correct on widening.
+// Only integer return types are repaired here. Parameter mismatches remain with
+// removeFunctionBitcasts(), whose clone-the-body strategy cannot express a return-type change
+// (it would put `ret i64` inside a function declared to return i32).
+static void fixCallsWithMismatchedReturnType(Module &M) {
+  for (Function &F : M)
+    for (Instruction &I : make_early_inc_range(instructions(F))) {
+      CallInst *call = dyn_cast<CallInst>(&I);
+      // A non-null getCalledFunction() means the call already agrees with its callee.
+      if (!call || call->getCalledFunction())
+        continue;
+      Function *callee = dyn_cast<Function>(IGCLLVM::getCalledValue(call)->stripPointerCasts());
+      // Only calls to a linked-in definition can be repaired: genuinely indirect calls cannot,
+      // and against a bare declaration the call site is just as authoritative.
+      if (!callee || callee->isDeclaration() || callee->isVarArg() ||
+          call->getFunctionType()->params() != callee->getFunctionType()->params() ||
+          !call->getType()->isIntegerTy() || !callee->getReturnType()->isIntegerTy())
+        continue;
+      IRBuilder<> builder(call);
+      CallInst *newCall = builder.CreateCall(callee, SmallVector<Value *, 4>(call->args()));
+      newCall->setCallingConv(call->getCallingConv());
+      // The old return attributes describe the old return type, so they must not be carried over.
+      newCall->setAttributes(
+          call->getAttributes().removeAttributesAtIndex(M.getContext(), AttributeList::ReturnIndex));
+      call->replaceAllUsesWith(builder.CreateZExtOrTrunc(newCall, call->getType()));
+      call->eraseFromParent();
+    }
+}
+
 bool BIImport::run(Module &M, CodeGenContext *Ctx, IGC::IGCMD::MetaDataUtils *MdUtils) {
   fixSPIRFunctionsReturnType(M);
 
@@ -636,6 +674,7 @@ bool BIImport::run(Module &M, CodeGenContext *Ctx, IGC::IGCMD::MetaDataUtils *Md
 #endif // BIF_LINK_BC
 
   InitializeBIFlags(M);
+  fixCallsWithMismatchedReturnType(M);
   removeFunctionBitcasts(M);
   fixInvalidBitcasts(M);
   addOCLObjectCastFunctionDefinitions(M);

@@ -1,0 +1,49 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; The reporter's original form of the narrow-BuiltIn crash: a 32-bit LocalInvocationId feeding
+; OpSubgroupShuffleINTEL in a kernel with a required sub-group size. Neither the shuffle nor the
+; OpCompositeExtract is needed to trigger the crash (see BuiltInLocalInvocationId_32bit.spvasm), but
+; this form is kept because it pulls in a different set of implicit arguments and because it is what
+; was reported.
+
+; REQUIRES: spirv-as, dg2-supported
+
+; RUN: spirv-as --target-env spv1.1 -o %t.spv %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options "-cl-std=CL2.0" 2>&1 | FileCheck %s
+
+; CHECK-NOT: error
+; CHECK: Build succeeded.
+
+               OpCapability Addresses
+               OpCapability Kernel
+               OpCapability SubgroupShuffleINTEL
+               OpCapability SubgroupDispatch
+               OpExtension "SPV_INTEL_subgroups"
+          %1 = OpExtInstImport "OpenCL.std"
+               OpMemoryModel Physical64 OpenCL
+               OpEntryPoint Kernel %main "test_shuffle_local_id_v3uint" %gid
+               OpExecutionMode %main SubgroupSize 32
+               OpDecorate %gid BuiltIn LocalInvocationId
+       %uint = OpTypeInt 32 0
+       %void = OpTypeVoid
+     %v3uint = OpTypeVector %uint 3
+    %ptr_inv = OpTypePointer Input %v3uint
+    %ptr_gbl = OpTypePointer CrossWorkgroup %uint
+         %ft = OpTypeFunction %void %ptr_gbl
+        %gid = OpVariable %ptr_inv Input
+     %uint_0 = OpConstant %uint 0
+       %main = OpFunction %void None %ft
+        %out = OpFunctionParameter %ptr_gbl
+      %entry = OpLabel
+       %tid3 = OpLoad %v3uint %gid
+        %tid = OpCompositeExtract %uint %tid3 0
+         %s1 = OpSubgroupShuffleINTEL %uint %tid %uint_0
+               OpStore %out %s1
+               OpReturn
+               OpFunctionEnd
