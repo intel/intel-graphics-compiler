@@ -1234,11 +1234,11 @@ public:
       VISA_RawOpnd *pairedSurface, VISA_RawOpnd *dst, int numMsgSpecificOpnds,
       VISA_RawOpnd **opndArray) = 0;
 
-  VISA_BUILDER_API virtual int
-  AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, VISA_EMask_Ctrl emask,
-                   VISA_Exec_Size executionSize, VISAChannelMask srcChannel,
-                   VISA_StateOpndHandle *surface, unsigned int surfaceIndex,
-                   VISA_RawOpnd *lod, VISA_RawOpnd *dst) = 0;
+  VISA_BUILDER_API virtual int AppendVISA3dInfo(
+      VISASampler3DSubOpCode subOpcode, VISA_PredOpnd* pred, VISA_EMask_Ctrl emask,
+      VISA_Exec_Size executionSize, VISAChannelMask srcChannel,
+      VISA_StateOpndHandle* surface, unsigned int surfaceIndex,
+      VISA_RawOpnd* lod, VISA_RawOpnd* dst) = 0;
 
   VISA_BUILDER_API virtual int AppendVISA3dRTWrite(
       VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,

@@ -2202,23 +2202,23 @@ public:
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
   // members related to 3D and sampler ops are in VisaToG4/TranslateSend3D.cpp
-  int translateVISASampleInfoInst(VISA_Exec_Size executionSize,
+  int translateVISASampleInfoInst(G4_Predicate *pred, VISA_Exec_Size executionSize,
                                   VISA_EMask_Ctrl emask, ChannelMask chMask,
                                   G4_Operand *surface, G4_DstRegRegion *dst);
 
-  int translateVISASampleInfoUnified(VISA_Exec_Size executionSize,
+  int translateVISASampleInfoUnified(G4_Predicate* pred, VISA_Exec_Size executionSize,
                                      VISA_EMask_Ctrl emask, ChannelMask chMask,
                                      G4_Operand* surfaceBase, unsigned int surfaceIdx,
                                      G4_DstRegRegion* dst);
 
-  int translateVISAResInfoInstUnified(VISA_Exec_Size executionSize,
+  int translateVISAResInfoInstUnified(G4_Predicate *pred, VISA_Exec_Size executionSize,
                                       VISA_EMask_Ctrl emask, ChannelMask chMask,
                                       G4_Operand *surfaceBase,
                                       unsigned int surfaceIdx,
                                       G4_SrcRegRegion *lod,
                                       G4_DstRegRegion *dst);
   int translateVISASampleCacheFlushInstUnified();
-  int translateVISAResInfoInst(VISA_Exec_Size executionSize,
+  int translateVISAResInfoInst(G4_Predicate *pred, VISA_Exec_Size executionSize,
                                VISA_EMask_Ctrl emask, ChannelMask chMask,
                                G4_Operand *surface, G4_SrcRegRegion *lod,
                                G4_DstRegRegion *dst);

@@ -5802,6 +5802,7 @@ int VISAKernelImpl::AppendVISA3dGather4(
 }
 
 int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode,
+                                     VISA_PredOpnd *pred,
                                      VISA_EMask_Ctrl emask,
                                      VISA_Exec_Size executionSize,
                                      VISAChannelMask srcChannels,
@@ -5817,6 +5818,7 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode,
   if (IS_GEN_BOTH_PATH) {
     CreateGenRawDstOperand(dst);
     G4_SrcRegRegion *lodg4 = NULL;
+    G4_Predicate* g4Pred = (pred != NULL) ? pred->g4opnd->asPredicate() : NULL;
     if (subOpcode == VISA_3D_RESINFO) {
       CreateGenRawSrcOperand(lod);
       lodg4 = lod->g4opnd->asSrcRegRegion();
@@ -5824,11 +5826,11 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode,
         vISA_ASSERT_INPUT(surface->opnd_type == CISA_OPND_VECTOR,
                           "surface must be vector operand");
         status = m_builder->translateVISAResInfoInstUnified(
-            executionSize, emask, channels, surface->g4opnd, surfaceIndex,
+            g4Pred, executionSize, emask, channels, surface->g4opnd, surfaceIndex,
             lodg4, dst->g4opnd->asDstRegRegion());
       } else {
         status = m_builder->translateVISAResInfoInst(
-            executionSize, emask, channels, surface->g4opnd, lodg4,
+            g4Pred, executionSize, emask, channels, surface->g4opnd, lodg4,
             dst->g4opnd->asDstRegRegion());
       }
     } else {
@@ -5836,11 +5838,11 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode,
         vISA_ASSERT_INPUT(surface->opnd_type == CISA_OPND_VECTOR,
                           "surface must be vector operand");
         status = m_builder->translateVISASampleInfoUnified(
-            executionSize, emask, channels, surface->g4opnd, surfaceIndex,
+            g4Pred, executionSize, emask, channels, surface->g4opnd, surfaceIndex,
             dst->g4opnd->asDstRegRegion());
       } else {
         status = m_builder->translateVISASampleInfoInst(
-            executionSize, emask, channels, surface->g4opnd,
+            g4Pred, executionSize, emask, channels, surface->g4opnd,
             dst->g4opnd->asDstRegRegion());
       }
     }
@@ -5857,13 +5859,14 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode,
     *inst_desc = CISA_INST_table[opcode];
     VISA_opnd *opnd[30];
     int num_pred_desc_operands = 0;
-    GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc);
     int num_operands = 0;
-
     // subOP
     ADD_OPND(num_operands, opnd,
              CreateOtherOpndHelper(num_pred_desc_operands, num_operands,
                                    inst_desc, subOpcode));
+
+    GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc);
+
     // channel
     ADD_OPND(num_operands, opnd,
              CreateOtherOpndHelper(num_pred_desc_operands, num_operands,
@@ -5891,10 +5894,12 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode,
     unsigned char size = executionSize;
     size += emask << 4;
 
-    num_pred_desc_operands = 1;
     inst_desc->opnd_num = num_pred_desc_operands + num_operands;
 
-    inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(),
+    PredicateOpnd predOpnd =
+        pred ? pred->convertToPred() : PredicateOpnd::getNullPred();
+
+    inst->createCisaInstruction(opcode, size, 0, predOpnd,
                                 opnd, num_operands, inst_desc);
     addInstructionToEnd(inst);
   }

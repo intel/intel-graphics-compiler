@@ -187,7 +187,8 @@ uint32_t IR_Builder::createSamplerMsgDesc(VISASampler3DSubOpCode samplerOp,
   return fc;
 }
 
-int IR_Builder::translateVISASampleInfoInst(VISA_Exec_Size executionSize,
+int IR_Builder::translateVISASampleInfoInst(G4_Predicate *pred,
+                                            VISA_Exec_Size executionSize,
                                             VISA_EMask_Ctrl emask,
                                             ChannelMask chMask,
                                             G4_Operand *surface,
@@ -272,11 +273,11 @@ int IR_Builder::translateVISASampleInfoInst(VISA_Exec_Size executionSize,
                                        : chMask.getNumEnabledChannels() * 2);
 
   if (forceSplitSend) {
-    createSplitSendInst(NULL, dst, m0, numRows, createNullSrc(Type_UD), 0,
+    createSplitSendInst(pred, dst, m0, numRows, createNullSrc(Type_UD), 0,
                         retSize, execSize, fc, SFID::SAMPLER, useHeader,
                         SendAccess::READ_ONLY, surface, NULL, instOpt, false);
   } else {
-    createSendInst(NULL, dst, m0, numRows, retSize, execSize, fc, SFID::SAMPLER,
+    createSendInst(pred, dst, m0, numRows, retSize, execSize, fc, SFID::SAMPLER,
                    useHeader, SendAccess::READ_ONLY, surface, NULL, instOpt,
                    false);
   }
@@ -285,8 +286,9 @@ int IR_Builder::translateVISASampleInfoInst(VISA_Exec_Size executionSize,
 }
 
 int IR_Builder::translateVISAResInfoInst(
-    VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask, ChannelMask chMask,
-    G4_Operand *surface, G4_SrcRegRegion *lod, G4_DstRegRegion *dst) {
+    G4_Predicate *pred, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
+    ChannelMask chMask, G4_Operand *surface, G4_SrcRegRegion *lod,
+    G4_DstRegRegion *dst) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize execSize{Get_VISA_Exec_Size(executionSize)};
@@ -404,12 +406,12 @@ int IR_Builder::translateVISAResInfoInst(
       src0Size = numRows;
       src1Size = 0;
     }
-    createSplitSendInst(NULL, dst, m0, src0Size, m1, src1Size, returnLength,
+    createSplitSendInst(pred, dst, m0, src0Size, m1, src1Size, returnLength,
                         execSize, fc, SFID::SAMPLER, useHeader,
                         SendAccess::READ_ONLY, surface, NULL, instOpt, false);
   } else {
     G4_SrcRegRegion *m = createSrcRegRegion(msg, getRegionStride1());
-    createSendInst(NULL, dst, m, numRows, returnLength, execSize, fc,
+    createSendInst(pred, dst, m, numRows, returnLength, execSize, fc,
                    SFID::SAMPLER, useHeader, SendAccess::READ_ONLY, surface,
                    NULL, instOpt, false);
   }
@@ -2657,8 +2659,9 @@ int IR_Builder::translateVISAGather3DInstUnified(
 }
 
 int IR_Builder::translateVISASampleInfoUnified(
-    VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask, ChannelMask chMask,
-    G4_Operand *surfaceBase, unsigned int surfaceIdx, G4_DstRegRegion *dst) {
+    G4_Predicate *pred, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
+    ChannelMask chMask, G4_Operand *surfaceBase, unsigned int surfaceIdx,
+    G4_DstRegRegion *dst) {
 
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
@@ -2703,7 +2706,7 @@ int IR_Builder::translateVISASampleInfoUnified(
   auto ind0 = setupIndirectDescriptor(surfaceBase);
 
   // create send instruction
-  createSamplerSendgInst(nullptr, // pred
+  createSamplerSendgInst(pred,
                          dst, src0, createNullSrc(Type_UD), execSize, msgDesc,
                          instOpt, ind0, nullptr, false);
 
@@ -2711,9 +2714,9 @@ int IR_Builder::translateVISASampleInfoUnified(
 }
 
 int IR_Builder::translateVISAResInfoInstUnified(
-  VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask, ChannelMask chMask,
-  G4_Operand* surfaceBase, unsigned int surfaceIdx, G4_SrcRegRegion* lod,
-  G4_DstRegRegion* dst) {
+  G4_Predicate* pred, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
+  ChannelMask chMask, G4_Operand* surfaceBase, unsigned int surfaceIdx,
+  G4_SrcRegRegion* lod, G4_DstRegRegion* dst) {
 
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
@@ -2756,7 +2759,7 @@ int IR_Builder::translateVISAResInfoInstUnified(
 
   // create send instruction
   createSamplerSendgInst(
-    nullptr, // predicate
+    pred, // predicate
     dst,
     msgs[0], // lod
     createNullSrc(Type_UD),

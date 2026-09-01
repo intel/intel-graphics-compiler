@@ -2351,8 +2351,9 @@ void CEncoder::Info(EOPCODE subOpcode, uint writeMask, const ResourceDescriptor 
         LSC_ADDR_SIZE_32b, dataShape, GetVISALSCSurfaceOpnd(resource.m_surfaceType, resource.m_resource), surfaceIndex,
         dstVar, dummyZero, 0, nullptr, 0, nullptr, 0, nullptr, nullptr, nullptr, false /*msaa*/));
   } else {
-    V(vKernel->AppendVISA3dInfo(ConvertSubOpcode(subOpcode, false), GetAluEMask(dst), GetAluExecSize(dst),
-                                ConvertChannelMaskToVisaType(writeMask), surfOpnd, surfaceIndex, lodVar, dstVar));
+    V(vKernel->AppendVISA3dInfo(ConvertSubOpcode(subOpcode, false), GetFlagOperand(m_encoderState.m_flag),
+                                GetAluEMask(dst), GetAluExecSize(dst), ConvertChannelMaskToVisaType(writeMask),
+                                surfOpnd, surfaceIndex, lodVar, dstVar));
   }
 }
 

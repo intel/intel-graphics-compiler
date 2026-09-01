@@ -847,7 +847,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask) {
           createSrcRegRegion(zeroLOD, getRegionStride1());
       G4_DstRegRegion *sendDst = createDstRegRegion(zeroLOD, 1);
       ChannelMask maskR = ChannelMask::createFromAPI(CHANNEL_MASK_R);
-      translateVISAResInfoInst(EXEC_SIZE_8, vISA_EMASK_M1, maskR, surface,
+      translateVISAResInfoInst(nullptr, EXEC_SIZE_8, vISA_EMASK_M1, maskR, surface,
                                sendSrc, sendDst);
     } else if (supportsLSC()) {
       // translate legacy fence into the LSC fence

@@ -472,7 +472,7 @@ bool hasPredicate(ISA_Opcode op) {
             op == ISA_SCATTER_SCALED || op == ISA_SCATTER4_SCALED ||
             op == ISA_SCATTER4_TYPED || op == ISA_RAW_SEND ||
             op == ISA_RAW_SENDS || op == ISA_3D_SAMPLE || op == ISA_3D_LOAD ||
-            op == ISA_3D_GATHER4 || op == ISA_3D_RT_WRITE ||
+            op == ISA_3D_INFO || op == ISA_3D_GATHER4 || op == ISA_3D_RT_WRITE ||
             op == ISA_3D_URB_WRITE || op == ISA_3D_TYPED_ATOMIC ||
             op == ISA_QW_GATHER || op == ISA_QW_SCATTER
             || op == ISA_RAW_SENDG);

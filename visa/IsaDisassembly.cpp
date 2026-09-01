@@ -1537,7 +1537,7 @@ printInstructionSampler(const print_format_provider_t *header,
   ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
   if (opcode == ISA_3D_SAMPLE || opcode == ISA_3D_LOAD ||
-      opcode == ISA_3D_GATHER4) {
+      opcode == ISA_3D_GATHER4 || opcode == ISA_3D_INFO) {
     sstr << printPredicate(inst->opcode, inst->pred);
   }
 

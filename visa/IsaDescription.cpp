@@ -2107,11 +2107,12 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         ISA_3D_INFO,
         ISA_Inst_Sampler,
         "3d_info",
-        6,
+        7,
         0,
         {
             {OPND_OTHER, ISA_TYPE_UW, 0}, /// subOpcode
             {OPND_EXECSIZE, ISA_TYPE_UB, 0},
+            {OPND_PRED, ISA_TYPE_UW, 0},
             {OPND_OTHER, ISA_TYPE_UB, 0},
             {OPND_SURFACE, ISA_TYPE_UB, 0}, /// Surface
             {OPND_OTHER, ISA_TYPE_UD, 0},   /// reserved
