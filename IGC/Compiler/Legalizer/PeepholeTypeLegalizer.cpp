@@ -446,7 +446,64 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
     Value *NewLargeResVecForm =
         UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
 
+    Type *ChunkTy = llvm::Type::getIntNTy(I.getContext(), promoteToInt);
+
+    // extractelement of a bitcast constant leaves a constant expression still
+    // carrying the illegal type, so slice constants by hand.
+    auto getChunk = [&](Value *Wide, Value *VecForm, unsigned Idx) -> Value * {
+      if (auto *CI = dyn_cast<ConstantInt>(Wide))
+        return ConstantInt::get(ChunkTy, CI->getValue().extractBits(promoteToInt, Idx * promoteToInt));
+      return m_builder->CreateExtractElement(VecForm, Idx);
+    };
+
+    if (auto *Cmp = dyn_cast<ICmpInst>(&I)) {
+      Value *CmpWide1 = NewLargeSrc1, *CmpWide2 = NewLargeSrc2;
+      Value *CmpSrc1VecForm = NewLargeSrc1VecForm, *CmpSrc2VecForm = NewLargeSrc2VecForm;
+      if (Cmp->isSigned() && Src1width < promoteToInt * quotient) {
+        // NewLargeSrc1/2 are zext, so the sign bit is not in the top chunk.
+        Type *WideTy = Type::getIntNTy(I.getContext(), promoteToInt * quotient);
+        Type *VecTy = IGCLLVM::FixedVectorType::get(ChunkTy, quotient);
+        CmpWide1 = m_builder->CreateSExt(Src1, WideTy);
+        CmpWide2 = m_builder->CreateSExt(Src2, WideTy);
+        CmpSrc1VecForm = m_builder->CreateBitCast(CmpWide1, VecTy);
+        CmpSrc2VecForm = m_builder->CreateBitCast(CmpWide2, VecTy);
+      }
+
+      CmpInst::Predicate Pred = Cmp->getPredicate();
+      Value *Res = nullptr;
+      if (Pred == CmpInst::ICMP_EQ || Pred == CmpInst::ICMP_NE) {
+        for (unsigned Idx = 0; Idx < quotient; Idx++) {
+          Value *C = m_builder->CreateICmp(Pred, getChunk(CmpWide1, CmpSrc1VecForm, Idx),
+                                           getChunk(CmpWide2, CmpSrc2VecForm, Idx));
+          Res = !Res ? C : Pred == CmpInst::ICMP_EQ ? m_builder->CreateAnd(Res, C) : m_builder->CreateOr(Res, C);
+        }
+      } else {
+        // Lexicographic compare. Chunks above the first use the strict predicate
+        // so an equal chunk falls through to the one below; only the top chunk
+        // is signed.
+        bool IsLess = Pred == CmpInst::ICMP_ULT || Pred == CmpInst::ICMP_ULE || Pred == CmpInst::ICMP_SLT ||
+                      Pred == CmpInst::ICMP_SLE;
+        CmpInst::Predicate UStrict = IsLess ? CmpInst::ICMP_ULT : CmpInst::ICMP_UGT;
+        CmpInst::Predicate TopStrict = Cmp->isSigned() ? (IsLess ? CmpInst::ICMP_SLT : CmpInst::ICMP_SGT) : UStrict;
+
+        Res = m_builder->CreateICmp(ICmpInst::getUnsignedPredicate(Pred), getChunk(CmpWide1, CmpSrc1VecForm, 0),
+                                    getChunk(CmpWide2, CmpSrc2VecForm, 0));
+        for (unsigned Idx = 1; Idx < quotient; Idx++) {
+          Value *A = getChunk(CmpWide1, CmpSrc1VecForm, Idx);
+          Value *B = getChunk(CmpWide2, CmpSrc2VecForm, Idx);
+          Value *Hi = m_builder->CreateICmp(Idx + 1 == quotient ? TopStrict : UStrict, A, B);
+          Res = m_builder->CreateOr(Hi, m_builder->CreateAnd(m_builder->CreateICmpEQ(A, B), Res));
+        }
+      }
+
+      I.replaceAllUsesWith(Res);
+      I.eraseFromParent();
+      Changed = true;
+      return;
+    }
+
     SmallVector<Value *, 4> MulResult;
+    Value *AddCarry = nullptr;
 
     bool instSupported = true;
     for (unsigned Idx = 0; Idx < quotient; Idx++) {
@@ -548,7 +605,6 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
       }
       case Instruction::Mul: {
         auto computeMulResult = [&]() -> SmallVector<Value *, 4> {
-          Type *ChunkTy = llvm::Type::getIntNTy(I.getContext(), promoteToInt);
           Function *MulHFunc = llvm::GenISAIntrinsic::getDeclaration(
               m_builder->GetInsertBlock()->getParent()->getParent(), llvm::GenISAIntrinsic::GenISA_umulH, ChunkTy);
           Value *Zero = ConstantInt::get(ChunkTy, 0);
@@ -601,14 +657,20 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
         NewInst = MulResult[Idx];
         break;
       }
-      case Instruction::Add:
-        instSupported = false;
-        IGC_ASSERT_MESSAGE(0, "Add Instruction seen with 'large' illegal int type. Legalization support missing.");
+      case Instruction::Add: {
+        Value *A = getChunk(NewLargeSrc1, NewLargeSrc1VecForm, Idx);
+        Value *B = getChunk(NewLargeSrc2, NewLargeSrc2VecForm, Idx);
+        Value *Sum = m_builder->CreateAdd(A, B);
+        Value *CarryOut = m_builder->CreateICmpULT(Sum, A);
+        if (AddCarry) {
+          Value *SumIn = Sum;
+          Sum = m_builder->CreateAdd(SumIn, AddCarry);
+          CarryOut = m_builder->CreateOr(CarryOut, m_builder->CreateICmpULT(Sum, SumIn));
+        }
+        AddCarry = m_builder->CreateZExt(CarryOut, ChunkTy);
+        NewInst = Sum;
         break;
-      case Instruction::ICmp:
-        instSupported = false;
-        IGC_ASSERT_MESSAGE(0, "ICmp Instruction seen with 'large' illegal int type. Legalization support missing.");
-        break;
+      }
       case Instruction::Select:
         instSupported = false;
         IGC_ASSERT_MESSAGE(0, "Select Instruction seen with 'large' illegal int type. Legalization support missing.");

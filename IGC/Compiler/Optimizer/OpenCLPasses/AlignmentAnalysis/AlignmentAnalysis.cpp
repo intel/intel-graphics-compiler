@@ -268,7 +268,9 @@ Align AlignmentAnalysis::getAlignValue(Value *V) const {
     return iter->second;
   } else if (dyn_cast<Constant>(V)) {
     if (ConstantInt *constInt = dyn_cast<ConstantInt>(V)) {
-      return getConstantAlignment(constInt->getZExtValue());
+      // Only the low 64 bits carry the trailing-zero count; an all-zero low word
+      // saturates to the maximum, which getConstantAlignment(0) already returns.
+      return getConstantAlignment(constInt->getValue().zextOrTrunc(64).getZExtValue());
     } else if (GlobalVariable *GV = dyn_cast<GlobalVariable>(V)) {
       Align align = GV->getAlign().valueOrOne();
 
