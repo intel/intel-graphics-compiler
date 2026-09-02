@@ -742,7 +742,7 @@ DECLARE_IGC_REGKEY(bool, EnableWaveShuffleIndexSinking, true,
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, WaveShuffleIndexSinkingMaxIterations, 3,
                    "Max number of iterations to run iterative WaveShuffleIndexSinking", DEBUG_ONLY)
-DECLARE_IGC_REGKEY(bool, EnableWaveAllJointReduction, true, "Enable Joint Reduction Optimization.", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, EnableWaveAllJointReduction, false, "Enable Joint Reduction Optimization.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnablePromoteToPredicatedMemoryAccess, false, "Enable predicated load/store if conversion.",
                    ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableBranchToSelect, true,

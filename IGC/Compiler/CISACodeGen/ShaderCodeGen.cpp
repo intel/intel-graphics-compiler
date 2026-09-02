@@ -1886,6 +1886,10 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
     mpm.add(llvm::createDeadCodeEliminationPass());
 
+    if (IGC_IS_FLAG_ENABLED(EnableWaveAllJointReduction)) {
+      mpm.add(createWaveAllJointReduction());
+    }
+
     if (IGC_IS_FLAG_ENABLED(EnableIntDivRemCombine)) {
       // simplify rem if the quotient is availble
       //
@@ -1945,10 +1949,6 @@ void OptimizeIR(CodeGenContext *const pContext) {
         mpm.add(createScalarizerPass(SelectiveScalarizer::Auto));
       mpm.add(new IGCVectorCoalescer());
       mpm.add(IGCLLVM::createLegacyWrappedADCEPass());
-    }
-
-    if (IGC_IS_FLAG_ENABLED(EnableWaveAllJointReduction)) {
-      mpm.add(createWaveAllJointReduction());
     }
 
 
