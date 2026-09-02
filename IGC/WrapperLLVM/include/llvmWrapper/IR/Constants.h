@@ -13,9 +13,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/TypeSize.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/DataLayout.h"
 #if LLVM_VERSION_MAJOR >= 22
 #include "llvm/Analysis/ConstantFolding.h"
-#include "llvm/IR/DataLayout.h"
 #endif
 #include "IGC/common/LLVMWarningsPop.hpp"
 
@@ -50,6 +50,39 @@ inline llvm::Constant *getUIToFP(llvm::Constant *C, llvm::Type *Ty, bool OnlyIfR
 #else
   llvm::DataLayout DL("");
   return llvm::ConstantFoldCastOperand(llvm::Instruction::UIToFP, C, Ty, DL);
+#endif
+}
+inline llvm::Constant *getShl(llvm::Constant *C1, llvm::Constant *C2, const llvm::DataLayout &DL) {
+#if LLVM_VERSION_MAJOR < 22
+  (void)DL;
+  return llvm::ConstantExpr::getShl(C1, C2);
+#else
+  return llvm::ConstantFoldBinaryOpOperands(llvm::Instruction::Shl, C1, C2, DL);
+#endif
+}
+inline llvm::Constant *getMul(llvm::Constant *C1, llvm::Constant *C2, const llvm::DataLayout &DL) {
+#if LLVM_VERSION_MAJOR < 22
+  (void)DL;
+  return llvm::ConstantExpr::getMul(C1, C2);
+#else
+  return llvm::ConstantFoldBinaryOpOperands(llvm::Instruction::Mul, C1, C2, DL);
+#endif
+}
+inline llvm::Constant *getOr(llvm::Constant *C1, llvm::Constant *C2, const llvm::DataLayout &DL) {
+#if LLVM_VERSION_MAJOR < 22
+  (void)DL;
+  return llvm::ConstantExpr::getOr(C1, C2);
+#else
+  return llvm::ConstantFoldBinaryOpOperands(llvm::Instruction::Or, C1, C2, DL);
+#endif
+}
+inline llvm::Constant *getCompare(unsigned short Predicate, llvm::Constant *C1, llvm::Constant *C2,
+                                  const llvm::DataLayout &DL) {
+#if LLVM_VERSION_MAJOR < 22
+  (void)DL;
+  return llvm::ConstantExpr::getCompare(Predicate, C1, C2);
+#else
+  return llvm::ConstantFoldCompareInstOperands(Predicate, C1, C2, DL);
 #endif
 }
 } // namespace ConstantExpr
