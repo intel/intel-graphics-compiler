@@ -731,6 +731,8 @@ bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
           dstSrcRegs.dstSrcMap[j].opnd->getTopDcl()->setDoNotSpill();
           dstSrcRegs.dstSrcMap[j].opnd->getTopDcl()->setAddressed();
           totalRegs++;
+          if (totalRegs >= src0Size)
+            break;
         }
         replaced = true;
         i += opndSize - 1;
@@ -774,6 +776,8 @@ bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
             dstSrcRegs.dstSrcMap[j].opnd->getTopDcl()->setAddressed();
             srcs[totalRegs] = src;
             totalRegs++;
+            if (totalRegs >= src1Size + src0Size)
+              break;
           }
           replaced = true;
           i += opndSize - 1;
