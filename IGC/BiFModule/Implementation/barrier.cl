@@ -357,7 +357,17 @@ void __global_barrier_atomic()
             atomic_inc(syncVar);
         }
 
-        while (atomic_or(syncVar, 0) != 0) {}
+        // Wait on a plain volatile load, never an atomic read-modify-write
+        // (an RMW poll would contend for the same address the arriving workgroups need
+        // for their atomic_inc, and past a few hundred waiters the arrivals would stop
+        // getting through and the barrier would never complete).
+        // The Device-scope fence invalidates L1 so the load observes those
+        // arrivals; ordering for the data the barrier protects comes from the workgroup
+        // barriers around this block.
+        do
+        {
+            __intel_atomic_work_item_fence(Device, Acquire | CrossWorkgroupMemory);
+        } while (*syncVar != 0);
 
         if (offset) {
             atomic_and(offsetVar, 0);
