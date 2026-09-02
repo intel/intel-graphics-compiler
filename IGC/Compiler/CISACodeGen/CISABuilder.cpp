@@ -4038,6 +4038,12 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     if (uint Val = IGC_GET_FLAG_VALUE(ForceGRFModeUp)) {
       SaveOption(vISA_ForceGRFModeUp, Val);
     }
+    // Widen the GRF-selection spill budget where stepping the GRF config up
+    // would cost HW threads per EU, so an over-estimated register pressure does
+    // not give up occupancy that RA never needed. See IGC-16768.
+    if (IGC_IS_FLAG_SET(VISAOccupancyGRFHoldFactor)) {
+      SaveOption(vISA_OccupancyGRFHoldFactor, (uint32_t)IGC_GET_FLAG_VALUE(VISAOccupancyGRFHoldFactor));
+    }
     bool isGeomShader = (context->type == ShaderType::VERTEX_SHADER) || (context->type == ShaderType::HULL_SHADER) ||
                         (context->type == ShaderType::DOMAIN_SHADER) || (context->type == ShaderType::GEOMETRY_SHADER);
     uint geomGRFModeUp = IGC_GET_FLAG_VALUE(ForceGeomGRFModeUp);
