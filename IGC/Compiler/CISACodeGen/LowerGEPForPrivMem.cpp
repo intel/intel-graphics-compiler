@@ -449,14 +449,24 @@ SOALayoutInfo SOALayoutChecker::getOrGatherInfo() {
   if (LowerGEPForPrivMem::IsVariableSizeAlloca(allocaRef))
     return *pInfo;
 
-  // Don't even look at non-array allocas.
-  // (extractAllocaDim can not handle them anyway, causing a crash)
   llvm::Type *pType = allocaRef.getAllocatedType();
+
+  // A scalable vector has no fixed size, so the size queries below
+  // would be invalid on it.
+  IGC_ASSERT_MESSAGE(pType->isSized(), "alloca of an unsized type");
+  if (isa<ScalableVectorType>(pType)) {
+    return *pInfo;
+  }
+
   // Unfold type wrappers
   while (pType->isStructTy() && pType->getStructNumElements() == 1) {
     pType = pType->getStructElementType(0);
   }
-  if ((!pType->isArrayTy() && !pType->isVectorTy()) || allocaRef.isArrayAllocation())
+  // Allow multi-field struct types when the new-algo is enabled: they are SoA-promoted field by
+  // field, with the byte offset of each access split into SOAPartitionBytes chunks.
+  const bool IsStructForNewAlgo =
+      pType->isStructTy() && newAlgoControl >= 1 && IGC_IS_FLAG_ENABLED(EnableAggressiveSOAPromotion);
+  if ((!pType->isArrayTy() && !pType->isVectorTy() && !IsStructForNewAlgo) || allocaRef.isArrayAllocation())
     return *pInfo;
 
   // Enable transpose for array of struct
@@ -562,6 +572,34 @@ bool SOALayoutChecker::checkStruct(StructType *StTy) {
     Type *ty = StTy->getElementType(ix);
     uint32_t eTyBytes = (uint32_t)pDL->getTypeStoreSize(ty);
     IGC_ASSERT(SOAPartitionBytes >= eTyBytes || ty->isAggregateType());
+    uint32_t ByteOffset = (uint32_t)SL->getElementOffset(ix);
+
+    // Nested struct fields (e.g. float3 = {float,float,float}) are checked recursively
+    // rather than rejected for having a non-power-of-2 total size.  Array fields are
+    // accepted if their total size is partition-aligned.  In both cases the field's byte
+    // offset must itself be partition-aligned.  The actual access patterns (byte-level
+    // GEPs, dynamic indices, etc.) are validated downstream by checkUsers / MismatchDetected.
+    // Scalar and vector fields fall through to the power-of-2 and newAlgoControl==1 guards below.
+    if (newAlgoControl >= 1 && IGC_IS_FLAG_ENABLED(EnableAggressiveSOAPromotion)) {
+      if (ByteOffset % SOAPartitionBytes != 0) {
+        return false;
+      }
+      if (ty->isStructTy()) {
+        if (!checkStruct(cast<StructType>(ty))) {
+          return false;
+        }
+        continue;
+      }
+      if (ty->isArrayTy()) {
+        // Array: allow if size is a multiple of partition size.
+        if (eTyBytes % SOAPartitionBytes != 0) {
+          return false;
+        }
+        continue;
+      }
+      // Scalar / vector field: must be power-of-2 and partition-aligned (existing check).
+    }
+
     if (!isPowerOf2_32(eTyBytes))
       return false;
 
@@ -571,15 +609,8 @@ bool SOALayoutChecker::checkStruct(StructType *StTy) {
         return false;
       }
     }
-    // newAlgoControl=2 is handled in other places
-    else if (newAlgoControl > 2) {
-      // May handle nested struct/array, etc.
-      if (!ty->isSingleValueType()) {
-        return false;
-      }
-    }
-    uint32_t byteOffset = (uint32_t)SL->getElementOffset(ix);
-    uint32_t chunkOff = (byteOffset % SOAPartitionBytes);
+
+    uint32_t chunkOff = (ByteOffset % SOAPartitionBytes);
     // check alignment
     if (MinAlign(eTyBytes, chunkOff) < eTyBytes) {
       return false;
@@ -588,18 +619,51 @@ bool SOALayoutChecker::checkStruct(StructType *StTy) {
   return true;
 }
 
+bool SOALayoutChecker::useAggressiveStructSOA() const {
+  return IGC_IS_FLAG_ENABLED(EnableAggressiveSOAPromotion) && pInfo && pInfo->baseType &&
+         pInfo->baseType->isStructTy() && useNewAlgo(pInfo->baseType);
+}
+
+// An SoA-transposed access must cover whole chunks of SOAPartitionBytes, in one of the shapes that
+// TransposePrivMem's load/store handlers know how to split:
+//   1. exactly one chunk (e.g. float/i32 for a 4-byte partition, or <2 x i16>) - single-chunk path;
+//   2. a fixed vector of chunk-sized elements (LLVM's memcpy lowering of float3 sub-fields, e.g.
+//      <3 x i32>) - multi-chunk path, split element by element;
+//   3. a scalar spanning several chunks (LLVM's 64-bit memcpy lowering, e.g. i64 = 2x4B) - multi-chunk
+//      path, recast to <N x iChunk> and split.
+// Pointers and aggregates are excluded: TransposePrivMem's <N x iChunk> recast cannot express them.
+bool SOALayoutChecker::isChunkSpanningType(Type *Ty) const {
+  Type *EltTy = Ty->getScalarType();
+  if (Ty->isAggregateType() || EltTy->isPointerTy() || EltTy->isAggregateType())
+    return false;
+
+  uint64_t Bytes = pDL->getTypeStoreSize(Ty);
+  if (Bytes == SOAPartitionBytes)
+    return true;
+  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
+    return pDL->getTypeStoreSize(VTy->getElementType()) == SOAPartitionBytes;
+  return !Ty->isVectorTy() && Bytes > SOAPartitionBytes && (Bytes % SOAPartitionBytes) == 0;
+}
+
 // TODO: Consider a worklist-based implementation instead.
 bool SOALayoutChecker::checkUsers(Instruction &I) {
   if (IGC_IS_FLAG_ENABLED(DisableSOAPromotion)) {
     return false;
   }
 
+  // The walk needs no cycle guard: the only visitors that recurse back into
+  // checkUsers() are bitcast, addrspacecast, GEP and PHI, and visitPHINode()
+  // rejects every PHI with more than one incoming value. Each of the remaining
+  // node kinds derives from exactly one pointer, so the visited sub-graph is a
+  // tree rooted at the alloca -- no node is reachable twice, and no back-edge
+  // can form.
   llvm::SaveAndRestore<Instruction *> RestoreParentOnExit(parentLevelInst, &I);
   for (Value::user_iterator userIt = I.user_begin(), userE = I.user_end(); userIt != userE; ++userIt) {
     auto &userInst = *cast<Instruction>(*userIt);
     parentLevelInst = &I;
-    if (!visit(userInst))
+    if (!visit(userInst)) {
       return false;
+    }
   }
   return true;
 }
@@ -631,6 +695,50 @@ bool SOALayoutChecker::visitBitCastInst(BitCastInst &BI) {
     if (MismatchDetectionStrategy != DefaultLowerGEPStrategy) {
       if (llvm::all_of(BI.users(), [](User *U) { return isa<AddrSpaceCastInst>(U); }))
         return checkUsers(BI);
+    }
+    // For flat struct promotion (pInfo->baseType = leaf scalar), accept bitcasts
+    // from struct* to a non-struct type whose scalar element size matches the leaf
+    // scalar. This handles LLVM's memcpy-lowering pattern, e.g.:
+    //   bitcast complex* → <4 x i32>*  (copies the first 16 bytes of a 24-byte struct)
+    if (IGC_IS_FLAG_ENABLED(EnableAggressiveSOAPromotion) && pInfo && pInfo->baseType) {
+      if (sSTy && !bSTy) {
+        // Accept struct* → i8* (byte-pointer for address arithmetic in LLVM's memcpy lowering).
+        // The downstream gep i8*, N and bitcast i8* → T* will be validated recursively.
+        if (baseT->isIntegerTy(8)) {
+          return checkUsers(BI);
+        }
+        if (!pInfo->baseType->isStructTy()) {
+          // Flat-struct promotion: accept struct* → T* when T's scalar size matches leaf.
+          uint64_t LeafBits = pInfo->baseType->getScalarSizeInBits();
+          uint64_t CastElemBits = baseT->getScalarSizeInBits();
+          if (LeafBits > 0 && CastElemBits > 0 && CastElemBits == LeafBits) {
+            return checkUsers(BI);
+          }
+        } else if (useNewAlgo(pInfo->baseType)) {
+          // Heterogeneous-struct promotion: accept struct* → T* when an access of type T covers whole
+          // SoA chunks, e.g. bitcast float3* → <3 x i32>* (12 B = 3×4 B chunks, LLVM's memcpy lowering
+          // of float3 sub-fields), bitcast {float,float}* → i64* (8 B = 2×4 B chunks, LLVM's 64-bit
+          // memcpy pattern) or bitcast MyStruct* → float* for a leading float field (one chunk).
+          return isChunkSpanningType(baseT) ? checkUsers(BI) : false;
+        }
+      }
+
+      if (bSTy && !sSTy) {
+        // Accept i8* → [N x ComplexStruct]* (or ComplexStruct*) for
+        // heterogeneous-struct promotion.  This arises from accessing a sub-array
+        // field (e.g., sd->closure[]) via i8* pointer arithmetic computed from
+        // the parent struct's alloca.
+        if (pInfo->baseType->isStructTy() && sourceType->isIntegerTy(8) && useNewAlgo(pInfo->baseType)) {
+          return checkUsers(BI);
+        }
+        // Accept scalar* → struct* when the alloca's baseType is the same scalar.
+        // This arises from LLVM select-merging patterns where a scalar array element
+        // (e.g., float* from [255 x float]) is bitcast to a struct pointer so that
+        // both branches of a select use the same GEP chain.
+        if (!pInfo->baseType->isStructTy() && sourceType == pInfo->baseType) {
+          return checkUsers(BI);
+        }
+      }
     }
     return false;
   }
@@ -669,11 +777,37 @@ bool SOALayoutChecker::visitBitCastInst(BitCastInst &BI) {
     return checkUsers(BI);
   }
 
-  // Not a candidate.
+  // For flat struct promotion (pInfo->baseType = leaf scalar), also accept bitcasts
+  // whose destination element size matches the leaf scalar, regardless of the source
+  // type.  This handles LLVM's memcpy-lowering remainder pattern:
+  //   i8* → <2 x i32>*  (last 8 bytes of a 24-byte struct, after gep i8*, 16)
+  if (IGC_IS_FLAG_ENABLED(EnableAggressiveSOAPromotion) && pInfo && pInfo->baseType && !pInfo->baseType->isStructTy()) {
+    uint64_t LeafBits = pInfo->baseType->getScalarSizeInBits();
+    uint64_t CastElemBits = baseT->getScalarSizeInBits();
+    if (LeafBits > 0 && CastElemBits > 0 && CastElemBits == LeafBits) {
+      return checkUsers(BI);
+    }
+  }
+  // For heterogeneous-struct promotion (pInfo->baseType = struct, useNewAlgo active),
+  // accept T* → U* where U is a non-aggregate, non-pointer primitive whose store
+  // size is either:
+  //   ≤ SOAPartitionBytes (sub-chunk/single-chunk, e.g. i8*→float*), or
+  //   a positive multiple of SOAPartitionBytes (multi-chunk scalar, e.g. float*→i64*).
+  // The multi-chunk scalar case arises when LLVM expands memcpy of two consecutive
+  // 4B fields as a single 8B i64 load/store.  TransposePrivMem's multi-chunk path
+  // handles it by splitting into individual chunk-sized accesses via <N x i32> recast.
+  if (useAggressiveStructSOA()) {
+    uint64_t CastStoreBytes = pDL->getTypeStoreSize(baseT);
+    bool IsSubChunk =
+        CastStoreBytes > 0 && CastStoreBytes <= SOAPartitionBytes && isPowerOf2_32((uint32_t)CastStoreBytes);
+    bool IsMultiChunkScalar =
+        CastStoreBytes > SOAPartitionBytes && (CastStoreBytes % SOAPartitionBytes) == 0 && !baseT->isVectorTy();
+    if ((IsSubChunk || IsMultiChunkScalar) && !baseT->isStructTy() && !baseT->isPointerTy()) {
+      return checkUsers(BI);
+    }
+  }
   return false;
 }
-
-bool SOALayoutChecker::visitAddrSpaceCastInst(AddrSpaceCastInst &ASC) { return checkUsers(ASC); }
 
 /// Is \p GEP a byte-offset ("ptradd") GEP, i.e. `getelementptr i8, ptr %p, i64 <n>`?
 /// InstCombine canonicalizes constant-index GEPs into this form, whose source and result
@@ -713,8 +847,11 @@ bool SOALayoutChecker::visitGetElementPtrInst(GetElementPtrInst &GEP) {
   // If the GEP indexes through a simple scalar whose store size
   // differs from the alloca's base scalar type, the old algorithm's
   // handleGEPInst cannot compute correct promoted-vector indices.
-
-  if (pInfo && pInfo->baseType) {
+  //
+  // Skip this check for heterogeneous-struct baseType (useNewAlgo struct path):
+  // mixed-size i8/per-field GEPs are expected there and handled by the new-algo
+  // transpose path; the scalar-size match only applies to the flat scalar path.
+  if (pInfo && pInfo->baseType && !useAggressiveStructSOA()) {
     Type *gepSrcEltTy = GEP.getSourceElementType();
     if (MismatchDetectionStrategy == DefaultLowerGEPStrategy)
       while (gepSrcEltTy->isArrayTy())
@@ -734,6 +871,11 @@ bool SOALayoutChecker::visitGetElementPtrInst(GetElementPtrInst &GEP) {
 
   return checkUsers(GEP);
 }
+
+// addrspacecast is an addrspace re-tag of the same address — exactly
+// analogous to a same-element-type bitcast for layout purposes — so we walk
+// through it transparently to its users.
+bool SOALayoutChecker::visitAddrSpaceCastInst(AddrSpaceCastInst &ASC) { return checkUsers(ASC); }
 
 bool SOALayoutChecker::visitIntrinsicInst(IntrinsicInst &II) {
   llvm::Intrinsic::ID IID = II.getIntrinsicID();
@@ -822,47 +964,41 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
 
   // Check for byte-level access patterns. This detects memcpy-like patterns where an alloca with multi-byte elements
   // (e.g., [4 x float]) is accessed through i8 GEPs, which the promotion transformation cannot handle correctly.
-  if (!allocaEltTy->isIntegerTy(8)) {
-    if (allocaEltBitsSize > 8) {
-      const uint64_t indexUnitBytes = getByteGEPIndexUnit();
-      SmallVector<Value *, 16> worklist;
-      SmallPtrSet<Value *, 16> visited;
+  if (!allocaEltTy->isIntegerTy(8) && allocaEltBitsSize > 8) {
+    const uint64_t indexUnitBytes = getByteGEPIndexUnit();
+    SmallVector<Value *, 16> worklist;
+    SmallPtrSet<Value *, 16> visited;
 
-      // Start with the alloca itself
-      worklist.push_back(&allocaRef);
+    // Start with the alloca itself
+    worklist.push_back(&allocaRef);
 
-      while (!worklist.empty()) {
-        Value *current = worklist.pop_back_val();
+    while (!worklist.empty()) {
+      Value *current = worklist.pop_back_val();
 
-        // Skip if already visited
-        if (!visited.insert(current).second)
-          continue;
+      // Skip if already visited
+      if (!visited.insert(current).second)
+        continue;
 
-        for (User *U : current->users()) {
-          if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
-            Type *gepSrcTy = GEP->getSourceElementType();
-            // If this GEP uses i8 (byte) indexing into a non-byte alloca element type,
-            // this is a memcpy-like pattern that we cannot handle correctly.
-            // The transformation would incorrectly treat each byte as a separate
-            // element rather than accumulating bytes into complete lanes.
-            // Exempt the ptradd form: an exact multiple of the index unit still addresses
-            // whole elements, and handleGEPInst converts it back. The type of the access
-            // reached through it is validated below.
-            if (gepSrcTy->isIntegerTy(8) && !isElementAlignedByteGEP(*GEP, indexUnitBytes)) {
-              pInfo->canUseSOALayout = false;
-              return true;
-            }
-            // Add GEP to worklist to check its users.
-            worklist.push_back(GEP);
-          } else if (auto *BC = dyn_cast<BitCastInst>(U)) {
-            // Follow bitcasts to find derived pointers.
-            worklist.push_back(BC);
-          } else if (auto *ASC = dyn_cast<AddrSpaceCastInst>(U)) {
-            // Follow address space casts.
-            worklist.push_back(ASC);
+      for (User *U : current->users()) {
+        if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
+          // If this GEP uses i8 (byte) indexing into a non-byte alloca element type,
+          // this is a memcpy-like pattern that we cannot handle correctly.
+          // The transformation would incorrectly treat each byte as a separate
+          // element rather than accumulating bytes into complete lanes.
+          // Exempt the ptradd form: an exact multiple of the index unit still addresses
+          // whole elements, and handleGEPInst converts it back. The type of the
+          // access reached through it is validated below.
+          if (GEP->getSourceElementType()->isIntegerTy(8) && !isElementAlignedByteGEP(*GEP, indexUnitBytes)) {
+            pInfo->canUseSOALayout = false;
+            return true;
           }
-          // Load/Store/Intrinsics are terminal, don't need to follow them.
+          // Add GEP to worklist to check its users.
+          worklist.push_back(GEP);
+        } else if (isa<BitCastInst, AddrSpaceCastInst>(U)) {
+          // Follow bitcasts and address space casts to find derived pointers.
+          worklist.push_back(U);
         }
+        // Load/Store/Intrinsics are terminal, don't need to follow them.
       }
     }
   }
@@ -892,12 +1028,37 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   else
     return false;
 
-  // Aggregate (struct/array) loads and stores cannot be lowered by the promotion
-  // paths (loadEltsFromVecAlloca / storeEltsToVecAlloca use bitcast which is
-  // invalid for aggregate types). Reject them explicitly.
+  // Aggregate (struct/array) loads and stores cannot be lowered by any of the promotion
+  // paths (loadEltsFromVecAlloca / storeEltsToVecAlloca, and the transpose helpers, all
+  // bitcast the value, which is invalid for aggregate types). Reject them explicitly.
+  //
+  // The size-based checks below do not reliably cover this: getScalarSizeInBits() returns
+  // 0 for a struct, so when the parent GEP's result element type is an aggregate too both
+  // sides of the pgepTySize != vecTySize comparison are 0 and the whole block is skipped.
   if (pUserTy->isAggregateType()) {
     pInfo->canUseSOALayout = false;
     return true;
+  }
+
+  uint64_t AllocaSize = 0;
+  if (auto *StructTy = dyn_cast<StructType>(allocaEltTy)) {
+    // For flat struct promotion (pInfo->baseType = leaf scalar), use the leaf
+    // scalar bit-width as the effective element size.  This allows
+    // load/store instructions whose element size matches the leaf scalar
+    // (e.g. load <4 x i32> through a bitcast of complex*) to pass the size
+    // check without comparing against the full struct byte width.
+    if (IGC_IS_FLAG_ENABLED(EnableAggressiveSOAPromotion) && pInfo && pInfo->baseType &&
+        !pInfo->baseType->isStructTy() && pInfo->baseType->getScalarSizeInBits() > 0) {
+      AllocaSize = pInfo->baseType->getScalarSizeInBits();
+    } else {
+      auto DL = I.getModule()->getDataLayout();
+      auto StructLayout = DL.getStructLayout(StructTy);
+      AllocaSize = StructLayout->getSizeInBits();
+    }
+  } else {
+    // allocaEltTy has already been stripped of every array/vector layer above, so
+    // extractArrayOrVecEleType() would return it unchanged here.
+    AllocaSize = allocaEltTy->getScalarSizeInBits();
   }
 
   auto vecTySize = pUserTy->getScalarSizeInBits();
@@ -930,12 +1091,19 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
     }
 
     if (MismatchDetectionStrategy == UseScratchSpacePrivateMemoryOrUseStatelessStrategy) {
-      if (pgepTySize != allocaEltBitsSize) {
-        pInfo->canUseSOALayout = false;
-        return true;
+      if (pgepTySize != AllocaSize) {
+        // Exception: for new-algo struct SOA promotion, a GEP that accesses an
+        // individual struct member has pgepTySize == SOAPartitionBytes (< struct size).
+        // This is a valid member access — allow it so SOA transposition can proceed.
+        const bool IsMemberAccess = IGC_IS_FLAG_ENABLED(EnableAggressiveSOAPromotion) && pInfo && pInfo->baseType &&
+                                    pInfo->baseType->isStructTy() && pgepTySize == SOAPartitionBytes * 8;
+        if (!IsMemberAccess) {
+          pInfo->canUseSOALayout = false;
+          return true;
+        }
       }
     }
-  } else if (vecTySize != allocaEltBitsSize) {
+  } else if (vecTySize != AllocaSize) {
     // Allow reinterpretation when total store size matches alloca element size,
     // but only for the LowerGEP register-promotion path (same rationale as the
     // GEP branch above — the legacy PrivateMemoryResolution transpose helper
@@ -944,6 +1112,12 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
     if (MismatchDetectionStrategy == DefaultLowerGEPStrategy) {
       unsigned allocaStoreBits = (unsigned)pDL->getTypeStoreSizeInBits(allocaEltTy);
       allowed = isSameSizeReinterpret(pUserTy, allocaStoreBits, *pDL);
+    }
+    // For heterogeneous-struct promotion (pInfo->baseType = struct, useNewAlgo active),
+    // allow any load/store whose access size is compatible with SoA chunk layout, e.g. a scalar 4B
+    // access via i8*→float*/int* (closure[dynamic_idx].field).
+    if (!allowed && useAggressiveStructSOA()) {
+      allowed = isChunkSpanningType(pUserTy);
     }
     if (!allowed) {
       pInfo->canUseSOALayout = false;
@@ -972,8 +1146,9 @@ bool SOALayoutChecker::visitStoreInst(StoreInst &SI) {
 
   // If the value we came from is what gets written instead, the alloca pointer
   // escapes into memory and cannot be promoted.
-  if (SI.getPointerOperand() != parentLevelInst || pValueOp == parentLevelInst)
+  if (SI.getPointerOperand() != parentLevelInst || pValueOp == parentLevelInst) {
     return false;
+  }
 
   bool isVectorStore = pValueOp->getType()->isVectorTy();
   isVectorSOA &= isVectorStore;
@@ -1030,8 +1205,10 @@ void LowerGEPForPrivMem::MarkNotPromtedAllocas(llvm::AllocaInst &I, IGC::StatusP
         // to the assembly level.
         userASMD.Set(instr, LSC_DOC_ADDR_SPACE::PRIVATE, node);
       } else {
-        // Special case to avoid stack overflow
-        userASMD.Set(instr, LSC_DOC_ADDR_SPACE::PRIVATE);
+        // For non-load/store instructions (alloca, GEP, call, PHI, etc.) also
+        // carry the reason so the tag survives even if loads/stores are
+        // regenerated by later passes (e.g. private-memory-base lowering).
+        userASMD.Set(instr, LSC_DOC_ADDR_SPACE::PRIVATE, node);
 
         bool allowedInst = instr->getOpcode() == Instruction::Alloca || instr->getOpcode() == Instruction::PHI ||
                            instr->getOpcode() == Instruction::GetElementPtr ||
@@ -1124,9 +1301,13 @@ public:
 void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst *pAlloca) {
   // Extract the Alloca size and the base Type
   Type *pType = pAlloca->getAllocatedType();
-  Type *pBaseType = GetBaseType(pType)->getScalarType();
-  IGC_ASSERT(pBaseType);
-  llvm::AllocaInst *pVecAlloca = createVectorForAlloca(pAlloca, pBaseType);
+  Type *PBaseType = GetBaseType(pType);
+  if (!PBaseType) {
+    return;
+  }
+  PBaseType = PBaseType->getScalarType();
+  IGC_ASSERT(PBaseType);
+  llvm::AllocaInst *pVecAlloca = createVectorForAlloca(pAlloca, PBaseType);
   if (!pVecAlloca) {
     return;
   }
@@ -1256,6 +1437,81 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *
     pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, byteIndex);
     pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, idx);
     HandleAllocaSources(pGEP, pScalarizedIdx);
+    return;
+  }
+
+  // If the source element type is a struct, compute the byte offset of each struct field
+  // access and convert it to a flat element index via m_promotedLaneBytes.  This handles
+  // GEPs produced when promoting a homogeneous struct alloca (e.g. complex = {float3,float3}
+  // promoted to <6 x float>).
+  //
+  // GEP layout for struct allocas:
+  //   operand[0]  = base pointer (pGEP->getPointerOperand())
+  //   operand[1]  = outer pointer advance (always constant 0 for an alloca)
+  //   operand[2+] = struct field indices (must be constant integers per LLVM spec)
+  //
+  // Example: gep complex*, alloca, 0, 1, 2
+  //   skip operand[1] (outer deref = 0)
+  //   operand[2]=1 -> field 1 of complex (= float3), offset = 12B
+  //   operand[3]=2 -> field 2 of float3  (= float),  offset = 8B
+  //   total = 20B -> element 20/4 = 5 in <6 x float> ✓
+  if (pGEP->getSourceElementType()->isStructTy() && m_promotedLaneBytes > 0) {
+    if (!pGEP->use_empty()) {
+      IRBuilder<> IRB(pGEP);
+      IGC_ASSERT_MESSAGE(pGEP->getNumIndices() >= 1, "Struct GEP must have at least one index");
+
+      // Walk the GEP indices, accumulating the offset into the flat promoted vector.
+      uint32_t ByteOffset = 0;
+      Value *DynLaneOffset = nullptr;
+
+      // Add (Op * StrideBytes) to the running offset: constants fold into ByteOffset,
+      // dynamic indices are converted to a lane count and accumulated in DynLaneOffset.
+      auto AddIndexStride = [&](Value *Op, uint32_t StrideBytes) {
+        if (auto *CI = dyn_cast<ConstantInt>(Op)) {
+          ByteOffset += (uint32_t)CI->getZExtValue() * StrideBytes;
+        } else {
+          IGC_ASSERT_MESSAGE(StrideBytes % m_promotedLaneBytes == 0,
+                             "Dynamic GEP index stride not a multiple of promoted lane size");
+          Value *Op32 = IRB.CreateZExtOrTrunc(Op, IRB.getInt32Ty());
+          Value *Lanes = IRB.CreateMul(Op32, IRB.getInt32(StrideBytes / m_promotedLaneBytes));
+          DynLaneOffset = DynLaneOffset ? IRB.CreateAdd(DynLaneOffset, Lanes) : Lanes;
+        }
+      };
+
+      Type *CurType = pGEP->getSourceElementType();
+      // operand[1] is the outer pointer-advance index: it strides by the whole source
+      // element type and does not descend into it. It is usually constant zero for a
+      // single-object alloca, but can be a non-zero or dynamic value when the pointer is
+      // treated as an array of the source element type, e.g.
+      //   getelementptr {half}, ptr %alloca, i64 %k
+      AddIndexStride(pGEP->getOperand(1), (uint32_t)m_DL.getTypeAllocSize(CurType));
+
+      // Remaining indices descend into the aggregate one level each.
+      for (unsigned I = 1, E = pGEP->getNumIndices(); I < E; ++I) {
+        Value *Op = pGEP->getOperand(I + 1);
+        if (auto *StTy = dyn_cast<StructType>(CurType)) {
+          // Struct field indices are required by LLVM to be constant integers.
+          unsigned Field = (unsigned)cast<ConstantInt>(Op)->getZExtValue();
+          ByteOffset += (uint32_t)m_DL.getStructLayout(StTy)->getElementOffset(Field);
+          CurType = StTy->getStructElementType(Field);
+        } else if (CurType->isArrayTy() || CurType->isVectorTy()) {
+          Type *EltTy =
+              CurType->isArrayTy() ? CurType->getArrayElementType() : cast<VectorType>(CurType)->getElementType();
+          AddIndexStride(Op, (uint32_t)m_DL.getTypeAllocSize(EltTy));
+          CurType = EltTy;
+        } else {
+          IGC_ASSERT_MESSAGE(false, "Unexpected non-aggregate type while walking struct GEP indices");
+          break;
+        }
+      }
+      IGC_ASSERT_MESSAGE(ByteOffset % m_promotedLaneBytes == 0,
+                         "Struct field byte offset not aligned to promoted lane size");
+      Value *ElemIdx = IRB.CreateAdd(idx, IRB.getInt32(ByteOffset / m_promotedLaneBytes));
+      if (DynLaneOffset) {
+        ElemIdx = IRB.CreateAdd(ElemIdx, DynLaneOffset);
+      }
+      HandleAllocaSources(pGEP, ElemIdx);
+    }
     return;
   }
 

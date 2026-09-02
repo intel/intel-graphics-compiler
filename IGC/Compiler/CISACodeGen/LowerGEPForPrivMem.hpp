@@ -139,6 +139,14 @@ private:
   uint32_t selectPartitionSize(llvm::Type *Ty);
   // Return true if struct can be transposed
   bool checkStruct(llvm::StructType *StTy);
+  // Return true if an access of type Ty maps onto whole SoA chunks, i.e. if
+  // TransposePrivMem can lower it (see the implementation for the patterns).
+  bool isChunkSpanningType(llvm::Type *Ty) const;
+  // Return true if the acceptance rules added for aggressive struct SoA promotion apply: the alloca
+  // is on the struct path of the new transpose algorithm and EnableAggressiveSOAPromotion is set.
+  // Gating those rules individually, rather than useNewAlgo(), leaves the pre-existing
+  // array-of-struct support (EnablePrivMemNewSOATranspose on its own) with its original rules.
+  bool useAggressiveStructSOA() const;
   // ===== end of fields for new algo =====
 
   bool isVectorSOA = true;

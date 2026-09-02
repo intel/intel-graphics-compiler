@@ -130,6 +130,15 @@ private:
   // type AccessTy at the given scalarized index. Returns a private-AS pointer
   // to AccessTy. Shared by the load/store/predicated-load handlers.
   Value *getTransposedEltPtr(IGCLLVM::IRBuilder<> &IRB, Type *AccessTy, Value *pScalarizedIdx, const Twine &Name);
+  // Vector type into which an access of type Ty is split by the multi-chunk path, or nullptr if the
+  // access fits within a single chunk.
+  IGCLLVM::FixedVectorType *getMultiChunkVecTy(Type *Ty) const;
+  // Pointer to the SoA location of chunk number ChunkIdx of a multi-chunk access at pScalarizedIdx.
+  Value *getChunkPtr(IGCLLVM::IRBuilder<> &IRB, Type *ChunkTy, Value *pScalarizedIdx, uint32_t ChunkIdx,
+                     const Twine &Name);
+  // Reinterpret V, of one of the types getMultiChunkVecTy accepts, as WorkTy (and back).
+  Value *recastToChunkVec(IGCLLVM::IRBuilder<> &IRB, Value *V, Type *WorkTy, const Twine &Name);
+  Value *recastFromChunkVec(IGCLLVM::IRBuilder<> &IRB, Value *V, Type *DstTy, const Twine &Name);
 };
 
 // helper
@@ -769,10 +778,69 @@ Value *TransposePrivMem::getTransposedEltPtr(IGCLLVM::IRBuilder<> &IRB, Type *Ac
   return IRB.CreateGEP(AccessTy, addrInElt, eltIx, Name);
 }
 
+IGCLLVM::FixedVectorType *TransposePrivMem::getMultiChunkVecTy(Type *Ty) const {
+  // Splitting an access across chunks is only reachable through the acceptance rules that
+  // EnableAggressiveSOAPromotion gates in SOALayoutChecker; keep the lowering gated with them so
+  // the two cannot drift apart.
+  if (IGC_IS_FLAG_DISABLED(EnableAggressiveSOAPromotion))
+    return nullptr;
+  uint32_t Bytes = (uint32_t)m_DL.getTypeStoreSize(Ty);
+  if (Bytes <= m_chunkBytes || (Bytes % m_chunkBytes) != 0)
+    return nullptr;
+  // A fixed vector of chunk-sized elements is split as it is. Anything else -- a scalar spanning
+  // several chunks (e.g. i64 = 2x4B, from LLVM's 64-bit memcpy lowering) or a vector of smaller
+  // elements -- is reinterpreted as <N x iChunk>. Doing so at IR level avoids any endian-specific
+  // shift/or logic: the bitcast preserves the little-endian memory layout transparently.
+  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+  if (VTy && m_DL.getTypeStoreSize(VTy->getElementType()) == m_chunkBytes)
+    return VTy;
+  Type *ChunkIntTy = Type::getIntNTy(Ty->getContext(), m_chunkBytes * 8);
+  return IGCLLVM::FixedVectorType::get(ChunkIntTy, Bytes / m_chunkBytes);
+}
+
+Value *TransposePrivMem::getChunkPtr(IGCLLVM::IRBuilder<> &IRB, Type *ChunkTy, Value *pScalarizedIdx, uint32_t ChunkIdx,
+                                     const Twine &Name) {
+  IGC_ASSERT(m_DL.getTypeStoreSize(ChunkTy) == m_chunkBytes);
+  Value *ChunkOffset =
+      IRB.CreateAdd(pScalarizedIdx, IRB.getInt32(ChunkIdx * m_chunkBytes), VALUE_NAME(Name + ".chunkOff"));
+  return getTransposedEltPtr(IRB, ChunkTy, ChunkOffset, VALUE_NAME(Name + ".chunkGEP"));
+}
+
+Value *TransposePrivMem::recastToChunkVec(IGCLLVM::IRBuilder<> &IRB, Value *V, Type *WorkTy, const Twine &Name) {
+  if (V->getType() == WorkTy)
+    return V;
+  IGC_ASSERT_MESSAGE(!V->getType()->isPointerTy(), "pointer cannot be recast to a chunk vector");
+  return IRB.CreateBitCast(V, WorkTy, VALUE_NAME(Name + ".recast"));
+}
+
+Value *TransposePrivMem::recastFromChunkVec(IGCLLVM::IRBuilder<> &IRB, Value *V, Type *DstTy, const Twine &Name) {
+  if (V->getType() == DstTy)
+    return V;
+  IGC_ASSERT_MESSAGE(!DstTy->isPointerTy(), "chunk vector cannot be recast to a pointer");
+  return IRB.CreateBitCast(V, DstTy, VALUE_NAME(Name + ".recast"));
+}
+
 void TransposePrivMem::handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx) {
   IGC_ASSERT(nullptr != pLoad);
   IGC_ASSERT(pLoad->isSimple());
   IGCLLVM::IRBuilder<> IRB(pLoad);
+
+  // Multi-chunk path: the type spans multiple chunks (e.g. <3 x i32>, i64). Load one chunk at a time
+  // and reassemble via insertelement, then reinterpret as the loaded type.
+  if (auto *WorkVTy = getMultiChunkVecTy(pLoad->getType())) {
+    Type *EltTy = WorkVTy->getElementType();
+    Value *Result = PoisonValue::get(WorkVTy);
+    for (uint32_t C = 0, NumChunks = (uint32_t)WorkVTy->getNumElements(); C < NumChunks; ++C) {
+      Value *Ptr = getChunkPtr(IRB, EltTy, pScalarizedIdx, C, pLoad->getName());
+      Value *Elt = IRB.CreateAlignedLoad(EltTy, Ptr, IGCLLVM::getAlign(m_chunkBytes),
+                                         VALUE_NAME(pLoad->getName() + ".chunkLoad"));
+      Result = IRB.CreateInsertElement(Result, Elt, IRB.getInt32(C), VALUE_NAME(pLoad->getName() + ".ins"));
+    }
+    pLoad->replaceAllUsesWith(recastFromChunkVec(IRB, Result, pLoad->getType(), pLoad->getName()));
+    pLoad->eraseFromParent();
+    return;
+  }
+
   Value *gep =
       getTransposedEltPtr(IRB, pLoad->getType(), pScalarizedIdx, VALUE_NAME(pLoad->getName() + ".SOAPrivMemGEP"));
   Value *val =
@@ -786,8 +854,23 @@ void TransposePrivMem::handleStoreInst(StoreInst *pStore, Value *pScalarizedIdx)
   IGC_ASSERT(nullptr != pStore);
   IGC_ASSERT(pStore->isSimple());
   IGCLLVM::IRBuilder<> IRB(pStore);
-  Value *gep = getTransposedEltPtr(IRB, pStore->getValueOperand()->getType(), pScalarizedIdx,
-                                   VALUE_NAME(pStore->getName() + ".SOAPrivMemGEP"));
+  Type *ValTy = pStore->getValueOperand()->getType();
+
+  // Multi-chunk path: the type spans multiple chunks (e.g. <3 x i32>, i64). Reinterpret the stored
+  // value as a vector of chunks and store one chunk at a time.
+  if (auto *WorkVTy = getMultiChunkVecTy(ValTy)) {
+    Type *EltTy = WorkVTy->getElementType();
+    Value *StoreVal = recastToChunkVec(IRB, pStore->getValueOperand(), WorkVTy, pStore->getName());
+    for (uint32_t C = 0, NumChunks = (uint32_t)WorkVTy->getNumElements(); C < NumChunks; ++C) {
+      Value *Ptr = getChunkPtr(IRB, EltTy, pScalarizedIdx, C, pStore->getName());
+      Value *Elt = IRB.CreateExtractElement(StoreVal, IRB.getInt32(C), VALUE_NAME(pStore->getName() + ".ext"));
+      IRB.CreateAlignedStore(Elt, Ptr, IGCLLVM::getAlign(m_chunkBytes));
+    }
+    pStore->eraseFromParent();
+    return;
+  }
+
+  Value *gep = getTransposedEltPtr(IRB, ValTy, pScalarizedIdx, VALUE_NAME(pStore->getName() + ".SOAPrivMemGEP"));
   IRB.CreateAlignedStore(pStore->getValueOperand(), gep, IGCLLVM::getAlign(*pStore));
 
   pStore->eraseFromParent();
