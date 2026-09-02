@@ -455,45 +455,35 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       auto *entryBB = proceedBB->getUniquePredecessor();
       entryBB->getTerminator()->eraseFromParent();
 
-      const bool rqReturnOpt = m_pCGCtx->platform.isRayQueryReturnOptimizationEnabled();
-      // Value the entry edge (entryBB->proceedBB) contributes to the bvhLevel
-      // PHI below. Defaults to the non-optimized shape's constant (the
-      // switch's INITIAL case always enters at TOP level); overridden below
-      // when RQ Return Optimization collapses entry to a single edge.
-      Value *bvhLevelEntry = IRB.getInt32(RTStackFormat::TOP_LEVEL_BVH);
-
       // clang-format off
-      // Without RQ Return Optimization there are 4 resume cases:
-      // 1. the ray was just initialized: enter the traversal block
-      // 2/3. mid traversal, hit committed or not since last proceed: set the
-      //      done bit (and valid bit for a committed hit) then enter the
-      //      traversal block
-      // 4. done with traversal: skip the traversal block (handled by
-      //    doNotAbort/createTriangleFlow above)
-      // With the optimization there is no resume fixup: setDoneBit/setHitValid
-      // write sync-stack fields this path never reads back (status comes from
-      // the TraceRaySync return register instead).
+      // there are 4 cases here:
+      // 1. the ray was just initialized:
+      //    enter the traversal block
+      // 2. we are mid traversal and app did not commit any hit since last
+      // proceed
+      //    set the done bit to 1
+      //    enter the traversal block
+      // 3. we are mid traversal and app has committed a hit since last proceed
+      //    set the done bit to 1
+      //    set the valid bit to 1
+      // 4. we are done with traversal
+      //    skip the traversal block
       // clang-format on
-      if (rqReturnOpt) {
-        IRB.SetInsertPoint(entryBB);
-        auto *isInitial = IRB.CreateICmpEQ(traceRayCtrl, IRB.getInt32(TRACE_RAY_INITIAL));
-        bvhLevelEntry = IRB.CreateSelect(isInitial, IRB.getInt32(RTStackFormat::TOP_LEVEL_BVH),
-                                         IRB.getInt32(RTStackFormat::BOTTOM_LEVEL_BVH), VALUE_NAME("BVHLevelEntry"));
-        IRB.CreateCondBr(doNotAbort, proceedBB, abortBB);
-      } else {
-        // Create a block to handle 2 and 3
-        auto *setDoneBB = BasicBlock::Create(*m_pCGCtx->getLLVMContext(), VALUE_NAME("setDoneBB"), &F, proceedBB);
 
-        IRB.SetInsertPoint(entryBB);
-        auto *switchI = IRB.CreateSwitch(traceRayCtrl, setDoneBB, 2);
-        switchI->addCase(IRB.getInt32(TRACE_RAY_DONE), abortBB);
-        switchI->addCase(IRB.getInt32(TRACE_RAY_INITIAL), proceedBB);
+      // Create a block to handle 2 and 3
+      auto *setDoneBB = BasicBlock::Create(*m_pCGCtx->getLLVMContext(), VALUE_NAME("setDoneBB"), &F, proceedBB);
 
-        // add unreachable to the new block so we can split it
-        IRB.SetInsertPoint(setDoneBB);
-        auto *IP = IRB.CreateUnreachable();
-        IRB.SetInsertPoint(IP);
+      IRB.SetInsertPoint(entryBB);
+      auto *switchI = IRB.CreateSwitch(traceRayCtrl, setDoneBB, 2);
+      switchI->addCase(IRB.getInt32(TRACE_RAY_DONE), abortBB);
+      switchI->addCase(IRB.getInt32(TRACE_RAY_INITIAL), proceedBB);
 
+      // add unreachable to the new block so we can split it
+      IRB.SetInsertPoint(setDoneBB);
+      auto *IP = IRB.CreateUnreachable();
+      IRB.SetInsertPoint(IP);
+
+      {
         // Set the done bit to 1 on the potential hit before re-entering traversal.
         // The HW will clear the done bit when it finds a new intersection.
         // We conditionally set the valid bit to 1 as well, see comment in
@@ -518,26 +508,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(proceedBB));
       auto *bvhLevel = IRB.CreatePHI(IRB.getInt32Ty(), 2, VALUE_NAME("BVHLevel"));
 
-
-      if (rqReturnOpt) {
-        // Fence only when a sync-stack write is actually pending before this
-        // TraceRay: the INITIAL edge (createTraceRayInlinePrologue already
-        // wrote ray0/BVH-root-pointer for this call, and nothing else fences
-        // it), or the resetNeedsStocRQ WA store above (which itself only
-        // fires at runtime when ctrl == CONTINUE, see
-        // RTBuilder::resetNeedsStocRQ). Every other edge into this loop is a
-        // SW-STOC back-edge (continueBlock/commitAndContinueBlock), which
-        // never touches the sync stack.
-        Value *storesPending = IRB.CreateICmpEQ(traceRayCtrl, IRB.getInt32(TRACE_RAY_INITIAL));
-
-        auto *origTerm = IRB.GetInsertBlock()->getTerminator();
-        auto *thenTerm = SplitBlockAndInsertIfThen(storesPending, origTerm, false);
-        IRB.SetInsertPoint(thenTerm);
-        EmitPreTraceRayFence(IRB, rqObject);
-        IRB.SetInsertPoint(origTerm);
-      } else {
-        EmitPreTraceRayFence(IRB, rqObject);
-      }
+      EmitPreTraceRayFence(IRB, rqObject);
 
       auto *globalBufferPtr = getGlobalBufferPtr(IRB, rqObject);
       CallInst *traceRay = IRB.createSyncTraceRay(bvhLevel, traceRayCtrl, globalBufferPtr);
@@ -547,7 +518,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
 
       IRB.createReadSyncTraceRay(traceRay);
 
-      if (rqReturnOpt) {
+      if (m_pCGCtx->platform.isRayQueryReturnOptimizationEnabled()) {
         if (m_pCGCtx->platform.isRayQueryReturnOptimizationPackedStatusEnabled()) {
           auto *postProcessRayQueryReturnFn =
               GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::GenISA_PostProcessRayQueryReturn);
@@ -579,6 +550,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
 
         data.CommittedStatus = committedStatus;
         data.CandidateType = candidateType;
+        data.CommittedDataLocation = IRB.getInt32(CommittedHit);
       } else {
         auto *notDone = IRB.isDoneBitNotSet(getStackPtr(IRB, rqObject), false);
         result->addIncoming(notDone, IRB.GetInsertBlock());
@@ -593,13 +565,14 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
 
         data.CommittedStatus = IRB.getCommittedStatus(getStackPtr(IRB, rqObject));
         data.CandidateType = IRB.getCandidateType(getStackPtr(IRB, rqObject));
+        data.CommittedDataLocation = IRB.getInt32(CommittedHit);
       }
-      data.CommittedDataLocation = IRB.getInt32(CommittedHit);
 
       setPackedData(IRB, rqObject, data);
 
       for (auto *predBB : predecessors(proceedBB))
-        bvhLevel->addIncoming(predBB == entryBB ? bvhLevelEntry : IRB.getInt32(RTStackFormat::BOTTOM_LEVEL_BVH),
+        bvhLevel->addIncoming(IRB.getInt32(predBB == switchI->getParent() ? RTStackFormat::TOP_LEVEL_BVH
+                                                                          : RTStackFormat::BOTTOM_LEVEL_BVH),
                               predBB);
       // for the cross-block optimization purposes, split basic block to avoid using stale shadow stack
       if (allowCrossBlockLoadVectorization())
