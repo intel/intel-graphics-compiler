@@ -769,6 +769,10 @@ DECLARE_IGC_REGKEY(bool, BranchToSelectDivergentOnly, true,
                    "branch is a scalar jump that runs only one arm, so flattening it just makes the not-taken arm's "
                    "work unconditional. Disable to flatten uniform branches too.",
                    DEBUG_ONLY)
+DECLARE_IGC_REGKEY(DWORD, SimplifyCFGBonusInstThreshold, 0,
+                   "Max instructions SimplifyCFG will clone to merge two branches sharing a destination "
+                   "(short-circuit || chains). 0 - pipeline unchanged; LLVM's own default is 1.",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableIntDivRemIncrementReduction, true,
                    "Enable consecutive Int DivRem increment by constant optimization", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(

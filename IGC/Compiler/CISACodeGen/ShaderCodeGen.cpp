@@ -1702,6 +1702,13 @@ void OptimizeIR(CodeGenContext *const pContext) {
       }
       GFX_ONLY_PASS { mpm.add(new GenUpdateCB()); }
 
+      // Own SimplifyCFG because bonusInstThreshold is per-instance, as with hoistCommonInsts above. Placed after the
+      // LoopUnroll passes, so a wider budget cannot change what unroll costs and decides. Kept off the other
+      // SimplifyCFG calls because default 0 then adds no pass at all, leaving the pipeline untouched.
+      if (unsigned BonusInstThreshold = IGC_GET_FLAG_VALUE(SimplifyCFGBonusInstThreshold)) {
+        mpm.add(llvm::createCFGSimplificationPass(SimplifyCFGOptions().bonusInstThreshold(BonusInstThreshold)));
+      }
+
       // Inserting PromoteToPredicatedMemoryAccess after GVN and several
       // other passes, to not block optimizations changing LLVM
       // load/stores, but before multiple SimplifyCFGs to allow more
