@@ -1,0 +1,65 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2026 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+LICM's hoistBOAssociation() can drop nsw when reassociating integer adds.
+GEPLowering::simplifyGEP() then cannot reuse a previously computed GEP, so
+address expressions are recomputed inside the loop.
+
+Extends the fix proposed in llvm/llvm-project#220897, which preserves nsw when
+the new invariant add is proven not to overflow, with skipping the
+reassociation when the proof fails. Upstream leaves the second part out because
+ReassociatePass repeats the same regrouping before the loop pass manager in the
+default -O3 pipeline; the IGC pipeline does not.
+
+This patch should be considered obsolete once hoistBOAssociation() preserves
+nsw, keeping only the part that is still needed.
+---
+diff --git a/llvm/lib/Transforms/Scalar/LICM.cpp b/llvm/lib/Transforms/Scalar/LICM.cpp
+index b2c526b41..a1f6a3005 100644
+--- a/llvm/lib/Transforms/Scalar/LICM.cpp
++++ b/llvm/lib/Transforms/Scalar/LICM.cpp
+@@ -2899,6 +2899,20 @@ static bool hoistBOAssociation(Instruction &I, Loop &L,
+   auto *Preheader = L.getLoopPreheader();
+   assert(Preheader && "Loop is not in simplify form?");
+ 
++  // Do not reassociate adds when nsw cannot be preserved on the new
++  // operations.
++  bool NoWrapProven = false;
++  if (Opcode == Instruction::Add && BO->hasNoSignedWrap() &&
++      BO0->hasNoSignedWrap() &&
++      !(BO->hasNoUnsignedWrap() && BO0->hasNoUnsignedWrap())) {
++    SimplifyQuery SQ(L.getHeader()->getDataLayout(), DT, AC,
++                     Preheader->getTerminator());
++    NoWrapProven = computeOverflowForSignedAdd(C1, C2, SQ) ==
++                   llvm::OverflowResult::NeverOverflows;
++    if (!NoWrapProven)
++      return false;
++  }
++
+   IRBuilder<> Builder(Preheader->getTerminator());
+   auto *Inv = Builder.CreateBinOp(Opcode, C1, C2, "invariant.op");
+ 
+@@ -2919,7 +2933,14 @@ static bool hoistBOAssociation(Instruction &I, Loop &L,
+     Flags.mergeFlags(*BO);
+     Flags.mergeFlags(*BO0);
+     // If `Inv` was not constant-folded, a new Instruction has been created.
+-    if (auto *I = dyn_cast<Instruction>(Inv))
+-      Flags.applyFlags(*I);
++    auto *InvI = dyn_cast<Instruction>(Inv);
++    if (InvI)
++      Flags.applyFlags(*InvI);
+     Flags.applyFlags(*NewBO);
++
++    if (NoWrapProven) {
++      if (InvI)
++        InvI->setHasNoSignedWrap();
++      NewBO->setHasNoSignedWrap();
++    }
+   }
+--
+2.43.0
