@@ -58,8 +58,7 @@ float4 __attribute__((overloadable)) __spirv_ImageSampleExplicitLod_Rfloat4(__sp
 
     float2 snappedCoords = Coordinate;
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         snappedCoords.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         snappedCoords.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -82,8 +81,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D
     if (Lod == 0.0f)
     {
         // Even though this is a SPIRV builtin, the runtime still patches OCL C enum values for the addressing mode.
-        if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-            (__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP)
+        if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP)
         {
             float2 coords = Coordinate;
             if (CLK_NORMALIZED_COORDS_TRUE == __builtin_IB_is_normalized_coords(sampler_id))
@@ -102,8 +100,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D
     }
     else
     {
-        if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-            0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
+        if (0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
         {
             Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
             Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -124,8 +121,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
     // "Snap workaround" - path
-    if (BIF_FLAG_CTRL_GET(UseBindlessImage) ||
-        (__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
+    if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
         float2 floatCoords = convert_float2((Coordinate));
         return as_uint4(__builtin_IB_OCL_2d_sample_l(image_id, sampler_id, floatCoords, Lod));
@@ -164,8 +160,7 @@ float4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rfloat4(__spirv_SampledImage_
 
     float3 snappedCoords = Coordinate;
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         snappedCoords.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         snappedCoords.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -198,8 +193,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_3D
 
     if (Lod == 0.0f)
     {
-        if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-            (__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP)
+        if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP)
         {
             if (CLK_NORMALIZED_COORDS_TRUE == __builtin_IB_is_normalized_coords(sampler_id))
             {
@@ -216,8 +210,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_3D
     }
     else
     {
-        if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-            0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
+        if (0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
         {
             Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
             Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -249,8 +242,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_3D
     long image_id = (long)__builtin_IB_get_image(SampledImage);
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
-    if (BIF_FLAG_CTRL_GET(UseBindlessImage) ||
-        (__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
+    if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
         float3 floatCoords = convert_float3(Coordinate);
         return as_uint4(__builtin_IB_OCL_3d_sample_l(image_id, sampler_id, floatCoords, Lod));
@@ -307,8 +299,7 @@ float4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rfloat4(__spirv_SampledImage_
     long image_id = (long)__builtin_IB_get_image(SampledImage);
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -342,8 +333,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D
     {
         int dt = __builtin_IB_get_image2d_array_size(image_id);
         float layer = __spirv_ocl_fclamp(__spirv_ocl_rint(Coordinate.z), 0.0f, (float)(dt - 1));
-        if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-            (__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP)
+        if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP)
         {
             float2 tmpCoords = Coordinate.xy;
             if (CLK_NORMALIZED_COORDS_TRUE == __builtin_IB_is_normalized_coords(sampler_id))
@@ -356,8 +346,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D
         }
         else
         {
-            if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-                0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
+            if (0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
             {
                 Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
                 Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -367,8 +356,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D
     }
     else
     {
-        if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-            0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
+        if (0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
         {
             Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
             Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -399,8 +387,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
     // "Snap workaround" - path
-    if (BIF_FLAG_CTRL_GET(UseBindlessImage) ||
-        (__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
+    if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
         int dt = __builtin_IB_get_image2d_array_size(image_id);
         float layer = __spirv_ocl_fclamp(__spirv_ocl_rint((float)Coordinate.z), 0.0f, (float)(dt - 1));
@@ -463,8 +450,7 @@ float4 __attribute__((overloadable)) __spirv_ImageSampleExplicitLod_Rfloat4(__sp
 
     float snappedCoords = Coordinate;
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         snappedCoords = (Coordinate < 0) ? -1.0f : Coordinate;
     }
@@ -476,8 +462,7 @@ float4 __attribute__((overloadable)) __spirv_ImageSampleExplicitLod_Rfloat4(__sp
 {
     long image_id = (long)__builtin_IB_get_image(SampledImage);
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
-    if (BIF_FLAG_CTRL_GET(UseBindlessImage) ||
-        (__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
+    if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
         float floatCoords = convert_float((Coordinate));
         return __builtin_IB_OCL_1d_sample_l(image_id, sampler_id, floatCoords, Lod);
@@ -499,8 +484,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D
     float4 Coordinate4 = (float4)(Coordinate, 0, 0, 0);
     if (Lod == 0.0f)
     {
-        if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-            (__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP)
+        if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP)
         {
             if (CLK_NORMALIZED_COORDS_TRUE == __builtin_IB_is_normalized_coords(sampler_id))
             {
@@ -518,8 +502,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D
     }
     else
     {
-        if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-            0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
+        if (0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
         {
             Coordinate4.x = (Coordinate4.x < 0) ? -1.0f : Coordinate4.x;
             Coordinate4.y = (Coordinate4.y < 0) ? -1.0f : Coordinate4.y;
@@ -540,8 +523,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D
     long image_id = (long)__builtin_IB_get_image(SampledImage);
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
-    if (BIF_FLAG_CTRL_GET(UseBindlessImage) ||
-        (__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
+    if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
         float floatCoords = convert_float((Coordinate));
         return as_uint4(__builtin_IB_OCL_1d_sample_l(image_id, sampler_id, floatCoords, Lod));
@@ -580,8 +562,7 @@ float4 __attribute__((overloadable)) __spirv_ImageSampleExplicitLod_Rfloat4(__sp
 
     float2 snappedCoords = Coordinate;
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         snappedCoords.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         snappedCoords.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -606,8 +587,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D
     {
         int dt = __builtin_IB_get_image1d_array_size(image_id);
         float layer = __spirv_ocl_fclamp(__spirv_ocl_rint(Coordinate.y), 0.0f, (float)(dt - 1));
-        if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-            (__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP)
+        if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP)
         {
             float tmpCoords = Coordinate.x;
             if (CLK_NORMALIZED_COORDS_TRUE == __builtin_IB_is_normalized_coords(sampler_id))
@@ -620,8 +600,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D
         }
         else
         {
-            if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-                0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
+            if (0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
             {
                 Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
             }
@@ -630,8 +609,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D
     }
     else
     {
-        if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-            0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
+        if (0 != __builtin_IB_get_snap_wa_reqd(sampler_id))
         {
             Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         }
@@ -651,8 +629,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
     // "Snap workaround" - path
-    if (BIF_FLAG_CTRL_GET(UseBindlessImage) ||
-        (__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
+    if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
         int dt = __builtin_IB_get_image1d_array_size(image_id);
         float layer = __spirv_ocl_fclamp(__spirv_ocl_rint((float)Coordinate.y), 0.0f, (float)(dt - 1));
@@ -695,8 +672,7 @@ float4 __attribute__((overloadable)) __spirv_ImageSampleExplicitLod_Rfloat4(__sp
 
     float2 snappedCoords = Coordinate;
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         snappedCoords.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         snappedCoords.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -718,8 +694,7 @@ float4 __attribute__((overloadable)) __spirv_ImageSampleExplicitLod_Rfloat4(__sp
 
     float4 snappedCoords = Coordinate;
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         snappedCoords.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         snappedCoords.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -747,8 +722,7 @@ float4 __attribute__((overloadable)) __spirv_ImageSampleExplicitLod_Rfloat4(
     long image_id = (long)__builtin_IB_get_image(SampledImage);
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -799,8 +773,7 @@ float4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rfloat4(
     long image_id = (long)__builtin_IB_get_image(SampledImage);
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -831,8 +804,7 @@ half4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rhalf4(
     long image_id = (long)__builtin_IB_get_image(SampledImage);
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -924,8 +896,7 @@ float4 __attribute__((overloadable)) __spirv_ImageSampleExplicitLod_Rfloat4(
     long image_id = (long)__builtin_IB_get_image(SampledImage);
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -964,8 +935,7 @@ float4 __attribute__((overloadable)) __spirv_ImageSampleExplicitLod_Rfloat4(
     long image_id = (long)__builtin_IB_get_image(SampledImage);
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         Coordinate = (Coordinate < 0) ? -1.0f : Coordinate;
     }
@@ -1015,8 +985,7 @@ float4 __attribute__((overloadable)) __spirv_ImageSampleExplicitLod_Rfloat4(
     long image_id = (long)__builtin_IB_get_image(SampledImage);
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
     }
@@ -1054,8 +1023,7 @@ float4 __attribute__((overloadable)) __spirv_ImageSampleExplicitLod_Rfloat4(
     long image_id = (long)__builtin_IB_get_image(SampledImage);
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
@@ -1074,8 +1042,7 @@ float4 __attribute__((overloadable)) __spirv_ImageSampleExplicitLod_Rfloat4(
     long image_id = (long)__builtin_IB_get_image(SampledImage);
     long sampler_id = (long)__builtin_IB_get_sampler(SampledImage);
 
-    if (!BIF_FLAG_CTRL_GET(UseBindlessImage) &&
-        __builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
         Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
