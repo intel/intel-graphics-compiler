@@ -6300,8 +6300,19 @@ void G4_RegVar::emit(std::ostream &output) {
 int G4_AddrExp::eval(const IR_Builder &builder) {
   int byteAddr = 0;
 
-  vISA_ASSERT(m_addressedReg->getPhyReg() != NULL,
-              "No addr takenregister found!");
+  if (m_addressedReg->getPhyReg() == nullptr) {
+    // The addressed variable has no physical register. This happens when a
+    // variable whose address is taken (&V) is spilled while none of the address
+    // registers pointing to it is ever dereferenced (r[a0.N]). Such a variable
+    // is not "address sensitive", so the addr-taken spill/fill fixup that
+    // normally redirects &V to a fill temp (SpillManagerGRF::handleAddrTakenSpills)
+    // never runs, leaving this addr-exp referencing the spilled variable. Since
+    // the address value is dead (never used in an indirect access), evaluate it
+    // to its offset instead of asserting. See IGC-15625.
+    vISA_ASSERT(m_addressedReg->getDeclare()->isSpilled(),
+                "No addr taken register found!");
+    return m_offset;
+  }
 
   byteAddr = m_addressedReg->getByteAddr(
       builder); // let's assume the unsigned=>int won't overflow for now.
