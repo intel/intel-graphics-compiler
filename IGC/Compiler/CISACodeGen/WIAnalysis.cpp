@@ -280,7 +280,10 @@ void WIAnalysisRunner::init(llvm::Function *F, llvm::LoopInfo *LI, llvm::Dominat
   m_ModMD = ModMD;
   m_TT = TransTable;
 
-  m_partialEntryMask = !isEntryFunc(MDUtils, F);
+  // DisableUniformAnalysis skips the dependency calculation in run() that fills
+  // m_ctrlBranches, leaving it empty. Mark the map incomplete rather than reporting
+  // every block as converged.
+  m_ctrlBranchesIncomplete = !isEntryFunc(MDUtils, F) || IGC_IS_FLAG_ENABLED(DisableUniformAnalysis);
 
   // CS uniformness
   m_localIDxUniform = false;
@@ -348,6 +351,14 @@ bool WIAnalysisRunner::run() {
             m_forcedUniforms.push_back(use);
           }
         }
+      }
+    }
+  } else {
+    for (auto &I : instructions(F)) {
+      if (const GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(&I)) {
+        const WIAnalysis::WIDependancy Dep = ImplicitArgs::getArgDep(GII->getIntrinsicID());
+        if (Dep != WIAnalysis::RANDOM)
+          incUpdateDepend(GII, Dep);
       }
     }
   }
@@ -573,6 +584,9 @@ bool WIAnalysisRunner::isGlobalUniform(const Value *val) const {
 }
 
 WIAnalysis::WIDependancy WIAnalysisRunner::getCFDependency(const BasicBlock *BB) const {
+  if (m_ctrlBranchesIncomplete)
+    return WIAnalysis::RANDOM;
+
   auto II = m_ctrlBranches.find(BB);
   if (II == m_ctrlBranches.end())
     return WIAnalysis::UNIFORM_GLOBAL;

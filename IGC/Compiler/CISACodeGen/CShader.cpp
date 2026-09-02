@@ -3255,6 +3255,7 @@ bool CShader::CanTreatAsAlias(llvm::ExtractElementInst *inst) {
     return false;
   }
 
+  const bool vecUniform = GetIsUniform(vecSrc);
   for (auto I = vecSrc->user_begin(), E = vecSrc->user_end(); I != E; ++I) {
     llvm::ExtractElementInst *extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I);
     if (!extract) {
@@ -3268,6 +3269,9 @@ bool CShader::CanTreatAsAlias(llvm::ExtractElementInst *inst) {
     // the VISA could track the liveness of individual elements of vector
     // variables.
     if (IsCoalesced(extract))
+      return false;
+    // An alias takes the vector's uniformity, so WIAnalysis must agree on both.
+    if (GetIsUniform(extract) != vecUniform)
       return false;
   }
   return true;
