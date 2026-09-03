@@ -24,6 +24,7 @@ void initializeMemOpt2Pass(llvm::PassRegistry &);
 void initializeCodeGenContextWrapperPass(llvm::PassRegistry &);
 
 namespace IGC {
+void initializeFastMathConstantHandlingPass(llvm::PassRegistry &);
 void initializeLSCControlsAnalysisPassPass(llvm::PassRegistry &);
 void initializeRayTracingShaderLoweringPass(llvm::PassRegistry &);
 void initializeKernelFunctionCloningLPMPass(llvm::PassRegistry &);
@@ -98,6 +99,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeExtensionFuncsAnalysisLPMPass(Registry);
   initializeExtensionFuncsResolutionLPMPass(Registry);
   initializeFCmpPaternMatchPass(Registry);
+  IGC::initializeFastMathConstantHandlingPass(Registry);
   IGC::initializeFixInvalidFuncNamePass(Registry);
   initializeGenericAddressDynamicResolutionPass(Registry);
   initializeGenericNullPtrPropagationPass(Registry);
