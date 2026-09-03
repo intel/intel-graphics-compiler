@@ -185,6 +185,86 @@ with compiler transformations.
 `IGC/Compiler/tests/`) is configured, enabling the `check-igc` build target. It is `OFF` by
 default and requires `igc_opt` to be built.
 
+#### Additional notes on Vector Compiler (VC) LIT tests
+
+The Vector Compiler backend has its own LIT test suite (located in `IGC/VectorCompiler/test/`),
+exposed through the `check-vc` build target. It is configured when the VC backend and LIT testing
+are both enabled:
+
+```shell
+-DIGC_BUILD__VC_ENABLED=1 -DIGC_OPTION__ENABLE_LIT_TESTS=1
+```
+
+Note that `check-vc` is wired as a dependency of the main IGC library target, so once it is
+configured a plain `make` will also run the whole VC suite.
+
+##### Why an extra LLVM build is needed
+
+Unlike `check-igc`, the VC suite does not use a dedicated tool. It runs the stock LLVM `opt` and
+`llc` and loads the VC backend into them as a plugin:
+
+```shell
+opt -load <igc-build-dir>/libVCBackendPlugin.so ...
+```
+
+This only works if `opt` and `llc` are linked against the shared `libLLVM.so`, i.e. if LLVM was
+configured with `-DLLVM_LINK_LLVM_DYLIB=ON`. An `opt` that is statically linked against LLVM (the
+default for an LLVM build, and for the LLVM that IGC builds for itself) cannot resolve the
+plugin's LLVM symbols and fails to load it, so a separate shared LLVM build is required.
+
+Configure fails with an explicit error if VC LIT tests are enabled but no suitable `opt` is
+available, rather than silently falling back to the system `opt`.
+
+##### Building a shared LLVM and pointing IGC at it
+
+Use a **separate, clean** `llvm-project` checkout of the same version as
+`IGC_OPTION__LLVM_PREFERRED_VERSION`. Do not reuse the checkout from
+[Build from sources](#build-from-sources) - it has `opencl-clang` and `SPIRV-LLVM-Translator`
+cloned into `llvm/projects`, and LLVM would try to build them as well.
+
+```shell
+cd $IGC_WORKSPACE_DIR
+git clone -b llvmorg-17.0.6 --depth 1 https://github.com/llvm/llvm-project llvm-project-shared
+
+mkdir llvm-shared-build && cd llvm-shared-build
+cmake -G Ninja ../llvm-project-shared/llvm \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DLLVM_TARGETS_TO_BUILD=X86 \
+      -DLLVM_BUILD_LLVM_DYLIB=ON \
+      -DLLVM_LINK_LLVM_DYLIB=ON \
+      -DCMAKE_INSTALL_PREFIX=$IGC_WORKSPACE_DIR/llvm-shared-install
+ninja install
+```
+
+Then pass the install prefix to the IGC build via `IGC_OPTION__VC_LIT_LLVM_DIR`:
+
+```shell
+cd $IGC_WORKSPACE_DIR/build
+cmake -DIGC_BUILD__VC_ENABLED=1 \
+      -DIGC_OPTION__ENABLE_LIT_TESTS=1 \
+      -DIGC_OPTION__VC_LIT_LLVM_DIR=$IGC_WORKSPACE_DIR/llvm-shared-install \
+      -DCMAKE_BUILD_TYPE=Debug \
+      ../igc
+make check-vc -j`nproc`
+```
+
+`IGC_OPTION__VC_LIT_LLVM_DIR` is an LLVM install prefix. The suite takes `opt` and `llc` from
+`<prefix>/bin` and adds `<prefix>/lib` to `LD_LIBRARY_PATH` so that `libLLVM.so` is picked up from
+the same build. The remaining LIT tools (`FileCheck`, `not`, `count`, `llvm-dwarfdump`) come from
+the LLVM that IGC itself uses, so they do not need to be installed into this prefix.
+
+##### Expected results
+
+Tests under `IGC/VectorCompiler/test/DebugInfo/` are marked `REQUIRES: oneapi-readelf`. That
+utility is not part of the open-source distribution, so those tests are reported as *unsupported*
+and skipped. This is expected and is not a failure.
+
+To build IGC with the VC backend but without its test suite, disable it explicitly:
+
+```shell
+-DIGC_BUILD__CMLIT_ENABLE=OFF
+```
+
 ***
 
 ## LLVM/LLD/Clang version information
@@ -193,6 +273,7 @@ default and requires `igc_opt` to be built.
 
 | Version          | Product quality |
 |:----------------:|-----------------|
+| LLVM 22/Clang 22           | Experimental   |
 | LLVM 17/Clang 17           | **Production** |
 | LLVM 16/Clang 16           | Experimental   |
 | LLVM 15/Clang 15           | Experimental   |
@@ -208,11 +289,11 @@ default and requires `igc_opt` to be built.
 LLVM version determines what branches are used when building dependencies.
 When checking out the components refer to the following table, replace **XX** with the LLVM version used:
 
-| Repository name       | Version specific | Branch / Git Tag     | LLVM 17 example  |
-|-----------------------|:----------------:|----------------------|------------------|
-| llvm-project          | -                | llvmorg-**XX**       | llvmorg-17.0.6   |
-| vc-intrinsics         | no               | master               | master           |
-| SPIRV-Tools           | no               | master               | master           |
-| SPIRV-Headers         | no               | master               | master           |
-| SPIRV-LLVM-Translator | yes              | llvm_release_**XX**0 | llvm_release_170 |
-| opencl-clang          | yes              | ocl-open-**XX**0     | ocl-open-170     |
+| Repository name       | Version specific | Branch / Git Tag     | LLVM 17 example  | LLVM 22 example  |
+|-----------------------|:----------------:|----------------------|------------------|------------------|
+| llvm-project          | -                | llvmorg-**XX**       | llvmorg-17.0.6   | llvmorg-22.1.8   |
+| vc-intrinsics         | no               | master               | master           | master           |
+| SPIRV-Tools           | no               | master               | master           | master           |
+| SPIRV-Headers         | no               | master               | master           | master           |
+| SPIRV-LLVM-Translator | yes              | llvm_release_**XX**0 | llvm_release_170 | llvm_release_220 |
+| opencl-clang          | yes              | ocl-open-**XX**0     | ocl-open-170     | ocl-open-220     |

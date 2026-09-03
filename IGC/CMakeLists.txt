@@ -1703,7 +1703,25 @@ if(IGC_BUILD__VC_ENABLED)
     set(IGC_BUILD__CMOPT_DEFAULT_DIR ${IGC_BUILD__GFX_DEV_SRC_DIR}/../cmc/cm-opt/llvm-${LLVM_VERSION_MAJOR}/${OS_NAME_ARCH_LOWER_CASE}/${OS_NAME_LOWER_CASE}/${OS_VERSION_NUMBER})
     set(LLVM_PACKAGES_BASE ${IGC_BUILD__GFX_DEV_SRC_DIR}/../prebuild-llvm/Linux/Ubuntu/${OS_VERSION_NUMBER}/${OPT_LLVM_BUILD_TYPE})
 
-    if(NOT LLVM_ON_WIN32)
+    # Escape hatch for trees without the internal LLVM prebuild (e.g. open-source builds).
+    set(IGC_OPTION__VC_LIT_LLVM_DIR "" CACHE PATH
+        "Install prefix of a shared-linked LLVM to run VC lit tests against")
+    if(NOT LLVM_ON_WIN32 AND IGC_OPTION__VC_LIT_LLVM_DIR)
+      if(NOT EXISTS "${IGC_OPTION__VC_LIT_LLVM_DIR}/bin/opt" OR NOT EXISTS "${IGC_OPTION__VC_LIT_LLVM_DIR}/bin/llc")
+        message(FATAL_ERROR
+          "IGC_OPTION__VC_LIT_LLVM_DIR is set to '${IGC_OPTION__VC_LIT_LLVM_DIR}', but 'bin/opt' "
+          "and/or 'bin/llc' were not found there.\n"
+          "IGC_OPTION__VC_LIT_LLVM_DIR must point at the install prefix of an LLVM "
+          "${IGC_OPTION__LLVM_PREFERRED_VERSION} configured with -DLLVM_LINK_LLVM_DYLIB=ON, so "
+          "that it provides <prefix>/bin/opt, <prefix>/bin/llc and <prefix>/lib/libLLVM*.so. "
+          "An opt statically linked against LLVM cannot load the VC backend plugin.\n"
+          "See 'Additional notes on Vector Compiler (VC) LIT tests' in "
+          "documentation/build_ubuntu.md for more information.")
+      endif()
+      set(IGC_BUILD__CMOPT_DEFAULT_DIR "${IGC_OPTION__VC_LIT_LLVM_DIR}")
+      set(IGC_BUILD__CMOPT_DIR "${IGC_OPTION__VC_LIT_LLVM_DIR}" CACHE PATH
+          "Path to opt utility for VC lit testing" FORCE)
+    elseif(NOT LLVM_ON_WIN32)
       # Install pre-built shared linked opt and llc required for VC LIT testing
       if(IS_DIRECTORY "${LLVM_PACKAGES_BASE}/${IGC_OPTION__LLVM_PREFERRED_VERSION}")
         set(LLVM_PACKAGES_DIR "${LLVM_PACKAGES_BASE}/${IGC_OPTION__LLVM_PREFERRED_VERSION}")
@@ -1734,8 +1752,12 @@ if(IGC_BUILD__VC_ENABLED)
           "IGC_OPTION__LLVM_PREFERRED_VERSION=${IGC_OPTION__LLVM_PREFERRED_VERSION}; "
           "otherwise the build silently falls back to the system LLVM 'opt', which "
           "cannot load the VC backend plugin.\n"
-          "Provide the prebuild at the path above, or disable VC LIT tests with "
-          "-DIGC_BUILD__CMLIT_ENABLE=OFF.")
+          "Provide the prebuild at the path above, point IGC_OPTION__VC_LIT_LLVM_DIR at the "
+          "install prefix of your own LLVM built with -DLLVM_LINK_LLVM_DYLIB=ON "
+          "(-DIGC_OPTION__VC_LIT_LLVM_DIR=<prefix>), or disable VC LIT tests with "
+          "-DIGC_BUILD__CMLIT_ENABLE=OFF.\n"
+          "See 'Additional notes on Vector Compiler (VC) LIT tests' in "
+          "documentation/build_ubuntu.md for more information.")
       endif()
     endif()
 
