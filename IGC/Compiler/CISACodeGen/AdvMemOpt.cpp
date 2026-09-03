@@ -125,20 +125,36 @@ bool AdvMemOpt::runOnFunction(Function &F) {
         InnermostLoops.push_back(L);
     }
 
+  const bool FollowPostDom = IGC_IS_FLAG_ENABLED(AdvMemOptAggressiveHoist);
+
   for (Loop *L : InnermostLoops) {
     SmallVector<BasicBlock *, 8> Line;
+    SmallPtrSet<BasicBlock *, 8> Seen;
     BasicBlock *BB = L->getHeader();
-    while (BB) {
+    // The post-dominator tree is acyclic; 'Seen' only guards a degenerate CFG.
+    while (BB && Seen.insert(BB).second) {
       Line.push_back(BB);
       BasicBlock *CurrBB = BB;
       BB = nullptr;
-      for (auto BI = succ_begin(CurrBB), BE = succ_end(CurrBB); BI != BE; ++BI) {
-        BasicBlock *OtherBB = *BI;
-        if (CurrBB == OtherBB || !L->contains(OtherBB))
-          continue;
-        if (DT->dominates(CurrBB, OtherBB) && PDT->dominates(OtherBB, CurrBB)) {
-          BB = OtherBB;
-          break;
+      if (FollowPostDom) {
+        // Neither arm of an if/else diamond post-dominates CurrBB, so successor
+        // scanning stalls there. The immediate post-dominator is the join past it.
+        if (auto *PDTNode = PDT->getNode(CurrBB))
+          if (auto *IPDomNode = PDTNode->getIDom())
+            BB = IPDomNode->getBlock();
+        // hasMemoryWrite() asserts each 'Line' block is dominated by, and
+        // post-dominates, its predecessor.
+        if (BB && (BB == CurrBB || !L->contains(BB) || !DT->dominates(CurrBB, BB) || !PDT->dominates(BB, CurrBB)))
+          BB = nullptr;
+      } else {
+        for (auto BI = succ_begin(CurrBB), BE = succ_end(CurrBB); BI != BE; ++BI) {
+          BasicBlock *OtherBB = *BI;
+          if (CurrBB == OtherBB || !L->contains(OtherBB))
+            continue;
+          if (DT->dominates(CurrBB, OtherBB) && PDT->dominates(OtherBB, CurrBB)) {
+            BB = OtherBB;
+            break;
+          }
         }
       }
     }
@@ -279,6 +295,12 @@ bool AdvMemOpt::collectOperandInst(SmallPtrSetImpl<Instruction *> &Set, Instruct
     Instruction *I = dyn_cast<Instruction>(V);
     if (!I)
       continue;
+    if (isa<PHINode>(I) && IGC_IS_FLAG_ENABLED(AdvMemOptAggressiveHoist)) {
+      // A PHI cannot be moved, but need not be when it is already live at the destination.
+      if (DT->dominates(I->getParent(), LeadingBlock))
+        continue;
+      return true;
+    }
     if (isa<PHINode>(I) || I->mayHaveSideEffects() || I->mayReadOrWriteMemory())
       return true;
     if (I->getParent() != Inst->getParent()) {

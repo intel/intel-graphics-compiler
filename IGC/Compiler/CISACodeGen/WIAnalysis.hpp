@@ -256,6 +256,17 @@ private:
   /// @brief return true if all the source operands are defined outside the region
   bool isRegionInvariant(const llvm::Instruction *inst, BranchInfo *brInfo);
 
+  /// @brief Is \p useBlk reached from \p defBlk only through single-predecessor blocks?
+  ///
+  /// Such a block makes no control-flow decision, so its lane mask is a subset of
+  /// its predecessor's: a use there is no more divergent than one inside defBlk,
+  /// which update_cf_dep already skips as a local def-use.
+  ///
+  /// LCSSA dedicated exits and critical-edge splitters have this shape. Treating
+  /// them as anything else turns a uniform induction variable RANDOM once its
+  /// LCSSA phi sits in a split exit rather than the latch.
+  bool isForwardedFromDefBlock(const llvm::BasicBlock *useBlk, const llvm::BasicBlock *defBlk) const;
+
   /// @brief return true if instruction is used as lane ID in subgroup broadcast
   bool isUsedByWaveBroadcastAsLocalID(const llvm::Instruction *inst);
 

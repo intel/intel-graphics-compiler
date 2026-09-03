@@ -830,6 +830,10 @@ DECLARE_IGC_REGKEY(bool, EnableWIPhiStructuralEquivalence, true,
                    "per lane; cross-lane uniformity is still decided by calculate_dep. "
                    "Catches GVN-PRE materialization at divergent joins.",
                    DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, EnableWIForwardingBlockLocalUse, false,
+                   "Treat a use reached from the def block through single-predecessor blocks as a local def-use."
+                   "Without this, inserting a dedicated loop exit makes uniform induction variables RANDOM.",
+                   DEBUG_ONLY)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0, false, " Copy a0 used for extended msg descriptor to dbg0 to help debug",
@@ -1357,6 +1361,17 @@ DECLARE_IGC_REGKEY(bool, EnableFunctionPointer, true, "Enables support for funct
 DECLARE_IGC_REGKEY(bool, EnableSIMDVariantCompilation, false, "Enables compiling kernels in variant SIMD sizes",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, ForceFFIDOverwrite, false, "Force overwriting ffid in sr0.0", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, AdvMemOptAggressiveHoist, false,
+                   "Widen uniform-load hoisting. Walk the immediate post-dominator instead of direct successors,"
+                   "so the block list steps over if/else diamonds, and accept a PHI operand already available"
+                   "at the destination.",
+                   DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, EnableUniformSLMLoadWiden, false,
+                   "Uniform SLM load merging outside OpenCL, plus the round-up that keeps the result a "
+                   "single send: a hull one element short of an LSC vector length (7/15/31/63) goes up "
+                   "to the next, costing one never-extracted element of overread. OpenCL merges on "
+                   "every address space regardless; there this key adds only the round-up.",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableReadGTPinInput, true,
                    "Enables setting GTPin context flags by reading the input to the compiler adapters", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, ForceStaticToDynamic, false, "Force write of vertex count in GS", DEBUG_ONLY)

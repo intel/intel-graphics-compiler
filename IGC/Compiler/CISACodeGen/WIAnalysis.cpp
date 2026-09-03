@@ -800,6 +800,23 @@ void WIAnalysisRunner::calculate_dep(const Value *val) {
   }
 }
 
+bool WIAnalysisRunner::isForwardedFromDefBlock(const llvm::BasicBlock *useBlk, const llvm::BasicBlock *defBlk) const {
+  // An exit split or edge splitter adds one or two blocks. Same bound as isRegionInvariant.
+  constexpr unsigned MAX_DEPTH = 4;
+  unsigned Budget = MAX_DEPTH;
+  const llvm::BasicBlock *BB = useBlk;
+  while (BB != defBlk) {
+    if (Budget-- == 0)
+      return false;
+    // Null unless BB has exactly one predecessor, hence one incoming edge.
+    const llvm::BasicBlock *Pred = BB->getUniquePredecessor();
+    if (!Pred)
+      return false;
+    BB = Pred;
+  }
+  return true;
+}
+
 bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction *defi, BranchInfo *brInfo) {
   constexpr uint8_t MAX_DEPTH = 4;
   struct RegionOperand {
@@ -980,6 +997,10 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst *inst) {
         }
         if (user_blk == def_blk) {
           // local def-use, not related to control-dependence
+          continue; // skip
+        }
+        if (IGC_IS_FLAG_ENABLED(EnableWIForwardingBlockLocalUse) && isForwardedFromDefBlock(user_blk, def_blk)) {
+          // Only forwarding blocks between: the use runs under a subset of def_blk's mask.
           continue; // skip
         }
         auto DefLoop = LI->getLoopFor(def_blk);

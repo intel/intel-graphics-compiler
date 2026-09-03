@@ -1112,9 +1112,16 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
   unsigned TypeSizeInBits = unsigned(DL->getTypeSizeInBits(LeadingLoadScalarType));
   if (!ProfitVectorLengths.count(TypeSizeInBits))
     return false;
-  // FIXME: Enable for OCL shader only as other clients have regressions but
-  // there's no way to trace down.
-  bool isUniformLoad = (CGC->type == ShaderType::OPENCL_SHADER) && (WI->isUniform(LeadingLoad.inst()));
+  // Historically OCL-only: other clients regressed and the cause was untraced.
+  //
+  // EnableUniformSLMLoadWiden lifts that for SLM only. The uniform profit-vector list is dense where the generic one is
+  // not, so a merge may span its members' convex hull and read the gaps: four i32 at stride 8B become one <7 x i32>.
+  // Those dead elements occupy GRF on any address space; SLM is where collapsing the scalar sends has been measured to
+  // pay for them. The same key then rounds the hull up to a legal LSC length below.
+  bool allowSLMUniformMerge =
+      IGC_IS_FLAG_ENABLED(EnableUniformSLMLoadWiden) && LeadingLoad.getPointerAddressSpace() == ADDRESS_SPACE_LOCAL;
+  bool isUniformLoad =
+      (CGC->type == ShaderType::OPENCL_SHADER || allowSLMUniformMerge) && WI->isUniform(LeadingLoad.inst());
 
   // Build the profitable-vector-length list for a given scalar bit width.
   auto buildProfitVec = [&](unsigned Bits, SmallVectorImpl<unsigned> &Out) {
@@ -1417,6 +1424,27 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
       Ptr = Builder.CreateInBoundsGEP(LeadingLoadScalarType, Ptr, Idx);
     else
       Ptr = Builder.CreateGEP(LeadingLoadScalarType, Ptr, Idx);
+  }
+
+  // Transposed d32/d64 has only V1/V2/V3/V4/V8/V16/V32/V64, and VectorPreProcess
+  // splits only downward, so a 7-element hull becomes <4 x float> + <3 x float>.
+  // Rounding up to the next legal length keeps it one send, at the cost of one
+  // never-extracted element of overread, safe in SLM, which cannot fault.
+  // See also LdStCombine's AllowDummyLoadCoalescing for similar behavior.
+  //
+  // Retesting the key is not redundant: OpenCL is uniform-merged with the key off,
+  // so this is what keeps its shipped behavior unchanged.
+  if (IGC_IS_FLAG_ENABLED(EnableUniformSLMLoadWiden) && isUniformLoad && CGC->platform.LSCEnabled() &&
+      (LdScalarSize == 4 || LdScalarSize == 8) && LeadingLoad.getPointerAddressSpace() == ADDRESS_SPACE_LOCAL) {
+    static const unsigned LSCVectorLengths[] = {1, 2, 3, 4, 8, 16, 32, 64};
+    bool IsLegal = false, NextIsLegal = false;
+    for (unsigned Len : LSCVectorLengths) {
+      IsLegal |= (Len == NumElts);
+      NextIsLegal |= (Len == NumElts + 1);
+    }
+    // Only 7/15/31/63 satisfy both.
+    if (!IsLegal && NextIsLegal)
+      ++NumElts;
   }
 
   Type *NewLoadType = IGCLLVM::FixedVectorType::get(LeadingLoadScalarType, NumElts);
