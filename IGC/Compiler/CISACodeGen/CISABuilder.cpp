@@ -7373,19 +7373,6 @@ void CEncoder::QWScatter(CVariable *src, const ResourceDescriptor &resource, CVa
       visaBlockNum(numElems), surfaceOpnd, addressOpnd, srcOpnd));
 }
 
-// Special convert between a standard type and non-standard type fp8
-// let's fcvt to handle fp8/tf32 conversion
-void CEncoder::fcvt(CVariable *dst, CVariable *src) {
-  VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
-  VISA_VectorOpnd *dstOpnd = GetDestinationOperand(dst, m_encoderState.m_dstOperand);
-  VISA_VectorOpnd *srcOpnd0 = GetSourceOperand(src, m_encoderState.m_srcOperand[0]);
-
-  V(vKernel->AppendVISADataMovementInst(
-      ISA_FCVT, predOpnd, IsSat(), GetAluEMask(dst),
-      visaExecSize(dst->IsUniform() ? m_encoderState.m_uniformSIMDSize : m_encoderState.m_simdSize), dstOpnd,
-      srcOpnd0));
-}
-
 void CEncoder::lfsr(CVariable *dst, CVariable *src0, CVariable *src1, LFSR_FC funcCtrl) {
   IGC_ASSERT(dst->GetType() == ISA_TYPE_UD);
   IGC_ASSERT(src0->GetType() == ISA_TYPE_UD);

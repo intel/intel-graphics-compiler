@@ -22613,27 +22613,29 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
     }
     /// Use UB as we are not exposing BF8, UD for TF32
     else if (id == GenISAIntrinsic::GenISA_hftobf8) {
-      tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_UB, 0, 0);
+      tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_BF8, 0, 0);
       tSrc = MaterializeImmToGRF(src, "tmp_cvt");
     } else if (id == GenISAIntrinsic::GenISA_bf8tohf) {
       tDst = dst;
-      tSrc = m_currShader->GetNewAlias(MaterializeImmToGRF(src, "tmp_cvt"), ISA_TYPE_UB, 0, 0);
+      tSrc = m_currShader->GetNewAlias(MaterializeImmToGRF(src, "tmp_cvt"), ISA_TYPE_BF8, 0, 0);
     } else if (id == GenISAIntrinsic::GenISA_ftotf32) {
-      tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_UD, 0, 0);
+      tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_TF32, 0, 0);
       tSrc = MaterializeImmToGRF(src, "tmp_cvt");
     }
     // Use Type_B for HF8
     else if (id == GenISAIntrinsic::GenISA_hf8tohf) {
       tDst = dst;
-      tSrc = m_currShader->GetNewAlias(MaterializeImmToGRF(src, "tmp_cvt"), ISA_TYPE_B, 0, 0);
+      tSrc = m_currShader->GetNewAlias(MaterializeImmToGRF(src, "tmp_cvt"), ISA_TYPE_HF8, 0, 0);
     } else if (id == GenISAIntrinsic::GenISA_hftohf8) {
-      tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_B, 0, 0);
+      tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_HF8, 0, 0);
       tSrc = MaterializeImmToGRF(src, "tmp_cvt");
     }
     else {
       IGC_ASSERT_EXIT_MESSAGE(0, "Something wrong in cvt!");
     }
 
+    bool requireNoMask =
+        (id == GenISAIntrinsic::GenISA_hftobf8 || id == GenISAIntrinsic::GenISA_hftohf8 || isExtraDownFcvt);
     if (isSrcUniform && isDstUniform) {
       SmallVector<uint32_t, 16> insts;
       getAllExecsize(insts, nelts);
@@ -22654,13 +22656,7 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
           uint32_t stride = (esize >= 8 ? 8 : esize);
           m_encoder->SetSrcRegion(0, stride, stride, 1);
         }
-        if (id == GenISAIntrinsic::GenISA_hftobf8 || id == GenISAIntrinsic::GenISA_bf8tohf ||
-            id == GenISAIntrinsic::GenISA_hftohf8 || id == GenISAIntrinsic::GenISA_hf8tohf ||
-            id == GenISAIntrinsic::GenISA_ftotf32 || isExtraFcvt) {
-          m_encoder->fcvt(tDst, tSrc);
-        } else {
-          m_encoder->Cast(tDst, tSrc);
-        }
+        m_encoder->Cast(tDst, tSrc);
         m_encoder->Push();
       }
     } else {
@@ -22671,17 +22667,10 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
         }
         m_encoder->SetDstSubReg(dstOff);
         m_encoder->SetSrcSubReg(0, srcOff);
-        if (id == GenISAIntrinsic::GenISA_hftobf8 || id == GenISAIntrinsic::GenISA_bf8tohf ||
-            id == GenISAIntrinsic::GenISA_hftohf8 || id == GenISAIntrinsic::GenISA_hf8tohf ||
-            id == GenISAIntrinsic::GenISA_ftotf32 || isExtraFcvt) {
-          if (id == GenISAIntrinsic::GenISA_hftobf8 || id == GenISAIntrinsic::GenISA_hftohf8 || isExtraDownFcvt) {
-            // HW requires NoMask for down-conversion to FP8
-            m_encoder->SetNoMask();
-          }
-          m_encoder->fcvt(tDst, tSrc);
-        } else {
-          m_encoder->Cast(tDst, tSrc);
+        if (requireNoMask) {
+          m_encoder->SetNoMask();
         }
+        m_encoder->Cast(tDst, tSrc);
         m_encoder->Push();
 
         dstOff += (isDstUniform ? 1 : nsimdsize);

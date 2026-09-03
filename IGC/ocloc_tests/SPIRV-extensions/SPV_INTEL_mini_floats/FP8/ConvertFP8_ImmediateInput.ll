@@ -36,10 +36,10 @@ target triple = "spir64-unknown-unknown"
 declare spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32)
 
 ; CHECK-HF2E4M3-LABEL: .kernel "ConvertFP16ToE4M3_immediate"
-; CHECK-HF2E4M3: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=b num_elts=1
+; CHECK-HF2E4M3: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=hf8 num_elts=1
 ; CHECK-HF2E4M3: .decl [[SRC:[A-Za-z0-9_]+]] v_type=G type=hf num_elts=1
 ; CHECK-HF2E4M3: mov (M1_NM, 1) [[SRC]](0,0)<1> 0x3c00:hf
-; CHECK-HF2E4M3: fcvt (M1_NM, 1) [[DST]](0,0)<1> [[SRC]](0,0)<0;1,0>
+; CHECK-HF2E4M3: mov (M1_NM, 1) [[DST]](0,0)<1> [[SRC]](0,0)<0;1,0>
 declare spir_func signext i8 @_Z36__builtin_spirv_ConvertFP16ToE4M3EXTDh(half)
 define spir_kernel void @ConvertFP16ToE4M3_immediate(i8 addrspace(1)* %outbuf) {
 entry:
@@ -51,10 +51,10 @@ entry:
 }
 
 ; CHECK-HF2E5M2-LABEL: .kernel "ConvertFP16ToE5M2_immediate"
-; CHECK-HF2E5M2: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=ub num_elts=1
+; CHECK-HF2E5M2: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=bf8 num_elts=1
 ; CHECK-HF2E5M2: .decl [[SRC:[A-Za-z0-9_]+]] v_type=G type=hf num_elts=1
 ; CHECK-HF2E5M2: mov (M1_NM, 1) [[SRC]](0,0)<1> 0x3c00:hf
-; CHECK-HF2E5M2: fcvt (M1_NM, 1) [[DST]](0,0)<1> [[SRC]](0,0)<0;1,0>
+; CHECK-HF2E5M2: mov (M1_NM, 1) [[DST]](0,0)<1> [[SRC]](0,0)<0;1,0>
 declare spir_func signext i8 @_Z36__builtin_spirv_ConvertFP16ToE5M2EXTDh(half)
 define spir_kernel void @ConvertFP16ToE5M2_immediate(i8 addrspace(1)* %outbuf) {
 entry:
@@ -66,10 +66,10 @@ entry:
 }
 
 ; CHECK-HF2E4M3SAT-LABEL: .kernel "ClampConvertFP16ToE4M3_immediate"
-; CHECK-HF2E4M3SAT: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=b num_elts=1
+; CHECK-HF2E4M3SAT: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=hf8 num_elts=1
 ; CHECK-HF2E4M3SAT: .decl [[SRC:[A-Za-z0-9_]+]] v_type=G type=hf num_elts=1
 ; CHECK-HF2E4M3SAT: mov (M1_NM, 1) [[SRC]](0,0)<1> 0x3c00:hf
-; CHECK-HF2E4M3SAT: fcvt.sat (M1_NM, 1) [[DST]](0,0)<1> [[SRC]](0,0)<0;1,0>
+; CHECK-HF2E4M3SAT: mov.sat (M1_NM, 1) [[DST]](0,0)<1> [[SRC]](0,0)<0;1,0>
 declare spir_func signext i8 @_Z43__builtin_spirv_ClampConvertFP16ToE4M3INTELDh(half)
 define spir_kernel void @ClampConvertFP16ToE4M3_immediate(i8 addrspace(1)* %outbuf) {
 entry:
@@ -81,10 +81,10 @@ entry:
 }
 
 ; CHECK-HF2E5M2SAT-LABEL: .kernel "ClampConvertFP16ToE5M2_immediate"
-; CHECK-HF2E5M2SAT: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=ub num_elts=1
+; CHECK-HF2E5M2SAT: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=bf8 num_elts=1
 ; CHECK-HF2E5M2SAT: .decl [[SRC:[A-Za-z0-9_]+]] v_type=G type=hf num_elts=1
 ; CHECK-HF2E5M2SAT: mov (M1_NM, 1) [[SRC]](0,0)<1> 0x3c00:hf
-; CHECK-HF2E5M2SAT: fcvt.sat (M1_NM, 1) [[DST]](0,0)<1> [[SRC]](0,0)<0;1,0>
+; CHECK-HF2E5M2SAT: mov.sat (M1_NM, 1) [[DST]](0,0)<1> [[SRC]](0,0)<0;1,0>
 declare spir_func signext i8 @_Z43__builtin_spirv_ClampConvertFP16ToE5M2INTELDh(half)
 define spir_kernel void @ClampConvertFP16ToE5M2_immediate(i8 addrspace(1)* %outbuf) {
 entry:
@@ -98,8 +98,9 @@ entry:
 ; CHECK-E4M32HF-LABEL: .kernel "ConvertE4M3ToFP16_immediate"
 ; CHECK-E4M32HF: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=hf num_elts=1
 ; CHECK-E4M32HF: .decl [[TMP:[A-Za-z0-9_]+]] v_type=G type=b num_elts=1
+; CHECK-E4M32HF: .decl [[ALIAS:[A-Za-z0-9_]+]] v_type=G type=hf8 num_elts=1 alias=<[[TMP]], 0>
 ; CHECK-E4M32HF: mov (M1_NM, 1) [[TMP]](0,0)<1> 0x38:b
-; CHECK-E4M32HF: fcvt (M1_NM, 1) [[DST]](0,0)<1> [[TMP]](0,0)<0;1,0>
+; CHECK-E4M32HF: mov (M1_NM, 1) [[DST]](0,0)<1> [[ALIAS]](0,0)<0;1,0>
 declare spir_func half @_Z36__builtin_spirv_ConvertE4M3ToFP16EXTc(i8 signext)
 define spir_kernel void @ConvertE4M3ToFP16_immediate(half addrspace(1)* %outbuf) {
 entry:
@@ -113,9 +114,9 @@ entry:
 ; CHECK-E5M22HF-LABEL: .kernel "ConvertE5M2ToFP16_immediate"
 ; CHECK-E5M22HF: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=hf num_elts=1
 ; CHECK-E5M22HF: .decl [[TMP:[A-Za-z0-9_]+]] v_type=G type=b num_elts=1
-; CHECK-E5M22HF: .decl [[ALIAS:[A-Za-z0-9_]+]] v_type=G type=ub num_elts=1 alias=<[[TMP]], 0>
+; CHECK-E5M22HF: .decl [[ALIAS:[A-Za-z0-9_]+]] v_type=G type=bf8 num_elts=1 alias=<[[TMP]], 0>
 ; CHECK-E5M22HF: mov (M1_NM, 1) [[TMP]](0,0)<1> 0x3c:b
-; CHECK-E5M22HF: fcvt (M1_NM, 1) [[DST]](0,0)<1> [[ALIAS]](0,0)<0;1,0>
+; CHECK-E5M22HF: mov (M1_NM, 1) [[DST]](0,0)<1> [[ALIAS]](0,0)<0;1,0>
 declare spir_func half @_Z36__builtin_spirv_ConvertE5M2ToFP16EXTc(i8 signext)
 define spir_kernel void @ConvertE5M2ToFP16_immediate(half addrspace(1)* %outbuf) {
 entry:
@@ -128,10 +129,10 @@ entry:
 
 ; CHECK-BF2E4M3-LABEL: .kernel "ConvertBF16ToE4M3_v2_immediate"
 ; CHECK-BF2E4M3: .decl [[SRC:[A-Za-z0-9_]+]] v_type=G type=hf num_elts=2
-; CHECK-BF2E4M3: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=b num_elts=2
+; CHECK-BF2E4M3: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=hf8 num_elts=2
 ; CHECK-BF2E4M3: mov (M1_NM, 1) [[IMM:[A-Za-z0-9_]+]](0,0)<1> 0x3f80:w
 ; CHECK-BF2E4M3: mov (M1_NM, 1) [[IMM]](0,1)<1> 0x4000:w
-; CHECK-BF2E4M3: fcvt (M1_NM, 2) [[DST]](0,0)<1> [[SRC]](0,0)<2;2,1>
+; CHECK-BF2E4M3: mov (M1_NM, 2) [[DST]](0,0)<1> [[SRC]](0,0)<2;2,1>
 declare spir_func <2 x i8> @_Z36__builtin_spirv_ConvertBF16ToE4M3EXTDv2_DF16b(<2 x bfloat>)
 define spir_kernel void @ConvertBF16ToE4M3_v2_immediate(<2 x i8> addrspace(1)* %outbuf) {
 entry:
@@ -144,10 +145,10 @@ entry:
 
 ; CHECK-BF2E5M2-LABEL: .kernel "ConvertBF16ToE5M2_v2_immediate"
 ; CHECK-BF2E5M2: .decl [[SRC:[A-Za-z0-9_]+]] v_type=G type=hf num_elts=2
-; CHECK-BF2E5M2: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=ub num_elts=2
+; CHECK-BF2E5M2: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=bf8 num_elts=2
 ; CHECK-BF2E5M2: mov (M1_NM, 1) [[IMM:[A-Za-z0-9_]+]](0,0)<1> 0x3f80:w
 ; CHECK-BF2E5M2: mov (M1_NM, 1) [[IMM]](0,1)<1> 0x4000:w
-; CHECK-BF2E5M2: fcvt (M1_NM, 2) [[DST]](0,0)<1> [[SRC]](0,0)<2;2,1>
+; CHECK-BF2E5M2: mov (M1_NM, 2) [[DST]](0,0)<1> [[SRC]](0,0)<2;2,1>
 declare spir_func <2 x i8> @_Z36__builtin_spirv_ConvertBF16ToE5M2EXTDv2_DF16b(<2 x bfloat>)
 define spir_kernel void @ConvertBF16ToE5M2_v2_immediate(<2 x i8> addrspace(1)* %outbuf) {
 entry:
@@ -160,10 +161,10 @@ entry:
 
 ; CHECK-BF2E4M3SAT-LABEL: .kernel "ClampConvertBF16ToE4M3_v2_immediate"
 ; CHECK-BF2E4M3SAT: .decl [[SRC:[A-Za-z0-9_]+]] v_type=G type=hf num_elts=2
-; CHECK-BF2E4M3SAT: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=b num_elts=2
+; CHECK-BF2E4M3SAT: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=hf8 num_elts=2
 ; CHECK-BF2E4M3SAT: mov (M1_NM, 1) [[IMM:[A-Za-z0-9_]+]](0,0)<1> 0x3f80:w
 ; CHECK-BF2E4M3SAT: mov (M1_NM, 1) [[IMM]](0,1)<1> 0x4000:w
-; CHECK-BF2E4M3SAT: fcvt.sat (M1_NM, 2) [[DST]](0,0)<1> [[SRC]](0,0)<2;2,1>
+; CHECK-BF2E4M3SAT: mov.sat (M1_NM, 2) [[DST]](0,0)<1> [[SRC]](0,0)<2;2,1>
 declare spir_func <2 x i8> @_Z43__builtin_spirv_ClampConvertBF16ToE4M3INTELDv2_DF16b(<2 x bfloat>)
 define spir_kernel void @ClampConvertBF16ToE4M3_v2_immediate(<2 x i8> addrspace(1)* %outbuf) {
 entry:
@@ -176,10 +177,10 @@ entry:
 
 ; CHECK-BF2E5M2SAT-LABEL: .kernel "ClampConvertBF16ToE5M2_v2_immediate"
 ; CHECK-BF2E5M2SAT: .decl [[SRC:[A-Za-z0-9_]+]] v_type=G type=hf num_elts=2
-; CHECK-BF2E5M2SAT: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=ub num_elts=2
+; CHECK-BF2E5M2SAT: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=bf8 num_elts=2
 ; CHECK-BF2E5M2SAT: mov (M1_NM, 1) [[IMM:[A-Za-z0-9_]+]](0,0)<1> 0x3f80:w
 ; CHECK-BF2E5M2SAT: mov (M1_NM, 1) [[IMM]](0,1)<1> 0x4000:w
-; CHECK-BF2E5M2SAT: fcvt.sat (M1_NM, 2) [[DST]](0,0)<1> [[SRC]](0,0)<2;2,1>
+; CHECK-BF2E5M2SAT: mov.sat (M1_NM, 2) [[DST]](0,0)<1> [[SRC]](0,0)<2;2,1>
 declare spir_func <2 x i8> @_Z43__builtin_spirv_ClampConvertBF16ToE5M2INTELDv2_DF16b(<2 x bfloat>)
 define spir_kernel void @ClampConvertBF16ToE5M2_v2_immediate(<2 x i8> addrspace(1)* %outbuf) {
 entry:
@@ -193,9 +194,10 @@ entry:
 ; CHECK-E4M32BF-LABEL: .kernel "ConvertE4M3ToBF16_v2_immediate"
 ; CHECK-E4M32BF: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=hf num_elts=2
 ; CHECK-E4M32BF: .decl [[SRC:[A-Za-z0-9_]+]] v_type=G type=b num_elts=2
+; CHECK-E4M32BF: .decl [[ALIAS:[A-Za-z0-9_]+]] v_type=G type=hf8 num_elts=2 {{.*}} alias=<[[SRC]], 0>
 ; CHECK-E4M32BF: mov (M1_NM, 1) [[SRC]](0,0)<1> 0x38:b
 ; CHECK-E4M32BF: mov (M1_NM, 1) [[SRC]](0,1)<1> 0x3c:b
-; CHECK-E4M32BF: fcvt (M1_NM, 2) [[DST]](0,0)<1> [[SRC]](0,0)<2;2,1>
+; CHECK-E4M32BF: mov (M1_NM, 2) [[DST]](0,0)<1> [[ALIAS]](0,0)<2;2,1>
 declare spir_func <2 x bfloat> @_Z36__builtin_spirv_ConvertE4M3ToBF16EXTDv2_c(<2 x i8>)
 define spir_kernel void @ConvertE4M3ToBF16_v2_immediate(<2 x bfloat> addrspace(1)* %outbuf) {
 entry:
@@ -209,10 +211,10 @@ entry:
 ; CHECK-E5M22BF-LABEL: .kernel "ConvertE5M2ToBF16_v2_immediate"
 ; CHECK-E5M22BF: .decl [[DST:[A-Za-z0-9_]+]] v_type=G type=hf num_elts=2
 ; CHECK-E5M22BF: .decl [[IMM:[A-Za-z0-9_]+]] v_type=G type=b num_elts=2
-; CHECK-E5M22BF: .decl [[SRC:[A-Za-z0-9_]+]] v_type=G type=ub num_elts=2
+; CHECK-E5M22BF: .decl [[SRC:[A-Za-z0-9_]+]] v_type=G type=bf8 num_elts=2
 ; CHECK-E5M22BF: mov (M1_NM, 1) [[IMM]](0,0)<1> 0x38:b
 ; CHECK-E5M22BF: mov (M1_NM, 1) [[IMM]](0,1)<1> 0x3c:b
-; CHECK-E5M22BF: fcvt (M1_NM, 2) [[DST]](0,0)<1> [[SRC]](0,0)<2;2,1>
+; CHECK-E5M22BF: mov (M1_NM, 2) [[DST]](0,0)<1> [[SRC]](0,0)<2;2,1>
 declare spir_func <2 x bfloat> @_Z36__builtin_spirv_ConvertE5M2ToBF16EXTDv2_c(<2 x i8>)
 define spir_kernel void @ConvertE5M2ToBF16_v2_immediate(<2 x bfloat> addrspace(1)* %outbuf) {
 entry:

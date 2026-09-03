@@ -24,9 +24,9 @@ target triple = "spir64-unknown-unknown"
 declare spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32)
 
 ; CHECK-LABEL: .kernel "Test_ClampConvertFP16ToE4M3"
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
 ; CHECK-DAG: .decl [[IN]] v_type=G type=hf num_elts=32
-; CHECK-DAG: .decl [[OUT]] v_type=G type=b num_elts=32
+; CHECK-DAG: .decl [[OUT]] v_type=G type=hf8 num_elts=32
 declare spir_func signext i8 @_Z43__builtin_spirv_ClampConvertFP16ToE4M3INTELDh(half)
 define spir_kernel void @Test_ClampConvertFP16ToE4M3(half addrspace(1)* %inbuf, i8 addrspace(1)* %outbuf) {
 entry:
@@ -40,10 +40,10 @@ entry:
 }
 
 ; CHECK-LABEL: .kernel "Test2_ClampConvertFP16ToE4M3"
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](0,32)<1> [[IN]](1,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](0,32)<1> [[IN]](1,0)<1;1,0>
 ; CHECK-DAG: .decl [[IN]] v_type=G type=hf num_elts=64
-; CHECK-DAG: .decl [[OUT]] v_type=G type=b num_elts=64
+; CHECK-DAG: .decl [[OUT]] v_type=G type=hf8 num_elts=64
 declare spir_func <2 x i8> @_Z43__builtin_spirv_ClampConvertFP16ToE4M3INTELDv2_Dh(<2 x half>)
 define spir_kernel void @Test2_ClampConvertFP16ToE4M3(<2 x half> addrspace(1)* %inbuf, <2 x i8> addrspace(1)* %outbuf) {
 entry:
@@ -57,11 +57,11 @@ entry:
 }
 
 ; CHECK-LABEL: .kernel "Test3_ClampConvertFP16ToE4M3"
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](0,32)<1> [[IN]](1,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](1,0)<1> [[IN]](2,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](0,32)<1> [[IN]](1,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](1,0)<1> [[IN]](2,0)<1;1,0>
 ; CHECK-DAG: .decl [[IN]] v_type=G type=hf num_elts=96
-; CHECK-DAG: .decl [[OUT]] v_type=G type=b num_elts=96
+; CHECK-DAG: .decl [[OUT]] v_type=G type=hf8 num_elts=96
 declare spir_func <3 x i8> @_Z43__builtin_spirv_ClampConvertFP16ToE4M3INTELDv3_Dh(<3 x half>)
 define spir_kernel void @Test3_ClampConvertFP16ToE4M3(<3 x half> addrspace(1)* %inbuf, <3 x i8> addrspace(1)* %outbuf) {
 entry:
@@ -75,12 +75,12 @@ entry:
 }
 
 ; CHECK-LABEL: .kernel "Test4_ClampConvertFP16ToE4M3"
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](0,32)<1> [[IN]](1,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](1,0)<1> [[IN]](2,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](1,32)<1> [[IN]](3,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](0,32)<1> [[IN]](1,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](1,0)<1> [[IN]](2,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](1,32)<1> [[IN]](3,0)<1;1,0>
 ; CHECK-DAG: .decl [[IN]] v_type=G type=hf num_elts=128
-; CHECK-DAG: .decl [[OUT]] v_type=G type=b num_elts=128
+; CHECK-DAG: .decl [[OUT]] v_type=G type=hf8 num_elts=128
 declare spir_func <4 x i8> @_Z43__builtin_spirv_ClampConvertFP16ToE4M3INTELDv4_Dh(<4 x half>)
 define spir_kernel void @Test4_ClampConvertFP16ToE4M3(<4 x half> addrspace(1)* %inbuf, <4 x i8> addrspace(1)* %outbuf) {
 entry:
@@ -94,16 +94,16 @@ entry:
 }
 
 ; CHECK-LABEL: .kernel "Test8_ClampConvertFP16ToE4M3"
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](0,32)<1> [[IN]](1,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](1,0)<1> [[IN]](2,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](1,32)<1> [[IN]](3,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](2,0)<1> [[IN]](4,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](2,32)<1> [[IN]](5,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](3,0)<1> [[IN]](6,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](3,32)<1> [[IN]](7,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](0,32)<1> [[IN]](1,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](1,0)<1> [[IN]](2,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](1,32)<1> [[IN]](3,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](2,0)<1> [[IN]](4,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](2,32)<1> [[IN]](5,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](3,0)<1> [[IN]](6,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](3,32)<1> [[IN]](7,0)<1;1,0>
 ; CHECK-DAG: .decl [[IN]] v_type=G type=hf num_elts=256
-; CHECK-DAG: .decl [[OUT]] v_type=G type=b num_elts=256
+; CHECK-DAG: .decl [[OUT]] v_type=G type=hf8 num_elts=256
 declare spir_func <8 x i8> @_Z43__builtin_spirv_ClampConvertFP16ToE4M3INTELDv8_Dh(<8 x half>)
 define spir_kernel void @Test8_ClampConvertFP16ToE4M3(<8 x half> addrspace(1)* %inbuf, <8 x i8> addrspace(1)* %outbuf) {
 entry:
@@ -117,24 +117,24 @@ entry:
 }
 
 ; CHECK-LABEL: .kernel "Test16_ClampConvertFP16ToE4M3"
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](0,32)<1> [[IN]](1,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](1,0)<1> [[IN]](2,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](1,32)<1> [[IN]](3,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](2,0)<1> [[IN]](4,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](2,32)<1> [[IN]](5,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](3,0)<1> [[IN]](6,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](3,32)<1> [[IN]](7,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](4,0)<1> [[IN]](8,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](4,32)<1> [[IN]](9,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](5,0)<1> [[IN]](10,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](5,32)<1> [[IN]](11,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](6,0)<1> [[IN]](12,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](6,32)<1> [[IN]](13,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](7,0)<1> [[IN]](14,0)<1;1,0>
-; CHECK-DAG: fcvt.sat (M1_NM, 32) [[OUT]](7,32)<1> [[IN]](15,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](0,32)<1> [[IN]](1,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](1,0)<1> [[IN]](2,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](1,32)<1> [[IN]](3,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](2,0)<1> [[IN]](4,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](2,32)<1> [[IN]](5,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](3,0)<1> [[IN]](6,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](3,32)<1> [[IN]](7,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](4,0)<1> [[IN]](8,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](4,32)<1> [[IN]](9,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](5,0)<1> [[IN]](10,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](5,32)<1> [[IN]](11,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](6,0)<1> [[IN]](12,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](6,32)<1> [[IN]](13,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](7,0)<1> [[IN]](14,0)<1;1,0>
+; CHECK-DAG: mov.sat (M1_NM, 32) [[OUT]](7,32)<1> [[IN]](15,0)<1;1,0>
 ; CHECK-DAG: .decl [[IN]] v_type=G type=hf num_elts=512
-; CHECK-DAG: .decl [[OUT]] v_type=G type=b num_elts=512
+; CHECK-DAG: .decl [[OUT]] v_type=G type=hf8 num_elts=512
 declare spir_func <16 x i8> @_Z43__builtin_spirv_ClampConvertFP16ToE4M3INTELDv16_Dh(<16 x half>)
 define spir_kernel void @Test16_ClampConvertFP16ToE4M3(<16 x half> addrspace(1)* %inbuf, <16 x i8> addrspace(1)* %outbuf) {
 entry:

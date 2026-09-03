@@ -11,7 +11,7 @@
 ; Emulation uses following conversions: E4M3 -> FP16 -> F -> BF16
 ;
 
-; REQUIRES: llvm-spirv, cri-supported
+; REQUIRES: llvm-spirv, cri-supported, debug
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_fp_conversions,+SPV_KHR_bfloat16,+SPV_EXT_float8 -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s
@@ -26,10 +26,10 @@ target triple = "spir64-unknown-unknown"
 declare spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32)
 
 ; CHECK-LABEL: .kernel "Test_ConvertE4M3ToBF16"
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF:hf8_cvt[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_F:[A-z0-9]*]](0,0)<1> [[OUT_HF]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_BF:[A-z0-9]*]](0,0)<1> [[OUT_F]](0,0)<1;1,0>
-; CHECK-DAG: .decl [[IN]] v_type=G type=b num_elts=32
+; CHECK-DAG: .decl [[IN]] v_type=G type=hf8 num_elts=32
 ; CHECK-DAG: .decl [[OUT_HF]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_F]] v_type=G type=f num_elts=32
 ; CHECK-DAG: .decl [[OUT_BF]] v_type=G type=bf num_elts=32
@@ -46,8 +46,8 @@ entry:
 }
 
 ; CHECK-LABEL: .kernel "Test2_ConvertE4M3ToBF16"
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](1,0)<1> [[IN]](0,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF:hf8_cvt[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](1,0)<1> [[IN]](0,32)<1;1,0>
 ;
 ; CHECK-DAG: mov (M1, 32) [[OUT_F0:[A-z0-9]*]](0,0)<1> [[OUT_HF]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_F1:[A-z0-9]*]](0,0)<1> [[OUT_HF]](1,0)<1;1,0>
@@ -58,7 +58,7 @@ entry:
 ; CHECK-DAG: mov (M1, 32) [[OUT_BF:[A-z0-9]*]](0,0)<1> [[OUT_VEC_F]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_BF]](1,0)<1> [[OUT_VEC_F]](2,0)<1;1,0>
 ;
-; CHECK-DAG: .decl [[IN]] v_type=G type=b num_elts=64
+; CHECK-DAG: .decl [[IN]] v_type=G type=hf8 num_elts=64
 ; CHECK-DAG: .decl [[OUT_HF]] v_type=G type=hf num_elts=64
 ; CHECK-DAG: .decl [[OUT_F0]] v_type=G type=f num_elts=32
 ; CHECK-DAG: .decl [[OUT_F1]] v_type=G type=f num_elts=32
@@ -77,9 +77,9 @@ entry:
 }
 
 ; CHECK-LABEL: .kernel "Test3_ConvertE4M3ToBF16"
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](1,0)<1> [[IN]](0,32)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](2,0)<1> [[IN]](1,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF:hf8_cvt[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](1,0)<1> [[IN]](0,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](2,0)<1> [[IN]](1,0)<1;1,0>
 ;
 ; CHECK-DAG: mov (M1, 32) [[OUT_F0:[A-z0-9]*]](0,0)<1> [[OUT_HF]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_F1:[A-z0-9]*]](0,0)<1> [[OUT_HF]](1,0)<1;1,0>
@@ -93,7 +93,7 @@ entry:
 ; CHECK-DAG: mov (M1, 32) [[OUT_BF]](1,0)<1> [[OUT_VEC_F]](2,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_BF]](2,0)<1> [[OUT_VEC_F]](4,0)<1;1,0>
 ;
-; CHECK-DAG: .decl [[IN]] v_type=G type=b num_elts=96
+; CHECK-DAG: .decl [[IN]] v_type=G type=hf8 num_elts=96
 ; CHECK-DAG: .decl [[OUT_HF]] v_type=G type=hf num_elts=96
 ; CHECK-DAG: .decl [[OUT_F0]] v_type=G type=f num_elts=32
 ; CHECK-DAG: .decl [[OUT_F1]] v_type=G type=f num_elts=32
@@ -113,10 +113,10 @@ entry:
 }
 
 ; CHECK-LABEL: .kernel "Test4_ConvertE4M3ToBF16"
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](1,0)<1> [[IN]](0,32)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](2,0)<1> [[IN]](1,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](3,0)<1> [[IN]](1,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF:hf8_cvt[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](1,0)<1> [[IN]](0,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](2,0)<1> [[IN]](1,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](3,0)<1> [[IN]](1,32)<1;1,0>
 ;
 ; CHECK-DAG: mov (M1, 32) [[OUT_F0:[A-z0-9]*]](0,0)<1> [[OUT_HF]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_F1:[A-z0-9]*]](0,0)<1> [[OUT_HF]](1,0)<1;1,0>
@@ -133,7 +133,7 @@ entry:
 ; CHECK-DAG: mov (M1, 32) [[OUT_BF]](2,0)<1> [[OUT_VEC_F]](4,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_BF]](3,0)<1> [[OUT_VEC_F]](6,0)<1;1,0>
 ;
-; CHECK-DAG: .decl [[IN]] v_type=G type=b num_elts=128
+; CHECK-DAG: .decl [[IN]] v_type=G type=hf8 num_elts=128
 ; CHECK-DAG: .decl [[OUT_HF]] v_type=G type=hf num_elts=128
 ; CHECK-DAG: .decl [[OUT_F0]] v_type=G type=f num_elts=32
 ; CHECK-DAG: .decl [[OUT_F1]] v_type=G type=f num_elts=32
@@ -154,14 +154,14 @@ entry:
 }
 
 ; CHECK-LABEL: .kernel "Test8_ConvertE4M3ToBF16"
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](1,0)<1> [[IN]](0,32)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](2,0)<1> [[IN]](1,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](3,0)<1> [[IN]](1,32)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](4,0)<1> [[IN]](2,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](5,0)<1> [[IN]](2,32)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](6,0)<1> [[IN]](3,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](7,0)<1> [[IN]](3,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF:hf8_cvt[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](1,0)<1> [[IN]](0,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](2,0)<1> [[IN]](1,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](3,0)<1> [[IN]](1,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](4,0)<1> [[IN]](2,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](5,0)<1> [[IN]](2,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](6,0)<1> [[IN]](3,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](7,0)<1> [[IN]](3,32)<1;1,0>
 ;
 ; CHECK-DAG: mov (M1, 32) [[OUT_F0:[A-z0-9]*]](0,0)<1> [[OUT_HF]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_F1:[A-z0-9]*]](0,0)<1> [[OUT_HF]](1,0)<1;1,0>
@@ -190,7 +190,7 @@ entry:
 ; CHECK-DAG: mov (M1, 32) [[OUT_BF]](6,0)<1> [[OUT_VEC_F]](12,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_BF]](7,0)<1> [[OUT_VEC_F]](14,0)<1;1,0>
 ;
-; CHECK-DAG: .decl [[IN]] v_type=G type=b num_elts=256
+; CHECK-DAG: .decl [[IN]] v_type=G type=hf8 num_elts=256
 ; CHECK-DAG: .decl [[OUT_HF]] v_type=G type=hf num_elts=256
 ; CHECK-DAG: .decl [[OUT_F0]] v_type=G type=f num_elts=32
 ; CHECK-DAG: .decl [[OUT_F1]] v_type=G type=f num_elts=32
@@ -215,22 +215,22 @@ entry:
 }
 
 ; CHECK-LABEL: .kernel "Test16_ConvertE4M3ToBF16"
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF:[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](1,0)<1> [[IN]](0,32)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](2,0)<1> [[IN]](1,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](3,0)<1> [[IN]](1,32)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](4,0)<1> [[IN]](2,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](5,0)<1> [[IN]](2,32)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](6,0)<1> [[IN]](3,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](7,0)<1> [[IN]](3,32)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](8,0)<1> [[IN]](4,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](9,0)<1> [[IN]](4,32)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](10,0)<1> [[IN]](5,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](11,0)<1> [[IN]](5,32)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](12,0)<1> [[IN]](6,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](13,0)<1> [[IN]](6,32)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](14,0)<1> [[IN]](7,0)<1;1,0>
-; CHECK-DAG: fcvt (M1, 32) [[OUT_HF]](15,0)<1> [[IN]](7,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF:hf8_cvt[A-z0-9]*]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](1,0)<1> [[IN]](0,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](2,0)<1> [[IN]](1,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](3,0)<1> [[IN]](1,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](4,0)<1> [[IN]](2,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](5,0)<1> [[IN]](2,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](6,0)<1> [[IN]](3,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](7,0)<1> [[IN]](3,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](8,0)<1> [[IN]](4,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](9,0)<1> [[IN]](4,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](10,0)<1> [[IN]](5,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](11,0)<1> [[IN]](5,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](12,0)<1> [[IN]](6,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](13,0)<1> [[IN]](6,32)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](14,0)<1> [[IN]](7,0)<1;1,0>
+; CHECK-DAG: mov (M1, 32) [[OUT_HF]](15,0)<1> [[IN]](7,32)<1;1,0>
 ;
 ; CHECK-DAG: mov (M1, 32) [[OUT_F0:[A-z0-9]*]](0,0)<1> [[OUT_HF]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_F1:[A-z0-9]*]](0,0)<1> [[OUT_HF]](1,0)<1;1,0>
@@ -283,7 +283,7 @@ entry:
 ; CHECK-DAG: mov (M1, 32) [[OUT_BF]](14,0)<1> [[OUT_VEC_F]](28,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_BF]](15,0)<1> [[OUT_VEC_F]](30,0)<1;1,0>
 ;
-; CHECK-DAG: .decl [[IN]] v_type=G type=b num_elts=512
+; CHECK-DAG: .decl [[IN]] v_type=G type=hf8 num_elts=512
 ; CHECK-DAG: .decl [[OUT_HF]] v_type=G type=hf num_elts=512
 ; CHECK-DAG: .decl [[OUT_F0]] v_type=G type=f num_elts=32
 ; CHECK-DAG: .decl [[OUT_F1]] v_type=G type=f num_elts=32

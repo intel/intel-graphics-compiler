@@ -315,6 +315,8 @@ public:
       return "df";
     case ISA_TYPE_F:
       return "f";
+    case ISA_TYPE_TF32:
+      return "tf32";
     case ISA_TYPE_V:
       return "v";
     case ISA_TYPE_VF:
@@ -331,6 +333,10 @@ public:
       return "hf";
     case ISA_TYPE_BF:
       return "bf";
+    case ISA_TYPE_BF8:
+      return "bf8";
+    case ISA_TYPE_HF8:
+      return "hf8";
     default:
       return "illegal";
     }

@@ -29,10 +29,10 @@ declare spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32)
 ; CHECK-DAG: .decl [[OUT_F:[A-z0-9]*]] v_type=G type=f num_elts=32
 ; CHECK-DAG: mov (M1, 32) [[OUT_F]](0,0)<1> [[IN:[A-z0-9]*]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_HF:[A-z0-9]*]](0,0)<1> [[OUT_F]](0,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3:[A-z0-9]*]](0,0)<1> [[OUT_HF]](0,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3:[A-z0-9]*]](0,0)<1> [[OUT_HF]](0,0)<1;1,0>
 ; CHECK-DAG: .decl [[IN]] v_type=G type=bf num_elts=32
 ; CHECK-DAG: .decl [[OUT_HF]] v_type=G type=hf num_elts=32
-; CHECK-DAG: .decl [[OUT_E4M3]] v_type=G type=b num_elts=32
+; CHECK-DAG: .decl [[OUT_E4M3]] v_type=G type=hf8 num_elts=32
 declare spir_func signext i8 @_Z36__builtin_spirv_ConvertBF16ToE4M3EXTDF16b(bfloat)
 define spir_kernel void @Test_ConvertBF16ToE4M3(bfloat addrspace(1)* %inbuf, i8 addrspace(1)* %outbuf) {
 entry:
@@ -56,14 +56,14 @@ entry:
 ; CHECK-DAG: mov (M1, 32) [[OUT_VEC_HF:[A-z0-9]*]](0,0)<1> [[OUT_HF_0]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_VEC_HF]](1,0)<1> [[OUT_HF_1]](0,0)<1;1,0>
 ;
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3:[A-z0-9]*]](0,0)<1> [[OUT_VEC_HF]](0,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](0,32)<1> [[OUT_VEC_HF]](1,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3:[A-z0-9]*]](0,0)<1> [[OUT_VEC_HF]](0,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](0,32)<1> [[OUT_VEC_HF]](1,0)<1;1,0>
 ;
 ; CHECK-DAG: .decl [[IN]] v_type=G type=bf num_elts=64
 ; CHECK-DAG: .decl [[OUT_HF_0]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_HF_1]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_VEC_HF]] v_type=G type=hf num_elts=64
-; CHECK-DAG: .decl [[OUT_E4M3]] v_type=G type=b num_elts=64
+; CHECK-DAG: .decl [[OUT_E4M3]] v_type=G type=hf8 num_elts=64
 declare spir_func <2 x i8> @_Z36__builtin_spirv_ConvertBF16ToE4M3EXTDv2_DF16b(<2 x bfloat>)
 define spir_kernel void @Test2_ConvertBF16ToE4M3(<2 x bfloat> addrspace(1)* %inbuf, <2 x i8> addrspace(1)* %outbuf) {
 entry:
@@ -90,16 +90,16 @@ entry:
 ; CHECK-DAG: mov (M1, 32) [[OUT_VEC_HF]](1,0)<1> [[OUT_HF_1]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_VEC_HF]](2,0)<1> [[OUT_HF_2]](0,0)<1;1,0>
 ;
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3:[A-z0-9]*]](0,0)<1> [[OUT_VEC_HF]](0,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](0,32)<1> [[OUT_VEC_HF]](1,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](1,0)<1> [[OUT_VEC_HF]](2,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3:[A-z0-9]*]](0,0)<1> [[OUT_VEC_HF]](0,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](0,32)<1> [[OUT_VEC_HF]](1,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](1,0)<1> [[OUT_VEC_HF]](2,0)<1;1,0>
 ;
 ; CHECK-DAG: .decl [[IN]] v_type=G type=bf num_elts=96
 ; CHECK-DAG: .decl [[OUT_HF_0]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_HF_1]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_HF_2]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_VEC_HF]] v_type=G type=hf num_elts=96
-; CHECK-DAG: .decl [[OUT_E4M3]] v_type=G type=b num_elts=96
+; CHECK-DAG: .decl [[OUT_E4M3]] v_type=G type=hf8 num_elts=96
 declare spir_func <3 x i8> @_Z36__builtin_spirv_ConvertBF16ToE4M3EXTDv3_DF16b(<3 x bfloat>)
 define spir_kernel void @Test3_ConvertBF16ToE4M3(<3 x bfloat> addrspace(1)* %inbuf, <3 x i8> addrspace(1)* %outbuf) {
 entry:
@@ -129,10 +129,10 @@ entry:
 ; CHECK-DAG: mov (M1, 32) [[OUT_VEC_HF]](2,0)<1> [[OUT_HF_2]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_VEC_HF]](3,0)<1> [[OUT_HF_3]](0,0)<1;1,0>
 ;
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3:[A-z0-9]*]](0,0)<1> [[OUT_VEC_HF]](0,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](0,32)<1> [[OUT_VEC_HF]](1,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](1,0)<1> [[OUT_VEC_HF]](2,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](1,32)<1> [[OUT_VEC_HF]](3,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3:[A-z0-9]*]](0,0)<1> [[OUT_VEC_HF]](0,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](0,32)<1> [[OUT_VEC_HF]](1,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](1,0)<1> [[OUT_VEC_HF]](2,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](1,32)<1> [[OUT_VEC_HF]](3,0)<1;1,0>
 ;
 ; CHECK-DAG: .decl [[IN]] v_type=G type=bf num_elts=128
 ; CHECK-DAG: .decl [[OUT_HF_0]] v_type=G type=hf num_elts=32
@@ -140,7 +140,7 @@ entry:
 ; CHECK-DAG: .decl [[OUT_HF_2]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_HF_3]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_VEC_HF]] v_type=G type=hf num_elts=128
-; CHECK-DAG: .decl [[OUT_E4M3]] v_type=G type=b num_elts=128
+; CHECK-DAG: .decl [[OUT_E4M3]] v_type=G type=hf8 num_elts=128
 declare spir_func <4 x i8> @_Z36__builtin_spirv_ConvertBF16ToE4M3EXTDv4_DF16b(<4 x bfloat>)
 define spir_kernel void @Test4_ConvertBF16ToE4M3(<4 x bfloat> addrspace(1)* %inbuf, <4 x i8> addrspace(1)* %outbuf) {
 entry:
@@ -182,14 +182,14 @@ entry:
 ; CHECK-DAG: mov (M1, 32) [[OUT_VEC_HF]](6,0)<1> [[OUT_HF_6]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_VEC_HF]](7,0)<1> [[OUT_HF_7]](0,0)<1;1,0>
 ;
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3:[A-z0-9]*]](0,0)<1> [[OUT_VEC_HF]](0,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](0,32)<1> [[OUT_VEC_HF]](1,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](1,0)<1> [[OUT_VEC_HF]](2,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](1,32)<1> [[OUT_VEC_HF]](3,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](2,0)<1> [[OUT_VEC_HF]](4,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](2,32)<1> [[OUT_VEC_HF]](5,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](3,0)<1> [[OUT_VEC_HF]](6,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](3,32)<1> [[OUT_VEC_HF]](7,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3:[A-z0-9]*]](0,0)<1> [[OUT_VEC_HF]](0,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](0,32)<1> [[OUT_VEC_HF]](1,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](1,0)<1> [[OUT_VEC_HF]](2,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](1,32)<1> [[OUT_VEC_HF]](3,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](2,0)<1> [[OUT_VEC_HF]](4,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](2,32)<1> [[OUT_VEC_HF]](5,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](3,0)<1> [[OUT_VEC_HF]](6,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](3,32)<1> [[OUT_VEC_HF]](7,0)<1;1,0>
 ;
 ; CHECK-DAG: .decl [[IN]] v_type=G type=bf num_elts=256
 ; CHECK-DAG: .decl [[OUT_HF_0]] v_type=G type=hf num_elts=32
@@ -201,7 +201,7 @@ entry:
 ; CHECK-DAG: .decl [[OUT_HF_6]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_HF_7]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_VEC_HF]] v_type=G type=hf num_elts=256
-; CHECK-DAG: .decl [[OUT_E4M3]] v_type=G type=b num_elts=256
+; CHECK-DAG: .decl [[OUT_E4M3]] v_type=G type=hf8 num_elts=256
 declare spir_func <8 x i8> @_Z36__builtin_spirv_ConvertBF16ToE4M3EXTDv8_DF16b(<8 x bfloat>)
 define spir_kernel void @Test8_ConvertBF16ToE4M3(<8 x bfloat> addrspace(1)* %inbuf, <8 x i8> addrspace(1)* %outbuf) {
 entry:
@@ -267,22 +267,22 @@ entry:
 ; CHECK-DAG: mov (M1, 32) [[OUT_VEC_HF]](14,0)<1> [[OUT_HF_14]](0,0)<1;1,0>
 ; CHECK-DAG: mov (M1, 32) [[OUT_VEC_HF]](15,0)<1> [[OUT_HF_15]](0,0)<1;1,0>
 ;
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3:[A-z0-9]*]](0,0)<1> [[OUT_VEC_HF]](0,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](0,32)<1> [[OUT_VEC_HF]](1,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](1,0)<1> [[OUT_VEC_HF]](2,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](1,32)<1> [[OUT_VEC_HF]](3,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](2,0)<1> [[OUT_VEC_HF]](4,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](2,32)<1> [[OUT_VEC_HF]](5,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](3,0)<1> [[OUT_VEC_HF]](6,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](3,32)<1> [[OUT_VEC_HF]](7,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](4,0)<1> [[OUT_VEC_HF]](8,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](4,32)<1> [[OUT_VEC_HF]](9,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](5,0)<1> [[OUT_VEC_HF]](10,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](5,32)<1> [[OUT_VEC_HF]](11,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](6,0)<1> [[OUT_VEC_HF]](12,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](6,32)<1> [[OUT_VEC_HF]](13,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](7,0)<1> [[OUT_VEC_HF]](14,0)<1;1,0>
-; CHECK-DAG: fcvt (M1_NM, 32) [[OUT_E4M3]](7,32)<1> [[OUT_VEC_HF]](15,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3:[A-z0-9]*]](0,0)<1> [[OUT_VEC_HF]](0,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](0,32)<1> [[OUT_VEC_HF]](1,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](1,0)<1> [[OUT_VEC_HF]](2,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](1,32)<1> [[OUT_VEC_HF]](3,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](2,0)<1> [[OUT_VEC_HF]](4,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](2,32)<1> [[OUT_VEC_HF]](5,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](3,0)<1> [[OUT_VEC_HF]](6,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](3,32)<1> [[OUT_VEC_HF]](7,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](4,0)<1> [[OUT_VEC_HF]](8,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](4,32)<1> [[OUT_VEC_HF]](9,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](5,0)<1> [[OUT_VEC_HF]](10,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](5,32)<1> [[OUT_VEC_HF]](11,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](6,0)<1> [[OUT_VEC_HF]](12,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](6,32)<1> [[OUT_VEC_HF]](13,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](7,0)<1> [[OUT_VEC_HF]](14,0)<1;1,0>
+; CHECK-DAG: mov (M1_NM, 32) [[OUT_E4M3]](7,32)<1> [[OUT_VEC_HF]](15,0)<1;1,0>
 ;
 ; CHECK-DAG: .decl [[IN]] v_type=G type=bf num_elts=512
 ; CHECK-DAG: .decl [[OUT_HF_0]] v_type=G type=hf num_elts=32
@@ -302,7 +302,7 @@ entry:
 ; CHECK-DAG: .decl [[OUT_HF_14]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_HF_15]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_VEC_HF]] v_type=G type=hf num_elts=512
-; CHECK-DAG: .decl [[OUT_E4M3]] v_type=G type=b num_elts=512
+; CHECK-DAG: .decl [[OUT_E4M3]] v_type=G type=hf8 num_elts=512
 declare spir_func <16 x i8> @_Z36__builtin_spirv_ConvertBF16ToE4M3EXTDv16_DF16b(<16 x bfloat>)
 define spir_kernel void @Test16_ConvertBF16ToE4M3(<16 x bfloat> addrspace(1)* %inbuf, <16 x i8> addrspace(1)* %outbuf) {
 entry:

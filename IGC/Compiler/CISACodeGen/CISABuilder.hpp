@@ -355,7 +355,6 @@ public:
   void Lifetime(VISAVarLifetime StartOrEnd, CVariable *dst);
   void dpas(CVariable *dst, CVariable *input, CVariable *weight, PrecisionType weight_precision, CVariable *actication,
             PrecisionType activation_precision, uint8_t systolicDepth, uint8_t repeatCount, bool IsDpasw);
-  void fcvt(CVariable *dst, CVariable *src);
   void lfsr(CVariable *dst, CVariable *src0, CVariable *src1, LFSR_FC funcCtrl);
   void srnd(CVariable *D, CVariable *S0, CVariable *R);
   void emitDnscl(CVariable *dst, CVariable *src0, CVariable *src1, CVariable *bias, DNSCL_CONVERT_TYPE convType,
