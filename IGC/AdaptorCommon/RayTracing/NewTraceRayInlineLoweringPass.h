@@ -73,6 +73,7 @@ private:
     CandidateType = 11,
     HasAcceptHitAndEndSearchFlag = 12,
     CommittedDataLocation = 13,
+    PendingStackWrite = 14,
   };
 
   std::array<llvm::Function *, NUM_FUNCTIONS> m_Functions = {nullptr};
@@ -93,6 +94,7 @@ private:
     llvm::Value *CandidateType = nullptr;
     llvm::Value *HasAcceptHitAndEndSearchFlag = nullptr;
     llvm::Value *CommittedDataLocation = nullptr;
+    llvm::Value *PendingStackWrite = nullptr;
   };
 
   UnpackedData getPackedData(llvm::RTBuilder &IRB, llvm::Value *rqObject) {
@@ -110,6 +112,8 @@ private:
                         RQPackedDataBitOffsets::HasAcceptHitAndEndSearchFlag),
         std::make_tuple(&data.CommittedDataLocation, RQPackedDataBitOffsets::HasAcceptHitAndEndSearchFlag,
                         RQPackedDataBitOffsets::CommittedDataLocation),
+        std::make_tuple(&data.PendingStackWrite, RQPackedDataBitOffsets::CommittedDataLocation,
+                        RQPackedDataBitOffsets::PendingStackWrite),
     };
 
     for (auto [field, bitoffset, nextbitoffset] : iterator) {
@@ -131,6 +135,8 @@ private:
                         RQPackedDataBitOffsets::HasAcceptHitAndEndSearchFlag),
         std::make_tuple(&data.CommittedDataLocation, RQPackedDataBitOffsets::HasAcceptHitAndEndSearchFlag,
                         RQPackedDataBitOffsets::CommittedDataLocation),
+        std::make_tuple(&data.PendingStackWrite, RQPackedDataBitOffsets::CommittedDataLocation,
+                        RQPackedDataBitOffsets::PendingStackWrite),
     };
 
     llvm::Value *packedData = IRB.getInt32(0);
