@@ -61,6 +61,7 @@ private:
 
   void defineOpaqueTypes();
 
+
   llvm::Value *getIntrinsicValue(llvm::GenISAIntrinsic::ID intrinsicId,
                                  llvm::ArrayRef<llvm::Value *> args = llvm::ArrayRef<llvm::Value *>());
 };

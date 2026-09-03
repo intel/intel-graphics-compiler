@@ -1886,6 +1886,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
     mpm.add(llvm::createDeadCodeEliminationPass());
 
+
     if (IGC_IS_FLAG_ENABLED(EnableWaveAllJointReduction)) {
       mpm.add(createWaveAllJointReduction());
     }

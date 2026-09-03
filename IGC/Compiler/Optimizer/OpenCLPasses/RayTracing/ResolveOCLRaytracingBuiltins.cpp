@@ -29,6 +29,16 @@ IGC_INITIALIZE_PASS_BEGIN(ResolveOCLRaytracingBuiltinsLPM, PASS_FLAG, PASS_DESCR
 IGC_INITIALIZE_PASS_END(ResolveOCLRaytracingBuiltinsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 namespace {
+enum RayQueryField : unsigned {
+  RT_FENCE,
+  RT_GLOBALS,
+  RT_STACK,
+  CTRL,
+  BVH_LEVEL,
+  TRAVERSAL_DONE_FAIL,
+};
+
+
 std::map<std::string, std::function<void(ResolveOCLRaytracingBuiltins *, CallInst &)>> functionHandlersMap = {
     // clang-format off
     {"__builtin_IB_intel_get_rt_stack",                  &ResolveOCLRaytracingBuiltins::handleGetRtStack            },
@@ -385,7 +395,7 @@ void ResolveOCLRaytracingBuiltins::handleTraversalDoneFail(llvm::CallInst &callI
   Value *rayQuery = callInst.getOperand(0);
   StructType *rayQueryTy = IGCLLVM::getTypeByName(callInst.getModule(), "struct.intel_ray_query_opaque_t");
   auto *traversalDoneFailPtr =
-      m_builder->CreateGEP(rayQueryTy, rayQuery, {m_builder->getInt32(0), m_builder->getInt32(5)});
+      m_builder->CreateGEP(rayQueryTy, rayQuery, {m_builder->getInt32(0), m_builder->getInt32(TRAVERSAL_DONE_FAIL)});
   m_builder->CreateStore(m_builder->getInt1(true), traversalDoneFailPtr);
   callInst.eraseFromParent();
 }
@@ -422,8 +432,8 @@ void ResolveOCLRaytracingBuiltins::handleInitRayQuery(llvm::CallInst &callInst) 
     storeToAlloca(argIndex);
 
   if (m_pCtx->platform.supportsRayTracingExtendedCacheControl()) {
-    auto traversalDoneFailPtr =
-        m_builder->CreateGEP(alloca->getAllocatedType(), alloca, {m_builder->getInt32(0), m_builder->getInt32(5)});
+    auto traversalDoneFailPtr = m_builder->CreateGEP(
+        alloca->getAllocatedType(), alloca, {m_builder->getInt32(0), m_builder->getInt32(TRAVERSAL_DONE_FAIL)});
     m_builder->CreateStore(m_builder->getInt1(false), traversalDoneFailPtr);
   }
 
@@ -451,7 +461,7 @@ void ResolveOCLRaytracingBuiltins::handleUpdateRayQuery(llvm::CallInst &callInst
   if (m_pCtx->platform.supportsRayTracingExtendedCacheControl() && isa<ConstantPointerNull>(callInst.getOperand(2))) {
     LSC_CACHE_CTRL_SIZE cacheCtrlSize = LSC_CACHE_CTRL_SIZE::CCSIZE_64B;
     Value *traversalDoneFailPtr =
-        m_builder->CreateGEP(rayQueryTy, rayQuery, {m_builder->getInt32(0), m_builder->getInt32(5)});
+        m_builder->CreateGEP(rayQueryTy, rayQuery, {m_builder->getInt32(0), m_builder->getInt32(TRAVERSAL_DONE_FAIL)});
     Value *traversalDoneFail = m_builder->CreateLoad(
         cast<llvm::GetElementPtrInst>(traversalDoneFailPtr)->getResultElementType(), traversalDoneFailPtr);
     Instruction *thenTerm = nullptr;
@@ -499,9 +509,7 @@ Loads queried value from rayquery alloca
 void ResolveOCLRaytracingBuiltins::handleQuery(llvm::CallInst &callInst) {
   m_builder->SetInsertPoint(&callInst);
 
-  enum RayQueryArgsOrder { RT_FENCE, RT_GLOBALS, RT_STACK, CTRL, BVH_LEVEL };
-
-  static const std::map<std::string, RayQueryArgsOrder> builtinToArgIndex = {
+  static const std::map<std::string, RayQueryField> builtinToArgIndex = {
       {"__builtin_IB_intel_query_rt_fence", RT_FENCE},
       {"__builtin_IB_intel_query_rt_globals", RT_GLOBALS},
       {"__builtin_IB_intel_query_rt_stack", RT_STACK},
@@ -519,6 +527,7 @@ void ResolveOCLRaytracingBuiltins::handleQuery(llvm::CallInst &callInst) {
   callInst.replaceAllUsesWith(queriedValue);
   callInst.eraseFromParent();
 }
+
 
 void ResolveOCLRaytracingBuiltins::handlePostProcessRayQueryReturn(llvm::CallInst &callInst) {
   m_builder->SetInsertPoint(&callInst);

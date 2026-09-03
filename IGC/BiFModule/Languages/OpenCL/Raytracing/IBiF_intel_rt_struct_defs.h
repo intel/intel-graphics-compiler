@@ -45,14 +45,20 @@ typedef enum
     NODE_TYPE_PROCEDURAL = 0x3, // procedural leaf
     NODE_TYPE_QUAD       = 0x4, // quad leaf
     NODE_TYPE_QUAD128    = 0x5, // quad leaf (128 bytes)
-    NODE_TYPE_INVALID    = 0x7  // indicates invalid node
+    NODE_TYPE_INVALID = 0x7     // indicates invalid node
 } NodeType;
 
 // === --------------------------------------------------------------------===
 // === SubType definition for each NodeType
+// ===
+// === A subType value is interpreted relative to the NodeType of the leaf, so
+// === the same number means different things under different node types.  Never
+// === compare a subType without first checking the leaf type.
 // === --------------------------------------------------------------------===
 typedef enum
 {
+    // NODE_TYPE_QUAD / NODE_TYPE_QUAD128
+    SUB_TYPE_QUAD       = 0,
     SUB_TYPE_QUAD_MBLUR = 4, // motion blur quad leaf (128 bytes)
 } SubType;
 
@@ -311,9 +317,14 @@ inline uint MemHit_getLeafType(MemHit* memhit)
 {
     return __getBits32(memhit->data0, 17, 3);
 }
+inline bool MemHit_isTriangle(MemHit* memhit)
+{
+    return MemHit_getLeafType(memhit) != NODE_TYPE_PROCEDURAL;
+}
 inline uint MemHit_getPrimLeafIndex(MemHit* memhit)
 {
-    return __getBits32(memhit->data0, 20, 4);
+    uint primLeafIndex = __getBits32(memhit->data0, 20, 4);
+    return primLeafIndex;
 }
 inline uint MemHit_getBvhLevel(MemHit* memhit)
 {
@@ -743,6 +754,7 @@ inline uint ProceduralLeaf_setLast(ProceduralLeaf* leaf, uint val)
 {
     leaf->data = __setBits32(leaf->data, val, 32 - PROCEDURAL_N, PROCEDURAL_N);
 }
+
 
 // === --------------------------------------------------------------------===
 // === InstanceLeaf

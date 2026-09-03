@@ -17249,8 +17249,9 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst *BCI) {
     } else if (m_destination != src) {
       for (uint32_t i = 0, offset = 0; i < dstNElts; ++i) {
         if (destMask.isSet(i)) {
+          const uint16_t sourceIndex = m_currShader->AdjustExtractIndex(BCI->getOperand(0), int_cast<uint16_t>(i));
           m_encoder->SetSrcRegion(0, (srcUniform ? 0 : 1), 1, 0);
-          m_encoder->SetSrcSubReg(0, srcUniform ? i : i * width);
+          m_encoder->SetSrcSubReg(0, srcUniform ? sourceIndex : sourceIndex * width);
           m_encoder->SetDstRegion(1);
           m_encoder->SetDstSubReg(dstUniform ? offset : offset * width);
           m_encoder->Copy(m_destination, src);

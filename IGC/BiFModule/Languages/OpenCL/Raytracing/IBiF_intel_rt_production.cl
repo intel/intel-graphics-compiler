@@ -143,6 +143,7 @@ void intel_ray_query_forward_ray(
     );
 }
 
+
 void intel_ray_query_commit_potential_hit(intel_ray_query_t rayquery)
 {
     global void* rtStack = __builtin_IB_intel_query_rt_stack(rayquery);
@@ -157,6 +158,7 @@ void intel_ray_query_commit_potential_hit(intel_ray_query_t rayquery)
     {
         *commitedHit = *potentialHit;
         MemHit_setValid(commitedHit, 1);
+
 
         __builtin_IB_intel_update_ray_query(
             rayquery,
@@ -203,6 +205,7 @@ void intel_ray_query_start_traversal(intel_ray_query_t rayquery)
     TraceRayCtrl ctrl = __builtin_IB_intel_query_ctrl(rayquery);
 
     if (ctrl == TRACE_RAY_DONE) return;
+
 
     uint bvh_level = __builtin_IB_intel_query_bvh_level(rayquery);
 
@@ -280,6 +283,7 @@ bool intel_get_hit_front_face(
 uint intel_get_hit_geometry_id(
     intel_ray_query_t rayquery, intel_hit_type_t hit_type)
 {
+
     MemHit* hit = get_query_hit(rayquery, hit_type);
 
     PrimLeafDesc* leaf = (PrimLeafDesc*)MemHit_getPrimLeafPtr(hit);
@@ -289,18 +293,20 @@ uint intel_get_hit_geometry_id(
 uint intel_get_hit_primitive_id(
     intel_ray_query_t rayquery, intel_hit_type_t hit_type)
 {
+
     MemHit*       hit  = get_query_hit(rayquery, hit_type);
     PrimLeafDesc* leaf = (PrimLeafDesc*)MemHit_getPrimLeafPtr(hit);
 
-    if (MemHit_getLeafType(hit) == NODE_TYPE_QUAD)
-        return ((QuadLeaf*)leaf)->primIndex0 + MemHit_getPrimIndexDelta(hit);
-    else
+    if (MemHit_getLeafType(hit) == NODE_TYPE_PROCEDURAL)
         return ((ProceduralLeaf*)leaf)->_primIndex[MemHit_getPrimLeafIndex(hit)];
+    else
+        return ((QuadLeaf*)leaf)->primIndex0 + MemHit_getPrimIndexDelta(hit);
 }
 
 uint intel_get_hit_triangle_primitive_id(
     intel_ray_query_t rayquery, intel_hit_type_t hit_type)
 {
+
     MemHit*   hit  = get_query_hit(rayquery, hit_type);
     QuadLeaf* leaf = (QuadLeaf*)MemHit_getPrimLeafPtr(hit);
 
@@ -310,6 +316,7 @@ uint intel_get_hit_triangle_primitive_id(
 uint intel_get_hit_procedural_primitive_id(
     intel_ray_query_t rayquery, intel_hit_type_t hit_type)
 {
+
     MemHit*         hit  = get_query_hit(rayquery, hit_type);
     ProceduralLeaf* leaf = (ProceduralLeaf*)MemHit_getPrimLeafPtr(hit);
     return leaf->_primIndex[MemHit_getPrimLeafIndex(hit)];
@@ -397,7 +404,7 @@ intel_get_hit_candidate(intel_ray_query_t rayquery, intel_hit_type_t hit_type)
             return candidateType;
         }
     }
-    return MemHit_getLeafType(get_query_hit(rayquery, hit_type)) == NODE_TYPE_QUAD
+    return MemHit_isTriangle(get_query_hit(rayquery, hit_type))
                ? intel_candidate_type_triangle
                : intel_candidate_type_procedural;
 }
@@ -406,6 +413,7 @@ intel_get_hit_candidate(intel_ray_query_t rayquery, intel_hit_type_t hit_type)
 void intel_get_hit_triangle_vertices(
     intel_ray_query_t rayquery, intel_float3 vertices_out[3], intel_hit_type_t hit_type)
 {
+
     MemHit*         hit  = get_query_hit(rayquery, hit_type);
     const QuadLeaf* leaf = (QuadLeaf*)MemHit_getPrimLeafPtr(hit);
 
@@ -466,22 +474,23 @@ int intel_get_ray_mask(intel_ray_query_t rayquery, uint bvh_level)
 
 // Test whether traversal has terminated.  If false, the ray has reached
 // a procedural leaf or a non-opaque triangle leaf, and requires shader processing.
-bool intel_is_traversal_done(intel_ray_query_t rayquery)
+static INLINE bool
+__intel_is_traversal_done_value(intel_ray_query_t rayquery, MemHit* potentialHit)
 {
     if (BIF_FLAG_CTRL_GET(IsRayQueryReturnOptimizationEnabled))
     {
         rtfence_t fence = __builtin_IB_intel_query_rt_fence(rayquery);
         uintptr_t fenceInt = (uintptr_t)fence;
-
-        bool proceedFurther = (fenceInt & 0x1) != 0;
-
-        if (BIF_FLAG_CTRL_GET(SupportsRayTracingExtendedCacheControl) && proceedFurther) {
-            __builtin_IB_intel_set_traversal_done_fail(rayquery);
-        }
-
-        return !proceedFurther;
+        return (fenceInt & 0x1) == 0;
     }
-    bool isTraversalDone = MemHit_getDone(get_query_hit(rayquery, intel_hit_type_potential_hit));
+
+    return MemHit_getDone(potentialHit);
+}
+
+bool intel_is_traversal_done(intel_ray_query_t rayquery)
+{
+    MemHit* potentialHit    = get_query_hit(rayquery, intel_hit_type_potential_hit);
+    bool    isTraversalDone = __intel_is_traversal_done_value(rayquery, potentialHit);
     if (BIF_FLAG_CTRL_GET(SupportsRayTracingExtendedCacheControl) && !isTraversalDone)
         __builtin_IB_intel_set_traversal_done_fail(rayquery);
     return isTraversalDone;

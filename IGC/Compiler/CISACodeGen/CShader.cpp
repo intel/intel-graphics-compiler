@@ -26,6 +26,7 @@ using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
 
+
 CShader::CShader(Function *pFunc, CShaderProgram *pProgram, GenericShaderState &GState)
     : m_State(GState), entry(pFunc), m_parent(pProgram), encoder() {
   m_ctx = m_parent->GetContext();
