@@ -172,4 +172,10 @@ SPDX-License-Identifier: MIT
   FILENAME_COLLISION_MODE(APPEND, 2, "Append whole content, the file will contain EVERY writes")
 #endif // FILENAME_COLLISION_MODE
 
+#ifdef FLOATING_POINT_MODE_OVERRIDE_OPTION
+#define FLOATING_POINT_MODE_OVERRIDE_OPTIONS                                                                           \
+  FLOATING_POINT_MODE_OVERRIDE_OPTION(IEEE, 0, "IEEE default")                                                         \
+  FLOATING_POINT_MODE_OVERRIDE_OPTION(ALT, 1, "ALT mode")
+#endif // FLOATING_POINT_MODE_OVERRIDE_OPTION
+
 
