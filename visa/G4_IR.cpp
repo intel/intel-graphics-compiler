@@ -3402,20 +3402,25 @@ bool G4_INST::isPartialWriteForSpill(bool inSIMDCF,
 }
 
 bool G4_INST::isAccSrcInst() const {
-  if (srcs[0] && srcs[0]->isSrcRegRegion() &&
-      srcs[0]->asSrcRegRegion()->getBase()->isAccReg()) {
+  G4_Operand *src0 = getSrc(0);
+  G4_Operand *src1 = getSrc(1);
+  G4_Operand *src2 = getSrc(2);
+
+  if (src0 && src0->isSrcRegRegion() &&
+      src0->asSrcRegRegion()->getBase()->isAccReg()) {
     return true;
-  } else if (srcs[2] != nullptr) {
-    if (srcs[2]->isSrcRegRegion() &&
-        srcs[2]->asSrcRegRegion()->getBase()->isAccReg()) {
-      return true;
-    }
-  } else if (srcs[1] != nullptr) {
-    if (srcs[1]->isSrcRegRegion() &&
-        srcs[1]->asSrcRegRegion()->getBase()->isAccReg()) {
-      return true;
-    }
   }
+
+  if (src1 && src1->isSrcRegRegion() &&
+      src1->asSrcRegRegion()->getBase()->isAccReg()) {
+    return true;
+  }
+
+  if (src2 && src2->isSrcRegRegion() &&
+      src2->asSrcRegRegion()->getBase()->isAccReg()) {
+    return true;
+  }
+
   return false;
 }
 
@@ -8025,7 +8030,9 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
     return builder.useAccForMadm();
   case G4_mad:
     if (builder.removedAccRestrictionsAsGRF()) {
-      return true;
+      if (!(srcId != 0 && IS_INT(src->getType())))
+        return true;
+      return false;
     } else {
       return builder.canMadHaveAcc() &&
              ((srcId == 1 &&
