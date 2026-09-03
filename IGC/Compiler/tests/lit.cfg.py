@@ -52,28 +52,12 @@ tools = [ToolSubst('not'), ToolSubst('split-file'), ToolSubst('igc_opt')]
 
 llvm_config.add_tool_substitutions(tools, tool_dirs)
 
-
 llvm_version = int(config.llvm_version)
 
 config.substitutions.append(('%LLVM_DEPENDENT_CHECK_PREFIX%', f'CHECK-LLVM-{llvm_version}'))
 
-if llvm_version >= 14:
-  config.available_features.add('llvm-14-plus')
-
-if llvm_version >= 15:
-  config.available_features.add('llvm-15-plus')
-
-if llvm_version >= 16:
-  config.available_features.add('llvm-16-plus')
-
-if llvm_version >= 17:
-  config.available_features.add('llvm-17-plus')
-
-if llvm_version >= 22:
-  config.available_features.add('llvm-22-plus')
-
-if llvm_version >= 23:
-  config.available_features.add('llvm-23-plus')
+for ver in range(1, llvm_version + 1):
+  config.available_features.add('llvm-%d-plus' % ver)
 
 if not config.regkeys_disabled:
   config.available_features.add('regkeys')

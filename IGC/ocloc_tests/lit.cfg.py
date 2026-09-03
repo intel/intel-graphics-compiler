@@ -124,15 +124,10 @@ if config.has_vc != "1":
 
 llvm_ver = int(config.llvm_version_major)
 
-if config.spirv_as_enabled:
-  config.available_features.add('spirv-as')
-  llvm_config.add_tool_substitutions([ToolSubst('spirv-as', unresolved='fatal')], config.spirv_as_dir)
+config.substitutions.append(('%LLVM_DEPENDENT_CHECK_PREFIX%', f'CHECK-LLVM-{config.llvm_version_major}'))
 
-if llvm_ver >= 15:
-  config.available_features.add('llvm-15-plus')
-
-if llvm_ver >= 16:
-  config.available_features.add('llvm-16-plus')
+for ver in range(1, llvm_ver + 1):
+  config.available_features.add('llvm-%d-plus' % ver)
 
 # Opaque pointers are usable from LLVM 14 on, either as the build default or
 # per test via EnableOpaquePointersBackend=1.
@@ -145,15 +140,6 @@ if llvm_ver >= 14:
 if llvm_ver <= 16 and config.api_opaque_pointers != "1":
   config.available_features.add('typed-pointers')
 
-if llvm_ver >= 17:
-  config.available_features.add('llvm-17-plus')
-
-if llvm_ver >= 22:
-  config.available_features.add('llvm-22-plus')
-
-if llvm_ver >= 23:
-  config.available_features.add('llvm-23-plus')
-
 # On LLVM 17 tools like llvm-as do not have "opaque-pointers" flag, so in order to keep tests working on all LLVMs
 # on 17 tools we just provide empty string
 if llvm_ver >= 17:
@@ -163,7 +149,9 @@ else:
   config.substitutions.append(('%OPAQUE_PTR_FLAG%', '-opaque-pointers=1'))
   config.substitutions.append(('%TYPED_PTR_FLAG%', '-opaque-pointers=0'))
 
-config.substitutions.append(('%LLVM_DEPENDENT_CHECK_PREFIX%', f'CHECK-LLVM-{config.llvm_version_major}'))
+if config.spirv_as_enabled:
+  config.available_features.add('spirv-as')
+  llvm_config.add_tool_substitutions([ToolSubst('spirv-as', unresolved='fatal')], config.spirv_as_dir)
 
 if config.llvm_spirv_enabled:
   config.available_features.add('llvm-spirv')
