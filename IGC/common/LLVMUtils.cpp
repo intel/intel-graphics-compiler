@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PassTimer.hpp"
 #include "Compiler/CISACodeGen/TimeStatsCounter.h"
 #include "Compiler/CodeGenPublic.h"
+#include "Compiler/PointersSettings.h"
 #include "common/debug/Dump.hpp"
 #include "common/shaderOverride.hpp"
 #include "common/Stats.hpp"
@@ -16,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMUtils.h"
 #include "common/SerializePrintMetaDataPass.h"
 #include "llvmWrapper/ADT/StringRef.h"
+#include "llvmWrapper/IR/LLVMContext.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include <fstream>
 #include <iomanip>
@@ -25,9 +27,13 @@ SPDX-License-Identifier: MIT
 #include <unordered_map>
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/Bitcode/BitcodeReader.h>
+#include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
+#include <llvm/Support/CommandLine.h>
+#include <llvm/Support/Error.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/SourceMgr.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -866,13 +872,17 @@ void DumpLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName) {
         return;
       }
       errs() << "Override shader: " << fileName << "\n";
-      Module *mod = parseIRFile(fileName, Err, *pContext->getLLVMContext()).release();
-      if (mod) {
-        pContext->deleteModule();
-        pContext->setModule(mod);
-        deserialize(*(pContext->getModuleMetaData()), mod);
-        appendToShaderOverrideLogFile(fileName, "OVERRIDEN: ");
-      } else {
+      llvm::LLVMContext tempCtx;
+#if LLVM_VERSION_MAJOR < 17
+      auto WA_OpaquePointersCL = cl::getRegisteredOptions()["opaque-pointers"];
+      bool tempCtxPtrModeAlreadySet = WA_OpaquePointersCL && WA_OpaquePointersCL->getNumOccurrences() > 0;
+#else
+      bool tempCtxPtrModeAlreadySet = true;
+#endif
+      if (IGC::canOverwriteLLVMCtxPtrMode(&tempCtx, tempCtxPtrModeAlreadySet))
+        IGCLLVM::setOpaquePointers(&tempCtx, AreOpaquePointersEnabled());
+      std::unique_ptr<Module> tempMod = parseIRFile(fileName, Err, tempCtx);
+      if (!tempMod) {
         std::stringstream ss;
         ss << "Parse IR failed.\n";
         ss << Err.getLineNo() << ": " << Err.getLineContents().str() << "\n" << Err.getMessage().str() << "\n";
@@ -880,6 +890,41 @@ void DumpLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName) {
         std::string str = ss.str();
         errs() << str;
         appendToShaderOverrideLogFile(fileName, str.c_str());
+      } else {
+        llvm::SmallVector<char, 0> bitcode;
+        llvm::raw_svector_ostream bitcodeStream(bitcode);
+        llvm::WriteBitcodeToFile(*tempMod, bitcodeStream);
+        tempMod.reset();
+
+        if (llvm::Module *oldMod = pContext->getModule()) {
+          auto &keptStructTypes = pContext->getLayoutStructTypes();
+          auto isKept = [&](llvm::StructType *ST) {
+            for (llvm::StructType *Kept : keptStructTypes)
+              if (Kept == ST)
+                return true;
+            return false;
+          };
+          for (llvm::StructType *ST : oldMod->getIdentifiedStructTypes())
+            if (!isKept(ST))
+              ST->setName("");
+        }
+
+        llvm::MemoryBufferRef bitcodeBuf(llvm::StringRef(bitcode.data(), bitcode.size()), "ShaderOverride");
+        llvm::Expected<std::unique_ptr<Module>> newModOrErr =
+            llvm::parseBitcodeFile(bitcodeBuf, *pContext->getLLVMContext());
+        if (!newModOrErr) {
+          std::string str =
+              "Override shader: failed to reload bitcode after unnaming: " + llvm::toString(newModOrErr.takeError()) +
+              "\n";
+          errs() << str;
+          appendToShaderOverrideLogFile(fileName, str.c_str());
+        } else {
+          Module *mod = newModOrErr->release();
+          pContext->deleteModule();
+          pContext->setModule(mod);
+          deserialize(*(pContext->getModuleMetaData()), mod);
+          appendToShaderOverrideLogFile(fileName, "OVERRIDEN: ");
+        }
       }
     }
   }
