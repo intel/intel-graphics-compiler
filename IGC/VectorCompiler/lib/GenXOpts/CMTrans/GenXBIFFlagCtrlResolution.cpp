@@ -107,6 +107,7 @@ void GenXBIFFlagCtrlResolution::FillFlagCtrl() {
   BIF_FLAG_CTRL_SET(IsRayQueryReturnOptimizationPackedStatusEnabled, false);
   BIF_FLAG_CTRL_SET(IsRayQueryReturnOptimizationEnabled, false);
   BIF_FLAG_CTRL_SET(UseBindlessImage, false);
+  BIF_FLAG_CTRL_SET(SPVINTELBindlessImages, false);
 }
 
 #undef BIF_FLAG_CTRL_SET
