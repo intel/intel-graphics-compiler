@@ -1780,10 +1780,25 @@ void CEncoder::CarryBorrowArith(ISA_Opcode opcode, CVariable *dst, CVariable *ds
                                             carryBorrowOpnd, srcOpnd0, srcOpnd1));
 }
 
+bool CEncoder::isOverfetchingDisabled() const {
+  CodeGenContext *context = m_program->GetContext();
+
+  if (context->m_DriverInfo.disableOverfetching())
+    return true;
+
+  if (context->type != ShaderType::OPENCL_SHADER)
+    return false;
+
+  auto *F = m_program->GetParent()->getLLVMFunction();
+  auto &funcMD = context->getModuleMetaData()->FuncMD;
+  auto FI = funcMD.find(F);
+  return FI != funcMD.end() && FI->second.hasSyncRTCalls;
+}
+
 bool CEncoder::setOverfetch(LSC_DATA_SIZE dsize, LSC_DATA_ELEMS delem, SIMDMode width, LSC_CACHE_OPTS copt) {
   auto context = m_program->GetContext();
 
-  if (!context->platform.supportsOverfetch() || context->m_DriverInfo.disableOverfetching())
+  if (!context->platform.supportsOverfetch() || isOverfetchingDisabled())
     return false;
 
   if (copt.l1 != LSC_CACHING_CACHED)
@@ -3410,7 +3425,7 @@ void CEncoder::InitBuildParams(
     params.push_back(param_uptr(_strdup(opt.c_str()), dup_deleter));
   }
 
-  if (context->platform.supportsOverfetch() && context->m_DriverInfo.disableOverfetching()) {
+  if (context->platform.supportsOverfetch() && isOverfetchingDisabled()) {
     // disable overfetching
     params.push_back(param_uptr("-disableOverfetch", literal_deleter));
   }

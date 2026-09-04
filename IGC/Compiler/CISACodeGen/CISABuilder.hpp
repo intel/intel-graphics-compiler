@@ -620,6 +620,10 @@ private:
   // helper function to check if the data's size is 64-byte and can set
   // overfetch
   bool setOverfetch(LSC_DATA_SIZE dsize, LSC_DATA_ELEMS delem, SIMDMode width, LSC_CACHE_OPTS copt);
+  // Helper function to check if overfetching is disabled.
+  // In addition to driver decisions, overfetching is also disabled for OpenCL shaders
+  // that use hardware ray tracing.
+  bool isOverfetchingDisabled() const;
 
 private:
   // helper functions for compile flow
