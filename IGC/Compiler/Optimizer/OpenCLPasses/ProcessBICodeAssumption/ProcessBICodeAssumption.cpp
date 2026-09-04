@@ -160,8 +160,12 @@ bool ProcessBICodeAssumption::matchCmp(ICmpInst::Predicate Pred, ConstantInt *CI
 
 bool ProcessBICodeAssumption::matchBuiltin(Instruction *I) {
   if (auto CI = dyn_cast<CallInst>(I)) {
-    return CI->getCalledFunction()->getName() == "_Z33__spirv_BuiltInGlobalInvocationIdi" ||
-           CI->getCalledFunction()->getName() == "_Z29__spirv_BuiltInGlobalLinearIdv";
+    // getCalledFunction() returns nullptr for indirect calls and inline asm.
+    Function *Callee = CI->getCalledFunction();
+    if (!Callee)
+      return false;
+    return Callee->getName() == "_Z33__spirv_BuiltInGlobalInvocationIdi" ||
+           Callee->getName() == "_Z29__spirv_BuiltInGlobalLinearIdv";
   }
   return false;
 }
