@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 #include <charconv>
 #include <cstdint>
+#include <filesystem>
 #include <iostream>
 #include <iterator>
 #include <string>
@@ -52,12 +53,35 @@ static bool selectPlatform(std::string_view name) {
   return false;
 }
 
+// Check that the --lib argument is valid and points to a regular file
+static bool isLibArgValid(std::string_view lib, std::string &resolvedPath) {
+  if (lib.empty()) {
+    std::cerr << "error: --lib requires a non-empty <path>\n";
+    return false;
+  }
+
+  std::error_code ec;
+  const auto path = std::filesystem::canonical(lib, ec);
+  if (ec) {
+    std::cerr << "error: cannot resolve '" << lib << "': " << ec.message() << "\n";
+    return false;
+  }
+
+  if (!std::filesystem::is_regular_file(path, ec)) {
+    std::cerr << "error: '" << lib << "' is not a regular file\n";
+    return false;
+  }
+  resolvedPath = path.string();
+  return true;
+}
+
 // Print help
 static void printHelp(const char *testName) {
   std::cout << "IGCOCLInterfaceTester - test the NEO<->IGC CIF interfaces.\n";
   std::cout << "usage: " << testName << " [-h|--help] <check>\n";
   std::cout << "  <check> - name of the check to run (look below)\n";
   std::cout << "  --platform <name> - target platform for platform-dependent checks\n";
+  std::cout << "  --lib <path> - path to the IGC library to load (default: " << IGC_TESTER_LIBRARY_PATH << ")\n";
   std::cout << "  --help, -h - print this help message\n";
   std::cout << "  Checks:\n";
   for (const auto &[name, info] : registry())
@@ -150,7 +174,11 @@ int main(int argc, char **argv) {
 
   std::string_view check = argv[1];
 
-  // Parse options after the check name. Currently only --platform <name>.
+  // libName by default is the path to the IGC library baked in at configure time
+  // Can be overridden by setting via --lib argument
+  std::string libName = IGC_TESTER_LIBRARY_PATH;
+
+  // Parse options after the check name
   for (int i = 2; i < argc; ++i) {
     std::string_view arg = argv[i];
     if (arg == "--platform") {
@@ -162,14 +190,24 @@ int main(int argc, char **argv) {
         std::cerr << "error: unknown platform '" << argv[i] << "'\n";
         return ExitCode::UnknownPlatform;
       }
+    } else if (arg == "--lib") {
+      if (i + 1 >= argc) {
+        std::cerr << "error: --lib requires a <path> argument\n";
+        return ExitCode::MissingLibPath;
+      }
+      if (!isLibArgValid(argv[++i], libName)) {
+        return ExitCode::InvalidLibPath;
+      }
     } else {
       std::cerr << "error: unknown option '" << arg << "'\n";
       return ExitCode::UnknownOption;
     }
   }
 
-  // Load the libigc whose absolute path was baked in at configure time.
-  auto cif = getCIFMain(IGC_TESTER_LIBRARY_PATH);
+  std::cerr << "info: using library '" << libName << "'\n";
+
+  // Load the libigc
+  auto cif = getCIFMain(libName.c_str());
   if (!cif) {
     return ExitCode::LoadFailure;
   }

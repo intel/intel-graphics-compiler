@@ -29,7 +29,9 @@ enum ExitCode {
   MissingPlatform = 7,      // A check requires --platform but none was provided
   MissingInput = 8,         // A required Field=Value input was not provided on stdin
   UnknownOption = 9,        // An unrecognized command-line option was provided
-  IllegalInputFormat = 10   // A stdin line could not be parsed
+  IllegalInputFormat = 10,  // A stdin line could not be parsed
+  MissingLibPath = 11,      // A --lib argument was provided but no path was given
+  InvalidLibPath = 12       // A --lib argument was provided but the path was invalid
 };
 
 // Named target platform selectable via --platform.

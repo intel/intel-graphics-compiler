@@ -43,6 +43,9 @@ llvm_config.with_environment(shared_lib_env,
                              [config.igc_lib_dir],
                              append_path=True)
 
+# Add a full path to the libigc, it is used by --lib tests
+config.substitutions.append(('%igc_lib', config.igc_lib_path))
+
 # regkeys feature gate (only needed if a .test uses `REQUIRES: regkeys`)
 if not config.regkeys_disabled:
     config.available_features.add('regkeys')
