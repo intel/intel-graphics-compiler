@@ -2105,7 +2105,7 @@ DECLARE_IGC_REGKEY_ENUM(RemoveUnusedIdImplicitLocalIDs, -1,
 DECLARE_IGC_REGKEY(bool, RemoveImplicitScratchPointer, true,
                    "Allows skipping scratch pointer implicit kernel argument if unused. If false, arg is always added.",
                    ALWAYS)
-DECLARE_IGC_REGKEY(int, RemoveImplicitScratchPointerInstThreshold, 1900,
+DECLARE_IGC_REGKEY(int, RemoveImplicitScratchPointerInstThreshold, 2000,
                    "Maximum number of instructions in kernel for which scratch pointer is considered for removal.",
                    ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, ForceVRTGRFCeiling, 0,

@@ -1,12 +1,11 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2025 Intel Corporation
+; Copyright (C) 2025-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; FIXME: update & re-enable the test for LLVM 23
-; UNSUPPORTED: llvm-23-plus
+
 ; RUN: igc_opt --opaque-pointers -igc-builtin-import -disable-verify -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; BIImport

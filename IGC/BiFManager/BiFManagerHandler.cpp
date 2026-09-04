@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2024-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -112,6 +112,12 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
       IGC_ASSERT_MESSAGE(0, "materializeAll failed for generic builtin module");
     }
 
+    for (auto &F : BiFSection->get()->functions()) {
+      LLVMContext &C = F.getContext();
+      MDNode *N = MDNode::get(C, MDString::get(C, "IGC built-in function"));
+      F.setMetadata(bifMark, N);
+    }
+
     if (CallbackLinker == nullptr) {
       BiFSection->get()->setDataLayout(Module.getDataLayout());
       BiFSection->get()->setTargetTriple(Module.getTargetTriple());
@@ -146,6 +152,18 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
       bool isLastItem = std::next(bifsection_i) == LoadedBiFSections.end();
       if (isLastItem) {
         CallbackLinker(Module, InternalizeLinkList);
+      }
+    }
+  }
+
+  // Remove unused BiF functions
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (auto &F : llvm::make_early_inc_range(Module.functions())) {
+      if (IsBiF(&F) && F.use_empty()) {
+        F.eraseFromParent();
+        changed = true;
       }
     }
   }
@@ -361,28 +379,6 @@ void BiFManagerHandler::cleanModule(llvm::Module &Base) {
 
   for (auto &pFunc : Base) {
     Explore(&pFunc);
-  }
-
-  // nuke the unused functions so we can materializeAll() quickly
-  auto CleanUnused = [](Module *Module) {
-    for (auto I = Module->begin(), E = Module->end(); I != E;) {
-      auto *F = &(*I++);
-      if ((F->isDeclaration() || F->isMaterializable()) &&
-          // We cannot remove the llvm intrinsics, because
-          // they could be collected by the BitcodeReader in
-          // list UpgradedIntrinsics. If we remove it now -
-          // it would crash during materializing.
-          !F->isIntrinsic()) {
-        if (F->materialized_use_begin() == F->use_end()) {
-          F->eraseFromParent();
-        }
-      }
-    }
-  };
-
-  for (auto bifsection_i = LoadedBiFSections.begin(); bifsection_i != LoadedBiFSections.end(); ++bifsection_i) {
-    llvm::Module *Module = bifsection_i->second.get();
-    CleanUnused(Module);
   }
 }
 
