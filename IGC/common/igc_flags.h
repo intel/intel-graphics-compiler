@@ -449,6 +449,10 @@ DECLARE_IGC_REGKEY(
     bool, DisableConstantCoalescingOfStatefulNonUniformLoads, false,
     "Disable merging non-uniform loads from stateful buffers. Note: does not affect merging to sampler loads",
     DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, EnableWideLSCConstantCoalescing, false,
+                   "Let a non-uniform stateful D32/D64 constant coalescing chunk grow to the full LSC message width, "
+                   "32 bytes per lane at SIMD16 on a 64-byte GRF platform, instead of one OWORD.",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableTextureLoadCoalescing, false, "Enable merging non-uniform loads from bindless textures",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, UseHDCTypedReadForAllTextures, false,

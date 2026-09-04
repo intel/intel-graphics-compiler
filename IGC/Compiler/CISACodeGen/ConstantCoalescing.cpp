@@ -538,7 +538,15 @@ bool ConstantCoalescing::IsDwordAligned(Value *val) const {
 //   vector must be a multiple of DWORD.
 // - if a vector load size is smaller than 4 bytes, then the size of the loaded
 //   vector must be 1 or 2
-inline uint RoundChunkSize(uint numElements, uint elementSizeInBytes) {
+inline uint RoundChunkSize(uint numElements, uint elementSizeInBytes, bool usesWideLSC = false) {
+  if (usesWideLSC && elementSizeInBytes == 4 && numElements > 4) {
+    // An LSC gather encodes vector lengths 1, 2, 3, 4, 8, 16, 32 and 64, but
+    // this pass limits it to 8: the widened cap is two OWORDs, so max chunk
+    // size is 8 DWORDs. Element counts 5-7 are rounded up to 8 since they
+    // can't be encoded in an LSC message.
+    IGC_ASSERT_MESSAGE(numElements <= 8, "DWORD chunk grew past the widened cap");
+    return 8;
+  }
   uint32_t vectorSizeInBytes = numElements * elementSizeInBytes;
   if (vectorSizeInBytes > 4 && (vectorSizeInBytes % 4) != 0) {
     return iSTD::RoundNonPow2(vectorSizeInBytes, 4) / elementSizeInBytes;
@@ -557,6 +565,19 @@ void ConstantCoalescing::MergeScatterLoad(Instruction *load, Value *bufIdxV, uin
   IGC_ASSERT((offsetInBytes % scalarSizeInBytes) == 0);
   const uint64_t eltid = offsetInBytes / scalarSizeInBytes;
 
+  // On a 64-byte GRF platform an LSC gather reads two OWORDs per lane at
+  // SIMD16, twice the current cap. Widen the cap only on a stateful access,
+  // whose surface state bounds checks the read, so it cannot fault past the
+  // end of an allocation.
+  const bool usesWideLSC = IGC_IS_FLAG_ENABLED(EnableWideLSCConstantCoalescing) && m_ctx->platform.getGRFSize() == 64 &&
+                           isStatefulAddrSpace(addrSpace) &&
+                           EmitPass::shouldGenerateLSCQuery(*m_ctx, load) == Tristate::True;
+
+  // Only DWORD and wider elements: a sub-DWORD chunk is bitcast to a vector of
+  // DWORDs later, and doubling the cap would let that count reach 5, 6 or 7,
+  // which is not a size the message can encode.
+  const uint maxChunkSizeInBytes = (usesWideLSC && scalarSizeInBytes >= 4) ? 2 * SIZE_OWORD : SIZE_OWORD;
+
   // Current assumption is that a chunk start needs to be DWORD aligned. In
   // the future we can consider adding support for merging 4 bytes or
   // 2 i16s/halfs into a single non-aligned DWORD.
@@ -567,14 +588,14 @@ void ConstantCoalescing::MergeScatterLoad(Instruction *load, Value *bufIdxV, uin
   for (std::vector<BufChunk *>::reverse_iterator rit = chunk_vec.rbegin(), rie = chunk_vec.rend(); rit != rie; ++rit) {
     BufChunk *cur_chunk = *rit;
     if (CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
-        cur_chunk->baseIdxV == eltIdxV &&
+        cur_chunk->baseIdxV == eltIdxV && cur_chunk->usesWideLSC == usesWideLSC &&
         cur_chunk->chunkIO->getType()->getScalarType() == load->getType()->getScalarType() &&
         CompareMetadata(cur_chunk->chunkIO, load) && !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load)) {
       uint64_t lb = std::min(eltid, cur_chunk->chunkStart);
       uint64_t ub = std::max(eltid + (uint64_t)maxEltPlus, cur_chunk->chunkStart + (uint64_t)cur_chunk->chunkSize);
       static_assert(MAX_VECTOR_NUM_ELEMENTS >= SIZE_OWORD, "Code below may need an update");
       // if input load is not DWORD aligned it can only be appended to an aligned chunk
-      if (((ub - lb) * scalarSizeInBytes) <= SIZE_OWORD && (ub - lb) <= MAX_VECTOR_NUM_ELEMENTS &&
+      if (((ub - lb) * scalarSizeInBytes) <= maxChunkSizeInBytes && (ub - lb) <= MAX_VECTOR_NUM_ELEMENTS &&
           (isDwordAligned || eltid >= cur_chunk->chunkStart)) {
         // Since the algorithm allows changing chunk's starting point as
         // well as the size it is possible that a load "matches"
@@ -604,7 +625,8 @@ void ConstantCoalescing::MergeScatterLoad(Instruction *load, Value *bufIdxV, uin
       cov_chunk->baseIdxV = eltIdxV;
       cov_chunk->elementSize = scalarSizeInBytes;
       cov_chunk->chunkStart = eltid;
-      cov_chunk->chunkSize = RoundChunkSize(maxEltPlus, scalarSizeInBytes);
+      cov_chunk->chunkSize = RoundChunkSize(maxEltPlus, scalarSizeInBytes, usesWideLSC);
+      cov_chunk->usesWideLSC = usesWideLSC;
       const alignment_t chunkAlignment = std::max<alignment_t>(alignment, 4);
       cov_chunk->chunkIO = CreateChunkLoad(load, cov_chunk, eltid, chunkAlignment, Extension);
       cov_chunk->deepestLvl = getBBLevel(load->getParent());
@@ -626,7 +648,8 @@ void ConstantCoalescing::MergeScatterLoad(Instruction *load, Value *bufIdxV, uin
     uint64_t lb = std::min(eltid, cov_chunk->chunkStart);
     uint64_t ub = std::max(eltid + (uint64_t)maxEltPlus, cov_chunk->chunkStart + (uint64_t)cov_chunk->chunkSize);
     uint start_adj = static_cast<uint>(cov_chunk->chunkStart - lb);
-    uint size_adj = RoundChunkSize(static_cast<uint>(ub - lb), cov_chunk->elementSize) - cov_chunk->chunkSize;
+    uint size_adj = RoundChunkSize(static_cast<uint>(ub - lb), cov_chunk->elementSize, cov_chunk->usesWideLSC) -
+                    cov_chunk->chunkSize;
     if (start_adj == 0) {
       if (size_adj) {
         EnlargeChunk(cov_chunk, size_adj);
@@ -642,9 +665,15 @@ void ConstantCoalescing::MergeScatterLoad(Instruction *load, Value *bufIdxV, uin
     uint size_adj = 0;
     if (eltid < cov_chunk->chunkStart) {
       start_adj = static_cast<uint>(cov_chunk->chunkStart - eltid);
-      size_adj = RoundChunkSize(start_adj, cov_chunk->elementSize);
+      // size_adj is the element count to add, and AdjustChunk() rounds
+      // chunkSize + size_adj. RoundChunkSize() rounds a final size, not a
+      // growth, so subtract chunkSize to get the delta: rounding start_adj was
+      // a no-op for DWORDs until the wide path jumped 5, 6 or 7 to 8.
+      size_adj = RoundChunkSize(cov_chunk->chunkSize + start_adj, cov_chunk->elementSize, cov_chunk->usesWideLSC) -
+                 cov_chunk->chunkSize;
     } else if (eltid >= cov_chunk->chunkStart + cov_chunk->chunkSize) {
-      size_adj = RoundChunkSize(static_cast<uint>(eltid - cov_chunk->chunkStart) + 1, cov_chunk->elementSize) -
+      size_adj = RoundChunkSize(static_cast<uint>(eltid - cov_chunk->chunkStart) + 1, cov_chunk->elementSize,
+                                cov_chunk->usesWideLSC) -
                  cov_chunk->chunkSize;
     }
 
@@ -711,7 +740,7 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk *cov_chunk, Instruction *load,
   uint64_t lb = std::min(eltid0, eltid);
   uint64_t ub = std::max(eltid0, eltid + numelt - 1);
   cov_chunk->chunkStart = lb;
-  cov_chunk->chunkSize = RoundChunkSize(static_cast<uint>(ub - lb + 1), cov_chunk->elementSize);
+  cov_chunk->chunkSize = RoundChunkSize(static_cast<uint>(ub - lb + 1), cov_chunk->elementSize, cov_chunk->usesWideLSC);
   Instruction *load0 = cov_chunk->chunkIO;
   // remove redundant load
   if (cov_chunk->chunkSize <= 1) {
@@ -1588,7 +1617,8 @@ Instruction *ConstantCoalescing::FindOrAddChunkExtract(BufChunk *cov_chunk, uint
 
 void ConstantCoalescing::AdjustChunk(BufChunk *cov_chunk, uint start_adj, uint size_adj,
                                      const ExtensionKind &Extension) {
-  cov_chunk->chunkSize = RoundChunkSize(cov_chunk->chunkSize + size_adj, cov_chunk->elementSize);
+  cov_chunk->chunkSize =
+      RoundChunkSize(cov_chunk->chunkSize + size_adj, cov_chunk->elementSize, cov_chunk->usesWideLSC);
   cov_chunk->chunkStart -= start_adj;
   // mutateType to change array-size
   Type *originalType = cov_chunk->chunkIO->getType();
@@ -1826,7 +1856,8 @@ void ConstantCoalescing::MoveExtracts(BufChunk *cov_chunk, Instruction *load, ui
 }
 
 void ConstantCoalescing::EnlargeChunk(BufChunk *cov_chunk, uint size_adj) {
-  cov_chunk->chunkSize = RoundChunkSize(cov_chunk->chunkSize + size_adj, cov_chunk->elementSize);
+  cov_chunk->chunkSize =
+      RoundChunkSize(cov_chunk->chunkSize + size_adj, cov_chunk->elementSize, cov_chunk->usesWideLSC);
   // mutateType to change array-size
   Type *originalType = cov_chunk->chunkIO->getType();
   Type *vty = IGCLLVM::FixedVectorType::get(cov_chunk->chunkIO->getType()->getScalarType(), cov_chunk->chunkSize);

@@ -51,7 +51,8 @@ struct BufChunk {
   llvm::Instruction *chunkIO; // coalesced load
   uint loadOrder;             // direct CB used order.
   ExtensionKind extensionKind;
-  unsigned deepestLvl; // deepest BB absorbed so far; for BB-depth-delta guard
+  unsigned deepestLvl;      // deepest BB absorbed so far; for BB-depth-delta guard
+  bool usesWideLSC = false; // stateful LSC access; may use the 32-byte message
 };
 
 class ConstantCoalescing : public llvm::FunctionPass {
