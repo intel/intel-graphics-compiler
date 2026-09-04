@@ -478,6 +478,7 @@ private:
   // importantly it's dense so there's no savings to be had with a map.
   std::vector<FuncInfo *> instToFunc;
   const bool hasSubroutines = false;
+  SparseBitVector varLiveOutOfAnyBB;
 
   void populateBBCache();
   void populateFuncMaps();

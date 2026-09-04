@@ -5989,11 +5989,8 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare *newDcl) {
       auto id1 = regVar1->getId();
       auto id2 = regVar2->getId();
 
-      for (auto bb : kernel.fg.getBBList()) {
-        if (liveAnalysis.isLiveAtExit(bb, id1) ||
-            liveAnalysis.isLiveAtExit(bb, id2))
-          return true;
-      }
+      if (varLiveOutOfAnyBB.test(id1) || varLiveOutOfAnyBB.test(id2))
+        return true;
 
       // Conventional intf construction correctly handles the scenario when V1
       // and V2 are referenced in single (same) BB.
@@ -6045,6 +6042,9 @@ void Augmentation::buildInterferenceIncompatibleMask() {
     for (auto bit : liveAnalysis.globalVars)
       globalVars[bit] = true;
   }
+
+  for (auto bb : kernel.fg.getBBList())
+    varLiveOutOfAnyBB |= liveAnalysis.getLiveAtExit(bb);
 
   // Create 2 active lists - 1 for holding active live-intervals
   // with non-default mask and other for default mask
