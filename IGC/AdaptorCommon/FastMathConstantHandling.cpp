@@ -85,6 +85,11 @@ void FastMathConstantHandling::foldConstantExpressions(Function &F) {
       if (!folded)
         continue;
 
+      // Only an infinity or a NaN are worth considering. Those are the values that turn a ninf or nnan instruction into
+      // poison.
+      if (!match(folded, m_Inf()) && !match(folded, m_NaN()))
+        continue;
+
       I.replaceAllUsesWith(folded);
       if (isInstructionTriviallyDead(&I)) {
         salvageDebugInfo(I);
