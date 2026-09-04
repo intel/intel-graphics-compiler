@@ -1424,12 +1424,11 @@ Value *RTBuilder::getInstanceLeaf(StackPointerVal *StackPointer, IGC::CallableSh
 
 Value *RTBuilder::getRayComparisonValue(StackPointerVal *StackPointer) {
   switch (getMemoryStyle()) {
-#define STYLE_XE3PLUS(X)                                                                                               \
-  case RTMemoryStyle::X:                                                                                               \
-    return _getRayComparisonValue_##X(StackPointer, VALUE_NAME("ComparisonValue"));
+  case RTMemoryStyle::Xe3:
+    return _getRayComparisonValue_Xe3(StackPointer, VALUE_NAME("ComparisonValue"));
+  case RTMemoryStyle::Xe3PEff64:
+    return _getRayComparisonValue_Xe3PEff64(StackPointer, VALUE_NAME("ComparisonValue"));
 
-#include "RayTracingMemoryStyleXe3Plus.h"
-#undef STYLE_XE3PLUS
 
   default:
     IGC_ASSERT(0);

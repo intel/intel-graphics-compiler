@@ -115,6 +115,7 @@ static void setupRTMemoryStyle(CodeGenContext *pContext) {
 
   rtInfo.MemStyle = RTMemoryStyle::Xe;
 
+  {
     if (pContext->platform.hasEfficient64bEnabled()) {
       rtInfo.MemStyle = RTMemoryStyle::Xe3PEff64;
     } else if (pContext->platform.isCoreChildOf(IGFX_XE3P_CORE)) {
@@ -124,6 +125,7 @@ static void setupRTMemoryStyle(CodeGenContext *pContext) {
     } else if (pContext->bvhInfo.uses64Bit) {
       rtInfo.MemStyle = RTMemoryStyle::Xe3;
     }
+  }
 }
 
 [[maybe_unused]] static void setupGlobalDataStyle(CodeGenContext *pContext) {

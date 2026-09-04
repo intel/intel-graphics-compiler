@@ -240,7 +240,9 @@ IMPL_ALL_1ARG(_getRayTMin, StackPtr)
 template <typename RTStackT> IMPL auto _getRayComparisonValue(RTSAS RTStack2<RTStackT> *__restrict__ StackPtr) {
   return StackPtr->ray0.ComparisonValue;
 }
-IMPL_ALL_1ARG_XE3PLUS(_getRayComparisonValue, StackPtr)
+
+GEN_1ARG(_getRayComparisonValue, Xe3, StackPtr)
+GEN_1ARG(_getRayComparisonValue, Xe3PEff64, StackPtr)
 
 template <typename RTStackT> IMPL auto _getRayTime(RTSAS RTStack2<RTStackT> *__restrict__ StackPtr) {
   return StackPtr->ray0.time;
@@ -1348,6 +1350,8 @@ CREATE_PRIVATE void _createForwardRayMotionBlurPrologue_Xe3PEff64(RTSAS RTStack2
                                                                   uint32_t InstanceFlags, uint32_t HitGroupOffset) {
   return _createForwardRayMotionBlurPrologue(StackPtr, StartNodePtr, Origin, Dir, InstanceFlags, HitGroupOffset);
 }
+
+
 template <typename GenT>
 IMPL RTSAS void *_getHitAddress(RTSAS RTStack2<GenT> *__restrict__ HWStackPtr, bool Committed) {
   return Committed ? &HWStackPtr->committedHit : &HWStackPtr->potentialHit;
