@@ -201,6 +201,10 @@ protected:
 private:
   bool m_vectorIndex;
   std::pair<unsigned int, llvm::Type *> getArrSizeAndEltType(llvm::Type *T);
-  llvm::Type *getFirstNonScalarSourceElementType(const llvm::GetElementPtrInst &GEP);
+  // \p ignoreSourceElementType skips the GEP's own source element type and recovers the
+  // type from the base object instead.  A byte-indexing GEP's source element type says
+  // nothing about the element size of the object it indexes into.
+  llvm::Type *getFirstNonScalarSourceElementType(const llvm::GetElementPtrInst &GEP,
+                                                 bool ignoreSourceElementType = false);
 };
 } // namespace IGC

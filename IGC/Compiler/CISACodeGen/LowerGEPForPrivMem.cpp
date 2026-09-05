@@ -1195,9 +1195,10 @@ std::pair<unsigned int, Type *> TransposeHelper::getArrSizeAndEltType(Type *T) {
   return std::make_pair(arr_sz, retTy);
 }
 
-Type *TransposeHelper::getFirstNonScalarSourceElementType(const GetElementPtrInst &GEP) {
+Type *TransposeHelper::getFirstNonScalarSourceElementType(const GetElementPtrInst &GEP,
+                                                          bool ignoreSourceElementType) {
   Type *currTy = GEP.getSourceElementType();
-  if (getArrSizeAndEltType(currTy).first > 1)
+  if (!ignoreSourceElementType && getArrSizeAndEltType(currTy).first > 1)
     return currTy;
 
   const Value *base = GEP.getPointerOperand()->stripPointerCasts();
@@ -1234,13 +1235,21 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *
   IRBuilder<> IRB(pGEP);
   Value *pScalarizedIdx = IRB.getInt32(0);
 
-  // If the GEP is on i8, its index is a byte offset and must be converted to an element index of the underlying base
-  // type.
-  if (pGEP->getSourceElementType()->isIntegerTy(8)) {
+  // A GEP indexes bytes when the innermost scalar of its source element type is i8: either
+  // bare i8, or an (possibly nested) array of i8 as produced by LLVM's canonicalization of
+  // `gep T, ptr, %i` into `gep [sizeof(T) x i8], ptr, %i`.  Its accumulated offset is a byte
+  // offset and must be converted to an element index of the underlying base type.
+  Type *gepSrcTy = pGEP->getSourceElementType();
+  Type *gepInnermostTy = gepSrcTy;
+  while (gepInnermostTy->isArrayTy())
+    gepInnermostTy = gepInnermostTy->getArrayElementType();
+
+  if (gepInnermostTy->isIntegerTy(8)) {
+    const bool isByteArrayGEP = !gepSrcTy->isIntegerTy(8);
     uint32_t elementBytes = m_idxUnitBytes;
     // if elementBytes is 0, it means that scalarized index counts innermost scalas
     if (elementBytes == 0) {
-      Type *elementTy = getFirstNonScalarSourceElementType(*pGEP);
+      Type *elementTy = getFirstNonScalarSourceElementType(*pGEP, isByteArrayGEP);
       while (elementTy->isStructTy() || elementTy->isArrayTy() || elementTy->isVectorTy()) {
         elementTy = getArrSizeAndEltType(elementTy).second;
       }
@@ -1248,8 +1257,30 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *
       elementBytes = (uint32_t)m_DL.getTypeAllocSize(elementTy);
     }
 
-    // The 1st operand is the byte offset, convert bytes to element count.
-    Value *byteIndex = IRB.CreateZExtOrTrunc(pGEP->getOperand(1), IRB.getInt32Ty());
+    // Accumulate the GEP's byte offset.  Since the innermost element occupies one byte, the
+    // aggregate walk yields bytes directly: `gep [4 x i8], ptr, %i` gives %i * 4.  For bare
+    // i8 the walk degenerates to the single index operand.
+    Value *byteIndex = IRB.getInt32(0);
+    Type *ByteTy = gepSrcTy;
+    for (unsigned i = 0, e = pGEP->getNumIndices(); i < e; ++i) {
+      auto GepOpnd = IRB.CreateZExtOrTrunc(pGEP->getOperand(i + 1), IRB.getInt32Ty());
+      auto [arr_sz, eltTy] = getArrSizeAndEltType(ByteTy);
+
+      byteIndex = IRB.CreateAdd(byteIndex, GepOpnd);
+      byteIndex = IRB.CreateMul(byteIndex, IRB.getInt32(arr_sz));
+
+      ByteTy = eltTy;
+    }
+    // Fewer indices than nesting levels: the remaining dimensions still scale the offset.
+    while (ByteTy->isArrayTy()) {
+      auto [arr_sz, eltTy] = getArrSizeAndEltType(ByteTy);
+
+      byteIndex = IRB.CreateMul(byteIndex, IRB.getInt32(arr_sz));
+
+      ByteTy = eltTy;
+    }
+
+    // Convert bytes to element count.
     if (elementBytes > 1)
       byteIndex = IRB.CreateUDiv(byteIndex, IRB.getInt32(elementBytes));
 
