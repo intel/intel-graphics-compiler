@@ -8030,7 +8030,9 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
     return builder.useAccForMadm();
   case G4_mad:
     if (builder.removedAccRestrictionsAsGRF()) {
-      return true;
+      if (!(srcId != 0 && IS_INT(src->getType())))
+        return true;
+      return false;
     } else {
       return builder.canMadHaveAcc() &&
              ((srcId == 1 &&
