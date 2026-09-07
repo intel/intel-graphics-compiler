@@ -194,6 +194,7 @@ const UmdRegkeyMap *GetCurrentUmdRegkeys() { return CurrentUmdRegkeys; }
 #include <llvm/ADT/StringSwitch.h>
 #include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "common/igc_llvm_option_defaults.hpp"
 #include "3d/common/iStdLib/File.h"
 #include "secure_mem.h"
 #include "secure_string.h"
@@ -1282,9 +1283,7 @@ void InitializeRegKeys() {
       std::vector<char *> args;
       args.push_back((char *)("IGC"));
 
-      auto &RegOpts = llvm::cl::getRegisteredOptions();
-      if (RegOpts.count("instcombine-code-sinking"))
-        args.push_back((char *)("-instcombine-code-sinking=0"));
+      IGC::applyLLVMOptionDefaults();
 
       if (IGC_IS_FLAG_ENABLED(LLVMCommandLine))
         ParseCStringVector(args, IGC_GET_REGKEYSTRING(LLVMCommandLine));

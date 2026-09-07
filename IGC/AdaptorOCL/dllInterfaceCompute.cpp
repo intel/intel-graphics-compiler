@@ -41,6 +41,7 @@ SPDX-License-Identifier: MIT
 #include "common/debug/Dump.hpp"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
+#include "common/igc_llvm_option_defaults.hpp"
 #include "common/secure_mem.h"
 #include "common/shaderOverride.hpp"
 #include "common/ModuleSplitter.h"
@@ -1023,17 +1024,8 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
       }
     }
 
-    // Disable code sinking in instruction combining.
-    // This is a workaround for a performance issue caused by code sinking
-    // that is being done in LLVM's instcombine pass.
-    // This code will be removed once sinking is removed from instcombine.
-    llvm::StringRef instCombineFlag = "-instcombine-code-sinking=0";
-    auto instCombineSinkingSwitch = optionsMap.find(instCombineFlag.trim("-=0"));
-    if (instCombineSinkingSwitch != optionsMap.end()) {
-      if (instCombineSinkingSwitch->second->getNumOccurrences() == 0) {
-        args.push_back(instCombineFlag.data());
-      }
-    }
+    // Disable instcombine code sinking (see applyLLVMOptionDefaults).
+    IGC::applyLLVMOptionDefaults();
 
     // With the default (250) maximum number of accesses allowed for memory
     // promotion when using MemorySSA we lack the performance for some
