@@ -88,15 +88,16 @@ void __basic_ray_forward(
 
 typedef enum
 {
-    intel_raytracing_ext_flag_ray_query = 1 << 0,   // true if ray queries are supported
+    intel_raytracing_ext_flag_ray_query   = 1 << 0, // true if ray queries are supported
     intel_raytracing_ext_flag_motion_blur = 1 << 1, // true if motion blur is supported
 } intel_raytracing_ext_flag_t;
 
 intel_raytracing_ext_flag_t intel_get_raytracing_ext_flag()
 {
+    uint flags = intel_raytracing_ext_flag_ray_query;
     if(BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3P_CORE)
-        return intel_raytracing_ext_flag_ray_query | intel_raytracing_ext_flag_motion_blur;
-    return intel_raytracing_ext_flag_ray_query;
+        flags |= intel_raytracing_ext_flag_motion_blur;
+    return flags;
 };
 
 intel_ray_query_t intel_ray_query_init(

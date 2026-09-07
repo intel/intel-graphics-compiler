@@ -209,6 +209,23 @@ CREATE_PRIVATE uint64_t _getBVHPtr(uint64_t BVHI, uint64_t Offset, bool FixedOff
   return BVHI ? BVHI + BVHPtr->rootNodeOffset : 0;
 }
 
+template <typename RTStackT>
+IMPL void _setRayMask(RTSAS RTStackT *__restrict__ StackPtr, uint32_t InstanceInclusionMask, uint32_t ComparisonValue) {
+  auto &ray0 = StackPtr->ray0;
+  ray0.rayMask = InstanceInclusionMask;
+  ray0.ComparisonValue = ComparisonValue;
+  ray0.pad1 = 0;
+}
+
+template <typename RTStackT> IMPL void _forwardRayMask(RTSAS RTStackT *__restrict__ StackPtr) {
+  auto &ray1 = StackPtr->ray1;
+  auto &ray0 = StackPtr->ray0;
+
+  ray1.rayMask = ray0.rayMask;
+  ray1.ComparisonValue = ray0.ComparisonValue;
+  ray1.pad1 = ray0.pad1;
+}
+
 
 template <typename GenT> IMPL auto _getWorldRayOrig(RTSAS RTStack2<GenT> *__restrict__ StackPtr, uint32_t Dim) {
   return StackPtr->ray0.org[Dim];
@@ -237,8 +254,12 @@ template <typename GenT> IMPL auto _getRayTMin(RTSAS RTStack2<GenT> *__restrict_
 }
 IMPL_ALL_1ARG(_getRayTMin, StackPtr)
 
-template <typename RTStackT> IMPL auto _getRayComparisonValue(RTSAS RTStack2<RTStackT> *__restrict__ StackPtr) {
+template <typename RTStackT> IMPL auto _readRayComparisonValue(RTSAS RTStack2<RTStackT> *__restrict__ StackPtr) {
   return StackPtr->ray0.ComparisonValue;
+}
+
+template <typename RTStackT> IMPL auto _getRayComparisonValue(RTSAS RTStack2<RTStackT> *__restrict__ StackPtr) {
+  return _readRayComparisonValue(StackPtr);
 }
 IMPL_ALL_1ARG_XE3PLUS(_getRayComparisonValue, StackPtr)
 
@@ -317,8 +338,12 @@ IMPL uint32_t _getInstanceContributionToHitGroupIndex(RTSAS RTStack2<GenT> *__re
   return fetchInstanceLeaf(StackPtr, ShaderTy)->part0.instanceContributionToHitGroupIndex;
 }
 IMPL_ALL_2ARG(_getInstanceContributionToHitGroupIndex, StackPtr, ShaderTy)
-template <typename GenT> IMPL uint32_t _getRayMask(RTSAS RTStack2<GenT> *__restrict__ StackPtr) {
+template <typename GenT> IMPL uint32_t _readRayMask(RTSAS RTStack2<GenT> *__restrict__ StackPtr) {
   return StackPtr->ray0.rayMask;
+}
+
+template <typename GenT> IMPL uint32_t _getRayMask(RTSAS RTStack2<GenT> *__restrict__ StackPtr) {
+  return _readRayMask(StackPtr);
 }
 IMPL_ALL_1ARG(_getRayMask, StackPtr)
 
@@ -718,9 +743,7 @@ IMPL void _createTraceRayInlinePrologue(RTSAS RTStackT *__restrict__ StackPtr, _
   ray0.instLeafPtr = 0;
 
   ray0.rayFlags = RayFlags;
-  ray0.rayMask = InstanceInclusionMask;
-  ray0.ComparisonValue = ComparisonValue;
-  ray0.pad1 = 0;
+  _setRayMask(StackPtr, InstanceInclusionMask, ComparisonValue);
 
   ray0.hitGroupIndex = HitGroupIndex;
 
@@ -1328,9 +1351,7 @@ IMPL void _createForwardRayMotionBlurPrologue(RTSAS RTStackT *__restrict__ Stack
   ray1.instLeafPtr = StackPtr->potentialHit.primLeafPtr * LeafSize;
 
   // remaining bottom-level ray fields are copied from top-level ray
-  ray1.rayMask = ray0.rayMask;
-  ray1.ComparisonValue = ray0.ComparisonValue;
-  ray1.pad1 = ray0.pad1;
+  _forwardRayMask(StackPtr);
   ray1.missShaderIndex = ray0.missShaderIndex;
   ray1.shaderIndexMultiplier = ray0.shaderIndexMultiplier;
   ray1.pad2 = ray0.pad2;
