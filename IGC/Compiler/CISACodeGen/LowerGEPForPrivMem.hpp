@@ -147,6 +147,11 @@ private:
   // Gating those rules individually, rather than useNewAlgo(), leaves the pre-existing
   // array-of-struct support (EnablePrivMemNewSOATranspose on its own) with its original rules.
   bool useAggressiveStructSOA() const;
+  // Return true if every byte offset \p Ptr can carry relative to the alloca is provably a
+  // multiple of SOAPartitionBytes. An access covering one or more whole chunks needs this:
+  // TransposePrivMem::getTransposedEltPtr() assumes such an access starts at intra-chunk
+  // offset 0 and would otherwise silently drop the remainder.
+  bool isPartitionAlignedChain(const llvm::Value *Ptr) const;
   // ===== end of fields for new algo =====
 
   bool isVectorSOA = true;

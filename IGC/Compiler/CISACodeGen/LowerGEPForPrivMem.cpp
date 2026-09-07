@@ -499,9 +499,13 @@ SOALayoutInfo SOALayoutChecker::getOrGatherInfo() {
     // by checkStruct above).
     bool WideVecAccess = (STy == nullptr) && hasMultiPartitionVectorAccess(allocaRef, SOAPartitionBytes, *pDL);
 
-    // Skip for non-power-of-2 partition size, or for wide-vector accesses that
-    // only the legacy path can lower.
-    if (isPowerOf2_32(SOAPartitionBytes) && !WideVecAccess) {
+    uint64_t AllocatedBytes = pDL->getTypeAllocSize(allocaRef.getAllocatedType());
+    bool PartialTailChunk = (AllocatedBytes % SOAPartitionBytes) != 0;
+
+    // Skip for non-power-of-2 partition size, for wide-vector accesses that
+    // only the legacy path can lower, or for a reservation that is not a whole
+    // number of chunks.
+    if (isPowerOf2_32(SOAPartitionBytes) && !WideVecAccess && !PartialTailChunk) {
       pInfo->useNewAlgoTranspose = true;
       pInfo->canUseSOALayout = checkUsers(allocaRef);
       pInfo->SOAPartitionBytes = SOAPartitionBytes;
@@ -645,18 +649,51 @@ bool SOALayoutChecker::isChunkSpanningType(Type *Ty) const {
   return !Ty->isVectorTy() && Bytes > SOAPartitionBytes && (Bytes % SOAPartitionBytes) == 0;
 }
 
+bool SOALayoutChecker::isPartitionAlignedChain(const Value *Ptr) const {
+  uint64_t ConstBytes = 0;
+  while (Ptr != &allocaRef) {
+    if (auto *GEP = dyn_cast<GetElementPtrInst>(Ptr)) {
+      for (auto GTI = gep_type_begin(GEP), GTE = gep_type_end(GEP); GTI != GTE; ++GTI) {
+        Value *Idx = GTI.getOperand();
+        if (StructType *STy = GTI.getStructTypeOrNull()) {
+          ConstBytes += pDL->getStructLayout(STy)->getElementOffset(cast<ConstantInt>(Idx)->getZExtValue());
+          continue;
+        }
+        uint64_t Stride = pDL->getTypeAllocSize(GTI.getIndexedType());
+        if (auto *CI = dyn_cast<ConstantInt>(Idx)) {
+          ConstBytes += (uint64_t)CI->getSExtValue() * Stride;
+          continue;
+        }
+        // A dynamic index contributes an unknown multiple of its stride, so it keeps the
+        // offset partition-aligned exactly when the stride itself is.
+        if ((Stride % SOAPartitionBytes) != 0)
+          return false;
+      }
+      Ptr = GEP->getPointerOperand();
+      continue;
+    }
+    if (auto *CI = dyn_cast<CastInst>(Ptr)) {
+      if (!isa<BitCastInst>(CI) && !isa<AddrSpaceCastInst>(CI))
+        return false;
+      Ptr = CI->getOperand(0);
+      continue;
+    }
+    // Unknown provenance (a PHI, a select, a function argument, ...): the offset cannot be
+    // proven, so it can not be assumed aligned.
+    return false;
+  }
+  return (ConstBytes % SOAPartitionBytes) == 0;
+}
+
 // TODO: Consider a worklist-based implementation instead.
 bool SOALayoutChecker::checkUsers(Instruction &I) {
   if (IGC_IS_FLAG_ENABLED(DisableSOAPromotion)) {
     return false;
   }
 
-  // The walk needs no cycle guard: the only visitors that recurse back into
-  // checkUsers() are bitcast, addrspacecast, GEP and PHI, and visitPHINode()
-  // rejects every PHI with more than one incoming value. Each of the remaining
-  // node kinds derives from exactly one pointer, so the visited sub-graph is a
-  // tree rooted at the alloca -- no node is reachable twice, and no back-edge
-  // can form.
+  // The walk needs no cycle guard. The only visitors that recurse back into checkUsers() are
+  // bitcast, addrspacecast and GEP; there is no visitPHINode(), so a PHI falls through to
+  // visitInstruction() and stops the walk.
   llvm::SaveAndRestore<Instruction *> RestoreParentOnExit(parentLevelInst, &I);
   for (Value::user_iterator userIt = I.user_begin(), userE = I.user_end(); userIt != userE; ++userIt) {
     auto &userInst = *cast<Instruction>(*userIt);
@@ -1019,13 +1056,17 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   }
 
   Type *pUserTy = nullptr;
-  if (auto *storeInst = dyn_cast<StoreInst>(&I))
+  Value *pAccessPtr = nullptr;
+  if (auto *storeInst = dyn_cast<StoreInst>(&I)) {
     pUserTy = storeInst->getValueOperand()->getType();
-  else if (auto *loadInst = dyn_cast<LoadInst>(&I))
+    pAccessPtr = storeInst->getPointerOperand();
+  } else if (auto *loadInst = dyn_cast<LoadInst>(&I)) {
     pUserTy = loadInst->getType();
-  else if (auto *predLoad = dyn_cast<PredicatedLoadIntrinsic>(&I))
+    pAccessPtr = loadInst->getPointerOperand();
+  } else if (auto *predLoad = dyn_cast<PredicatedLoadIntrinsic>(&I)) {
     pUserTy = predLoad->getType();
-  else
+    pAccessPtr = predLoad->getPointerOperand();
+  } else
     return false;
 
   // Aggregate (struct/array) loads and stores cannot be lowered by any of the promotion
@@ -1036,6 +1077,13 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   // 0 for a struct, so when the parent GEP's result element type is an aggregate too both
   // sides of the pgepTySize != vecTySize comparison are 0 and the whole block is skipped.
   if (pUserTy->isAggregateType()) {
+    pInfo->canUseSOALayout = false;
+    return true;
+  }
+
+  // Verify TransposePrivMem's assumption that access starts at intra-chunk offset 0.
+  if (pInfo->useNewAlgoTranspose && pDL->getTypeStoreSize(pUserTy) >= SOAPartitionBytes &&
+      !isPartitionAlignedChain(pAccessPtr)) {
     pInfo->canUseSOALayout = false;
     return true;
   }
