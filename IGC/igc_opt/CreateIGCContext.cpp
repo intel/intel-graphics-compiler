@@ -21,10 +21,11 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
-static cl::opt<uint16_t>
-    DeviceIdOption("device-id", cl::desc("Use to select specific configuration of a destination platform"),
-                   cl::values(clEnumValN(0x0BD4, "0x0BD4", "PVC-VG"), clEnumValN(0x7D67, "0x7D67", "ARL-S")),
-                   cl::init(0), cl::Hidden);
+static cl::opt<uint16_t> DeviceIdOption("device-id",
+                                        cl::desc("Use to select specific configuration of a destination platform"),
+                                        cl::values(clEnumValN(0x0BD4, "0x0BD4", "PVC-VG"),
+                                                   clEnumValN(0x7D67, "0x7D67", "ARL-S")),
+                                        cl::init(0), cl::Hidden);
 
 static cl::opt<uint16_t> RevIdOption("rev-id", cl::desc("Use to select specific platform revision id"),
                                      cl::values(clEnumValN(REVID::REVISION_A0, "A", "Revision A"),
@@ -112,7 +113,10 @@ IGC::CodeGenContext *CreateCodeGenContext() {
       break;
     case PRODUCT_FAMILY::IGFX_METEORLAKE:
       platform.eRenderCoreFamily = IGFX_XE_HPG_CORE;
-      // MTL-H has GMDArch=12, GMDRelease=XE_LP_LG (71)
+      // IGFX_METEORLAKE spans two GT IP releases, XE_LP_MD(70) and XE_LP_LG(71).
+      // Default to XE_LP_LG and select the other one with --device-id. That
+      // selection needs a device ID macro the open source igfxfmid.h does not
+      // provide, so there every IGFX_METEORLAKE is modelled as XE_LP_LG.
       platform.sRenderBlockID.GmdID.GMDArch = GFX_GMD_ARCH_12;
       platform.sRenderBlockID.GmdID.GMDRelease = GFX_GMD_ARCH_12_RELEASE_XE_LP_LG;
       break;

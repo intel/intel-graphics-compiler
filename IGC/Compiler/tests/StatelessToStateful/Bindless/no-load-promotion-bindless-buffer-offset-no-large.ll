@@ -10,14 +10,20 @@
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless | FileCheck %s
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless -platformmtl | FileCheck %s --check-prefix=SLOWBL
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless -platformarl --device-id 0x7D67 | FileCheck %s --check-prefix=SLOWBL
+; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless -platformarl | FileCheck %s
 ;
 ; In bindless + buffer-offset no-large mode, load promotion is allowed for
 ; bindless addressing mode (fast ldraw.indexed) on most platforms - the first RUN
-; line covers that. On MTL (eProductFamily==IGFX_METEORLAKE) and on ARL-S
-; (eProductFamily==IGFX_ARROWLAKE with an ARL-S device ID) load promotion is
-; disabled to avoid a performance regression; both are checked with the SLOWBL
-; prefix. ARL-H and ARL-U are not affected. Store promotion remains enabled
-; everywhere.
+; line covers that. It is disabled, to avoid a performance regression, only on
+; the two configurations where that regression was measured, both checked with
+; the SLOWBL prefix:
+;   - IGFX_METEORLAKE on GT IP release XE_LP_LG(71), which is what -platformmtl
+;     selects by default
+;   - IGFX_ARROWLAKE with an ARL-S device ID
+; Configurations that share the product family but report a different GT IP
+; release, or share the release but not the device ID, stay on the promotion
+; path and reuse the CHECK prefix; an IGFX_ARROWLAKE part without an ARL-S
+; device ID is one of them. Store promotion remains enabled everywhere.
 
 ; CHECK-LABEL: @test_no_load_promotion
 ; CHECK: [[SRCOFF:%.*]] = inttoptr i32 %bindlessOffset to ptr addrspace(2490368)

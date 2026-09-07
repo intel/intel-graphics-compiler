@@ -767,12 +767,16 @@ public:
   }
 
   // Bindless stateful loads (ldraw.indexed) can be slower than plain stateless loads on
-  // MTL and ARL-S, so StatelessToStateful keeps them on the conservative path.
+  // one IGFX_METEORLAKE GT IP release and on ARL-S, so StatelessToStateful keeps those
+  // on the conservative path. IGFX_METEORLAKE spans more than one GT IP release, hence
+  // the GMDRelease test: the releases where no regression was measured keep promoting.
   // ARL-S is matched by device ID, which is how the rest of IGC identifies it (see
-  // supportDpasInstruction()), and works the same for offline and online compilation.
-  // ARL-H and ARL-U are not affected.
+  // supportDpasInstruction()) and cannot be replaced by a release test, because other
+  // IGFX_ARROWLAKE parts report the same GMDRelease and must keep promoting.
   bool hasSlowBindlessLoads() const {
-    return m_platformInfo.eProductFamily == IGFX_METEORLAKE || GFX_IS_ARL_S(m_platformInfo.usDeviceID);
+    return (m_platformInfo.eProductFamily == IGFX_METEORLAKE &&
+            m_platformInfo.sRenderBlockID.GmdID.GMDRelease == GFX_GMD_ARCH_12_RELEASE_XE_LP_LG) ||
+           GFX_IS_ARL_S(m_platformInfo.usDeviceID);
   }
 
   bool L3CacheCoherentCrossTiles() const { return isCoreChildOf(IGFX_XE_HPC_CORE); }
