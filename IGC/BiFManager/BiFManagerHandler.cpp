@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2024-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -112,6 +112,14 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
       IGC_ASSERT_MESSAGE(0, "materializeAll failed for generic builtin module");
     }
 
+#if LLVM_VERSION_MAJOR >= 23
+    for (auto &F : BiFSection->get()->functions()) {
+      LLVMContext &C = F.getContext();
+      MDNode *N = MDNode::get(C, MDString::get(C, "IGC built-in function"));
+      F.setMetadata(bifMark, N);
+    }
+#endif
+
     if (CallbackLinker == nullptr) {
       BiFSection->get()->setDataLayout(Module.getDataLayout());
       BiFSection->get()->setTargetTriple(Module.getTargetTriple());
@@ -149,6 +157,20 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
       }
     }
   }
+
+#if LLVM_VERSION_MAJOR >= 23
+  // Remove unused BiF functions
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (auto &F : llvm::make_early_inc_range(Module.functions())) {
+      if (IsBiF(&F) && F.use_empty()) {
+        F.eraseFromParent();
+        changed = true;
+      }
+    }
+  }
+#endif
 
   BIF_COMPILER_TIME_END(TIME_OCL_BiFMgr_LinkAllSections);
 
@@ -363,6 +385,7 @@ void BiFManagerHandler::cleanModule(llvm::Module &Base) {
     Explore(&pFunc);
   }
 
+#if LLVM_VERSION_MAJOR < 23
   // nuke the unused functions so we can materializeAll() quickly
   auto CleanUnused = [](Module *Module) {
     for (auto I = Module->begin(), E = Module->end(); I != E;) {
@@ -384,6 +407,7 @@ void BiFManagerHandler::cleanModule(llvm::Module &Base) {
     llvm::Module *Module = bifsection_i->second.get();
     CleanUnused(Module);
   }
+#endif
 }
 
 bool BiFManagerHandler::isModulePtrSize32(llvm::Module *pMain) {
