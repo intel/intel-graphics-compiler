@@ -277,6 +277,76 @@ CHECK(spirv_ext, "Interface v5: test that SPIR-V extensions supported by a platf
   return ExitCode::Success;
 }
 
+// Translation path: the platform cross-check
+CHECK(platform_check, "Translation: cross-check the render GMDID against the platform enum") {
+  auto deviceCtx = cif->CreateInterface<IGC::IgcOclDeviceCtx<1>>();
+  if (!deviceCtx) {
+    std::cerr << "error: failed to create IGC::IgcOclDeviceCtx<1> interface\n";
+    return ExitCode::UnsupportedInterface;
+  }
+
+  // Platform<2> is the first version exposing SetRenderBlockID
+  auto platform = deviceCtx->GetPlatformHandle<IGC::Platform<2>>();
+  if (!platform) {
+    std::cerr << "error: failed to get IGC::Platform<2> handle\n";
+    return ExitCode::FailedToGetInterface;
+  }
+  if (!applyPlatform(platform.get())) {
+    std::cerr << "error: check 'platform_check' requires --platform <name>\n";
+    return ExitCode::MissingPlatform;
+  }
+
+  std::cout << "renderCoreFamily=" << getCoreName(getEffectiveCore()) << "\n";
+
+  const uint32_t renderBlockID = applyRenderBlockID(platform.get());
+  GFX_GMD_ID decoded = {};
+  decoded.Value = renderBlockID;
+  if (renderBlockID == 0)
+    std::cout << "renderBlockID=not-reported\n";
+  else
+    std::cout << "renderBlockID=" << decoded.GmdID.GMDArch << "." << decoded.GmdID.GMDRelease << "."
+              << decoded.GmdID.RevisionID << "\n";
+
+  auto translationCtx = deviceCtx->CreateTranslationCtx(IGC::CodeType::spirV, IGC::CodeType::oclGenBin);
+  if (!translationCtx) {
+    std::cerr << "error: failed to create a SPIRV -> OCL_GEN_BIN translation context\n";
+    return ExitCode::UnsupportedInterface;
+  }
+
+  // A bare SPIR-V header with no instructions: the five words every module starts
+  // with, and nothing else. It parses, so IGC reaches the input and reports an
+  // empty module through the normal channels instead of bailing out early.
+  static const uint32_t emptySpirV[] = {
+      0x07230203, // magic
+      0x00010000, // version 1.0
+      0x00000000, // generator
+      0x00000001, // id bound
+      0x00000000, // schema
+  };
+  auto srcBuf = CIF::Builtins::CreateConstBuffer<CIF::Builtins::BufferSimple>(cif, emptySpirV, sizeof(emptySpirV));
+  auto optionsBuf = CIF::Builtins::CreateConstBuffer<CIF::Builtins::BufferSimple>(cif, nullptr, 0);
+  auto internalOptionsBuf = CIF::Builtins::CreateConstBuffer<CIF::Builtins::BufferSimple>(cif, nullptr, 0);
+  if (!srcBuf || !optionsBuf || !internalOptionsBuf) {
+    std::cerr << "error: failed to create translation input buffers\n";
+    return ExitCode::FailedToGetInterface;
+  }
+
+  auto out = translationCtx->Translate(srcBuf.get(), optionsBuf.get(), internalOptionsBuf.get(), nullptr, 0);
+  if (!out) {
+    std::cerr << "error: Translate() returned no output object\n";
+    return ExitCode::FailedToGetInterface;
+  }
+
+  std::string_view log = readBuf(out->GetBuildLog<CIF::Builtins::BufferSimple>());
+  while (!log.empty() && log.back() == '\0')
+    log.remove_suffix(1);
+
+  if (!log.empty())
+    std::cout << log << "\n";
+
+  return ExitCode::Success;
+}
+
 // Interface No. 6
 CHECK(regkey, "Interface v6: test that regkey token is returned correctly") {
   auto deviceCtx = cif->CreateInterface<IGC::IgcOclDeviceCtx<6>>();

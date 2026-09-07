@@ -1,0 +1,26 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# RUN: IGCOCLInterfaceTester platform_check --platform ptl --gmdid 20.4 --core xe2_hpg 2>&1 | FileCheck %s --check-prefix=PRODUCT
+# RUN: IGCOCLInterfaceTester platform_check --platform ptl --gmdid 30.0 --core xe3p 2>&1 | FileCheck %s --check-prefix=CORE
+# RUN: IGCOCLInterfaceTester platform_check --platform ptl --gmdid 20.4 2>&1 | FileCheck %s --check-prefix=BOTH
+# RUN: IGCOCLInterfaceTester platform_check --platform nvl --gmdid 30.5 2>&1 | FileCheck %s --check-prefix=NVL_MIXUP
+
+# PRODUCT:      renderCoreFamily=xe2_hpg
+# PRODUCT-NEXT: renderBlockID=20.4.0
+# PRODUCT-NEXT: error: platform mismatch (product family): render GMDID 20.4.0 expects{{.*}}IGFX_LUNARLAKE ({{[0-9]+}}) / IGFX_XE2_HPG_CORE ({{[0-9]+}}){{.*}}, but the runtime reported IGFX_PTL ({{[0-9]+}}) / IGFX_XE2_HPG_CORE ({{[0-9]+}}).
+
+# CORE:      renderCoreFamily=xe3p
+# CORE-NEXT: renderBlockID=30.0.0
+# CORE-NEXT: error: platform mismatch (render core family): render GMDID 30.0.0 expects IGFX_PTL ({{[0-9]+}}) / IGFX_XE3_CORE ({{[0-9]+}}), but the runtime reported IGFX_PTL ({{[0-9]+}}) / IGFX_XE3P_CORE ({{[0-9]+}}).
+
+# BOTH:      renderBlockID=20.4.0
+# BOTH-NEXT: error: platform mismatch (product family and render core family): render GMDID 20.4.0 expects{{.*}}IGFX_LUNARLAKE ({{[0-9]+}}) / IGFX_XE2_HPG_CORE ({{[0-9]+}}){{.*}}, but the runtime reported IGFX_PTL ({{[0-9]+}}) / IGFX_XE3_CORE ({{[0-9]+}}).
+
+# NVL_MIXUP:      renderBlockID=30.5.0
+# NVL_MIXUP-NEXT: error: platform mismatch (product family and render core family): render GMDID 30.5.0 expects IGFX_NVL_XE3G ({{[0-9]+}}) / IGFX_XE3_CORE ({{[0-9]+}}), but the runtime reported IGFX_NVL ({{[0-9]+}}) / IGFX_XE3P_CORE ({{[0-9]+}}).

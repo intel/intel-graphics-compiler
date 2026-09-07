@@ -1,0 +1,25 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# DisablePlatformConsistencyCheck must bypass the check entirely, so that the
+# mismatch from mismatch.test compiles cleanly when the key is set. Setting the
+# key to 0 has to be indistinguishable from not setting it at all, so the same
+# command line then reproduces mismatch.test.
+
+# REQUIRES: regkeys
+
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGC_DisablePlatformConsistencyCheck=1 IGCOCLInterfaceTester platform_check \
+# RUN:   --platform ptl --gmdid 20.4 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=DISABLED --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGC_DisablePlatformConsistencyCheck=0 IGCOCLInterfaceTester platform_check \
+# RUN:   --platform ptl --gmdid 20.4 2>/dev/null | FileCheck %s --check-prefix=ENABLED
+
+# DISABLED: renderBlockID=20.4.0
+
+# ENABLED:      renderBlockID=20.4.0
+# ENABLED-NEXT: error: platform mismatch (product family and render core family): render GMDID 20.4.0 expects

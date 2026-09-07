@@ -41,6 +41,8 @@ bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs 
 bool TranslateBuild(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
                     TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &platform, float profilingTimerResolution);
 
+bool VerifyPlatformConsistency(const PLATFORM &Platform, std::string &Diagnostic);
+
 bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
                         TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &platform,
                         float profilingTimerResolution, const ShaderHash &inputShHash);
@@ -270,6 +272,15 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase {
     }
 
     TC::STB_TranslateOutputArgs output{};
+
+    std::string platformDiagnostic;
+    if (!TC::VerifyPlatformConsistency(platform, platformDiagnostic)) {
+      outputInterface->GetImpl()->SetError(TranslationErrorType::FailedCompilation, platformDiagnostic.c_str());
+      return outputInterface.release();
+    }
+    if (!outputInterface->GetImpl()->AddWarning(platformDiagnostic)) {
+      return nullptr; // OOM
+    }
 
     bool success = false;
     try {

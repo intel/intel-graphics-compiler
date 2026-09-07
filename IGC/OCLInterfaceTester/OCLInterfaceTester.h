@@ -39,10 +39,29 @@ struct PlatformEntry {
   const char *name;
   PRODUCT_FAMILY product;
   GFXCORE_FAMILY core;
+  const char *coreName;
 };
+
+// Pack a GMDID the way GFX_GMD_ID lays it out
+inline uint32_t packGmdId(uint32_t arch, uint32_t release, uint32_t revision = 0) {
+  GFX_GMD_ID id = {};
+  id.GmdID.GMDArch = arch;
+  id.GmdID.GMDRelease = release;
+  id.GmdID.RevisionID = revision;
+  return id.Value;
+}
 
 // The platform chosen by --platform, or nullptr if none was given
 const PlatformEntry *getCurrentPlatform();
+
+// The value given to --gmdid, or nullptr if the option was not used
+const uint32_t *getGmdIdOverride();
+
+// The core to report: --core when given, otherwise the platform's own core
+GFXCORE_FAMILY getEffectiveCore();
+
+// The --core spelling of a render core family, or "unknown" if it has none
+const char *getCoreName(GFXCORE_FAMILY core);
 
 // Apply the selected platform to a device-context Platform handle
 template <class P> bool applyPlatform(P *platform) {
@@ -51,8 +70,16 @@ template <class P> bool applyPlatform(P *platform) {
     return false;
 
   platform->SetProductFamily(static_cast<uint64_t>(current->product));
-  platform->SetRenderCoreFamily(static_cast<uint64_t>(current->core));
+  platform->SetRenderCoreFamily(static_cast<uint64_t>(getEffectiveCore()));
   return true;
+}
+
+// Apply the GMDID given to --gmdid, or zero when the option was not used
+template <class P> uint32_t applyRenderBlockID(P *platform) {
+  const uint32_t *forced = getGmdIdOverride();
+  const uint32_t value = forced ? *forced : 0;
+  platform->SetRenderBlockID(value);
+  return value;
 }
 
 // Read a CIF buffer and return it as a std::string_view.

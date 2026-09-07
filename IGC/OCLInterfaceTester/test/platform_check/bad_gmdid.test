@@ -1,0 +1,28 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# RUN: not IGCOCLInterfaceTester platform_check --platform ptl --gmdid 30 2>&1 \
+# RUN:   | FileCheck %s --check-prefix=TOO-FEW
+# RUN: not IGCOCLInterfaceTester platform_check --platform ptl --gmdid 30.0.0.0 2>&1 \
+# RUN:   | FileCheck %s --check-prefix=TOO-MANY
+# RUN: not IGCOCLInterfaceTester platform_check --platform ptl --gmdid x.y 2>&1 \
+# RUN:   | FileCheck %s --check-prefix=NOT-A-NUMBER
+
+# RUN: not IGCOCLInterfaceTester platform_check --platform ptl --gmdid 1024.0 2>&1 \
+# RUN:   | FileCheck %s --check-prefix=ARCH-TOO-BIG
+# RUN: not IGCOCLInterfaceTester platform_check --platform ptl --gmdid 12.700 2>&1 \
+# RUN:   | FileCheck %s --check-prefix=RELEASE-TOO-BIG
+# RUN: not IGCOCLInterfaceTester platform_check --platform ptl --gmdid 30.0.64 2>&1 \
+# RUN:   | FileCheck %s --check-prefix=REVISION-TOO-BIG
+# TOO-FEW: error: invalid GMDID '30', expected <arch.release[.revision]>
+# TOO-MANY: error: invalid GMDID '30.0.0.0', expected <arch.release[.revision]>
+# NOT-A-NUMBER: error: invalid GMDID 'x.y', expected <arch.release[.revision]>
+
+# ARCH-TOO-BIG: error: invalid GMDID '1024.0': arch 1024 does not fit in the GMDID field, the maximum is 1023
+# RELEASE-TOO-BIG: error: invalid GMDID '12.700': release 700 does not fit in the GMDID field, the maximum is 255
+# REVISION-TOO-BIG: error: invalid GMDID '30.0.64': revision 64 does not fit in the GMDID field, the maximum is 63

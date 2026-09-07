@@ -1112,7 +1112,7 @@ DECLARE_IGC_REGKEY(bool, EnableTestSplitI64, false,
                    "Test legalization that split i64 store unnecessarily, to be deleted once test is done[temp]",
                    ALWAYS)
 DECLARE_IGC_REGKEY(bool, ShaderDumpTranslationOnly, false,
-                   "Dump LLVM IR right after translation from SPIRV to stderr and ignore all passes", DEBUG_ONLY)
+                   "Dump LLVM IR right after translation from SPIRV to stderr and ignore all passes", ALWAYS)
 DECLARE_IGC_REGKEY(bool, UseVMaskPredicate, false, "Use VMask as predicate for subspan usage", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, UseVMaskPredicateForLoads, true, "Use VMask as predicate for subspan usage (loads only)",
                    ALWAYS)
@@ -1131,6 +1131,10 @@ DECLARE_IGC_REGKEY(bool, AssignZeroToUndefPhiNodes, false,
                    "Assigns a null value to such a phi node which has an undefined value during emitting vISA",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY_ENUM(InjectPrintfFlag, 0, "Inject printf debugging flag", INJECT_PRINTF_OPTIONS, ALWAYS)
+DECLARE_IGC_REGKEY(bool, DisablePlatformConsistencyCheck, false,
+                   "Skip the cross-check of the render GMDID against eProductFamily in the PLATFORM struct "
+                   "passed by the runtime. The check fails compilation when the two disagree.",
+                   ALWAYS)
 
 DECLARE_IGC_GROUP("IGC Features")
 DECLARE_IGC_REGKEY(bool, EnableOCLSIMD16, true, "Enable OCL SIMD16 mode", ALWAYS)

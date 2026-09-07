@@ -1,0 +1,21 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# REQUIRES: regkeys
+
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform ptl --gmdid 99.4 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=UNKNOWN
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform ptl --gmdid 1023.255.63 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=WIDEST
+
+# UNKNOWN:      renderBlockID=99.4.0
+# UNKNOWN-NEXT: warning: render GMDID 99.4.0 is not known to this IGC, so the reported platform could not be validated. Compiling for IGFX_PTL ({{[0-9]+}}) / IGFX_XE3_CORE ({{[0-9]+}}) as reported by the runtime. If this is a new platform, add it to PlatformGmdIdTable.cpp.{{$}}
+
+
+# WIDEST:      renderBlockID=1023.255.63
+# WIDEST-NEXT: warning: render GMDID 1023.255.63 is not known to this IGC

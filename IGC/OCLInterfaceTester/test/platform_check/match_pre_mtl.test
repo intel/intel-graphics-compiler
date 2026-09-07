@@ -1,0 +1,44 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# REQUIRES: regkeys
+
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform tgl --gmdid 12.0 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=TGL_12_0 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform rkl --gmdid 12.1 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=RKL_12_1 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform adls --gmdid 12.2 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=ADLS_12_2 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform adlp --gmdid 12.3 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=ADLP_12_3 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform adln --gmdid 12.4 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=ADLN_12_4 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform dg1 --gmdid 12.10 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=DG1_12_10 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform dg2 --gmdid 12.55 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=DG2_12_55 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform dg2 --gmdid 12.56 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=DG2_12_56 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform dg2 --gmdid 12.57 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=DG2_12_57 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform pvc --gmdid 12.60 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=PVC_12_60 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform pvc --gmdid 12.61 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=PVC_12_61 --implicit-check-not=error: --implicit-check-not=warning:
+
+# TGL_12_0: renderBlockID=12.0.0
+# RKL_12_1: renderBlockID=12.1.0
+# ADLS_12_2: renderBlockID=12.2.0
+# ADLP_12_3: renderBlockID=12.3.0
+# ADLN_12_4: renderBlockID=12.4.0
+# DG1_12_10: renderBlockID=12.10.0
+# DG2_12_55: renderBlockID=12.55.0
+# DG2_12_56: renderBlockID=12.56.0
+# DG2_12_57: renderBlockID=12.57.0
+# PVC_12_60: renderBlockID=12.60.0
+# PVC_12_61: renderBlockID=12.61.0

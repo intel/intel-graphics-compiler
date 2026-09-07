@@ -46,6 +46,7 @@ SPDX-License-Identifier: MIT
 #include "common/shaderOverride.hpp"
 #include "common/ModuleSplitter.h"
 #include "common/IGCSPIRVParser.h"
+#include "common/PlatformGmdIdTable.h"
 
 #include "CLElfLib/ElfReader.h"
 
@@ -170,12 +171,33 @@ static void SetOutputMessage(const std::string &OutputMessage, STB_TranslateOutp
   OutputArgs.ErrorString = OutputMessage;
 }
 
+static std::string WarningMessage(const std::string &OutputMessage) { return "warning: " + OutputMessage; }
+
+static std::string ErrorMessage(const std::string &OutputMessage) { return "error: " + OutputMessage; }
+
 static void SetWarningMessage(const std::string &OutputMessage, STB_TranslateOutputArgs &OutputArgs) {
-  SetOutputMessage("warning: " + OutputMessage, OutputArgs);
+  SetOutputMessage(WarningMessage(OutputMessage), OutputArgs);
 }
 
 static void SetErrorMessage(const std::string &OutputMessage, STB_TranslateOutputArgs &OutputArgs) {
-  SetOutputMessage("error: " + OutputMessage, OutputArgs);
+  SetOutputMessage(ErrorMessage(OutputMessage), OutputArgs);
+}
+
+bool VerifyPlatformConsistency(const PLATFORM &Platform, std::string &Diagnostic) {
+  Diagnostic.clear();
+  if (IGC_IS_FLAG_ENABLED(DisablePlatformConsistencyCheck))
+    return true;
+
+  const IGC::PlatformCheckOutcome Outcome = IGC::checkPlatformConsistency(Platform);
+  if (Outcome.isFatal()) {
+    Diagnostic = ErrorMessage(Outcome.Message);
+    return false;
+  }
+
+  if (!Outcome.Message.empty())
+    Diagnostic = WarningMessage(Outcome.Message);
+
+  return true;
 }
 
 static bool IsDeviceBinaryFormat(const TB_DATA_FORMAT &format) {
@@ -204,15 +226,29 @@ bool CIGCTranslationBlock::Translate(const STB_TranslateInputArgs *pInputArgs, S
   // Create a copy of input arguments that can be modified
   STB_TranslateInputArgs InputArgsCopy = *pInputArgs;
 
+  pOutputArgs->Output.clear();
+  pOutputArgs->ErrorString.clear();
+  pOutputArgs->DebugData.clear();
+
+  std::string PlatformDiagnostic;
+  if (!VerifyPlatformConsistency(m_Platform, PlatformDiagnostic)) {
+    SetOutputMessage(PlatformDiagnostic, *pOutputArgs);
+    return false;
+  }
+  auto FlushPlatformDiagnostic = IGCLLVM::make_scope_exit([&]() {
+    if (PlatformDiagnostic.empty())
+      return;
+    if (pOutputArgs->ErrorString.empty())
+      pOutputArgs->ErrorString = PlatformDiagnostic;
+    else
+      pOutputArgs->ErrorString = PlatformDiagnostic + "\n" + pOutputArgs->ErrorString;
+  });
+
   IGC::CPlatform IGCPlatform(m_Platform);
 
   IGC::SetGTSystemInfo(&m_SysInfo, &IGCPlatform);
   IGC::SetWorkaroundTable(&m_SkuTable, &IGCPlatform);
   IGC::SetCompilerCaps(&m_SkuTable, &IGCPlatform);
-
-  pOutputArgs->Output.clear();
-  pOutputArgs->ErrorString.clear();
-  pOutputArgs->DebugData.clear();
 
   try {
     if (m_DataFormatInput == TB_DATA_FORMAT_ELF) {

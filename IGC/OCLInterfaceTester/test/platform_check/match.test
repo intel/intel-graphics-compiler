@@ -1,0 +1,53 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# REQUIRES: regkeys
+
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform mtl --gmdid 12.70 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=MTL_12_70 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform mtl --gmdid 12.71 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=MTL_12_71 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform arl --gmdid 12.70 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=ARL_12_70 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform arl --gmdid 12.74 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=ARL_12_74 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform bmg --gmdid 20.1 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=BMG_20_1 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform bmg --gmdid 20.2 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=BMG_20_2 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform lnl --gmdid 20.4 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=LNL_20_4 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform ptl --gmdid 30.0 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=PTL_30_0 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform ptl --gmdid 30.1 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=PTL_30_1 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform ptl --gmdid 30.3 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=PTL_30_3 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform nvl_xe3g --gmdid 30.4 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=NVL_XE3G_30_4 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform nvl_xe3g --gmdid 30.5 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=NVL_XE3G_30_5 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform cri --gmdid 35.11 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=CRI_35_11 --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform nvl --gmdid 35.10 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=NVL_35_10 --implicit-check-not=error: --implicit-check-not=warning:
+
+# MTL_12_70: renderBlockID=12.70.0
+# MTL_12_71: renderBlockID=12.71.0
+# ARL_12_70: renderBlockID=12.70.0
+# ARL_12_74: renderBlockID=12.74.0
+# BMG_20_1: renderBlockID=20.1.0
+# BMG_20_2: renderBlockID=20.2.0
+# LNL_20_4: renderBlockID=20.4.0
+# PTL_30_0: renderBlockID=30.0.0
+# PTL_30_1: renderBlockID=30.1.0
+# PTL_30_3: renderBlockID=30.3.0
+# NVL_XE3G_30_4: renderBlockID=30.4.0
+# NVL_XE3G_30_5: renderBlockID=30.5.0
+# CRI_35_11: renderBlockID=35.11.0
+# NVL_35_10: renderBlockID=35.10.0

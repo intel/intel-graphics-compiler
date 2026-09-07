@@ -1,0 +1,17 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# REQUIRES: regkeys
+
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform ptl --gmdid 30.0.7 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=PTL --implicit-check-not=error: --implicit-check-not=warning:
+# RUN: env IGC_ShaderDumpTranslationOnly=1 IGCOCLInterfaceTester platform_check --platform dg2 --gmdid 12.55.8 2>/dev/null \
+# RUN:   | FileCheck %s --check-prefix=DG2 --implicit-check-not=error: --implicit-check-not=warning:
+
+# PTL: renderBlockID=30.0.7
+# DG2: renderBlockID=12.55.8
