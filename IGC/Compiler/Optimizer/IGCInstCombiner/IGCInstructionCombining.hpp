@@ -13,11 +13,16 @@ SPDX-License-Identifier: MIT
 #include "Compiler/InitializePasses.h"
 
 #include "LLVMWarningsPush.hpp"
+#include "llvm/InitializePasses.h"
+#include "llvm/PassRegistry.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "LLVMWarningsPop.hpp"
 
 namespace IGC {
-inline llvm::FunctionPass *createIGCInstructionCombiningPass() { return llvm::createInstructionCombiningPass(); }
+inline llvm::FunctionPass *createIGCInstructionCombiningPass() {
+  llvm::initializeInstructionCombiningPassPass(*llvm::PassRegistry::getPassRegistry());
+  return llvm::createInstructionCombiningPass();
+}
 } // namespace IGC
 
 #endif // IGC_INSTCOMBINE_INSTCOMBINE_H
