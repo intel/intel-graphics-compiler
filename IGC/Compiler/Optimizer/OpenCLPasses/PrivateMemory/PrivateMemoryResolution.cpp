@@ -886,14 +886,37 @@ void TransposePrivMem::handleLifetimeMark(IntrinsicInst *inst) {
 void TransposePrivMem::handlePredicatedLoadInst(PredicatedLoadIntrinsic *pPredLoad, Value *pScalarizedIdx) {
   IGC_ASSERT(nullptr != pPredLoad);
   IGC_ASSERT(pPredLoad->isSimple());
-  // Only scalar predicated loads reach here; vector ones block SoA promotion in
-  // SOALayoutChecker and are resolved on the flat path instead.
   Type *loadTy = pPredLoad->getType();
-  IGC_ASSERT(!loadTy->isVectorTy());
   IGCLLVM::IRBuilder<> IRB(pPredLoad);
+  Module *Mod = pPredLoad->getModule();
+
+  // Multi-chunk path: the loaded type spans several chunks (e.g. <3 x i32>). Issue one predicated
+  // load per chunk under the same predicate, merging with the matching chunk of the original merge
+  // value, then reassemble. This preserves the masked, non-faulting semantics exactly: a lane either
+  // reads all of its chunks or keeps all of its merge-value chunks, as the single wide load would.
+  if (auto *WorkVTy = getMultiChunkVecTy(loadTy)) {
+    Type *EltTy = WorkVTy->getElementType();
+    Value *Merge = recastToChunkVec(IRB, pPredLoad->getMergeValue(), WorkVTy, pPredLoad->getName());
+    Value *Result = PoisonValue::get(WorkVTy);
+    for (uint32_t C = 0, NumChunks = (uint32_t)WorkVTy->getNumElements(); C < NumChunks; ++C) {
+      Value *Ptr = getChunkPtr(IRB, EltTy, pScalarizedIdx, C, pPredLoad->getName());
+      Value *MergeElt =
+          IRB.CreateExtractElement(Merge, IRB.getInt32(C), VALUE_NAME(pPredLoad->getName() + ".mergeExt"));
+      Type *ChunkITys[3] = {EltTy, Ptr->getType(), EltTy};
+      Function *chunkLoadFunc = GenISAIntrinsic::getDeclaration(Mod, GenISAIntrinsic::GenISA_PredicatedLoad, ChunkITys);
+      Value *ChunkArgs[4] = {Ptr, IRB.getInt64(m_chunkBytes), pPredLoad->getPredicate(), MergeElt};
+      Instruction *ChunkLoad =
+          IRB.CreateCall(chunkLoadFunc, ChunkArgs, VALUE_NAME(pPredLoad->getName() + ".chunkLoad"));
+      ChunkLoad->setDebugLoc(pPredLoad->getDebugLoc());
+      Result = IRB.CreateInsertElement(Result, ChunkLoad, IRB.getInt32(C), VALUE_NAME(pPredLoad->getName() + ".ins"));
+    }
+    pPredLoad->replaceAllUsesWith(recastFromChunkVec(IRB, Result, loadTy, pPredLoad->getName()));
+    pPredLoad->eraseFromParent();
+    return;
+  }
+
   Value *gep = getTransposedEltPtr(IRB, loadTy, pScalarizedIdx, VALUE_NAME(pPredLoad->getName() + ".SOAPrivMemGEP"));
 
-  Module *Mod = pPredLoad->getModule();
   Type *ITys[3] = {loadTy, gep->getType(), loadTy};
   Function *predLoadFunc = GenISAIntrinsic::getDeclaration(Mod, GenISAIntrinsic::GenISA_PredicatedLoad, ITys);
   Value *Args[4] = {gep, pPredLoad->getAlignmentValue(), pPredLoad->getPredicate(), pPredLoad->getMergeValue()};

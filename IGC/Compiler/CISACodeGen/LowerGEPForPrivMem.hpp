@@ -142,6 +142,14 @@ private:
   // Return true if an access of type Ty maps onto whole SoA chunks, i.e. if
   // TransposePrivMem can lower it (see the implementation for the patterns).
   bool isChunkSpanningType(llvm::Type *Ty) const;
+  // Return true if the byte offset of an i8-typed GEP provably lands on a whole
+  // promoted element / SoA chunk, i.e. if the transpose helpers can lower it.
+  bool isSupportedByteGEP(llvm::GetElementPtrInst *GEP) const;
+  // Return true if the byte offsets the GEP can contribute keep the accesses below
+  // it chunk-addressable. RequireAlignedConstant additionally demands that the
+  // GEP's constant part be partition-aligned, needed when the access below spans
+  // whole chunks.
+  bool hasPartitionAlignedGEPOffset(llvm::GetElementPtrInst *GEP, bool RequireAlignedConstant) const;
   // Return true if the acceptance rules added for aggressive struct SoA promotion apply: the alloca
   // is on the struct path of the new transpose algorithm and EnableAggressiveSOAPromotion is set.
   // Gating those rules individually, rather than useNewAlgo(), leaves the pre-existing
@@ -152,6 +160,9 @@ private:
   // TransposePrivMem::getTransposedEltPtr() assumes such an access starts at intra-chunk
   // offset 0 and would otherwise silently drop the remainder.
   bool isPartitionAlignedChain(const llvm::Value *Ptr) const;
+  // Return true if a dynamic GEP index contributing \p Idx * \p Stride bytes provably keeps
+  // the running byte offset a multiple of SOAPartitionBytes.
+  bool isPartitionAlignedDynamicOffset(llvm::Value *Idx, uint64_t Stride) const;
   // ===== end of fields for new algo =====
 
   bool isVectorSOA = true;
@@ -171,6 +182,7 @@ private:
 
   bool visitBitCastInst(llvm::BitCastInst &);
   bool visitAddrSpaceCastInst(llvm::AddrSpaceCastInst &);
+  bool visitPHINode(llvm::PHINode &);
   bool visitGetElementPtrInst(llvm::GetElementPtrInst &);
   bool visitIntrinsicInst(llvm::IntrinsicInst &);
   bool visitCallInst(llvm::CallInst &);

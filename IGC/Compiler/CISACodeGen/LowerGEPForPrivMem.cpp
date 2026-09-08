@@ -18,13 +18,16 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
+#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/Support/KnownBits.h>
 #include <llvm/Support/SaveAndRestore.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include <llvmWrapper/Support/MathExtras.h>
 #include <llvmWrapper/ADT/Optional.h>
 #include "Probe/Assertion.h"
 
@@ -649,6 +652,18 @@ bool SOALayoutChecker::isChunkSpanningType(Type *Ty) const {
   return !Ty->isVectorTy() && Bytes > SOAPartitionBytes && (Bytes % SOAPartitionBytes) == 0;
 }
 
+// Return true if a dynamic GEP index contributing Idx * Stride bytes provably leaves the running
+// byte offset a multiple of SOAPartitionBytes. Only the trailing zeros of Idx are known, and they
+// add to those of the stride, so the product is aligned when the two together cover
+// log2(SOAPartitionBytes).
+bool SOALayoutChecker::isPartitionAlignedDynamicOffset(Value *Idx, uint64_t Stride) const {
+  if (Stride == 0 || !useAggressiveStructSOA() || !isPowerOf2_32(SOAPartitionBytes))
+    return false;
+
+  KnownBits KB = computeKnownBits(Idx, *pDL);
+  return KB.countMinTrailingZeros() + IGCLLVM::countr_zero(Stride) >= Log2_32(SOAPartitionBytes);
+}
+
 bool SOALayoutChecker::isPartitionAlignedChain(const Value *Ptr) const {
   uint64_t ConstBytes = 0;
   while (Ptr != &allocaRef) {
@@ -665,8 +680,9 @@ bool SOALayoutChecker::isPartitionAlignedChain(const Value *Ptr) const {
           continue;
         }
         // A dynamic index contributes an unknown multiple of its stride, so it keeps the
-        // offset partition-aligned exactly when the stride itself is.
-        if ((Stride % SOAPartitionBytes) != 0)
+        // offset partition-aligned when the stride itself is. If it is not,
+        // the alignment can still be provable from the index value.
+        if ((Stride % SOAPartitionBytes) != 0 && !isPartitionAlignedDynamicOffset(Idx, Stride))
           return false;
       }
       Ptr = GEP->getPointerOperand();
@@ -678,11 +694,78 @@ bool SOALayoutChecker::isPartitionAlignedChain(const Value *Ptr) const {
       Ptr = CI->getOperand(0);
       continue;
     }
-    // Unknown provenance (a PHI, a select, a function argument, ...): the offset cannot be
-    // proven, so it can not be assumed aligned.
+    // A single-incoming PHI merges nothing, so the offset of its incoming pointer is the
+    // offset of the PHI. A real merge has one offset per incoming block and is rejected
+    // below with the rest.
+    if (auto *PHI = dyn_cast<PHINode>(Ptr)) {
+      if (PHI->getNumIncomingValues() != 1)
+        return false;
+      Ptr = PHI->getIncomingValue(0);
+      continue;
+    }
+    // Unknown origin (a select, a function argument, ...): the offset cannot be proven,
+    // so it can not be assumed aligned.
     return false;
   }
   return (ConstBytes % SOAPartitionBytes) == 0;
+}
+
+// On the heterogeneous-struct path an i8-typed GEP contributes a raw byte offset to the linearOffset
+// TransposePrivMem::handleGEPInstNew carries down the chain, which getChunkNum/getChunkOff then split as
+//   chunk = linearOffset >> log2(SOAPartitionBytes)
+//   intra = linearOffset &  (SOAPartitionBytes - 1)
+// Return true when the offset is provably a multiple of SOAPartitionBytes, so intra collapses to 0 and
+// the chunk addressing stays exact.
+bool SOALayoutChecker::isSupportedByteGEP(GetElementPtrInst *GEP) const {
+  if (GEP->getNumOperands() != 2 || !useAggressiveStructSOA() || !isPowerOf2_32(SOAPartitionBytes))
+    return false;
+
+  // A constant offset folds straight into linearOffset. LLVM's memcpy lowering of a struct emits such a
+  // GEP for each chunk-sized piece, e.g. `gep i8, ptr %sd, 16`.
+  if (auto *CI = dyn_cast<ConstantInt>(GEP->getOperand(1)))
+    return (CI->getZExtValue() % SOAPartitionBytes) == 0;
+
+  // A dynamic offset (e.g. a field index scaled by the field size) can only be proven aligned from the
+  // value itself. The constant-typed-GEP base it is chained onto contributes an offset getOrGatherInfo
+  // already keeps partition-aligned, so proving the dynamic addend aligned is enough.
+  return isPartitionAlignedDynamicOffset(GEP->getOperand(1), /*Stride=*/1);
+}
+
+// Return true if the byte offsets this GEP can contribute keep the chunk split in TransposePrivMem's
+// load/store handlers correct.
+//
+// A dynamic index decides which chunk is addressed, so the type it strides over must be a multiple of
+// SOAPartitionBytes; otherwise consecutive index values would land at different intra-chunk offsets
+// and getChunkNum/getChunkOff would address the wrong bytes. Constant indices and struct field indices
+// instead fold into an exact offset that getChunkOff splits into a chunk number plus an intra-chunk
+// byte offset, which is precisely how sub-chunk fields (e.g. the i8 members of a 4-byte struct) are
+// addressed. Such a constant only has to be partition-aligned when the access below spans whole chunks
+// and would therefore straddle a chunk boundary -- RequireAlignedConstant asks for that.
+bool SOALayoutChecker::hasPartitionAlignedGEPOffset(GetElementPtrInst *GEP, bool RequireAlignedConstant) const {
+  // A byte-typed GEP strides by one, so a dynamic index can only be proven partition-aligned from the
+  // index value itself, which is what isSupportedByteGEP does.
+  if (GEP->getSourceElementType()->isIntegerTy(8)) {
+    return isSupportedByteGEP(GEP);
+  }
+  int64_t ConstBytes = 0;
+  gep_type_iterator GTI = gep_type_begin(GEP);
+  for (auto OI = GEP->op_begin() + 1, E = GEP->op_end(); OI != E; ++OI, ++GTI) {
+    if (StructType *StTy = GTI.getStructTypeOrNull()) {
+      // Struct field indices are required by LLVM to be constant integers.
+      unsigned Field = (unsigned)cast<ConstantInt>(*OI)->getZExtValue();
+      ConstBytes += (int64_t)pDL->getStructLayout(StTy)->getElementOffset(Field);
+      continue;
+    }
+    int64_t Stride = (int64_t)pDL->getTypeAllocSize(GTI.getIndexedType());
+    if (auto *CI = dyn_cast<ConstantInt>(*OI)) {
+      ConstBytes += CI->getSExtValue() * Stride;
+      continue;
+    }
+    if ((Stride % (int64_t)SOAPartitionBytes) != 0) {
+      return false;
+    }
+  }
+  return !RequireAlignedConstant || (ConstBytes % (int64_t)SOAPartitionBytes) == 0;
 }
 
 // TODO: Consider a worklist-based implementation instead.
@@ -691,9 +774,9 @@ bool SOALayoutChecker::checkUsers(Instruction &I) {
     return false;
   }
 
-  // The walk needs no cycle guard. The only visitors that recurse back into checkUsers() are
-  // bitcast, addrspacecast and GEP; there is no visitPHINode(), so a PHI falls through to
-  // visitInstruction() and stops the walk.
+  // The walk needs no cycle guard: the only visitors that recurse back into
+  // checkUsers() are bitcast, addrspacecast, GEP and PHI, and visitPHINode()
+  // rejects every PHI with more than one incoming value.
   llvm::SaveAndRestore<Instruction *> RestoreParentOnExit(parentLevelInst, &I);
   for (Value::user_iterator userIt = I.user_begin(), userE = I.user_end(); userIt != userE; ++userIt) {
     auto &userInst = *cast<Instruction>(*userIt);
@@ -906,13 +989,67 @@ bool SOALayoutChecker::visitGetElementPtrInst(GetElementPtrInst &GEP) {
     }
   }
 
+  // Heterogeneous-struct promotion lowers a GEP chain byte-precisely (handleGEPInstNew), so no
+  // element-type match is required -- but every offset the chain can produce must stay on a chunk
+  // boundary, otherwise the chunk split of the accesses below would address the wrong bytes. Each
+  // GEP on the chain is visited exactly once here, so checking one link at a time covers the chain.
+  if (useAggressiveStructSOA() && !hasPartitionAlignedGEPOffset(&GEP, /*RequireAlignedConstant=*/false)) {
+    return false;
+  }
+
   return checkUsers(GEP);
+}
+
+// Walk back from V through GEP/BitCast/AddrSpaceCast/PHI to determine whether
+// V is derived from alloca via a restricted chain of pointer-preserving
+// instructions. Returns true on success. Does not require constant offsets;
+// it only proves that V is *some* address within the same alloca buffer.
+// PHI nodes are followed: all incoming values must trace to the same alloca.
+//
+// Like checkUsers(), this needs no visited set or cycle guard. It is only ever
+// called on the sole incoming value of a PHI the forward walk has already
+// reached from the alloca, so it just retraces that walk backwards.
+static bool tracesToAlloca(llvm::Value *V, llvm::AllocaInst *Alloca) {
+  IGC_ASSERT_MESSAGE(V != nullptr, "tracesToAlloca on a null value");
+  if (V == Alloca) {
+    return true;
+  }
+  if (auto *GEP = llvm::dyn_cast<llvm::GetElementPtrInst>(V)) {
+    return tracesToAlloca(GEP->getPointerOperand(), Alloca);
+  }
+  if (auto *CI = llvm::dyn_cast<llvm::CastInst>(V)) {
+    return tracesToAlloca(CI->getOperand(0), Alloca);
+  }
+  if (auto *PHI = llvm::dyn_cast<llvm::PHINode>(V)) {
+    unsigned NumIncoming = PHI->getNumIncomingValues();
+    if (NumIncoming == 1) {
+      return tracesToAlloca(PHI->getIncomingValue(0), Alloca);
+    }
+    return false;
+  }
+  return false;
 }
 
 // addrspacecast is an addrspace re-tag of the same address — exactly
 // analogous to a same-element-type bitcast for layout purposes — so we walk
 // through it transparently to its users.
 bool SOALayoutChecker::visitAddrSpaceCastInst(AddrSpaceCastInst &ASC) { return checkUsers(ASC); }
+
+// A PHI that really merges pointers from several control-flow paths cannot be walked through: the
+// transpose helper carries one byte offset down the user chain, and a merge would need one offset
+// per incoming block merged first. A single-incoming PHI -- typically an LCSSA node left behind by
+// loop simplification -- merges nothing: its block has exactly one predecessor, so the incoming
+// pointer, and with it the offset derived for it, dominates every user. Walking through such a PHI
+// is as safe as walking through a bitcast.
+bool SOALayoutChecker::visitPHINode(PHINode &PHI) {
+  if (!IGC_IS_FLAG_ENABLED(EnableAggressiveSOAPromotion)) {
+    return false;
+  }
+  if (PHI.getNumIncomingValues() != 1 || !tracesToAlloca(PHI.getIncomingValue(0), &allocaRef)) {
+    return false;
+  }
+  return checkUsers(PHI);
+}
 
 bool SOALayoutChecker::visitIntrinsicInst(IntrinsicInst &II) {
   llvm::Intrinsic::ID IID = II.getIntrinsicID();
@@ -922,16 +1059,24 @@ bool SOALayoutChecker::visitIntrinsicInst(IntrinsicInst &II) {
 bool SOALayoutChecker::visitCallInst(CallInst &CI) {
   // GenISA intrinsics have getIntrinsicID()==not_intrinsic, so InstVisitor routes them here, not to
   // visitIntrinsicInst.
-  // A scalar GenISA_PredicatedLoad (produced by the no-scratch SELECT-of-alloca-
-  // pointer pre-pass) can be SoA-promoted like a plain scalar load: the transpose
+  // A GenISA_PredicatedLoad (produced by the no-scratch SELECT-of-alloca-pointer
+  // pre-pass) can be SoA-promoted like the plain load it replaced: the transpose
   // only rewrites the pointer operand, preserving the predicate so the masked,
   // non-faulting access semantics are kept.
   if (auto *PLI = dyn_cast<PredicatedLoadIntrinsic>(&CI)) {
-    if (PLI->getType()->isVectorTy() || !PLI->isSimple()) {
+    if (!PLI->isSimple()) {
       return false;
     }
-    isVectorSOA = false;
-    pInfo->allUsesAreVector = false;
+    const bool isVectorLoad = PLI->getType()->isVectorTy();
+    // A vector predicated load has to be split into one predicated load per
+    // partition, which only TransposePrivMem implements; the legacy and GRF
+    // helpers have no such path, so keep vetoing the alloca for them.
+    if (isVectorLoad && !(IGC_IS_FLAG_ENABLED(EnableAggressiveSOAPromotion) && pInfo->useNewAlgoTranspose &&
+                          isChunkSpanningType(PLI->getType()))) {
+      return false;
+    }
+    isVectorSOA &= isVectorLoad;
+    pInfo->allUsesAreVector &= isVectorLoad;
     return !MismatchDetected(*PLI);
   }
 
@@ -1023,9 +1168,11 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
           // The transformation would incorrectly treat each byte as a separate
           // element rather than accumulating bytes into complete lanes.
           // Exempt the ptradd form: an exact multiple of the index unit still addresses
-          // whole elements, and handleGEPInst converts it back. The type of the
+          // whole elements, and handleGEPInst converts it back; likewise a byte offset the
+          // heterogeneous-struct path can prove lands on a chunk boundary. The type of the
           // access reached through it is validated below.
-          if (GEP->getSourceElementType()->isIntegerTy(8) && !isElementAlignedByteGEP(*GEP, indexUnitBytes)) {
+          if (GEP->getSourceElementType()->isIntegerTy(8) && !isElementAlignedByteGEP(*GEP, indexUnitBytes) &&
+              !isSupportedByteGEP(GEP)) {
             pInfo->canUseSOALayout = false;
             return true;
           }
@@ -1112,6 +1259,16 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   auto vecTySize = pUserTy->getScalarSizeInBits();
 
   auto *pgep = dyn_cast<GetElementPtrInst>(parentLevelInst);
+  // For heterogeneous-struct promotion the parent GEP's element type says nothing about the access:
+  // handleGEPInstNew reduces the chain to an exact byte offset (already proven chunk-aligned by
+  // visitGetElementPtrInst) and the load/store handlers split the access into SOAPartitionBytes
+  // chunks. Any access spanning whole chunks is therefore lowerable, e.g. a `load float` out of
+  // `gep [64 x %Closure], ptr %fieldBase, i64 0, i64 %dynIdx` whose element type is a struct.
+  if (pgep && useAggressiveStructSOA() && isChunkSpanningType(pUserTy) &&
+      hasPartitionAlignedGEPOffset(pgep, /*RequireAlignedConstant=*/true)) {
+    return false;
+  }
+
   // A byte-offset GEP's result element type is always i8, so it must not be compared
   // against the access type. Its offset is already proven element-aligned; fall through
   // to the access-vs-alloca-element check, which rejects a genuine byte access.
@@ -1312,6 +1469,13 @@ void TransposeHelper::HandleAllocaSources(Instruction *v, Value *idx) {
       handlePredicatedLoadInst(pPredLoad, idx);
     } else if (IntrinsicInst *inst = dyn_cast<IntrinsicInst>(instruction)) {
       handleLifetimeMark(inst);
+    } else if (PHINode *PPHI = dyn_cast<PHINode>(instruction)) {
+      // PHI merges alloca-derived pointers from different control-flow paths.
+      // Walk through to the PHI's own users (loads/stores/icmps/etc.). Queue the PHI itself so it
+      // disappears with the pointer chain once those users are rewritten; EraseDeadCode skips it if
+      // some user survived.
+      m_toBeRemovedGEP.push_back(PPHI);
+      HandleAllocaSources(PPHI, idx);
     }
   }
 }
