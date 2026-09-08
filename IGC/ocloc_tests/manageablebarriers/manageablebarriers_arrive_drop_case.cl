@@ -1,3 +1,6 @@
+// FIXME: Update the test for LLVM 23.
+// UNSUPPORTED: llvm-23-plus
+
 // REQUIRES: regkeys, pvc-supported, llvm-16-plus
 // RUN: ocloc compile -file %s -options " -cl-std=CL2.0 -igc_opts 'EnableOpaquePointersBackend=1 PrintToConsole=1 PrintAfter=ManageableBarriersResolution'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK
 

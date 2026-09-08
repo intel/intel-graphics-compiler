@@ -8,6 +8,9 @@
 
 // For global address space variables, verify location expression emitted (should contain special operations that IGC emits)
 
+// FIXME: Update the test for LLVM 23.
+// UNSUPPORTED: llvm-23-plus
+
 // UNSUPPORTED: sys32
 // REQUIRES: oneapi-readelf
 

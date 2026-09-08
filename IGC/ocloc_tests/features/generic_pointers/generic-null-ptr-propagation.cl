@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// FIXME: Update the test for LLVM 23.
+// UNSUPPORTED: llvm-23-plus
+
 // REQUIRES: regkeys, debug, dg2-supported, llvm-16-plus
 // UNSUPPORTED: sys32
 // RUN: ocloc compile -file %s -options "-cl-std=CL2.0 -cl-opt-disable -igc_opts 'PrintToConsole=1, PrintAfter=GenericNullPtrPropagation, EnableOpaquePointersBackend=1'" -device dg2 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM

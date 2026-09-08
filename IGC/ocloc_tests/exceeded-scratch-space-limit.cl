@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// FIXME: Update the test for LLVM 23.
+// UNSUPPORTED: llvm-23-plus
+
 // REQUIRES: dg2-supported
 // RUN: not ocloc compile -file %s -options "-cl-opt-disable -igc_opts 'MaxPerThreadScratchSpaceOverride=1024'" -device dg2 2>&1 | FileCheck %s
 

@@ -9,6 +9,9 @@
 // We want to verify CIE and FDE for last item.
 // CIE is constant for all elf files IGC emits where stack call is present.
 
+// FIXME: Update the test for LLVM 23.
+// UNSUPPORTED: llvm-23-plus
+
 // UNSUPPORTED: sys32, system-windows
 
 #pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable

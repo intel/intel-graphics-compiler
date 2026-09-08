@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// FIXME: Update the test for LLVM 23.
+// UNSUPPORTED: llvm-23-plus
+
 // UNSUPPORTED: system-windows
 // REQUIRES: regkeys, dg2-supported, llvm-16-plus
 

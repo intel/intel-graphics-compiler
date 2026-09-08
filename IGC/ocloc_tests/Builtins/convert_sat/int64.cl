@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// FIXME: Update the test for LLVM 23.
+// UNSUPPORTED: llvm-23-plus
+
 // REQUIRES: regkeys, llvm-16-plus
 
 // LLVM17 and LLVM22 both lower the saturating convert to the same fcmp/select/

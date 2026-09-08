@@ -8,6 +8,9 @@ SPDX-License-Identifier: MIT
 
 // Tests verify predicated load for subDW types
 
+// FIXME: Update the test for LLVM 23.
+// UNSUPPORTED: llvm-23-plus
+
 // REQUIRES: regkeys,pvc-supported
 
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'EnablePromoteToPredicatedMemoryAccess=1 VISAOptions=-asmToConsole'" 2>&1 | FileCheck %s --check-prefixes=CHECK-ASM

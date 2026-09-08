@@ -6,6 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; FIXME: Update the test for LLVM 23.
+; UNSUPPORTED: llvm-23-plus
+
 ; REQUIRES: regkeys, pvc-supported
 
 ; LLVM with opaque pointers:

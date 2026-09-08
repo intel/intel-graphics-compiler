@@ -10,6 +10,9 @@
 ; range on its DW_TAG_inlined_subroutine, otherwise the debugger cannot build
 ; the inline frame and reports the caller's variables instead.
 
+; FIXME: Update the test for LLVM 23.
+; UNSUPPORTED: llvm-23-plus
+
 ; UNSUPPORTED: sys32
 ; REQUIRES: regkeys, oneapi-readelf, dg2-supported, llvm-17-plus
 

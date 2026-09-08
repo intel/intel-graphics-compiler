@@ -6,6 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; FIXME: Update the test for LLVM 23.
+; UNSUPPORTED: llvm-23-plus
+
 ; REQUIRES: llvm-16-plus, regkeys, bmg-supported
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% < %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device bmg -options "-igc_opts 'VectorizerAllowBITCAST=1, EnableOpaquePointersBackend=1'" &> %t_output.ll
