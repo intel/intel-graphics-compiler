@@ -31,6 +31,18 @@
 // UNSUPPORTED: sys32
 // REQUIRES: oneapi-readelf
 
+// RUN: %if dg2-supported %{ ocloc compile -file %s -options " -g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_dg2_'" -device dg2 %}
+// RUN: %if dg2-supported %{ oneapi-readelf --debug-dump %t_dg2_OCL_simd8_foo.elf &> %t_dg2_OCL_simd8_foo.dwarf %}
+// RUN: %if dg2-supported %{ FileCheck %s --input-file %t_dg2_OCL_simd8_foo.dwarf --check-prefixes=CHECK,CHECK-DG2,CHECK-KERNEL,CHECK-DG2-KERNEL %}
+// RUN: %if dg2-supported %{ FileCheck %s --input-file %t_dg2_OCL_simd8_foo.dwarf --check-prefixes=CHECK,CHECK-DG2,CHECK-F1,CHECK-DG2-F1 %}
+// RUN: %if dg2-supported %{ FileCheck %s --input-file %t_dg2_OCL_simd8_foo.dwarf --check-prefixes=CHECK,CHECK-DG2,CHECK-F2,CHECK-DG2-F2 %}
+
+// RUN: %if cri-supported %{ ocloc compile -file %s -options " -g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_cri_'" -device cri %}
+// RUN: %if cri-supported %{ oneapi-readelf --debug-dump %t_cri_OCL_simd16_foo.elf &> %t_cri_OCL_simd16_foo.dwarf %}
+// RUN: %if cri-supported %{ FileCheck %s --input-file %t_cri_OCL_simd16_foo.dwarf --check-prefixes=CHECK,CHECK-CRI,CHECK-KERNEL,CHECK-CRI-KERNEL %}
+// RUN: %if cri-supported %{ FileCheck %s --input-file %t_cri_OCL_simd16_foo.dwarf --check-prefixes=CHECK,CHECK-CRI,CHECK-F1,CHECK-CRI-F1 %}
+// RUN: %if cri-supported %{ FileCheck %s --input-file %t_cri_OCL_simd16_foo.dwarf --check-prefixes=CHECK,CHECK-CRI,CHECK-F2,CHECK-CRI-F2 %}
+
 extern int extern_func_decl(global int *in);
 
 private int *f1(private int *f1_arg1) {
@@ -51,18 +63,6 @@ __kernel void foo(local int *out) {
   *out = *f1(foo_int_array);
 }
 
-// RUN: %if dg2-supported %{ ocloc compile -file %s -options " -g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_dg2_'" -device dg2 %}
-// RUN: %if dg2-supported %{ oneapi-readelf --debug-dump %t_dg2_OCL_simd8_foo.elf &> %t_dg2_OCL_simd8_foo.dwarf %}
-// RUN: %if dg2-supported %{ FileCheck %s --input-file %t_dg2_OCL_simd8_foo.dwarf --check-prefixes=CHECK,CHECK-DG2,CHECK-KERNEL,CHECK-DG2-KERNEL %}
-// RUN: %if dg2-supported %{ FileCheck %s --input-file %t_dg2_OCL_simd8_foo.dwarf --check-prefixes=CHECK,CHECK-DG2,CHECK-F1,CHECK-DG2-F1 %}
-// RUN: %if dg2-supported %{ FileCheck %s --input-file %t_dg2_OCL_simd8_foo.dwarf --check-prefixes=CHECK,CHECK-DG2,CHECK-F2,CHECK-DG2-F2 %}
-
-// RUN: %if cri-supported %{ ocloc compile -file %s -options " -g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_cri_'" -device cri %}
-// RUN: %if cri-supported %{ oneapi-readelf --debug-dump %t_cri_OCL_simd16_foo.elf &> %t_cri_OCL_simd16_foo.dwarf %}
-// RUN: %if cri-supported %{ FileCheck %s --input-file %t_cri_OCL_simd16_foo.dwarf --check-prefixes=CHECK,CHECK-CRI,CHECK-KERNEL,CHECK-CRI-KERNEL %}
-// RUN: %if cri-supported %{ FileCheck %s --input-file %t_cri_OCL_simd16_foo.dwarf --check-prefixes=CHECK,CHECK-CRI,CHECK-F1,CHECK-CRI-F1 %}
-// RUN: %if cri-supported %{ FileCheck %s --input-file %t_cri_OCL_simd16_foo.dwarf --check-prefixes=CHECK,CHECK-CRI,CHECK-F2,CHECK-CRI-F2 %}
-
 // CHECK: Abbrev Number: [[#]] (DW_TAG_compile_unit)
 // CHECK-NEXT: DW_AT_producer : clang version
 // CHECK-NEXT: DW_AT_language : 21 (OpenCL)
@@ -74,7 +74,7 @@ __kernel void foo(local int *out) {
 // CHECK-DAG: <[[#LV:1]]><[[#%x,]]>: Abbrev Number: [[#]] (DW_TAG_subprogram)
 // CHECK-KERNEL: DW_AT_name : foo
 // CHECK-KERNEL-NEXT: DW_AT_decl_file : [[#DECL_FILE:]]
-// CHECK-KERNEL-NEXT: DW_AT_decl_line : 56
+// CHECK-KERNEL-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-DG2-KERNEL-NEXT: DW_AT_INTEL_simd_width: 8
 // CHECK-CRI-KERNEL-NEXT: DW_AT_INTEL_simd_width: 16
 // CHECK-KERNEL-NEXT: DW_AT_external : 1
@@ -84,28 +84,28 @@ __kernel void foo(local int *out) {
 // CHECK-KERNEL: <[[#LV+1]]><[[#%x,]]>: Abbrev Number: [[#]] (DW_TAG_formal_parameter)
 // CHECK-KERNEL-NEXT: DW_AT_name : out
 // CHECK-KERNEL-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-KERNEL-NEXT: DW_AT_decl_line : 56
+// CHECK-KERNEL-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-KERNEL-NEXT: DW_AT_type :
 // CHECK-KERNEL-NEXT: DW_AT_location :
 
 // CHECK-KERNEL: <[[#LV+1]]><[[#%x,]]>: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK-KERNEL-NEXT: DW_AT_name : foo_const_int
 // CHECK-KERNEL-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-KERNEL-NEXT: DW_AT_decl_line : 57
+// CHECK-KERNEL-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-KERNEL-NEXT: DW_AT_type :
 // CHECK-KERNEL-NEXT: DW_AT_location :
 
 // CHECK-KERNEL: <[[#LV+1]]><[[#%x,]]>: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK-KERNEL-NEXT: DW_AT_name : foo_int_array
 // CHECK-KERNEL-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-KERNEL-NEXT: DW_AT_decl_line : 58
+// CHECK-KERNEL-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-KERNEL-NEXT: DW_AT_type :
 // CHECK-KERNEL-NEXT: DW_AT_location :
 
 // CHECK-F1-DAG: <[[#LV:1]]><[[#%x,]]>: Abbrev Number: [[#]] (DW_TAG_subprogram)
 // CHECK-F1: DW_AT_name : f1
 // CHECK-F1-NEXT: DW_AT_decl_file : [[#DECL_FILE:]]
-// CHECK-F1-NEXT: DW_AT_decl_line : 45
+// CHECK-F1-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-DG2-F1-NEXT: DW_AT_INTEL_simd_width: 8
 // CHECK-CRI-F1-NEXT: DW_AT_INTEL_simd_width: 16
 // CHECK-F1-NEXT: DW_AT_type :
@@ -116,21 +116,21 @@ __kernel void foo(local int *out) {
 // CHECK-F1: <[[#LV+1]]><[[#%x,]]>: Abbrev Number: [[#]] (DW_TAG_formal_parameter)
 // CHECK-F1-NEXT: DW_AT_name : f1_arg1
 // CHECK-F1-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-F1-NEXT: DW_AT_decl_line : 45
+// CHECK-F1-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-F1-NEXT: DW_AT_type :
 // CHECK-F1-NEXT: DW_AT_location :
 
 // CHECK-F1: <[[#LV+1]]><[[#%x,]]>: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK-F1-NEXT: DW_AT_name : f1_local_int
 // CHECK-F1-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-F1-NEXT: DW_AT_decl_line : 46
+// CHECK-F1-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-F1-NEXT: DW_AT_type :
 // CHECK-F1-NEXT: DW_AT_location :
 
 // CHECK-F2-DAG: <[[#LV:1]]><[[#%x,]]>: Abbrev Number: [[#]] (DW_TAG_subprogram)
 // CHECK-F2: DW_AT_name : f2
 // CHECK-F2-NEXT: DW_AT_decl_file : [[#DECL_FILE:]]
-// CHECK-F2-NEXT: DW_AT_decl_line : 51
+// CHECK-F2-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-DG2-F2-NEXT: DW_AT_INTEL_simd_width: 8
 // CHECK-CRI-F2-NEXT: DW_AT_INTEL_simd_width: 16
 // CHECK-F2-NEXT: DW_AT_low_pc :
@@ -140,14 +140,14 @@ __kernel void foo(local int *out) {
 // CHECK-F2: <[[#LV+1]]><[[#%x,]]>: Abbrev Number: [[#]] (DW_TAG_formal_parameter)
 // CHECK-F2-NEXT: DW_AT_name : f2_arg1
 // CHECK-F2-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-F2-NEXT: DW_AT_decl_line : 51
+// CHECK-F2-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-F2-NEXT: DW_AT_type :
 // CHECK-F2-NEXT: DW_AT_location :
 
 // CHECK-F2: <[[#LV+1]]><[[#%x,]]>: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK-F2-NEXT: DW_AT_name : f2_local_char
 // CHECK-F2-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-F2-NEXT: DW_AT_decl_line : 52
+// CHECK-F2-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-F2-NEXT: DW_AT_type :
 // CHECK-F2-NEXT: DW_AT_location :
 

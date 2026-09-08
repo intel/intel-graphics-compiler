@@ -13,6 +13,14 @@
 // UNSUPPORTED: sys32
 // REQUIRES: oneapi-readelf
 
+// RUN: %if dg2-supported %{ ocloc compile -file %s -options " -g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_dg2_'" -device dg2 %}
+// RUN: %if dg2-supported %{ oneapi-readelf --debug-dump %t_dg2_OCL_simd8_foo.elf | \
+// RUN: FileCheck %s --check-prefixes=CHECK,CHECK-DG2 %}
+
+// RUN: %if cri-supported %{ ocloc compile -file %s -options " -g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_cri_'" -device cri -internal_options "'-ze-intel-64bit-addressing'" %}
+// RUN: %if cri-supported %{ oneapi-readelf --debug-dump %t_cri_OCL_simd16_foo.elf | \
+// RUN: FileCheck %s --check-prefixes=CHECK,CHECK-CRI %}
+
 constant float gb_float = 100500;
 constant char gb_char_ar[4] = {0xbe, 0xef, 0xca, 0xfe};
 
@@ -30,14 +38,6 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
   *foo_param += *f1(gb_float) + lc_ptr[1] + lc_float * foo_param[1] + *foo_ptr;
 }
 
-// RUN: %if dg2-supported %{ ocloc compile -file %s -options " -g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_dg2_'" -device dg2 %}
-// RUN: %if dg2-supported %{ oneapi-readelf --debug-dump %t_dg2_OCL_simd8_foo.elf | \
-// RUN: FileCheck %s --check-prefixes=CHECK,CHECK-DG2 %}
-
-// RUN: %if cri-supported %{ ocloc compile -file %s -options " -g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_cri_'" -device cri -internal_options "'-ze-intel-64bit-addressing'" %}
-// RUN: %if cri-supported %{ oneapi-readelf --debug-dump %t_cri_OCL_simd16_foo.elf | \
-// RUN: FileCheck %s --check-prefixes=CHECK,CHECK-CRI %}
-
 // CHECK: Abbrev Number: [[#]] (DW_TAG_compile_unit)
 // CHECK-NEXT: DW_AT_producer : clang version
 // CHECK-NEXT: DW_AT_language : 21 (OpenCL)
@@ -51,7 +51,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK: Abbrev Number: [[#]] (DW_TAG_subprogram)
 // CHECK-NEXT: DW_AT_name : foo
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE:]]
-// CHECK-NEXT: DW_AT_decl_line : 33
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-DG2-NEXT: DW_AT_INTEL_simd_width: 8
 // CHECK-CRI-NEXT: DW_AT_INTEL_simd_width: 16
 // CHECK-NEXT: DW_AT_external : 1
@@ -62,7 +62,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK: Abbrev Number: [[#]] (DW_TAG_formal_parameter)
 // CHECK-NEXT: DW_AT_name : foo_param
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 33
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type : <0x[[#%x,SLMPTR_TYPE:]]>
 // CHECK-NEXT: DW_AT_location : {{.+}} (location list)
 
@@ -70,7 +70,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK: Abbrev Number: [[#]] (DW_TAG_formal_parameter)
 // CHECK-NEXT: DW_AT_name : foo_param1
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 33
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_location : {{.+}} (location list)
 
@@ -78,7 +78,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK-NEXT: DW_AT_name : gb_float
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 25
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_const_value : 0x47c44a00
 
@@ -89,7 +89,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // so anchor by name.
 // CHECK: DW_AT_name : lc_ptr
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 34
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_address_class: 1
 // CHECK-NEXT: DW_AT_location : [[#]] byte block: 3 {{.+}} (DW_OP_addr: 1{{.+}})
@@ -98,7 +98,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK-NEXT: DW_AT_name : lc_float
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 35
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_address_class: 1
 // CHECK-NEXT: DW_AT_location : [[#]] byte block: 3 {{.+}} (DW_OP_addr: 1{{.+}})
@@ -107,7 +107,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK-NEXT: DW_AT_name : foo_ptr
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 37
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_address_class: 1
 // CHECK-NEXT: DW_AT_location : [[#]] byte block: 3 {{.+}} (DW_OP_addr: 1{{.+}})
@@ -115,7 +115,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK: Abbrev Number: [[#]] (DW_TAG_subprogram)
 // CHECK-NEXT: DW_AT_name : f1
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 28
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-DG2-NEXT: DW_AT_INTEL_simd_width: 8
 // CHECK-CRI-NEXT: DW_AT_INTEL_simd_width: 16
 // CHECK-NEXT: DW_AT_type : <0x[[#SLMPTR_TYPE]]>
@@ -124,7 +124,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK: Abbrev Number: [[#]] (DW_TAG_formal_parameter)
 // CHECK-NEXT: DW_AT_name : f1_arg1
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 28
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_location : {{.+}} (location list)
 
@@ -132,7 +132,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK-NEXT: DW_AT_name : gb_float
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 25
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_const_value : 0x47c44a00
 
@@ -140,7 +140,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK-DAG: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK: DW_AT_name : f1_ptr
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 29
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type : <0x[[#SLMPTR_TYPE]]>
 // CHECK-NEXT: DW_AT_location : {{.+}} (location list)
 

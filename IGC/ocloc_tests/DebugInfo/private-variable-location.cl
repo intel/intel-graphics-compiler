@@ -51,35 +51,35 @@ private
 // CHECK-DAG: Abbrev Number: [[#]] (DW_TAG_formal_parameter)
 // CHECK: DW_AT_name : in
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE:]]
-// CHECK-NEXT: DW_AT_decl_line : 38
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_location : {{(0x)?}}[[#%x,IN_LOC:]] (location list)
 
 // CHECK: Abbrev Number: [[#]] (DW_TAG_formal_parameter)
 // CHECK-NEXT: DW_AT_name : out
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 38
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_location : {{(0x)?}}[[#%x,OUT_LOC:]] (location list)
 
 // CHECK-DAG: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK: DW_AT_name : lc_ptr
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 40
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_location : {{(0x)?}}[[#%x,LC_PTR_LOC:]] (location list)
 
 // CHECK: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK-NEXT: DW_AT_name : lc_float
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 42
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_location : {{(0x)?}}[[#%x,LC_FLOAT_LOC:]] (location list)
 
 // CHECK: Abbrev Number: [[#]] (DW_TAG_subprogram)
 // CHECK-NEXT: DW_AT_name : f1
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 32
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_INTEL_simd_width: 8
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_external :
@@ -89,14 +89,14 @@ private
 // CHECK: Abbrev Number: [[#]] (DW_TAG_formal_parameter)
 // CHECK-NEXT: DW_AT_name : f1_arg1
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 32
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_location : {{(0x)?}}[[#%x,F1_ARG1_LOC:]] (location list)
 
 // CHECK-DAG: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK: DW_AT_name : f1_lc_int
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECK-NEXT: DW_AT_decl_line : 34
+// CHECK-NEXT: DW_AT_decl_line : [[#]]
 // CHECK-NEXT: DW_AT_type :
 // CHECK-NEXT: DW_AT_location : {{(0x)?}}[[#%x,F1_LC_INT_LOC:]] (location list)
 

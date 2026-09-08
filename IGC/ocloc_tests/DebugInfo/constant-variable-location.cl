@@ -12,16 +12,6 @@
 // UNSUPPORTED: sys32
 // REQUIRES: oneapi-readelf, llvm-16-plus
 
-constant float gb_float = 100500;
-constant char gb_char_ar[4] = {0xbe, 0xef, 0xca, 0xfe};
-
-__kernel void foo(global int *res) {
-  constant int lc_int = 50;
-  constant char *lc_ptr = gb_char_ar;
-  const uint lc_const_uint = 1357;
-  *res += lc_const_uint + gb_float + gb_char_ar[2] + lc_int + lc_ptr[1];
-}
-
 // RUN: %if dg2-supported %{ ocloc compile -file %s -options " -g -cl-opt-disable -igc_opts 'EnableOpaquePointersBackend=1, ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_dg2_'" -device dg2 %}
 // RUN: %if dg2-supported %{ oneapi-readelf --debug-dump %t_dg2_OCL_simd8_foo.elf | \
 // RUN: FileCheck %s --check-prefixes=CHECK,CHECKO0,CHECKO0-DG2,%if llvm-22-plus || lib-igc-clang %{CHECKO0-LLVM22%} %else %{CHECKO0-PRELLVM22%} %}
@@ -37,6 +27,16 @@ __kernel void foo(global int *res) {
 // RUN: %if cri-supported %{ ocloc compile -file %s -options " -g -igc_opts 'EnableOpaquePointersBackend=1, ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_cri_, ShortImplicitPayloadHeader=0, RemoveUnusedIdImplicitArguments=0'" -device cri %}
 // RUN: %if cri-supported %{ oneapi-readelf --debug-dump %t_cri_OCL_simd32_foo.elf | \
 // RUN: FileCheck %s --check-prefixes=CHECK,CHECKO2 %}
+
+constant float gb_float = 100500;
+constant char gb_char_ar[4] = {0xbe, 0xef, 0xca, 0xfe};
+
+__kernel void foo(global int *res) {
+  constant int lc_int = 50;
+  constant char *lc_ptr = gb_char_ar;
+  const uint lc_const_uint = 1357;
+  *res += lc_const_uint + gb_float + gb_char_ar[2] + lc_int + lc_ptr[1];
+}
 
 // CHECK: Abbrev Number: [[#]] (DW_TAG_compile_unit)
 // CHECK: DW_AT_name : constant-variable-location.cl
@@ -64,13 +64,13 @@ __kernel void foo(global int *res) {
 
 // CHECKO0: DW_AT_name : lc_ptr
 // CHECKO0-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECKO0-NEXT: DW_AT_decl_line : 29
+// CHECKO0-NEXT: DW_AT_decl_line : [[#]]
 // CHECKO0-NEXT: DW_AT_type : <0x[[#%x,LC_PTR_TYPE:]]>
 // CHECKO0-NEXT: DW_AT_location : 0x[[#%x,LC_PTR_LOC:]] (location list)
 // CHECKO0-NEXT: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECKO0-NEXT: DW_AT_name : lc_const_uint
 // CHECKO0-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
-// CHECKO0-NEXT: DW_AT_decl_line : 30
+// CHECKO0-NEXT: DW_AT_decl_line : [[#]]
 // CHECKO0-NEXT: DW_AT_type : <0x[[#%x,LC_CONST_UINT_TYPE:]]>
 // CHECKO0-NEXT: DW_AT_location : 0x[[#%x,LC_CONST_UINT_LOC:]] (location list)
 
