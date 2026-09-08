@@ -1437,6 +1437,8 @@ DECLARE_IGC_REGKEY(bool, EnableDG2LSCSIMD8WA, true,
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableScratchMessageD64WA, false, "Enables WA to legalize D64 scratch messages to D32",
                    DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, ForceLSCA32SUniformBaseWA, false,
+                   "Force the stateless UGM A32S nonzero-base workaround for performance evaluation.", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, LscImmOffsMatch, 1,
                    "Match address patterns that have an immediate offset for the vISA LSC API"
                    "(0 means off/no matching,"

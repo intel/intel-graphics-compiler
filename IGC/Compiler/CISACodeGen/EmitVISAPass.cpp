@@ -15797,8 +15797,9 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
     }
   }
 
-  const int immOffsetVal = immOffset ? static_cast<int>(immOffset->getSExtValue()) : 0;
+  int immOffsetVal = immOffset ? static_cast<int>(immOffset->getSExtValue()) : 0;
   const int immScaleVal = immScale ? static_cast<int>(immScale->getSExtValue()) : 1;
+  prepareLSCUniformBase(uniformBaseVar, immOffsetVal, addrSize, resource);
 
   // If DisableScalarAtomics regkey is enabled or DisableIGCOptimizations regkey
   // is enabled then don't enable scalar atomics
@@ -18988,6 +18989,40 @@ void EmitPass::emitLSCVectorLoad_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32, 
   return;
 }
 
+void EmitPass::prepareLSCUniformBase(CVariable *&uniformBase, int &immOffset, LSC_ADDR_SIZE addrSize,
+                                     const ResourceDescriptor &resource) {
+  if (immOffset < 0 && addrSize == LSC_ADDR_SIZE_32bS && resource.m_surfaceType == ESURFACE_STATELESS &&
+      !resource.m_isStatefulForEfficient64b && !resource.m_isThreadArg &&
+      m_currShader->m_Platform->hasEfficient64bEnabled() && m_currShader->m_Platform->needsLSCA32SNegativeOffsetWA()) {
+    IGC_ASSERT(!uniformBase || (uniformBase->IsUniform() && uniformBase->GetElemSize() == 8));
+    // Keep the descriptor offset nonnegative without widening the per-lane
+    // payload. IND0 and the immediate are byte offsets, independent of scale.
+    if (!uniformBase || uniformBase->IsImmediate()) {
+      uint64_t adjusted =
+          (uniformBase ? uniformBase->GetImmediateValue() : 0) + static_cast<uint64_t>(static_cast<int64_t>(immOffset));
+      uniformBase = m_currShader->ImmToVariable(adjusted, ISA_TYPE_UQ);
+    } else {
+      CVariable *adjustedBase = m_currShader->GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, "LSCAdjustedBase");
+      m_encoder->SetNoMask();
+      m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
+      emitAddPointer(adjustedBase, uniformBase, m_currShader->ImmToVariable(immOffset, ISA_TYPE_D));
+      uniformBase = adjustedBase;
+    }
+    immOffset = 0;
+  }
+
+  // GetUniformSource only supports 32-bit immediates for IND0, including when
+  // A64/A32U bypass the workaround and retain the original constant base.
+  if (uniformBase && uniformBase->IsImmediate() && !llvm::isUInt<32>(uniformBase->GetImmediateValue())) {
+    CVariable *baseReg = m_currShader->GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, "LSCUniformBase");
+    m_encoder->SetNoMask();
+    m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
+    m_encoder->Copy(baseReg, uniformBase);
+    m_encoder->Push();
+    uniformBase = baseReg;
+  }
+}
+
 void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr, Value *uniformBase, Value *varOffset,
                                  ConstantInt *immOffset, ConstantInt *immScale, LSC_CACHE_OPTS cacheOpts,
                                  LSC_DOC_ADDR_SPACE addrSpace, bool signExtendOffset, bool zeroExtendOffset) {
@@ -19079,8 +19114,9 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr, Value *uniformBa
   // Not possible to have uniform dest AND non-uniform src.
   IGC_ASSERT_MESSAGE(!(destUniform && !srcUniform), "Unexpected ld: uniform dest and non-uniform src!");
 
-  const int immOffsetInt = immOffset ? static_cast<int>(immOffset->getSExtValue()) : 0;
+  int immOffsetInt = immOffset ? static_cast<int>(immOffset->getSExtValue()) : 0;
   const int immScaleInt = immScale ? static_cast<int>(immScale->getSExtValue()) : 1;
+  prepareLSCUniformBase(uniformBaseCVar, immOffsetInt, addrSize, resource);
 
   // 1. handle cases eltBytes < 4
   if (eltBytes < 4) {
@@ -19482,8 +19518,9 @@ void EmitPass::emitLSCVectorStore(Value *Ptr, Value *uniformBase, Value *varOffs
   bool srcUniform = storedVar->IsUniform();
   bool dstUniform = eOffset->IsUniform();
 
-  const int immOffsetVal = immOffset ? int_cast<int>(immOffset->getSExtValue()) : 0;
+  int immOffsetVal = immOffset ? int_cast<int>(immOffset->getSExtValue()) : 0;
   const int immScaleVal = immScale ? int_cast<int>(immScale->getSExtValue()) : 1;
+  prepareLSCUniformBase(uniformBaseVar, immOffsetVal, addrSize, resource);
 
   // 1. handle cases eltBytes < 4
   if (eltBytes < 4) {
