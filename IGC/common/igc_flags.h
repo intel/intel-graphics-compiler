@@ -1139,7 +1139,7 @@ DECLARE_IGC_REGKEY(DWORD, OCLSIMD16SelectionMask, 6, "Select SIMD 16 heuristics.
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableGPGPUIndirectPayload, false, "Disable OCL indirect GPGPU payload", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableMemOpt, false, "Disable MemOpt, merging load/store", ALWAYS)
-DECLARE_IGC_REGKEY(bool, EnableSubDWordMergeAlignmentCheck, false,
+DECLARE_IGC_REGKEY(bool, EnableSubDWordMergeAlignmentCheck, true,
                    "In MemOpt do not merge accesses whose alignment is below DWORD.", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, MemOptGEPCanon, 2,
                    "[test] GEP canonicalization in MemOpt. 0 : enable; 1: disable; 2: disable only for OCL;", ALWAYS)
