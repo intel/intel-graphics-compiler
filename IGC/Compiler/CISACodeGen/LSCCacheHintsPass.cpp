@@ -536,16 +536,22 @@ bool LSCCacheHints::TryApplyGlobalOverride(const ModuleMetaData *ModMD, llvm::In
   return true;
 }
 
+// The regkey and the UMD-supplied value are alternative sources for the same enum, not composable
+// bit fields - an explicitly set regkey wins.
 bool LSCCacheHints::TryOverrideCacheOpts(uint32_t &CacheCtrl, bool IsLoad, bool IsTGM,
                                          const CacheControlOverride &CacheControlOption) {
   if (IsTGM && IsLoad) {
-    CacheCtrl = (CacheControlOption.TgmLoadCacheControlOverride | IGC_GET_FLAG_VALUE(TgmLoadCacheControlOverride));
+    CacheCtrl = IGC_IS_FLAG_SET(TgmLoadCacheControlOverride) ? IGC_GET_FLAG_VALUE(TgmLoadCacheControlOverride)
+                                                             : CacheControlOption.TgmLoadCacheControlOverride;
   } else if (IsTGM && !IsLoad) {
-    CacheCtrl = CacheControlOption.TgmStoreCacheControlOverride | IGC_GET_FLAG_VALUE(TgmStoreCacheControlOverride);
+    CacheCtrl = IGC_IS_FLAG_SET(TgmStoreCacheControlOverride) ? IGC_GET_FLAG_VALUE(TgmStoreCacheControlOverride)
+                                                              : CacheControlOption.TgmStoreCacheControlOverride;
   } else if (!IsTGM && IsLoad) {
-    CacheCtrl = (CacheControlOption.LscLoadCacheControlOverride | IGC_GET_FLAG_VALUE(LscLoadCacheControlOverride));
+    CacheCtrl = IGC_IS_FLAG_SET(LscLoadCacheControlOverride) ? IGC_GET_FLAG_VALUE(LscLoadCacheControlOverride)
+                                                             : CacheControlOption.LscLoadCacheControlOverride;
   } else if (!IsTGM && !IsLoad) {
-    CacheCtrl = CacheControlOption.LscStoreCacheControlOverride | IGC_GET_FLAG_VALUE(LscStoreCacheControlOverride);
+    CacheCtrl = IGC_IS_FLAG_SET(LscStoreCacheControlOverride) ? IGC_GET_FLAG_VALUE(LscStoreCacheControlOverride)
+                                                              : CacheControlOption.LscStoreCacheControlOverride;
   }
   return (CacheCtrl != 0);
 }
