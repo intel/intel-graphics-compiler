@@ -2190,8 +2190,8 @@ GRFMode::GRFMode(const TARGET_PLATFORM plat, unsigned regSize, Options *op)
     configs[1] = Config(64, 8, 32, 4);
     configs[2] = Config(96, 8, 32, 4);
     configs[3] = Config(128, 8, 32, 4);
-    configs[4] = Config(160, 6, 32, 4);
-    configs[5] = Config(192, 5, 32, 4);
+    configs[4] = Config(160, 8, 32, 4);
+    configs[5] = Config(192, 8, 32, 4);
     configs[6] = Config(256, 4, 32, 8);
     configs[7] = Config(512, 4, 32, 8, isEfficient64bEnabled);
     defaultMode = 3;
