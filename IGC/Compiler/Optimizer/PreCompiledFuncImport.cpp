@@ -486,6 +486,19 @@ bool PreCompiledFuncImport::runOnModule(Module &M) {
     return false;
   }
 
+  // A kernel that requires SIMD32 bypasses the "requiredSimdSize == 0" guards in
+  // COpenCLKernel::checkSIMDCompileConds() that otherwise keep calls out of SIMD32
+  // on platforms needing the fused-EU call workaround, so emulation left in call
+  // form generates silently wrong code (issue #397). Keep it inlined instead,
+  // unless a call form was explicitly requested through EmulationFunctionControl.
+  const ModuleMetaData *modMD = m_pCtx->getModuleMetaData();
+  if (m_enableCallForEmulation && (int)IGC_GET_FLAG_VALUE(EmulationFunctionControl) == FLAG_FCALL_DEFAULT &&
+      m_pCtx->platform.requireCallWA() &&
+      (modMD->csInfo.forcedSIMDSize == 32 ||
+       llvm::any_of(modMD->FuncMD, [](const auto &E) { return E.second.requiredSubGroupSize == 32; }))) {
+    m_enableCallForEmulation = false;
+  }
+
   m_roundingMode = m_pCtx->m_DriverInfo.DPEmulationRoundingMode();
   m_flushDenorm = (m_pCtx->m_DriverInfo.DPEmulationFlushDenorm()) ? 1 : 0;
   m_flushToZero = (m_pCtx->m_DriverInfo.DPEmulationFlushToZero()) ? 1 : 0;
