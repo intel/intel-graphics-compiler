@@ -388,6 +388,11 @@ bool IGCVectorizer::handlePHI(VecArr &Slice) {
       }
     }
 
+    if (IsVectorized) {
+      VecVal IncomingValues(ForVector.begin(), ForVector.end());
+      IsVectorized = checkVectorMatchesSlice(IncomingValues, ScalarToVector[ScalarPhi->getIncomingValueForBlock(BB)]);
+    }
+
     if (IsConstOperand) {
       PRINT_LOG_NL("ConstOperand");
       auto ConstVec = ConstantVector::get(Elements);
@@ -1346,6 +1351,24 @@ bool IGCVectorizer::checkIsSameOrder(VecVal &Slice, InsertElementInst *Vectorize
   return true;
 }
 
+/// An already created vector is reusable as a whole operand only if it holds
+/// exactly this slice, in this order. A wider vector makes the operand type
+/// disagree with the type derived from Slice.size().
+bool IGCVectorizer::checkVectorMatchesSlice(VecVal &Slice, Value *Vectorized) {
+
+  if (auto *InsElInst = llvm::dyn_cast<InsertElementInst>(Vectorized))
+    return checkIsSameOrder(Slice, InsElInst);
+
+  auto *VecType = llvm::dyn_cast<IGCLLVM::FixedVectorType>(Vectorized->getType());
+  if (!VecType || VecType->getNumElements() != Slice.size()) {
+    PRINT_INST(Vectorized);
+    PRINT_LOG_NL(" --> width doesn't match the slice");
+    return false;
+  }
+
+  return true;
+}
+
 Value *IGCVectorizer::checkOperandsToBeVectorized(Instruction *First, unsigned int OperNum, VecArr &Slice) {
 
   if (!ScalarToVector.count(First->getOperand(OperNum)))
@@ -1357,10 +1380,14 @@ Value *IGCVectorizer::checkOperandsToBeVectorized(Instruction *First, unsigned i
     return nullptr;
   }
 
-  InsertElementInst *InsElInst = llvm::dyn_cast<InsertElementInst>(Compare);
-  if (!InsElInst) {
-    for (auto &El : Slice) {
-      Value *Val = El->getOperand(OperNum);
+  VecVal SliceOfOperands;
+  for (auto &El : Slice) {
+    Value *Val = El->getOperand(OperNum);
+    SliceOfOperands.push_back(Val);
+  }
+
+  if (!llvm::isa<InsertElementInst>(Compare)) {
+    for (auto &Val : SliceOfOperands) {
       if (!ScalarToVector.count(Val)) {
         PRINT_INST(Val);
         PRINT_LOG_NL(" --> wasn't vectorized at all ");
@@ -1376,16 +1403,9 @@ Value *IGCVectorizer::checkOperandsToBeVectorized(Instruction *First, unsigned i
         return nullptr;
       }
     }
-    return Compare;
   }
 
-  VecVal SliceOfOperands;
-  for (auto &El : Slice) {
-    Value *Val = El->getOperand(OperNum);
-    SliceOfOperands.push_back(Val);
-  }
-
-  if (checkIsSameOrder(SliceOfOperands, InsElInst))
+  if (checkVectorMatchesSlice(SliceOfOperands, Compare))
     return Compare;
 
   PRINT_LOG_NL("Not the same order");
