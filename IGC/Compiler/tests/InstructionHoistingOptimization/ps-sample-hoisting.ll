@@ -9,9 +9,9 @@
 ; REQUIRES: regkeys
 ; UNSUPPORTED: llvm-17-plus
 ; Default (non-speculative) mode:
-; RUN: igc_opt -platformbmg --opaque-pointers --regkey EnableInstructionHoistingOptimizationPS=1 -igc-instruction-hoisting-optimization -S -inputps < %s | FileCheck %s --check-prefixes=CHECK,NOSPEC
+; RUN: igc_opt -platformbmg --opaque-pointers --regkey EnableInstructionHoistingOptimization=1 -igc-instruction-hoisting-optimization -S -inputps < %s | FileCheck %s --check-prefixes=CHECK,NOSPEC
 ; Speculative mode (hoisting across a conditional branch allowed):
-; RUN: igc_opt -platformbmg --opaque-pointers --regkey EnableInstructionHoistingOptimizationPS=1,EnableSpeculativeSampleHoisting=1 -igc-instruction-hoisting-optimization -S -inputps < %s | FileCheck %s --check-prefixes=CHECK,SPEC
+; RUN: igc_opt -platformbmg --opaque-pointers --regkey EnableInstructionHoistingOptimization=1,EnableSpeculativeSampleHoisting=1 -igc-instruction-hoisting-optimization -S -inputps < %s | FileCheck %s --check-prefixes=CHECK,SPEC
 
 ; ------------------------------------------------------------------------------
 ; Pixel-shader sample-send hoisting (per-sampler, bounded to the dominating

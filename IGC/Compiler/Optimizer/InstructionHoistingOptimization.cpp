@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/SmallVector.h>
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Metadata.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/PassInfo.h"
 #include "llvm/PassRegistry.h"
 #include "llvm/IR/InstVisitor.h"
@@ -121,6 +122,7 @@ private:
                       llvm::SmallPtrSetImpl<llvm::Instruction *> &visited) const;
   void collectHoistRegion(llvm::BasicBlock *target, llvm::BasicBlock *sampBB,
                           llvm::SmallPtrSetImpl<llvm::BasicBlock *> &region) const;
+  unsigned estimateHoistCostGRF(const llvm::Instruction *Sampler, unsigned SIMD) const;
 
   ////////////////////////////////////////////////////////////////////////
   CodeGenContext *m_pCGCtxt = nullptr;
@@ -183,6 +185,20 @@ private:
   bool sampleNeedsImplicitDerivatives(const llvm::Instruction *I) const {
     const auto *SI = llvm::dyn_cast<SampleIntrinsic>(I);
     return SI && SI->IsDerivative();
+  }
+
+  // Relocating `I` to the hoist point is only legal when the new location
+  // dominates the old one. Every use of a value is dominated by its original
+  // def, so a def that travels strictly UPWARD still dominates all of them.
+  // Moving it down, or sideways into a block the hoist block does not dominate,
+  // leaves uses unreachable from the def -- which is what made this pass emit
+  // "Instruction does not dominate all uses" and trip the verifier in the first
+  // pass that runs one.
+  bool canRelocateToHoistPoint(llvm::Instruction *I) const {
+    llvm::BasicBlock *BB = I->getParent();
+    if (BB == m_HoistBasicBlock)
+      return m_InsertHoistBack->comesBefore(I); // moves up within the block
+    return m_pDT->dominates(m_HoistBasicBlock, BB);
   }
 
   inline bool traceOperandInHoistBB(Value *operand, BasicBlock *hoistBB) {
@@ -339,6 +355,14 @@ void InstructionHoistingOptimization::CollectHoistableInstructions() {
             break;
           }
         } else {
+          // The operand itself must be legal to relocate. traceOperandInHoistBB
+          // validates the operand's OPERANDS, never the operand, so without this
+          // a direct operand of a sampler skipped the dominance check that its
+          // own transitive operands get inside isHoistableInstruction().
+          if (!canRelocateToHoistPoint(I)) {
+            canInstrHoisted = false;
+            break;
+          }
           // check if op can be traced back to hoistInBB
           if (traceOperandInHoistBB(Op, m_HoistBasicBlock)) {
             InsertHoistableInstruction(I);
@@ -350,7 +374,12 @@ void InstructionHoistingOptimization::CollectHoistableInstructions() {
       }
     }
 
-    if (canInstrHoisted) {
+    // The sampler's own block was never checked against the hoist block: a
+    // sampler whose operands all cleared the checks above (or that has no
+    // instruction operands at all) was queued regardless of where it sits in
+    // the CFG, so it could be moved into a block that does not dominate its
+    // uses.
+    if (canInstrHoisted && canRelocateToHoistPoint(pSI)) {
       InsertHoistableInstruction(pSI);
     }
   }
@@ -472,6 +501,51 @@ void InstructionHoistingOptimization::collectHoistRegion(llvm::BasicBlock *targe
 }
 
 ////////////////////////////////////////////////////////////////////////
+// Estimate what hoisting `sampler` costs in GRFs. A hoist extends the live range
+// of the sampler's RETURN value, so the cost is the size of that value at the
+// dispatch width the budget is derived from. Only the channels actually consumed
+// come back from the send (EmitVISAPass narrows the message to the extract
+// mask), so an rgba sample costs 4x an r sample -- a flat per-hoist constant is
+// wrong by up to that factor.
+//
+// The extract-mask reconstruction is a deliberately simple approximation of
+// CShader::GetNbElementAndMask, which is not reachable pre-codegen. It errs
+// toward charging MORE (any user that is not a constant-index extractelement
+// makes us assume every channel stays live), which is the safe direction for a
+// budget: over-charging skips a hoist, under-charging risks a spill.
+unsigned InstructionHoistingOptimization::estimateHoistCostGRF(const llvm::Instruction *Sampler, unsigned SIMD) const {
+  auto *VTy = llvm::dyn_cast<IGCLLVM::FixedVectorType>(Sampler->getType());
+  const unsigned NumChannels = VTy ? (unsigned)VTy->getNumElements() : 1;
+  llvm::Type *ElemTy = VTy ? VTy->getElementType() : Sampler->getType();
+  const unsigned ElemBytes = std::max(1u, (unsigned)(ElemTy->getPrimitiveSizeInBits() / 8));
+
+  unsigned LiveChannels = NumChannels;
+  if (VTy && NumChannels <= 32) {
+    uint32_t Mask = 0;
+    for (const llvm::User *U : Sampler->users()) {
+      const auto *EE = llvm::dyn_cast<llvm::ExtractElementInst>(U);
+      const auto *Idx = EE ? llvm::dyn_cast<llvm::ConstantInt>(EE->getIndexOperand()) : nullptr;
+      if (!Idx || Idx->getZExtValue() >= NumChannels) {
+        Mask = 0; // opaque use -> assume the whole vector stays live
+        break;
+      }
+      Mask |= (1u << Idx->getZExtValue());
+    }
+    if (Mask) {
+      LiveChannels = 0;
+      for (unsigned i = 0; i < NumChannels; ++i)
+        if (Mask & (1u << i))
+          ++LiveChannels;
+    }
+  }
+
+  const unsigned GRFBytes = m_pCGCtxt->platform.getGRFSize();
+  const unsigned Bytes = LiveChannels * SIMD * ElemBytes;
+  // Round up: a partially used GRF is still a whole GRF to the allocator.
+  return std::max(1u, (Bytes + GRFBytes - 1) / GRFBytes);
+}
+
+////////////////////////////////////////////////////////////////////////
 // PS latency hoist: move each sampler up by a bounded number of dominating
 // blocks (enough to expose independent work between the send and its first use)
 // rather than to a single function-wide point. Each sampler's cluster is moved
@@ -488,11 +562,40 @@ bool InstructionHoistingOptimization::hoistSamplersPS(llvm::Function &F) {
   // also drives the dynamic budget below.
   unsigned Running = m_pRPE->getMaxRegCountForFunction(F, SIMD, m_pWI);
 
-  // Dynamic, dispatch-mode-agnostic budget.
-  const unsigned Default128 = m_pCGCtxt->getNumGRFPerThread(true);
-  unsigned GrfCeiling = Default128;
+  // Dynamic, dispatch-mode-agnostic budget.  Start from the compile-time
+  // default; may be overridden below for VRT or high-pressure Xe3P shaders.
+  unsigned GrfCeiling = m_pCGCtxt->getNumGRFPerThread(true);
   unsigned PayloadReserve = 24; // default
-  if (m_pCGCtxt->platform.isCoreChildOf(IGFX_XE3P_CORE)) {
+  // When VRT (Variable Register Targeting) is active, autoGRFSelection in vISA
+  // picks the smallest GRF tier that avoids spilling for maximum thread
+  // occupancy. Budget against the tier autoGRF is likely to choose -- the
+  // smallest supported tier that can hold Running + the reserves -- instead of
+  // the compile-time default (128).  Without this, a low-pressure shader
+  // budgets against 128 but runs at 64, and all approved hoists become
+  // catastrophic live-range extensions in the actual GRF file.
+  if (m_pCGCtxt->supportsVRT()) {
+    const unsigned TempReserved = PayloadReserve + m_rpMargin;
+    const unsigned NeededGRF = Running + TempReserved;
+    // getSupportedGRFSizes() reports every tier the *platform* can encode, which
+    // on some SKUs includes 320/448/512. Those are not legal targets for this
+    // shader type -- vISA is invoked with -maxGRFNum getMaxNumGRF(type) -- so
+    // budgeting against them would approve hoists the register allocator cannot
+    // honor. Clamp the search to the architectural max for this shader type.
+    const unsigned MaxLegal = m_pCGCtxt->platform.getMaxNumGRF(m_pCGCtxt->type);
+    auto Sizes = m_pCGCtxt->platform.getSupportedGRFSizes();
+    // The list is ascending, so walk it keeping the largest legal tier seen and
+    // stop at the first one that fits. When nothing fits we end on the largest
+    // legal tier (should not happen for typical PS, but be defensive).
+    GrfCeiling = Sizes.front();
+    for (unsigned Tier : Sizes) {
+      if (Tier > MaxLegal)
+        break;
+      GrfCeiling = Tier;
+      if (Tier >= NeededGRF)
+        break;
+    }
+  } else if (m_pCGCtxt->platform.isCoreChildOf(IGFX_XE3P_CORE)) {
+    // Non-VRT Xe3P path (VRT disabled by driver/flag): keep original heuristic.
     if (Running > 192) {
       GrfCeiling = 256;
       PayloadReserve /= 2;
@@ -506,6 +609,27 @@ bool InstructionHoistingOptimization::hoistSamplersPS(llvm::Function &F) {
   if (Running >= Budget)
     return false;
 
+  // Cap cumulative pressure growth across hoists. The per-hoist gate below
+  // re-measures pressure and rolls back individually, but it works off an
+  // estimate, and in shaders with many samplers (unrolled ray marching, 16+
+  // samples) a long run of individually-approved hoists still adds up to more
+  // than the register allocator can absorb. So spend the headroom as an explicit
+  // GRF budget, charging each accepted hoist what its return value actually
+  // costs instead of a flat per-hoist constant.
+  //
+  // The headroom comes from a plain-SIMD32 estimate, but the same IR also feeds
+  // the multi-polygon variants (DualSIMD8/QuadSIMD8), which carry several
+  // polygons' worth of payload per thread and are where spills appear first.
+  // That cost is invisible to the estimator, so the budget can optionally be
+  // derated as a safety margin. Default is 1 (no derate): once each hoist is
+  // charged its real per-channel cost above, measurement showed a derate only
+  // costs latency window without improving spills, and >= 3 actively loses
+  // hoists that were removing spills. Kept as a knob because the margin between
+  // "safe" and "loses a SIMD variant" is only a few hoists on some shaders.
+  unsigned MultiPolyDerate = 1;
+  const unsigned Headroom = Budget - Running;
+  unsigned HoistBudgetGRF = Headroom / MultiPolyDerate;
+
   // How many dominating blocks a sampler may travel. Kept minimal (1) so the
   // hoisted result's live range stays short (bounded SIMD32 pressure) while
   // still crossing a block boundary to expose independent latency work. A future
@@ -517,6 +641,12 @@ bool InstructionHoistingOptimization::hoistSamplersPS(llvm::Function &F) {
   for (auto *pSI : m_SamplerInstructions) {
     BasicBlock *SampBB = pSI->getParent();
     if (isInLoop(SampBB))
+      continue;
+
+    // Skip this sampler when its return value does not fit the remaining budget.
+    // Not a break: a later sampler returning fewer channels may still fit.
+    const unsigned HoistCostGRF = estimateHoistCostGRF(pSI, SIMD);
+    if (HoistCostGRF > HoistBudgetGRF)
       continue;
 
     BasicBlock *Target = findBoundedHoistTarget(pSI, MaxHoistBlocks);
@@ -589,6 +719,7 @@ bool InstructionHoistingOptimization::hoistSamplersPS(llvm::Function &F) {
     // Update Running to the post-hoist function-wide max (which may be the
     // region max or the original global max, whichever is larger).
     Running = std::max(Running, AfterHoist); // accept
+    HoistBudgetGRF -= HoistCostGRF;
     Changed = true;
     // Pin against CodeSinking: it runs again after OptimizeIR and would sink the
     // sample back toward its consumer to relieve pressure, undoing this latency
