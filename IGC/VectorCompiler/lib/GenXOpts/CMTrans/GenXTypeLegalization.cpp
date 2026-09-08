@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2024-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -60,6 +60,7 @@ public:
   Value *visitSelectInst(SelectInst &I);
   Value *visitBinaryOperator(BinaryOperator &I);
   Value *visitCastInst(CastInst &I);
+  Value *visitCallInst(CallInst &I);
 
 private:
   bool isLegalType(Type *Ty);
@@ -172,8 +173,6 @@ bool GenXTypeLegalization::runOnFunction(Function &F) {
       auto *I = &(*BI);
       if (isa<PHINode>(I) || isLegalInst(I))
         continue;
-      // CallInst is currently not supported.
-      IGC_ASSERT(!isa<CallInst>(I));
       IGC_ASSERT(!I->getType()->isVectorTy());
       if (auto *NewVal = visit(*I))
         ValueMap[I] = NewVal;
@@ -240,6 +239,22 @@ Value *GenXTypeLegalization::visitBinaryOperator(BinaryOperator &I) {
   IGCLLVM::IRBuilder<> Builder{&I};
   return Builder.CreateBinOp(I.getOpcode(), Src0, Src1,
                              getLegalizedName(I.getName()));
+}
+
+Value *GenXTypeLegalization::visitCallInst(CallInst &I) {
+  IGC_ASSERT(I.getIntrinsicID() == Intrinsic::bitreverse);
+
+  auto *OldTy = I.getType();
+  auto *NewTy = getLegalizedType(OldTy);
+  auto *Src = getLegalizedValue(I.getArgOperand(0));
+  auto OldBitWidth = OldTy->getIntegerBitWidth();
+  auto NewBitWidth = NewTy->getIntegerBitWidth();
+
+  IGCLLVM::IRBuilder<> Builder{&I};
+  auto *Reversed =
+      Builder.CreateIntrinsic(Intrinsic::bitreverse, {NewTy}, {Src});
+  return Builder.CreateLShr(Reversed, NewBitWidth - OldBitWidth,
+                            getLegalizedName(I.getName()));
 }
 
 Value *GenXTypeLegalization::visitCastInst(CastInst &I) {
