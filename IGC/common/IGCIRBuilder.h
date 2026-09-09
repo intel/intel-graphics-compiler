@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/STLFunctionalExtras.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/ADT/Twine.h"
@@ -152,6 +153,92 @@ public:
     auto *Arg = ConstantDataArray::getString(RetTy->getContext(), patchName, false);
     Function *func = llvm_GenISA_staticConstantPatch(RetTy, Arg->getType());
     return this->CreateCall(func, Arg, Name);
+  }
+
+  /// Executes CreateBody once per distinct V in the active lanes and returns
+  /// each lane's corresponding result. CreateBody runs under the execution mask
+  /// of lanes matching the current broadcast V. Its result must already have a
+  /// lane-wise representation suitable for select-based merging. SplitBefore
+  /// must have CreateBody's result type and is moved after the loop.
+  ///
+  /// Example for i32 V and results (intrinsic names shortened; @body stands for
+  /// the instructions emitted by CreateBody):
+  // clang-format off
+  /// entry:
+  ///   %active = call i32 @WaveBallot(i1 true, i32 0)
+  ///   br label %loop
+  /// loop:
+  ///   %remaining = phi i32 [ %active, %entry ], [ %next, %latch ]
+  ///   %partial = phi i32 [ poison, %entry ], [ %merged, %latch ]
+  ///   %lane = call i32 @firstbitLo(i32 %remaining)
+  ///   %uniform = call i32 @WaveShuffleIndex(i32 %v, i32 %lane, i32 0)
+  ///   %matches = icmp eq i32 %v, %uniform
+  ///   br i1 %matches, label %body, label %latch
+  /// body:
+  ///   %value = call i32 @body(i32 %uniform)
+  ///   br label %latch
+  /// latch:
+  ///   %current = phi i32 [ %value, %body ], [ poison, %loop ]
+  ///   %merged = select i1 %matches, i32 %current, i32 %partial
+  ///   %group = call i32 @WaveBallot(i1 %matches, i32 0)
+  ///   %other = xor i32 %group, -1
+  ///   %next = and i32 %remaining, %other
+  ///   %done = icmp eq i32 %next, 0
+  ///   br i1 %done, label %end, label %loop
+  /// end:
+  ///   %result = phi i32 [ %merged, %latch ]
+  ///   ; SplitBefore and the remaining original instructions follow here.
+  // clang-format on
+  Value *CreateBallotLoop(Value *V, Instruction *SplitBefore, function_ref<Value *(Value *)> CreateBody,
+                          const Twine &Name = "BallotLoop") {
+    auto *entryBB = SplitBefore->getParent();
+    auto *postLoopBB = entryBB->splitBasicBlock(SplitBefore, Name + ".end");
+    auto *loopBB = BasicBlock::Create(entryBB->getContext(), Name + ".loop", entryBB->getParent(), postLoopBB);
+    auto *bodyBB = BasicBlock::Create(entryBB->getContext(), Name + ".body", entryBB->getParent(), postLoopBB);
+    auto *latchBB = BasicBlock::Create(entryBB->getContext(), Name + ".latch", entryBB->getParent(), postLoopBB);
+
+    entryBB->getTerminator()->eraseFromParent();
+    this->SetInsertPoint(entryBB);
+    auto *M = entryBB->getModule();
+    auto *waveBallotFn = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_WaveBallot);
+    auto *activeLanes = this->CreateCall2(waveBallotFn, this->getTrue(), this->getInt32(0));
+    this->CreateBr(loopBB);
+
+    this->SetInsertPoint(loopBB);
+    auto *remainingLanes = this->CreatePHI(activeLanes->getType(), 2, Name + ".remaining");
+    remainingLanes->addIncoming(activeLanes, entryBB);
+    auto *partialResult = this->CreatePHI(SplitBefore->getType(), 2, Name + ".partial.result");
+    partialResult->addIncoming(PoisonValue::get(SplitBefore->getType()), entryBB);
+
+    auto *firstBitLowFn = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_firstbitLo);
+    auto *firstActiveLane = this->CreateCall(firstBitLowFn, remainingLanes);
+    auto *waveShuffleIndexFn =
+        GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_WaveShuffleIndex, V->getType());
+    auto *uniformV = this->CreateCall3(waveShuffleIndexFn, V, firstActiveLane, this->getInt32(0));
+    auto *matches = this->CreateICmpEQ(V, uniformV);
+    this->CreateCondBr(matches, bodyBB, latchBB);
+
+    this->SetInsertPoint(bodyBB);
+    Value *result = CreateBody(uniformV);
+    this->CreateBr(latchBB);
+
+    this->SetInsertPoint(latchBB);
+    auto *currentResult = this->CreatePHI(result->getType(), 2, Name + ".current.result");
+    currentResult->addIncoming(result, bodyBB);
+    currentResult->addIncoming(PoisonValue::get(result->getType()), loopBB);
+    auto *updatedResult = this->CreateSelect(matches, currentResult, partialResult, Name + ".updated.result");
+    partialResult->addIncoming(updatedResult, latchBB);
+
+    auto *matchingLanes = this->CreateCall2(waveBallotFn, matches, this->getInt32(0));
+    auto *updatedRemainingLanes = this->CreateAnd(remainingLanes, this->CreateNot(matchingLanes));
+    remainingLanes->addIncoming(updatedRemainingLanes, latchBB);
+    auto *finished = this->CreateICmpEQ(updatedRemainingLanes, this->getInt32(0));
+    this->CreateCondBr(finished, postLoopBB, loopBB);
+
+    this->SetInsertPoint(&*postLoopBB->begin());
+    auto *loopResult = this->CreatePHI(result->getType(), 1, Name + ".result");
+    loopResult->addIncoming(updatedResult, latchBB);
+    return loopResult;
   }
 
   inline void SetDebugReg(Value *V, const Twine &Name = "") {

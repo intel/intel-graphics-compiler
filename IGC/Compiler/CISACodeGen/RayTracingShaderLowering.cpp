@@ -37,7 +37,6 @@ public:
   RayTracingShaderLowering() : ModulePass(ID) {}
   bool runOnModule(Module &M) override;
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<PostDominatorTreeWrapperPass>();
@@ -56,6 +55,59 @@ private:
 };
 
 char RayTracingShaderLowering::ID = 0;
+
+static void createTraceRaySyncGlobalPointerLoop(RTBuilder &RTB, TraceRaySyncIntrinsic *traceRay) {
+  // Collect the completion and optional status-unpacking operations associated
+  // with TraceRaySync so they execute within each lane group before result merging.
+  // Consumers after the loop must use the merged result of these operations.
+  GenIntrinsicInst *readTraceRaySync = nullptr;
+  GenIntrinsicInst *postProcessRayQueryReturn = nullptr;
+  for (auto *user : traceRay->users()) {
+    auto *GII = dyn_cast<GenIntrinsicInst>(user);
+    if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ReadTraceRaySync) {
+      IGC_ASSERT_MESSAGE(!readTraceRaySync, "Expected a single ReadTraceRaySync user");
+      readTraceRaySync = GII;
+    } else if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_PostProcessRayQueryReturn) {
+      IGC_ASSERT_MESSAGE(!postProcessRayQueryReturn, "Expected a single PostProcessRayQueryReturn user");
+      postProcessRayQueryReturn = GII;
+    }
+  }
+  IGC_ASSERT_MESSAGE(readTraceRaySync, "Missing ReadTraceRaySync user");
+
+  // RTA response writeback (including sendg.rta) does not honor the execution
+  // mask and can clobber inactive lanes in the returned GRF. Keep the raw
+  // response separate from results accumulated by earlier iterations:
+  // CreateBallotLoop's select saves only the current group's lane values before
+  // the next send can overwrite the response. ReadTraceRaySync stays with each
+  // send to preserve its completion dependency and I/O ordering.
+  auto *result = RTB.CreateBallotLoop(
+      traceRay->getGlobalBufferPointer(), traceRay,
+      [&](Value *uniformGlobalBufferPtr) {
+        auto *clonedTraceRay = cast<TraceRaySyncIntrinsic>(RTB.Insert(traceRay->clone()));
+        clonedTraceRay->setArgOperand(0, uniformGlobalBufferPtr);
+        readTraceRaySync->setArgOperand(0, clonedTraceRay);
+        readTraceRaySync->moveAfter(clonedTraceRay);
+        if (!postProcessRayQueryReturn)
+          return static_cast<Value *>(clonedTraceRay);
+
+        // Packed responses contain 16-bit lane statuses despite the i32 IR
+        // type. Unpack inside the group before the ordinary i32 PHI/select
+        // merge; merging the raw response would use the wrong lane layout.
+        auto *normalizedResult = cast<CallInst>(RTB.Insert(postProcessRayQueryReturn->clone()));
+        normalizedResult->setArgOperand(0, clonedTraceRay);
+        normalizedResult->moveAfter(readTraceRaySync);
+        return static_cast<Value *>(normalizedResult);
+      },
+      VALUE_NAME("RayQueryGlobalPointer"));
+
+  if (postProcessRayQueryReturn) {
+    postProcessRayQueryReturn->replaceAllUsesWith(result);
+    postProcessRayQueryReturn->eraseFromParent();
+  } else {
+    traceRay->replaceAllUsesWith(result);
+  }
+  traceRay->eraseFromParent();
+}
 
 // From InstCombineCasts.cpp
 static Instruction::CastOps isEliminableCastPair(const CastInst *CI1, const CastInst *CI2) {
@@ -201,6 +253,7 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
   const bool ForcePreemptionDisable = CGCtx->type == ShaderType::RAYTRACING_SHADER && CGCtx->platform.canSupportWMTP();
 
   bool Changed = false;
+  SmallVector<TraceRaySyncIntrinsic *> traceRaysToGroup;
   for (auto &F : M) {
     if (F.isDeclaration())
       continue;
@@ -267,12 +320,18 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
         auto &FuncMD = CGCtx->getModuleMetaData()->FuncMD;
         const auto &it = FuncMD.find(TRS->getFunction());
         IGC_ASSERT(it != FuncMD.end());
-        [[maybe_unused]] const FunctionMetaData &MD = it->second;
+        const FunctionMetaData &MD = it->second;
         IGC_ASSERT(MD.hasSyncRTCalls);
         // useSyncHWStack is not used by OCL compilation path currently, so we cannot require it to be set
         if (CGCtx->type != ShaderType::OPENCL_SHADER)
           IGC_ASSERT(MD.rtInfo.useSyncHWStack ||
                      TRS->getStackAddressingMode() != STACK_ADDRESS_MODE::DEFAULT_ADDRESSING);
+        // A single slot guarantees one globals pointer. Conservatively group all
+        // sends in multi-slot functions, including uniform selections.
+        // This deliberately favors implementation simplicity; per-send analysis
+        // could avoid unnecessary loops if real workloads justify the complexity.
+        if (MD.rtInfo.numSyncRTStacks > 1)
+          traceRaysToGroup.push_back(TRS);
         break;
       }
       case GenISAIntrinsic::GenISA_BindlessThreadDispatch_1_0:
@@ -331,6 +390,10 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
       I->eraseFromParent();
   }
 
+  // Finish all uses of dominator trees and loop info before changing the CFG.
+  for (auto *traceRay : traceRaysToGroup)
+    createTraceRaySyncGlobalPointerLoop(RTB, traceRay);
+  Changed |= !traceRaysToGroup.empty();
   return Changed;
 }
 

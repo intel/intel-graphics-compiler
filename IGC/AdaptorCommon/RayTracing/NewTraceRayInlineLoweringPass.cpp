@@ -104,10 +104,6 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
   // them via our stub instruction
   ValueToValueMapTy v2vMap;
   for (auto *I : AllocateRQInstructions) {
-    // we are using value remapper so we can't explicitly erase the instruction
-    // mark it as read only so it gets removed due to no uses
-    IGCLLVM::setOnlyReadsMemory(*I);
-
     IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(&F.getEntryBlock()));
     Value *rqObject = nullptr;
 
@@ -164,9 +160,13 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
 
         v2vMap[genI] = genI;
       } else {
-        // in general case this would be very hard
-        // fortunately rayqueries are guaranteed to not be stored in anything
-        // more complex than a single dimensional array
+        // Handles can reach rayquery intrinsics through one-dimensional arrays,
+        // PHIs and selects. Rebuild that data flow with RQObject pointers so each
+        // intrinsic can recover the selected query's state. Array storage and
+        // accesses must change along with the values stored in them; more complex
+        // storage is not supported. Record replacements in v2vMap and follow their
+        // users, deferring operations whose inputs have not all been mapped yet.
+        // Keep the original instructions alive until RemapFunction applies the map.
         switch (II->getOpcode()) {
         case Instruction::Store: {
           auto *storeI = cast<StoreInst>(II);
@@ -219,6 +219,20 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
                                       VALUE_NAME("RQObjectLoad_") + II->getName());
           llvm::for_each(II->uses(), [&worklist](Use &U) { worklist.push_back(&U); });
           break;
+        case Instruction::PHI: {
+          auto *phi = cast<PHINode>(II);
+          if (llvm::any_of(phi->incoming_values(), [&v2vMap](Value *incoming) { return !v2vMap.count(incoming); }))
+            continue;
+
+          IRB.SetInsertPoint(phi);
+          auto *newPhi = IRB.CreatePHI(IGCLLVM::PointerType::get(m_RQObjectType, 0), phi->getNumIncomingValues(),
+                                       VALUE_NAME("RQObjectPHI_") + phi->getName());
+          for (unsigned i = 0; i < phi->getNumIncomingValues(); ++i)
+            newPhi->addIncoming(v2vMap[phi->getIncomingValue(i)], phi->getIncomingBlock(i));
+
+          v2vMap[phi] = newPhi;
+          llvm::for_each(phi->uses(), [&worklist](Use &U) { worklist.push_back(&U); });
+        } break;
         case Instruction::Select:
           // skip if we didn't map out both operands yet
           if (v2vMap.count(II->getOperand(1)) == 0 || v2vMap.count(II->getOperand(2)) == 0)
@@ -271,6 +285,12 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
     }
     if (!changed) // no progress has been done
       break;
+  }
+
+  // The allocations have been lowered and their users remapped
+  for (auto *I : AllocateRQInstructions) {
+    IGC_ASSERT(I->use_empty());
+    I->eraseFromParent();
   }
 
   return true;
