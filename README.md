@@ -39,7 +39,6 @@ https://opensource.org/licenses/MIT
 
 IGC is continuously built and tested on the following 64-bit Linux operating systems:
 
-* Ubuntu 26.04
 * Ubuntu 24.04
 * Ubuntu 22.04
 
