@@ -13,9 +13,6 @@ SPDX-License-Identifier: MIT
 // DW_TAG_subprogram appear between _kernel and helper. Layout: [_kernel][impl][helper].
 // Uses `FunctionControl=3` to ensure stackcalls.
 
-// FIXME: Update the test for LLVM 23.
-// UNSUPPORTED: llvm-23-plus
-
 // UNSUPPORTED: sys32
 // REQUIRES: pvc-supported, oneapi-readelf, regkeys
 

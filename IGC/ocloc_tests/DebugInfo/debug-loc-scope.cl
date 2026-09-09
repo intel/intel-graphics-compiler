@@ -14,9 +14,6 @@
 // 2. Non-outermost-scope FP-based variable ("*inner") is inlined directly
 //    into the DIE, since FE_FP is valid throughout the scope.
 
-// FIXME: Update the test for LLVM 23.
-// UNSUPPORTED: llvm-23-plus
-
 // UNSUPPORTED: sys32
 // REQUIRES: regkeys, oneapi-readelf, dg2-supported
 

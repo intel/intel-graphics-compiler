@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/Transforms/IPO.h>
-#include <llvm/Transforms/IPO/AlwaysInliner.h>
 #include <llvm/Transforms/IPO/GlobalDCE.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Scalar/DCE.h>
@@ -32,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Transforms/Utils.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Transforms/IPO/AlwaysInliner.h"
 
 #include <llvmWrapper/Transforms/InstCombine/InstCombineWorklist.h>
 #include <llvmWrapper/Transforms/Scalar/SCCP.h>
@@ -453,7 +453,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
       IGC_ADD_PASS(npm, lpm, IGCLLVM::SimpleInlinerNPMWrapper(llvm::getInlineParams(Threshold), &TLI),
                    IGCLLVM::createLegacyWrappedSimpleInlinerPass(Threshold));
     } else {
-      IGC_ADD_PASS(npm, lpm, AlwaysInlinerPass(), createAlwaysInlinerLegacyPass());
+      IGC_ADD_PASS(npm, lpm, AlwaysInlinerPass(), IGCLLVM::createAlwaysInlinerLegacyPass());
     }
     // The inliner sometimes fails to delete unused functions, this cleans up the remaining mess.
     IGC_ADD_PASS(npm, lpm, GlobalDCEPass(), IGCLLVM::createLegacyWrappedGlobalDCEPass());
@@ -527,7 +527,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
 
     // this pass is intended to inline the remaining always inline functions that had issues
     // with argument address spaces (byVal addrspace(4)) in the previous attempt
-    IGC_ADD_PASS(npm, lpm, AlwaysInlinerPass(), createAlwaysInlinerLegacyPass());
+    IGC_ADD_PASS(npm, lpm, AlwaysInlinerPass(), IGCLLVM::createAlwaysInlinerLegacyPass());
     IGC_ADD_PASS_AUTO(npm, lpm, PurgeMetaDataUtils);
 
     // Run another round of constant breaking as GAS resolving may generate constants (constant address)

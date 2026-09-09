@@ -72,7 +72,7 @@ SPDX-License-Identifier: MIT
 #endif
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/IPO.h"
-#include "llvm/Transforms/IPO/AlwaysInliner.h"
+#include "llvmWrapper/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/Annotation2Metadata.h"
 #include "llvm/Transforms/IPO/ForceFunctionAttrs.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
@@ -691,7 +691,7 @@ bool GenXTargetMachine::addPassesToEmitFile(
   if (!BackendConfig.isBiFCompilation()) {
     vc::addPass(PM, createGenXBuiltinFunctionsPass(
                         BuiltinFunctionKind::PreLegalization));
-    vc::addPass(PM, createAlwaysInlinerLegacyPass());
+    vc::addPass(PM, IGCLLVM::createAlwaysInlinerLegacyPass());
   }
 
   /// .. include:: GenXPropagateSurfaceState.cpp
@@ -931,8 +931,8 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
 #endif
     PM.add(createGenXTranslateIntrinsicsPass());
     PM.add(createGenXTranslateSPIRVBuiltinsPass());
-    PM.add(createAlwaysInlinerLegacyPass());
-    PM.add(createAlwaysInlinerLegacyPass());
+    PM.add(IGCLLVM::createAlwaysInlinerLegacyPass());
+    PM.add(IGCLLVM::createAlwaysInlinerLegacyPass());
     PM.add(createGenXPrintfPhiClonningPass());
     if (Subtarget.hasEfficient64b())
       PM.add(createGenXStatePointerFencePass());
@@ -942,7 +942,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PM.add(createGenXBIFFlagCtrlResolutionPass());
     PM.add(createGenXTypeLegalizationPass());
     PM.add(createGenXPacketizePass());
-    PM.add(createAlwaysInlinerLegacyPass());
+    PM.add(IGCLLVM::createAlwaysInlinerLegacyPass());
     PM.add(createGenXPrintfLegalizationPass());
     PM.add(createGlobalDCEPass());
     PM.add(createPromoteMemoryToRegisterPass());
@@ -982,7 +982,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
         PM.add(createCorrelatedValuePropagationPass());
         PM.add(createGenXReduceIntSizePass());
         PM.add(createInstructionCombiningPass());
-        PM.add(createAlwaysInlinerLegacyPass());
+        PM.add(IGCLLVM::createAlwaysInlinerLegacyPass());
         PM.add(createGlobalDCEPass());
         PM.add(createInstructionCombiningPass());
         // Unroll

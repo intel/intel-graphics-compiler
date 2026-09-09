@@ -160,7 +160,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Transforms/IPO.h>
-#include <llvm/Transforms/IPO/AlwaysInliner.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Scalar/GVN.h>
 #include <llvm/IR/Function.h>
@@ -178,6 +177,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/CodeGen/Passes.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Transforms/IPO/AlwaysInliner.h"
 
 #include "llvmWrapper/Transforms/Scalar/ADCE.h"
 #include "llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.h"
@@ -669,7 +669,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     // Need to break constant expr as PreCompiledFuncImport does not handle it.
     mpm.add(new BreakConstantExprLPM());
     mpm.add(new PreCompiledFuncImport(&ctx, theEmuKind));
-    mpm.add(createAlwaysInlinerLegacyPass());
+    mpm.add(IGCLLVM::createAlwaysInlinerLegacyPass());
 
     // Using DCE here as AlwaysInliner does not completely remove dead functions.
     // Once AlwaysInliner can delete all of them, this DCE is no longer needed.
@@ -1340,7 +1340,7 @@ static void alwaysInlineForNoOpt(CodeGenContext *pContext, bool NoOpt) {
     IGCPassManager mpm(pContext, "OPTPost");
     mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpm.add(new CodeGenContextWrapper(pContext));
-    mpm.add(createAlwaysInlinerLegacyPass());
+    mpm.add(IGCLLVM::createAlwaysInlinerLegacyPass());
     mpm.add(new PurgeMetaDataUtilsLPM());
     mpm.run(*pContext->getModule());
   }
@@ -1863,7 +1863,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       mpm.add(createSubroutineInlinerPass());
     } else {
       // Inline all remaining functions with always inline attribute.
-      mpm.add(createAlwaysInlinerLegacyPass());
+      mpm.add(IGCLLVM::createAlwaysInlinerLegacyPass());
     }
     if ((pContext->m_DriverInfo.NeedExtraPassesAfterAlwaysInlinerPass() || pContext->m_enableSubroutine) &&
         pContext->m_instrTypes.hasNonPrimitiveAlloca) {

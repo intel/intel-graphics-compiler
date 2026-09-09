@@ -40,11 +40,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/CodeGen/Passes.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Transforms/IPO.h>
-#include <llvm/Transforms/IPO/AlwaysInliner.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils.h>
 #include <llvm/Analysis/AliasAnalysis.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Transforms/IPO/AlwaysInliner.h"
 
 using namespace llvm;
 using namespace IGC;

@@ -9,9 +9,6 @@
 // Verify that variables with constant values have correct constant value emitted
 // In OpenCL, verify that `const uint lc_const_uint = 1357` results in either constant value (-O2) or a DW_AT_location expression (in -O0).
 
-// FIXME: Update the test for LLVM 23.
-// UNSUPPORTED: llvm-23-plus
-
 // UNSUPPORTED: sys32
 // REQUIRES: oneapi-readelf, llvm-16-plus
 

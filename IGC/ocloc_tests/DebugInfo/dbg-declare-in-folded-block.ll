@@ -18,9 +18,6 @@
 ; The test is mostly for LLVM 22, but we're running it on older versions
 ; as well to make sure the behavior is consistent across LLVM versions.
 
-; FIXME: Update the test for LLVM 23.
-; UNSUPPORTED: llvm-23-plus
-
 ; UNSUPPORTED: sys32
 ; REQUIRES: regkeys, oneapi-readelf, dg2-supported, llvm-17-plus
 

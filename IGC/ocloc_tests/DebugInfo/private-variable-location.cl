@@ -9,9 +9,6 @@
 // For private address space variables, verify location expression emitted (should contain special operations that IGC emits)
 // We should verify DW_AT_location of kernel, function arguments as well as variables.
 
-// FIXME: Update the test for LLVM 23.
-// UNSUPPORTED: llvm-23-plus
-
 // UNSUPPORTED: sys32
 // REQUIRES: regkeys, oneapi-readelf, dg2-supported
 
