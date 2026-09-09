@@ -3330,7 +3330,8 @@ uint32_t DwarfDebug::writeStackcallCIE() {
   }
 
   // callee save - same value rule
-  for (unsigned int grf = calleeSaveStart; grf != numGRFs; ++grf) {
+  const unsigned int calleeSaveEnd = GetNumABIGRFs();
+  for (unsigned int grf = calleeSaveStart; grf != calleeSaveEnd; ++grf) {
     writeSameValue(data, GetEncodedRegNum<RegisterNumbering::GRFBase>(grf));
   }
 

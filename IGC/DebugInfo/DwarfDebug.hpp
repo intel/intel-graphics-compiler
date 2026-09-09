@@ -961,10 +961,17 @@ private:
   static const unsigned int BEFPSubReg_1_2 = 3;  // :ud
   static const unsigned int BEFPSubReg_3 = 0;    // :ud
 
+  uint32_t GetNumABIGRFs() {
+    const uint32_t NumGRFs = GetVISAModule()->getNumGRFs();
+    if (NumGRFs != 512)
+      return NumGRFs;
+    return EmitSettings.ReserveR510 ? NumGRFs - 2 : NumGRFs - 1;
+  }
+
   uint32_t GetSpecialGRF() {
     if (!EmitSettings.ZeBinCompatible)
       return GetVISAModule()->getNumGRFs() - SpecialGRFOff_VISAABI_1;
-    return GetVISAModule()->getNumGRFs() - SpecialGRFOff_VISAABI_2_3;
+    return GetNumABIGRFs() - SpecialGRFOff_VISAABI_2_3;
   }
 
   uint32_t GetABIVersion() { return getEmitterSettings().VISAABIVersion; }

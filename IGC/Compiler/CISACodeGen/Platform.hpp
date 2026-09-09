@@ -1409,6 +1409,10 @@ public:
     return 2;
   }
 
+  bool reserveR510() const {
+    return false;
+  }
+
   bool supportsLoadStatusMessages() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
 
   bool supportsNonDefaultLSCCacheSetting() const {

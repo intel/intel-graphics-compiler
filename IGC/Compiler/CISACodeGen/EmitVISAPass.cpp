@@ -948,6 +948,7 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
     DebugOpts.EnableDebugInfoValidation = IGC_IS_FLAG_ENABLED(DebugInfoValidation);
     DebugOpts.ScratchOffsetInOW = !m_currShader->m_Platform->isProductChildOf(IGFX_DG2);
     DebugOpts.VISAABIVersion = m_currShader->m_Platform->getVISAABIVersion();
+    DebugOpts.ReserveR510 = m_currShader->m_Platform->reserveR510();
     m_pDebugEmitter = IDebugEmitter::Create();
     m_pDebugEmitter->Initialize(std::move(vMod), DebugOpts);
   }
