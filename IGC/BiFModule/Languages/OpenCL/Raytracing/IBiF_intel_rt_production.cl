@@ -94,10 +94,10 @@ typedef enum
 
 intel_raytracing_ext_flag_t intel_get_raytracing_ext_flag()
 {
-    uint flags = intel_raytracing_ext_flag_ray_query;
     if(BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3P_CORE)
-        flags |= intel_raytracing_ext_flag_motion_blur;
-    return flags;
+        return intel_raytracing_ext_flag_ray_query |
+               intel_raytracing_ext_flag_motion_blur;
+    return intel_raytracing_ext_flag_ray_query;
 };
 
 intel_ray_query_t intel_ray_query_init(

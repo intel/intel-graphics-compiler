@@ -1347,7 +1347,7 @@ typedef struct // intel_ray_desc_t
     intel_float3      direction;
     float             tmin;
     float             tmax;
-    uint mask; // 8-bit ray mask; 16-bit on platforms supporting the extended ray mask.
+    uint              mask;
     intel_ray_flags_t flags;
 } intel_ray_desc_t;
 
