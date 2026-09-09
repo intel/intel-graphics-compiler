@@ -860,7 +860,8 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(InsertElementInst *FirstIEI
   int nelts = getNumElts(FirstIEI);
 
   // Sanity
-  if (nelts < 2)
+  // insertelement to <1 x n> vector is valid
+  if (nelts < (isa<IGCLLVM::FixedVectorType>(FirstIEI->getType()) ? 1 : 2))
     return false;
 
   AllIEIs.resize(nelts);
@@ -1453,6 +1454,7 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateUse(Value 
       case GenISAIntrinsic::GenISA_sub_group_dpas:
       case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
       case GenISAIntrinsic::GenISA_simdBlockWrite:
+      case GenISAIntrinsic::GenISA_PredicatedStore:
         retSt = AState::TARGET;
         break;
       default:
@@ -1484,6 +1486,7 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateDef(Value 
     case GenISAIntrinsic::GenISA_sub_group_dpas:
     case GenISAIntrinsic::GenISA_LSC2DBlockRead:
     case GenISAIntrinsic::GenISA_simdBlockRead:
+    case GenISAIntrinsic::GenISA_PredicatedLoad:
       return AState::TARGET;
     default:
       break;
