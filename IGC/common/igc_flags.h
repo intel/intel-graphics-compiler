@@ -2248,6 +2248,10 @@ DECLARE_IGC_REGKEY(
 DECLARE_IGC_REGKEY(bool, DisableRayQueryReturnOptimization, false, "RayQuery Return Optimization", ALWAYS)
 DECLARE_IGC_REGKEY(bool, DisableRayQueryReturnOptimizationPackedStatus, false,
                    "RayQuery Return Optimization - Packed Status Return", ALWAYS)
+DECLARE_IGC_REGKEY_ENUM(OverrideRayQueryHitRecordInitSkip, -1,
+                        "Skip hit-record init in inline RayQuery prologue when RQ Return Optimization is on. "
+                        "0: force init (default, PTL page-fault workaround), 1: force skip, -1: platform default",
+                        TRIBOOL_OPTIONS, ALWAYS)
 DECLARE_IGC_REGKEY_BITMASK(UseNewInlineRaytracing, 4, "Use the new rayquery implementation for particular case",
                            NEW_INLINE_RAYTRACING_MASK, ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, AddDummySlotsForNewInlineRaytracing, 0,
