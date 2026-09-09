@@ -1060,6 +1060,13 @@ public:
     return hasScratchSurface() ? 0x40000 : 0x200000;
   }
 
+  // Whether the new (frequency/ref-count based) vISA spill cost function is on by
+  // default. Limited to Xe3: Xe2 and older have no spill-size budget in the
+  // abort-on-spill gate, and Xe3p+ regressed UMD ROP kernels (IGC-17469).
+  bool enableNewSpillCostFunctionDefault() const {
+    return isCoreChildOf(IGFX_XE3_CORE) && !isCoreChildOf(IGFX_XE3P_CORE);
+  }
+
   bool enableSpillCompressionCheckDefault() const {
     bool bEnabled = false;
     return bEnabled;

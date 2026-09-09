@@ -261,6 +261,10 @@ DECLARE_IGC_REGKEY(bool, Force32bitConstantGEPLowering, false,
 DECLARE_IGC_REGKEY(bool, GEPLoweringTruncOptEnabled, false,
                    "Enable using truncation to avoid recalculation in GEP lowering", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, NewSpillCostFunction, false, "Use new spill cost function in VISA RA", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, DisableNewSpillCostFunction, false,
+                   "Kill-switch for the new spill cost function in VISA RA, which is enabled by default for 3D shaders "
+                   "on Xe3 platforms",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableCoalesceScalarMoves, true, "Enable scalar moves to be coalesced into fewer moves",
                    ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, SpillCompressionThresholdOverride, 0,
