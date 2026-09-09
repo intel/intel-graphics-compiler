@@ -1986,42 +1986,44 @@ if(UNIX)
   endif()
 
 
-  #Copying script to the build directory to elevate permissions - replaces file if already exists
-  file(
-      COPY ${IGC_BUILD__PROJ_SYMBOL_SCRIPT_FULL_PATH}
-      FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-      DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
+  configure_file(
+      "${IGC_BUILD__PROJ_SYMBOL_SCRIPT_FULL_PATH}"
+      "${IGC_BUILD__PROJ_SYMBOL_SCRIPT_COPY_PATH}"
+      COPYONLY
+  )
+
+  set(IGC_BUILD__PROJ_LINKER_SCRIPT_DEPENDS
+      "${IGC_BUILD__PROJ_SYMBOL_SCRIPT_COPY_PATH}"
+      $<TARGET_OBJECTS:${IGC_BUILD__PROJ__igc_objs}>
   )
 
   if(TARGET ${IGC_BUILD__PROJ__AdaptorDX})
       set(IGC_BUILD__PROJ_DXIL_LIBRARY_NAME "$<TARGET_FILE:${IGC_BUILD__PROJ__AdaptorDX}>")
+      list(APPEND IGC_BUILD__PROJ_LINKER_SCRIPT_DEPENDS ${IGC_BUILD__PROJ_DXIL_LIBRARY_NAME})
   endif()
 
   if(TARGET ${IGC_BUILD__PROJ__BiFLib_OCL})
       set(IGC_BUILD__PROJ_BIF_LIBRARY_NAME "$<TARGET_FILE:${IGC_BUILD__PROJ__BiFLib_OCL}>")
+      list(APPEND IGC_BUILD__PROJ_LINKER_SCRIPT_DEPENDS ${IGC_BUILD__PROJ_BIF_LIBRARY_NAME})
   endif()
 
   if(TARGET ${IGC_BUILD__PROJ__VulkanFrontend})
       set(IGC_BUILD__PROJ_VULKAN_FE_LIBRARY_NAME "$<TARGET_FILE:${IGC_BUILD__PROJ__VulkanFrontend}>")
+      list(APPEND IGC_BUILD__PROJ_LINKER_SCRIPT_DEPENDS ${IGC_BUILD__PROJ_VULKAN_FE_LIBRARY_NAME})
   endif()
 
   # The script scans the .o files for non-hidden global symbols and writes them
   # into igc_symbols.ld, which is then fed to the linker via --version-script.
-  # Before the OBJECT-library refactor, igc_dll compiled its own sources and
-  # $<TARGET_OBJECTS:igc_dll> resolved to those .o files. Now all sources
-  # are compiled by igc_objs (the OBJECT library) and $<TARGET_OBJECTS:igc_dll>
-  # expands to an EMPTY list on Linux (igc_dll only carries .rc resources on
-  # Windows) -- which produced an empty version script and a libigc.so with
-  # no exported symbols. Switch the scan to igc_objs's output.
   add_custom_command(
-      TARGET "${IGC_BUILD__PROJ__igc_dll}"
-      PRE_LINK
-      COMMAND ${IGC_BUILD__PROJ_SYMBOL_SCRIPT_COPY_PATH} ${IGC_BUILD__PROJ_LINKER_SCRIPT_NAME} ${IGC_BUILD__PROJ_BIF_LIBRARY_NAME} ${IGC_BUILD__PROJ_DX10_LIBRARY_NAME} ${IGC_BUILD__PROJ_DXIL_LIBRARY_NAME} ${IGC_BUILD__PROJ_VULKAN_FE_LIBRARY_NAME} $<TARGET_OBJECTS:${IGC_BUILD__PROJ__igc_objs}> --
+      OUTPUT "${IGC_BUILD__PROJ_LINKER_SCRIPT_FULL_PATH}"
+      COMMAND bash ${IGC_BUILD__PROJ_SYMBOL_SCRIPT_COPY_PATH} ${IGC_BUILD__PROJ_LINKER_SCRIPT_NAME} ${IGC_BUILD__PROJ_BIF_LIBRARY_NAME} ${IGC_BUILD__PROJ_DX10_LIBRARY_NAME} ${IGC_BUILD__PROJ_DXIL_LIBRARY_NAME} ${IGC_BUILD__PROJ_VULKAN_FE_LIBRARY_NAME} $<TARGET_OBJECTS:${IGC_BUILD__PROJ__igc_objs}> --
+      DEPENDS ${IGC_BUILD__PROJ_LINKER_SCRIPT_DEPENDS}
       COMMAND_EXPAND_LISTS
       COMMENT "Creating linker script for custom symbol exporting"
   )
 
-  #Using just created linker script from add_custom_command
+  target_sources("${IGC_BUILD__PROJ__igc_dll}" PRIVATE "${IGC_BUILD__PROJ_LINKER_SCRIPT_FULL_PATH}")
+  set_property(TARGET "${IGC_BUILD__PROJ__igc_dll}" APPEND PROPERTY LINK_DEPENDS "${IGC_BUILD__PROJ_LINKER_SCRIPT_FULL_PATH}")
   target_link_libraries("${IGC_BUILD__PROJ__igc_dll}" PRIVATE -Wl,--version-script="${IGC_BUILD__PROJ_LINKER_SCRIPT_FULL_PATH}")
 
 endif()
