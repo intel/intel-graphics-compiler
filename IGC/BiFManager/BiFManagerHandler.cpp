@@ -112,13 +112,17 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
       IGC_ASSERT_MESSAGE(0, "materializeAll failed for generic builtin module");
     }
 
-#if LLVM_VERSION_MAJOR >= 23
     for (auto &F : BiFSection->get()->functions()) {
       LLVMContext &C = F.getContext();
       MDNode *N = MDNode::get(C, MDString::get(C, "IGC built-in function"));
       F.setMetadata(bifMark, N);
     }
-#endif
+
+    for (auto &GV : BiFSection->get()->globals()) {
+      LLVMContext &C = GV.getContext();
+      MDNode *N = MDNode::get(C, MDString::get(C, "IGC built-in global"));
+      GV.setMetadata(bifMark, N);
+    }
 
     if (CallbackLinker == nullptr) {
       BiFSection->get()->setDataLayout(Module.getDataLayout());
@@ -158,19 +162,34 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
     }
   }
 
-#if LLVM_VERSION_MAJOR >= 23
-  // Remove unused BiF functions
+  // Remove unused BiF functions & globals
+  // Previously - removal of unused functions was performed earlier - before linking
+  // ld.linkInModule(std::move(*BiFSection), llvm::Linker::OverrideFromSrc)
+
+  // But now, when removal of unused functions was moved here, to later stage - after linking,
+  // then during linking global values are also being copied - because they're used by those functions.
+
+  // So, when we remove those unused functions here, we also need to remove unused globals.
+
   bool changed = true;
+  auto removeUnusedBiF = [&](auto &Item) {
+    if (IsBiF(&Item) && Item.use_empty()) {
+      Item.eraseFromParent();
+      changed = true;
+    }
+  };
+
   while (changed) {
     changed = false;
+
     for (auto &F : llvm::make_early_inc_range(Module.functions())) {
-      if (IsBiF(&F) && F.use_empty()) {
-        F.eraseFromParent();
-        changed = true;
-      }
+      removeUnusedBiF(F);
+    }
+
+    for (auto &GV : llvm::make_early_inc_range(Module.globals())) {
+      removeUnusedBiF(GV);
     }
   }
-#endif
 
   BIF_COMPILER_TIME_END(TIME_OCL_BiFMgr_LinkAllSections);
 
@@ -384,30 +403,6 @@ void BiFManagerHandler::cleanModule(llvm::Module &Base) {
   for (auto &pFunc : Base) {
     Explore(&pFunc);
   }
-
-#if LLVM_VERSION_MAJOR < 23
-  // nuke the unused functions so we can materializeAll() quickly
-  auto CleanUnused = [](Module *Module) {
-    for (auto I = Module->begin(), E = Module->end(); I != E;) {
-      auto *F = &(*I++);
-      if ((F->isDeclaration() || F->isMaterializable()) &&
-          // We cannot remove the llvm intrinsics, because
-          // they could be collected by the BitcodeReader in
-          // list UpgradedIntrinsics. If we remove it now -
-          // it would crash during materializing.
-          !F->isIntrinsic()) {
-        if (F->materialized_use_begin() == F->use_end()) {
-          F->eraseFromParent();
-        }
-      }
-    }
-  };
-
-  for (auto bifsection_i = LoadedBiFSections.begin(); bifsection_i != LoadedBiFSections.end(); ++bifsection_i) {
-    llvm::Module *Module = bifsection_i->second.get();
-    CleanUnused(Module);
-  }
-#endif
 }
 
 bool BiFManagerHandler::isModulePtrSize32(llvm::Module *pMain) {
