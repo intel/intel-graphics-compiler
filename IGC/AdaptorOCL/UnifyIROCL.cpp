@@ -479,6 +479,12 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
     // This pass changes all illegal function signatures to be passed by pointer instead.
     IGC_ADD_PASS_AUTO(npm, lpm, LegalizeFunctionSignatures);
 
+    // LegalizeFunctionSignatures may introduce aggregate loads and stores after
+    // the initial type legalization. Optimizations normally remove them, but
+    // code generation cannot consume them when optimization is disabled.
+    if (isOptDisabled)
+      IGC_ADD_PASS(npm, lpm, TypesLegalizationPassNPM(), new TypesLegalizationPassLPM());
+
     IGC_ADD_PASS(npm, lpm, ProcessBuiltinMetaDataNPM(), createProcessBuiltinMetaDataPass());
     IGC_ADD_PASS_AUTO(npm, lpm, PurgeMetaDataUtils);
   }

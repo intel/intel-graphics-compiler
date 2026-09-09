@@ -11294,8 +11294,12 @@ bool GlobalRA::hybridRA(LocalRA &lra) {
     bool isColoringGood =
         coloring.regAlloc(lra.doHybridBCR(), lra.hasHighInternalBC(), &rpe);
     if (!isColoringGood) {
-      if (!kernel.getOption(vISA_Debug)) {
-        // Why?? Keep LRA results when -debug is passed
+      // Debug compilation normally keeps LRA results after hybrid RA fails.
+      // Auto-GRF is the exception: a later retry may change the physical
+      // register pool, invalidating assignments made for the old GRF mode.
+      if (!kernel.getOption(vISA_Debug) ||
+          (kernel.useAutoGRFSelection() &&
+           kernel.canUpdateKernelToLargerGRF())) {
         kernel.Declares.resize(numOrigDcl);
         lra.undoLocalRAAssignments(false);
       }
