@@ -1716,7 +1716,7 @@ LscUntypedLoad:
     {
         $6.exec_size =
             lscCheckExecSize(pBuilder, $3, $2, $7.shape.order, $6.exec_size);
-        pBuilder->CISA_create_lsc_untyped_inst(
+        ABORT_ON_FAIL(pBuilder->CISA_create_lsc_untyped_inst(
             $1,  // predicate
             $2,  // subop
             $3,  // sfid
@@ -1732,7 +1732,7 @@ LscUntypedLoad:
             $8.regs[0],  // src0
             nullptr,     // src1
             nullptr,     // src2
-            CISAlineno);
+            CISAlineno));
     }
 
 //
@@ -1831,7 +1831,7 @@ LscUntypedStore:
     {
         $5.exec_size =
             lscCheckExecSize(pBuilder, $3, $2, $7.shape.order, $5.exec_size);
-        pBuilder->CISA_create_lsc_untyped_inst(
+        ABORT_ON_FAIL(pBuilder->CISA_create_lsc_untyped_inst(
             $1,  // predicate
             $2,  // subop
             $3,  // SFID
@@ -1847,7 +1847,7 @@ LscUntypedStore:
             $6.regs[0],  // src0
             $7.reg,      // src1
             nullptr,     // src2
-            CISAlineno);
+            CISAlineno));
     }
 
 LscUntypedStridedStore:
@@ -1919,7 +1919,7 @@ LscUntypedAtomic:
     {
         $5.exec_size =
             lscCheckExecSize(pBuilder, $3, $2, $6.shape.order, $5.exec_size);
-        pBuilder->CISA_create_lsc_untyped_inst(
+        ABORT_ON_FAIL(pBuilder->CISA_create_lsc_untyped_inst(
             $1,  // predicate
             $2,                // op
             $3,                // sfid
@@ -1935,7 +1935,7 @@ LscUntypedAtomic:
             $7.regs[0],      // src0 addr
             $8,              // src1 data
             $9,              // src2 data (for icas/fcas)
-            CISAlineno);
+            CISAlineno));
     }
 
 LscTypedMSRTLoad:

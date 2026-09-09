@@ -387,21 +387,18 @@ int IR_Builder::translateLscUntypedInst(
 
   int status = VISA_SUCCESS;
   auto check = [&](bool z, const char *what) {
-    if (!z) {
-      vISA_ASSERT_INPUT(false, std::string(what));
-      status = VISA_FAILURE;
-    }
+    if (!z)
+      status = recordInputError(what);
   };
 
   // This enforces a64 payloads to have .decl type Q/UQ
   // and a32* to have D/UD.
   // Later changes will attempt to uncomment this and enforce the change.
   //
-  vISA_ASSERT_INPUT(addrInfo.size != LSC_ADDR_SIZE_64b ||
-                    IS_QTYPE(src0Addr->getType()),
-                    ":a64 expects Q/UQ");
-  vISA_ASSERT_INPUT(addrInfo.size != LSC_ADDR_SIZE_32b ||
-                    IS_DTYPE(src0Addr->getType()), ":a32* expects D/UD");
+  if (addrInfo.size == LSC_ADDR_SIZE_64b && !IS_QTYPE(src0Addr->getType()))
+    return recordInputError(":a64 expects Q/UQ");
+  if (addrInfo.size == LSC_ADDR_SIZE_32b && !IS_DTYPE(src0Addr->getType()))
+    return recordInputError(":a32* expects D/UD");
 
   const G4_ExecSize execSize = toExecSize(visaExecSize);
   const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize, hasNibCtrl());
@@ -412,8 +409,8 @@ int IR_Builder::translateLscUntypedInst(
     // Translate argument loads to platform specific logic
     // loads via base bti[255][r0[31:6]]
     // (BTI 255 with :a32 is relative to the General State Base Address)
-    vISA_ASSERT_INPUT(addrInfo.size == LSC_ADDR_SIZE_32b,
-                      "lsc_load... arg[...] must be :a32");
+    if (addrInfo.size != LSC_ADDR_SIZE_32b)
+      return recordInputError("lsc_load... arg[...] must be :a32");
     //
     // (W) and (1)        TMP0:ud   r0.0:ud  0xFFFFFFC0:ud
     // (W) add (ExecSize) TMP1:ud   TMP0:ud  src0Addr:ud
@@ -493,7 +490,8 @@ int IR_Builder::translateLscUntypedInst(
     vecSize = lscEncodeDataElems(dataShape.elems, desc, status);
     lscEncodeDataOrder(dataShape.order, desc, status);
   } else {
-    vISA_ASSERT_INPUT(dataShape.chmask, "channel mask must not be empty");
+    if (!dataShape.chmask)
+      return recordInputError("channel mask must not be empty");
     vecSize = 0;
     if (dataShape.chmask & LSC_DATA_CHMASK_X) {
       desc |= 1 << 12;
@@ -677,7 +675,7 @@ int IR_Builder::translateLscUntypedInst(
       default:
         ss << "??";
       }
-      ss << " x " << (int)execSize << " elem(s) ";
+      ss << " x " << (int)toExecSize(execSize) << " elem(s) ";
       if (dataShape.order == LSC_DATA_ORDER_TRANSPOSE) {
         ss << "transposed ";
       } else {
@@ -786,10 +784,8 @@ int IR_Builder::translateLscUntypedInstUnified(
 
   int status = VISA_SUCCESS;
   auto check = [&](bool z, const char *what) {
-    if (!z) {
-      vISA_ASSERT_INPUT(false, std::string(what));
-      status = VISA_FAILURE;
-    }
+    if (!z)
+      status = recordInputError(what);
   };
 
   check(addrInfo.type != LSC_ADDR_TYPE_BSS &&
@@ -818,11 +814,12 @@ int IR_Builder::translateLscUntypedInstUnified(
     //   lsc_load.ugm ... arg(0x0)[ADDR]...
     // As:
     //   lsc_load.ugm ... flat(r0_uq(0,7))[ADDR]...
-    vISA_ASSERT_INPUT(surface == nullptr ||
-                      (surface->isImm() && surface->asImm()->getImm() == 0) ||
-                      surface->isNullReg(),
-                      "lsc_load... arg[...] must have nullptr surface");
-    vISA_ASSERT_INPUT(lscSfid == LSC_UGM, "lsc_load... arg[...] must use .ugm");
+    if (surface != nullptr &&
+        !(surface->isImm() && surface->asImm()->getImm() == 0) &&
+        !surface->isNullReg())
+      return recordInputError("lsc_load... arg[...] must have nullptr surface");
+    if (lscSfid != LSC_UGM)
+      return recordInputError("lsc_load... arg[...] must use .ugm");
 
     auto r0_7_uq = createSrc(getBuiltinR0()->getRegVar(), 0, 7,
                              getRegionScalar(), Type_UQ);

@@ -4116,6 +4116,13 @@ std::stringstream &IR_Builder::criticalMsgStream() {
   return const_cast<CISA_IR_Builder *>(parentBuilder)->criticalMsgStream();
 }
 
+int IR_Builder::recordInputError(const char *what) {
+  criticalMsgStream() << what << "\n";
+  if (parentBuilder->getBuilderMode() != vISA_ASM_READER)
+    vISA_ASSERT_INPUT(false, std::string(what));
+  return VISA_FAILURE;
+}
+
 bool CISA_IR_Builder::CISA_create_dpas_instruction(
     ISA_Opcode opcode, VISA_EMask_Ctrl emask, unsigned exec_size,
     VISA_opnd *pred_cisa, VISA_opnd *dst_cisa, VISA_opnd *src0_cisa,

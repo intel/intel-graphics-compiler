@@ -5839,6 +5839,14 @@ VISAKernel *CEncoder::shaderOverrideVISASecondPassOrInlineAsm(bool visaAsmOverri
     }
   }
 
+  // Bail out before touching stackFuncMap: a parse that stopped on the first
+  // error leaves vAsmTextBuilder without the stack functions, so looking them
+  // up below would throw.
+  if (vISAAsmParseError) {
+    COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISACompile);
+    return nullptr;
+  }
+
   // We need to update stackFuncMap for the symbol table for the overridden
   // object, because stackFuncMap contains information about functions for
   // the original object.
@@ -5848,11 +5856,6 @@ VISAKernel *CEncoder::shaderOverrideVISASecondPassOrInlineAsm(bool visaAsmOverri
       VISAFunction *original = Iter.second;
       stackFuncMap[F] = static_cast<VISAFunction *>(vAsmTextBuilder->GetVISAKernel(original->getFunctionName()));
     }
-  }
-
-  if (vISAAsmParseError) {
-    COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISACompile);
-    return nullptr;
   }
 
   if (!visaAsmOverride) {
