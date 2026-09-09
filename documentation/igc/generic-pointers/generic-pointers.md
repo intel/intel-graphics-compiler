@@ -64,8 +64,8 @@ void kernel K(global int* ptr)
 LLVM code snippet representing a call to `printElement` function would look as below:
 
 ```llvm
-  %ptr_as_generic = addrspacecast i32* %ptr to i32 addrspace(4)*                   ; i32* %ptr is a private address space pointer. LLVM treats addrspace(0) as default, therefore skips printing it.
-  call spir_func void @printElement(i32 addrspace(4)* %ptr_as_generic, i32 0)
+  %ptr_as_generic = addrspacecast ptr %ptr to ptr addrspace(4)                   ; ptr %ptr is a private address space pointer. LLVM treats addrspace(0) as default, therefore skips printing it.
+  call spir_func void @printElement(ptr addrspace(4) %ptr_as_generic, i32 0)
 ```
 
 It's worth acknowledging that an `addrspacecast` instruction is the only way to create a generic address space pointer.
@@ -79,7 +79,7 @@ Intel GPUs don't support generic pointers natively, therefore the entire burden 
 Every time a generic pointer is created, it must be marked with the so-called `tag` which represents the address space of the pointer that it was cast from. We can think of a tag as data that stores information about the underlying, named address space of a pointer. Let's take a look at the following example of casting a private address space pointer to a generic address space pointer:
 
 ```llvm
-%generic_ptr = addrspacecast i32* %private_ptr to i32 addrspace(4)*
+%generic_ptr = addrspacecast ptr %private_ptr to ptr addrspace(4)
 ```
 
 Since tagging happens when `addrspacecast` instructions get emitted as VISA code, here is a VISA code snippet which represents creation of above generic address space pointer:
@@ -105,7 +105,7 @@ global:   000/111
 Every time a generic pointer is cast back to a named address space, `[61:63]` bits of an address must be restored by clearing a tag, so that memory operation is executed on an original address. Please take a look at the example below:
 
 ```llvm
-%private_ptr = addrspacecast i32 addrspace(4)* %generic_ptr to i32*
+%private_ptr = addrspacecast ptr addrspace(4) %generic_ptr to ptr
 ```
 
 To preserve the canonical form (47<sup>th</sup> bit is replicated to the upper bits) of an address, clearing a tag is done by merging bits `[56:59]`, which we assume are in canonical form, into bits `[60:63]`.
@@ -123,13 +123,13 @@ Note: To understand this section, it is necessary to comprehendingly read sectio
 Since all generic pointers are tagged by addrspacecast during creation, each generic pointer should contain information about its underlying, named address space at bits `[61:63]`. The information can be used to resolve generic pointer memory accesses to a sequence of instructions, that are legal from a hardware point of view.
 
 ```llvm
-  %1 = load i32, i32 addrspace(4)* %ptr, align 4
+  %1 = load i32, ptr addrspace(4) %ptr, align 4
 ```
 
 Assuming that no generic pointer related optimizations have been applied, the `load` instruction above would be resolved to the following sequence of instructions:
 
 ```llvm
-  %1 = ptrtoint i32 addrspace(4)* %ptr to i64
+  %1 = ptrtoint ptr addrspace(4) %ptr to i64
   %2 = lshr i64 %1, 61  ; tag
   switch i64 %2, label %GlobalBlock [
     i64 1, label %PrivateBlock  ; 001
@@ -137,18 +137,18 @@ Assuming that no generic pointer related optimizations have been applied, the `l
   ]
 
 PrivateBlock:                                     ; preds = %entry
-  %3 = addrspacecast i32 addrspace(4)* %ptr to i32*
-  %privateLoad = load i32, i32* %3, align 4
+  %3 = addrspacecast ptr addrspace(4) %ptr to ptr
+  %privateLoad = load i32, ptr %3, align 4
   br label %6
 
 LocalBlock:                                       ; preds = %entry
-  %4 = addrspacecast i32 addrspace(4)* %ptr to i32 addrspace(3)*
-  %localLoad = load i32, i32 addrspace(3)* %4, align 4
+  %4 = addrspacecast ptr addrspace(4) %ptr to ptr addrspace(3)
+  %localLoad = load i32, ptr addrspace(3) %4, align 4
   br label %6
 
 GlobalBlock:                                      ; preds = %entry
-  %5 = addrspacecast i32 addrspace(4)* %ptr to i32 addrspace(1)*
-  %globalLoad = load i32, i32 addrspace(1)* %5, align 4
+  %5 = addrspacecast ptr addrspace(4) %ptr to ptr addrspace(1)
+  %globalLoad = load i32, ptr addrspace(1) %5, align 4
   br label %6
 
 6:                                                ; preds = %GlobalBlock, %LocalBlock, %PrivateBlock
@@ -156,6 +156,35 @@ GlobalBlock:                                      ; preds = %entry
 ```
 
 This is the moment when all the dots connect. The sequence above represents a switch statement which is based on a value of a tag. There is one switch case per address space. Each switch case contains an `addrspacecast` instruction from generic to either global, local, or private addrspace and the corresponding `load` instruction which is not operating on a generic pointer anymore, so it can be transformed to a legal send instruction.
+
+
+### Handling Of NULL Generic Pointers And Pointer Comparison
+
+Note: To understand this section, it is necessary to comprehendingly read section [Generic Pointer Tagging](#generic-pointer-tagging).
+
+OpenCL requires that casting a null pointer to another address space yields a null pointer, so a comparison of such a pointer against `NULL` must evaluate to true. [Generic Pointer Tagging](#generic-pointer-tagging) mechanism conflicts with that requirement, because tagging modifies the value of the address:
+
+```llvm
+%generic_null = addrspacecast ptr addrspace(3) null to ptr addrspace(4)
+%is_null = icmp eq ptr addrspace(4) %generic_null, null    ; must be true
+```
+
+The `addrspacecast` above sets bits `[61:63]` to the local address space tag `010`, so the resulting generic pointer holds `0x4000000000000000` instead of `0`. Every comparison against `NULL` performed on such a pointer would result in false.
+
+Only the null value is problematic, as comparison of non-null pointers in different address spaces should always result in false.
+In order to handle NULL comparisons correctly, [Generic Null Pointer Propagation pass](https://github.com/intel/intel-graphics-compiler/blob/master/IGC/Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericNullPtrPropagation.cpp) was introduced. It propagates nulls through address space casts by inserting cmp+sel instructions.
+
+```llvm
+%generic_ptr = addrspacecast ptr %prv_ptr to ptr addrspace(4)
+
+; is transformed into:
+
+%cast = addrspacecast ptr %prv_ptr to ptr addrspace(4)
+%isnotnull = icmp ne ptr %prv_ptr, null
+%generic_ptr = select i1 %isnotnull, ptr addrspace(4) %cast, ptr addrspace(4) null
+```
+
+After such transformation, all comparisons between `%generic_ptr` and `NULL` pointer will work correctly.
 
 ### Generic Address Space Optimizations
 
@@ -172,16 +201,16 @@ If it can be proved that a particular generic address space pointer never points
 Here is a simple example:
 
 ```llvm
-%generic_ptr = addrspacecast i32 addrspace(1)* %global_ptr to i32 addrspace(4)*
-%v = load i32, i32 addrspace(4)* %generic_ptr, align 4
+%generic_ptr = addrspacecast ptr addrspace(1) %global_ptr to ptr addrspace(4)
+%v = load i32, ptr addrspace(4) %generic_ptr, align 4
 ```
 
 The above `load` instruction operates on a generic address space pointer which is always created from a global address space pointer, so it would be unoptimal to generate a switch statement for the `load` instruction, as only one switch case would be visited. IGC has the ability to propagate a named address space from `addrspacecast` up to its users to eliminate as many generic pointer uses as possible. The more memory operations are reached during the named address space propagation, the more efficient code is produced in the end. The above llvm code snipped would be propagated to the following sequence of instructions:
 
 ```llvm
-%generic_ptr = addrspacecast i32 addrspace(1)* %global_ptr to i32 addrspace(4)*
-%back_to_global_ptr = addrspacecast i32 addrspace(4)* %generic_ptr to i32 addrspace(1)*
-%v = load i32, i32 addrspace(1)* %back_to_global_ptr, align 4
+%generic_ptr = addrspacecast ptr addrspace(1) %global_ptr to ptr addrspace(4)
+%back_to_global_ptr = addrspacecast ptr addrspace(4) %generic_ptr to ptr addrspace(1)
+%v = load i32, ptr addrspace(1) %back_to_global_ptr, align 4
 ```
 
 As you may notice, `load` instruction no longer operates on a generic address space pointer, so the performance overhead associated with the switch statement has been eliminated. This is only a trivial example. In a real case scenarios, compiled code is much more complex to the extent that generic address space needs to be propagated through `alloca` instructions, function calls etc.
@@ -200,26 +229,26 @@ It gives the following optimization opportunities:
 If private memory is allocated in a global address space, the following load operation:
 
 ```llvm
-%v = load i32, i32 addrspace(4)* %ptr, align 4
+%v = load i32, ptr addrspace(4) %ptr, align 4
 ```
 
 can be dynamically resolved with avoidance of private branch generation:
 
 ```llvm
-  %1 = ptrtoint i32 addrspace(4)* %ptr to i64
+  %1 = ptrtoint ptr addrspace(4) %ptr to i64
   %2 = lshr i64 %1, 61  ; tag
   switch i64 %2, label %GlobalBlock [
     i64 2, label %LocalBlock    ; 010
   ]
 
 LocalBlock:                                       ; preds = %entry
-  %4 = addrspacecast i32 addrspace(4)* %ptr to i32 addrspace(3)*
-  %localLoad = load i32, i32 addrspace(3)* %4, align 4
+  %4 = addrspacecast ptr addrspace(4) %ptr to ptr addrspace(3)
+  %localLoad = load i32, ptr addrspace(3) %4, align 4
   br label %6
 
 GlobalBlock:                                      ; preds = %entry
-  %5 = addrspacecast i32 addrspace(4)* %ptr to i32 addrspace(1)*
-  %globalLoad = load i32, i32 addrspace(1)* %5, align 4
+  %5 = addrspacecast ptr addrspace(4) %ptr to ptr addrspace(1)
+  %globalLoad = load i32, ptr addrspace(1) %5, align 4
   br label %6
 
 6:                                                ; preds = %GlobalBlock, %LocalBlock, %PrivateBlock
@@ -233,8 +262,8 @@ If a compiler detects that there are no `addrspacecast` instructions from the lo
 If both conditions are met, IGC can resolve all generic pointer memory accesses without generating a performance-killing switch statement described in [Resolving Generic Address Space Pointer Accesses At Runtime](#resolving-generic-address-space-pointer-accesses-at-runtime). All generic memory accesses can simply be statically resolved to a global memory accesses:
 
 ```llvm
-%global_ptr = addrspacecast i32 addrspace(4)* %generic_ptr to i32 addrspace(1)*
-%v = load i32, i32 addrspace(1)* %global_ptr, align 4
+%global_ptr = addrspacecast ptr addrspace(4) %generic_ptr to ptr addrspace(1)
+%v = load i32, ptr addrspace(1) %global_ptr, align 4
 ```
 
 #### Resolving Generic Pointers Originating From Kernel Arguments
@@ -250,20 +279,20 @@ For the by-value case, the reconstructed pointer typically appears either as an 
 
 ```llvm
 ; %s is a by-value struct kernel argument that contains a raw pointer.
-%slot = getelementptr inbounds %structtype, %structtype* %s, i64 0, i32 0
-%bits = load i64, i64* %slot, align 8
-%p    = inttoptr i64 %bits to i32 addrspace(4)*      ; rebuilt as generic
-%v    = load i32, i32 addrspace(4)* %p, align 4      ; would need runtime resolution
+%slot = getelementptr inbounds %structtype, ptr %s, i64 0, i32 0
+%bits = load i64, ptr %slot, align 8
+%p    = inttoptr i64 %bits to ptr addrspace(4)      ; rebuilt as generic
+%v    = load i32, ptr addrspace(4) %p, align 4      ; would need runtime resolution
 ```
 
 The promotion inserts an `addrspacecast` from generic to global, and the address space propagation described in [Resolving Generic Address Space Pointer At Compile-Time](#resolving-generic-address-space-pointer-at-compile-time) then rewrites the memory accesses to operate on the global pointer:
 
 ```llvm
-%slot = getelementptr inbounds %structtype, %structtype* %s, i64 0, i32 0
-%bits = load i64, i64* %slot, align 8
-%p    = inttoptr i64 %bits to i32 addrspace(4)*
-%pg   = addrspacecast i32 addrspace(4)* %p to i32 addrspace(1)*   ; promoted to global
-%v    = load i32, i32 addrspace(1)* %pg, align 4                  ; resolved statically
+%slot = getelementptr inbounds %structtype, ptr %s, i64 0, i32 0
+%bits = load i64, ptr %slot, align 8
+%p    = inttoptr i64 %bits to ptr addrspace(4)
+%pg   = addrspacecast ptr addrspace(4) %p to ptr addrspace(1)     ; promoted to global
+%v    = load i32, ptr addrspace(1) %pg, align 4                   ; resolved statically
 ```
 
 The promotion is only valid if the loaded value can be traced back to the kernel argument and there are no instructions potentially writing to the same memory location.
@@ -304,20 +333,20 @@ If the compiler cannot manage to resolve these builtins at compile-time by named
 Here is an example of the llvm code sequence that gets generated for `to_private` builtin function:
 
 ```llvm
-  %1 = ptrtoint i8 addrspace(4)* %generic_ptr to i64
+  %1 = ptrtoint ptr addrspace(4) %generic_ptr to i64
   %2 = lshr i64 %1, 61
   %cmpTag = icmp eq i64 %2, 1   ; private: 001
   br i1 %cmpTag, label %IfBlock, label %ElseBlock
 
 IfBlock:                                          ; preds = %entry
-  %3 = addrspacecast i8 addrspace(4)* %1 to i8*
+  %3 = addrspacecast ptr addrspace(4) %1 to ptr
   br label %4
 
 ElseBlock:                                        ; preds = %entry
   br label %4
 
 4:                                                ; preds = %ElseBlock, %IfBlock
-  %call = phi i8* [ %3, %IfBlock ], [ null, %ElseBlock ]
+  %call = phi ptr [ %3, %IfBlock ], [ null, %ElseBlock ]
 ```
 
 These builtins imposes on the compiler to distinguish between generic pointer initialized with a private and a global pointers. It forces IGC to implement a special behavior when [Private Memory Allocated In A Global Buffer](#private-memory-allocated-in-a-global-buffer) optimization is enabled.
@@ -331,8 +360,8 @@ To avoid performance slippage when explicit casts are used in a kernel, IGC stil
 1. **Private pointers tagging must be enabled so that explicit casts can distinguish them from global pointers**.
 
     ```llvm
-    %generic_ptr = addrspacecast i32* %private_ptr to i32 addrspace(4)*   ;  tag set to 001 due to presence of explicit casts in a kernel
-    %v = load i32, i32 addrspace(4)* %generic_ptr, align 4
+    %generic_ptr = addrspacecast ptr %private_ptr to ptr addrspace(4)   ;  tag set to 001 due to presence of explicit casts in a kernel
+    %v = load i32, ptr addrspace(4) %generic_ptr, align 4
     ```
 
 2. **Enable [Clearing A Generic Pointer Tag](#clearing-a-generic-pointer-tag) for generic pointers casted back to global address space**.
@@ -340,8 +369,8 @@ To avoid performance slippage when explicit casts are used in a kernel, IGC stil
     Since IGC uses original values of `[61:63]` bits of an address (either `000` or `111`) as a tag for global pointers, clearing them when casting generic pointer back to a global pointer is not necessary by default. But since IGC may apply [Static Resolution Of Generic Pointer Memory Accesses When Local Memory Is Not Used](#static-resolution-of-generic-pointer-memory-accesses-when-local-memory-is-not-used) optimization, it is possible that a generic pointer created from a private pointer may be transformed back to a global address space, thereby not clearing a private tag before executing a load operation. Therefore, to avoid executing a load instruction with a tagged pointer, the tag must be cleared when casting a pointer from the generic to the global address space:
 
     ```llvm
-    %generic_ptr = addrspacecast i32* %private_ptr to i32 addrspace(4)*                ;  tag set to 001 due to presence of explicit casts in a kernel
-    %global_ptr = addrspacecast i32 addrspace(4)* %generic_ptr to i32 addrspace(1)*    ;  addrspacecast inserted by "Static Resolution Of Generic Pointer Memory Accesses When Local Memory Is Not Used"
-                                                                                       ;    tag must be cleared to avoid executing a load instruction with a tagged pointer
-    %v = load i32, i32 addrspace(1)* %global_ptr, align 4
+    %generic_ptr = addrspacecast ptr %private_ptr to ptr addrspace(4)                ;  tag set to 001 due to presence of explicit casts in a kernel
+    %global_ptr = addrspacecast ptr addrspace(4) %generic_ptr to ptr addrspace(1)    ;  addrspacecast inserted by "Static Resolution Of Generic Pointer Memory Accesses When Local Memory Is Not Used"
+                                                                                     ;    tag must be cleared to avoid executing a load instruction with a tagged pointer
+    %v = load i32, ptr addrspace(1) %global_ptr, align 4
     ```
