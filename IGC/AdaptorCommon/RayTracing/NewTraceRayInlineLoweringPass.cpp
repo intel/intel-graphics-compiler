@@ -728,8 +728,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
     auto *shaderTy = IRB.CreateSelect(loadCommittedFromPotential, IRB.getInt32(AnyHit),
                                       IRB.getInt32(I->isCommitted() ? ClosestHit : AnyHit));
 
-    if (I->getInfoKind() == RAY_T_CURRENT && I->isCommitted() &&
-        m_pCGCtx->platform.isRayQueryReturnOptimizationEnabled()) {
+    if (I->isCommitted() && m_pCGCtx->platform.isRayQueryReturnOptimizationEnabled()) {
       auto *isMiss =
           IRB.CreateICmpEQ(data.CommittedStatus, IRB.getInt32(RTStackFormat::COMMITTED_STATUS::COMMITTED_NOTHING));
       shaderTy = IRB.CreateSelect(isMiss, IRB.getInt32(Miss), shaderTy);
