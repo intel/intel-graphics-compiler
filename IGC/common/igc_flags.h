@@ -1915,7 +1915,7 @@ DECLARE_IGC_REGKEY(
     DWORD, ForceSIMDRPELimit, 1000,
     "Cutoff value for register estimator, when higher than that kernel is switched to lower SIMD when possible",
     DEBUG_ONLY)
-DECLARE_IGC_REGKEY(DWORD, EarlyRetryLargeGRFThreshold, 500,
+DECLARE_IGC_REGKEY(DWORD, EarlyRetryLargeGRFThreshold, 550,
                    "Cutoff value for register estimation, when highter than that kernel skips first compilation stage "
                    "and goes to retry immediately for large GRF.",
                    DEBUG_ONLY)
