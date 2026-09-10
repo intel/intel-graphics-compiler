@@ -132,6 +132,11 @@ enum LSC_STCC {
     LSC_STCC_L1WB_L2UC_L3WB = 31, // Override to L1 written back, L2 uncached, L3 written back
 };
 
+// Same message as __builtin_IB_lsc_load_global_uint, but modelled as having side effects, so
+// the load is never hoisted, CSEd or dropped. For polling loops that must re-issue it.
+uint __builtin_IB_lsc_load_se_global_uint(
+    const __global uint *base, int immElemOff, enum LSC_LDCC cacheOpt); //D32V1
+
 #ifdef cl_intel_pvc_lsc_validation
 ///////////////////////////////////////////////////////////////////////
 // LSC Loads

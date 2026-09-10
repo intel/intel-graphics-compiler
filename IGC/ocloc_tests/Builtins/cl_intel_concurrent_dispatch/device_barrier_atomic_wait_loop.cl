@@ -6,15 +6,14 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// Ensure the wait loop in __global_barrier_atomic()
-// (Source/IGC/BiFModule/Implementation/barrier.cl) polls the sync variable with a plain
-// volatile load behind an acquire fence, never with an atomic read-modify-write. An RMW
-// poll contends for the same address the arriving workgroups need for their atomic_inc,
-// and past a few hundred waiters the arrivals stop getting through and the barrier never
-// completes. Reproduced on CRI from 256 workgroups upwards.
+// Check that the wait loop in __global_barrier_atomic()
+// (Source/IGC/BiFModule/Implementation/barrier.cl) polls the sync variable with an
+// L1-uncached load, with no atomic read-modify-write and no L1-invalidating fence inside
+// the loop, and that the barrier's other atomics are left alone.
 //
-// Only the emitted shape of the poll is pinned here. The livelock itself is a
-// many-workgroup runtime property that an offline compile cannot show.
+// Only the emitted shape of the poll is checked. What that shape protects - arrivals not
+// being starved by the poll, and L1 not being flushed on every spin - is many-workgroup
+// runtime behaviour an offline compile cannot show.
 
 // REQUIRES: regkeys
 
@@ -35,31 +34,33 @@ SPDX-License-Identifier: MIT
 // CHECK-ATOMIC:       call i32 @llvm.genx.GenISA.intatomicraw{{.*}}, i32 0, i32 2)
 // CHECK-ATOMIC:       call i32 @llvm.genx.GenISA.intatomicraw{{.*}}, i32 %{{[0-9]+}}, i32 1)
 //
-// The poll: an acquire fence, then a plain volatile load tested against zero, with
-// nothing atomic in between. GenISA.memoryfence operands are (commit, L3 flush
-// RW/constant/texture/instructions, global, L1 invalidate, L1 evict, scope) - invalidate
-// set with evict clear is the acquire-only fence that lets the plain load see the other
-// workgroups' writes, and tells it apart from the AcquireRelease fences the workgroup
-// barriers emit around this sequence. A poll that regressed to an atomic RMW would have
-// neither this fence nor a volatile load of the sync variable.
+// Check that the poll uses LSCLoadWithSideEffects and compares the result with zero.
+// Reject atomic RMWs and an acquire-only fence between the arrival and the poll.
+// That fence has L1 invalidate=true and evict=false; the surrounding AcquireRelease
+// fences also set evict=true and are not excluded.
+// Load operands 3/1 encode D32V1; cache control 2 is LSC_LDCC_L1UC_L3C, needed because
+// the arrivals land in L3 and a poll that reads L1 can spin on a stale line.
+// The side-effecting intrinsic prevents loop-invariant hoisting; the vISA checks
+// below verify that the load remains inside the polling loop.
 // CHECK-ATOMIC-NOT:   GenISA.intatomicraw
-// CHECK-ATOMIC:       call void @llvm.genx.GenISA.memoryfence(i1 true, i1 true, i1 false, i1 false, i1 false, i1 true, i1 true, i1 false, i32 3)
-// CHECK-ATOMIC-NEXT:  %[[POLL:[0-9]+]] = load volatile i32, {{.*}}addrspace(1)
-// CHECK-ATOMIC-NEXT:  icmp eq i32 %[[POLL]], 0
+// CHECK-ATOMIC-NOT:   call void @llvm.genx.GenISA.memoryfence(i1 true, i1 true, i1 false, i1 false, i1 false, i1 true, i1 true, i1 false, i32 3)
+// CHECK-ATOMIC:       %[[POLL:[0-9]+]] = call i32 @llvm.genx.GenISA.LSCLoadWithSideEffects.{{[^(]*}}({{.*}}addrspace(1){{.*}}, i32 0, i32 3, i32 1, i32 2)
+// CHECK-ATOMIC-NEXT:  icmp {{eq|ne}} i32 %[[POLL]], 0
 //
 // The offset selector flip after the wait stays atomic as well: AND 0 then OR 1.
 // CHECK-ATOMIC:       call i32 @llvm.genx.GenISA.intatomicraw{{.*}}, i32 0, i32 8)
 // CHECK-ATOMIC:       call i32 @llvm.genx.GenISA.intatomicraw{{.*}}, i32 1, i32 9)
 
 // The same poll in vISA, where the loop itself can be pinned: lsc_atomic_isub is the
-// arrival and anchors the scan, then the poll block must be a fence, a plain lsc_load
-// (not lsc_atomic_*), a compare against zero, and a branch back to its own label.
-// lsc_fence.ugm.invalidate is the acquire-only fence; the barrier fences are .evict.
+// arrival and anchors the scan, then the poll block must be a plain lsc_load (not
+// lsc_atomic_*, and not preceded by a fence), a compare against zero, and a branch back
+// to its own label. IsaDisassembly.cpp prints cache controls only when they are not the
+// default, so the .uc suffix is what shows the load bypasses L1; the rest of the suffix
+// differs between the 2-level and 3-level cache encodings and is left unmatched.
 // CHECK-ISA-LABEL: .kernel "test"
 // CHECK-ISA:       lsc_atomic_isub.ugm
 // CHECK-ISA:       {{^}}[[POLL:[_a-zA-Z0-9]+]]:
-// CHECK-ISA-NEXT:    lsc_fence.ugm.invalidate
-// CHECK-ISA-NEXT:    lsc_load.ugm
+// CHECK-ISA-NEXT:    lsc_load.ugm.uc
 // CHECK-ISA-NEXT:    cmp.eq
 // CHECK-ISA-NEXT:    goto {{.*}}[[POLL]]
 

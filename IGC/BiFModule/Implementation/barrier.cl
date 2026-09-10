@@ -357,17 +357,13 @@ void __global_barrier_atomic()
             atomic_inc(syncVar);
         }
 
-        // Wait on a plain volatile load, never an atomic read-modify-write
-        // (an RMW poll would contend for the same address the arriving workgroups need
-        // for their atomic_inc, and past a few hundred waiters the arrivals would stop
-        // getting through and the barrier would never complete).
-        // The Device-scope fence invalidates L1 so the load observes those
-        // arrivals; ordering for the data the barrier protects comes from the workgroup
-        // barriers around this block.
-        do
+        // Bypass L1 to observe updates in L3 without invalidating the whole L1 each spin.
+        // The _se_ load prevents the compiler from hoisting or eliminating polls.
+        // The surrounding workgroup barriers provide memory ordering.
+        while (__builtin_IB_lsc_load_se_global_uint(
+                   (const __global uint*)syncVar, 0, LSC_LDCC_L1UC_L3C) != 0)
         {
-            __intel_atomic_work_item_fence(Device, Acquire | CrossWorkgroupMemory);
-        } while (*syncVar != 0);
+        }
 
         if (offset) {
             atomic_and(offsetVar, 0);

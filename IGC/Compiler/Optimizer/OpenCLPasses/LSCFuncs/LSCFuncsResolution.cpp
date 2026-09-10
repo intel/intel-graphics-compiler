@@ -173,6 +173,7 @@ private:
   static const StringRef PREFIX_LSC_STORE_CMASK_global;
   static const StringRef PREFIX_LSC_LOAD_local;
   static const StringRef PREFIX_LSC_LOAD_global;
+  static const StringRef PREFIX_LSC_LOAD_SE_global;
   static const StringRef PREFIX_LSC_LOAD_BLOCK_global;
   static const StringRef PREFIX_LSC_LOAD_status;
 
@@ -223,6 +224,7 @@ const StringRef LSCFuncsResolution::PREFIX_LSC_STORE_CMASK_local = "__builtin_IB
 const StringRef LSCFuncsResolution::PREFIX_LSC_STORE_CMASK_global = "__builtin_IB_lsc_store_cmask_global_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_local = "__builtin_IB_lsc_load_local_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_global = "__builtin_IB_lsc_load_global_";
+const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_SE_global = "__builtin_IB_lsc_load_se_global_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_BLOCK_global = "__builtin_IB_lsc_load_block_global_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_status = "__builtin_IB_lsc_load_status_global_";
 
@@ -306,6 +308,8 @@ void LSCFuncsResolution::visitCallInst(CallInst &CI) {
   // loads
   if (IGCLLVM::starts_with(FN, LSCFuncsResolution::PREFIX_LSC_LOAD_global)) {
     lscCall = CreateLSCLoadIntrinsicCallInst(GenISAIntrinsic::GenISA_LSCLoad, false);
+  } else if (IGCLLVM::starts_with(FN, LSCFuncsResolution::PREFIX_LSC_LOAD_SE_global)) {
+    lscCall = CreateLSCLoadIntrinsicCallInst(GenISAIntrinsic::GenISA_LSCLoadWithSideEffects, false);
   } else if (IGCLLVM::starts_with(FN, LSCFuncsResolution::PREFIX_LSC_LOAD_BLOCK_global)) {
     lscCall = CreateLSCLoadIntrinsicCallInst(GenISAIntrinsic::GenISA_LSCLoadBlock, false);
   } else if (IGCLLVM::starts_with(FN, LSCFuncsResolution::PREFIX_LSC_LOAD_local)) {
