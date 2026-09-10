@@ -999,3 +999,14 @@ DEF_VISA_OPTION(vISA_WA_SLMGlobalOffsetS20, ET_BOOL_TRUE, "-waSlmGOS20",
                 "20 data bits), instead of s21 signed integer for flat slm"
                 "send that uses ind0.",
                 false)
+DEF_VISA_OPTION(vISA_WA_FlatA32SNegGlobalOffset, ET_BOOL_TRUE,
+                "-waFlatA32SNegGlobalOffset",
+                "Fall back to folding a negative :a32s UGM flat global offset "
+                "into IND0's base instead of encoding it in the send "
+                "descriptor.",
+                false)
+DEF_VISA_OPTION(vISA_WA_FlatA32SNonzeroIND0, ET_BOOL_TRUE,
+                "-waFlatA32SNonzeroIND0",
+                "Fall back to promoting a :a32s UGM flat message with a "
+                "non-zero IND0 base to :a64.",
+                false)
