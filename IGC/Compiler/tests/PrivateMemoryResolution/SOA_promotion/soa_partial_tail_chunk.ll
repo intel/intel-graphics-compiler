@@ -9,7 +9,7 @@
 ; REQUIRES: regkeys
 ;
 ; RUN: igc_opt --opaque-pointers --ocl --platformPtl \
-; RUN:   --regkey EnablePrivMemNewSOAForScalarArrays=1 \
+; RUN:   --regkey EnablePrivMemNewSOAForScalarArrays=1,EnableSOAFallbackToOldAlgorithm=0 \
 ; RUN:   --igc-private-mem-resolution -S %s | FileCheck %s
 ;
 ; Check SoA promotion doesn't access addresses past the allocated reservation.
