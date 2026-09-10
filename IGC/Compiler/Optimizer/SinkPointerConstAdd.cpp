@@ -42,8 +42,8 @@ public:
   static char ID;
 
 private:
-  bool getConstantOffset(llvm::Value *value, int64_t &offset);
-  bool sinkConstantThroughCast(llvm::Value *value, int64_t &offset, bool acrossSExt);
+  bool getConstantOffset(llvm::Value *value, int64_t &offset, int64_t sign);
+  bool sinkConstantThroughCast(llvm::Value *value, int64_t &offset, int64_t sign, bool acrossSExt);
 };
 
 #define PASS_FLAG "igc-sink-ptr-const-add"
@@ -57,7 +57,8 @@ enum class ExtensionKind {
   Zero,
 };
 
-template <typename Fn> static bool HandleAddSub(Instruction *I, int64_t &offset, ExtensionKind kind, Fn recurseFn) {
+template <typename Fn>
+static bool HandleAddSub(Instruction *I, int64_t &offset, int64_t sign, ExtensionKind kind, Fn recurseFn) {
 
   auto widenConstant = [kind](ConstantInt *c) -> int64_t {
     return kind == ExtensionKind::Signed ? c->getSExtValue() : static_cast<int64_t>(c->getZExtValue());
@@ -67,7 +68,7 @@ template <typename Fn> static bool HandleAddSub(Instruction *I, int64_t &offset,
 
   if (auto *CO = dyn_cast<ConstantInt>(I->getOperand(1))) {
 
-    offset += opcode == Instruction::Add ? widenConstant(CO) : -widenConstant(CO);
+    offset += sign * (opcode == Instruction::Add ? widenConstant(CO) : -widenConstant(CO));
     I->replaceAllUsesWith(I->getOperand(0));
     I->eraseFromParent();
     return true;
@@ -79,15 +80,20 @@ template <typename Fn> static bool HandleAddSub(Instruction *I, int64_t &offset,
       // Cannot sink constant on the left side of subtraction
       return false;
 
-    offset += widenConstant(CO);
+    offset += sign * widenConstant(CO);
     I->replaceAllUsesWith(I->getOperand(1));
     I->eraseFromParent();
     return true;
   }
 
-  for (auto *op : {I->getOperand(0), I->getOperand(1)}) {
+  // operand(0) always keeps the caller's sign; operand(1) is negated when I is a
+  // Sub, since anything sunk out of the subtrahend must flip polarity.
+  Value *operands[] = {I->getOperand(0), I->getOperand(1)};
+  int64_t operandSigns[] = {sign, opcode == Instruction::Sub ? -sign : sign};
 
-    auto *opI = dyn_cast<Instruction>(op);
+  for (int idx = 0; idx < 2; ++idx) {
+
+    auto *opI = dyn_cast<Instruction>(operands[idx]);
     if (!opI)
       continue;
 
@@ -95,7 +101,7 @@ template <typename Fn> static bool HandleAddSub(Instruction *I, int64_t &offset,
     if (opI->getParent() != I->getParent())
       continue;
 
-    if (!recurseFn(op, offset))
+    if (!recurseFn(operands[idx], offset, operandSigns[idx]))
       continue;
 
     return true;
@@ -104,7 +110,7 @@ template <typename Fn> static bool HandleAddSub(Instruction *I, int64_t &offset,
   return false;
 }
 
-bool SinkPointerConstAddPass::getConstantOffset(Value *value, int64_t &offset) {
+bool SinkPointerConstAddPass::getConstantOffset(Value *value, int64_t &offset, int64_t sign) {
   // Recursively search for constant add operations - this will stop after the first const add found,
   // and should be called repeatedly until no more const adds can be sunk.
 
@@ -129,12 +135,13 @@ bool SinkPointerConstAddPass::getConstantOffset(Value *value, int64_t &offset) {
     if (operandInst && operandInst->getParent() != I->getParent())
       return false;
 
-    return sinkConstantThroughCast(I->getOperand(0), offset, opcode == Instruction::SExt);
+    return sinkConstantThroughCast(I->getOperand(0), offset, sign, opcode == Instruction::SExt);
   } break;
   case Instruction::Add:
   case Instruction::Sub:
-    return HandleAddSub(I, offset, ExtensionKind::Signed,
-                        [this](Value *value, int64_t &offset) { return getConstantOffset(value, offset); });
+    return HandleAddSub(I, offset, sign, ExtensionKind::Signed, [this](Value *value, int64_t &offset, int64_t sign) {
+      return getConstantOffset(value, offset, sign);
+    });
     break;
   default:
     break;
@@ -143,7 +150,7 @@ bool SinkPointerConstAddPass::getConstantOffset(Value *value, int64_t &offset) {
   return false;
 }
 
-bool SinkPointerConstAddPass::sinkConstantThroughCast(Value *value, int64_t &offset, bool acrossSExt) {
+bool SinkPointerConstAddPass::sinkConstantThroughCast(Value *value, int64_t &offset, int64_t sign, bool acrossSExt) {
   if (!value->hasOneUse())
     return false;
 
@@ -159,9 +166,10 @@ bool SinkPointerConstAddPass::sinkConstantThroughCast(Value *value, int64_t &off
   if (!flagOK)
     return false;
 
-  return HandleAddSub(
-      I, offset, acrossSExt ? ExtensionKind::Signed : ExtensionKind::Zero,
-      [this, acrossSExt](Value *value, int64_t &offset) { return sinkConstantThroughCast(value, offset, acrossSExt); });
+  return HandleAddSub(I, offset, sign, acrossSExt ? ExtensionKind::Signed : ExtensionKind::Zero,
+                      [this, acrossSExt](Value *value, int64_t &offset, int64_t sign) {
+                        return sinkConstantThroughCast(value, offset, sign, acrossSExt);
+                      });
 }
 
 bool SinkPointerConstAddPass::runOnFunction(llvm::Function &F) {
@@ -181,7 +189,7 @@ bool SinkPointerConstAddPass::runOnFunction(llvm::Function &F) {
   for (auto &intrinsic : intToPtrInsts) {
     int64_t offset = 0;
     // Keep sinking constant adds until no more can be sunk
-    while (getConstantOffset(intrinsic->getOperand(0), offset)) {
+    while (getConstantOffset(intrinsic->getOperand(0), offset, /*sign=*/1)) {
       changed = true;
     }
 
