@@ -1200,12 +1200,15 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
       DEBUG_VERBOSE("\n");
       vISA_ASSERT(false, "4-bit float type not supported for src1 or src2");
     }
-    if ((dTy != Type_F && dTy != Type_BF) ||
-        (s0Ty != Type_F && s0Ty != Type_BF)) {
-      DEBUG_VERBOSE("incorrect type for dst or src0, expecting F or BF!");
+    bool tysOk = (dTy == Type_F || dTy == Type_BF) &&
+                 (s0Ty == Type_F || s0Ty == Type_BF);
+    [[maybe_unused]] const char *expectedTypes = "F or BF";
+    if (!tysOk) {
+      DEBUG_VERBOSE("incorrect type for dst or src0, expecting "
+                    << expectedTypes << "!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      vISA_ASSERT(false, "should be type F or BF for dst or src0");
+      vISA_ASSERT(false, "expected %s for dst or src0", expectedTypes);
     }
   }
   else {

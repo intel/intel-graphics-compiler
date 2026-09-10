@@ -1735,6 +1735,12 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
     return isS4U4S2U2(Src1Precision) && isS4U4S2U2(Src2Precision);
   };
 
+  auto isIntDpas = [](GenPrecision P) {
+    return P == GenPrecision::S8 || P == GenPrecision::U8 ||
+           P == GenPrecision::S4 || P == GenPrecision::U4 ||
+           P == GenPrecision::S2 || P == GenPrecision::U2;
+  };
+
   // mirrors G4_InstDpas::getOpsPerChan().
   auto getDpasOpsPerChan = [&](GenPrecision Src1Precision,
                                GenPrecision Src2Precision) -> uint8_t {
@@ -1755,6 +1761,22 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
 
   auto getPrecisionSizeInBits = [](GenPrecision P) {
     return GenPrecisionTable[(int)P].BitSize;
+  };
+
+  auto verifyE2M1DstSrc0 = [&](GenPrecision A, GenPrecision W, VISA_Type dstTy,
+                               VISA_Type src0Ty) {
+    if (A != GenPrecision::E2M1 || W != GenPrecision::E2M1)
+      return;
+
+    [[maybe_unused]] const char *error =
+        "E2M1 %s dst/src0 type pair must be F/F, F/BF, BF/F, or BF/BF";
+
+    // BF/F combinations are allowed
+    if ((dstTy == ISA_TYPE_BF || dstTy == ISA_TYPE_F) &&
+        (src0Ty == ISA_TYPE_BF || src0Ty == ISA_TYPE_F))
+      return;
+
+    REPORT_INSTRUCTION(options, false, error, ISA_Inst_Table[opcode].str);
   };
 
   auto checkDpasRawOperandAlignment = [&](const raw_opnd &opnd, unsigned align,
@@ -1829,11 +1851,19 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
 
       // dst: aligned at execSize * typeSize
       VISA_Type dstTy = getRawOperandType(header, dst);
+      if (dst.index == 0) {
+        // null operand
+        dstTy = isIntDpas(A) ? ISA_TYPE_D : ISA_TYPE_F;
+      }
       unsigned dstAlign = execSize * CISATypeTable[dstTy].typeSize;
       checkDpasRawOperandAlignment(dst, dstAlign, "dst");
 
       // src0: aligned at execSize * typeSize (same as dst)
       VISA_Type src0Ty = getRawOperandType(header, src0);
+      if (src0.index == 0) {
+        // null operand
+        src0Ty = isIntDpas(A) ? ISA_TYPE_D : ISA_TYPE_F;
+      }
       unsigned src0Align = execSize * CISATypeTable[src0Ty].typeSize;
       checkDpasRawOperandAlignment(src0, src0Align, "src0");
 
@@ -1842,6 +1872,8 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
 
       // Src2: grf aligned
       checkDpasRawOperandAlignment(src2, grfSize, "src2");
+
+      verifyE2M1DstSrc0(A, W, dstTy, src0Ty);
 
       bool isFp16OrFp8 = (A == GenPrecision::FP16 || A == GenPrecision::BF16 ||
                           A == GenPrecision::BF8 || A == GenPrecision::HF8);
@@ -1954,14 +1986,21 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
       uint8_t D = 0, C = 0;
       uint32_t dpasOtherOpnd = getPrimitiveOperand<uint32_t>(inst, ++i);
       UI32ToDpasInfo(dpasOtherOpnd, A, W, D, C);
-
       unsigned execSize = Get_VISA_Exec_Size(inst->getExecSize());
 
       VISA_Type dstTy = getRawOperandType(header, dst);
+      if (dst.index == 0) {
+        // null operand
+        dstTy = isIntDpas(A) ? ISA_TYPE_D : ISA_TYPE_F;
+      }
       unsigned dstAlign = execSize * CISATypeTable[dstTy].typeSize;
       checkDpasRawOperandAlignment(dst, dstAlign, "dst");
 
       VISA_Type src0Ty = getRawOperandType(header, src0);
+      if (src0.index == 0) {
+        // null operand
+        src0Ty = isIntDpas(A) ? ISA_TYPE_D : ISA_TYPE_F;
+      }
       unsigned src0Align = execSize * CISATypeTable[src0Ty].typeSize;
       checkDpasRawOperandAlignment(src0, src0Align, "src0");
 
@@ -1972,6 +2011,8 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
       if (src2Align != 0) {
         checkVectorOperandAlignment(inst, src2, src2Align, "src2");
       }
+
+      verifyE2M1DstSrc0(A, W, dstTy, src0Ty);
     }
 
     if (irBuilder->getPlatform() >= Xe_PVC) {
