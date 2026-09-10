@@ -375,6 +375,8 @@ enum {
   MatrixBBFloat8ComponentsINTEL = 0x800,
   MatrixAHFloat8ComponentsINTEL = 0x1000,
   MatrixBHFloat8ComponentsINTEL = 0x2000,
+  MatrixAFP4S1E2M1ComponentsINTEL = 0x10000,
+  MatrixBFP4S1E2M1ComponentsINTEL = 0x20000,
   // Unused right now
   SaturatingAccumulationKHR = 0x10,
   MatrixAAndBTF32ComponentsINTEL = 0x20,
@@ -430,12 +432,14 @@ static SupportedParams getSupportedParams(const JointMatrixTypeDescription *desc
     params.maxRows = 8;
     params.columns = maxSliceBitWidth / desc->bitWidth;
     params.bitWidth |= 16;
+    params.bitWidth |= 4; // fp4
     params.layouts = 1 << LayoutRowMajor;
     params.layouts |= 1 << LayoutColumnMajor;
   } else if (desc->layout == LayoutPackedB) {
     params.rows = maxSliceBitWidth / desc->bitWidth;
     params.columns = useSG16 ? 16 : 8;
     params.bitWidth |= 16;
+    params.bitWidth |= 4; // fp4
     params.layouts |= 1 << LayoutColumnMajor;
     params.layouts |= 1 << LayoutPackedB;
     params.layouts |= 1 << LayoutPackedA;  /* PackedA means just packed in the new version of spec. */
@@ -558,6 +562,7 @@ static bool isSupprtedLargeSlice(const JointMatrixTypeDescription *desc, bool us
 bool JointMatrixFuncsResolutionPass::ValidateIntegerBitWidth(unsigned int bitWidth) {
   bool result = bitWidth == 8 || bitWidth == 16 || bitWidth == 32;
   result |= bitWidth == 64;
+  result |= bitWidth == 4; // fp4 is carried in an i4 target extension type
   return result;
 }
 
@@ -596,13 +601,15 @@ bool JointMatrixFuncsResolutionPass::ValidateLoadStore(bool isLoad, unsigned ope
     if (result & INVALID_ELEM) {
       msg += "\n -> unsupported matrix element size: " + std::to_string(desc->bitWidth) + " bits";
       msg += "\n    supported values: ";
-      /* check powers of two from 3 to 5, i.e. 8 to 32 */
-      for (unsigned i = 3; i <= 5; i++) {
+      /* check powers of two from 2 to 6, i.e. 4 to 64 */
+      bool firstBitWidth = true;
+      for (unsigned i = 2; i <= 6; i++) {
         unsigned bitWidth = 1 << i;
         if (bitWidth & params.bitWidth) {
-          if (i > 3)
+          if (!firstBitWidth)
             msg += ", ";
           msg += std::to_string(bitWidth);
+          firstBitWidth = false;
         }
       }
     }
@@ -684,8 +691,8 @@ void JointMatrixFuncsResolutionPass::Validate2DBlockLoadStore(GetMatrixFuncNameO
     m_Ctx->EmitError(msg.c_str(), ctx);
   }
   if (operation == LoadChecked || operation == Prefetch) {
-    unsigned elemBytes = desc->bitWidth / 8;
-    unsigned perRowBytes = desc->columns * elemBytes;
+    // Computed in bits: a sub byte element has no byte size to report.
+    unsigned perRowBytes = desc->columns * desc->bitWidth / 8;
     bool supported = (perRowBytes <= 64);
     // blockWidth * data size should be <= 64B or equal to 256B for 2D block loads for XE3P+
     if (m_Ctx->platform.isCoreChildOf(IGFX_XE3P_CORE))
@@ -697,8 +704,8 @@ void JointMatrixFuncsResolutionPass::Validate2DBlockLoadStore(GetMatrixFuncNameO
                         "(columns * dataSize) has to be (equal or less than 64B)";
       if (m_Ctx->platform.isCoreChildOf(IGFX_XE3P_CORE))
         msg += " or (equal to 256B)";
-      msg += ".\nLimit exceeded with values: " + std::to_string(desc->columns) + " * " + std::to_string(elemBytes) +
-             "B = " + std::to_string(perRowBytes) + "B";
+      msg += ".\nLimit exceeded with values: " + std::to_string(desc->columns) + " * " +
+             std::to_string(desc->bitWidth) + " bits = " + std::to_string(perRowBytes) + "B";
       m_Ctx->EmitError(msg.c_str(), ctx);
     }
   }
@@ -1634,18 +1641,20 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveTestDumpLoad(CallInst *CI) {
   unsigned wiRows = getNumRowsPerWI(&desc);
   unsigned contribCols = desc.columns * desc.bitWidth / desc.contribBitWidth;
   unsigned contribBytes = desc.contribBitWidth / 8;
-  unsigned elemBytes = desc.bitWidth / 8;
   Value *wiRowsVal = builder.getInt32(wiRows);
   Value *contribColsVal = builder.getInt32(contribCols);
   Value *contribBytesVal = builder.getInt32(contribBytes);
-  Value *elemBytesVal = builder.getInt32(elemBytes);
+  // The element width is passed in bits: a sub byte element has no byte size.
+  Value *elemBitsVal = builder.getInt32(desc.bitWidth);
 
   std::string bifName = "__builtin_spriv_OpCooperativeMatrixTestDumpLoadINTEL";
   Type *i32Ty = Type::getInt32Ty(ctx);
+  // The BIF takes an int stride, the SPIR-V builtin may pass a long.
+  Value *strideVal32 = builder.CreateZExtOrTrunc(strideVal, i32Ty);
   FunctionType *funcType = FunctionType::get(retTy, {arrayTy, genericPtrTy, i32Ty, i32Ty, i32Ty, i32Ty, i32Ty}, false);
   Instruction *newCall =
       builder.CreateCall(M->getOrInsertFunction(bifName, funcType),
-                         {dst, memPtr, wiRowsVal, contribColsVal, contribBytesVal, strideVal, elemBytesVal});
+                         {dst, memPtr, wiRowsVal, contribColsVal, contribBytesVal, strideVal32, elemBitsVal});
   newCall->setDebugLoc(CI->getDebugLoc());
 
   newCall = builder.CreateLoad(matTy, sliceArray);
@@ -1695,19 +1704,21 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveTestDumpStore(CallInst *CI) 
   unsigned wiRows = getNumRowsPerWI(&desc);
   unsigned contribCols = desc.columns * desc.bitWidth / desc.contribBitWidth;
   unsigned contribBytes = desc.contribBitWidth / 8;
-  unsigned elemBytes = desc.bitWidth / 8;
   Value *wiRowsVal = builder.getInt32(wiRows);
   Value *contribColsVal = builder.getInt32(contribCols);
   Value *contribBytesVal = builder.getInt32(contribBytes);
-  Value *elemBytesVal = builder.getInt32(elemBytes);
+  // The element width is passed in bits: a sub byte element has no byte size.
+  Value *elemBitsVal = builder.getInt32(desc.bitWidth);
 
   std::string bifName = "__builtin_spriv_OpCooperativeMatrixTestDumpStoreINTEL";
   Type *i32Ty = Type::getInt32Ty(ctx);
+  // The BIF takes an int stride, the SPIR-V builtin may pass a long.
+  Value *strideVal32 = builder.CreateZExtOrTrunc(strideVal, i32Ty);
   FunctionType *funcType =
       FunctionType::get(Type::getVoidTy(ctx), {genericPtrTy, arrayTy, i32Ty, i32Ty, i32Ty, i32Ty, i32Ty}, false);
   Instruction *newCall =
       CallInst::Create(M->getOrInsertFunction(bifName, funcType),
-                       {memPtr, src, wiRowsVal, contribColsVal, contribBytesVal, strideVal, elemBytesVal}, "",
+                       {memPtr, src, wiRowsVal, contribColsVal, contribBytesVal, strideVal32, elemBitsVal}, "",
                        IGCLLVM::insertPosition(CI));
   newCall->setDebugLoc(CI->getDebugLoc());
   return newCall;
@@ -1774,6 +1785,15 @@ static PrecisionType getCoopMatrixElementPrecison(const JointMatrixTypeDescripti
       } else if (OperandsMask & MatrixBHFloat8ComponentsINTEL) {
         return PrecisionType::HF8;
       }
+    }
+  }
+
+  if (floatOp && width == 4) {
+    // the i4 element type is only storage, the operands mask tells fp4 from int4
+    if (Use == UseMatrixA && OperandsMask & MatrixAFP4S1E2M1ComponentsINTEL) {
+      return PrecisionType::E2M1;
+    } else if (Use == UseMatrixB && OperandsMask & MatrixBFP4S1E2M1ComponentsINTEL) {
+      return PrecisionType::E2M1;
     }
   }
   return PrecisionType::PRECISION_UNUSED;

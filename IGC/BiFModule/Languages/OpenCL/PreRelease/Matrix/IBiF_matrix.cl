@@ -436,11 +436,12 @@ DEFINE_FILLCHECKED_GROUP(int)
 //   contribCols: number of contribution-type columns in the matrix
 //   contribBytes: byte size of one contribution element
 //   stride:      row stride in number of original elements
-//   elemBytes:   byte size of one original element
+//   elemBits:    bit size of one original element, which a sub byte element has
+//                no byte size to report
 
 INLINE void __builtin_spriv_OpCooperativeMatrixTestDumpLoadINTEL(
     __private char *dst, char *mem, int wiRows, int contribCols, int contribBytes,
-    int stride, int elemBytes) {
+    int stride, int elemBits) {
   int slid = get_sub_group_local_id();
   int sgSize = get_sub_group_size();
   int sg_cols = (contribCols < sgSize) ? contribCols : sgSize;
@@ -448,7 +449,7 @@ INLINE void __builtin_spriv_OpCooperativeMatrixTestDumpLoadINTEL(
   for (int i = 0; i < wiRows; i++) {
     int row = slid / sg_cols + i * skip_factor;
     int col = slid % sg_cols;
-    int byteOffset = row * stride * elemBytes + col * contribBytes;
+    int byteOffset = row * stride * elemBits / 8 + col * contribBytes;
     for (int b = 0; b < contribBytes; b++) {
       dst[i * contribBytes + b] = mem[byteOffset + b];
     }
@@ -457,7 +458,7 @@ INLINE void __builtin_spriv_OpCooperativeMatrixTestDumpLoadINTEL(
 
 INLINE void __builtin_spriv_OpCooperativeMatrixTestDumpStoreINTEL(
     char *mem, __private char *src, int wiRows, int contribCols, int contribBytes,
-    int stride, int elemBytes) {
+    int stride, int elemBits) {
   int slid = get_sub_group_local_id();
   int sgSize = get_sub_group_size();
   int sg_cols = (contribCols < sgSize) ? contribCols : sgSize;
@@ -465,7 +466,7 @@ INLINE void __builtin_spriv_OpCooperativeMatrixTestDumpStoreINTEL(
   for (int i = 0; i < wiRows; i++) {
     int row = slid / sg_cols + i * skip_factor;
     int col = slid % sg_cols;
-    int byteOffset = row * stride * elemBytes + col * contribBytes;
+    int byteOffset = row * stride * elemBits / 8 + col * contribBytes;
     for (int b = 0; b < contribBytes; b++) {
       mem[byteOffset + b] = src[i * contribBytes + b];
     }

@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <assert.h>
 using namespace std;
 
+static constexpr int BITS_4 = 4;
 static constexpr int BITS_8 = 8;
 static constexpr int BITS_16 = 16;
 static constexpr int BITS_32 = 32;
@@ -140,6 +141,7 @@ struct MatrixSpec {
   int VnniedRows, VnniedCols;
   int WiRows;
   int ContribBitWidth;
+  int MemElemBits, MemElemsPerRow, MemElemsPerContrib;
   int DpasSubGroupSize;
 
   MatrixSpec(int sgSize, LayoutType layout, int rows, int cols, int bitWidth)
@@ -216,6 +218,14 @@ struct MatrixSpec {
       if (Order == Order_Vnni)
         assert(ContribBitWidth == BITS_32);
     }
+
+    // Memory-side view of the element. A sub-byte element is not individually
+    // addressable, so all pointer and stride arithmetic is done in units of the
+    // container that packs it. For BitWidth >= 8 these are identities:
+    // MemElemBits == BitWidth, MemElemsPerRow == Cols.
+    MemElemBits = max(BitWidth, BITS_8);
+    MemElemsPerRow = Cols * BitWidth / MemElemBits;
+    MemElemsPerContrib = ContribBitWidth / MemElemBits;
 
     // WiRows - amount of rows per one work item (1 out of SubGroupSize).
     // It's used for calculations and to distinguish between
@@ -564,7 +574,7 @@ static string ImplementSmallLoad2DBlock(MatrixSpec spec, bool isChecked) {
   s = Replace(s, "SubGroupSize", to_string(spec.SubGroupSize));
   s = Replace(s, "ResultType", resultType);
   s = Replace(s, "BlockFunc", blockFunc);
-  s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ElemBytes", to_string(Bytes(spec.MemElemBits)));
   return s;
 }
 
@@ -582,7 +592,7 @@ static string ImplementSmallLoadVectorContinuous(MatrixSpec spec, AddrSpace addr
   bool skipStrideCheck = ((spec.WiRows > spec.Rows) && ((spec.WiRows % spec.Rows) == 0));
   s += "if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL";
   if (!skipStrideCheck)
-    s += " && stride == " + to_string(spec.Cols);
+    s += " && stride == " + to_string(spec.MemElemsPerRow);
   s += ") {\n";
 
   // Load and save the data.
@@ -618,8 +628,7 @@ static string ImplementSmallLoadVector(MatrixSpec spec, AddrSpace addr) {
   // Check if VECTOR_IMPL implementation is available.
   s += "if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_IMPL) {\n";
 
-  int packFactor = spec.ContribBitWidth / spec.BitWidth;
-  s += "long packed_stride = stride / " + to_string(packFactor) + ";\n";
+  s += "long packed_stride = stride / " + to_string(spec.MemElemsPerContrib) + ";\n";
   s += "__private ContribType *wi_contrib = (__private ContribType *)dst;\n";
   s += "MemType *src = (MemType *)mem;\n";
 
@@ -667,7 +676,7 @@ static string ImplementSmallLoadVector(MatrixSpec spec, AddrSpace addr) {
   s += "}\n";
 
   // Replace template strings.
-  s = Replace(s, "ElemType", GetUnsignedType(spec.BitWidth));
+  s = Replace(s, "ElemType", GetUnsignedType(spec.MemElemBits));
   s = Replace(s, "ContribType", GetUnsignedType(spec.ContribBitWidth));
   s = Replace(s, "MemType", "__" + ToString(addr) + " " + GetUnsignedType(spec.ContribBitWidth));
   s = Replace(s, "WiRows", to_string(spec.WiRows));
@@ -698,7 +707,7 @@ static string ImplementSmallLoadScalar(MatrixSpec spec, AddrSpace addr) {
     return s;
   }
 
-  s += "long packed_stride = stride / " + to_string(packFactor) + ";\n";
+  s += "long packed_stride = stride / " + to_string(spec.MemElemsPerContrib) + ";\n";
   s += "__private ContribType *wi_contrib = (__private ContribType *)dst;\n";
 
   if (spec.Order == Order_Vnni) {
@@ -768,7 +777,7 @@ static string ImplementSmallLoadScalar(MatrixSpec spec, AddrSpace addr) {
   s = Replace(s, "SgCols", to_string(sgCols));
   s = Replace(s, "SkipFactor", to_string(skipFactor));
   s = Replace(s, "AddrSpace", "__" + ToString(addr));
-  s = Replace(s, "ElemType", GetUnsignedType(spec.BitWidth));
+  s = Replace(s, "ElemType", GetUnsignedType(spec.MemElemBits));
   s = Replace(s, "ContribType", GetUnsignedType(spec.ContribBitWidth));
   s = Replace(s, "WiRows", to_string(spec.WiRows));
   s = Replace(s, "SubGroupSize", to_string(spec.SubGroupSize));
@@ -847,7 +856,7 @@ static string ImplementSmallStore2DBlock(MatrixSpec spec, bool isChecked) {
 
   s = Replace(s, "ValType", valType);
   s = Replace(s, "BlockFunc", blockFunc);
-  s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ElemBytes", to_string(Bytes(spec.MemElemBits)));
   s = Replace(s, "ContribBytes", to_string(Bytes(spec.ContribBitWidth)));
   return s;
 }
@@ -867,7 +876,7 @@ static string ImplementSmallStoreVectorContinuous(MatrixSpec spec, AddrSpace add
   bool skipStrideCheck = ((spec.WiRows > spec.Rows) && ((spec.WiRows % spec.Rows) == 0));
   s += "if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL";
   if (!skipStrideCheck)
-    s += " && stride == " + to_string(spec.Cols);
+    s += " && stride == " + to_string(spec.MemElemsPerRow);
   s += ") {\n";
 
   // Read value from src
@@ -922,9 +931,8 @@ static string ImplementSmallStoreVector(MatrixSpec spec, AddrSpace addr, bool bl
   s += "if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_IMPL) {\n";
 
   string contribUType = GetUnsignedType(spec.ContribBitWidth);
-  int packFactor = spec.ContribBitWidth / spec.BitWidth;
   s += "MemType *ptr = (MemType *)mem;\n";
-  s += "int pack_factor = " + to_string(packFactor) + ";\n";
+  s += "int pack_factor = " + to_string(spec.MemElemsPerContrib) + ";\n";
   s += "stride = stride / pack_factor;\n";
 
   int ratio = spec.WiRows / spec.Rows;
@@ -962,7 +970,7 @@ static string ImplementSmallStoreScalar(MatrixSpec spec, AddrSpace addr) {
   int sgCols = spec.Cols / packFactor;
   int skipFactor = spec.SubGroupSize / sgCols;
 
-  string elemType = GetUnsignedType(spec.BitWidth);
+  string elemType = GetUnsignedType(spec.MemElemBits);
   string contribType = GetUnsignedType(spec.ContribBitWidth);
   // Remove the 'u' prefix for signed types used in the .cl
   string signedContribType = contribType.substr(1); // "short", "int", "long"
@@ -1007,7 +1015,7 @@ static string ImplementSmallStoreScalar(MatrixSpec spec, AddrSpace addr) {
   }
 
   s += ToString(addr) + " " + "SignedContribType *ptr = (" + ToString(addr) + " " + "SignedContribType *)mem;\n";
-  s += "stride = stride / " + to_string(packFactor) + ";\n";
+  s += "stride = stride / " + to_string(spec.MemElemsPerContrib) + ";\n";
   s += "__private SignedContribType *slice = (__private SignedContribType *)src;\n";
 
   if (spec.SubGroupSize >= sgCols) {
@@ -1264,9 +1272,9 @@ static string ImplementLargeLoadVectorContinuous(MatrixSpec spec, AddrSpace addr
   // Replace template words
   s = Replace(s, "Rows", to_string(spec.Rows));
   s = Replace(s, "AddrSpace", "__" + ToString(addr));
-  s = Replace(s, "ElemByteWidth", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ElemByteWidth", to_string(Bytes(spec.MemElemBits)));
   s = Replace(s, "ContribByteWidth", to_string(Bytes(spec.ContribBitWidth)));
-  s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ElemBytes", to_string(Bytes(spec.MemElemBits)));
   return s;
 }
 
@@ -1419,7 +1427,7 @@ static string ImplementLargeLoadBase(MatrixSpec spec, AddrSpace addr, int numLoa
   s = Replace(s, "LoadFunc", loadFunc);
   s = Replace(s, "AddrSpace", "__" + ToString(addr));
   s = Replace(s, "ElemByteWidth", "ElemBytes");
-  s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ElemBytes", to_string(Bytes(spec.MemElemBits)));
   s = Replace(s, "ContribByteWidth", to_string(Bytes(spec.ContribBitWidth)));
   s = Replace(s, "WiRowsPerLoad", to_string(wiRowsPerLoad));
   s = Replace(s, "NumLoads", to_string(numLoads));
@@ -1585,7 +1593,7 @@ static string DefineSpecialLarge1x64AddrSpace(MatrixSpec spec, AddrSpace addr) {
   s = Replace(s, "VecFunc4", vecFunc4);
   s = Replace(s, "VecFunc", vecFunc);
   s = Replace(s, "AddrSpace", "__" + ToString(addr));
-  s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ElemBytes", to_string(Bytes(spec.MemElemBits)));
   s = Replace(s, "ElemType", GetUnsignedType(spec.BitWidth));
   s = Replace(s, "WiRows", to_string(spec.WiRows));
   return s;
@@ -1629,7 +1637,7 @@ static string DefineSpecialLarge1x64(MatrixSpec spec) {
     }
   }
   s = Replace(s, "ElemBits", to_string(spec.BitWidth));
-  s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ElemBytes", to_string(Bytes(spec.MemElemBits)));
   return s;
 }
 
@@ -1638,6 +1646,13 @@ static string DefineSpecialLarge1x64(MatrixSpec spec) {
 //
 static string DefineAllSmallLoads() {
   string s;
+
+  // PackedA, i4:
+  // Layout_PackedA_ColumnMajor is deliberately absent, see the note on the
+  // 4-bit B layouts below.
+  s += DefineSmallLoadPermuteRows(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 8, 64, BITS_4));
+
+  s += DefineSmallLoadPermuteRows(MatrixSpec(SUB_GROUP_32, Layout_PackedA_RowMajor, 8, 64, BITS_4));
 
   // PackedA, i8:
   s += DefineSmallLoadPermuteRows(MatrixSpec(SUB_GROUP_8, Layout_PackedA_RowMajor, 8, 32, BITS_8));
@@ -1667,6 +1682,23 @@ static string DefineAllSmallLoads() {
   s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 4, 8, BITS_64));
 
   s += DefineSmallLoad(MatrixSpec(SUB_GROUP_32, Layout_PackedA_RowMajor, 4, 8, BITS_64));
+
+  // PackedB, i4:
+  // Layout_PackedB_RowMajor and both column major layouts, Layout_PackedB_ColumnMajor
+  // here and Layout_PackedA_ColumnMajor above, are not implemented:
+  // they need the 2D block read to do the reordering - VNNI
+  // transforming for a row major B, transposing for a column major operand - and
+  // neither transform has a 4-bit element size: LSCFuncsResolution decodes
+  // u8/u16/u32/u64 only, and transforming at byte granularity would group pairs of
+  // columns instead of pairs of rows. Doing it efficiently therefore needs hardware
+  // acceleration the platform currently lacks. It could still be built by emulation,
+  // from scalar accesses that extract 4 bits at a time or from i8 sized loads
+  // followed by 4-bit shuffling, but this would result into complicated and slow
+  // implementation. Layout_PackedB_PackedB does not need that: VNNI packed memory
+  // is read exactly like i8 - same byte footprint, no element reordering.
+  s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_PackedB_PackedB, 8, 128, BITS_4));
+
+  s += DefineSmallLoad(MatrixSpec(SUB_GROUP_32, Layout_PackedB_PackedB, 8, 128, BITS_4));
 
   // PackedB, i8:
   s += DefineSmallLoad(MatrixSpec(SUB_GROUP_8, Layout_PackedB_RowMajor, 8, 32, BITS_8));
@@ -1796,6 +1828,20 @@ static string DefineAllLargeLoads() {
 //
 static string DefineAllSmallStores() {
   string s;
+
+  /* PackedA store i4 SG16, and SG16 for subgroup 32 */
+  s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 8, 64, BITS_4), false);
+  s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_32, Layout_PackedA_RowMajor, 8, 64, BITS_4), false, 2, 8);
+
+  /* PackedB store i4 SG16, and SG16 for subgroup 32 */
+  /* Layout_PackedB_RowMajor is not implemented for the same reason as in the
+     loads: it needs a VNNI un-transforming 2D block write, which does not exist,
+     and both column major layouts need a transposing one. Software could write
+     the elements one at a time or shuffle within i8 sized stores instead, but
+     only slowly and at some complexity, so PackedA_RowMajor and PackedB_PackedB
+     are the 4-bit stores implemented here. */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_PackedB, 8, 128, BITS_4), false);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedB_PackedB, 8, 128, BITS_4), false);
 
   /* PackedA store i8 */
   s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_8, Layout_PackedA_RowMajor, 8, 32, BITS_8), false);
@@ -1989,7 +2035,7 @@ static string ImplementLargeStoreVectorContinuous(MatrixSpec spec, AddrSpace add
 
   s = Replace(s, "Rows", to_string(spec.Rows));
   s = Replace(s, "AddrSpace", "__" + ToString(addr));
-  s = Replace(s, "ElemByteWidth", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ElemByteWidth", to_string(Bytes(spec.MemElemBits)));
   s = Replace(s, "ContribByteWidth", to_string(Bytes(spec.ContribBitWidth)));
   return s;
 }
@@ -2168,7 +2214,7 @@ static string ImplementLargeStoreBase(MatrixSpec spec, AddrSpace addr, int numSt
 
   s = Replace(s, "StoreFunc", storeFunc);
   s = Replace(s, "ElemByteWidth", "ElemBytes");
-  s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ElemBytes", to_string(Bytes(spec.MemElemBits)));
   s = Replace(s, "ContribByteWidth", to_string(Bytes(spec.ContribBitWidth)));
   s = Replace(s, "WiRowsPerStore", to_string(wiRowsPerStore));
   return s;
@@ -2345,7 +2391,7 @@ static string DefineSpecialLarge1x64StoreAddrSpace(MatrixSpec spec, AddrSpace ad
   s = Replace(s, "VecFunc4", vecFunc4);
   s = Replace(s, "VecFunc", vecFunc);
   s = Replace(s, "AddrSpace", "__" + ToString(addr));
-  s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ElemBytes", to_string(Bytes(spec.MemElemBits)));
   s = Replace(s, "ElemType", GetUnsignedType(spec.BitWidth));
   s = Replace(s, "WiRows", to_string(spec.WiRows));
   return s;

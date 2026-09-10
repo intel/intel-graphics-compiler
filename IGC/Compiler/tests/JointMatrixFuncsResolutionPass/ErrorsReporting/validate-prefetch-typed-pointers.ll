@@ -22,7 +22,7 @@ define spir_kernel void @matrix_prefetch(float addrspace(1)* %src) {
 ; CHECK: error: in kernel 'matrix_prefetch': Unsupported row parameter for matrix prefetch: 52
 ; CHECK: error: in kernel 'matrix_prefetch': Unsupported column parameter for matrix prefetch: 128. Supported values: 8, 16, 32, 64.
 ; CHECK: error: in kernel 'matrix_prefetch': Matrix prefetch size limit exceeded
-; CHECK: Limit exceeded with values: 128 * 4B = 512B
+; CHECK: Limit exceeded with values: 128 * 32 bits = 512B
 }
 
 !igc.functions = !{!0}

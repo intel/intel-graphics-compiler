@@ -23,7 +23,7 @@ define spir_kernel void @matrix_load_checked(i8 addrspace(3)* %src) {
 ; CHECK: error: Unsupported row parameter for matrix checked load: 7. Supported values: 1, 2, 4, 8, 16, 32.
 ; CHECK: error: Unsupported column parameter for matrix checked load: 66. Supported values: 8, 16, 32, 64.
 ; CHECK: error: Matrix checked load size limit exceeded.
-; CHECK: Limit exceeded with values: 66 * 2B = 132B
+; CHECK: Limit exceeded with values: 66 * 16 bits = 132B
 }
 
 !igc.functions = !{!0}
