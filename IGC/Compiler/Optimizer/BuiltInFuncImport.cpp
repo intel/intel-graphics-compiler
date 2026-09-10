@@ -646,7 +646,7 @@ bool BIImport::run(Module &M, CodeGenContext *Ctx, IGC::IGCMD::MetaDataUtils *Md
 #endif
 
   InitializeBIFlags(M);
-  removeFunctionBitcasts(M);
+  removeFunctionBitcasts(M, Ctx);
   fixInvalidBitcasts(M);
   addOCLObjectCastFunctionDefinitions(M);
 
@@ -880,7 +880,7 @@ static bool needsPointerASFix(const CallInst *inst, const Function *callee) {
   return false;
 }
 
-void BIImport::removeFunctionBitcasts(Module &M) {
+void BIImport::removeFunctionBitcasts(Module &M, CodeGenContext *Ctx) {
   std::vector<Instruction *> list_delete;
   DenseMap<Function *, std::vector<Function *>> bitcastFunctionMap;
 
@@ -899,6 +899,18 @@ void BIImport::removeFunctionBitcasts(Module &M) {
         if (constExpr) {
           funcToBeChanged = dyn_cast<Function>(constExpr->stripPointerCasts());
         } else if (Function *directFunc = dyn_cast<Function>(calledVal)) {
+          // Under opaque pointers a call may name a function of another type.
+          auto *callRetTy = pInstCall->getFunctionType()->getReturnType();
+          auto *funcRetTy = directFunc->getReturnType();
+          if (!directFunc->isDeclaration() && callRetTy != funcRetTy &&
+              !(callRetTy->isPointerTy() && funcRetTy->isPointerTy())) {
+            if (!Ctx->HasError()) {
+              std::string msg = "return type of the call to '" + directFunc->getName().str() +
+                                "' does not match the return type of its definition";
+              Ctx->EmitError(msg.c_str(), pInstCall);
+            }
+            continue;
+          }
           if (needsPointerASFix(pInstCall, directFunc))
             funcToBeChanged = directFunc;
         }

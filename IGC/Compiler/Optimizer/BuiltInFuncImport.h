@@ -49,7 +49,7 @@ protected:
 
   /// @brief  Remove function bitcasts that sometimes may appear due to the changed in the way
   ///         the BiFs are linked. We can remove this code once llvm implements typeless pointers.
-  void removeFunctionBitcasts(llvm::Module &M);
+  void removeFunctionBitcasts(llvm::Module &M, CodeGenContext *Ctx);
 
   /// @brief  Initialize values for global flags needed for the built-ins (FlushDenormal).
   ///         Only initializes flags that the built-ins need.
