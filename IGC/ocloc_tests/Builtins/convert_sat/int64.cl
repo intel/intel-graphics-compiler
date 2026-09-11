@@ -6,9 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// FIXME: Update the test for LLVM 23.
-// UNSUPPORTED: llvm-23-plus
-
 // REQUIRES: regkeys, llvm-16-plus
 
 // LLVM17 and LLVM22 both lower the saturating convert to the same fcmp/select/
@@ -193,10 +190,10 @@ test_convert_sat_intty_to_fpty(ulong, double)
 // CHECK-P22-DAG: %[[NAN_CMP:.+]] = fcmp une half %[[FP_SRC]], %[[FP_SRC]]
 // CHECK-P22-DAG: %[[CLAMP_NAN_LO:.+]] = select i1 %[[NAN_CMP]], i32 0, i32 %[[CONV_LO]]
 // CHECK-P22-DAG: %[[CLAMP_NAN_HI:.+]] = select i1 %[[NAN_CMP]], i32 0, i32 %[[CONV_HI]]
-// CHECK-P22-DAG: %[[NEG_INF_CMP:.+]] = fcmp oeq half %[[FP_SRC]], 0xHFC00
+// CHECK-P22-DAG: %[[NEG_INF_CMP:.+]] = fcmp oeq half %[[FP_SRC]], {{0xHFC00|-inf}}
 // CHECK-P22-DAG: %[[CLAMP_MIN_LO:.+]] = select i1 %[[NEG_INF_CMP]], i32 0, i32 %[[CLAMP_NAN_LO]]
 // CHECK-P22-DAG: %[[CLAMP_MIN_HI:.+]] = select i1 %[[NEG_INF_CMP]], i32 -2147483648, i32 %[[CLAMP_NAN_HI]]
-// CHECK-P22-DAG: %[[POS_INF_CMP:.+]] = fcmp oeq half %[[FP_SRC]], 0xH7C00
+// CHECK-P22-DAG: %[[POS_INF_CMP:.+]] = fcmp oeq half %[[FP_SRC]], {{0xH7C00|\+inf}}
 // CHECK-P22-DAG: %[[CLAMP_MAX_LO:.+]] = select i1 %[[POS_INF_CMP]], i32 -1, i32 %[[CLAMP_MIN_LO]]
 // CHECK-P22-DAG: %[[CLAMP_MAX_HI:.+]] = select i1 %[[POS_INF_CMP]], i32 2147483647, i32 %[[CLAMP_MIN_HI]]
 // CHECK-P22: %[[CONV_SAT_LO:.+]] = insertelement <2 x i32> undef, i32 %[[CLAMP_MAX_LO]], i32 0
@@ -206,13 +203,13 @@ test_convert_sat_intty_to_fpty(ulong, double)
 // CHECK-P22-LABEL: define spir_kernel void @test_convert_ulong_half
 // CHECK-P22: %[[FP_SRC:.+]] = load half, ptr addrspace(1) %src
 // CHECK-P22: %[[NAN_CMP:.+]] = fcmp oeq half %[[FP_SRC]], %[[FP_SRC]]
-// CHECK-P22: %[[CLAMP_MIN:.+]] = call half @llvm.maxnum.f16(half %[[FP_SRC]], half 0xH0000)
-// CHECK-P22: %[[CLAMP_NAN:.+]] = select i1 %[[NAN_CMP]], half %[[CLAMP_MIN]], half 0xH0000
+// CHECK-P22: %[[CLAMP_MIN:.+]] = call half @llvm.maxnum.f16(half %[[FP_SRC]], half {{0xH0000|0\.000000e\+00}})
+// CHECK-P22: %[[CLAMP_NAN:.+]] = select i1 %[[NAN_CMP]], half %[[CLAMP_MIN]], half {{0xH0000|0\.000000e\+00}}
 // CHECK-P22-DAG: %[[CONV:.+]] = fptoui half %[[CLAMP_NAN]] to i64
 // CHECK-P22-DAG: %[[CONV_CAST:.+]] = bitcast i64 %[[CONV]] to <2 x i32>
 // CHECK-P22-DAG: %[[CONV_LO:.+]] = extractelement <2 x i32> %[[CONV_CAST]], i32 0
 // CHECK-P22-DAG: %[[CONV_HI:.+]] = extractelement <2 x i32> %[[CONV_CAST]], i32 1
-// CHECK-P22: %[[POS_INF_CMP:.+]] = fcmp oeq half %[[FP_SRC]], 0xH7C00
+// CHECK-P22: %[[POS_INF_CMP:.+]] = fcmp oeq half %[[FP_SRC]], {{0xH7C00|\+inf}}
 // CHECK-P22-DAG: %[[CLAMP_MAX_LO:.+]] = select i1 %[[POS_INF_CMP]], i32 -1, i32 %[[CONV_LO]]
 // CHECK-P22-DAG: %[[CLAMP_MAX_HI:.+]] = select i1 %[[POS_INF_CMP]], i32 -1, i32 %[[CONV_HI]]
 // CHECK-P22: %[[CONV_SAT_LO:.+]] = insertelement <2 x i32> undef, i32 %[[CLAMP_MAX_LO]], i32 0
@@ -222,9 +219,9 @@ test_convert_sat_intty_to_fpty(ulong, double)
 // CHECK-P22-LABEL: define spir_kernel void @test_convert_long_float
 // CHECK-P22: %[[FP_SRC:.+]] = load float, ptr addrspace(1) %src
 // CHECK-P22: %[[NAN_CMP:.+]] = fcmp oeq float %[[FP_SRC]], %[[FP_SRC]]
-// CHECK-P22: %[[CLAMP_MIN:.+]] = call float @llvm.maxnum.f32(float %[[FP_SRC]], float 0xC3E0000000000000)
+// CHECK-P22: %[[CLAMP_MIN:.+]] = call float @llvm.maxnum.f32(float %[[FP_SRC]], float {{0xC3E0000000000000|f0xDF000000}})
 // CHECK-P22: %[[CLAMP_NAN:.+]] = select i1 %[[NAN_CMP]], float %[[CLAMP_MIN]], float 0.000000e+00
-// CHECK-P22-DAG: %[[INT_MAX_CMP:.+]] = fcmp oge float %[[CLAMP_NAN]], 0x43E0000000000000
+// CHECK-P22-DAG: %[[INT_MAX_CMP:.+]] = fcmp oge float %[[CLAMP_NAN]], {{0x43E0000000000000|f0x5F000000}}
 // CHECK-P22-DAG: %[[CONV:.+]] = fptosi float %[[CLAMP_NAN]] to i64
 // CHECK-P22-DAG: %[[CONV_CAST:.+]] = bitcast i64 %[[CONV]] to <2 x i32>
 // CHECK-P22-DAG: %[[CONV_LO:.+]] = extractelement <2 x i32> %[[CONV_CAST]], i32 0
@@ -240,7 +237,7 @@ test_convert_sat_intty_to_fpty(ulong, double)
 // CHECK-P22: %[[NAN_CMP:.+]] = fcmp oeq float %[[FP_SRC]], %[[FP_SRC]]
 // CHECK-P22: %[[CLAMP_MIN:.+]] = call float @llvm.maxnum.f32(float %[[FP_SRC]], float 0.000000e+00)
 // CHECK-P22: %[[CLAMP_NAN:.+]] = select i1 %[[NAN_CMP]], float %[[CLAMP_MIN]], float 0.000000e+00
-// CHECK-P22-DAG: %[[INT_MAX_CMP:.+]] = fcmp oge float %[[CLAMP_NAN]], 0x43F0000000000000
+// CHECK-P22-DAG: %[[INT_MAX_CMP:.+]] = fcmp oge float %[[CLAMP_NAN]], {{0x43F0000000000000|f0x5F800000}}
 // CHECK-P22-DAG: %[[CONV:.+]] = fptoui float %[[CLAMP_NAN]] to i64
 // CHECK-P22-DAG: %[[CONV_CAST:.+]] = bitcast i64 %[[CONV]] to <2 x i32>
 // CHECK-P22-DAG: %[[CONV_LO:.+]] = extractelement <2 x i32> %[[CONV_CAST]], i32 0
@@ -254,9 +251,9 @@ test_convert_sat_intty_to_fpty(ulong, double)
 // CHECK-P22-LABEL: define spir_kernel void @test_convert_long_double
 // CHECK-P22: %[[FP_SRC:.+]] = load double, ptr addrspace(1) %src
 // CHECK-P22: %[[NAN_CMP:.+]] = fcmp oeq double %[[FP_SRC]], %[[FP_SRC]]
-// CHECK-P22: %[[CLAMP_MIN:.+]] = call double @llvm.maxnum.f64(double %[[FP_SRC]], double 0xC3E0000000000000)
+// CHECK-P22: %[[CLAMP_MIN:.+]] = call double @llvm.maxnum.f64(double %[[FP_SRC]], double {{f?}}0xC3E0000000000000)
 // CHECK-P22: %[[CLAMP_NAN:.+]] = select i1 %[[NAN_CMP]], double %[[CLAMP_MIN]], double 0.000000e+00
-// CHECK-P22-DAG: %[[INT_MAX_CMP:.+]] = fcmp oge double %[[CLAMP_NAN]], 0x43E0000000000000
+// CHECK-P22-DAG: %[[INT_MAX_CMP:.+]] = fcmp oge double %[[CLAMP_NAN]], {{f?}}0x43E0000000000000
 // CHECK-P22-DAG: %[[CONV:.+]] = fptosi double %[[CLAMP_NAN]] to i64
 // CHECK-P22-DAG: %[[CONV_CAST:.+]] = bitcast i64 %[[CONV]] to <2 x i32>
 // CHECK-P22-DAG: %[[CONV_LO:.+]] = extractelement <2 x i32> %[[CONV_CAST]], i32 0
@@ -272,7 +269,7 @@ test_convert_sat_intty_to_fpty(ulong, double)
 // CHECK-P22: %[[NAN_CMP:.+]] = fcmp oeq double %[[FP_SRC]], %[[FP_SRC]]
 // CHECK-P22: %[[CLAMP_MIN:.+]] = call double @llvm.maxnum.f64(double %[[FP_SRC]], double 0.000000e+00)
 // CHECK-P22: %[[CLAMP_NAN:.+]] = select i1 %[[NAN_CMP]], double %[[CLAMP_MIN]], double 0.000000e+00
-// CHECK-P22-DAG: %[[INT_MAX_CMP:.+]] = fcmp oge double %[[CLAMP_NAN]], 0x43F0000000000000
+// CHECK-P22-DAG: %[[INT_MAX_CMP:.+]] = fcmp oge double %[[CLAMP_NAN]], {{f?}}0x43F0000000000000
 // CHECK-P22-DAG: %[[CONV:.+]] = fptoui double %[[CLAMP_NAN]] to i64
 // CHECK-P22-DAG: %[[CONV_CAST:.+]] = bitcast i64 %[[CONV]] to <2 x i32>
 // CHECK-P22-DAG: %[[CONV_LO:.+]] = extractelement <2 x i32> %[[CONV_CAST]], i32 0
@@ -296,10 +293,10 @@ test_convert_sat_intty_to_fpty(ulong, double)
 // CHECK-F22-DAG: %[[NAN_CMP:.+]] = fcmp une half %[[FP_SRC]], %[[FP_SRC]]
 // CHECK-F22-DAG: %[[CLAMP_NAN_LO:.+]] = select i1 %[[NAN_CMP]], i32 0, i32 %[[CONV_LO]]
 // CHECK-F22-DAG: %[[CLAMP_NAN_HI:.+]] = select i1 %[[NAN_CMP]], i32 0, i32 %[[CONV_HI]]
-// CHECK-F22-DAG: %[[NEG_INF_CMP:.+]] = fcmp oeq half %[[FP_SRC]], 0xHFC00
+// CHECK-F22-DAG: %[[NEG_INF_CMP:.+]] = fcmp oeq half %[[FP_SRC]], {{0xHFC00|-inf}}
 // CHECK-F22-DAG: %[[CLAMP_MIN_LO:.+]] = select i1 %[[NEG_INF_CMP]], i32 0, i32 %[[CLAMP_NAN_LO]]
 // CHECK-F22-DAG: %[[CLAMP_MIN_HI:.+]] = select i1 %[[NEG_INF_CMP]], i32 -2147483648, i32 %[[CLAMP_NAN_HI]]
-// CHECK-F22-DAG: %[[POS_INF_CMP:.+]] = fcmp oeq half %[[FP_SRC]], 0xH7C00
+// CHECK-F22-DAG: %[[POS_INF_CMP:.+]] = fcmp oeq half %[[FP_SRC]], {{0xH7C00|\+inf}}
 // CHECK-F22-DAG: %[[CLAMP_MAX_LO:.+]] = select i1 %[[POS_INF_CMP]], i32 -1, i32 %[[CLAMP_MIN_LO]]
 // CHECK-F22-DAG: %[[CLAMP_MAX_HI:.+]] = select i1 %[[POS_INF_CMP]], i32 2147483647, i32 %[[CLAMP_MIN_HI]]
 // CHECK-F22: %[[CONV_SAT_LO:.+]] = insertelement <2 x i32> undef, i32 %[[CLAMP_MAX_LO]], i32 0
@@ -309,10 +306,10 @@ test_convert_sat_intty_to_fpty(ulong, double)
 // CHECK-F22-LABEL: define spir_kernel void @test_convert_ulong_half
 // CHECK-F22: %[[FP_SRC:.+]] = load half, ptr addrspace(1) %src
 // CHECK-F22: %[[NAN_CMP:.+]] = fcmp oeq half %[[FP_SRC]], %[[FP_SRC]]
-// CHECK-F22: %[[CLAMP_MIN:.+]] = call half @llvm.maxnum.f16(half %[[FP_SRC]], half 0xH0000)
-// CHECK-F22: %[[CLAMP_NAN:.+]] = select i1 %[[NAN_CMP]], half %[[CLAMP_MIN]], half 0xH0000
+// CHECK-F22: %[[CLAMP_MIN:.+]] = call half @llvm.maxnum.f16(half %[[FP_SRC]], half {{0xH0000|0\.000000e\+00}})
+// CHECK-F22: %[[CLAMP_NAN:.+]] = select i1 %[[NAN_CMP]], half %[[CLAMP_MIN]], half {{0xH0000|0\.000000e\+00}}
 // CHECK-F22: %[[CONV_LO:.+]] = fptoui half %[[CLAMP_NAN]] to i32
-// CHECK-F22: %[[POS_INF_CMP:.+]] = fcmp oeq half %[[FP_SRC]], 0xH7C00
+// CHECK-F22: %[[POS_INF_CMP:.+]] = fcmp oeq half %[[FP_SRC]], {{0xH7C00|\+inf}}
 // CHECK-F22-DAG: %[[CLAMP_MAX_LO:.+]] = select i1 %[[POS_INF_CMP]], i32 -1, i32 %[[CONV_LO]]
 // CHECK-F22-DAG: %[[CLAMP_MAX_HI:.+]] = select i1 %[[POS_INF_CMP]], i32 -1, i32 0
 // CHECK-F22: %[[CONV_SAT_LO:.+]] = insertelement <2 x i32> undef, i32 %[[CLAMP_MAX_LO]], i32 0

@@ -6,9 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// FIXME: Update the test for LLVM 23.
-// UNSUPPORTED: llvm-23-plus
-
 // REQUIRES: regkeys, pvc-supported, llvm-16-plus
 
 // RUN: ocloc compile -file %s -device pvc \
@@ -97,8 +94,8 @@ test_convert_sat_intty_to_fpty(ushort, double)
 // CHECK-PRE-LLVM22: %[[CLAMP_MIN:.+]] = call double @llvm.maxnum.f64(double %[[CLAMP_NAN]], double 0xC1E0000000000000)
 // CHECK-PRE-LLVM22: %[[CLAMP_MAX:.+]] = call double @llvm.minnum.f64(double %[[CLAMP_MIN]], double 0x41DFFFFFFFC00000)
 // CHECK-PRE-LLVM22: %[[CONV:.+]] = fptosi double %[[CLAMP_MAX]] to i32
-// CHECK-LLVM22: %[[CLAMP_MIN:.+]] = call double @llvm.maxnum.f64(double %[[FP_SRC]], double 0xC1E0000000000000)
-// CHECK-LLVM22: %[[CLAMP_MAX:.+]] = call double @llvm.minnum.f64(double %[[CLAMP_MIN]], double 0x41DFFFFFFFC00000)
+// CHECK-LLVM22: %[[CLAMP_MIN:.+]] = call double @llvm.maxnum.f64(double %[[FP_SRC]], double {{f?}}0xC1E0000000000000)
+// CHECK-LLVM22: %[[CLAMP_MAX:.+]] = call double @llvm.minnum.f64(double %[[CLAMP_MIN]], double {{f?}}0x41DFFFFFFFC00000)
 // CHECK-LLVM22: %[[CLAMP_NAN:.+]] = select i1 %[[NAN_CMP]], double %[[CLAMP_MAX]], double 0.000000e+00
 // CHECK-LLVM22: %[[CONV:.+]] = fptosi double %[[CLAMP_NAN]] to i32
 // CHECK: store i32 %[[CONV]], ptr addrspace(1) %dst
@@ -113,7 +110,7 @@ test_convert_sat_intty_to_fpty(int, double)
 // CHECK-PRE-LLVM22: %[[CLAMP_MAX:.+]] = call double @llvm.minnum.f64(double %[[CLAMP_MIN]], double 0x41EFFFFFFFE00000)
 // CHECK-PRE-LLVM22: %[[CONV:.+]] = fptoui double %[[CLAMP_MAX]] to i32
 // CHECK-LLVM22: %[[CLAMP_MIN:.+]] = call double @llvm.maxnum.f64(double %[[FP_SRC]], double 0.000000e+00)
-// CHECK-LLVM22: %[[CLAMP_MAX:.+]] = call double @llvm.minnum.f64(double %[[CLAMP_MIN]], double 0x41EFFFFFFFE00000)
+// CHECK-LLVM22: %[[CLAMP_MAX:.+]] = call double @llvm.minnum.f64(double %[[CLAMP_MIN]], double {{f?}}0x41EFFFFFFFE00000)
 // CHECK-LLVM22: %[[CLAMP_NAN:.+]] = select i1 %[[NAN_CMP]], double %[[CLAMP_MAX]], double 0.000000e+00
 // CHECK-LLVM22: %[[CONV:.+]] = fptoui double %[[CLAMP_NAN]] to i32
 // CHECK: store i32 %[[CONV]], ptr addrspace(1) %dst
