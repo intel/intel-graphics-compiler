@@ -26,15 +26,18 @@
 ;   comment: "Payload ptr"
 ;   param_attr: !ParamAttributeID "NoCapture"
 
-; CHECK: declare void @llvm.genx.GenISA.TraceRayAsyncHL{{.*}}(i32, ptr, ptr, i32, i32, i32, i32, i32, float, float, float, float, float, float, float, float, ptr {{nocapture|captures\(none\)}}, i32, i32, i32, float)
+; CHECK: declare void @llvm.genx.GenISA.TraceRayAsyncHL{{.*}}(i32, ptr, ptr, i32, i32, i32, i32, i32, float, float, float, float, float, float, float, float, ptr {{nocapture|captures\(none\)}}, i32, i32, i32, float
+; CHECK-SAME: )
 
 define spir_kernel void @main(ptr %payload) {
 entry:
-  call void @llvm.genx.GenISA.TraceRayAsyncHL(i32 -1, ptr null, ptr null, i32 0, i32 0, i32 0, i32 0, i32 0, float 0.0, float 0.0, float 0.0, float 0.0, float 1.0, float 1.0, float 0.0, float 100.0, ptr %payload, i32 0, i32 0, i32 0, float 0.0)
+  call void @llvm.genx.GenISA.TraceRayAsyncHL(i32 -1, ptr null, ptr null, i32 0, i32 0, i32 0, i32 0, i32 0, float 0.0, float 0.0, float 0.0, float 0.0, float 1.0, float 1.0, float 0.0, float 100.0, ptr %payload, i32 0, i32 0, i32 0, float 0.0
+  )
   ret void
 }
 
-declare void @llvm.genx.GenISA.TraceRayAsyncHL(i32, ptr, ptr, i32, i32, i32, i32, i32, float, float, float, float, float, float, float, float, ptr, i32, i32, i32, float)
+declare void @llvm.genx.GenISA.TraceRayAsyncHL(i32, ptr, ptr, i32, i32, i32, i32, i32, float, float, float, float, float, float, float, float, ptr, i32, i32, i32, float
+)
 
 !IGCMetadata = !{!0}
 !igc.functions = !{!6}
