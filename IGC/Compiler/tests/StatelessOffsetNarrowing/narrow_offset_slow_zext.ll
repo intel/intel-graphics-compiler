@@ -24,9 +24,8 @@ entry:
 
 ; CHECK-LABEL: @narrow_offset_slow_zext
 ; CHECK: %[[IDX32:.*]] = trunc i64 %gid64 to i32
-; CHECK: %[[OFF32:.*]] = add i32 0, %[[IDX32]]
 ; CHECK: %[[BASE:.*]] = ptrtoint ptr addrspace(1) %src to i64
-; CHECK: %[[OFF64:.*]] = zext i32 %[[OFF32]] to i64
+; CHECK: %[[OFF64:.*]] = zext i32 %[[IDX32]] to i64
 ; CHECK: %[[ADDR:.*]] = add i64 %[[BASE]], %[[OFF64]]
 ; CHECK: %[[PTR:.*]] = inttoptr i64 %[[ADDR]] to ptr addrspace(1)
 ; CHECK: load i8, ptr addrspace(1) %[[PTR]]

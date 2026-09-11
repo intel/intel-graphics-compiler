@@ -91,26 +91,44 @@ bool StatelessOffsetNarrowing::runOnFunction(Function &F) {
     if (!OffsetGuaranteed32Bit && !offsetFitsIn32Bits(GEPs))
       continue;
 
-    auto *Offset = getRawOffsetFromGEPs(GEPs);
-    if (!Offset)
+    auto Offset = getRawOffsetFromGEPs(GEPs);
+
+    // Nothing to narrow: no dynamic index, the rewrite would only add an immediate.
+    if (!Offset.VariablePart)
       continue;
 
-    // Skip trivial case where the offset is constant zero.
-    if (auto *CI = dyn_cast<ConstantInt>(Offset))
-      if (CI->isZero())
-        continue;
-
     const DebugLoc &DL = I->getDebugLoc();
+    auto *Int64Ty = Type::getInt64Ty(M->getContext());
+
+    // Splitting needs a non-negative variable part or the zext drops the borrow.
+    // HasPositivePointerOffset only promises the total offset is non-negative.
+    if (this->HasPositivePointerOffset && Offset.ConstantPart != 0 &&
+        !IGCLLVM::computeKnownBits(Offset.VariablePart, M->getDataLayout(), this->CurrentAC).isNonNegative()) {
+      auto *Int32Ty = Type::getInt32Ty(M->getContext());
+      auto *ConstantI32 = ConstantInt::getSigned(Int32Ty, static_cast<int32_t>(Offset.ConstantPart));
+      auto *Folded =
+          BinaryOperator::CreateAdd(Offset.VariablePart, ConstantI32, "offset.const.i32", IGCLLVM::insertPosition(I));
+      Folded->setDebugLoc(DL);
+      Offset.VariablePart = Folded;
+      Offset.ConstantPart = 0;
+    }
 
     // Reconstruct the full 64-bit address just before the load/store:
     //   %base    = ptrtoint <base_arg> to i64
-    //   %offset  = zext i32 <offset> to i64
+    //   %base    = add i64 %base, <constant part>   ; only when non-zero
+    //   %offset  = zext i32 <variable part> to i64
     //   %address = add i64 %base, %offset
     //   %pointer = inttoptr i64 %address to <original Pointer type>
-    auto *BaseI64 = new PtrToIntInst(Base, Type::getInt64Ty(M->getContext()), "base.i64", IGCLLVM::insertPosition(I));
-    BaseI64->setDebugLoc(DL);
+    Value *BaseI64 = new PtrToIntInst(Base, Int64Ty, "base.i64", IGCLLVM::insertPosition(I));
+    cast<Instruction>(BaseI64)->setDebugLoc(DL);
 
-    auto *OffsetI64 = new ZExtInst(Offset, Type::getInt64Ty(M->getContext()), "offset.i64", IGCLLVM::insertPosition(I));
+    if (Offset.ConstantPart != 0) {
+      BaseI64 = BinaryOperator::CreateAdd(BaseI64, ConstantInt::getSigned(Int64Ty, Offset.ConstantPart),
+                                          "base.offset.i64", IGCLLVM::insertPosition(I));
+      cast<Instruction>(BaseI64)->setDebugLoc(DL);
+    }
+
+    auto *OffsetI64 = new ZExtInst(Offset.VariablePart, Int64Ty, "offset.i64", IGCLLVM::insertPosition(I));
     OffsetI64->setDebugLoc(DL);
 
     auto *Address = BinaryOperator::CreateAdd(BaseI64, OffsetI64, "narrow.address", IGCLLVM::insertPosition(I));
@@ -163,26 +181,17 @@ Value *StatelessOffsetNarrowing::isNarrowableStatelessAccess(Value *Pointer,
   return Result;
 }
 
-Value *StatelessOffsetNarrowing::getRawOffsetFromGEPs(const SmallVectorImpl<GetElementPtrInst *> &GEPs) {
+StatelessOffsetNarrowing::GEPChainOffset
+StatelessOffsetNarrowing::getRawOffsetFromGEPs(const SmallVectorImpl<GetElementPtrInst *> &GEPs) {
   const auto *DL = &this->CurrentF->getParent()->getDataLayout();
   auto *Int32Ty = Type::getInt32Ty(this->CurrentF->getContext());
-  Value *Result = ConstantInt::get(Int32Ty, 0);
+  GEPChainOffset Result;
 
-  // Result += Imm * Var
-  const auto AddToResult = [&Int32Ty, &Result](uint32_t Imm, Value *Var, GetElementPtrInst *GEP) {
-    if (Imm == 0)
-      return;
-
+  // Result.VariablePart += Imm * Var
+  const auto AddToVariablePart = [&Int32Ty, &Result](uint64_t Imm, Value *Var, GetElementPtrInst *GEP) {
     IRBuilder<> Builder(GEP);
-    Value *Offset = nullptr;
-    if (!Var) {
-      Offset = ConstantInt::get(Int32Ty, Imm);
-    } else if (Imm == 1) {
-      Offset = Var;
-    } else {
-      Offset = Builder.CreateMul(ConstantInt::get(Int32Ty, Imm), Var);
-    }
-    Result = Builder.CreateAdd(Result, Offset);
+    Value *Offset = Imm == 1 ? Var : Builder.CreateMul(ConstantInt::get(Int32Ty, Imm), Var);
+    Result.VariablePart = Result.VariablePart ? Builder.CreateAdd(Result.VariablePart, Offset) : Offset;
   };
 
   for (auto *GEP : llvm::reverse(GEPs)) {
@@ -192,17 +201,15 @@ Value *StatelessOffsetNarrowing::getRawOffsetFromGEPs(const SmallVectorImpl<GetE
     for (const auto &Index : llvm::drop_begin(GEP->operands())) {
       if (GTI.isStruct()) {
         uint32_t Field = cast<ConstantInt>(Index)->getZExtValue();
-        uint32_t Offset = DL->getStructLayout(GTI.getStructType())->getElementOffset(Field);
-        AddToResult(Offset, nullptr, GEP);
+        Result.ConstantPart += static_cast<int64_t>(DL->getStructLayout(GTI.getStructType())->getElementOffset(Field));
       } else {
-        uint32_t TypeAllocSize = DL->getTypeAllocSize(GTI.getIndexedType());
-        if (isa<ConstantInt>(Index)) {
-          uint32_t Offset = TypeAllocSize * cast<ConstantInt>(Index)->getSExtValue();
-          AddToResult(Offset, nullptr, GEP);
-        } else {
+        uint64_t TypeAllocSize = DL->getTypeAllocSize(GTI.getIndexedType());
+        if (auto *CI = dyn_cast<ConstantInt>(Index)) {
+          Result.ConstantPart += static_cast<int64_t>(TypeAllocSize) * CI->getSExtValue();
+        } else if (TypeAllocSize != 0) {
           Instruction *IndexI32 = CastInst::CreateTruncOrBitCast(Index, Int32Ty, "", IGCLLVM::insertPosition(GEP));
           IndexI32->setDebugLoc(GEP->getDebugLoc());
-          AddToResult(TypeAllocSize, IndexI32, GEP);
+          AddToVariablePart(TypeAllocSize, IndexI32, GEP);
         }
       }
       ++GTI;

@@ -35,20 +35,17 @@ entry:
 ; --- GEP 1: dynamic index, stride 64 ---
 ; CHECK: %[[T1:.*]] = trunc i64 %i64 to i32
 ; CHECK: %[[MUL1:.*]] = mul i32 64, %[[T1]]
-; CHECK: %[[ADD1:.*]] = add i32 0, %[[MUL1]]
-;
-; --- GEP 2: struct field 1 offset = 32 ---
-; CHECK: %[[ADD2:.*]] = add i32 %[[ADD1]], 32
 ;
 ; --- GEP 3: dynamic index, stride 4 ---
 ; CHECK: %[[T2:.*]] = trunc i64 %j64 to i32
 ; CHECK: %[[MUL2:.*]] = mul i32 4, %[[T2]]
-; CHECK: %[[ADD3:.*]] = add i32 %[[ADD2]], %[[MUL2]]
+; CHECK: %[[VAR:.*]] = add i32 %[[MUL1]], %[[MUL2]]
 ;
 ; --- Address reconstruction ---
 ; CHECK: %[[BASE:.*]] = ptrtoint ptr addrspace(1) %src to i64
-; CHECK: %[[OFF64:.*]] = zext i32 %[[ADD3]] to i64
-; CHECK: %[[ADDR:.*]] = add i64 %[[BASE]], %[[OFF64]]
+; CHECK: %[[BASEOFF:.*]] = add i64 %[[BASE]], 32
+; CHECK: %[[OFF64:.*]] = zext i32 %[[VAR]] to i64
+; CHECK: %[[ADDR:.*]] = add i64 %[[BASEOFF]], %[[OFF64]]
 ; CHECK: %[[PTR:.*]] = inttoptr i64 %[[ADDR]] to ptr addrspace(1)
 ; CHECK: load float, ptr addrspace(1) %[[PTR]]
   %val = load float, ptr addrspace(1) %gep3, align 4

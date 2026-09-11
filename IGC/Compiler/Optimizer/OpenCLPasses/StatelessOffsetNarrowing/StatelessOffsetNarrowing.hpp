@@ -50,13 +50,21 @@ public:
   virtual bool runOnFunction(llvm::Function &F) override;
 
 private:
+  // Byte offset from a chain of GEPs, split into compile time and runtime parts.
+  struct GEPChainOffset {
+    int64_t ConstantPart = 0;
+    // 32-bit value, null when the whole offset is constant.
+    llvm::Value *VariablePart = nullptr;
+  };
+
   // Check whether the pointer operand of a load/store traces back to a
   // kernel argument through a chain of GEPs with non-negative indices.
   llvm::Value *isNarrowableStatelessAccess(llvm::Value *Pointer,
                                            llvm::SmallVectorImpl<llvm::GetElementPtrInst *> &GEPs);
 
-  // Compute the 32-bit byte offset from a chain of GEPs.
-  llvm::Value *getRawOffsetFromGEPs(const llvm::SmallVectorImpl<llvm::GetElementPtrInst *> &GEPs);
+  // Compute the byte offset from a chain of GEPs. Only the runtime part is
+  // built as 32-bit arithmetic.
+  GEPChainOffset getRawOffsetFromGEPs(const llvm::SmallVectorImpl<llvm::GetElementPtrInst *> &GEPs);
 
   // Check if the maximum possible byte offset produced by a GEP chain is
   // guaranteed to fit in an unsigned 32-bit integer. Uses computeKnownBits
