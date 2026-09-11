@@ -3304,7 +3304,10 @@ void HWConformityPro::fix3SrcInstEncodeRestriction(INST_LIST_ITER it,
 void HWConformityPro::fixDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb) {
   G4_INST *inst = *it;
 
-  if (inst->nonALUInstructions() || inst->opcode() == G4_madm)
+  // shfl_idx4 is subject to this restriction, but nonALUInstructions() treats
+  // it as non-ALU because it is still an intrinsic until removeIntrinsics.
+  if ((inst->nonALUInstructions() && !inst->isShflIdx4()) ||
+      inst->opcode() == G4_madm)
     return;
 
   auto dst = inst->getDst();
