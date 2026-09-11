@@ -323,7 +323,7 @@ private:
     }
 
     if (alignment < 4 && !WI->isUniform(inst.inst())) {
-      if (IGC_IS_FLAG_ENABLED(EnableSubDWordMergeAlignmentCheck))
+      if (CGC->type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(EnableSubDWordMergeAlignmentCheck))
         return false;
 
       llvm::Type *dataType = inst.getValue()->getType();
