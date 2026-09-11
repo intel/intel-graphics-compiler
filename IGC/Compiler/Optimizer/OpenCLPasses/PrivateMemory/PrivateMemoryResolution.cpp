@@ -85,6 +85,7 @@ private:
   static bool testTransposedMemory(const Type *pTmpType, const Type *const pTypeOfAccessedObject,
                                    uint64_t tmpAllocaSize, const uint64_t bufferSizeLimit);
 
+
   /// @brief  The module level alloca information
   ModuleAllocaAnalysis *m_ModAllocaInfo = nullptr;
 
@@ -178,6 +179,7 @@ Value *convertToPtr(IGCLLVM::IRBuilder<> &IRB, const DataLayout &pDL, Value *B, 
   }
   return R;
 }
+
 } // namespace
 
 ModulePass *IGC::CreatePrivateMemoryResolution() { return new PrivateMemoryResolution(); }
@@ -222,6 +224,7 @@ void PrivateMemoryResolution::expandPrivateMemoryForVla(uint32_t &maxPrivateMem,
 
   getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(fullWarningMessage.c_str(), pKernel);
 }
+
 
 bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
   // Get the analysis
@@ -1001,10 +1004,13 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
   // This change is only till the FuncMD is ported to new MD framework
   ModuleMetaData *const modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
   IGC_ASSERT(nullptr != modMD);
+
+
   modMD->FuncMD[m_currFunction].privateMemoryPerWI = totalPrivateMemPerWI;
 
   SmallVector<AllocaInst *, 8> &allocaInsts = m_ModAllocaInfo->getAllocaInsts(m_currFunction);
-  if (allocaInsts.empty()) {
+  if (allocaInsts.empty()
+  ) {
     // No alloca instructions to process.
     return false;
   }
@@ -1246,6 +1252,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
       Value *threadId = entryBuilder.CreateCall(pHWTIDFunc);
       Value *perThreadOffset = createThreadOffset(entryBuilder, threadId, totalPrivateMemPerWI);
       threadBase = addOffset(entryBuilder, DL, privateBase, perThreadOffset);
+
     }
 
     for (auto pAI : allocaInsts) {
