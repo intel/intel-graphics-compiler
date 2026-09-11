@@ -892,7 +892,13 @@ void ConstantCoalescing::SetAlignmentFromOffset(Instruction *load) {
 #else
   KnownBits kb = computeKnownBits(offset, *dataLayout, 0 /*current depth*/, nullptr /*AssumptionCache*/, load, &DT);
 #endif
-  uint32_t numTrailZeros = std::min(kb.countMinTrailingZeros(), Value::MaxAlignmentExponent);
+  uint32_t numTrailZeros = kb.countMinTrailingZeros();
+  if (numTrailZeros == kb.getBitWidth()) {
+    // Zero has no finite trailing-zero alignment. Keep the alignment already
+    // carried by the load instead of deriving an arbitrary bit-width limit.
+    return;
+  }
+  numTrailZeros = std::min(numTrailZeros, Value::MaxAlignmentExponent);
   alignment_t alignment = (1ull << std::min(kb.getBitWidth() - 1, numTrailZeros));
   alignment = std::max<alignment_t>(alignment, m_ChunkMinAlignment);
   SetAlignment(load, alignment);

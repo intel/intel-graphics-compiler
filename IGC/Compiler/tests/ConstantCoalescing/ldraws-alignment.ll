@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -75,6 +75,20 @@ entry:
 ; CHECK-LABEL: define <4 x half> @f2
 ; CHECK-NOT: call <4 x half> @llvm.genx.GenISA.ldrawvector.indexed.v4f16.p249037
 
+; Test Case 4: A merged chunk moved to offset zero keeps its finite alignment
+define <2 x float> @f3(ptr addrspace(2490373) %bso) {
+entry:
+  %high = call <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.v4f32.p2490373(ptr addrspace(2490373) %bso, i32 32, i32 4, i1 false)
+  %high.0 = extractelement <4 x float> %high, i32 0
+  %low = call <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.v4f32.p2490373(ptr addrspace(2490373) %bso, i32 0, i32 4, i1 false)
+  %low.0 = extractelement <4 x float> %low, i32 0
+  %ret.0 = insertelement <2 x float> undef, float %low.0, i32 0
+  %ret.1 = insertelement <2 x float> %ret.0, float %high.0, i32 1
+  ret <2 x float> %ret.1
+}
+; CHECK-LABEL: define <2 x float> @f3
+; CHECK: call <16 x float> @llvm.genx.GenISA.ldrawvector.indexed.v16f32.p2490373(ptr addrspace(2490373) %bso, i32 0, i32 4, i1 false)
+
 ; Function Attrs: argmemonly nounwind readonly
 declare float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373i8(ptr addrspace(2490373), i32, i32, i1) #0
 
@@ -93,11 +107,14 @@ declare <2 x half> @llvm.genx.GenISA.ldrawvector.indexed.v2f16.p2490373(ptr addr
 ; Function Attrs: argmemonly nounwind readonly willreturn
 declare <4 x half> @llvm.genx.GenISA.ldrawvector.indexed.v4f16.p2490373(ptr addrspace(2490373), i32, i32, i1) #2
 
+; Function Attrs: argmemonly nounwind readonly willreturn
+declare <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.v4f32.p2490373(ptr addrspace(2490373), i32, i32, i1) #2
+
 attributes #0 = { argmemonly nounwind readonly }
 attributes #1 = { argmemonly nounwind writeonly }
 attributes #2 = { argmemonly nounwind readonly willreturn }
 
-!igc.functions = !{!0, !3, !6}
+!igc.functions = !{!0, !3, !6, !9}
 
 !0 = !{ptr @f0, !1}
 !1 = !{!2}
@@ -110,3 +127,7 @@ attributes #2 = { argmemonly nounwind readonly willreturn }
 !6 = !{ptr @f2, !7}
 !7 = !{!8}
 !8 = !{!"function_type", i32 0}
+
+!9 = !{ptr @f3, !10}
+!10 = !{!11}
+!11 = !{!"function_type", i32 0}
