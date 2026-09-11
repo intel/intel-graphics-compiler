@@ -755,10 +755,15 @@ Value *GenerateBlockMemOpsPass::checkGep(Instruction *PtrInstr, Type *DataType) 
     IsPtrUniform = true;
 
   bool TypesMatch = DataType == Gep->getResultElementType();
+  if (!TypesMatch && Gep->getNumIndices() == 1) {
+    const DataLayout &DL = Gep->getModule()->getDataLayout();
+    TypesMatch = DL.getTypeAllocSize(Gep->getSourceElementType()) == DL.getTypeStoreSize(DataType);
+  }
   Type *Int32Ty = Type::getInt32Ty(*CGCtx->getLLVMContext());
   Value *Zero = Constant::getNullValue(Int32Ty);
 
-  // If `DataType` doesn't match the GEP result type -- then logically there are implicit zero indices at the end.
+  // If the types differ and the single-index stride doesn't match the access size, treat the GEP as having
+  // implicit zero indices at the end.
   // Here it doesn't matter how many zero indices there are.
   // If there's at least one implicit zero -- then we have to check all the indexes and the last index will be zero.
   auto E = TypesMatch ? Gep->idx_end() - 1 : Gep->idx_end();
