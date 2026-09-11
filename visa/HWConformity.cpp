@@ -6282,36 +6282,33 @@ bool HWConformity::fixAddcSubb(G4_BB *bb) {
 //
 // Mixed mode instruction allows bfloat16 operands in the following cases:
 //   1. dst, src0, and src1 for 2 source instructions format not involving
-//   multiplier(mov, add, cmp, sel).
+//      multiplier(mov, add, cmp, sel).
 //   2. dst and src0 for 2 source instructions format involving multiplier(mul,
-//   mac etc).
+//      mac etc).
 //   3. dst, src0, and src1 for 3 source instructions format(mad).
 //   4. Broadcast of bfloat16 scalar is not supported.
 //   5. Unpacked bfloat16 destination with stride 2 when register offset is 0
-//   or 1.
+//      or 1.
 //   6. Packed bfloat16 source and destination when register offset is 0 or 8
-//   (16 for PVC+).
+//      (16 for PVC+).
 //   7. Execution size must not be greater than 8 (16 for PVC+)
 //   8. Instructions with pure bfloat16 operands are not supported.
 //
-// **More examples**
+// **Examples**
 //   1. BF imm is not allowed
 //      mov  (1|M0)  r12.0<1>:f  0xffff:bf - ILLEGAL "Imm operand with BF type
 //      is not allowed"
 //   2. BF scalar operand can be used in SIMD1
 //      mul  (1|M0)  r14.0<1>:f  r11.0<0;1,0>:bf  r12.3<0;1,0>:f - OK
-//   3. For SIMD1, scalar operands (both dst/src) of F or BF can have any
-//   subreg!
-//      add  (1|M0)  r16.3<1>:bf  r11.0<0;1,0>:f  r12.3<0;1,0>:f - OK
-//   4. F Operand should have subreg = 0 if execSize > SIMD1
+//   3. F Operand should have subreg = 0 if execSize > SIMD1
 //      add  (2|M0)  r10.4<1>:f  r11.0<1;1,0>:bf   0x12345:f
 //       ILLEGAL "Src0 regioning must be aligned to destination or scalar for
 //       Float/64bit pipes"
-//   5. Others
-//     add  (8|M0)  r16.0<2>:bf  r11.0<1;1,0>:f  r12.0<1;1,0>:f- OK
-//     add  (8|M0)  r16.1<2>:bf  r11.0<1;1,0>:f  r12.8<1;1,0>:f- OK
-//     add  (8|M0)  r16.0<1>:bf  r11.0<1;1,0>:f  r12.8<1;1,0>:f- OK
-//     add  (8|M0)  r16.8<1>:bf  r11.0<1;1,0>:f  r12.0<1;1,0>:f- OK
+//   4. Others
+//      add  (8|M0)  r16.0<2>:bf  r11.0<1;1,0>:f  r12.0<1;1,0>:f- OK
+//      add  (8|M0)  r16.1<2>:bf  r11.0<1;1,0>:f  r12.8<1;1,0>:f- OK
+//      add  (8|M0)  r16.0<1>:bf  r11.0<1;1,0>:f  r12.8<1;1,0>:f- OK
+//      add  (8|M0)  r16.8<1>:bf  r11.0<1;1,0>:f  r12.0<1;1,0>:f- OK
 //         Note that float source operands  can be scalar region <0;1,0>
 //
 void HWConformity::fixBFMixedMode() {
@@ -6577,11 +6574,6 @@ void HWConformity::fixBFMixedMode() {
         }
       }
 
-      if (currES == g4::SIMD1) {
-        // Done
-        continue;
-      }
-
       for (int i = 0, nsrc = (int)Inst->getNumSrc(); i < nsrc; ++i) {
         G4_Operand *S = Inst->getSrc(i);
         if (S->getType() == Type_F &&
@@ -6600,6 +6592,7 @@ void HWConformity::fixBFMixedMode() {
         //         restrictive?)
         bool isPackedSrc =
             (sReg->getRegion()->isContiguous(Inst->getExecSize()) &&
+             builder.tryToAlignOperand(sReg, builder.getGRFSize()) &&
              (sReg->getSubRegOff() == 0 || (sReg->getType() == Type_BF &&
                                             sReg->getSubRegOff() == nativeES)));
         if (isPackedSrc) {
@@ -6621,10 +6614,12 @@ void HWConformity::fixBFMixedMode() {
       // case 5
       bool isUnpackedDst =
           (dst->getType() == Type_BF && dst->getHorzStride() == 2 &&
+           builder.tryToAlignOperand(dst, builder.getGRFSize()) &&
            (subOff == 0 || subOff == 1));
       // case 6, note for F, force it to have subOff = 0
       bool isPackedDst =
           (dst->getHorzStride() == 1 &&
+           builder.tryToAlignOperand(dst, builder.getGRFSize()) &&
            (subOff == 0 || (subOff == nativeES && dst->getType() == Type_BF)));
       if (!(isPackedDst || isUnpackedDst)) {
         // case 5 Unpacked bfloat16 destination with stride 2 when register
