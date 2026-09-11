@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/Analysis/CallGraph.h"
 #include "llvmWrapper/IR/CallSite.h"
+#include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/TypeSize.h"
@@ -168,7 +169,7 @@ static Constant *constantFoldWrRegion(Type *RetTy,
     return UndefValue::get(RetTy); // out of range index
   if (!isa<VectorType>(NewValue->getType()))
     Values[Offset] = NewValue;
-  else if (!Mask->isZeroValue()) {
+  else if (!IGCLLVM::Constant::isNullValue(Mask)) {
     unsigned RowIdx = Offset;
     unsigned Idx = RowIdx;
     unsigned NextRow = R.Width;
@@ -183,7 +184,8 @@ static Constant *constantFoldWrRegion(Type *RetTy,
         return ConstantVector::get(Values);
       if (Mask->isAllOnesValue() ||
           (Mask->getType()->isVectorTy() &&
-           !cast<ConstantVector>(Mask)->getAggregateElement(i)->isZeroValue()))
+           !IGCLLVM::Constant::isNullValue(
+               cast<ConstantVector>(Mask)->getAggregateElement(i))))
         Values[Idx] = NewValue->getAggregateElement(i);
       Idx += R.Stride;
     }

@@ -21,6 +21,8 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "vc/Utils/General/IndexFlattener.h"
 
+#include "llvmWrapper/IR/Constants.h"
+
 #define DEBUG_TYPE "GENX_LIVE_ELEMENTS"
 
 using namespace llvm;
@@ -292,7 +294,7 @@ LiveElements GenXLiveElements::getOperandLiveElements(
       IGC_ASSERT(InstLiveElems.size() == 1);
       LiveElements Result(InstLiveElems);
       for (unsigned Idx = 0; Idx < CDV->getNumElements(); Idx++)
-        if (CDV->getElementAsConstant(Idx)->isZeroValue())
+        if (IGCLLVM::Constant::isNullValue(CDV->getElementAsConstant(Idx)))
           Result[0].reset(Idx);
       return Result;
     }

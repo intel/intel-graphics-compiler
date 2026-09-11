@@ -100,6 +100,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Utils/Mem2Reg.h"
 
+#include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/Transforms/Scalar/LoopDeletion.h"
 #include "llvmWrapper/Transforms/Scalar/LowerExpectIntrinsic.h"
 #include "llvmWrapper/Transforms/Scalar/LoopIdiomRecognize.h"
@@ -338,7 +339,7 @@ void GenXTTIImpl::getPeelingPreferences(
         // Check if one of the Phi inputs is constant zero
         bool IsZeroAcc = llvm::any_of(Phi.incoming_values(), [](const auto &V) {
           const auto *C = dyn_cast<Constant>(&V);
-          return C && C->isZeroValue();
+          return C && IGCLLVM::Constant::isNullValue(C);
         });
         if (!IsZeroAcc)
           return Acc;

@@ -43,6 +43,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/Analysis/InstructionSimplify.h"
 #include "llvmWrapper/Analysis/ValueTracking.h"
+#include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Type.h"
@@ -431,7 +432,7 @@ static int checkModifier(Instruction *Inst) {
 
       // Usage of negative modifier on unsigned value can lead
       // to unexpected behaviour if baled into another instruction.
-      if (Lhs->isZeroValue() &&
+      if (IGCLLVM::Constant::isNullValue(Lhs) &&
           std::none_of(
               Inst->use_begin(), Inst->use_end(),
               [](Use &UseOp) { return isa<UIToFPInst>(UseOp.getUser()); }) &&

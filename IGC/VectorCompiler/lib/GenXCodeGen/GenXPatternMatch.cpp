@@ -620,7 +620,7 @@ private:
 
   unsigned getLutValue(const Value *V) const {
     if (auto *C = dyn_cast<Constant>(V)) {
-      if (C->isZeroValue())
+      if (IGCLLVM::Constant::isNullValue(C))
         return 0;
       if (C->isAllOnesValue())
         return 0xff;
@@ -1618,7 +1618,8 @@ bool FmaMatcher::isProfitable() const {
     return false;
 
   // Do not match x * y +/- 0.0f
-  if (const auto *C = dyn_cast<Constant>(Srcs[2]); C && C->isZeroValue())
+  if (const auto *C = dyn_cast<Constant>(Srcs[2]);
+      C && IGCLLVM::Constant::isNullValue(C))
     return false;
 
   unsigned IndirectCount =
@@ -4437,7 +4438,7 @@ bool GenXPatternMatch::simplifyDpasNullSrc(CallInst *Inst) {
                   IID == GenXIntrinsic::genx_dpas2);
 
   auto *Acc = dyn_cast<Constant>(Inst->getArgOperand(0));
-  if (!Acc || !Acc->isZeroValue())
+  if (!Acc || !IGCLLVM::Constant::isNullValue(Acc))
     return false;
 
   IRBuilder<> Builder(Inst);
@@ -4545,7 +4546,7 @@ bool GenXPatternMatch::simplifyBDpasNullSrc(CallInst *Inst) {
   }
 
   auto *Acc = dyn_cast<Constant>(Inst->getArgOperand(0));
-  if (!Acc || !Acc->isZeroValue())
+  if (!Acc || !IGCLLVM::Constant::isNullValue(Acc))
     return false;
 
   auto *AccTy = Acc->getType();

@@ -646,7 +646,7 @@ bool genx::areConstantsEqual(const Constant *C1, const Constant *C2) {
   }
 
   // Most common case: check for zero initializers
-  if (C1->isZeroValue() && C2->isZeroValue())
+  if (IGCLLVM::Constant::isNullValue(C1) && IGCLLVM::Constant::isNullValue(C2))
     return true;
 
   auto *GC1 = dyn_cast<GlobalValue>(C1);
@@ -1865,7 +1865,7 @@ bool ConstantLoader::isSimple() const {
   if (User && User->isBinaryOp())
     if (isa<VectorType>(C->getType()))
       if (auto splat = C->getSplatValue())
-        if (splat->isZeroValue())
+        if (IGCLLVM::Constant::isNullValue(splat))
           return true;
   if (!isLegalSize())
     return false; // Simple constant must be legally sized

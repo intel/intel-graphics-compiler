@@ -4194,7 +4194,7 @@ static LoHiRes buildIMadWithMulDDQ(ArrayRef<Value *> Args, bool Signed,
 
   // If last argument of imad isn't zeroinitiliazer we should produce add
   auto *C = dyn_cast<Constant>(Args[2]);
-  if (!(C && C->isZeroValue())) {
+  if (!(C && IGCLLVM::Constant::isNullValue(C))) {
     auto *Ext = CastInst::Create(
         Signed ? Instruction::SExt : Instruction::ZExt, Args[2], VInt64Ty,
         Args[2]->getName() + ".cast", &*IRB.GetInsertPoint());

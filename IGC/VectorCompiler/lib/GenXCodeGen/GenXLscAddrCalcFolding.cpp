@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/Intrinsics.h"
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
 
+#include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/MathExtras.h"
 
@@ -617,7 +618,7 @@ static Value *getBaseCandidate(Value *V) {
     auto *Src = Shuffle->getOperand(0);
     if (auto *Ins = dyn_cast<InsertElementInst>(Src)) {
       auto *Index = dyn_cast<ConstantInt>(Ins->getOperand(2));
-      if (Index && Index->isZeroValue())
+      if (Index && IGCLLVM::Constant::isNullValue(Index))
         return Ins->getOperand(1);
     }
 
