@@ -116,7 +116,8 @@ LSC_L1_L3_CC SWStackLoadPolicy(const CodeGenContext &Ctx);
  * @return the resolved cache options for the current platform
  */
 LSC_CACHE_OPTS translateLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad, const llvm::Value *warningContextValue,
-                                             CodeGenContext &Ctx);
+                                             CodeGenContext &Ctx
+);
 
 /**
  * Compute the constant-buffer load cache-control *enum* decision.

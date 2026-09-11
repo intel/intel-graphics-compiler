@@ -546,9 +546,10 @@ public:
   void emitHDCuncompressedwrite(llvm::GenIntrinsicInst *I);
   ////////////////////////////////////////////////////////////////////
   // LSC related functions
-  LSC_CACHE_OPTS translateLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad,
-                                               const llvm::Value *warningContextValue) const;
-  LSC_CACHE_OPTS translateLSCCacheControlsFromValue(llvm::Value *value, bool isLoad) const;
+  LSC_CACHE_OPTS translateLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad, const llvm::Value *warningContextValue
+  ) const;
+  LSC_CACHE_OPTS translateLSCCacheControlsFromValue(llvm::Value *value, bool isLoad
+  ) const;
   LSC_CACHE_OPTS translateLSCCacheControlsFromMetadata(llvm::Instruction *inst, bool isLoad, bool isTGM = 0) const;
   // Non-operand atomics (scalar/typed intatomicraw/typed) carry no cache-control
   // operand. The LscAtomicCacheControlOverride decision now lives in

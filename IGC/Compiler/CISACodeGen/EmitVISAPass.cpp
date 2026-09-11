@@ -23149,13 +23149,17 @@ void EmitPass::emitInt4VectorPack(llvm::GenIntrinsicInst *GII) {
 }
 
 LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad,
-                                                       const Value *warningContextValue) const {
-  return IGC::translateLSCCacheControlsEnum(l1l3cc, isLoad, warningContextValue, *m_pCtx);
+                                                       const Value *warningContextValue
+) const {
+  return IGC::translateLSCCacheControlsEnum(l1l3cc, isLoad, warningContextValue, *m_pCtx
+  );
 }
 
-LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromValue(llvm::Value *value, bool isLoad) const {
+LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromValue(llvm::Value *value, bool isLoad
+) const {
   return translateLSCCacheControlsEnum(static_cast<LSC_L1_L3_CC>(cast<ConstantInt>(value)->getSExtValue()), isLoad,
-                                       value);
+                                       value
+  );
 }
 
 // Non-operand atomics (scalar/typed intatomicraw and typed atomics) have no
@@ -23166,7 +23170,8 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromValue(llvm::Value *value, 
 LSC_CACHE_OPTS EmitPass::atomicCacheOptsFromMetadataOrDefault(llvm::Instruction *inst) const {
   if (const MDNode *node = inst ? inst->getMetadata("lsc.cache.ctrl") : nullptr) {
     ConstantAsMetadata *MD = cast<ConstantAsMetadata>(node->getOperand(0));
-    return translateLSCCacheControlsFromValue(MD->getValue(), /*isLoad=*/false);
+    return translateLSCCacheControlsFromValue(MD->getValue(), /*isLoad=*/false
+    );
   }
   return LSC_DEFAULT_CACHING;
 }
@@ -24404,7 +24409,8 @@ void EmitPass::emitLSCAtomic(llvm::GenIntrinsicInst *inst) {
   unsigned short bitwidth = getLSCAtomicBitWidth(inst);
   pDstAddr = ReAlignUniformVariable(pDstAddr, EALIGN_GRF);
 
-  auto cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(5), false);
+  auto cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(5), false
+  );
 
   m_encoder->LSC_AtomicRaw(atomicOp, pOldValue, nullptr, pDstAddr, pAtomicVal, pAtomicCmp, bitwidth, &resource,
                            addrSize, immOff, 1, cacheOpts);

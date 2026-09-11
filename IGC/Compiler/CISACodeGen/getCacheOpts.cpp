@@ -181,7 +181,8 @@ std::optional<LSC_L1_L3_CC> getCacheOptsLoadPolicy(const LoadInst &loadInst, con
 }
 
 LSC_CACHE_OPTS translateLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad, const llvm::Value *warningContextValue,
-                                             CodeGenContext &Ctx) {
+                                             CodeGenContext &Ctx
+) {
   if (!Ctx.platform.isSupportedLSCCacheControlsEnum(l1l3cc, isLoad)) {
     Ctx.EmitWarning("Unsupported cache controls configuration requested. "
                     "Applying default configuration.",
