@@ -1496,38 +1496,34 @@ void G4Verifier::verifyByteFloatCvtMov(G4_INST *inst) {
 //
 // Mixed mode instruction allows bfloat16 operands in the following cases:
 //   1. dst, src0, and src1 for 2 source instructions format not involving
-//   multiplier(mov, add, cmp, sel).
+//      multiplier(mov, add, cmp, sel).
 //   2. dst and src0 for 2 source instructions format involving multiplier(mul,
-//   mac etc).
+//      mac etc).
 //   3. dst, src0, and src1 for 3 source instructions format(mad).
 //   4. Broadcast of bfloat16 scalar is not supported.
 //   5. Unpacked bfloat16 destination with stride 2 when register offset is 0
-//   or 1.
+//      or 1.
 //   6. Packed bfloat16 source and destination when register offset is 0 or 8.
-//   7. Execution size must not be greater than 8.
+//   7. Execution size must not be greater than 8 (or 16 for pvc+).
 //   8. Instructions with pure bfloat16 operands are not supported.
 //
-// **More examples**
+// **Examples**
 //   1. BF imm is not allowed
 //      mov  (1|M0)  r12.0<1>:f  0xffff:bf - ILLEGAL "Imm operand with BF type
 //      is not allowed"
 //   2. BF scalar operand can be used in SIMD1
 //      mul  (1|M0)  r14.0<1>:f  r11.0<0;1,0>:bf  r12.3<0;1,0>:f - OK
-//   3. For SIMD1, scalar operands (both dst/src) of F or BF can have any
-//   subreg!
-//      add  (1|M0)  r16.3<1>:bf  r11.0<0;1,0>:f  r12.3<0;1,0>:f - OK
-//   4. F Operand should have subreg = 0 if execSize > SIMD1
+//   3. F Operand should have subreg = 0 if execSize > SIMD1
 //      add  (2|M0)  r10.4<1>:f  r11.0<1;1,0>:bf   0x12345:f
 //       ILLEGAL "Src0 regioning must be aligned to destination or scalar for
 //       Float/64bit pipes"
-//   5. Others
-//     add  (8|M0)  r16.0<2>:bf  r11.0<1;1,0>:f  r12.0<1;1,0>:f- OK
-//     add  (8|M0)  r16.1<2>:bf  r11.0<1;1,0>:f  r12.8<1;1,0>:f- OK
-//     add  (8|M0)  r16.0<1>:bf  r11.0<1;1,0>:f  r12.8<1;1,0>:f- OK
-//     add  (8|M0)  r16.8<1>:bf  r11.0<1;1,0>:f  r12.0<1;1,0>:f- OK
+//   4. Others
+//      add  (8|M0)  r16.0<2>:bf  r11.0<1;1,0>:f  r12.0<1;1,0>:f- OK
+//      add  (8|M0)  r16.1<2>:bf  r11.0<1;1,0>:f  r12.8<1;1,0>:f- OK
+//      add  (8|M0)  r16.0<1>:bf  r11.0<1;1,0>:f  r12.8<1;1,0>:f- OK
+//      add  (8|M0)  r16.8<1>:bf  r11.0<1;1,0>:f  r12.0<1;1,0>:f- OK
 //         Note that float source operands  can be scalar region <0;1,0>
 //
-//   For PVC, case 6 should be "Execution size must not be greater than 16."
 void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
   auto useGivenType = [](G4_INST *I, G4_Type GivenTy) -> bool {
     G4_Operand *dst = I->getDst();
@@ -1635,12 +1631,6 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
   }
 
   uint32_t nativeES = kernel.fg.builder->getNativeExecSize();
-  // For SIMD1 an operand accesses a single element, so the packed/unpacked
-  // subreg rules do not apply (see example 3 above) and the dst horizontal
-  // stride is a don't-care. HWConformity::fixBFMixedMode() skips SIMD1 for the
-  // same reason, so requiring anything more here rejects legal code, such as
-  // the SIMD1 pieces of an unpacked BF dst split by fixUnalignedRegions():
-  //    mov (1|M0)  r6.2<2>:bf  r9.1<0;1,0>:f
   const bool isSIMD1 = (inst->getExecSize() == g4::SIMD1);
   // verify dst
   G4_DstRegRegion *dreg = inst->getDst();
