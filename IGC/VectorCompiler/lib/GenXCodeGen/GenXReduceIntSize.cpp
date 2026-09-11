@@ -172,10 +172,7 @@ bool GenXReduceIntSize::runOnFunction(Function &F) {
   // processing instructions within a basic block in reverse, to ensure that we
   // see a def after its uses (ignoring phi node uses).
   Modified = false;
-  for (po_iterator<BasicBlock *> i = po_begin(&F.getEntryBlock()),
-                                 e = po_end(&F.getEntryBlock());
-       i != e; ++i) {
-    BasicBlock *BB = *i;
+  for (BasicBlock *BB : post_order(&F.getEntryBlock())) {
     // This loop scans the BB in reverse, and allows processReverseInst to
     // erase Inst and other instructions.
     for (auto Inst = &BB->back(); Inst;)

@@ -1781,9 +1781,7 @@ void GenXSimdCFConformance::moveCodeInJoinBlocks() {
  * See comment for moveCodeInJoinBlocks above.
  */
 void GenXSimdCFConformance::emptyBranchingJoinBlocksInFunc(Function *F) {
-  for (auto i = po_begin(&F->getEntryBlock()), e = po_end(&F->getEntryBlock());
-       i != e; ++i) {
-    BasicBlock *BB = *i;
+  for (BasicBlock *BB : post_order(&F->getEntryBlock())) {
     CallInst *Join = GotoJoin::isBranchingJoinBlock(BB);
     if (!Join)
       continue;

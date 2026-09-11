@@ -167,10 +167,8 @@ bool vc::breakConstantExprs(Instruction *I,
 bool vc::breakConstantExprs(Function *F,
                             vc::LegalizationStage LegalizationStage) {
   bool Modified = false;
-  for (po_iterator<BasicBlock *> i = po_begin(&F->getEntryBlock()),
-                                 e = po_end(&F->getEntryBlock());
-       i != e; ++i) {
-    BasicBlock *BB = *i;
+  for (BasicBlock *BB : post_order(&F->getEntryBlock())) {
+
     // The effect of this loop is that we process the instructions in reverse
     // order, and we re-process anything inserted before the instruction
     // being processed.

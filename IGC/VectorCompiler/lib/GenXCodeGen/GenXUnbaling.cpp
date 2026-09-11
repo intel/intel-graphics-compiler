@@ -391,11 +391,9 @@ bool GenXUnbaling::runOnFunctionGroup(FunctionGroup &FG) {
 void GenXUnbaling::processFunc(Function *F) {
   LLVM_DEBUG(dbgs() << "GenXUnbaling on " << F->getName() << "\n");
   DT = getAnalysis<DominatorTreeGroupWrapperPass>().getDomTree(F);
-  for (po_iterator<BasicBlock *> i = po_begin(&F->getEntryBlock()),
-                                 e = po_end(&F->getEntryBlock());
-       i != e; ++i) {
-    CurBlock = *i;
+  for (BasicBlock *i : post_order(&F->getEntryBlock())) {
     // Process our incomings of successors' phi nodes.
+    CurBlock = i;
     auto TI = CurBlock->getTerminator();
     for (unsigned si = 0, se = TI->getNumSuccessors(); si != se; ++si) {
       BasicBlock *Succ = TI->getSuccessor(si);
@@ -468,10 +466,7 @@ bool canBeSafelyHoisted(Instruction *Inst, Instruction *InsertBefore) {
  * copying.
  */
 void GenXUnbaling::shortenLiveRanges(Function *F) {
-  for (po_iterator<BasicBlock *> i = po_begin(&F->getEntryBlock()),
-                                 e = po_end(&F->getEntryBlock());
-       i != e; ++i) {
-    BasicBlock *BB = *i;
+  for (BasicBlock *BB : post_order(&F->getEntryBlock())) {
     for (Instruction &Inst : *BB) {
       auto DstRegion = dyn_cast<CallInst>(&Inst);
       if (DstRegion && GenXIntrinsic::isWrRegion(DstRegion)) {

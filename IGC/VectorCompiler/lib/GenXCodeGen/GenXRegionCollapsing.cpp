@@ -162,11 +162,8 @@ bool GenXRegionCollapsing::runOnFunction(Function &F) {
   // This does a postordered depth first traversal of the CFG, processing
   // instructions within a basic block in reverse, to ensure that we see a def
   // after its uses (ignoring phi node uses).
-  for (po_iterator<BasicBlock *> i = po_begin(&F.getEntryBlock()),
-                                 e = po_end(&F.getEntryBlock());
-       i != e; ++i) {
+  for (BasicBlock *BB : post_order(&F.getEntryBlock())) {
     // Iterate until there is no modification.
-    BasicBlock *BB = *i;
     do {
       Modified = false;
       runOnBasicBlock(BB);

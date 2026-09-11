@@ -343,9 +343,8 @@ bool GenXLowering::runOnFunction(Function &F) {
   // Create a list of basic blocks in the order we want to process them, before
   // we start the lowering. This is because lowering can split a basic block.
   SmallVector<BasicBlock *, 8> BBs;
-  for (auto i = po_begin(&F.getEntryBlock()), e = po_end(&F.getEntryBlock());
-       i != e; ++i)
-    BBs.push_back(*i);
+  for (BasicBlock *BB : post_order(&F.getEntryBlock()))
+    BBs.push_back(BB);
   // Process each basic block.
   for (auto i = BBs.begin(), e = BBs.end(); i != e; ++i) {
     BasicBlock *BB = *i;

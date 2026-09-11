@@ -450,10 +450,7 @@ bool GenXLegalization::runOnFunction(Function &F) {
   // Legalize instructions. This does a postordered depth first traversal of the
   // CFG, and scans backwards in each basic block, to ensure that, if we unbale
   // anything, it then gets processed subsequently.
-  for (po_iterator<BasicBlock *> i = po_begin(&F.getEntryBlock()),
-                                 e = po_end(&F.getEntryBlock());
-       i != e; ++i) {
-    BasicBlock *BB = *i;
+  for (BasicBlock *BB : post_order(&F.getEntryBlock())) {
     // The effect of this loop is that we process the instructions in reverse
     // order, and we re-process anything inserted before the instruction
     // being processed. CurrentInst is a field in the GenXLegalization object,

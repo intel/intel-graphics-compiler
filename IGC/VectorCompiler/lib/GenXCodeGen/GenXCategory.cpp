@@ -538,12 +538,9 @@ bool GenXCategory::processFunction(Function *F) {
   // Load constants in phi nodes.
   loadPhiConstants(*F, DTs->getDomTree(F), *Subtarget, *DL, false);
   // Process all instructions.
-  for (po_iterator<BasicBlock *> i = po_begin(&Func->getEntryBlock()),
-                                 e = po_end(&Func->getEntryBlock());
-       i != e; ++i) {
+  for (BasicBlock *BB : post_order(&Func->getEntryBlock())) {
     // This loop scans the basic block backwards. If any code is inserted
     // before the current point, that code is scanned too.
-    BasicBlock *BB = *i;
     for (Instruction *Inst = &BB->back(); Inst;
          Inst = (Inst == &BB->front() ? nullptr : Inst->getPrevNode())) {
       Modified |= loadNonSimpleConstants(Inst, *Subtarget, *DL, nullptr);
