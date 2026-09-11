@@ -304,6 +304,24 @@ private:
     return false;
   }
 
+  /// Decide whether a merge of accesses that are all aligned below DWORD is
+  /// still worth doing.
+  bool isSubDWordMergeProfitable(unsigned AddrSpace, size_t NumAccesses, int64_t MergedSize) const {
+    if (!CGC->platform.hasLSC())
+      return true;
+
+    // A merge below 4 bytes stays a d8/d16 message.
+    if (MergedSize < 4)
+      return true;
+
+    if (AddrSpace == ADDRESS_SPACE_LOCAL)
+      return true;
+
+    // Require the merge to cut the message count by more than 2x to be worth.
+    const uint64_t MergedNumMessages = (uint64_t(MergedSize) + 3) / 4;
+    return NumAccesses > 2 * MergedNumMessages;
+  }
+
   template <typename AccessInstruction>
   bool
   checkAlignmentBeforeMerge(const AccessInstruction &inst,
@@ -323,9 +341,6 @@ private:
     }
 
     if (alignment < 4 && !WI->isUniform(inst.inst())) {
-      if (CGC->type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(EnableSubDWordMergeAlignmentCheck))
-        return false;
-
       llvm::Type *dataType = inst.getValue()->getType();
       unsigned scalarTypeSizeInBytes = unsigned(DL->getTypeSizeInBits(dataType->getScalarType()) / 8);
 
@@ -353,6 +368,10 @@ private:
         if (AccessInstruction::get(std::get<0>(*rit))->getAlignmentValue() >= 4)
           return false;
       }
+
+      if (CGC->type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(EnableSubDWordMergeAlignmentCheck) &&
+          !isSubDWordMergeProfitable(inst.getPointerAddressSpace(), AccessIntrs.size(), mergedSize))
+        return false;
 
       // Need to subtract the last offset by the first offset and add one to
       // get the new size of the vector
