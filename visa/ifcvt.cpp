@@ -303,12 +303,18 @@ class IfConverter {
       break;
     }
 
-    // BF<->F conversion doesn't allow predication
-    if (G4_mov == op && ((I->getDst()->getType() == Type_BF &&
-                          I->getSrc(0)->getType() == Type_F) ||
-                         (I->getDst()->getType() == Type_F &&
-                          I->getSrc(0)->getType() == Type_BF)))
-      return false;
+    // Conversions to/from BF16, tfloat32 and the 8-bit floats don't allow
+    // predication. The movs carrying such a conversion are created without a
+    // predicate, so attaching one here would break that restriction.
+    if (G4_mov == op) {
+      auto noPredCvtType = [](G4_Type ty) {
+        return IS_BFTYPE(ty) || ty == Type_TF32 || IS_BYTE_FLOAT(ty);
+      };
+      G4_Type dstTy = I->getDst()->getType();
+      G4_Type srcTy = I->getSrc(0)->getType();
+      if (dstTy != srcTy && (noPredCvtType(dstTy) || noPredCvtType(srcTy)))
+        return false;
+    }
 
     unsigned maskOpt = I->getMaskOption();
 
