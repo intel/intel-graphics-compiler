@@ -1860,10 +1860,15 @@ static Value *getArrayIndex(const Instruction *I, unsigned &ArraySize) {
 
   // `gep T, ptr %alloca, %idx` form
   // InstCombine may strip the leading zero index. Recover the bound from the
-  // alloca when the single-index GEP still strides by its element type.
+  // alloca when the single-index GEP still strides by its element size.
   Type *AllocaTy = Alloca->getAllocatedType();
-  if (AllocaTy->isArrayTy() && AllocaTy->getArrayElementType() == GEPTy && GEPOp->getNumIndices() == 1 &&
-      !isa<ConstantInt>(GEPOp->getOperand(1))) {
+  if (AllocaTy->isArrayTy() && GEPOp->getNumIndices() == 1 && !isa<ConstantInt>(GEPOp->getOperand(1))) {
+    const DataLayout &DL = I->getModule()->getDataLayout();
+    TypeSize ElementSize = DL.getTypeAllocSize(AllocaTy->getArrayElementType());
+    TypeSize GEPStride = DL.getTypeAllocSize(GEPTy);
+    if (ElementSize != GEPStride || ElementSize.getFixedValue() == 0)
+      return nullptr;
+
     ArraySize = int_cast<unsigned>(AllocaTy->getArrayNumElements());
     return GEPOp->getOperand(1);
   }
