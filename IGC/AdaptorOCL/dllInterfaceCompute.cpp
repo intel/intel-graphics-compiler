@@ -454,8 +454,10 @@ bool TranslateSPIRVToLLVM(const STB_TranslateInputArgs &InputArgs, llvm::LLVMCon
     // Parse SPIRV extensions and encode them as 'igc.spirv.extensions' metadata
     GenerateSPIRVExtensionsMD(Context, *LLVMModule, SPIRVBinary.str());
 
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
     if (IGC_IS_FLAG_ENABLED(ShaderDumpTranslationOnly))
       LLVMModule->dump();
+#endif
   }
 
   return success;
