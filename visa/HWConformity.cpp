@@ -6574,6 +6574,7 @@ void HWConformity::fixBFMixedMode() {
         }
       }
 
+      const bool isSIMD1 = Inst->getExecSize() == g4::SIMD1;
       for (int i = 0, nsrc = (int)Inst->getNumSrc(); i < nsrc; ++i) {
         G4_Operand *S = Inst->getSrc(i);
         if (S->getType() == Type_F &&
@@ -6586,15 +6587,19 @@ void HWConformity::fixBFMixedMode() {
         G4_SrcRegRegion *sReg = S->asSrcRegRegion();
 
         // case 6: Packed bfloat16 source and destination when register offset
-        // is 0 or 8.
-        //         (also for Float dst/src alignment)
-        //         Note that for F, enforce it to have subRegOff = 0 (too
-        //         restrictive?)
+        //         is 0 or 8 (also for Float dst/src alignment).
+        //
+        // To check subreg, the root decl's alignment must be known
+        //    F: grf aligned;
+        //   BF: half-grf aligned (same as nativeES * typesize)
+        // Note for SIMD1, enforcing GRF alignment.
+        uint32_t alignBytes = nativeES * sReg->getTypeSize();
+        if (isSIMD1) {
+          alignBytes = builder.getGRFSize();
+        }
         bool isPackedSrc =
             (sReg->getRegion()->isContiguous(Inst->getExecSize()) &&
-             builder.tryToAlignOperand(sReg, builder.getGRFSize()) &&
-             (sReg->getSubRegOff() == 0 || (sReg->getType() == Type_BF &&
-                                            sReg->getSubRegOff() == nativeES)));
+             builder.tryToAlignOperand(sReg, alignBytes));
         if (isPackedSrc) {
           continue;
         }
@@ -6609,18 +6614,22 @@ void HWConformity::fixBFMixedMode() {
         continue;
       }
 
+      const uint32_t GRFBytes = builder.getGRFSize();
       G4_DstRegRegion *dst = Inst->getDst();
-      uint32_t subOff = dst->getSubRegOff();
       // case 5
+      //   BF's subreg = 0|1 --> suboffBytes = 0|2
+      uint32_t dstOffBytes = 0;
       bool isUnpackedDst =
           (dst->getType() == Type_BF && dst->getHorzStride() == 2 &&
-           builder.tryToAlignOperand(dst, builder.getGRFSize()) &&
-           (subOff == 0 || subOff == 1));
+           builder.tryToAlignOperandRootDcl(dst, dstOffBytes, GRFBytes) &&
+           ((dstOffBytes % GRFBytes) == 0 || (dstOffBytes % GRFBytes) == 2));
       // case 6, note for F, force it to have subOff = 0
-      bool isPackedDst =
-          (dst->getHorzStride() == 1 &&
-           builder.tryToAlignOperand(dst, builder.getGRFSize()) &&
-           (subOff == 0 || (subOff == nativeES && dst->getType() == Type_BF)));
+      uint32_t alignBytes = nativeES * dst->getTypeSize();
+      if (isSIMD1) {
+        alignBytes = builder.getGRFSize();
+      }
+      bool isPackedDst = (dst->getHorzStride() == 1 &&
+                          builder.tryToAlignOperand(dst, alignBytes));
       if (!(isPackedDst || isUnpackedDst)) {
         // case 5 Unpacked bfloat16 destination with stride 2 when register
         // offset is 0 or 1.
