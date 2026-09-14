@@ -172,6 +172,13 @@ SPDX-License-Identifier: MIT
   FILENAME_COLLISION_MODE(APPEND, 2, "Append whole content, the file will contain EVERY writes")
 #endif // FILENAME_COLLISION_MODE
 
+#ifdef FCL_PCH_CACHE_MODE
+#define FCL_PCH_CACHE_MODES                                                                                            \
+  FCL_PCH_CACHE_MODE(Disabled, 0, "Auto-PCH cache disabled")                                                           \
+  FCL_PCH_CACHE_MODE(InMemory, 1, "In-memory auto-PCH cache only")                                                     \
+  FCL_PCH_CACHE_MODE(OnDisk, 2, "In-memory and persistent on-disk auto-PCH cache")
+#endif // FCL_PCH_CACHE_MODE
+
 #ifdef FLOATING_POINT_MODE_OVERRIDE_OPTION
 #define FLOATING_POINT_MODE_OVERRIDE_OPTIONS                                                                           \
   FLOATING_POINT_MODE_OVERRIDE_OPTION(IEEE, 0, "IEEE default")                                                         \

@@ -349,6 +349,13 @@ enum class TriboolFlag : int {
 #undef TRIBOOL_OPTION
 #undef TRIBOOL_OPTIONS
 };
+enum class FclPchCacheMode : unsigned {
+#define FCL_PCH_CACHE_MODE(Name, Val, Description) Name = Val,
+#include "igc_regkeys_enums_defs.h"
+  FCL_PCH_CACHE_MODES
+#undef FCL_PCH_CACHE_MODE
+#undef FCL_PCH_CACHE_MODES
+};
 enum class NewInlineRaytracingMask : unsigned {
   None = 0,
 #define NEW_INLINE_RAYTRACING_FLAG(Name, Val, Description) Name = Val,

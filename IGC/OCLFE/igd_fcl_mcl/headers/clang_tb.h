@@ -50,10 +50,15 @@ static const STB_TranslationCode g_cClangTranslationCodes[] = {
 
 struct CCModuleStruct {
   typedef decltype(Compile) *PFcnCCCompile;
+  typedef decltype(ConfigureAutoPCHDiskCache) *PFcnCCConfigureAutoPCHDiskCache;
 
   void *pModule = nullptr;
   PFcnCCCompile pCompile = nullptr;
+  // Optional for compatibility with older opencl-clang builds.
+  PFcnCCConfigureAutoPCHDiskCache pConfigureAutoPCHDiskCache = nullptr;
   bool isDynamicallyLoaded = false;
+  // Set once EnsureAutoPCHDiskCacheConfigured has attempted configuration for this module instance.
+  bool autoPCHDiskCacheConfigureAttempted = false;
 };
 
 /***************************************************************************\

@@ -27,7 +27,9 @@ Abstract:  Provides all the registry reading/writing code for Intel
 #include <windef.h>
 #include <stdio.h>
 #else
+#include <stdint.h>
 #include <string.h>
+#include <string>
 #endif
 
 #include <stdlib.h>

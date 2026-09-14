@@ -1852,6 +1852,17 @@ if (FCL_ENABLED)
     ${IGC_BUILD__RES__FCL}
   )
 
+  # Generate the build-time identity used by the FCL auto-PCH cache.
+  add_custom_command(OUTPUT "${IGC_BUILD__CTH_DIR}/fcl_pch_cache_header_id.cpp"
+                     COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__CTH_DIR}"
+                     COMMAND "${PYTHON_EXECUTABLE}"
+                     ARGS "${IGC_SOURCE_DIR}/BiFModule/header_id_gen.py" "${IGC_BUILD__BIF_DIR}/opencl_cth.h"
+                          "${IGC_BUILD__CTH_DIR}/fcl_pch_cache_header_id.cpp"
+                     DEPENDS "${IGC_SOURCE_DIR}/BiFModule/header_id_gen.py" "${IGC_BUILD__BIF_DIR}/opencl_cth.h"
+                             "${IGC_BUILD__PROJ__BiFModule_OCL}"
+                     COMMENT "Computing FCL auto-PCH cache HeaderId"
+                    )
+
   add_library("${IGC_BUILD__PROJ__fcl_dll}" SHARED
         ${IGC_BUILD__SRC__IGC__fcl_dll}
         ${IGC_BUILD__HDR__IGC__fcl_dll}

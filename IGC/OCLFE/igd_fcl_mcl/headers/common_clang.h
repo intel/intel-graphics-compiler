@@ -126,6 +126,11 @@ extern "C" CC_DLL_EXPORT int Compile(
     // optional outbound pointer to the compilation results
     Intel::OpenCL::ClangFE::IOCLFEBinaryResult **pBinaryResult);
 
+// Configures opencl-clang's optional persistent auto-PCH disk cache. A zero size
+// selects opencl-clang's default budget; HeaderId identifies the built-in header.
+extern "C" CC_DLL_EXPORT bool ConfigureAutoPCHDiskCache(const char *Directory, unsigned long long MaxSizeBytes,
+                                                        const char *HeaderId);
+
 //
 // Links the given OpenCL binaries
 // Params:

@@ -1141,6 +1141,17 @@ DECLARE_IGC_REGKEY(bool, DisablePlatformConsistencyCheck, false,
                    "Skip the cross-check of the render GMDID against eProductFamily in the PLATFORM struct "
                    "passed by the runtime. The check fails compilation when the two disagree.",
                    ALWAYS)
+DECLARE_IGC_REGKEY_ENUM_UMD(EnableFclPchCache, 0,
+                            "Controls FCL's auto-PCH preamble cache backed by opencl-clang. Disabled by default.",
+                            FCL_PCH_CACHE_MODES, ALWAYS)
+DECLARE_IGC_REGKEY(debugString, FclPchCacheDirOverride, 0,
+                   "Override the root directory for FCL's on-disk auto-PCH cache. Empty = use the computed "
+                   "per-user default cache directory.",
+                   ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, FclPchCacheMaxSizeMBOverride, 0,
+                   "Override the size budget (in MB) for FCL's on-disk auto-PCH cache. 0 = built-in default "
+                   "(1024 MB, matching NEO_CACHE_MAX_SIZE).",
+                   ALWAYS)
 
 DECLARE_IGC_GROUP("IGC Features")
 DECLARE_IGC_REGKEY(bool, EnableOCLSIMD16, true, "Enable OCL SIMD16 mode", ALWAYS)

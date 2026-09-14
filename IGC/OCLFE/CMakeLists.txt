@@ -31,6 +31,7 @@ set(IGC_BUILD__SRC__FCL
   "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/source/clang_tb.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/source/clang_debug.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/source/LoadBuffer.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/source/fcl_pch_cache_config.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../common/igc_regkeys.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../common/igc_dump_paths.cpp"
   "${IGC_BUILD__SRC__IGC_Common_CLElfLib}"
@@ -41,9 +42,15 @@ set(IGC_BUILD__HDR__FCL
   "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/headers/clang_debug.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/headers/resource.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/headers/LoadBuffer.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/headers/fcl_pch_cache_config.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/TranslationBlock.h"
   "${IGC_BUILD__HDR__IGC_Common_CLElfLib}"
 )
+
+# Keep the generated HeaderId source in the FCL source list. Its custom command is
+# declared with the fcl_dll target in the parent IGC directory.
+set(IGC_BUILD__FCL_PCH_HEADER_ID_CPP "${IGC_BUILD__CTH_DIR}/fcl_pch_cache_header_id.cpp")
+list(APPEND IGC_BUILD__SRC__FCL "${IGC_BUILD__FCL_PCH_HEADER_ID_CPP}")
 
 list(APPEND IGC_BUILD__SRC__FCL ${CIF_SOURCES_EXPORT_ABSOLUTE_PATH}
   "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/fcl_ocl_translation_ctx_impl.cpp"
