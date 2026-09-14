@@ -80,8 +80,10 @@ public:
     PHISrcDefs.clear();
     PHISrcArgs.clear();
     RegNodeMap.clear();
+    CurrentPHIForColor.clear();
     InsEltMap.clear();
     AliasMap.clear();
+    NoopAliasMap.clear();
   }
 
   virtual llvm::StringRef getPassName() const override { return "DeSSA"; }
