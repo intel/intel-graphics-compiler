@@ -65,6 +65,7 @@ cmp+sel to avoid expensive VxH mov.
 #include "common/IGCConstantFolder.h"
 #include "common/debug/DebugMacros.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/Statistic.h>
 #include <llvm/ADT/SetVector.h>
 #include <llvm/Analysis/ConstantFolding.h>
@@ -77,6 +78,7 @@ cmp+sel to avoid expensive VxH mov.
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/InstIterator.h>
+#include <llvm/IR/ValueHandle.h>
 
 #if LLVM_VERSION_MAJOR >= 22
 #include "llvm/IR/PatternMatch.h"
@@ -5891,6 +5893,160 @@ void FCmpPaternMatch::visitSelectInst(SelectInst &I) {
       }
     }
   }
+}
+
+// Fold nested select chains using the condition known for each incoming value of an outer select. Example:
+//
+//   %inner = select i1 %A, i32 %x, i32 %dead
+//   %middle = select i1 %B, i32 %y, i32 %inner
+//   %outer = select i1 %A, i32 %middle, i32 %z
+//
+// While processing %outer's true value, %A is known true. Therefore %inner's condition is implied true,
+// so %inner can be replaced with %x.
+
+static cl::opt<unsigned>
+    FoldImpliedSelectCondMaxDepth("igc-fold-implied-select-cond-max-depth", cl::init(8), cl::Hidden,
+                                  cl::desc("Maximum select-chain depth visited by FoldImpliedSelectCond"));
+
+using OrphanList = SmallVectorImpl<WeakTrackingVH>;
+
+static void recordPossibleOrphan(Value *Old, OrphanList &Orphans) {
+  if (auto *I = dyn_cast<Instruction>(Old))
+    Orphans.push_back(I);
+}
+
+static bool setSelectIncomingValues(SelectInst *SI, Value *NewTrue, Value *NewFalse, OrphanList &Orphans) {
+  bool Changed = false;
+  if (NewTrue != SI->getTrueValue()) {
+    recordPossibleOrphan(SI->getTrueValue(), Orphans);
+    SI->setTrueValue(NewTrue);
+    Changed = true;
+  }
+  if (NewFalse != SI->getFalseValue()) {
+    recordPossibleOrphan(SI->getFalseValue(), Orphans);
+    SI->setFalseValue(NewFalse);
+    Changed = true;
+  }
+  return Changed;
+}
+
+static void enqueueSelectAndUsers(SelectInst *SI, SetVector<SelectInst *> &Worklist) {
+  Worklist.insert(SI);
+  for (User *U : SI->users()) {
+    if (auto *UserSI = dyn_cast<SelectInst>(U))
+      Worklist.insert(UserSI);
+  }
+}
+
+// Returns V simplified using the known value of Cond.
+static Value *simplifySelectUnderCondition(Value *V, Value *Cond, bool CondIsTrue, const DataLayout &DL, unsigned Depth,
+                                           bool CanModifyPath, bool &Changed, SetVector<SelectInst *> &Worklist,
+                                           OrphanList &Orphans) {
+  if (Depth >= FoldImpliedSelectCondMaxDepth)
+    return V;
+
+  // Only selects with a scalar condition.
+  auto *SI = dyn_cast<SelectInst>(V);
+  if (!SI || !SI->getCondition()->getType()->isIntegerTy(1))
+    return V;
+
+  // In-place changes are safe only while the path remains single-use.
+  bool CanModifySelect = CanModifyPath && SI->hasOneUse();
+  // Check whether the outer assumption proves this select's condition.
+  if (auto Implied = isImpliedCondition(Cond, SI->getCondition(), DL, CondIsTrue)) {
+    // The outer assumption proves this condition, so bypass the select and
+    // continue simplifying the selected incoming value.
+    Value *IncomingValue = *Implied ? SI->getTrueValue() : SI->getFalseValue();
+    return simplifySelectUnderCondition(IncomingValue, Cond, CondIsTrue, DL, Depth + 1, CanModifySelect, Changed,
+                                        Worklist, Orphans);
+  }
+
+  // Do not descend through a shared select with an unknown condition: simplifying
+  // anything below it in place could affect another user. Cloning such a path is
+  // intentionally outside the scope of this pass.
+  if (!CanModifySelect)
+    return V;
+
+  // The condition is unknown, but both single-use nested select chains may still simplify.
+  Value *NewTrue = simplifySelectUnderCondition(SI->getTrueValue(), Cond, CondIsTrue, DL, Depth + 1, CanModifySelect,
+                                                Changed, Worklist, Orphans);
+  Value *NewFalse = simplifySelectUnderCondition(SI->getFalseValue(), Cond, CondIsTrue, DL, Depth + 1, CanModifySelect,
+                                                 Changed, Worklist, Orphans);
+  // Don't make both incoming values identical: select c, x, x. The caller reports the change when it
+  // replaces its operand with the returned value.
+  if (NewTrue == NewFalse)
+    return NewTrue;
+
+  if (setSelectIncomingValues(SI, NewTrue, NewFalse, Orphans)) {
+    replaceDbgUsesWithUndef(SI);
+    Changed = true;
+    enqueueSelectAndUsers(SI, Worklist);
+  }
+  return SI;
+}
+
+#define FOLD_IMPLIED_SELECT_COND_PASS_FLAG "igc-fold-implied-select-cond"
+#define FOLD_IMPLIED_SELECT_COND_PASS_DESCRIPTION "Fold nested selects using an implied outer condition"
+IGC_INITIALIZE_PASS_BEGIN(FoldImpliedSelectCond, FOLD_IMPLIED_SELECT_COND_PASS_FLAG,
+                          FOLD_IMPLIED_SELECT_COND_PASS_DESCRIPTION, false, false)
+IGC_INITIALIZE_PASS_END(FoldImpliedSelectCond, FOLD_IMPLIED_SELECT_COND_PASS_FLAG,
+                        FOLD_IMPLIED_SELECT_COND_PASS_DESCRIPTION, false, false)
+
+char FoldImpliedSelectCond::ID = 0;
+
+FoldImpliedSelectCond::FoldImpliedSelectCond() : FunctionPass(ID) {
+  initializeFoldImpliedSelectCondPass(*PassRegistry::getPassRegistry());
+}
+
+FunctionPass *IGC::createFoldImpliedSelectCondPass() { return new FoldImpliedSelectCond(); }
+
+bool FoldImpliedSelectCond::runOnFunction(Function &F) {
+  bool Changed = false;
+  const DataLayout &DL = F.getParent()->getDataLayout();
+
+  SetVector<SelectInst *> Worklist;
+  for (Instruction &I : instructions(F)) {
+    if (auto *SI = dyn_cast<SelectInst>(&I); SI && SI->getCondition()->getType()->isIntegerTy(1))
+      Worklist.insert(SI);
+  }
+
+  // Instructions a rewrite may have left unused. Run dead-instruction cleanup between worklist items.
+  SmallVector<WeakTrackingVH, 8> Orphans;
+  // Deleting an instruction that is still queued would dangle the pointer, so drop it first.
+  auto DropFromWorklist = [&Worklist](Value *Dead) {
+    if (auto *DeadSI = dyn_cast<SelectInst>(Dead))
+      Worklist.remove(DeadSI);
+  };
+
+  while (!Worklist.empty()) {
+    SelectInst *SI = Worklist.pop_back_val();
+    Value *Cond = SI->getCondition();
+    Value *NewTrue =
+        simplifySelectUnderCondition(SI->getTrueValue(), Cond, true, DL, 0, true, Changed, Worklist, Orphans);
+    Value *NewFalse =
+        simplifySelectUnderCondition(SI->getFalseValue(), Cond, false, DL, 0, true, Changed, Worklist, Orphans);
+
+    // If the select becomes `select c, x, x`, skip it and use x directly.
+    if (NewTrue == NewFalse) {
+      // Queue the users while there are still users to see: the RAUW below empties the use list.
+      // SI itself is queued too, but dead-instruction cleanup deletes it and drops it before the next pop.
+      enqueueSelectAndUsers(SI, Worklist);
+      bool HadUses = !SI->use_empty() || SI->isUsedByMetadata();
+      SI->replaceAllUsesWith(NewTrue);
+      Changed |= HadUses;
+      Orphans.push_back(SI);
+    } else if (setSelectIncomingValues(SI, NewTrue, NewFalse, Orphans)) {
+      Changed = true;
+      enqueueSelectAndUsers(SI, Worklist);
+    }
+
+    if (!Orphans.empty()) {
+      Changed |= RecursivelyDeleteTriviallyDeadInstructionsPermissive(Orphans, nullptr, nullptr, DropFromWorklist);
+      Orphans.clear();
+    }
+  }
+
+  return Changed;
 }
 
 IGC_INITIALIZE_PASS_BEGIN(FlattenSmallSwitch, "flattenSmallSwitch", "flattenSmallSwitch", false, false)

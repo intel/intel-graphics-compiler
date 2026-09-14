@@ -182,6 +182,17 @@ public:
   void visitSelectInst(llvm::SelectInst &I);
 };
 
+class FoldImpliedSelectCond : public llvm::FunctionPass {
+public:
+  static char ID;
+
+  FoldImpliedSelectCond();
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
+  bool runOnFunction(llvm::Function &F) override;
+  llvm::StringRef getPassName() const override { return "Fold Implied Select Condition"; }
+};
+
 class IGCConstProp : public llvm::FunctionPass {
 public:
   static char ID;
@@ -230,4 +241,5 @@ llvm::FunctionPass *createMergeMemFromBranchOptPass();
 llvm::FunctionPass *createSinkLoadOptPass();
 llvm::FunctionPass *createInsertBranchOptPass();
 llvm::FunctionPass *createCanonicalizeMulAddPass();
+llvm::FunctionPass *createFoldImpliedSelectCondPass();
 } // namespace IGC

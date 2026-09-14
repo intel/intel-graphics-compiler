@@ -773,6 +773,8 @@ DECLARE_IGC_REGKEY(DWORD, SimplifyCFGBonusInstThreshold, 0,
                    "Max instructions SimplifyCFG will clone to merge two branches sharing a destination "
                    "(short-circuit || chains). 0 - pipeline unchanged; LLVM's own default is 1.",
                    DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, EnableFoldImpliedSelectCond, true,
+                   "Enable folding nested selects using implied outer conditions.", ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableIntDivRemIncrementReduction, true,
                    "Enable consecutive Int DivRem increment by constant optimization", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(

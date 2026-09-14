@@ -1489,6 +1489,9 @@ void OptimizeIR(CodeGenContext *const pContext) {
     }
 
     mpm.add(createIGCInstructionCombiningPass());
+    if (IGC_IS_FLAG_ENABLED(EnableFoldImpliedSelectCond)) {
+      mpm.add(createFoldImpliedSelectCondPass());
+    }
     if (IGC_IS_FLAG_ENABLED(EnableWaveShuffleIndexSinking)) {
       mpm.add(createWaveShuffleIndexSinking());
     }

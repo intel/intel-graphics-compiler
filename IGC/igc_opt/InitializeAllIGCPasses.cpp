@@ -99,6 +99,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeExtensionFuncsAnalysisLPMPass(Registry);
   initializeExtensionFuncsResolutionLPMPass(Registry);
   initializeFCmpPaternMatchPass(Registry);
+  initializeFoldImpliedSelectCondPass(Registry);
   IGC::initializeFastMathConstantHandlingPass(Registry);
   IGC::initializeFixInvalidFuncNamePass(Registry);
   initializeGenericAddressDynamicResolutionPass(Registry);
