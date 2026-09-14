@@ -1871,6 +1871,11 @@ DECLARE_IGC_REGKEY(DWORD, RematChainLimit, 12,
 DECLARE_IGC_REGKEY(
     DWORD, RematRPELimit, 93,
     "Cutoff value for register estimator, lower than that, kernel won't be rematted, stated in percentages", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(DWORD, RematVRTProximityPercent, 5,
+                   "On VRT platforms remat runs only when max register pressure is within this percentage above "
+                   "the nearest lower VRT budget band that yields more HW threads (so remat can plausibly cross "
+                   "into it), or above the top budget where the kernel spills regardless. Stated in percent.",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(bool, RematSingleFlowRematEnabled, true,
                    "Allow singleFlowRemat stage inside CloneAddressArithmeticPass", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, RematEnable, false, "Enable clone address arithmetic pass not only on retry", DEBUG_ONLY)

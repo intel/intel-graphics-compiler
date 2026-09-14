@@ -15,12 +15,15 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "common/igc_regkeys.hpp"
 
+#include "llvm/ADT/ArrayRef.h"
+
 #include "skuwa/iacm_g10_rev_id.h"
 #include "skuwa/iacm_g11_rev_id.h"
 #include "skuwa/iacm_g12_rev_id.h"
 
 #include "iStdLib/utility.h"
 #include "visa_igc_common_header.h"
+#include "VRTModeTable.h"
 
 #include <initializer_list>
 
@@ -852,6 +855,21 @@ public:
   bool supportsWriteableMSAATextures() const { return isCoreChildOf(IGFX_XE3_CORE); }
   bool supportsVRT() const { return isCoreChildOf(IGFX_XE3_CORE); }
   bool supportsSampleResultLatencySink() const { return isCoreChildOf(IGFX_XE3_CORE); }
+
+  // Returns the VRT mode table of this platform, or an empty table when the
+  // platform does not support VRT.
+  llvm::ArrayRef<VRT::ModeEntry> getVRTTable() const {
+    if (!supportsVRT())
+      return {};
+    if (m_platformInfo.eRenderCoreFamily == IGFX_XE3_CORE || m_platformInfo.eProductFamily == IGFX_PTL) {
+      return VRT::ModeTableXe3;
+    } else if (m_platformInfo.eProductFamily == IGFX_NVL) {
+      return VRT::ModeTableNVL;
+    } else if (m_platformInfo.eProductFamily == IGFX_CRI) {
+      return VRT::ModeTableXe3P;
+    }
+    return {};
+  }
 
 
   bool supportsOutOfBoundsGrfAccess() const { return !isCoreChildOf(IGFX_XE3_CORE); }

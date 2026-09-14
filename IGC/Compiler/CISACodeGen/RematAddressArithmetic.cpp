@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Local.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Instructions.h"
+#include "Compiler/CISACodeGen/Platform.hpp"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include <fstream>
 
@@ -579,6 +580,32 @@ void CloneAddressArithmetic::speculateWholeChain(RematSet &ToProcess, unsigned i
   return;
 }
 
+static bool shouldRematForVRT(llvm::ArrayRef<VRT::ModeEntry> Table, uint32_t MaxPressure, uint32_t ProximityPercent) {
+  if (Table.empty())
+    return false;
+
+  if ((int)MaxPressure > Table.back().first)
+    return true;
+
+  // Find the band the kernel currently lands in.
+  unsigned Cur = 0;
+  while (Cur + 1 < Table.size() && Table[Cur].first < (int)MaxPressure)
+    Cur++;
+  int CurThreads = Table[Cur].second;
+
+  // Walk down to the nearest band that grants more threads and check whether it
+  // is within reach.
+  for (int J = (int)Cur - 1; J >= 0; --J) {
+    if (Table[J].second == CurThreads)
+      continue;
+    int TargetBudget = Table[J].first;
+    uint32_t Threshold = TargetBudget + (uint32_t)TargetBudget * ProximityPercent / 100;
+    return MaxPressure <= Threshold;
+  }
+
+  return false;
+}
+
 bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
 
   RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
@@ -586,6 +613,17 @@ bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
   unsigned int GRFSize = CGCtx->getNumGRFPerThread(true, &F);
   unsigned int PressureLimit = 0.01f * (float)IGC_GET_FLAG_VALUE(RematRPELimit) * (float)GRFSize;
   MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
+
+  auto VRTTable = CGCtx->platform.getVRTTable();
+  if (!VRTTable.empty()) {
+    unsigned int Proximity = IGC_GET_FLAG_VALUE(RematVRTProximityPercent);
+    bool ShouldRemat = shouldRematForVRT(VRTTable, MaxPressure, Proximity);
+    PRINT_LOG_NL("VRT remat decision: MaxPressure: " << MaxPressure << " ProximityPercent: " << Proximity
+                                                     << " ShouldRemat: " << ShouldRemat);
+    writeLog();
+    return !ShouldRemat;
+  }
+
   bool Result = MaxPressure < PressureLimit;
   PRINT_LOG_NL("MaxPressure: " << MaxPressure << " PressureLimit: " << PressureLimit);
   writeLog();
