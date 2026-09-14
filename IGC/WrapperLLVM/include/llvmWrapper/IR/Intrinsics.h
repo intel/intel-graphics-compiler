@@ -38,6 +38,76 @@ inline bool isSignatureValid(llvm::Intrinsic::ID ID, llvm::FunctionType *FTy,
 #endif
 }
 
+inline unsigned getOverloadIndex(const llvm::Intrinsic::IITDescriptor &D) {
+#if LLVM_VERSION_MAJOR >= 23
+  return D.getOverloadIndex();
+#else
+  return D.getArgumentNumber();
+#endif
+}
+
+inline unsigned getOneNthEltsVecRefIndex(const llvm::Intrinsic::IITDescriptor &D) {
+#if LLVM_VERSION_MAJOR >= 23
+  return D.getOverloadIndex();
+#else
+  return D.getRefArgNumber();
+#endif
+}
+
+inline llvm::ElementCount getVectorWidth(const llvm::Intrinsic::IITDescriptor &D) {
+#if LLVM_VERSION_MAJOR >= 23
+  return D.VectorWidth;
+#else
+  return D.Vector_Width;
+#endif
+}
+
+inline unsigned getIntegerWidth(const llvm::Intrinsic::IITDescriptor &D) {
+#if LLVM_VERSION_MAJOR >= 23
+  return D.IntegerWidth;
+#else
+  return D.Integer_Width;
+#endif
+}
+
+inline unsigned getPointerAddressSpace(const llvm::Intrinsic::IITDescriptor &D) {
+#if LLVM_VERSION_MAJOR >= 23
+  return D.PointerAddressSpace;
+#else
+  return D.Pointer_AddressSpace;
+#endif
+}
+
+inline unsigned getStructNumElements(const llvm::Intrinsic::IITDescriptor &D) {
+#if LLVM_VERSION_MAJOR >= 23
+  return D.StructNumElements;
+#else
+  return D.Struct_NumElements;
+#endif
+}
+
+namespace IITDescriptorKind {
+using KindTy = llvm::Intrinsic::IITDescriptor::IITDescriptorKind;
+
+#if LLVM_VERSION_MAJOR >= 23
+inline constexpr KindTy Overloaded = llvm::Intrinsic::IITDescriptor::Overloaded;
+inline constexpr KindTy Extend = llvm::Intrinsic::IITDescriptor::Extend;
+inline constexpr KindTy Trunc = llvm::Intrinsic::IITDescriptor::Trunc;
+inline constexpr KindTy SameVecWidth = llvm::Intrinsic::IITDescriptor::SameVecWidth;
+#else
+inline constexpr KindTy Overloaded = llvm::Intrinsic::IITDescriptor::Argument;
+inline constexpr KindTy Extend = llvm::Intrinsic::IITDescriptor::ExtendArgument;
+inline constexpr KindTy Trunc = llvm::Intrinsic::IITDescriptor::TruncArgument;
+inline constexpr KindTy SameVecWidth = llvm::Intrinsic::IITDescriptor::SameVecWidthArgument;
+#endif
+
+#if LLVM_VERSION_MAJOR >= 23
+inline constexpr KindTy OneNthEltsVec = llvm::Intrinsic::IITDescriptor::OneNthEltsVec;
+#elif LLVM_VERSION_MAJOR >= 22
+inline constexpr KindTy OneNthEltsVec = llvm::Intrinsic::IITDescriptor::OneNthEltsVecArgument;
+#endif
+} // namespace IITDescriptorKind
+
 } // namespace IGCLLVM
 
 #endif
