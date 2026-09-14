@@ -2370,6 +2370,11 @@ unsigned genx::getDpasSrc2AlignmentBytes(const CallInst *CI,
   return AlignBits / 8;
 }
 
+unsigned genx::getBDpasNullScaleValue(unsigned ScaleType) {
+  (void)ScaleType;
+  return 127; // E8M0: bias 127, no mantissa bits (0x7f)
+}
+
 bool genx::isWrPredRegionLegalSetP(const CallInst &WrPredRegion) {
   IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(&WrPredRegion) ==
                          GenXIntrinsic::genx_wrpredregion,

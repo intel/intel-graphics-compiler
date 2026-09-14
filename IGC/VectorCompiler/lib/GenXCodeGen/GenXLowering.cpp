@@ -5086,11 +5086,7 @@ static Value *unpackBlockScale(Value *V, Instruction *InsertPt,
     // A block scale operand that is a splat of 1.0 applies no scaling. It will
     // be replaced with undef in GenXPatternMatch and translated into a null
     // register by the GenXCisaBuilder.
-    // The encoding of 1.0 depends on the scale type
-    // (exponent set to the bias, mantissa cleared):
-    //   E8M0  (0): bias 127, 0 mantissa bits -> 127            (0x7f)
-    unsigned OneEncoding = 127; // E8M0
-    if (Splat && Splat->getZExtValue() == OneEncoding)
+    if (Splat && Splat->getZExtValue() == getBDpasNullScaleValue(ScaleType))
       return nullptr;
   }
 

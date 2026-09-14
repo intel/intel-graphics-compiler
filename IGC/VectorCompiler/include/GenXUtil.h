@@ -654,6 +654,13 @@ unsigned ceilLogAlignment(unsigned LogAlignment, unsigned GRFWidth);
 unsigned getDpasSrc2AlignmentBytes(const CallInst *CI,
                                    const GenXSubtarget *ST = nullptr);
 
+// getBDpasNullScaleValue : encoding of a splat 1.0 constant for a bdpas block
+// scale operand of the given block scale type (the high byte of the
+// corresponding Src1Precision/Src2Precision operand). E8M0 (0) is the only
+// block scale type.
+// Such a splat applies no scaling and can be replaced by a null register.
+unsigned getBDpasNullScaleValue(unsigned ScaleType);
+
 // Checks whether provided wrpredregion intrinsic can be encoded
 // as legal SETP instruction.
 bool isWrPredRegionLegalSetP(const CallInst &WrPredRegion);

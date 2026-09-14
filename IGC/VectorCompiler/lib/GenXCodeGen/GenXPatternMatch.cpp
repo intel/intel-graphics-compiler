@@ -4474,8 +4474,9 @@ bool GenXPatternMatch::simplifyDpasNullSrc(CallInst *Inst) {
 }
 
 bool GenXPatternMatch::simplifyBDpasNullSrc(CallInst *Inst) {
-  constexpr unsigned NullScaleValue = 127;
   constexpr unsigned DataTypeMask = 0xff;
+  constexpr unsigned BlockScaleTypeShift = 8;
+  constexpr unsigned BlockScaleTypeMask = 0xff;
 
   auto IID = vc::getAnyIntrinsicID(Inst);
   IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_bdpas);
@@ -4491,8 +4492,16 @@ bool GenXPatternMatch::simplifyBDpasNullSrc(CallInst *Inst) {
     if (!Splat)
       continue;
 
+    // Src3 scale type comes from Src1 precision, Src4 one from Src2 precision.
+    auto *Precision =
+        dyn_cast<ConstantInt>(Inst->getArgOperand(Idx == 3 ? 5 : 6));
+    if (!Precision)
+      continue;
+    auto ScaleType =
+        (Precision->getZExtValue() >> BlockScaleTypeShift) & BlockScaleTypeMask;
+
     auto SplatValue = Splat->getZExtValue();
-    if (SplatValue != NullScaleValue)
+    if (SplatValue != getBDpasNullScaleValue(ScaleType))
       continue;
 
     auto *SrcTy = Src->getType();

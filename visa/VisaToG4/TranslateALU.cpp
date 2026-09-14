@@ -179,10 +179,15 @@ int IR_Builder::translateVISADpasInst(VISA_Exec_Size executionSize,
 
   if (opc == G4_bdpas) {
     vASSERT(src3Opnd && src4Opnd);
-    if (src3Opnd->isNullReg())
-      src3Opnd->setType(*this, Type_UB);
-    if (src4Opnd->isNullReg())
-      src4Opnd->setType(*this, Type_UB);
+    // Src3 and Src4 share a single block scale data type field in the
+    // encoding, which is taken from Src3. A null scale operand must not change
+    // it, so it inherits the type of the other scale operand.
+    const bool isSrc3Null = src3Opnd->isNullReg();
+    const bool isSrc4Null = src4Opnd->isNullReg();
+    if (isSrc3Null)
+      src3Opnd->setType(*this, isSrc4Null ? Type_UB : src4Opnd->getType());
+    if (isSrc4Null)
+      src4Opnd->setType(*this, isSrc3Null ? Type_UB : src3Opnd->getType());
   }
   createDpasInst(opc, exsize, dstOpnd, src0Opnd, src1Opnd, src2Opnd, src3Opnd,
                  src4Opnd, instOpt, A, W, D, C, true, pred);

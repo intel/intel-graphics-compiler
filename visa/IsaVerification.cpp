@@ -1823,7 +1823,8 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
     // src3
     const vector_opnd &src3 = getVectorOperand(inst, i);
     VISA_Type src3Ty = ISA_TYPE_UB;
-    if (src3.opnd_val.gen_opnd.index != 0) {
+    [[maybe_unused]] const bool isSrc3Null = src3.opnd_val.gen_opnd.index == 0;
+    if (!isSrc3Null) {
       src3Ty = getVectorOperandType(header, src3);
       REPORT_INSTRUCTION(options, src3Ty == ISA_TYPE_UB,
                          "Only UB src3 allowed for %s",
