@@ -1830,22 +1830,30 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
       break;
     }
 
+    res->setDebugLoc(I.getDebugLoc());
+    isOverflow->setDebugLoc(I.getDebugLoc());
+
     // llvm.x.with.overflow returns a struct, where the first element is the operation result,
     // and the second is the overflow flag.
-    // Replace each extract with the correct instruction.
-    for (auto U = I.user_begin(), EU = I.user_end(); U != EU; ++U) {
-      ExtractValueInst *extract = dyn_cast<ExtractValueInst>(*U);
+    // Replace each extract with the correct instruction, and each user of the whole
+    // struct with a rebuilt aggregate.
+    SmallVector<User *> Users(I.users());
+    Value *aggregate = nullptr;
+    for (User *U : Users) {
+      ExtractValueInst *extract = dyn_cast<ExtractValueInst>(U);
       if (!extract) {
-        IGC_ASSERT_MESSAGE(0, "Did not expect anything but an extract after uadd_with_overflow");
+        if (!aggregate) {
+          aggregate = Builder.CreateInsertValue(PoisonValue::get(I.getType()), res, 0);
+          aggregate = Builder.CreateInsertValue(aggregate, isOverflow, 1);
+        }
+        U->replaceUsesOfWith(&I, aggregate);
         continue;
       }
 
       ArrayRef<unsigned int> indices = extract->getIndices();
       if (indices[0] == 0) {
-        res->setDebugLoc(I.getDebugLoc());
         extract->replaceAllUsesWith(res);
       } else if (indices[0] == 1) {
-        isOverflow->setDebugLoc(I.getDebugLoc());
         extract->replaceAllUsesWith(isOverflow);
       } else {
         IGC_ASSERT_MESSAGE(0, "Unexpected index when handling uadd_with_overflow");
