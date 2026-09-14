@@ -905,8 +905,9 @@ bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP) {
 
       if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
         if (!CI->isZero()) {
-          int64_t Offset = DL->getTypeAllocSize(Ty) * CI->getSExtValue();
-          Value *OffsetValue = ConstantInt::getSigned(PtrMathTy, Offset);
+          APInt Offset = CI->getValue().sextOrTrunc(pointerMathSizeInBits);
+          Offset *= DL->getTypeAllocSize(Ty);
+          Value *OffsetValue = ConstantInt::get(Builder->getContext(), Offset);
           PointerValue = Builder->CreateAdd(PointerValue, OffsetValue);
         }
       } else {
@@ -945,8 +946,8 @@ bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP) {
               COffset = dyn_cast<ConstantInt>(Inst->getOperand(1));
               if (COffset) {
                 NewIdx = Inst->getOperand(0);
-                int64_t cval = COffset->getSExtValue() * ElementSize.getZExtValue();
-                COffset = ConstantInt::get(PtrMathTy, cval);
+                APInt Offset = COffset->getValue().sextOrTrunc(pointerMathSizeInBits) * ElementSize;
+                COffset = ConstantInt::get(Builder->getContext(), Offset);
               }
             }
           }
