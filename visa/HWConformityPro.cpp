@@ -2595,10 +2595,11 @@ void HWConformityPro::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
   // When src1 is imm, the type must be uw
   vISA_ASSERT(!src1->isImm() || src1Type == Type_UW,
       "imm src1 must be uw type");
-  // When src1 is imm and dst is byte-type, src1's value must fit into a byte
+  // When src1 is imm and dst is byte-type, src1's value must fit into an
+  // unsigned byte.
   vISA_ASSERT(!src1->isImm() || !IS_BTYPE(dstType) ||
-      G4_Imm::isInTypeRange(src1->asImm()->getImm(), G4_Type::Type_B),
-      "src1 must align with dst");
+      G4_Imm::isInTypeRange(src1->asImm()->getImm(), G4_Type::Type_UB),
+      "imm src1 must fit into a byte when dst is byte-type");
 
   if (!src1->isSrcRegRegion())
     return;
