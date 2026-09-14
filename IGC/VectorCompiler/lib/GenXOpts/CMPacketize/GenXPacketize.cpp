@@ -44,6 +44,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/Local.h"
 
+#include "llvmWrapper/IR/Instructions.h"
+
 #include "Probe/Assertion.h"
 #include <algorithm>
 #include <set>
@@ -1071,21 +1073,28 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
                                     Inst /*InsertBefore*/, Inst->getDebugLoc());
     break;
   }
+#if LLVM_VERSION_MAJOR >= 23
+  case Instruction::CondBr: {
+#else
   case Instruction::Br: {
+#endif
     // any conditional branches with vectored conditions need to preceded with
     // a genx_simdcf_any to ensure we branch iff all lanes are set
-    auto *Branch = cast<BranchInst>(Inst);
-    if (Branch->isConditional()) {
+    auto *Branch = dyn_cast<IGCLLVM::CondBrInst>(Inst);
+    if (Branch) {
       auto *Condition = getPacketizeValue(Branch->getCondition());
       auto *NewFn = GenXIntrinsic::getGenXDeclaration(
           B->M, GenXIntrinsic::genx_simdcf_any, Condition->getType());
       auto *NewTest = CallInst::Create(NewFn, Condition, "", Inst);
       NewTest->setName("exit.cond.mask.test");
       Branch->setCondition(NewTest);
+      ReplacedInst = Branch;
+    } else {
+      ReplacedInst = Inst;
     }
-    ReplacedInst = Branch;
     break;
   }
+
   case Instruction::Alloca: {
     auto *AI = cast<AllocaInst>(Inst);
     auto *VecTy = B->getVectorType(AI->getAllocatedType());
