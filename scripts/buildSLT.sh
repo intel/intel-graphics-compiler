@@ -2,16 +2,16 @@
 
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2022-2025 Intel Corporation
+# Copyright (C) 2022-2026 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
 #============================ end_copyright_notice =============================
 
 set -e
-# UBUNTU_VERSION   supported value [ 22.04, 24.04 ]                                          default 24.04
-# LLVM_VERSION     supported value [ 14, 15, 16 ]                                            default 16
-# example run:     UBUNTU_VERSION=24.04 LLVM_VERSION=16 sh /home/buildSLT.sh
+# UBUNTU_VERSION   supported value [ 22.04, 24.04, 26.04 ]                                   default 24.04
+# LLVM_VERSION     supported value [ 16, 17, 22 ]                                            default 22
+# example run:     UBUNTU_VERSION=24.04 LLVM_VERSION=22 sh /home/buildSLT.sh
 
 echo "====================BUILD SPIRV-LLVM-Translator========================="
 echo "[Build Status] build script started"
@@ -22,8 +22,8 @@ else
     echo "[Build Status] UBUNTU_VERSION = ${UBUNTU_VERSION}"
 fi
 if [ -z ${LLVM_VERSION+x} ]; then
-    echo "[Build Status] LLVM_VERSION is unset, use default 16";
-    LLVM_VERSION="16"
+    echo "[Build Status] LLVM_VERSION is unset, use default 22";
+    LLVM_VERSION="22"
 else
     echo "[Build Status] LLVM_VERSION = ${LLVM_VERSION}"
 fi
@@ -32,12 +32,12 @@ apt-get update
 apt-get install -y flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip lsb-release
 echo "[Build Status] flex bison libz-dev cmake curl wget build-essential git software-properties-common INSTALLED"
 
-if ([ "$UBUNTU_VERSION" = "22.04" ] && [ "$LLVM_VERSION" -ge 16 ])
+if ([ "$UBUNTU_VERSION" = "24.04" ] && [ "$LLVM_VERSION" -ge 16 ])
 then
     echo "[Build Status] Retrieve the LLVM archive signature for LLVM $LLVM_VERSION on Ubuntu $UBUNTU_VERSION";
     wget -q https://apt.llvm.org/llvm-snapshot.gpg.key
     apt-key add llvm-snapshot.gpg.key
-    add-apt-repository "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-$LLVM_VERSION main"
+    add-apt-repository "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-$LLVM_VERSION main"
 fi
 
 apt-get install -y llvm-"$LLVM_VERSION" llvm-"$LLVM_VERSION"-dev clang-"$LLVM_VERSION" liblld-"$LLVM_VERSION" liblld-"$LLVM_VERSION"-dev
