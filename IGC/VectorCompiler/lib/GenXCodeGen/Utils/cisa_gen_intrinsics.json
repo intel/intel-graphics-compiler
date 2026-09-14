@@ -193,9 +193,10 @@
       "src0": [ "GENERAL", "CONTIGUOUS", "DIRECTONLY", "NOIMM", 1 ]
     },
     "vc::InternalIntrinsic::round_to_tf32": {
-      "opc": "ISA_FCVT",
+      "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],
       "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "NOIMM", 1 ]
     },
@@ -3985,16 +3986,18 @@
       "signal_flag": [ "BYTE", 1 ]
     },
     "genx_qf_cvt": {
-      "opc": "ISA_FCVT",
+      "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE_NOMASK" ],
       "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_INTALLOWED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "NOIMM", 1 ]
     },
     "genx_hf8_cvt": {
-      "opc": "ISA_FCVT",
+      "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE_NOMASK" ],
       "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_INTALLOWED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "NOIMM", 1 ]
     },
@@ -6105,20 +6108,6 @@
       [ "CISA_CALL",
         [ "Kernel->AppendVISASplitBarrierInst",
           "signal_flag != 0"
-        ]
-      ]
-    ],
-    "ISA_FCVT": [
-      [ "CISA_CALL",
-        [ "Kernel->AppendVISADataMovementInst",
-          "opc",
-          "nullptr",
-          "Mod & MODIFIER_SAT",
-          "exec_mask",
-          "exec_size",
-          "dst",
-          "src0",
-          "nullptr"
         ]
       ]
     ],
