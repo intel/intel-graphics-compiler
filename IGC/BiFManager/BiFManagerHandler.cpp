@@ -173,9 +173,16 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
 
   bool changed = true;
   auto removeUnusedBiF = [&](auto &Item) {
-    if (IsBiF(&Item) && Item.use_empty()) {
-      Item.eraseFromParent();
-      changed = true;
+    if (IsBiF(&Item)) {
+      // There's edge case where when we erase BiF function that had e.g GEP, which as one of its operands had
+      // ConstantExpression that referenced GV,
+      // then in such case that ConstantExpression was still on GV's use list, despite that CE not being used anywhere.
+      Item.removeDeadConstantUsers();
+
+      if (Item.use_empty()) {
+        Item.eraseFromParent();
+        changed = true;
+      }
     }
   };
 
