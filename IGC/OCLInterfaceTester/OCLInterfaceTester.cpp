@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 #include "OCLInterfaceTester.h"
 
 #include "cif/common/library_api.h"
+#include "ocl_igc_interface/fcl_ocl_device_ctx.h"
+#include "ocl_igc_interface/igc_ocl_device_ctx.h"
 
 #include <charconv>
 #include <cstdint>
@@ -126,6 +128,14 @@ static bool selectGmdId(std::string_view spec) {
   return true;
 }
 
+// Return the default library path for the given library type
+static const char *defaultLibraryPath(LibraryType type) {
+  if (type == LibraryType::Fcl)
+    return FCL_TESTER_LIBRARY_PATH;
+
+  return IGC_TESTER_LIBRARY_PATH;
+}
+
 // Check that the --lib argument is valid and points to a regular file
 static bool isLibArgValid(std::string_view lib, std::string &resolvedPath) {
   if (lib.empty()) {
@@ -157,7 +167,7 @@ static void printHelp(const char *testName) {
   std::cout << "  --gmdid <arch.release[.revision]> - render GMDID to report. Arch and release are\n";
   std::cout << "      mandatory, revision is optional and defaults to 0\n";
   std::cout << "  --core <name> - render core family to report, overriding the platform's own\n";
-  std::cout << "  --lib <path> - path to the IGC library to load (default: " << IGC_TESTER_LIBRARY_PATH << ")\n";
+  std::cout << "  --lib <path> - path to the IGC or FCL library to load\n";
   std::cout << "  --help, -h - print this help message\n";
   std::cout << "  Checks:\n";
   for (const auto &[name, info] : registry())
@@ -214,7 +224,7 @@ static CIF::RAII::UPtr_t<CIF::CIFMain> getCIFMain(const char *libName) {
 
 // Parse "Field=Value" lines from stdin from .test files and invoke
 // callback(key, value) for each. Blank lines and lines that start with '#' are ignored
-int forEachStdinField(std::function<bool(std::string_view key, uint64_t val)> callback) {
+int forEachStdinField(std::function<bool(std::string_view key, std::string_view value)> callback) {
   // Read all of stdin
   std::string input((std::istreambuf_iterator<char>(std::cin)), std::istreambuf_iterator<char>());
   std::string_view data = input;
@@ -228,17 +238,15 @@ int forEachStdinField(std::function<bool(std::string_view key, uint64_t val)> ca
     if (line.empty() || line.front() == '#')
       continue;
 
-    const size_t eq = line.find('=');
-    std::string_view key = trim(line.substr(0, eq));
-    std::string_view valStr = (eq == std::string_view::npos) ? std::string_view() : trim(line.substr(eq + 1));
+    // '=' separates a field from its value; otherwise the fields are whitespace separated
+    size_t sep = line.find('=');
+    if (sep == std::string_view::npos)
+      sep = line.find_first_of(" \t");
 
-    uint64_t val = 0;
-    auto res = std::from_chars(valStr.data(), valStr.data() + valStr.size(), val);
-    if (valStr.empty() || res.ec != std::errc() || res.ptr != valStr.data() + valStr.size()) {
-      std::cerr << "error: invalid value in line '" << line << "'\n";
-      return ExitCode::IllegalInputFormat;
-    }
-    if (!callback(key, val)) {
+    std::string_view key = trim(line.substr(0, sep));
+    std::string_view value = (sep == std::string_view::npos) ? std::string_view() : trim(line.substr(sep + 1));
+
+    if (!callback(key, value)) {
       return ExitCode::IllegalInputFormat;
     }
   }
@@ -262,9 +270,14 @@ int main(int argc, char **argv) {
 
   std::string_view check = argv[1];
 
-  // libName by default is the path to the IGC library baked in at configure time
-  // Can be overridden by setting via --lib argument
-  std::string libName = IGC_TESTER_LIBRARY_PATH;
+  // Resolve the check first, LibraryType decides which library to load
+  auto it = registry().find(check);
+  if (it == registry().end()) {
+    std::cerr << "error: unknown check '" << check << "'\n";
+    return ExitCode::UnknownCheck;
+  }
+
+  std::string libName = defaultLibraryPath(it->second.libType);
 
   // Parse options after the check name
   for (int i = 2; i < argc; ++i) {
@@ -308,18 +321,34 @@ int main(int argc, char **argv) {
     }
   }
 
+  // IGC_TESTER_LIBRARY_PATH should be always set, FCL_TESTER_LIBRARY_PATH may be empty
+  // if FCL is not built in the configuration
+  if (libName.empty()) {
+    std::cerr
+        << "error: check '" << check
+        << "' requires the FCL library, which is not built in this configuration. Use --lib <path> to point at one\n";
+    return ExitCode::LoadFailure;
+  }
+
   std::cerr << "info: using library '" << libName << "'\n";
 
-  // Load the libigc
+  // Load the library
   auto cif = getCIFMain(libName.c_str());
   if (!cif) {
     return ExitCode::LoadFailure;
   }
 
-  auto it = registry().find(check);
-  if (it == registry().end()) {
-    std::cerr << "error: unknown check '" << check << "'\n";
-    return ExitCode::UnknownCheck;
+  // libigc and libigdfcl both export CIFCreateMain, so only an interface query tells them apart
+  const bool isFcl = (it->second.libType == LibraryType::Fcl);
+  CIF::Version_t verMin = 0;
+  CIF::Version_t verMax = 0;
+  if (!cif->GetSupportedVersions(isFcl ? IGC::FclOclDeviceCtx<CIF::BaseVersion>::GetInterfaceId()
+                                       : IGC::IgcOclDeviceCtx<CIF::BaseVersion>::GetInterfaceId(),
+                                 verMin, verMax)) {
+    std::cerr << "error: check '" << check << "' needs the " << (isFcl ? "FCL" : "IGC") << " interfaces, which '"
+              << libName << "' does not provide\n";
+    return ExitCode::WrongLibrary;
   }
+
   return it->second.run(cif.get());
 }

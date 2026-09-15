@@ -16,6 +16,7 @@ config.llvm_tools_dir = "@LLVM_TOOLS_DIR@"
 config.test_run_dir = "@CMAKE_CURRENT_BINARY_DIR@"
 config.igc_lib_dir = "@IGC_LIBRARY_DIR@"
 config.igc_lib_path = "@IGC_LIBRARY_FILE@"
+config.fcl_lib_path = "@FCL_LIBRARY_FILE@"
 config.interface_tester_dir = "$<$<TARGET_EXISTS:IGCOCLInterfaceTester>:$<TARGET_FILE_DIR:IGCOCLInterfaceTester>>"
 
 # Mimic the c++ (define) IGC_DEBUG_VARIABLES

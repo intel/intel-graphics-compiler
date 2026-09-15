@@ -14,6 +14,11 @@ set(INTERFACE_TESTER_DIR "$<TARGET_FILE_DIR:IGCOCLInterfaceTester>")
 set(IGC_LIBRARY_DIR      "$<TARGET_FILE_DIR:${IGC_BUILD__PROJ__igc_dll}>")
 set(IGC_LIBRARY_FILE     "$<TARGET_FILE:${IGC_BUILD__PROJ__igc_dll}>")
 
+# empty when FCL is not built
+if(FCL_ENABLED)
+  set(FCL_LIBRARY_FILE "$<TARGET_FILE:${IGC_BUILD__PROJ__fcl_dll}>")
+endif()
+
 igc_configure_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in
   ${INTERFACE_LIT_CONFIG_FILE}
@@ -29,7 +34,12 @@ set(INTERFACE_TEST_DEPENDS
   not
   IGCOCLInterfaceTester
   "${IGC_BUILD__PROJ__igc_dll}"
-)
+  )
+
+# fcl exists only if FCL_ENABLED is on
+if(FCL_ENABLED)
+  list(APPEND INTERFACE_TEST_DEPENDS "${IGC_BUILD__PROJ__fcl_dll}")
+endif()
 
 file(GLOB_RECURSE _tests CONFIGURE_DEPENDS "${INTERFACE_TEST_SOURCE_DIR}/*.test")
 

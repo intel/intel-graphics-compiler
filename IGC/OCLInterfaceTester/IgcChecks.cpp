@@ -13,16 +13,19 @@ SPDX-License-Identifier: MIT
 #include "ocl_igc_interface/igc_ocl_device_ctx.h"
 
 // Match one supported field by name: set it from the parsed value, read it back
-// Uses key/val from the enclosing forEachStdinField lambda.
+// Uses key/value from the enclosing forEachStdinField lambda.
 #define FIELD(h, NAME, TYPE)                                                                                           \
   if (key == #NAME) {                                                                                                  \
+    uint64_t val = 0;                                                                                                  \
+    if (!parseValue(value, val))                                                                                       \
+      return false;                                                                                                    \
     h->Set##NAME((TYPE)val);                                                                                           \
     std::cout << #NAME "=" << h->Get##NAME() << "\n";                                                                  \
     return true;                                                                                                       \
   }
 
 // Interface No. 1 - GTSystemInfo sub-interface
-CHECK(gtsysinfo, "Interface v1: test that GTSystemInfo is accessible") {
+IGC_CHECK(gtsysinfo, "Interface v1: test that GTSystemInfo is accessible") {
   auto deviceCtx = cif->CreateInterface<IGC::IgcOclDeviceCtx<1>>();
   if (!deviceCtx) {
     std::cerr << "error: failed to create IGC::IgcOclDeviceCtx<1> interface\n";
@@ -36,7 +39,7 @@ CHECK(gtsysinfo, "Interface v1: test that GTSystemInfo is accessible") {
   }
 
   // Set/get each supported field from stdin. Add a FIELD line to support a new one.
-  return forEachStdinField([&](std::string_view key, uint64_t val) {
+  return forEachStdinField([&](std::string_view key, std::string_view value) {
     FIELD(h, EUCount, uint32_t)                     // v1
     FIELD(h, ThreadCount, uint32_t)                 // v1
     FIELD(h, SliceCount, uint32_t)                  // v1
@@ -67,7 +70,7 @@ CHECK(gtsysinfo, "Interface v1: test that GTSystemInfo is accessible") {
 }
 
 // Interface No. 1 - IgcFeaturesAndWorkarounds sub-interface
-CHECK(features, "Interface v1: test that IgcFeaturesAndWorkarounds is accessible") {
+IGC_CHECK(features, "Interface v1: test that IgcFeaturesAndWorkarounds is accessible") {
   auto deviceCtx = cif->CreateInterface<IGC::IgcOclDeviceCtx<1>>();
   if (!deviceCtx) {
     std::cerr << "error: failed to create IGC::IgcOclDeviceCtx<1> interface\n";
@@ -85,7 +88,7 @@ CHECK(features, "Interface v1: test that IgcFeaturesAndWorkarounds is accessible
   }
 
   // Set/get each supported field from stdin. Add a FIELD line to support a new one.
-  return forEachStdinField([&](std::string_view key, uint64_t val) {
+  return forEachStdinField([&](std::string_view key, std::string_view value) {
     FIELD(h, FtrDesktop, bool)                    // v1
     FIELD(h, FtrChannelSwizzlingXOREnabled, bool) // v1
     FIELD(h, FtrGtBigDie, bool)                   // v1
@@ -117,7 +120,7 @@ CHECK(features, "Interface v1: test that IgcFeaturesAndWorkarounds is accessible
 }
 
 // Interface No. 2
-CHECK(system_routine, "Interface v2: test that system routine is returned correctly") {
+IGC_CHECK(system_routine, "Interface v2: test that system routine is returned correctly") {
   auto deviceCtx = cif->CreateInterface<IGC::IgcOclDeviceCtx<2>>();
   if (!deviceCtx) {
     std::cerr << "error: failed to create IGC::IgcOclDeviceCtx<2> interface\n";
@@ -171,7 +174,7 @@ CHECK(system_routine, "Interface v2: test that system routine is returned correc
 }
 
 // Interface No. 3
-CHECK(revision, "Interface v3: test that revision is returned correctly") {
+IGC_CHECK(revision, "Interface v3: test that revision is returned correctly") {
   auto deviceCtx = cif->CreateInterface<IGC::IgcOclDeviceCtx<3>>();
   if (!deviceCtx) {
     std::cerr << "error: failed to create IGC::IgcOclDeviceCtx<3> interface\n";
@@ -189,7 +192,7 @@ CHECK(revision, "Interface v3: test that revision is returned correctly") {
 }
 
 // Interface No. 4
-CHECK(builtins, "Interface v4: test that builtin memory requirements are returned correctly") {
+IGC_CHECK(builtins, "Interface v4: test that builtin memory requirements are returned correctly") {
   auto deviceCtx = cif->CreateInterface<IGC::IgcOclDeviceCtx<4>>();
   if (!deviceCtx) {
     std::cerr << "error: failed to create IGC::IgcOclDeviceCtx<4> interface\n";
@@ -213,10 +216,15 @@ CHECK(builtins, "Interface v4: test that builtin memory requirements are returne
   };
 
   // read stdin for FIELD=VALUE pairs
-  int rc = forEachStdinField([&](std::string_view key, uint64_t val) {
+  int rc = forEachStdinField([&](std::string_view key, std::string_view value) {
     auto it = inputs.find(key);
     if (it == inputs.end())
       return unknownField(key);
+
+    uint64_t val = 0;
+    if (!parseValue(value, val))
+      return false;
+
     *it->second = static_cast<long>(val);
     return true;
   });
@@ -244,7 +252,7 @@ CHECK(builtins, "Interface v4: test that builtin memory requirements are returne
 }
 
 // Interface No. 5
-CHECK(spirv_ext, "Interface v5: test that SPIR-V extensions supported by a platform are returned correctly") {
+IGC_CHECK(spirv_ext, "Interface v5: test that SPIR-V extensions supported by a platform are returned correctly") {
   auto deviceCtx = cif->CreateInterface<IGC::IgcOclDeviceCtx<5>>();
   if (!deviceCtx) {
     std::cerr << "error: failed to create IGC::IgcOclDeviceCtx<5> interface\n";
@@ -278,7 +286,7 @@ CHECK(spirv_ext, "Interface v5: test that SPIR-V extensions supported by a platf
 }
 
 // Translation path: the platform cross-check
-CHECK(platform_check, "Translation: cross-check the render GMDID against the platform enum") {
+IGC_CHECK(platform_check, "Translation: cross-check the render GMDID against the platform enum") {
   auto deviceCtx = cif->CreateInterface<IGC::IgcOclDeviceCtx<1>>();
   if (!deviceCtx) {
     std::cerr << "error: failed to create IGC::IgcOclDeviceCtx<1> interface\n";
@@ -348,7 +356,7 @@ CHECK(platform_check, "Translation: cross-check the render GMDID against the pla
 }
 
 // Interface No. 6
-CHECK(regkey, "Interface v6: test that regkey token is returned correctly") {
+IGC_CHECK(regkey, "Interface v6: test that regkey token is returned correctly") {
   auto deviceCtx = cif->CreateInterface<IGC::IgcOclDeviceCtx<6>>();
   if (!deviceCtx) {
     std::cerr << "error: failed to create IGC::IgcOclDeviceCtx<6> interface\n";

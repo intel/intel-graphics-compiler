@@ -46,6 +46,12 @@ llvm_config.with_environment(shared_lib_env,
 # Add a full path to the libigc, it is used by --lib tests
 config.substitutions.append(('%igc_lib', config.igc_lib_path))
 
+# Add a full path to the libfcl, the path is empty if the FCL is not built
+# 'fcl' feature gate if the FCL is built, so the test can use 'REQUIRES: fcl'
+if config.fcl_lib_path:
+    config.substitutions.append(('%fcl_lib', config.fcl_lib_path))
+    config.available_features.add('fcl')
+
 # regkeys feature gate (only needed if a .test uses `REQUIRES: regkeys`)
 if not config.regkeys_disabled:
     config.available_features.add('regkeys')

@@ -9,6 +9,7 @@
 add_executable(IGCOCLInterfaceTester
   OCLInterfaceTester.cpp
   IgcChecks.cpp
+  FclChecks.cpp
   )
 
 # CIF and ocl_igc_interface headers are needed to build time
@@ -30,6 +31,15 @@ target_link_libraries(IGCOCLInterfaceTester ${CMAKE_DL_LIBS})
 # rather than a system-installed one
 target_compile_definitions(IGCOCLInterfaceTester PRIVATE
   IGC_TESTER_LIBRARY_PATH="$<TARGET_FILE:${IGC_BUILD__PROJ__igc_dll}>")
+
+# Target for FCL
+if(FCL_ENABLED)
+  target_compile_definitions(IGCOCLInterfaceTester PRIVATE
+    FCL_TESTER_LIBRARY_PATH="$<TARGET_FILE:${IGC_BUILD__PROJ__fcl_dll}>")
+else()
+  target_compile_definitions(IGCOCLInterfaceTester PRIVATE
+    FCL_TESTER_LIBRARY_PATH="")
+endif()
 
 # The check-interfaces lit target requires the lit infrastructure, which is only configured when lit testing is enabled
 if(IGC_OPTION__ENABLE_LIT_TESTS)

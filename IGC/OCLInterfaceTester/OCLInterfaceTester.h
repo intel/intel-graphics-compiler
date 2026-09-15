@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
+#include <charconv>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -31,8 +32,12 @@ enum ExitCode {
   UnknownOption = 9,        // An unrecognized command-line option was provided
   IllegalInputFormat = 10,  // A stdin line could not be parsed
   MissingLibPath = 11,      // A --lib argument was provided but no path was given
-  InvalidLibPath = 12       // A --lib argument was provided but the path was invalid
+  InvalidLibPath = 12,      // A --lib argument was provided but the path was invalid
+  WrongLibrary = 13         // The loaded library does not provide the interfaces the check needs
 };
+
+// The type of library to load
+enum class LibraryType { Igc, Fcl };
 
 // Named target platform selectable via --platform.
 struct PlatformEntry {
@@ -97,6 +102,17 @@ inline std::string_view trim(std::string_view s) {
   return s.substr(b, s.find_last_not_of(ws) - b + 1);
 }
 
+// Convert a stdin value to a number. Reports a malformed value and returns false
+inline bool parseValue(std::string_view text, uint64_t &val) {
+  val = 0;
+  auto res = std::from_chars(text.data(), text.data() + text.size(), val);
+  if (text.empty() || res.ec != std::errc() || res.ptr != text.data() + text.size()) {
+    std::cerr << "error: invalid value '" << text << "'\n";
+    return false;
+  }
+  return true;
+}
+
 // Report an unrecognized stdin field from a forEachStdinField
 inline bool unknownField(std::string_view key) {
   std::cerr << "error: unknown field '" << key << "'\n";
@@ -104,13 +120,14 @@ inline bool unknownField(std::string_view key) {
 }
 
 // Parse lines from stdin from .test files
-int forEachStdinField(std::function<bool(std::string_view key, uint64_t val)> callback);
+int forEachStdinField(std::function<bool(std::string_view key, std::string_view value)> callback);
 
 using CheckFn = int (*)(CIF::CIFMain *);
 
 struct CheckInfo {
   CheckFn run;
   const char *help;
+  LibraryType libType;
 };
 
 inline std::map<std::string_view, CheckInfo> &registry() {
@@ -119,11 +136,14 @@ inline std::map<std::string_view, CheckInfo> &registry() {
 }
 
 struct Reg {
-  Reg(std::string_view name, CheckFn run, const char *help) { registry()[name] = {run, help}; }
+  Reg(std::string_view name, CheckFn run, const char *help, LibraryType lib) { registry()[name] = {run, help, lib}; }
 };
 
+#define IGC_CHECK(name, help) CHECK_IMPL(name, help, LibraryType::Igc)
+#define FCL_CHECK(name, help) CHECK_IMPL(name, help, LibraryType::Fcl)
+
 // Declare + self-register + open a check body in one line.
-#define CHECK(name, help)                                                                                              \
+#define CHECK_IMPL(name, help, library)                                                                                \
   static int name(CIF::CIFMain *cif);                                                                                  \
-  static const Reg reg_##name(#name, name, help);                                                                      \
+  static const Reg reg_##name(#name, name, help, library);                                                             \
   static int name(CIF::CIFMain *cif)

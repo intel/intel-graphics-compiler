@@ -1,0 +1,14 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# REQUIRES: fcl
+
+# RUN: IGCOCLInterfaceTester fcl_versions 2>&1 | FileCheck %s
+
+# CHECK: versionMin=1
+# CHECK: versionMax={{[0-9]+}}

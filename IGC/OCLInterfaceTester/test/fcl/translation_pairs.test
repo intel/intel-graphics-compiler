@@ -1,0 +1,34 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# The tests checks supported translation pairs
+# `1` in results means the translation is supported, `0` means it is not.
+
+# REQUIRES: fcl
+
+# RUN: IGCOCLInterfaceTester fcl_translation_pairs < %s 2>&1 | FileCheck %s
+
+OCL_C SPIRV
+OCL_C LLVM_BC
+OCL_C LLVM_LL
+ELF SPIRV
+ELF LLVM_BC
+ELF LLVM_LL
+SPIRV LLVM_BC
+LLVM_BC SPIRV
+OCL_C OCL_GEN_BIN
+
+# CHECK: OCL_C -> SPIRV = 1
+# CHECK-NEXT: OCL_C -> LLVM_BC = 1
+# CHECK-NEXT: OCL_C -> LLVM_LL = 1
+# CHECK-NEXT: ELF -> SPIRV = 1
+# CHECK-NEXT: ELF -> LLVM_BC = 1
+# CHECK-NEXT: ELF -> LLVM_LL = 1
+# CHECK-NEXT: SPIRV -> LLVM_BC = 0
+# CHECK-NEXT: LLVM_BC -> SPIRV = 0
+# CHECK-NEXT: OCL_C -> OCL_GEN_BIN = 0
