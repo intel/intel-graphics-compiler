@@ -901,6 +901,7 @@ public:
   inline void setAlignment(alignment_t alignment) {
     setOperand(1, ConstantInt::get(getOperand(1)->getType(), alignment));
   }
+  inline void setPredicate(Value *predicate) { setOperand(2, predicate); }
   // Only simple load is currently promoted to predicated load:
   inline bool isVolatile() const { return false; }
   inline bool isSimple() const { return !isVolatile(); }

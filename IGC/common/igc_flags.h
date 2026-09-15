@@ -813,6 +813,9 @@ DECLARE_IGC_REGKEY(DWORD, SimplifyCFGBonusInstThreshold, 2,
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableFoldImpliedSelectCond, true,
                    "Enable folding nested selects using implied outer conditions.", ALWAYS)
+DECLARE_IGC_REGKEY(bool, EnableReusePredicatedLoad, false, "Enable reuse of redundant predicated loads.", ALWAYS)
+DECLARE_IGC_REGKEY(bool, EnableShrinkLoadPredicate, false,
+                   "Enable shrinking predicated load predicates to their observable use predicates.", ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableIntDivRemIncrementReduction, true,
                    "Enable consecutive Int DivRem increment by constant optimization", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(

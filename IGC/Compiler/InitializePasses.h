@@ -56,6 +56,8 @@ void initializeDeSSAPass(llvm::PassRegistry &);
 void initializeDetectCSWalkOrderPass(llvm::PassRegistry &);
 void initializeSelectCSWalkOrderPass(llvm::PassRegistry &);
 void initializeFoldImpliedSelectCondPass(llvm::PassRegistry &);
+void initializeReusePredicatedLoadPass(llvm::PassRegistry &);
+void initializeShrinkLoadPredicatePass(llvm::PassRegistry &);
 void initializeDeviceEnqueueFuncsAnalysisLPMPass(llvm::PassRegistry &);
 void initializeDeviceEnqueueFuncsResolutionLPMPass(llvm::PassRegistry &);
 void initializeDisableLoopUnrollOnRetryPass(llvm::PassRegistry &);

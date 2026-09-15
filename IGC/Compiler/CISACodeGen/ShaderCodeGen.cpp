@@ -207,6 +207,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 #include "Compiler/Optimizer/HoistConvOpToDom.hpp"
 #include "Compiler/Optimizer/PromoteToPredicatedMemoryAccess.hpp"
+#include "Compiler/Optimizer/PredicatedMemoryOpt.hpp"
 #include "Compiler/Optimizer/BranchToSelect.hpp"
 #include "AdaptorCommon/RayTracing/RayTracingPasses.hpp"
 #include "AdaptorCommon/RayTracing/RayTracingAddressSpaceAliasAnalysis.h"
@@ -1503,6 +1504,9 @@ void OptimizeIR(CodeGenContext *const pContext) {
     if (IGC_IS_FLAG_ENABLED(EnableFoldImpliedSelectCond)) {
       mpm.add(createFoldImpliedSelectCondPass());
     }
+    if (IGC_IS_FLAG_ENABLED(EnableReusePredicatedLoad)) {
+      mpm.add(createReusePredicatedLoadPass());
+    }
     if (IGC_IS_FLAG_ENABLED(EnableWaveShuffleIndexSinking)) {
       mpm.add(createWaveShuffleIndexSinking());
     }
@@ -1896,6 +1900,10 @@ void OptimizeIR(CodeGenContext *const pContext) {
     }
 
     mpm.add(createGenSimplificationPass());
+
+    if (IGC_IS_FLAG_ENABLED(EnableShrinkLoadPredicate)) {
+      mpm.add(createShrinkLoadPredicatePass());
+    }
 
     if (pContext->m_instrTypes.hasLoadStore) {
       mpm.add(IGCLLVM::createLegacyWrappedDeadStoreEliminationPass());

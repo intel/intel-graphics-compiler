@@ -21,6 +21,8 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
+#include <optional>
+
 namespace IGCLLVM {
 
 inline llvm::CallInst *createCallInst(llvm::Function *F, llvm::ArrayRef<llvm::Value *> Args, const llvm::Twine &Name,
@@ -349,6 +351,33 @@ inline llvm::Type *getGEPIndexedType(llvm::Type *Ty, llvm::SmallVectorImpl<unsig
 
 inline llvm::Type *getGEPIndexedType(llvm::Type *Ty, llvm::ArrayRef<llvm::Value *> indices) {
   return llvm::GetElementPtrInst::getIndexedType(Ty, indices);
+}
+
+inline std::optional<llvm::BasicBlock::iterator> getInsertionPointAfterDef(llvm::Instruction *Def) {
+#if LLVM_VERSION_MAJOR >= 22
+  return Def->getInsertionPointAfterDef();
+#elif LLVM_VERSION_MAJOR >= 16
+  llvm::Instruction *InsertPt = Def->getInsertionPointAfterDef();
+  if (!InsertPt)
+    return std::nullopt;
+  return InsertPt->getIterator();
+#else
+  llvm::BasicBlock *InsertBB = Def->getParent();
+  llvm::BasicBlock::iterator InsertPt;
+  if (llvm::isa<llvm::PHINode>(Def)) {
+    InsertPt = InsertBB->getFirstInsertionPt();
+  } else if (auto *Invoke = llvm::dyn_cast<llvm::InvokeInst>(Def)) {
+    InsertBB = Invoke->getNormalDest();
+    InsertPt = InsertBB->getFirstInsertionPt();
+  } else if (llvm::isa<llvm::CallBrInst>(Def) || Def->isTerminator()) {
+    return std::nullopt;
+  } else {
+    InsertPt = std::next(Def->getIterator());
+  }
+  if (InsertPt == InsertBB->end())
+    return std::nullopt;
+  return InsertPt;
+#endif
 }
 
 #if LLVM_VERSION_MAJOR >= 23
