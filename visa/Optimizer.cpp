@@ -3485,10 +3485,11 @@ void Optimizer::localCopyPropagation() {
                           (uint16_t)inst->getExecSize() * typeSizeRatio,
                           inst->getExecSize(), (uint16_t)typeSizeRatio);
             if (src0->isIndirect()) {
+              // For an indirect operand the sub-register offset is the address
+              // register sub-register index, it doesn't need to be scaled.
               new_src_opnd = builder.createIndirectSrc(
                   new_mod, src0->getBase(), src0->getRegOff(),
-                  src0->getSubRegOff() * typeSizeRatio, region, propType,
-                  src0->getAddrImm());
+                  src0->getSubRegOff(), region, propType, src0->getAddrImm());
             } else {
               G4_Declare *newDcl =
                   builder.createTempVar(numElt, inst->getDst()->getType(), Any);
