@@ -69,9 +69,11 @@ void LowerByValAttribute::visitCallInst(CallInst &CI) {
 
     if (CI.paramHasAttr(i, llvm::Attribute::ByVal) && !CI.paramHasAttr(i, llvm::Attribute::ReadOnly)) {
       Type *ElTy = CI.getParamByValType(i);
+      Align alignment = CI.getParamAlign(i) ? *CI.getParamAlign(i) : DL.getABITypeAlign(ElTy);
       IGCLLVM::IRBuilder<> builder(&CI);
-      Value *AI = builder.CreateAlloca(ElTy);
-      builder.CreateMemCpy(AI, OpI, DL.getTypeAllocSize(ElTy), DL.getABITypeAlign(ElTy).value());
+      AllocaInst *AI = builder.CreateAlloca(ElTy);
+      AI->setAlignment(alignment);
+      builder.CreateMemCpy(AI, OpI, DL.getTypeAllocSize(ElTy), alignment.value());
       auto AC = builder.CreateAddrSpaceCast(AI, OpITy);
       CI.replaceUsesOfWith(OpI, AC);
       m_changed = true;
