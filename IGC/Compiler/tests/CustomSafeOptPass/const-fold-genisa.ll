@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-const-prop -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-const-prop -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; IGCConstProp: ConstantFoldCallInstruction of GenISA intrinsics
 ; ------------------------------------------------
@@ -86,6 +86,15 @@ define i32 @test_bfrev_const() {
 ;
   %r = call i32 @llvm.genx.GenISA.bfrev.i32(i32 1)
   ret i32 %r
+}
+
+; bfrev is not folded for a non-ConstantInt operand.
+
+define i32 @test_bfrev_non_constant(i32 %x) {
+; CHECK-LABEL: @test_bfrev_non_constant(
+; CHECK:       call i32 @llvm.genx.GenISA.bfrev
+  %result = call i32 @llvm.genx.GenISA.bfrev.i32(i32 %x)
+  ret i32 %result
 }
 
 ; firstbitHi of a constant folds.

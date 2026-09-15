@@ -462,10 +462,10 @@ llvm::Constant *IGCConstantFolder::CreateBfi(llvm::Constant *C0, llvm::Constant 
 }
 
 llvm::Constant *IGCConstantFolder::CreateBfrev(llvm::Constant *C0) const {
-  if (llvm::isa<llvm::UndefValue>(C0)) {
+  auto *CI0 = llvm::dyn_cast<llvm::ConstantInt>(C0);
+  if (!CI0) {
     return nullptr;
   }
-  llvm::ConstantInt *CI0 = llvm::cast<llvm::ConstantInt>(C0);
   llvm::APInt result = CI0->getValue();
   result = result.reverseBits();
   return llvm::ConstantInt::get(C0->getContext(), result);
