@@ -1754,10 +1754,11 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
   // This way we avoid potential shufflevector instructions which cause additional mov instructions in final asm.
   // Note: indices in ExtractElement do not have to be in range [0-3], they can be greater. We just want to have them
   // ordered ascending.
-  auto extractElementOrderOpt = [&](std::array<Value *, NUM_DP4A_COMPONENTS> &Arr) {
+  auto extractElementOrderOpt = [&](const std::array<Value *, NUM_DP4A_COMPONENTS> &Arr) {
     bool CanOptOrder = true;
+    std::array<int, NUM_DP4A_COMPONENTS> OptOrder{0, 1, 2, 3};
     llvm::SmallPtrSet<Value *, NUM_DP4A_COMPONENTS> OriginValues;
-    std::map<int64_t, Value *> IndexMap;
+    std::map<int64_t, int> IndexMap;
     for (int i = 0; i < NUM_DP4A_COMPONENTS; ++i) {
       ConstantInt *IndexVal = nullptr;
       Value *OriginVal = nullptr;
@@ -1767,18 +1768,28 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
         break;
       }
       OriginValues.insert(OriginVal);
-      IndexMap.insert({IndexVal->getSExtValue(), Arr[i]});
+      IndexMap.insert({IndexVal->getSExtValue(), i});
     }
 
     if (CanOptOrder && OriginValues.size() == 1 && IndexMap.size() == NUM_DP4A_COMPONENTS) {
       int i = 0;
       for (auto &El : IndexMap) {
-        Arr[i++] = El.second;
+        OptOrder[i++] = El.second;
       }
     }
+    return OptOrder;
   };
-  extractElementOrderOpt(ArrA);
-  extractElementOrderOpt(ArrB);
+
+  std::array<int, NUM_DP4A_COMPONENTS> OrderA = extractElementOrderOpt(ArrA);
+  std::array<int, NUM_DP4A_COMPONENTS> OrderB = extractElementOrderOpt(ArrB);
+  if (OrderA == OrderB) {
+    const auto OriginalA = ArrA;
+    const auto OriginalB = ArrB;
+    for (int i = 0; i < NUM_DP4A_COMPONENTS; ++i) {
+      ArrA[i] = OriginalA[OrderA[i]];
+      ArrB[i] = OriginalB[OrderB[i]];
+    }
+  }
 
   Builder.SetInsertPoint(I.getNextNode());
 
