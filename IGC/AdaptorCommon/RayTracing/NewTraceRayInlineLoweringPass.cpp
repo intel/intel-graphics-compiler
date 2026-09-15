@@ -730,7 +730,9 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
         specialPattern = forceShortCurcuitingOR_CommittedGeomIdx(IRB, I);
       }
 
-      Value *leafType = IRB.getLeafType(stackPtr, loadCommittedFromPotential);
+      Value *leafType = IRB.getLeafType(
+          stackPtr, IRB.CreateICmpEQ(shaderTy, IRB.getInt32(ClosestHit), VALUE_NAME("isClosestHitShader")));
+
       Value *geoIndex = IRB.getGeometryIndex(stackPtr, I, leafType, shaderTy, !specialPattern);
       IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(), "Invalid geometryIndex type!");
       I->replaceAllUsesWith(geoIndex);
