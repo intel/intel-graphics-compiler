@@ -63,15 +63,17 @@ fi
 apt-get install -y llvm-"$LLVM_VERSION" llvm-"$LLVM_VERSION"-dev clang-"$LLVM_VERSION" liblld-"$LLVM_VERSION" liblld-"$LLVM_VERSION"-dev
 echo "[Build Status] LLVM INSTALLED"
 
-LLVM_VERSION_PREFERRED="$LLVM_VERSION".0.0
+LLVM_CONFIG="llvm-config-$LLVM_VERSION"
+if ! command -v "$LLVM_CONFIG" >/dev/null 2>&1; then
+    LLVM_CONFIG="/usr/lib/llvm-$LLVM_VERSION/bin/llvm-config"
+fi
+LLVM_VERSION_PREFERRED=$("$LLVM_CONFIG" --version | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
 echo "[Build Status] LLVM_VERSION_PREFERRED = $LLVM_VERSION_PREFERRED"
 
 echo "[Build Status] Prepare install OpenCL Clang"
 dpkg -i ./igc-official-release/*.deb
-if [ -f "/usr/local/lib/libopencl-clang2.so.$LLVM_VERSION" ] && [ ! -f "/usr/local/lib/libopencl-clang.so" ]; then
-    # Symlink to a library name CMake is set up to handle until either
-    # CMake is updated or the library name is changed back.
-    ln -s /usr/local/lib/libopencl-clang2.so.$LLVM_VERSION /usr/local/lib/libopencl-clang.so
+if [ -e "/usr/local/lib/libopencl-clang2.so" ] && [ ! -e "/usr/local/lib/libopencl-clang.so" ]; then
+    ln -s /usr/local/lib/libopencl-clang2.so /usr/local/lib/libopencl-clang.so
 fi
 echo "[Build Status] OpenCL Clang INSTALLED"
 
