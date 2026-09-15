@@ -27,6 +27,10 @@ static constexpr int SUB_GROUP_16 = 16;
 static constexpr int SUB_GROUP_32 = 32;
 static constexpr int MAX_ROW_BITS_2D_BLOCK_LOAD = 8 * 64;
 static constexpr int MAX_ROW_BITS_2D_BLOCK_STORE = 8 * 64;
+/* Block height limit of the VNNI transforming 2D block load. LSCFuncsResolution
+ * decodes only k16 and k32 for 16 bit elements and k32 for 8 bit ones, so a
+ * taller operand has to be composed from several loads instead. */
+static constexpr int MAX_ROWS_2D_BLOCK_LOAD_VNNI = 32;
 static unordered_set<string> CreatedFuncsSet;
 static string CreatedFuncsWarningLog;
 
@@ -141,10 +145,12 @@ struct MatrixSpec {
   int VnniedRows, VnniedCols;
   int WiRows;
   int ContribBitWidth;
+  /* The resolution pass counts rows per work item in default contribution units, not in widened ones. */
+  int NameWiRows;
   int MemElemBits, MemElemsPerRow, MemElemsPerContrib;
   int DpasSubGroupSize;
 
-  MatrixSpec(int sgSize, LayoutType layout, int rows, int cols, int bitWidth)
+  MatrixSpec(int sgSize, LayoutType layout, int rows, int cols, int bitWidth, int contribBitWidthOverride = 0)
       : SubGroupSize(sgSize), Layout(layout), Rows(rows), Cols(cols), BitWidth(bitWidth) {
     switch (Layout) {
     case Layout_PackedA_RowMajor:
@@ -199,6 +205,7 @@ struct MatrixSpec {
     //   - and load implementations themselves have a lot of special cases around this too.
     // It might be a good idea to refactor this and let the individual load implementations
     //   calculate this value themselves instead of calculating it ahead of the time here.
+    int defaultContribBitWidth = 0;
     {
       ContribBitWidth = Cols * BitWidth / DpasSubGroupSize;
 
@@ -209,7 +216,8 @@ struct MatrixSpec {
       ContribBitWidth = max(ContribBitWidth, BitWidth);
 
       // Special case - perhaps this could be removed with refactoring
-      if (Layout == Layout_PackedA_RowMajor && SubGroupSize == SUB_GROUP_16 && Cols == 32 && BitWidth == BITS_16)
+      if (Layout == Layout_PackedA_RowMajor && SubGroupSize == SUB_GROUP_16 && (Cols == 32 || Cols == 64) &&
+          BitWidth == BITS_16)
         ContribBitWidth = BITS_16;
       // Special case - when bitwidth is 16 and layout is accumulator, the contribBitWidth is also 16
       if ((Layout == Layout_Accumulator_RowMajor || Layout == Layout_Accumulator_ColumnMajor) && BitWidth == BITS_16)
@@ -217,6 +225,15 @@ struct MatrixSpec {
 
       if (Order == Order_Vnni)
         assert(ContribBitWidth == BITS_32);
+
+      /* A wider contribution gives each work item a contiguous run of columns
+       * instead of a sub group strided one, which is what a conversion to or
+       * from a narrower element type of the same shape needs. */
+      if (contribBitWidthOverride != 0) {
+        assert(contribBitWidthOverride % ContribBitWidth == 0);
+        defaultContribBitWidth = ContribBitWidth;
+        ContribBitWidth = contribBitWidthOverride;
+      }
     }
 
     // Memory-side view of the element. A sub-byte element is not individually
@@ -234,6 +251,10 @@ struct MatrixSpec {
       int totalBits = Rows * Cols * BitWidth;
       int canHandleBits = ContribBitWidth * SubGroupSize;
       WiRows = totalBits / canHandleBits + (totalBits % canHandleBits ? 1 : 0);
+
+      NameWiRows = WiRows;
+      if (contribBitWidthOverride != 0)
+        NameWiRows = WiRows * (contribBitWidthOverride / defaultContribBitWidth);
     }
   }
 };
@@ -297,7 +318,7 @@ static string GetMatrixFunctionName(MatrixSpec spec, AddrSpace addr, bool isChec
 
   s += "_" + to_string(spec.VnniedRows) + "x" + to_string(spec.VnniedCols);
   s += "_i" + to_string(spec.BitWidth);
-  s += "_" + to_string(spec.WiRows);
+  s += "_" + to_string(spec.NameWiRows);
 
   if (!isChecked)
     s += "_" + ToString(addr);
@@ -348,7 +369,7 @@ static string GetStoreMatrixFunctionName(MatrixSpec spec, AddrSpace addr, bool i
 
   s += "_" + to_string(spec.VnniedRows) + "x" + to_string(spec.VnniedCols);
   s += "_i" + to_string(spec.BitWidth);
-  s += "_" + to_string(spec.WiRows);
+  s += "_" + to_string(spec.NameWiRows);
 
   if (!isChecked)
     s += "_" + ToString(addr);
@@ -499,8 +520,12 @@ static string ImplementSmallLoad2DBlock(MatrixSpec spec, bool isChecked) {
     }
 
        // Reject cases where we blockRowSize is too big for 2D block load.
-    int blockRowSizeInBits = blockWidth * spec.BitWidth;
+    int blockRowSizeInBits = blockWidth * blockBitWidth;
     if (blockRowSizeInBits > MAX_ROW_BITS_2D_BLOCK_LOAD)
+      return "";
+
+    // Reject cases where the block is too tall for the vnni-transform 2D block load.
+    if (spec.Order == Order_Vnni && blockHeight > MAX_ROWS_2D_BLOCK_LOAD_VNNI)
       return "";
 
     blockFunc = "__builtin_IB_subgroup_block_"s + "read" + "_flat_cacheopts";
@@ -1668,6 +1693,10 @@ static string DefineAllSmallLoads() {
 
   s += DefineSmallLoadPermuteRows(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 8, 16, BITS_16));
   s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 1, 32, BITS_16));
+
+  /* K of 64, the 16 bit side of a conversion to or from a 4 bit A operand. The
+   * 64 bit contribution keeps the work item columns contiguous, as at 4 bits. */
+  s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 8, 64, BITS_16, BITS_64));
   s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_PackedA_ColumnMajor, 8, 16, BITS_16));
 
   s += DefineSmallLoadPermuteRows(MatrixSpec(SUB_GROUP_32, Layout_PackedA_RowMajor, 8, 16, BITS_16));
@@ -1769,6 +1798,13 @@ static string DefineAllSmallLoads() {
   s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_PackedB_RowMajor, 16, 32, BITS_16));
   s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_PackedB_PackedB, 16, 32, BITS_16));
 
+  /* Logical 64x16, the source of the 16 bit to 4 bit down conversion in
+   * joint_matrix_convert. Its K matches the K of the fp4 destination, which is
+   * wider than the 16 bit DPAS B tile because a 4 bit element packs more values
+   * into one slice. */
+  s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_PackedB_RowMajor, 32, 32, BITS_16));
+  s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_PackedB_PackedB, 32, 32, BITS_16));
+
   // Accumulator, i16
   s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 16, 16, BITS_16));
   s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 32, 16, BITS_16));
@@ -1866,6 +1902,9 @@ static string DefineAllSmallStores() {
 
   s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 1, 32, BITS_16), true);
 
+  /* K of 64, pairing with the load of the same shape above. */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 8, 64, BITS_16, BITS_64), true);
+
   /* PackedA store i16 SG16 Col Major */
   s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedA_ColumnMajor, 8, 16, BITS_16), true);
 
@@ -1890,6 +1929,9 @@ static string DefineAllSmallStores() {
   s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_ColumnMajor, 8, 32, BITS_16), false);
   s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_PackedB, 8, 32, BITS_16), true);
   s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_RowMajor, 8, 32, BITS_16), true);
+
+  /* Logical 64x16, pairing with the load of the same shape above. */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_PackedB, 32, 32, BITS_16), true);
 
   /* PackedB store i16 SG16 for subgroup 32 */
   s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedB_ColumnMajor, 8, 32, BITS_16), false);

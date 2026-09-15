@@ -118,6 +118,7 @@ private:
   bool ValidateIntegerBitWidth(unsigned int width);
   bool ValidateLoadStore(bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc,
                          llvm::Value *ctx);
+  bool ValidateAccessType(llvm::Type *accessType, unsigned accessBitWidth, llvm::Value *ctx);
 
   void Validate2DBlockLoadStore(GetMatrixFuncNameOperation operation, unsigned operationLayout, unsigned address_space,
                                 const JointMatrixTypeDescription *desc, llvm::Value *ctx);

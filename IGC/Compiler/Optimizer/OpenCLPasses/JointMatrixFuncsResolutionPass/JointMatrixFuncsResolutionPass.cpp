@@ -412,6 +412,7 @@ static bool isOperandUnsigned(unsigned OperationType, unsigned OperandId) {
 struct SupportedParams {
   int maxRows = -1; /* -1 means: don't check */
   int rows = -1;
+  int rowsAlt = -1; /* second accepted row count, -1 means: only 'rows' */
   int columns = -1;
   unsigned bitWidth = 0; /* All supported sizes are powers of two, this field is
                             used as a bitfield with union of suported sizes */
@@ -437,6 +438,12 @@ static SupportedParams getSupportedParams(const JointMatrixTypeDescription *desc
     params.layouts |= 1 << LayoutColumnMajor;
   } else if (desc->layout == LayoutPackedB) {
     params.rows = maxSliceBitWidth / desc->bitWidth;
+    /* A 16 bit B operand is also the source of an fp4 down conversion. There it
+     * has to match the K of the fp4 destination, which is wider than the 16 bit
+     * DPAS B tile because a 4 bit element packs more values into a slice. */
+    if (desc->bitWidth == 16) {
+      params.rowsAlt = maxSliceBitWidth / 4;
+    }
     params.columns = useSG16 ? 16 : 8;
     params.bitWidth |= 16;
     params.bitWidth |= 4; // fp4
@@ -470,7 +477,8 @@ static ParamsCheckResult checkSupportedParams(const JointMatrixTypeDescription *
   if (params.maxRows != -1 && (int)desc->rows > params.maxRows) {
     result |= INVALID_ROWS;
   }
-  if (params.rows != -1 && (int)desc->rows != params.rows) {
+  if (params.rows != -1 && (int)desc->rows != params.rows &&
+      (params.rowsAlt == -1 || (int)desc->rows != params.rowsAlt)) {
     result |= INVALID_ROWS;
   }
   if (params.columns != -1 && (int)desc->columns != params.columns) {
@@ -525,6 +533,9 @@ static bool isSupprtedLargeSlice(const JointMatrixTypeDescription *desc, bool us
     if (desc->bitWidth != 16)
       return false;
     if (desc->rows == 1 && desc->columns == 32)
+      return true;
+    // K of 64, the 16 bit side of a conversion to or from a 4 bit A operand.
+    if (desc->rows == 8 && desc->columns == 64)
       return true;
     if (desc->rows == 16 && desc->columns == 16)
       return true;
@@ -2009,12 +2020,35 @@ template <class BuilderT> static Type *getResolvedVectorElementType(Type *matrix
   return nullptr;
 }
 
+// Width of the unit a program addresses a work item slice in. An element
+// narrower than a byte has no type to name it with, so a sub byte matrix is
+// addressed - and its slice length reported - in whole bytes: one access of an
+// i4 matrix carries the two elements packed in a byte. Element sizes of a byte
+// and up address themselves.
+static unsigned getAccessBitWidth(const JointMatrixTypeDescription *desc) { return std::max(desc->bitWidth, 8u); }
+
+// An element wise access has to name the access unit exactly: a value of a
+// different width can neither be unpacked from nor merged into the slice.
+bool JointMatrixFuncsResolutionPass::ValidateAccessType(Type *accessType, unsigned accessBitWidth, Value *ctx) {
+  // Composite types have no single width to compare against, they are handled
+  // by the code operating on the resolved slice type instead.
+  unsigned width = accessType->getScalarSizeInBits();
+  if (width == 0 || width == accessBitWidth)
+    return true;
+
+  std::string msg = "Unsupported type of a matrix element wise access: expected a " + std::to_string(accessBitWidth) +
+                    " bit type, got a " + std::to_string(width) + " bit one.";
+  LLVM_DEBUG(dbgs() << msg << "\n");
+  m_Ctx->EmitError(msg.c_str(), ctx);
+  return false;
+}
+
 int JointMatrixFuncsResolutionPass::getSliceSize(const JointMatrixTypeDescription *desc) {
   if (desc->bitWidth == 0) {
     IGC_ASSERT_MESSAGE(false, "Unexpected matrix element bit width.");
     return 1;
   }
-  return getNumRowsPerWI(desc) * (desc->contribBitWidth / desc->bitWidth);
+  return getNumRowsPerWI(desc) * (desc->contribBitWidth / getAccessBitWidth(desc));
 }
 
 // expectation is both value and target type are IntegerType
@@ -2055,7 +2089,9 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
   Type *matTy = ResolveType(CI->getType(), &desc);
 
   if (fillValue->getType()->isPointerTy()) {
-    IntegerType *sliceElmentType = Type::getIntNTy(builder.getContext(), desc.bitWidth);
+    // The value is loaded in the unit the slice is addressed in, so a sub byte
+    // matrix takes the whole byte of packed elements the caller points at.
+    IntegerType *sliceElmentType = Type::getIntNTy(builder.getContext(), getAccessBitWidth(&desc));
     PointerType *PT = dyn_cast<PointerType>(fillValue->getType());
     fillValue = builder.CreateBitCast(fillValue, IGCLLVM::PointerType::get(sliceElmentType, PT->getAddressSpace()));
     fillValue = builder.CreateLoad(sliceElmentType, fillValue);
@@ -2066,7 +2102,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
   if (vecElementIntType && !dyn_cast<IntegerType>(fillValue->getType()))
     fillValue = builder.CreateBitCast(fillValue, Type::getIntNTy(builder.getContext(), desc.bitWidth));
 
-  if (desc.bitWidth != desc.contribBitWidth)
+  if (getAccessBitWidth(&desc) != desc.contribBitWidth)
     fillValue = packFillValue(&builder, fillValue, vecElementIntType);
 
   Value *slice = fillValue;
@@ -2283,18 +2319,28 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
   IRBuilder builder(CI);
   Value *slice = nullptr;
 
-  if (desc.bitWidth != desc.contribBitWidth) {
+  // The index counts, and the component carries, whole access units: for a sub
+  // byte matrix that is a byte of packed elements, not a single element.
+  const unsigned accessBitWidth = getAccessBitWidth(&desc);
+  if (!ValidateAccessType(component->getType(), accessBitWidth, CI)) {
+    // Compilation stops on the error, leave the slice unmodified so the IR
+    // stays well formed until then.
+    InstsToErase.insert(CI);
+    return matrix;
+  }
+
+  if (accessBitWidth != desc.contribBitWidth) {
     // Unpacking:
-    Value *offset = createOffsetForPackedValue(&builder, index, desc.contribBitWidth, desc.bitWidth);
+    Value *offset = createOffsetForPackedValue(&builder, index, desc.contribBitWidth, accessBitWidth);
 
     // prepare element to update
     Value *element = matrix; // If rows == 1, we do not need an extract, so directly use the value.
     if (dyn_cast<IGCLLVM::FixedVectorType>(matTy))
-      element = updateIndexAndCreateSliceExtract(&builder, matrix, &index, desc.contribBitWidth, desc.bitWidth);
+      element = updateIndexAndCreateSliceExtract(&builder, matrix, &index, desc.contribBitWidth, accessBitWidth);
     if (!isa<IntegerType>(element->getType()))
       element = builder.CreateBitCast(element, Type::getIntNTy(builder.getContext(), desc.contribBitWidth));
 
-    component = mergeComponentToPackedValue(&builder, element, component, offset, desc.contribBitWidth, desc.bitWidth);
+    component = mergeComponentToPackedValue(&builder, element, component, offset, desc.contribBitWidth, accessBitWidth);
   } else if (IntegerType *vectorElementType = dyn_cast<IntegerType>(getResolvedVectorElementType(matTy, &builder)))
     component = builder.CreateBitCast(component, vectorElementType);
 
@@ -2323,10 +2369,19 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
   IRBuilder builder(CI);
   Value *element = matrix; // if it is a single value, we can directly use the value
 
+  // The index counts whole access units, which for a sub byte matrix is a byte
+  // of packed elements rather than a single element.
+  const unsigned accessBitWidth = getAccessBitWidth(&desc);
+  if (!ValidateAccessType(CI->getType(), accessBitWidth, CI)) {
+    // Compilation stops on the error, a well typed value keeps the IR valid.
+    InstsToErase.insert(CI);
+    return UndefValue::get(CI->getType());
+  }
+
   // If we are dealing with a vector, extract the element
   if (dyn_cast<IGCLLVM::FixedVectorType>(matTy)) {
     Value *indexVec = index;
-    element = updateIndexAndCreateSliceExtract(&builder, matrix, &indexVec, desc.contribBitWidth, desc.bitWidth);
+    element = updateIndexAndCreateSliceExtract(&builder, matrix, &indexVec, desc.contribBitWidth, accessBitWidth);
   } else if (isAccumulator32x64(desc) || isAccumulator32x32(desc)) {
     Value *MatPtr = nullptr;
     Value *ptrToElem = getAcc2x64ElementPtr(CI, matrix, index, &builder, &MatPtr, desc);
@@ -2334,8 +2389,8 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
   }
 
   // unpack element we need from packed value
-  if (desc.bitWidth != desc.contribBitWidth)
-    element = unpackElementFromPackedValue(&builder, index, element, desc.contribBitWidth, desc.bitWidth);
+  if (accessBitWidth != desc.contribBitWidth)
+    element = unpackElementFromPackedValue(&builder, index, element, desc.contribBitWidth, accessBitWidth);
 
   // We need the bitcast, e.g. for half, as the function call that is
   // being replaced has a half return type and the vectorElementType is i16
@@ -2398,7 +2453,6 @@ bool JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
 
     IGC_ASSERT_MESSAGE(isMatrixType(chainBaseTy), "__spirv_AccessChain call 1st argument must be cooperative matrix");
     Value *ptrToMatrix = CI->getArgOperand(0);
-    Value *matrix = builder.CreateLoad(chainBaseTy, ptrToMatrix, "");
     Value *index = CI->getArgOperand(1);
 
     for (const auto &U : CI->users()) {
@@ -2434,6 +2488,11 @@ bool JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
       constexpr unsigned ACNameLength = 23; // "_Z19__spirv_AccessChain"
       std::string funcPostfix = (F->getName().drop_front(ACNameLength)).str();
       builder.SetInsertPoint(memInst);
+      // Read the slice where the access happens, not where the pointer was
+      // taken: two element pointers into the same matrix can both be produced
+      // before either access, and an insert working on a copy of the slice read
+      // that early writes back a value that misses the other insert.
+      Value *matrix = builder.CreateLoad(chainBaseTy, ptrToMatrix, "");
       if (isa<LoadInst>(memInst)) {
         std::vector<Value *> Args = {matrix, index};
         FunctionType *funcType = FunctionType::get(memInst->getType(), {matrix->getType(), index->getType()}, false);

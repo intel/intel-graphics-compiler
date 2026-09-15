@@ -14,11 +14,14 @@
 ; Checks for multiple uses of __spirv_AccessChain function call - load plus store
 ; it must result in extract and then insert an element to the matrix's slice
 
-; CHECK:  [[SLICE:%.*]] = load <8 x i16>, ptr %{{.*}}, align 8
+; CHECK:  [[SLICE:%.*]] = load <8 x i16>, ptr [[MATRIX:%.*]], align 8
 ; CHECK:  [[ELEMENT:%.*]] = extractelement <8 x i16> [[SLICE]], i64 4, !joint_matrix_apply
 ; CHECK:  [[ADD:%.*]] = add i16 [[ELEMENT]], 1
-; CHECK:  [[INSERT:%.*]] = insertelement <8 x i16> [[SLICE]], i16 [[ADD]], i64 4
-; CHECK:  store <8 x i16> [[INSERT]], ptr %{{.*}}, align 8
+; Each access reads the slice at its own site, so the insert takes a second load
+; and not the one the extract used.
+; CHECK:  [[SLICE2:%.*]] = load <8 x i16>, ptr [[MATRIX]], align 8
+; CHECK:  [[INSERT:%.*]] = insertelement <8 x i16> [[SLICE2]], i16 [[ADD]], i64 4
+; CHECK:  store <8 x i16> [[INSERT]], ptr [[MATRIX]], align 8
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
