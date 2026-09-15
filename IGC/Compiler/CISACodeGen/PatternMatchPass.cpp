@@ -6557,7 +6557,17 @@ bool CodeGenPatternMatch::GetRegionModifier(SSource &sourceMod, llvm::Value *&so
     if (id == GenISAIntrinsic::GenISA_WaveShuffleIndex || id == GenISAIntrinsic::GenISA_WaveBroadcast) {
       if (llvm::ConstantInt *channelVal = llvm::dyn_cast<llvm::ConstantInt>(intrin->getOperand(1))) {
         unsigned int offset = int_cast<unsigned int>(channelVal->getZExtValue());
-        if (offset < 16 && !isUniform(intrin->getOperand(0))) {
+        // Folding makes the consumer read lane 0 of the source directly. A consumer sunk into
+        // another block can outlive the source's range, letting RA reuse its GRF.
+        bool foldRegion = true;
+        for (const llvm::User *U : intrin->users()) {
+          const auto *UI = llvm::dyn_cast<llvm::Instruction>(U);
+          if (!UI || UI->getParent() != intrin->getParent()) {
+            foldRegion = false;
+            break;
+          }
+        }
+        if (offset < 16 && !isUniform(intrin->getOperand(0)) && foldRegion) {
           sourceMod.elementOffset = offset;
           // SIMD shuffle force region <0,1;0>
           sourceMod.region_set = true;
