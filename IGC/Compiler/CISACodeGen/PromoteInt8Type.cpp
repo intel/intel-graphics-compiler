@@ -751,7 +751,7 @@ Value *PromoteInt8Type::getI16Value(Value *V, bool IsZExt) {
   Type *i16Ty = Type::getInt16Ty(m_F->getContext());
   if (ConstantInt *CstI = dyn_cast<ConstantInt>(V)) {
     uint64_t n = IsZExt ? CstI->getZExtValue() : CstI->getSExtValue();
-    return ConstantInt::get(i16Ty, n);
+    return ConstantInt::get(i16Ty, n, !IsZExt);
   }
 
   if (ConstantDataVector *CDVI = dyn_cast<ConstantDataVector>(V)) {
@@ -788,7 +788,7 @@ Value *PromoteInt8Type::getI16Value(Value *V, bool IsZExt) {
       auto CstI = dyn_cast<ConstantInt>(elem);
       if (CstI) {
         uint64_t n = IsZExt ? CstI->getZExtValue() : CstI->getSExtValue();
-        Vals[idx] = ConstantInt::get(i16Ty, n, IsZExt);
+        Vals[idx] = ConstantInt::get(i16Ty, n, !IsZExt);
       } else {
         Vals[idx] = UndefValue::get(i16Ty);
       }
@@ -1110,8 +1110,10 @@ void PromoteInt8Type::promoteIntrinsic() {
           }
           case WaveOps::IMAX: {
             // the neutral values for i16 and i8 are different -- replace
-            Value *eq = m_builder->CreateICmpEQ(nCall, ConstantInt::get(i16Ty, std::numeric_limits<int16_t>::min()));
-            nCall = m_builder->CreateSelect(eq, ConstantInt::get(i16Ty, std::numeric_limits<int8_t>::min()), nCall);
+            Value *eq =
+                m_builder->CreateICmpEQ(nCall, ConstantInt::getSigned(i16Ty, std::numeric_limits<int16_t>::min()));
+            nCall =
+                m_builder->CreateSelect(eq, ConstantInt::getSigned(i16Ty, std::numeric_limits<int8_t>::min()), nCall);
             break;
           }
           default:
