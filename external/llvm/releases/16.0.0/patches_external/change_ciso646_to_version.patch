@@ -1,0 +1,28 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2025 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+/*========================== begin_copyright_notice ============================
+
+Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+See https://llvm.org/LICENSE.txt for license information.
+SPDX-License-Identifier: Apache-2.0 with LLVM-exception
+
+============================= end_copyright_notice ===========================*/
+diff --git a/llvm/include/llvm/Support/Threading.h b/llvm/include/llvm/Support/Threading.h
+index ba6c531ab4db..78aa5e7be5b5 100644
+--- a/llvm/include/llvm/Support/Threading.h
++++ b/llvm/include/llvm/Support/Threading.h
+@@ -18,7 +18,7 @@
+ #include "llvm/ADT/StringRef.h"
+ #include "llvm/Config/llvm-config.h" // for LLVM_ON_UNIX
+ #include "llvm/Support/Compiler.h"
+-#include <ciso646> // So we can check the C++ standard lib macros.
++#include <version> // So we can check the C++ standard lib macros.
+ #include <optional>
+
+ #if defined(_MSC_VER)
