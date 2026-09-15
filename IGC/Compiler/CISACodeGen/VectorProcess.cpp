@@ -20,6 +20,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "Probe/Assertion.h"
+#include <algorithm>
+#include <iterator>
 
 using namespace llvm;
 using namespace IGC;
@@ -755,7 +757,7 @@ void VectorMessage::getLSCInfo(llvm::Type *Ty, uint64_t Align, CodeGenContext *c
   unsigned nElts = VTy ? (unsigned)VTy->getNumElements() : 1;
   // total bytes
   const unsigned TBytes = nElts * eltSize;
-  char TRANS_VEC_SIZE[8] = {1, 2, 3, 4, 8, 16, 32, 64};
+  unsigned TRANS_VEC_SIZE[8] = {1, 2, 3, 4, 8, 16, 32, 64};
   MESSAGE_KIND kind = useA32 ? MESSAGE_A32_LSC_RW : MESSAGE_A64_LSC_RW;
 
   VISA_Type dataType = GetType(Ty, ctx);
@@ -812,13 +814,18 @@ void VectorMessage::getLSCInfo(llvm::Type *Ty, uint64_t Align, CodeGenContext *c
       insts[i].numBlks = MB / insts[i].blkInBytes;
     }
 
-    if (bytes > 0) {
+    while (bytes > 0) {
+      IGC_ASSERT(blkInBytes && bytes % blkInBytes == 0);
+      unsigned numBlks =
+          *std::prev(std::upper_bound(std::begin(TRANS_VEC_SIZE), std::end(TRANS_VEC_SIZE), bytes / blkInBytes));
+
       insts[i].startByte = (uint16_t)(TBytes - bytes);
       insts[i].kind = kind;
       insts[i].blkType = dataType;
       insts[i].blkInBytes = (uint16_t)CEncoder::GetCISADataTypeSize(dataType);
       IGC_ASSERT(insts[i].blkInBytes);
-      insts[i].numBlks = (uint16_t)bytes / insts[i].blkInBytes;
+      insts[i].numBlks = numBlks;
+      bytes -= insts[i].numBlks * insts[i].blkInBytes;
       ++i;
     }
   }
