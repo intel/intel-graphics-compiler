@@ -2645,7 +2645,9 @@ static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, ui
   if (pCtx->supportsVRT() && pCtx->platform.GetPlatformFamily() == IGFX_XE3_CORE) {
     auto simd32High = IGC_GET_FLAG_VALUE(OCLVRTSimd16DropSimd32High);
     auto simd16Low = IGC_GET_FLAG_VALUE(OCLVRTSimd16DropSimd16Low);
-    if ((simd32Pressure > simd32High && simd16Pressure > 0 && simd16Pressure < simd16Low) || simd32Pressure > threshold)
+    if (simd16Low > 96)
+      simd16Low = 96;
+    if (simd32Pressure > simd32High && simd16Pressure > 0 && simd16Pressure < simd16Low)
       return true;
   }
 
