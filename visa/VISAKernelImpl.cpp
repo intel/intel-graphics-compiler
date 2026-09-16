@@ -9774,16 +9774,25 @@ int64_t VISAKernelImpl::getGenOffset() const {
 
 int64_t VISAKernelImpl::getGenSize() const {
   vASSERT(false == m_kernel->fg.empty());
-  auto &lastBB = *(*m_kernel->fg.rbegin());
+  G4_INST *lastInst = nullptr;
 
-  // the offset of the last gen inst in this kernel/function
-  vASSERT(false == lastBB.empty());
-  auto inst = lastBB.rbegin();
-  vASSERT(UNDEFINED_GEN_OFFSET !=
-         (*inst)->getGenOffset()); // expecting terminator
+  // Labels and other unencoded instructions have no generated offset. Walk
+  // backwards over them to find the last instruction present in the binary.
+  for (auto bbIt = m_kernel->fg.rbegin();
+       bbIt != m_kernel->fg.rend() && !lastInst; ++bbIt) {
+    for (auto instIt = (*bbIt)->rbegin(); instIt != (*bbIt)->rend(); ++instIt) {
+      if ((*instIt)->getGenOffset() != UNDEFINED_GEN_OFFSET) {
+        lastInst = *instIt;
+        break;
+      }
+    }
+  }
+  vISA_ASSERT(lastInst, "vISA ICE: missing encoded instruction");
+  if (!lastInst)
+    return 0;
 
-  auto size = (*inst)->getGenOffset();
-  size += (*inst)->isCompactedInst() ? (BYTES_PER_INST / 2) : BYTES_PER_INST;
+  auto size = lastInst->getGenOffset();
+  size += lastInst->isCompactedInst() ? (BYTES_PER_INST / 2) : BYTES_PER_INST;
   size -= getGenOffset();
   return size;
 }
