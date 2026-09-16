@@ -706,10 +706,31 @@ static bool LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL
 //   %shift   = lshr i32 %extract, 1 ; optional, here index is 65 and not divisible by 32
 //   %and     = and i32 %shift, 1
 //   %trunc   = trunc i32 %and to i1
+//
+// Widen constant bool vectors to i8 before extraction:
+//   %b = extractelement <4 x i1> <i1 true, i1 false, i1 false, i1 false>, i32 %index
+// becomes:
+//   %extract = extractelement <4 x i8> <i8 1, i8 0, i8 0, i8 0>, i32 %index
+//   %b = icmp ne i8 %extract, 0
 void Legalization::visitExtractElementInst(ExtractElementInst &I) {
+  if (!I.getType()->isIntegerTy(1))
+    return;
+
+  auto *VecTy = dyn_cast<IGCLLVM::FixedVectorType>(I.getVectorOperandType());
+  if (VecTy && isa<Constant>(I.getVectorOperand())) {
+    m_builder->SetInsertPoint(&I);
+    auto *WideTy = IGCLLVM::FixedVectorType::get(m_builder->getInt8Ty(), VecTy->getNumElements());
+    Value *WideVec = m_builder->CreateZExt(I.getVectorOperand(), WideTy);
+    Value *Elt = m_builder->CreateExtractElement(WideVec, I.getIndexOperand());
+    Value *Bit = m_builder->CreateICmpNE(Elt, m_builder->getInt8(0));
+    I.replaceAllUsesWith(Bit);
+    m_instructionsToRemove.insert(&I);
+    return;
+  }
+
   auto *BC = dyn_cast<BitCastInst>(I.getVectorOperand());
   ConstantInt *CIdx = dyn_cast<ConstantInt>(I.getIndexOperand());
-  if (!BC || !CIdx || !I.getType()->isIntegerTy(1))
+  if (!BC || !CIdx)
     return;
 
   auto *SrcVecTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getSrcTy());
@@ -1338,7 +1359,7 @@ void Legalization::PromoteInsertElement(Value *I, Value *newVec) {
   if (InsertElementInst *IEinst = dyn_cast<InsertElementInst>(I)) {
     m_builder->SetInsertPoint(IEinst);
     newVec = InsertElementInst::Create(newVec,
-                                       m_builder->CreateSExt(IEinst->getOperand(1), Type::getInt32Ty(I->getContext())),
+                                       m_builder->CreateSExt(IEinst->getOperand(1), Type::getInt8Ty(I->getContext())),
                                        IEinst->getOperand(2), "", IGCLLVM::insertPosition(IEinst));
     Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
     if (newVecAsTempInst)
@@ -1358,10 +1379,10 @@ void Legalization::PromoteInsertElement(Value *I, Value *newVec) {
       CastInst *castI = dyn_cast<CastInst>(*useI);
       if (castI && castI->getOpcode() == Instruction::SExt && castI->getSrcTy()->isIntegerTy(1) &&
           castI->getDestTy()->isIntegerTy(32)) {
-        Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
-        if (newVecAsTempInst)
-          newVecAsTempInst->setDebugLoc(castI->getDebugLoc());
-        castI->replaceAllUsesWith(newVec);
+        Instruction *pSExt =
+            CastInst::Create(Instruction::SExt, newVec, castI->getDestTy(), "", IGCLLVM::insertPosition(castI));
+        pSExt->setDebugLoc(castI->getDebugLoc());
+        castI->replaceAllUsesWith(pSExt);
       } else {
         llvm::Instruction *pSrc1ZExt = llvm::CastInst::CreateTruncOrBitCast(newVec, Type::getInt1Ty(I->getContext()),
                                                                             "", IGCLLVM::insertPosition(EEinst));
@@ -1421,9 +1442,9 @@ void Legalization::visitInsertElementInst(InsertElementInst &I) {
       newVecAsTempInst->setDebugLoc(I.getDebugLoc());
     I.replaceAllUsesWith(newVec);
   } else if (I.getOperand(1)->getType()->isIntegerTy(1)) {
-    // This promotes i1 insertelement to i32
+    // This promotes i1 insertelement to i8
     unsigned int nbElement = (unsigned)cast<IGCLLVM::FixedVectorType>(I.getOperand(0)->getType())->getNumElements();
-    Value *newVec = UndefValue::get(IGCLLVM::FixedVectorType::get(m_builder->getInt32Ty(), nbElement));
+    Value *newVec = UndefValue::get(IGCLLVM::FixedVectorType::get(m_builder->getInt8Ty(), nbElement));
     PromoteInsertElement(&I, newVec);
   }
 }

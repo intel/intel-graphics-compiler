@@ -33,13 +33,13 @@ define spir_kernel void @test_insert(i32 %src1, <3 x i1> %src2) !dbg !7 {
   call void @llvm.dbg.value(metadata <3 x i32> %1, metadata !10, metadata !DIExpression()), !dbg !18
 
 ; Testcase 2
-; insertelement with i1 propagated to i32
+; insertelement with i1 propagated to i8
 ; CHECK-NEXT: [[EXTR_V:%[0-9]*]] = extractelement <3 x i1> %src2, i32 2, !dbg [[EXTR_LOC:![0-9]*]]
-; CHECK: [[SEXT_V:%[0-9]*]] = sext i1 [[EXTR_V]] to i32
-; CHECK-NEXT: [[INS_EL32_V:%[0-9]*]] = insertelement <3 x i32> undef, i32 [[SEXT_V]], i32 1
-; CHECK: [[EXTR32_V:%[0-9]*]] = extractelement <3 x i32> [[INS_EL32_V]], i32 1
-; CHECK: [[AND32_V:%.*]] = and i32 [[EXTR32_V]], 1, !dbg [[AND32_LOC:![0-9]*]]
-; CHECK: [[EXTR1_V:%.*]] = icmp ne i32 [[AND32_V]], 0, !dbg [[EXTR1_LOC:![0-9]*]]
+; CHECK: [[SEXT_V:%[0-9]*]] = sext i1 [[EXTR_V]] to i8
+; CHECK-NEXT: [[INS_EL8_V:%[0-9]*]] = insertelement <3 x i8> undef, i8 [[SEXT_V]], i32 1
+; CHECK: [[EXTR8_V:%[0-9]*]] = extractelement <3 x i8> [[INS_EL8_V]], i32 1
+; CHECK: [[AND8_V:%.*]] = and i8 [[EXTR8_V]], 1, !dbg [[AND8_LOC:![0-9]*]]
+; CHECK: [[EXTR1_V:%.*]] = icmp ne i8 [[AND8_V]], 0, !dbg [[EXTR1_LOC:![0-9]*]]
 ; CHECK-DBG-INTRINSIC: [[DBG_VALUE_CALL]] i1 [[EXTR1_V]], metadata [[EXTR1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR1_LOC]]
 ; CHECK-DBG-RECORDS: #dbg_value(i1 [[EXTR1_V]], [[EXTR1_MD:![0-9]*]], !DIExpression(), [[EXTR1_LOC]])
 

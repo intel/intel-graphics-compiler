@@ -12,17 +12,17 @@
 ; ------------------------------------------------
 
 ; Checks legalization of insertelement with data type i1
-; to insertelement of i32 vector
+; to insertelement of i8 vector
 
 define i1 @test_insertelem_i1(<8 x i1> %src1, i1 %src2, i32 %src3) {
 ; CHECK-LABEL: define i1 @test_insertelem_i1(
 ; CHECK-SAME: <8 x i1> [[SRC1:%.*]], i1 [[SRC2:%.*]], i32 [[SRC3:%.*]]) {
-; CHECK:    [[TMP1:%.*]] = sext i1 [[SRC2]] to i32
-; CHECK:    [[TMP2:%.*]] = insertelement <8 x i32> undef, i32 [[TMP1]], i32 7
-; CHECK:    [[TMP3:%.*]] = insertelement <8 x i32> [[TMP2]], i32 -1, i32 1
-; CHECK:    [[TMP4:%.*]] = extractelement <8 x i32> [[TMP3]], i32 [[SRC3]]
-; CHECK:    [[TMP5:%.*]] = and i32 [[TMP4]], 1
-; CHECK:    [[TMP6:%.*]] = icmp ne i32 [[TMP5]], 0
+; CHECK:    [[TMP1:%.*]] = sext i1 [[SRC2]] to i8
+; CHECK:    [[TMP2:%.*]] = insertelement <8 x i8> undef, i8 [[TMP1]], i32 7
+; CHECK:    [[TMP3:%.*]] = insertelement <8 x i8> [[TMP2]], i8 -1, i32 1
+; CHECK:    [[TMP4:%.*]] = extractelement <8 x i8> [[TMP3]], i32 [[SRC3]]
+; CHECK:    [[TMP5:%.*]] = and i8 [[TMP4]], 1
+; CHECK:    [[TMP6:%.*]] = icmp ne i8 [[TMP5]], 0
 ; CHECK:    ret i1 [[TMP6]]
 ;
   %1 = insertelement <8 x i1> %src1, i1 %src2, i32 7
@@ -34,11 +34,12 @@ define i1 @test_insertelem_i1(<8 x i1> %src1, i1 %src2, i32 %src3) {
 define i32 @test_insertelem_i1_sext(<8 x i1> %src1, i1 %src2, i32 %src3) {
 ; CHECK-LABEL: define i32 @test_insertelem_i1_sext(
 ; CHECK-SAME: <8 x i1> [[SRC1:%.*]], i1 [[SRC2:%.*]], i32 [[SRC3:%.*]]) {
-; CHECK:    [[TMP1:%.*]] = sext i1 [[SRC2]] to i32
-; CHECK:    [[TMP2:%.*]] = insertelement <8 x i32> undef, i32 [[TMP1]], i32 7
-; CHECK:    [[TMP3:%.*]] = insertelement <8 x i32> [[TMP2]], i32 -1, i32 1
-; CHECK:    [[TMP4:%.*]] = extractelement <8 x i32> [[TMP3]], i32 [[SRC3]]
-; CHECK:    ret i32 [[TMP4]]
+; CHECK:    [[TMP1:%.*]] = sext i1 [[SRC2]] to i8
+; CHECK:    [[TMP2:%.*]] = insertelement <8 x i8> undef, i8 [[TMP1]], i32 7
+; CHECK:    [[TMP3:%.*]] = insertelement <8 x i8> [[TMP2]], i8 -1, i32 1
+; CHECK:    [[TMP4:%.*]] = extractelement <8 x i8> [[TMP3]], i32 [[SRC3]]
+; CHECK:    [[TMP5:%.*]] = sext i8 [[TMP4]] to i32
+; CHECK:    ret i32 [[TMP5]]
 ;
   %1 = insertelement <8 x i1> %src1, i1 %src2, i32 7
   %2 = insertelement <8 x i1> %1, i1 true, i32 1
