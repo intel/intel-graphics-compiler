@@ -287,21 +287,17 @@ int BiFManagerTool::findDependency(BiFDictionary &BiFMapBitType) {
 
 void BiFManagerTool::markBuiltinFunc(llvm::Module *pM) {
   for (auto &f : pM->functions()) {
-    if (!f.isDeclaration()) {
-      LLVMContext &C = f.getContext();
-      MDNode *N = MDNode::get(C, MDString::get(C, "IGC built-in function"));
+    LLVMContext &C = f.getContext();
+    MDNode *N = MDNode::get(C, MDString::get(C, "IGC built-in function"));
 
-      f.setMetadata(bifMark, N);
-    }
+    f.setMetadata(bifMark, N);
   }
 
   for (auto &g : pM->globals()) {
-    if (!g.isDeclaration()) {
-      LLVMContext &C = g.getContext();
-      MDNode *N = MDNode::get(C, MDString::get(C, "IGC global variable from built-in function"));
+    LLVMContext &C = g.getContext();
+    MDNode *N = MDNode::get(C, MDString::get(C, "IGC global variable from built-in function"));
 
-      g.setMetadata(bifMark, N);
-    }
+    g.setMetadata(bifMark, N);
   }
 }
 

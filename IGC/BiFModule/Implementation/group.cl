@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// Group Instructions
+// ..Group Instructions..
 
 uint __intel_LocalInvocationIndex();
 uint __intel_WorkgroupSize();

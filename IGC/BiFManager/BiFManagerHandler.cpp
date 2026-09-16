@@ -112,18 +112,6 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
       IGC_ASSERT_MESSAGE(0, "materializeAll failed for generic builtin module");
     }
 
-    for (auto &F : BiFSection->get()->functions()) {
-      LLVMContext &C = F.getContext();
-      MDNode *N = MDNode::get(C, MDString::get(C, "IGC built-in function"));
-      F.setMetadata(bifMark, N);
-    }
-
-    for (auto &GV : BiFSection->get()->globals()) {
-      LLVMContext &C = GV.getContext();
-      MDNode *N = MDNode::get(C, MDString::get(C, "IGC built-in global"));
-      GV.setMetadata(bifMark, N);
-    }
-
     if (CallbackLinker == nullptr) {
       BiFSection->get()->setDataLayout(Module.getDataLayout());
       BiFSection->get()->setTargetTriple(Module.getTargetTriple());
