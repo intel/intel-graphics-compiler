@@ -47,7 +47,7 @@ else()
   set(INTRBUILD "${CMAKE_CURRENT_BINARY_DIR}/intrbuild")
   # Add -Wno-error to avoid build errors from llvm's header deprecation warnings and
   # unused variables/functions coming from vc-intrinsics.
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     string(APPEND CMAKE_CXX_FLAGS " -Wno-error")
   endif()
   add_subdirectory(${INTRSRC} ${INTRBUILD} EXCLUDE_FROM_ALL)
