@@ -497,6 +497,38 @@ DEF_VISA_OPTION(vISA_LraFFWindowSize, ET_INT32, "-lraFFWindowSize", UNUSED, 12)
 // (and 1) disables the optimization.
 DEF_VISA_OPTION(vISA_RAAntiDepRecolorRotation, ET_INT32,
                 "-raAntiDepRecolorRotation", UNUSED, 3)
+// A third recolor method, and a different shape from the two above. Those work
+// per candidate: take a send anchor, mask what it must avoid, search for one
+// register. That separates only the pairs the anchor pass picked out.
+//
+// This walks each basic block in program order instead, carrying a window of
+// the registers the surrounding instructions reference, and re-places the
+// block-local values falling inside some send's window onto a register the
+// window does not hold.
+//
+// Legality is not inferred from the walk: it comes from the interference
+// graph, through the same set-up the main coloring loop uses, so a register
+// this accepts is one assignColor would also have accepted. The window is only
+// a preference on top, dropped when nothing outside it fits.
+//
+// Like the other two it never records a spill: it assigns only from the free
+// set and leaves a value where coloring put it when nothing fits.
+DEF_VISA_OPTION(vISA_RABlockLocalScan, ET_BOOL, "-noraBlockLocalScan",
+                UNUSED, true)
+// How far either side of a send the block-local scan reaches, in instructions.
+//
+// The window does two jobs, and both want the same reach. It bounds which
+// instructions a send brings into scope -- only a value first referenced inside
+// some send's window is a candidate -- and it bounds the registers a placement
+// avoids, which is what stops two nearby values landing on the same one.
+//
+// Split into two because the hazards either side are not the same. Behind a
+// send sits code that may still hold a register the send reads; ahead of it
+// sits code that can overwrite a result still in flight, which is the stall
+// this pass mainly exists to remove. 0 on either side confines the window to
+// that direction.
+DEF_VISA_OPTION(vISA_RABlockScanBwd, ET_INT32, "-raBlockScanBwd", UNUSED, 16)
+DEF_VISA_OPTION(vISA_RABlockScanFwd, ET_INT32, "-raBlockScanFwd", UNUSED, 8)
 DEF_VISA_OPTION(vISA_SplitGRFAlignedScalar, ET_BOOL, "-nosplitGRFalignedscalar",
                 UNUSED, true)
 DEF_VISA_OPTION(vISA_DoSplitOnSpill, ET_BOOL, "-nosplitonspill", UNUSED, true)

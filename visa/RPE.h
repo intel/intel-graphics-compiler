@@ -32,7 +32,7 @@ public:
   // runLoops() not yet called).
   unsigned int getLoopInstRP(const Loop *loop, G4_INST *inst) const;
 
-  unsigned int getRegisterPressure(G4_INST *inst) {
+  unsigned int getRegisterPressure(G4_INST *inst) const {
     auto it = rp.find(inst);
     if (it == rp.end())
       return 0;

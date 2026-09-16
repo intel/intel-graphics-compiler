@@ -7347,6 +7347,15 @@ GraphColor::collectSLMLoadAntiDepCandidates() {
 //
 // Spill-free and register-pressure-neutral: it only relabels already-allocated
 // loads onto other free GRFs -- a load that cannot move keeps its color.
+//
+// The fallback of the two recolor methods: assignColors runs this only when
+// relocateBlockLocals did not run, since both would place the same SLM load
+// destinations and the second to run would undo the first.
+//
+// The guard below repeats three of the caller's conditions, so this is safe to
+// call unguarded. It deliberately omits the caller's stack-call test: unlike
+// the scan, this only relabels registers coloring already assigned, so it needs
+// no model of the ABI and still serves the stack-call kernels the scan skips.
 void GraphColor::breakSLMLoadSendAntiDep(
     ColorHeuristic colorHeuristicGRF, PhyRegAllocationState &parms,
     const std::function<bool(LiveRange *)> &assignColor) {
@@ -7450,6 +7459,103 @@ void GraphColor::breakSLMLoadSendAntiDep(
   });
 }
 
+namespace {
+
+// What the block-local scan needs out of GraphColor::assignColors, which builds
+// it and hands it to the scan at the end of this file. References rather than a
+// GraphColor back-pointer, so nothing here needs private access and the header
+// does not have to know this type exists.
+struct BlockScanCtx {
+  // Read only by the adjacent-send guard, which asks whether two destinations
+  // already interfere.
+  const Interference &intf;
+  GlobalRA &gra;
+  const LiveRangeVec &lrs;
+  G4_Kernel &kernel;
+  const LivenessAnalysis &liveAnalysis;
+  PhyRegAllocationState &parms;
+  FreePhyRegs &fpr;
+  unsigned maxGRFCanBeUsed;
+
+  // How far the window reaches either side of an instruction, from
+  // vISA_RABlockScanBwd and vISA_RABlockScanFwd.
+  unsigned bwd;
+  unsigned fwd;
+
+  // Reused across candidates to avoid a per-candidate allocation.
+  BitSet scratchForbidden;
+  unsigned statBlocks = 0, statCands = 0, statMoved = 0;
+};
+
+// Defined at the end of this file; see BlockScanCtx above for why.
+void relocateBlockLocals(BlockScanCtx &ctx);
+
+// Everything that constrains lr and is the same for every colorer: the real
+// interference, and what the weak edge augmentation recorded. Shared by
+// assignColors and by the block-local scan, which differ only in what they
+// add on top of it.
+void initRegUsage(const Interference &intf, const LiveRangeVec &lrs,
+                  LiveRange *lr, PhyRegUsage &regUsage) {
+  for (auto it : intf.getSparseIntfForVar(lr->getVar()->getId())) {
+    LiveRange *lrTemp = lrs[it];
+    if (lrTemp->getPhyReg() != nullptr || lrTemp->getIsPartialDcl()) {
+      if (lrTemp->getIsSplittedDcl())
+        continue; // only interfere with children declares
+      regUsage.updateRegUsage(lrTemp);
+    }
+  }
+
+  auto weakEdgeSet =
+      intf.getCompatibleSparseIntf(lr->getVar()->getDeclare()->getRootDeclare());
+  if (!weakEdgeSet)
+    return;
+  regUsage.runOverlapTest(true);
+  for (auto weakDcl : *weakEdgeSet) {
+    auto regVar = weakDcl->getRootDeclare()->getRegVar();
+    unsigned pvar = 0, numRegs = 0;
+    if (regVar->isPhyRegAssigned()) {
+      // Taken for dcls assigned regs by LRA.
+      pvar = regVar->getPhyReg()->asGreg()->getRegNum();
+      numRegs = weakDcl->getNumRows();
+    } else {
+      // For dcls not assigned regs by LRA, look up the temp register assigned
+      // to the LiveRange.
+      auto phyReg = lrs[regVar->getId()]->getPhyReg();
+      if (phyReg) {
+        pvar = phyReg->asGreg()->getRegNum();
+        numRegs = weakDcl->getNumRows();
+      }
+    }
+
+    // For now it is assumed only 8-byte types will appear here. If other
+    // sized types also appear then the augmentation mask needs to be sent in
+    // the weak edge data structure below.
+    for (unsigned r = pvar; r < (pvar + numRegs); r++) {
+      auto use = regUsage.getWeakEdgeUse(r);
+      if (use == 0 || use == (r - pvar + 1))
+        regUsage.setWeakEdgeUse(r, r - pvar + 1);
+      else
+        // Two neighbors use a physical register with different overlap.
+        regUsage.setWeakEdgeUse(r, 0xff);
+    }
+  }
+}
+
+// Alignment for lr, binding for correctness and so the same whichever colorer
+// runs. evenAlignNeeded is reported back because the banks path needs it to
+// decide whether to refine the result through getBankAlignment.
+BankAlign alignFor(const GlobalRA &gra, LiveRange *lr, bool &evenAlignNeeded) {
+  evenAlignNeeded = gra.isEvenAligned(lr->getVar()->getDeclare());
+  BankAlign align = BankAlign::Either;
+  if (gra.isQuadAligned(lr->getVar()->getDeclare()))
+    align = BankAlign::QuadGRF;
+  else if (evenAlignNeeded)
+    align = BankAlign::Even;
+  return align;
+}
+
+} // namespace
+
 bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
                               bool doBankConflict, bool highInternalConflict,
                               bool doBundleConflict) {
@@ -7516,6 +7622,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
   // parent. In such circumstance, we don't want to account for interference
   // between parent/child since doing so cannot result in a coalesceable
   // assignment.
+
   auto assignColor = [&](LiveRange *lr) {
     auto lrVar = lr->getVar();
 
@@ -7530,60 +7637,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
       // compute what registers are already assigned
       //
       PhyRegUsage regUsage(parms, FPR);
-
-      const std::vector<unsigned> &intfs = intf.getSparseIntfForVar(lr_id);
-      auto weakEdgeSet =
-          intf.getCompatibleSparseIntf(lrVar->getDeclare()->getRootDeclare());
-      for (auto it : intfs) {
-        LiveRange *lrTemp = lrs[it];
-        if (lrTemp->getPhyReg() != nullptr || lrTemp->getIsPartialDcl()) {
-          if (lrTemp->getIsSplittedDcl()) {
-            // Only interfere with children declares
-            continue;
-          }
-
-          regUsage.updateRegUsage(lrTemp);
-        }
-      }
-
-      if (weakEdgeSet) {
-        regUsage.runOverlapTest(true);
-        for (auto weakDcl : *weakEdgeSet) {
-          auto regVar = weakDcl->getRootDeclare()->getRegVar();
-          unsigned pvar = 0, numRegs = 0;
-          if (regVar->isPhyRegAssigned()) {
-            // This branch will be taken for dcls assigned
-            // regs by LRA.
-            pvar = regVar->getPhyReg()->asGreg()->getRegNum();
-            numRegs = weakDcl->getNumRows();
-          } else {
-            // For dcls not assigned regs by LRA, lookup temp
-            // registers assigned to LiveRange instances.
-            auto id = regVar->getId();
-            auto lr = lrs[id];
-            auto phyReg = lr->getPhyReg();
-            if (phyReg) {
-              pvar = phyReg->asGreg()->getRegNum();
-              numRegs = weakDcl->getNumRows();
-            }
-          }
-
-          // For now it is assumed only 8-byte types will appear
-          // here. If other sized types will also appear then
-          // augmentation mask also needs to be sent in
-          // weak edge data structure below.
-          for (unsigned r = pvar; r < (pvar + numRegs); r++) {
-            auto use = regUsage.getWeakEdgeUse(r);
-            if (use == 0 || use == (r - pvar + 1)) {
-              regUsage.setWeakEdgeUse(r, r - pvar + 1);
-            } else {
-              // Indiates two neighbors use a physical
-              // register with different overlap.
-              regUsage.setWeakEdgeUse(r, 0xff);
-            }
-          }
-        }
-      }
+      initRegUsage(intf, lrs, lr, regUsage);
 
       ColorHeuristic heuristic = colorHeuristicGRF;
 
@@ -7613,13 +7667,8 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
 
       if (!failed_alloc) {
         // When evenAlignNeeded is true, it is binding for correctness
-        bool evenAlignNeeded = gra.isEvenAligned(lrVar->getDeclare());
-        bool quadAlignNeeded = gra.isQuadAligned(lrVar->getDeclare());
-        BankAlign align = BankAlign::Either;
-        if (quadAlignNeeded)
-          align = BankAlign::QuadGRF;
-        else if (evenAlignNeeded)
-          align = BankAlign::Even;
+        bool evenAlignNeeded = false;
+        BankAlign align = alignFor(gra, lr, evenAlignNeeded);
 
         if (allocFromBanks) {
           vISA_ASSERT(align != BankAlign::QuadGRF, "unexpected value");
@@ -7683,7 +7732,44 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
       return false;
   }
 
-  breakSLMLoadSendAntiDep(colorHeuristicGRF, parms, assignColor);
+  // Block-local scan; the state and the pass itself are at the end of this
+  // file, only the handover is here.
+  //
+  // Exclusive with breakSLMLoadSendAntiDep -- one or the other, never both.
+  // The two overlap: an SLM load destination is a block-local value, so both
+  // can pick the same live range, and running them in sequence would leave
+  // whichever went last deciding the register while the other's separation was
+  // silently undone. The scan is the broader of the two, covering every
+  // block-local value rather than only the reused SLM load dests, so it takes
+  // the kernel when it is eligible and the rotation is the fallback.
+  //
+  // Eligible means: the FIRST_FIT path, coloring succeeded with no spills, and
+  // no stack calls, whose ABI pins registers this has no model of.
+  //
+  // breakSLMLoadSendAntiDep re-tests the first three itself and returns if they
+  // do not hold, so the else branch costs nothing when the kernel was simply
+  // ineligible for both. It does NOT exclude stack calls, which is deliberate:
+  // a stack-call kernel falls to the rotation and is still served, because the
+  // rotation only relabels registers coloring already assigned and so needs no
+  // model of the ABI. The same applies when vISA_RABlockLocalScan is off.
+  if (builder.getOption(vISA_RABlockLocalScan) &&
+      colorHeuristicGRF == FIRST_FIT && spilledLRs.empty() &&
+      liveAnalysis.livenessClass(G4_GRF) && !kernel.fg.getHasStackCalls() &&
+      !kernel.fg.getIsStackCallFunc()) {
+    BlockScanCtx ctx{intf,
+                     gra,
+                     lrs,
+                     kernel,
+                     liveAnalysis,
+                     parms,
+                     FPR,
+                     maxGRFCanBeUsed,
+                     builder.getuint32Option(vISA_RABlockScanBwd),
+                     builder.getuint32Option(vISA_RABlockScanFwd)};
+    relocateBlockLocals(ctx);
+  } else {
+    breakSLMLoadSendAntiDep(colorHeuristicGRF, parms, assignColor);
+  }
 
   if (failSafeIter) {
     // As per spec, EOT has to be allocated to r112+.
@@ -8267,7 +8353,8 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
                        highInternalConflict,
                        doBundleConflictReduction) == false) {
         resetTemporaryRegisterAssignments();
-        bool success = assignColors(FIRST_FIT, doBankConflictReduction,
+        bool success =
+            assignColors(FIRST_FIT, doBankConflictReduction,
                          highInternalConflict, doBundleConflictReduction);
 
         if (!success && doBankConflictReduction && isHybrid) {
@@ -13582,3 +13669,394 @@ void GlobalRA::fixSrc0IndirFcall() {
     }
   }
 }
+
+namespace {
+
+// ---- per-BB relocation of block-local values ------------------------------
+//
+// Selected by vISA_RABlockLocalScan. Block by block, it re-places the
+// block-local values that fall inside some send's window, picking a register
+// the instructions around them do not touch.
+//
+// It is a different shape from the per-candidate methods -- take a send
+// anchor, mask what it must avoid, search for one register -- which separate
+// only the pairs a recording pass noticed, and so can move a value clear of
+// its recorded neighbours onto an unrelated one. This and
+// breakSLMLoadSendAntiDep are alternatives, not stages: whichever runs, runs
+// alone, because both can place the same live range. See the handover in
+// assignColors for which one a kernel gets.
+//
+// The legality mask is the allocator's own, built by initRegUsage from
+// intf.getSparseIntfForVar: every live range that interferes with this one, at
+// the register it currently holds. That is the whole safety argument:
+//
+//   - it covers locals as well as globals, so a local already moved earlier in
+//     this block is excluded from the next one that interferes with it -- the
+//     map is read fresh per candidate and sees the new assignment;
+//   - it is the same definition of "free" the main coloring loop used, so a
+//     register this accepts is one assignColor would also have accepted;
+//   - nothing is inferred from instruction positions, which is where an
+//     interval-based version went wrong: anything its walk failed to recognise
+//     silently became available instead of staying reserved.
+//
+// On top of legality comes the preference, and it is an instruction window
+// centred on the candidate rather than a rotating cursor. A cursor only knows
+// what it handed out last; what actually creates a false dependency is reusing
+// a register that something *nearby in the instruction stream* is still using.
+// So the walk keeps the registers referenced by the instructions either side
+// -- vISA_RABlockScanBwd behind, vISA_RABlockScanFwd ahead -- and asks the
+// search to avoid them.
+//
+// Both sides, because the hazard is two-sided: an instruction before a send can
+// hold a register the send reads, and one after it can overwrite a result still
+// in flight. A backward-only window sees the first and misses the second, which
+// is the one this pass mainly exists to remove.
+//
+// Two candidates a few instructions apart therefore land on different registers,
+// because the first one's new register is in the second's window -- and a
+// candidate far from everything is free to take a low register instead of being
+// pushed up the file.
+//
+// The window is a preference, not a requirement: when nothing outside it fits,
+// the search runs again against legality alone rather than leaving the value
+// where coloring put it.
+//
+// This never records a spill: it assigns only from the free set and a value it
+// cannot place keeps the register coloring gave it.
+
+// Mark the instruction positions covered by some send's window.
+//
+// Marking positions rather than building intervals is what merges overlapping
+// windows: two sends close together simply mark the same positions, so the
+// region between them is covered once and each instruction in it is considered
+// exactly once.
+void markSendWindows(G4_BB *bb, unsigned bwd, unsigned fwd,
+                     std::vector<bool> &inWindow) {
+  const unsigned n = (unsigned)bb->size();
+  inWindow.assign(n, false);
+
+  unsigned pos = 0;
+  for (G4_INST *inst : *bb) {
+    if (inst->isSend()) {
+      const unsigned lo = pos > bwd ? pos - bwd : 0;
+      const unsigned hi = std::min(n, pos + fwd + 1);
+      for (unsigned k = lo; k < hi; ++k)
+        inWindow[k] = true;
+    }
+    ++pos;
+  }
+}
+
+// Whether this pass may move lr out of bb.
+bool isRelocatableLocal(BlockScanCtx &ctx, G4_BB *bb, LiveRange *lr) {
+  if (!lr)
+    return false;
+  G4_Declare *dcl = lr->getVar()->getDeclare();
+  if (!ctx.gra.isBlockLocal(dcl))
+    return false;
+  // isBlockLocal reads a bb id local RA cached, and setPhyReg moves a register
+  // for the whole declare, everywhere it is referenced -- so a stale id would be
+  // a correctness bug, not just a poor choice. Confirm against the liveness
+  // recomputed for this allocation: a value live across either boundary is not
+  // confined to this block whatever the id says.
+  unsigned id = lr->getVar()->getId();
+  if (ctx.liveAnalysis.isLiveAtEntry(bb, id) ||
+      ctx.liveAnalysis.isLiveAtExit(bb, id))
+    return false;
+  // Already handled by RR_In_FF
+  if (lr->getIsUnconstrained())
+    return false;
+  // Pre-assigned, EOT bound to r112+, and split children never hold a register
+  // of their own -- none of them are ours to move.
+  if (lr->getVar()->getPhyReg() || lr->getEOTSrc() || lr->getIsPartialDcl())
+    return false;
+  // Sub-GRF ranges are excluded: assignRegs will place one at a subregister
+  // offset, and the window records whole registers, so the two would
+  // disagree about what a register holds. Mirrors PhyRegUsage's
+  // canGRFSubRegAlloc, which the previous whole-row search declined on.
+  if (dcl->getNumRows() == 1 &&
+      (int)(dcl->getNumElems() * dcl->getElemSize()) <
+          ctx.kernel.fg.builder->getGRFSize())
+    return false;
+  G4_VarBase *pr = lr->getPhyReg();
+  return pr && pr->isGreg();
+}
+
+// Call `fn(opnd, lr, reg, rows)` for each GRF operand of inst, where lr is the
+// live range when the operand is an RA partaker and null otherwise, and reg is
+// the register it currently holds. Indirect operands are reported with reg set
+// past the file so callers can decline them.
+template <typename Fn>
+void forEachGRFOperand(BlockScanCtx &ctx, G4_INST *inst, Fn fn) {
+  auto one = [&](G4_Operand *opnd) {
+    if (!opnd)
+      return;
+    bool indirect = opnd->isDstRegRegion()
+                        ? opnd->asDstRegRegion()->isIndirect()
+                        : opnd->asSrcRegRegion()->isIndirect();
+    G4_Declare *top = opnd->getTopDcl();
+    if (!top || top->getRegFile() != G4_GRF)
+      return;
+    G4_Declare *root = top->getRootDeclare();
+    G4_RegVar *rv = root->getRegVar();
+    if (!rv)
+      return;
+    LiveRange *lr = nullptr;
+    G4_VarBase *pr = nullptr;
+    unsigned rows = 0;
+    if (rv->isRegAllocPartaker()) {
+      lr = ctx.lrs[rv->getId()];
+      if (lr) {
+        pr = lr->getPhyReg();
+        rows = lr->getNumRegNeeded();
+      }
+    } else if (rv->isPhyRegAssigned()) {
+      // Local RA pre-assigns block temporaries; they never appear in lrs, but
+      // their registers are just as much "in use nearby".
+      pr = rv->getPhyReg();
+      rows = root->getNumRows();
+    }
+    if (!pr || !pr->isGreg())
+      return;
+    fn(indirect, lr, pr->asGreg()->getRegNum(), rows);
+  };
+  one(inst->getDst());
+  for (int s = 0, e = inst->getNumSrc(); s < e; ++s) {
+    G4_Operand *src = inst->getSrc(s);
+    if (src && src->isSrcRegRegion())
+      one(src);
+  }
+}
+
+// Place one candidate, preferring a register absent from the window.
+// Returns whether it moved.
+bool placeBlockLocal(BlockScanCtx &ctx, LiveRange *lr,
+                     const std::vector<unsigned> &nearby) {
+  G4_Declare *dcl = lr->getVar()->getDeclare();
+  G4_VarBase *savedReg = lr->getPhyReg();
+  unsigned savedOff = lr->getPhyRegOff();
+
+  // Everything that interferes with lr, at the register it holds right now.
+  PhyRegUsage regUsage(ctx.parms, ctx.fpr);
+  initRegUsage(ctx.intf, ctx.lrs, lr, regUsage);
+
+  bool evenAlignNeeded = false;
+  BankAlign align = alignFor(ctx.gra, lr, evenAlignNeeded);
+
+  // The window, unioned with what lr may not occupy anyway. Kept separate from
+  // `plain` so the window can be dropped on the retry below without rebuilding
+  // it, and so a range with no forbidden set at all is declined rather than
+  // searched unfiltered -- the reserved GRFs live in that set.
+  const BitSet *plain = lr->getForbidden();
+  ctx.scratchForbidden.clear();
+  ctx.scratchForbidden.resize(ctx.maxGRFCanBeUsed);
+  for (unsigned r = 0; r < ctx.maxGRFCanBeUsed; ++r)
+    if (nearby[r])
+      ctx.scratchForbidden.set(r, true);
+  if (plain)
+    ctx.scratchForbidden |= *plain;
+
+  // setUnconstrained keeps the startGRF hint from being reset to 0 under
+  // vISA_GCRRInFF; the start is set explicitly because assignRegs searches
+  // [startGRF, maxGRF) and then wraps, and from 0 that covers the file once.
+  lr->resetPhyReg();
+  lr->setUnconstrained(true);
+  ctx.parms.setStartGRF(0);
+
+  // The allocator's own search, not a bespoke one: it handles the sub-GRF ranges
+  // a whole-row search declines, applies the bank and bundle preferences, and
+  // retries without the bundle mask of its own accord.
+  auto search = [&](const BitSet *forbidden) {
+    return forbidden && regUsage.assignRegs(
+                            /*highInternalConflict*/ false, lr, forbidden,
+                            align, ctx.gra.getSubRegAlign(dcl), FIRST_FIT,
+                            lr->getSpillCost());
+  };
+  bool ok = search(&ctx.scratchForbidden);
+  if (!ok) {
+    // Nothing outside the window fits. The window is a preference, so try again
+    // against legality alone rather than leaving the value where it was.
+    ctx.parms.setStartGRF(0);
+    ok = search(plain);
+  }
+
+  if (!ok) {
+    lr->setPhyReg(savedReg, savedOff);
+    return false;
+  }
+
+  G4_VarBase *pr = lr->getPhyReg();
+  return pr->asGreg()->getRegNum() != savedReg->asGreg()->getRegNum() ||
+         lr->getPhyRegOff() != savedOff;
+}
+
+// Where the scan starts -- the earlier send of the first adjacent pair whose
+// destinations are disjoint -- or NOT_WORTH when the block should be skipped
+// entirely.
+//
+// Nothing first referenced before that point is placed. The send pairs up to
+// there already interfere, so coloring has separated them and there is no
+// reuse to undo.
+//
+// Three tests, all properties of the block, answered once here rather than per
+// candidate -- the scan's per-candidate work is an initRegUsage per placement,
+// which is the expensive part to avoid.
+const unsigned NOT_WORTH = ~0u;
+
+unsigned blockScanStart(BlockScanCtx &ctx, G4_BB *bb) {
+  unsigned threeSrc = 0, total = 0;
+  std::vector<std::pair<unsigned, int>> sends;
+
+  unsigned pos = 0;
+  for (G4_INST *inst : *bb) {
+    ++total;
+    if (inst->getNumSrc() == 3)
+      ++threeSrc;
+    if (inst->isSend()) {
+      int id = -1;
+      G4_DstRegRegion *dst = inst->getDst();
+      if (dst && !dst->isNullReg() && dst->getTopDcl()) {
+        G4_RegVar *rv = dst->getTopDcl()->getRootDeclare()->getRegVar();
+        if (rv && rv->isRegAllocPartaker())
+          id = (int)rv->getId();
+      }
+      sends.emplace_back(pos, id);
+    }
+    ++pos;
+  }
+
+  // 1. One send cannot collide with another. The hazard this pass removes is
+  //    between two of them, so a block with fewer than two has nothing to gain.
+  if (sends.size() < 2)
+    return NOT_WORTH;
+
+  // 2. A block that is almost entirely (90%) three-source instructions is a dpas or
+  //    mad run. Don't do recoloring.
+  if (total != 0 && threeSrc * 10 >= total * 9)
+    return NOT_WORTH;
+
+  // 3. Find the first adjacent pair of sends whose destinations are DISJOINT,
+  //    and start at the earlier of the two. A pair that already interferes was
+  //    given distinct registers by coloring, so there is no reuse to undo; it
+  //    is the disjoint pairs FIRST_FIT packs onto one register.
+  //
+  //    An unknown id cannot be shown disjoint, so such a pair does not
+  //    qualify. How far the scan then reaches is left to the windows.
+  for (unsigned i = 1; i < sends.size(); ++i) {
+    const int a = sends[i - 1].second, b = sends[i].second;
+    if (a < 0 || b < 0 || a == b)
+      continue;
+    if (ctx.intf.interfereBetween((unsigned)a, (unsigned)b))
+      continue;
+    return sends[i - 1].first;
+  }
+  return NOT_WORTH;
+}
+
+// Entry point. Runs after coloring has succeeded, so every block-local value
+// already holds a register and this only ever exchanges one free register for
+// another.
+void relocateBlockLocals(BlockScanCtx &ctx) {
+  // Record the registers referenced by instructions in a basic block. One
+  // vector item containes the register footprint for one instruction.
+  std::vector<std::vector<unsigned>> footprint;
+  // Counted rather than flagged, since one register can be referenced by
+  // several instructions in the window.
+  std::vector<unsigned> nearby(ctx.maxGRFCanBeUsed, 0);
+  std::unordered_set<LiveRange *> seen;
+  std::vector<bool> inWindow;
+
+  auto recordFootprint = [&](G4_INST *inst, std::vector<unsigned> &out) {
+    forEachGRFOperand(ctx, inst,
+                      [&](bool, LiveRange *, unsigned reg, unsigned rows) {
+                        for (unsigned i = 0;
+                             i < rows && reg + i < ctx.maxGRFCanBeUsed; ++i)
+                          out.push_back(reg + i);
+                      });
+  };
+
+  for (G4_BB *bb : ctx.kernel.fg) {
+    const unsigned startPos = blockScanStart(ctx, bb);
+    if (startPos == NOT_WORTH)
+      continue;
+    markSendWindows(bb, ctx.bwd, ctx.fwd, inWindow);
+    seen.clear();
+    RA_TRACE(++ctx.statBlocks);
+
+    const unsigned n = (unsigned)bb->size();
+    footprint.assign(n, {});
+    unsigned pos = 0;
+    for (G4_INST *inst : *bb)
+      recordFootprint(inst, footprint[pos++]);
+
+    // The window slides forward one instruction at a time, so each step drops
+    // the position that fell off the back and adds the one that came into view
+    // at the front -- O(1) per instruction rather than a rescan of the window.
+    std::fill(nearby.begin(), nearby.end(), 0u);
+    for (unsigned k = 0; k < std::min(n, ctx.fwd + 1); ++k)
+      for (unsigned r : footprint[k])
+        ++nearby[r];
+
+    pos = 0;
+    for (G4_INST *inst : *bb) {
+      // `nearby` is positions [pos - bwd, pos + fwd] inclusive, the
+      // candidate's own instruction among them.
+      forEachGRFOperand(ctx, inst,
+                        [&](bool indirect, LiveRange *lr, unsigned, unsigned) {
+                          // An indirect access reaches registers this walk
+                          // cannot enumerate, and the value may be one an
+                          // address register points at, so leave it alone.
+                          if (indirect || !lr)
+                            return;
+                          if (!isRelocatableLocal(ctx, bb, lr))
+                            return;
+                          // Decided at the first reference, and once only:
+                          // marked seen whether or not it is placed, so a value
+                          // rejected here is left where coloring put it rather
+                          // than reconsidered at a later reference.
+                          if (!seen.insert(lr).second)
+                            return;
+                          // Not before the scan start, and only inside a
+                          // send's window. Both compare positions, so there is
+                          // no live-range-versus-instruction mismatch: `pos`
+                          // is this value's first reference.
+                          if (pos < startPos || !inWindow[pos])
+                            return;
+                          RA_TRACE(++ctx.statCands);
+                          if (placeBlockLocal(ctx, lr, nearby)) {
+                            RA_TRACE(++ctx.statMoved);
+                            // The value moved, so the window must reflect where
+                            // it went rather than where it was: correct this
+                            // instruction's footprint in place, before the
+                            // candidates that follow read it.
+                            std::vector<unsigned> fresh;
+                            recordFootprint(inst, fresh);
+                            for (unsigned r : footprint[pos])
+                              --nearby[r];
+                            for (unsigned r : fresh)
+                              ++nearby[r];
+                            footprint[pos].swap(fresh);
+                          }
+                        });
+
+      // Slide: drop the position leaving the window, add the one entering it.
+      if (pos >= ctx.bwd)
+        for (unsigned r : footprint[pos - ctx.bwd])
+          --nearby[r];
+      const unsigned entering = pos + ctx.fwd + 1;
+      if (entering < n)
+        for (unsigned r : footprint[entering])
+          ++nearby[r];
+      ++pos;
+    }
+  }
+
+  RA_TRACE({
+    if (ctx.statCands)
+      std::cout << "\t--block local scan: blocks=" << ctx.statBlocks
+                << " cands=" << ctx.statCands << " moved=" << ctx.statMoved
+                << "\n";
+  });
+}
+
+} // namespace
