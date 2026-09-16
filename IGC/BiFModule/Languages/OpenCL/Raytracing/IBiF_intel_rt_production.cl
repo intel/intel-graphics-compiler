@@ -52,8 +52,13 @@ void __basic_rtstack_init(
     MemHit_clearUV(potentialHit);
     potentialHit->t = INFINITY;
     potentialHit->data0 = 0;
-    MemHit_setValid(potentialHit, 1);
-    MemHit_setDone(potentialHit, 1);
+    // As in intel_ray_query_start_traversal.  TRACE_RAY_INITIAL does not clear
+    // these bits, so the candidate they describe survives to the first commit.
+    if (!BIF_FLAG_CTRL_GET(IsRayQueryReturnOptimizationEnabled))
+    {
+        MemHit_setValid(potentialHit, 1);
+        MemHit_setDone(potentialHit, 1);
+    }
 }
 
 void __basic_ray_forward(
@@ -199,9 +204,14 @@ void intel_ray_query_start_traversal(intel_ray_query_t rayquery)
 {
     rtglobals_t             dispatchGlobalsPtr = __builtin_IB_intel_query_rt_globals(rayquery);
     global void*            rtStack            = __builtin_IB_intel_query_rt_stack(rayquery);
-    MemHit* potentialHit = get_rt_stack_hit(rtStack, intel_hit_type_potential_hit);
-    MemHit_setDone(potentialHit, 1);
-    MemHit_setValid(potentialHit, 1);
+    // The traversal-done check now reads the dispatch return value, so these
+    // bits only reach the hardware, which can promote a hit never found.
+    if (!BIF_FLAG_CTRL_GET(IsRayQueryReturnOptimizationEnabled))
+    {
+        MemHit* potentialHit = get_rt_stack_hit(rtStack, intel_hit_type_potential_hit);
+        MemHit_setDone(potentialHit, 1);
+        MemHit_setValid(potentialHit, 1);
+    }
 
     TraceRayCtrl ctrl = __builtin_IB_intel_query_ctrl(rayquery);
 
