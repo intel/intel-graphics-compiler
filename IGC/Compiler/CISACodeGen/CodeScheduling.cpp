@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/ADT/ScopeExit.h"
 #include "llvmWrapper/IR/Value.h"
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 #include "llvmWrapper/IR/Instructions.h"
@@ -68,6 +69,51 @@ static bool is2dBlockPrefetch(Instruction *I) {
   }
   return false;
 }
+
+struct SchedulingGRFTarget {
+  unsigned NumGRF = 0;
+  unsigned ThreadsPerEU = 0;
+};
+
+static llvm::SmallVector<SchedulingGRFTarget, 4> buildAutoGRFTargets(const CPlatform &Platform,
+                                                                     llvm::ArrayRef<VRT::ModeEntry> VRTTable) {
+  // Static-sharing platforms have two automatic GRF modes and no VRT table.
+  if (VRTTable.empty())
+    return {{128, 8}, {256, 4}};
+
+  llvm::SmallVector<SchedulingGRFTarget, 4> GRFTargets;
+  llvm::DenseMap<unsigned, unsigned> LargestGRFByThreadCount;
+  auto SupportedGRFSizes = Platform.getSupportedGRFSizes();
+
+  for (const auto &[NumGRFValue, ThreadsPerEUValue] : VRTTable) {
+    if (NumGRFValue <= 0 || ThreadsPerEUValue <= 0)
+      continue;
+
+    unsigned NumGRF = static_cast<unsigned>(NumGRFValue);
+    unsigned ThreadsPerEU = static_cast<unsigned>(ThreadsPerEUValue);
+    if (std::find(SupportedGRFSizes.begin(), SupportedGRFSizes.end(), NumGRF) == SupportedGRFSizes.end())
+      continue;
+
+    // vISA does not enable CRI's 512-GRF mode without efficient 64-bit addressing.
+    if (Platform.GetProductFamily() == IGFX_CRI && NumGRF == 512 && !Platform.hasEfficient64bEnabled())
+      continue;
+
+    auto It = LargestGRFByThreadCount.find(ThreadsPerEU);
+    if (It == LargestGRFByThreadCount.end())
+      LargestGRFByThreadCount[ThreadsPerEU] = NumGRF;
+    else
+      It->second = std::max(It->second, NumGRF);
+  }
+
+  for (const auto &[ThreadsPerEU, NumGRF] : LargestGRFByThreadCount)
+    GRFTargets.push_back({NumGRF, ThreadsPerEU});
+
+  std::sort(GRFTargets.begin(), GRFTargets.end(),
+            [](const SchedulingGRFTarget &A, const SchedulingGRFTarget &B) { return A.ThreadsPerEU > B.ThreadsPerEU; });
+  return GRFTargets;
+}
+
+static std::string blockName(const BasicBlock *BB) { return BB->hasName() ? BB->getName().str() : "Unnamed"; }
 
 // Get Value name as string for debug purposes
 // Can have side effect of assigning a name to the value if it has no name
@@ -215,7 +261,7 @@ public:
       : BB(BB), RPE(RPE), FRPE(FRPE), VSA(VSA), RCA(RCA), WI(WI), CTX(CTX), C(Config), LogStream(LogStream), FGA(FGA) {
     F = BB->getParent();
     SIMD = C->get(SchedulingConfig::Option::ForceSIMDSize) > 0 ? C->get(SchedulingConfig::Option::ForceSIMDSize)
-                                                               : numLanes(IGC::bestGuessSIMDSize(CTX, F));
+                                                               : numLanes(IGC::bestGuessSIMDSize(CTX, F, FGA));
     PrintDump("SIMD: " << SIMD << "\n");
     DL = &(F->getParent()->getDataLayout());
 
@@ -235,8 +281,7 @@ public:
     FGA = RPT.FGA;
 
     F = BB->getParent();
-    SIMD = C->get(SchedulingConfig::Option::ForceSIMDSize) > 0 ? C->get(SchedulingConfig::Option::ForceSIMDSize)
-                                                               : numLanes(IGC::bestGuessSIMDSize(CTX, F, FGA));
+    SIMD = RPT.SIMD;
     DL = &(F->getParent()->getDataLayout());
 
     // copy the state
@@ -280,6 +325,8 @@ public:
     }
     return NGRF;
   }
+
+  int32_t getInitialPressureInRegisters() const { return InitialPressureInRegisters; }
 
   unsigned int computeSizeInBytes(Value *V, unsigned int SIMD, WIAnalysisRunner *WI, const DataLayout &DL) {
     auto It = ValueSizeCache.find({V, SIMD});
@@ -1063,6 +1110,7 @@ class BBScheduler {
   class DepEdge;
   class InstructionNode;
   class DepGraph;
+  class Schedule;
 
 public:
   using Option = SchedulingConfig::Option;
@@ -1074,6 +1122,36 @@ public:
   typedef std::vector<InstructionNode> InstNodeList;
   typedef std::vector<InstructionNode *> InstNodePtrList;
 
+  enum class ScheduleKind {
+    MaxWeightOnly,
+    RegisterPressureOnly,
+    Mixed,
+  };
+
+  struct OriginalScheduleInfo {
+    int32_t InitialPressure = 0;
+    int32_t MaxPressure = 0;
+    int32_t NumGRF = 0;
+    bool CanHaveSpills = false;
+    llvm::SmallVector<Instruction *, 32> Order;
+  };
+
+  struct ScheduleCandidate {
+    bool HasCandidate = false;
+    bool OriginalFitsWithNoSpills = false;
+    ScheduleKind Kind = ScheduleKind::Mixed;
+    int32_t MaxPressure = 0;
+    uint64_t MWDecisions = 0;
+    uint64_t RPDecisions = 0;
+    uint64_t ImmediateOverrideDecisions = 0;
+    int32_t GreedyRPMaxPressure = 0;
+    uint64_t GreedyRPMWDecisions = 0;
+    uint64_t GreedyRPRPDecisions = 0;
+    uint64_t GreedyRPImmediateOverrideDecisions = 0;
+    llvm::SmallVector<Instruction *, 32> Order;
+    llvm::SmallVector<Instruction *, 32> GreedyRPOrder;
+  };
+
   BBScheduler(BasicBlock *BB, IGCLivenessAnalysisRunner *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
               AAResults *AA, VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, CodeGenContext *CTX,
               SchedulingConfig *Config, llvm::raw_ostream *LogStream, GenXFunctionGroupAnalysis *FGA)
@@ -1082,229 +1160,265 @@ public:
     WI = &FRPE->getWIAnalysis(F);
   }
 
-  // Main function to schedule the instructions in a BB
-  bool schedule() {
-    bool Changed = false;
+  OriginalScheduleInfo analyzeOriginalSchedule(bool DumpDetails = true) {
+    OriginalScheduleInfo Info;
+    llvm::raw_ostream *TrackerLogStream = DumpDetails ? LogStream : &llvm::nulls();
+    RegisterPressureTracker RPT(BB, RPE, FRPE, VSA, RCA, WI, CTX, &C, TrackerLogStream, FGA);
+    Info.InitialPressure = RPT.getInitialPressureInRegisters();
+    Info.NumGRF = RPT.getNumGRF();
 
-    std::string BBName = BB->getName().str();
-    if (BBName.empty()) {
-      BBName = "Unnamed";
-    }
-    PrintDump("Scheduling basic block " << BBName << "\n");
+    if (DumpDetails)
+      PrintDump("Original schedule: " << blockName(BB) << "\n");
 
-    // Check if the original schedule can have spills
-    // Do nothing if the original schedule can not have spills and rescheduling is not forced
-
-    RegisterPressureTracker RPT(BB, RPE, FRPE, VSA, RCA, WI, CTX, &C, LogStream, FGA);
-
-    int32_t MaxOriginalRegpressure = 0;
-    bool OriginalScheduleCanHaveSpills = false;
-
-    PrintDump("Original schedule: " << BBName << "\n");
+    Info.Order.reserve(BB->size());
     for (auto &I : *BB) {
-      std::string Info;
+      Info.Order.push_back(&I);
+      std::string InfoString;
       if (isa<PHINode>(&I)) {
-        // PHIs are already included in the initial regpressure
-        Info = formatDebugInfo(RPT.getCurrentPressure(), 0, "Phi", getVectorShuffleString(&I, VSA, RCA));
+        if (DumpDetails)
+          InfoString = formatDebugInfo(RPT.getCurrentPressure(), 0, "Phi", getVectorShuffleString(&I, VSA, RCA));
       } else {
         int32_t Estimate = RPT.update(&I);
-        Info = formatDebugInfo(RPT.getCurrentPressure(), Estimate, "OG", getVectorShuffleString(&I, VSA, RCA));
+        if (DumpDetails)
+          InfoString = formatDebugInfo(RPT.getCurrentPressure(), Estimate, "OG", getVectorShuffleString(&I, VSA, RCA));
       }
-      PrintDump(Info);
-      PrintInstructionDump(&I);
 
-      MaxOriginalRegpressure = std::max(MaxOriginalRegpressure, RPT.getCurrentPressure());
-      if (RPT.isRegpressureCritical()) {
-        OriginalScheduleCanHaveSpills = true;
+      if (DumpDetails) {
+        PrintDump(InfoString);
+        PrintInstructionDump(&I);
       }
+
+      Info.MaxPressure = std::max(Info.MaxPressure, RPT.getCurrentPressure());
+      if (RPT.isRegpressureCritical())
+        Info.CanHaveSpills = true;
     }
-    PrintDump("Max original regpressure: " << MaxOriginalRegpressure << "\n");
 
-    if (!OriginalScheduleCanHaveSpills && !IGC_IS_FLAG_ENABLED(EnableCodeSchedulingIfNoSpills)) {
+    if (DumpDetails)
+      PrintDump("Max original regpressure: " << Info.MaxPressure << "\n");
+    return Info;
+  }
+
+  bool shouldSkipScheduling(const OriginalScheduleInfo &Original, bool ApplyLegacyLowPressureGate) {
+    if (!ApplyLegacyLowPressureGate)
+      return false;
+
+    if (!Original.CanHaveSpills && IGC_IS_FLAG_DISABLED(EnableCodeSchedulingIfNoSpills)) {
       PrintDump("Original schedule can not have spills, skipping scheduling\n");
-      PrintDump("Schedule is not changed" << "\n");
-      return false;
+      return true;
     }
-
-    int NumGRF = RPT.getNumGRF();
-    int ThresholdValue = NumGRF - static_cast<int>(IGC_GET_FLAG_VALUE(CodeSchedulingRPMargin)) +
-                         static_cast<int>(IGC_GET_FLAG_VALUE(CodeSchedulingRPThreshold));
-    if (MaxOriginalRegpressure < ThresholdValue) {
-      PrintDump("Max original regpressure is below threshold: " << MaxOriginalRegpressure << " < " << ThresholdValue
-                                                                << ", skipping scheduling\n");
-      PrintDump("Schedule is not changed" << "\n");
-      return false;
+    int Threshold = Original.NumGRF - static_cast<int>(IGC_GET_FLAG_VALUE(CodeSchedulingRPMargin)) +
+                    static_cast<int>(IGC_GET_FLAG_VALUE(CodeSchedulingRPThreshold));
+    if (Original.MaxPressure < Threshold) {
+      PrintDump("Max original regpressure is below threshold, skipping scheduling\n");
+      return true;
     }
+    return false;
+  }
 
-    // Create a schedules stack and an initial empty schedule. It'll create a DepGraph.
-    // Schedule is a copyable object, so we can make a copy to save a "checkpoint".
+  ScheduleCandidate buildCandidate(unsigned NumGRF, const OriginalScheduleInfo &Original, bool AutoGRF) {
+    // Build one GRF target's result without reordering the block. InitialSchedule
+    // is reused across attempts; results retain only instruction orders and metrics.
+    //
+    // set GRF target; check original order; create/reuse InitialSchedule
+    //   |
+    //   v
+    // forced MW/RP? (RP takes precedence)
+    //   +-- yes --> run once without checkpoints
+    //   |             +-- AutoGRF and spills estimated --> record metrics; return
+    //   |             `-- otherwise --> RetainCandidate; return
+    //   `-- no --> GreedyMW with checkpoints
+    //                +-- fits with no spills --> RetainCandidate; return
+    //                `-- otherwise
+    //                      |
+    //                      v
+    //                obtain GreedyRP (copy MW if equivalent, otherwise build)
+    //                      |
+    //                      v
+    //                explore checkpoints until exhausted or attempt limit reached
+    //                  +-- complete and fits with no spills --> RetainCandidate; return
+    //                  `-- no success --> record GreedyRP metrics
+    //                                      +-- fallback guards pass --> save GreedyRPOrder; return
+    //                                      `-- otherwise --> return without an order
+    //
+    // RetainCandidate records metrics and saves Order unless the fixed-GRF
+    // pressure-growth guard rejects it; callers return even after rejection.
+    // A fitting GreedyRP enables early pruning of spilling backtracking attempts.
+    // Fallback requires CodeSchedulingCommitGreedyRP, an original order that does
+    // not fit with no spills, and permitted pressure growth. It may still spill.
+    C.set(Option::DefaultNumGRFAuto, static_cast<int>(NumGRF));
+    ScheduleCandidate Result;
+    Result.OriginalFitsWithNoSpills = !Original.CanHaveSpills;
+    if (AutoGRF)
+      Result.OriginalFitsWithNoSpills = scheduleFitsWithNoSpills(Original.Order, NumGRF);
+
+    auto RecordCandidateMetrics = [&](Schedule &Candidate) {
+      Result.MaxPressure = Candidate.getMaxRegpressure();
+      Result.MWDecisions = Candidate.getMWDecisions();
+      Result.RPDecisions = Candidate.getRPDecisions();
+      Result.ImmediateOverrideDecisions = Candidate.getImmediateOverrideDecisions();
+      if (Result.RPDecisions == 0)
+        Result.Kind = ScheduleKind::MaxWeightOnly;
+      else if (Result.MWDecisions == 0)
+        Result.Kind = ScheduleKind::RegisterPressureOnly;
+      else
+        Result.Kind = ScheduleKind::Mixed;
+    };
+
+    auto RetainCandidate = [&](std::unique_ptr<Schedule> Candidate) {
+      RecordCandidateMetrics(*Candidate);
+      bool AllowHigherPressure = IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly)
+                                     ? IGC_IS_FLAG_ENABLED(CodeSchedulingGreedyRPHigherRPCommit)
+                                     : IGC_IS_FLAG_ENABLED(CodeSchedulingMWOptimizedHigherRPCommit);
+      if (!AutoGRF && !AllowHigherPressure && Result.MaxPressure > Original.MaxPressure) {
+        PrintDump("Candidate has higher pressure than the original, skipping commit\n");
+        return;
+      }
+      Result.HasCandidate = true;
+      Result.Order = Candidate->getInstructionOrder();
+    };
 
     std::vector<std::unique_ptr<Schedule>> Schedules;
-
-    std::unique_ptr<Schedule> DefaultSchedule =
-        std::make_unique<Schedule>(BB, RPE, FRPE, VSA, RCA, WI, CTX, &C, LogStream, FGA);
-
-    // First try if "GreedyMW" scheduling can be applied
-    // This approach prioritizes scheduling by the edge weights
-    // To maximize hiding the instructions latency.
-
-    // We'll commit it if it has no spills
-
-    std::unique_ptr<Schedule> GreedyMWSchedule = std::make_unique<Schedule>(*DefaultSchedule);
-    GreedyMWSchedule->setGreedyMW(true);
-
-    if (!IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly)) {
-      std::vector<std::unique_ptr<Schedule>> NewSchedules;
-      PrintDump("Greedy MW attempt\n");
-
-      while (!GreedyMWSchedule->isComplete()) {
-        std::unique_ptr<Schedule> Checkpoint = GreedyMWSchedule->scheduleNextInstruction();
-        if (Checkpoint) {
-          NewSchedules.push_back(std::move(Checkpoint));
-        }
-      }
-
-      if (IGC_IS_FLAG_ENABLED(CodeSchedulingForceMWOnly) || !GreedyMWSchedule->canEverHaveSpills()) {
-        PrintDump("Greedy MW schedule is forced or has no spills.\n");
-        if (((GreedyMWSchedule->getMaxRegpressure() > MaxOriginalRegpressure)) &&
-            IGC_IS_FLAG_DISABLED(CodeSchedulingMWOptimizedHigherRPCommit)) {
-          PrintDump("Greedy MW schedule has higher regpressure that the original ("
-                    << GreedyMWSchedule->getMaxRegpressure() << " > " << MaxOriginalRegpressure
-                    << "), skipping commit\n");
-          PrintDump("Schedule is not changed" << "\n");
-          return false;
-        }
-        GreedyMWSchedule->commit();
-        return true;
-      }
-
-      // push NewSchedules to Schedules in the reverse order
-      for (auto It = NewSchedules.rbegin(); It != NewSchedules.rend(); ++It) {
-        It->get()->setGreedyMW(false); // Reset the GreedyMW flag for the new schedules
-        Schedules.push_back(std::move(*It));
-      }
+    // Graph construction and chain analysis depend on the block, not its GRF target.
+    // Keep one seed; completed candidates retain only their order and metrics.
+    if (!InitialSchedule) {
+      PrintDump("Building scheduling dependency graph for " << blockName(BB) << "\n");
+      InitialSchedule = std::make_unique<Schedule>(BB, RPE, FRPE, VSA, RCA, WI, CTX, &C, LogStream, FGA);
     }
 
-    // Then try to apply "GreedyRP" scheduling
-    // Schedule only for the pressure minimization
-    // If it still has spills or is forced, we will commit it
+    // Forced strategies do not need checkpoints or other scheduling strategies.
+    // Automatic GRF selection still rejects candidates that exceed the GRF target.
+    if (IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly) || IGC_IS_FLAG_ENABLED(CodeSchedulingForceMWOnly)) {
+      const bool ForceRPOnly = IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly);
+      auto ForcedSchedule = std::make_unique<Schedule>(*InitialSchedule);
+      if (ForceRPOnly) {
+        PrintDump("Greedy RP attempt\n");
+        ForcedSchedule->setGreedyRP(true);
+      } else {
+        PrintDump("Greedy MW attempt\n");
+        ForcedSchedule->setGreedyMW(true);
+      }
 
-    std::unique_ptr<Schedule> GreedyRPSchedule = nullptr;
+      while (!ForcedSchedule->isComplete())
+        ForcedSchedule->scheduleNextInstruction(false);
 
-    if (!IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly) && GreedyMWSchedule->isComplete() &&
-        GreedyMWSchedule->isEqualGreedyRP()) {
-      PrintDump("Greedy MW schedule is equal to Greedy RP schedule, skipping Greedy RP attempt\n");
+      if (!AutoGRF || !ForcedSchedule->canEverHaveSpills())
+        RetainCandidate(std::move(ForcedSchedule));
+      else
+        RecordCandidateMetrics(*ForcedSchedule);
+      return Result;
+    }
+
+    auto GreedyMWSchedule = std::make_unique<Schedule>(*InitialSchedule);
+    GreedyMWSchedule->setGreedyMW(true);
+
+    std::vector<std::unique_ptr<Schedule>> NewSchedules;
+    PrintDump("Greedy MW attempt\n");
+    while (!GreedyMWSchedule->isComplete()) {
+      std::unique_ptr<Schedule> Checkpoint = GreedyMWSchedule->scheduleNextInstruction();
+      if (Checkpoint)
+        NewSchedules.push_back(std::move(Checkpoint));
+    }
+
+    if (!GreedyMWSchedule->canEverHaveSpills()) {
+      RetainCandidate(std::move(GreedyMWSchedule));
+      return Result;
+    }
+
+    for (auto It = NewSchedules.rbegin(); It != NewSchedules.rend(); ++It) {
+      It->get()->setGreedyMW(false);
+      Schedules.push_back(std::move(*It));
+    }
+
+    std::unique_ptr<Schedule> GreedyRPSchedule;
+    if (GreedyMWSchedule->isComplete() && GreedyMWSchedule->isEqualGreedyRP()) {
+      PrintDump("Greedy MW schedule is equal to Greedy RP schedule\n");
       GreedyRPSchedule = std::make_unique<Schedule>(*GreedyMWSchedule);
     } else {
       PrintDump("Greedy RP attempt\n");
-      GreedyRPSchedule = std::make_unique<Schedule>(*DefaultSchedule);
+      GreedyRPSchedule = std::make_unique<Schedule>(*InitialSchedule);
       GreedyRPSchedule->setGreedyRP(true);
     }
 
-    // PrintDump("DepGraph dump\n");
-    // DepGraph G(BB, RPE, FRPE, VSA, RCA, WI, CTX, C, LogStream);
-    // G.print(*LogStream);
+    while (!GreedyRPSchedule->isComplete())
+      GreedyRPSchedule->scheduleNextInstruction(false);
 
-    while (!GreedyRPSchedule->isComplete()) {
-      GreedyRPSchedule->scheduleNextInstruction();
+    bool GreedyRPFitsWithNoSpills = !GreedyRPSchedule->canEverHaveSpills();
+    if (!Schedules.empty()) {
+      const auto RefLiveIntervals = GreedyMWSchedule->getMaxLiveIntervals();
+      for (auto &Candidate : Schedules)
+        Candidate->setRefLiveIntervals(RefLiveIntervals);
     }
 
-    bool CanCompileWithNoSpills = !GreedyRPSchedule->canEverHaveSpills();
-
-    if (IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly)) {
-      PrintDump("Greedy RP schedule is forced\n");
-      if (((GreedyRPSchedule->getMaxRegpressure() > MaxOriginalRegpressure)) &&
-          IGC_IS_FLAG_DISABLED(CodeSchedulingGreedyRPHigherRPCommit)) {
-        PrintDump("Greedy RP schedule has higher regpressure that the original ("
-                  << GreedyRPSchedule->getMaxRegpressure() << " > " << MaxOriginalRegpressure
-                  << "), skipping commit\n");
-        PrintDump("Schedule is not changed" << "\n");
-        return false;
-      }
-      PrintDump("Commiting RP schedule and stopping.\n") PrintDump("Schedule is changed" << "\n");
-      GreedyRPSchedule->commit();
-      return true;
-    }
-
-    // Try several attempts with backtracking to find the best schedule with no spills
-    for (auto &S : Schedules) {
-      S->setRefLiveIntervals(GreedyMWSchedule->getMaxLiveIntervals());
-    }
-
-    PrintDump("Schedules left in the queue: " << Schedules.size() << "\n");
-
-    uint Attempt = 1;
+    uint64_t Attempt = 1;
     while (!Schedules.empty()) {
-      Schedule *S = Schedules.back().get();
-      PrintDump("Attempt #" << Attempt << "\n");
-
-      std::vector<std::unique_ptr<Schedule>> NewSchedules;
-
-      while (!S->isComplete()) {
-        // Schedule the next instruction and add the checkpoint if it
-        // returns the previous state
-        std::unique_ptr<Schedule> Checkpoint = S->scheduleNextInstruction();
-        if (Checkpoint) {
-          NewSchedules.push_back(std::move(Checkpoint));
-        }
-        if (CanCompileWithNoSpills && S->canEverHaveSpills()) {
+      Schedule *Candidate = Schedules.back().get();
+      std::vector<std::unique_ptr<Schedule>> Checkpoints;
+      while (!Candidate->isComplete()) {
+        std::unique_ptr<Schedule> Checkpoint = Candidate->scheduleNextInstruction();
+        if (Checkpoint)
+          Checkpoints.push_back(std::move(Checkpoint));
+        if (GreedyRPFitsWithNoSpills && Candidate->canEverHaveSpills())
           break;
-        }
       }
 
-      bool Success = S->isComplete() && !S->canEverHaveSpills();
-      if (Success) {
-        PrintDump("Schedule is complete\n");
-        if (((S->getMaxRegpressure() > MaxOriginalRegpressure)) &&
-            IGC_IS_FLAG_DISABLED(CodeSchedulingMWOptimizedHigherRPCommit)) {
-          PrintDump("Completed schedule on attempt #" << Attempt << " has higher regpressure that the original ("
-                                                      << S->getMaxRegpressure() << " > " << MaxOriginalRegpressure
-                                                      << "), skipping commit\n");
-          PrintDump("Schedule is not changed" << "\n");
-          return false;
-        }
-        S->commit();
-        Changed = true;
-        break;
-      } else {
-        PrintDump("Schedule of attempt #" << Attempt << " is not complete\n");
-        PrintDump("Can ever have spills? " << S->canEverHaveSpills() << "\n");
-        PrintDump("Can compile with no spills? " << CanCompileWithNoSpills << "\n");
+      if (Candidate->isComplete() && !Candidate->canEverHaveSpills()) {
+        std::unique_ptr<Schedule> Selected = std::move(Schedules.back());
         Schedules.pop_back();
-
-        // push NewSchedules to Schedules in the reverse order
-        for (auto It = NewSchedules.rbegin(); It != NewSchedules.rend(); ++It) {
-          Schedules.push_back(std::move(*It));
-        }
-
-        PrintDump("Schedules left in the queue: " << Schedules.size() << "\n");
+        RetainCandidate(std::move(Selected));
+        return Result;
       }
-      if (Attempt > static_cast<int>(IGC_GET_FLAG_VALUE(CodeSchedulingAttemptsLimit))) {
-        PrintDump("Attempts limit reached\n");
+
+      Schedules.pop_back();
+      for (auto It = Checkpoints.rbegin(); It != Checkpoints.rend(); ++It)
+        Schedules.push_back(std::move(*It));
+
+      if (Attempt > static_cast<uint64_t>(IGC_GET_FLAG_VALUE(CodeSchedulingAttemptsLimit)))
         break;
-      }
       Attempt++;
-    };
-
-    if (!Changed && IGC_IS_FLAG_ENABLED(CodeSchedulingCommitGreedyRP) && OriginalScheduleCanHaveSpills) {
-      PrintDump("No schedule is complete, so GreedyRP schedule is the best.\n");
-      if (((GreedyRPSchedule->getMaxRegpressure() > MaxOriginalRegpressure)) &&
-          IGC_IS_FLAG_DISABLED(CodeSchedulingGreedyRPHigherRPCommit)) {
-        PrintDump("Greedy RP schedule has higher regpressure that the original ("
-                  << GreedyRPSchedule->getMaxRegpressure() << " > " << MaxOriginalRegpressure
-                  << "), skipping commit\n");
-        PrintDump("Schedule is not changed" << "\n");
-        return false;
-      }
-      PrintDump("Commiting Greedy RP schedule as the best one.\n");
-      PrintDump("Schedule is changed" << "\n");
-      GreedyRPSchedule->commit();
-      Changed = true;
     }
 
-    PrintDump("Schedule is " << (Changed ? "changed" : "not changed") << "\n");
+    Result.GreedyRPMaxPressure = GreedyRPSchedule->getMaxRegpressure();
+    Result.GreedyRPMWDecisions = GreedyRPSchedule->getMWDecisions();
+    Result.GreedyRPRPDecisions = GreedyRPSchedule->getRPDecisions();
+    Result.GreedyRPImmediateOverrideDecisions = GreedyRPSchedule->getImmediateOverrideDecisions();
+    if (IGC_IS_FLAG_ENABLED(CodeSchedulingCommitGreedyRP) && !Result.OriginalFitsWithNoSpills &&
+        (Result.GreedyRPMaxPressure <= Original.MaxPressure ||
+         IGC_IS_FLAG_ENABLED(CodeSchedulingGreedyRPHigherRPCommit)))
+      Result.GreedyRPOrder = GreedyRPSchedule->getInstructionOrder();
+    return Result;
+  }
 
-    return Changed;
+  bool scheduleFitsWithNoSpills(llvm::ArrayRef<Instruction *> Order, unsigned NumGRF) {
+    const int PreviousNumGRF = C.get(Option::DefaultNumGRFAuto);
+    auto RestoreNumGRF = IGCLLVM::make_scope_exit([&] { C.set(Option::DefaultNumGRFAuto, PreviousNumGRF); });
+    C.set(Option::DefaultNumGRFAuto, static_cast<int>(NumGRF));
+    RegisterPressureTracker RPT(BB, RPE, FRPE, VSA, RCA, WI, CTX, &C, &llvm::nulls(), FGA);
+    for (Instruction *I : Order) {
+      if (!isa<PHINode>(I))
+        RPT.update(I);
+      if (RPT.isRegpressureCritical())
+        return false;
+    }
+    return true;
+  }
+
+  void commitOrder(llvm::ArrayRef<Instruction *> Order) {
+    if (IGC_IS_FLAG_ENABLED(DumpCodeScheduling)) {
+      auto Original = BB->begin();
+      while (isa<PHINode>(*Original))
+        ++Original;
+      bool Changed = llvm::any_of(Order, [&](Instruction *I) { return I != &*Original++; });
+      PrintDump("Schedule is " << (Changed ? "changed" : "not changed") << "\n");
+    }
+    Instruction *InsertPoint = nullptr;
+    for (Instruction *I : Order) {
+      if (!InsertPoint)
+        IGCLLVM::moveBefore(I, &*BB->getFirstInsertionPt());
+      else
+        I->moveAfter(InsertPoint);
+      InsertPoint = I;
+    }
+    PrintDump("Committed the schedule\n");
   }
 
 private:
@@ -1317,9 +1431,10 @@ private:
   VectorShuffleAnalysis *VSA;
   CodeGenContext *CTX;
   RematChainsAnalysis *RCA;
-  SchedulingConfig &C;
+  SchedulingConfig C;
   llvm::raw_ostream *LogStream;
   GenXFunctionGroupAnalysis *FGA;
+  std::unique_ptr<Schedule> InitialSchedule;
 
   // Helper function to format debug information string
   static std::string formatDebugInfo(int32_t CurrentPressure, int32_t Estimate, const std::string &Type,
@@ -1465,8 +1580,8 @@ private:
     DepGraph(BasicBlock *BB, IGCLivenessAnalysisRunner *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
              VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, WIAnalysisRunner *WI, CodeGenContext *CTX,
              SchedulingConfig &C, llvm::raw_ostream *LogStream) {
-      InstNodes.reserve(BB->size() * sizeof(InstructionNode));
-      InstToNode.reserve(BB->size() * sizeof(InstToNodeMap));
+      InstNodes.reserve(BB->size());
+      InstToNode.reserve(BB->size());
 
       // Create InstNodes and InstToNode from BB instructions
       auto N = 0;
@@ -1943,6 +2058,13 @@ private:
   // backtracking.
 
   class Schedule {
+    enum class ReadyDecisionKind {
+      Immediate,
+      ImmediateOverride,
+      MaxWeight,
+      RegisterPressure,
+    };
+
   public:
     Schedule(BasicBlock *BB, IGCLivenessAnalysisRunner *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
              VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, WIAnalysisRunner *WI, CodeGenContext *CTX,
@@ -1970,7 +2092,8 @@ private:
           GreedyMW(S.GreedyMW), RegpressureWasCritical(S.RegpressureWasCritical),
           AllInstructionsScheduledByRP(S.AllInstructionsScheduledByRP), MaxRegpressure(S.MaxRegpressure),
           RefLiveIntervals(S.RefLiveIntervals), ScheduledInstructions(S.ScheduledInstructions),
-          ActiveLargeLoad(S.ActiveLargeLoad) {
+          ActiveLargeLoad(S.ActiveLargeLoad), MWDecisions(S.MWDecisions), RPDecisions(S.RPDecisions),
+          ImmediateOverrideDecisions(S.ImmediateOverrideDecisions) {
       G.InstNodes.reserve(S.G.InstNodes.size());
       G.DepEdges.reserve(S.G.DepEdges.size());
 
@@ -2013,19 +2136,35 @@ private:
     }
 
     // Schedule next instruction and maybe return the previous checkpoint
-    std::unique_ptr<Schedule> scheduleNextInstruction() {
+    std::unique_ptr<Schedule> scheduleNextInstruction(bool SaveCheckpoint = true) {
       std::unique_ptr<Schedule> Checkpoint = nullptr;
 
       auto ChosenNode = chooseReadyInstruction();
 
       InstructionNode *Node = std::get<0>(ChosenNode);
       bool CanClone = std::get<1>(ChosenNode);
-      if (CanClone) {
+      ReadyDecisionKind DecisionKind = std::get<2>(ChosenNode);
+      if (SaveCheckpoint && CanClone) {
         bool NeedToClone = needToClone(Node, !GreedyMW);
         if (NeedToClone) {
           Checkpoint = std::make_unique<Schedule>(*this);
           Checkpoint->addHandicapped(Node->I, RT.getCurrentPressure());
         }
+      }
+
+      switch (DecisionKind) {
+      case ReadyDecisionKind::Immediate:
+        break;
+      case ReadyDecisionKind::ImmediateOverride:
+        ImmediateOverrideDecisions++;
+        break;
+      case ReadyDecisionKind::MaxWeight:
+        MWDecisions++;
+        AllInstructionsScheduledByRP = false;
+        break;
+      case ReadyDecisionKind::RegisterPressure:
+        RPDecisions++;
+        break;
       }
 
       ImmediateReadyList.erase(std::remove(ImmediateReadyList.begin(), ImmediateReadyList.end(), Node),
@@ -2065,13 +2204,28 @@ private:
       return Checkpoint;
     }
 
-    bool isComplete() { return ScheduledList.size() == G.InstNodes.size(); }
+    bool isComplete() const { return ScheduledList.size() == G.InstNodes.size(); }
 
     bool canHaveSpills() { return RT.isRegpressureCritical(); }
 
     bool canEverHaveSpills() { return RegpressureWasCritical; }
 
     int32_t getMaxRegpressure() { return MaxRegpressure; }
+
+    uint64_t getMWDecisions() const { return MWDecisions; }
+
+    uint64_t getRPDecisions() const { return RPDecisions; }
+
+    uint64_t getImmediateOverrideDecisions() const { return ImmediateOverrideDecisions; }
+
+    llvm::SmallVector<Instruction *, 32> getInstructionOrder() const {
+      IGC_ASSERT_MESSAGE(isComplete(), "Cannot export an incomplete schedule");
+      llvm::SmallVector<Instruction *, 32> Order;
+      Order.reserve(ScheduledList.size());
+      for (InstructionNode *Node : ScheduledList)
+        Order.push_back(Node->I);
+      return Order;
+    }
 
     bool isEqualGreedyRP() { return GreedyRP || AllInstructionsScheduledByRP; }
 
@@ -2082,20 +2236,6 @@ private:
     void addHandicapped(Instruction *I, int RP) { Handicapped[I] = RP; }
 
     void setRefLiveIntervals(const DenseMap<Instruction *, int32_t> &Intervals) { RefLiveIntervals = Intervals; }
-
-    void commit() {
-      // Reorder the real LLVM instructions
-      Instruction *InsertPoint = nullptr;
-      for (auto &Node : ScheduledList) {
-        if (!InsertPoint) {
-          IGCLLVM::moveBefore(Node->I, &*BB->getFirstInsertionPt());
-        } else {
-          Node->I->moveAfter(InsertPoint);
-        }
-        InsertPoint = Node->I;
-      }
-      PrintDump("Commited the schedule\n");
-    }
 
     void print() {
       if (IGC_IS_FLAG_ENABLED(DumpCodeScheduling)) {
@@ -2176,6 +2316,9 @@ private:
     // Phase-aware scheduling state
     DenseSet<Instruction *> ScheduledInstructions;
     Instruction *ActiveLargeLoad = nullptr;
+    uint64_t MWDecisions = 0;
+    uint64_t RPDecisions = 0;
+    uint64_t ImmediateOverrideDecisions = 0;
 
     // Helper: compute load's register footprint in bytes
     int getLoadSizeInBytes(Instruction *I) const {
@@ -2189,7 +2332,7 @@ private:
     }
 
     // Returns the chosen instruction and if it's possible to clone the schedule
-    std::tuple<InstructionNode *, bool> chooseReadyInstruction() {
+    std::tuple<InstructionNode *, bool, ReadyDecisionKind> chooseReadyInstruction() {
       auto getLowestRegpressureNodes = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
         IGC_ASSERT(Nodes.size() > 0);
         if (Nodes.size() == 1) {
@@ -2962,6 +3105,7 @@ private:
 
       if (!ImmediateReadyList.empty()) {
         InstructionNode *Node = getFirstNode(ImmediateReadyList);
+        bool UsedImmediateOverride = false;
 
         auto *DT = VSA->getDestVector(Node->I);
         std::string VS_String = "   ";
@@ -3019,6 +3163,7 @@ private:
               if (Node != OriginalImmediateNode) {
                 DT = nullptr;
                 VS_String = "DPH"; // DPAS heuristic
+                UsedImmediateOverride = true;
               }
             }
           }
@@ -3030,7 +3175,9 @@ private:
         PrintDump(Info);
         Node->print(*LogStream);
 
-        return std::make_tuple(Node, false);
+        ReadyDecisionKind DecisionKind =
+            UsedImmediateOverride ? ReadyDecisionKind::ImmediateOverride : ReadyDecisionKind::Immediate;
+        return std::make_tuple(Node, false, DecisionKind);
       } else {
         // If we have no immediate ready instructions, choose the one from the ready list
 
@@ -3162,10 +3309,6 @@ private:
 #endif
         IGC_ASSERT(Node != nullptr);
 
-        if (!ChooseByRP) {
-          AllInstructionsScheduledByRP = false;
-        }
-
         std::string ChoosingMode = ChooseByRP ? "RP" : "MW";
         ChoosingMode += CanClone ? "*" : "";
         std::string Info = formatDebugInfo(RT.getCurrentPressure(), RT.estimate(Node->I), ChoosingMode,
@@ -3173,7 +3316,9 @@ private:
         PrintDump(Info);
         Node->print(*LogStream);
 
-        return std::make_tuple(Node, CanClone);
+        ReadyDecisionKind DecisionKind =
+            ChooseByRP ? ReadyDecisionKind::RegisterPressure : ReadyDecisionKind::MaxWeight;
+        return std::make_tuple(Node, CanClone, DecisionKind);
       }
     }
 
@@ -3193,6 +3338,560 @@ private:
       return true;
     }
   };
+};
+
+class FunctionScheduler {
+  using CandidateInfo = BBScheduler::ScheduleCandidate;
+
+  enum class SelectionKind {
+    Original,
+    Generated,
+    GreedyRPFallback,
+  };
+
+  enum class SelectionReason {
+    Unknown,
+    LowPressure,
+    RPWithinThreshold,
+    SameOccupancyBetter,
+    HigherGRFTargetPromoted,
+    KeepLowerGRFTarget,
+    OriginalOrderFitsWithNoSpills,
+    LastGRFTargetGreedyRP,
+    GreedyRPRejected,
+  };
+
+  struct GRFTargetResult {
+    unsigned GRFTargetIndex = 0;
+    CandidateInfo ScheduleInfo;
+  };
+
+  struct Selection {
+    SelectionKind Kind = SelectionKind::Original;
+    SelectionReason Reason = SelectionReason::Unknown;
+    GRFTargetResult *Result = nullptr;
+    unsigned RequiredGRFTargetIndex = 0;
+  };
+
+  struct BlockState {
+    BasicBlock *BB = nullptr;
+    std::unique_ptr<BBScheduler> Scheduler;
+    BBScheduler::OriginalScheduleInfo Original;
+    unsigned AdmissionGRFTargetIndex = 0;
+    std::vector<std::unique_ptr<GRFTargetResult>> Candidates;
+    Selection SelectedSchedule;
+  };
+
+  struct DecisionCounts {
+    uint64_t MW = 0;
+    uint64_t RP = 0;
+    uint64_t ImmediateOverride = 0;
+
+    uint64_t ordinary() const { return MW + RP; }
+  };
+
+public:
+  FunctionScheduler(Function &F, IGCLivenessAnalysisRunner *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
+                    AAResults *AA, VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, CodeGenContext *CTX,
+                    const SchedulingConfig &Config, llvm::ArrayRef<SchedulingGRFTarget> AutoGRFTargets,
+                    llvm::raw_ostream *LogStream, GenXFunctionGroupAnalysis *FGA)
+      : F(F), RPE(RPE), FRPE(FRPE), AA(AA), VSA(VSA), RCA(RCA), CTX(CTX), Config(Config),
+        AutoGRF(!AutoGRFTargets.empty()), GRFTargets(AutoGRFTargets.begin(), AutoGRFTargets.end()),
+        LogStream(LogStream), FGA(FGA) {}
+
+  bool schedule() {
+    // Automatic budgets delay IR changes until the shared GRF target floor is settled.
+    // Fixed/default budgets preserve function-order, per-block commits.
+    //
+    // collect DPAS blocks
+    //   +-- none --> unchanged
+    //   +-- fixed/default --> for each block in function order:
+    //   |                      analyze -> select -> commit -> release graph
+    //   `-- automatic --> analyze during collection; sort by incoming pressure
+    //                       |
+    //                       v
+    //                select from max(admission GRF target, function floor)
+    //                       |
+    //                required GRF target raises floor?
+    //                  +-- yes --> raise floor; re-evaluate processed blocks
+    //                  |           (repeat if floor rises again)
+    //                  |                         |
+    //                  `-- no -------------------+
+    //                                            |
+    //                                            v
+    //                              more blocks? -- yes --> select next block
+    //                                           `-- no --> commit retained orders
+    // Low-pressure skips are not re-evaluated; other orders change only if
+    // shouldReplaceAfterFloorIncrease accepts the replacement.
+    collectBlocks();
+    if (Blocks.empty())
+      return false;
+
+    if (AutoGRF) {
+      PrintDump("Auto GRF scheduling: enabled\n");
+      PrintDump("Auto GRF admission percent: " << IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTAdmissionPercent) << "\n");
+      PrintDump("Auto GRF acceptable RP-decision percent: "
+                << IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTAcceptableRPDecisionPercent) << "\n");
+      PrintDump("Auto GRF targets:");
+      for (const SchedulingGRFTarget &GRFTarget : GRFTargets)
+        PrintDump(" {" << GRFTarget.NumGRF << " GRF, " << GRFTarget.ThreadsPerEU << " threads}");
+      PrintDump("\n");
+
+      PrintDump("Auto GRF block traversal:");
+      for (const BlockState &State : Blocks)
+        PrintDump(" {" << blockName(State.BB) << ", initialRP=" << State.Original.InitialPressure << "}");
+      PrintDump("\n");
+    } else {
+      PrintDump("Auto GRF scheduling: disabled\n");
+    }
+
+    bool Changed = false;
+    unsigned GRFTargetFloorIndex = 0;
+    for (unsigned BlockIndex = 0; BlockIndex < Blocks.size(); BlockIndex++) {
+      BlockState &State = Blocks[BlockIndex];
+      if (!AutoGRF) {
+        PrintDump("Scheduling basic block " << blockName(State.BB) << "\n");
+        analyzeBlock(State);
+        if (GRFTargets.empty())
+          GRFTargets.push_back({static_cast<unsigned>(State.Original.NumGRF), 0});
+      }
+      unsigned StartGRFTargetIndex = std::max(State.AdmissionGRFTargetIndex, GRFTargetFloorIndex);
+      if (StartGRFTargetIndex > State.AdmissionGRFTargetIndex) {
+        PrintDump("Auto GRF skipped GRF targets for " << blockName(State.BB) << ": [0, " << StartGRFTargetIndex
+                                                      << ") because of function GRF target floor\n");
+      }
+
+      State.SelectedSchedule = selectBlockSchedule(State, StartGRFTargetIndex);
+      if (!AutoGRF) {
+        Changed |= commitBlock(State);
+        // Fixed budgets never revisit blocks; release the graph before the next block.
+        State.SelectedSchedule = {};
+        State.Candidates.clear();
+        State.Scheduler.reset();
+        continue;
+      }
+      printSelection(State, "selected");
+
+      if (State.SelectedSchedule.RequiredGRFTargetIndex > GRFTargetFloorIndex) {
+        unsigned PreviousFloor = GRFTargetFloorIndex;
+        GRFTargetFloorIndex = State.SelectedSchedule.RequiredGRFTargetIndex;
+        PrintDump("Auto GRF target floor increased: " << GRFTargets[PreviousFloor].NumGRF << " -> "
+                                                      << GRFTargets[GRFTargetFloorIndex].NumGRF << " GRF by "
+                                                      << blockName(State.BB) << "\n");
+        reevaluateProcessedBlocks(BlockIndex, GRFTargetFloorIndex);
+      }
+    }
+
+    if (!AutoGRF)
+      return Changed;
+
+    int32_t MaxPressure = 0;
+    PrintDump("FunctionRPDecisionPercent = [\n");
+    for (const BlockState &State : Blocks) {
+      DecisionCounts Counts = getDecisionCounts(State.SelectedSchedule);
+      uint64_t Ordinary = Counts.ordinary();
+      uint64_t Percent = Ordinary == 0 ? 0 : 100 * Counts.RP / Ordinary;
+      PrintDump("  {block=" << blockName(State.BB) << ", RPDecisions=" << Counts.RP
+                            << ", OrdinaryDecisions=" << Ordinary << ", percent=" << Percent << "}\n");
+      MaxPressure = std::max(MaxPressure, getMaxPressure(State));
+    }
+    PrintDump("]\n");
+    PrintDump("Auto GRF final GRF target floor: " << GRFTargets[GRFTargetFloorIndex].NumGRF << " GRF\n");
+    PrintDump("Auto GRF retained maximum pressure: " << MaxPressure << "\n");
+
+    for (const BlockState &State : Blocks)
+      Changed |= commitBlock(State);
+    Blocks.clear();
+    return Changed;
+  }
+
+private:
+  Function &F;
+  IGCLivenessAnalysisRunner *RPE;
+  IGCFunctionExternalRegPressureAnalysis *FRPE;
+  AAResults *AA;
+  VectorShuffleAnalysis *VSA;
+  RematChainsAnalysis *RCA;
+  CodeGenContext *CTX;
+  SchedulingConfig Config;
+  const bool AutoGRF;
+  llvm::SmallVector<SchedulingGRFTarget, 4> GRFTargets;
+  llvm::raw_ostream *LogStream;
+  GenXFunctionGroupAnalysis *FGA;
+  std::vector<BlockState> Blocks;
+
+  void analyzeBlock(BlockState &State) {
+    State.Scheduler = std::make_unique<BBScheduler>(State.BB, RPE, FRPE, AA, VSA, RCA, CTX, &Config, LogStream, FGA);
+    State.Original = State.Scheduler->analyzeOriginalSchedule(!AutoGRF);
+  }
+
+  static bool commitBlock(const BlockState &State) {
+    llvm::ArrayRef<Instruction *> Order;
+    switch (State.SelectedSchedule.Kind) {
+    case SelectionKind::Original:
+      return false;
+    case SelectionKind::Generated:
+      Order = State.SelectedSchedule.Result->ScheduleInfo.Order;
+      break;
+    case SelectionKind::GreedyRPFallback:
+      Order = State.SelectedSchedule.Result->ScheduleInfo.GreedyRPOrder;
+      break;
+    }
+    if (Order.empty())
+      return false;
+    State.Scheduler->commitOrder(Order);
+    return true;
+  }
+
+  unsigned getAdmissionGRFTargetIndex(int32_t MaxOriginalPressure) const {
+    uint64_t AdmissionPercent = IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTAdmissionPercent);
+    for (unsigned I = 0; I < GRFTargets.size(); I++) {
+      uint64_t AdmissionLimit = static_cast<uint64_t>(GRFTargets[I].NumGRF) * AdmissionPercent / 100;
+      if (static_cast<uint64_t>(std::max(MaxOriginalPressure, 0)) <= AdmissionLimit)
+        return I;
+    }
+    return static_cast<unsigned>(GRFTargets.size() - 1);
+  }
+
+  void collectBlocks() {
+    for (BasicBlock &BB : F) {
+      if (!llvm::any_of(BB, [](Instruction &I) { return isDPAS(&I); }))
+        continue;
+
+      BlockState State;
+      State.BB = &BB;
+      if (AutoGRF) {
+        analyzeBlock(State);
+        State.AdmissionGRFTargetIndex = getAdmissionGRFTargetIndex(State.Original.MaxPressure);
+        PrintDump("Auto GRF original: block=" << blockName(State.BB) << ", initialRP=" << State.Original.InitialPressure
+                                              << ", maxRP=" << State.Original.MaxPressure << ", admissionGRFTarget="
+                                              << GRFTargets[State.AdmissionGRFTargetIndex].NumGRF << "\n");
+      }
+      State.Candidates.resize(AutoGRF ? GRFTargets.size() : 1);
+      Blocks.push_back(std::move(State));
+    }
+
+    if (AutoGRF) {
+      std::stable_sort(Blocks.begin(), Blocks.end(), [](const BlockState &A, const BlockState &B) {
+        return A.Original.InitialPressure > B.Original.InitialPressure;
+      });
+    }
+  }
+
+  GRFTargetResult &getCandidate(BlockState &State, unsigned GRFTargetIndex) {
+    if (State.Candidates[GRFTargetIndex])
+      return *State.Candidates[GRFTargetIndex];
+
+    auto Candidate = std::make_unique<GRFTargetResult>();
+    Candidate->GRFTargetIndex = GRFTargetIndex;
+    if (AutoGRF)
+      PrintDump("Scheduling basic block " << blockName(State.BB) << " for automatic GRF target "
+                                          << GRFTargets[GRFTargetIndex].NumGRF << " GRF\n");
+    Candidate->ScheduleInfo =
+        State.Scheduler->buildCandidate(GRFTargets[GRFTargetIndex].NumGRF, State.Original, AutoGRF);
+
+    uint64_t Ordinary = Candidate->ScheduleInfo.MWDecisions + Candidate->ScheduleInfo.RPDecisions;
+    uint64_t Percent = Ordinary == 0 ? 0 : 100 * Candidate->ScheduleInfo.RPDecisions / Ordinary;
+    const char *Kind = "Mixed";
+    if (Candidate->ScheduleInfo.Kind == BBScheduler::ScheduleKind::MaxWeightOnly)
+      Kind = "MaxWeightOnly";
+    else if (Candidate->ScheduleInfo.Kind == BBScheduler::ScheduleKind::RegisterPressureOnly)
+      Kind = "RegisterPressureOnly";
+    if (AutoGRF) {
+      PrintDump("Auto GRF candidate: block=" << blockName(State.BB)
+                                             << ", grfTarget=" << GRFTargets[GRFTargetIndex].NumGRF
+                                             << ", fitsWithNoSpills=" << Candidate->ScheduleInfo.HasCandidate);
+      if (!Candidate->ScheduleInfo.HasCandidate && IGC_IS_FLAG_DISABLED(CodeSchedulingForceMWOnly) &&
+          IGC_IS_FLAG_DISABLED(CodeSchedulingForceRPOnly)) {
+        PrintDump(", no fitting schedule found, GreedyRPMaxRP=" << Candidate->ScheduleInfo.GreedyRPMaxPressure << "\n");
+      } else {
+        PrintDump(", maxRP=" << Candidate->ScheduleInfo.MaxPressure << ", MW=" << Candidate->ScheduleInfo.MWDecisions
+                             << ", RP=" << Candidate->ScheduleInfo.RPDecisions
+                             << ", ImOverride=" << Candidate->ScheduleInfo.ImmediateOverrideDecisions
+                             << ", RP%=" << Percent << ", kind=" << Kind << "\n");
+      }
+    }
+
+    State.Candidates[GRFTargetIndex] = std::move(Candidate);
+    return *State.Candidates[GRFTargetIndex];
+  }
+
+  static DecisionCounts getCandidateDecisionCounts(const CandidateInfo &ScheduleInfo) {
+    return {ScheduleInfo.MWDecisions, ScheduleInfo.RPDecisions, ScheduleInfo.ImmediateOverrideDecisions};
+  }
+
+  static bool isRPDecisionRatioAtMost(const DecisionCounts &Counts, uint64_t ThresholdPercent) {
+    uint64_t Ordinary = Counts.ordinary();
+    return Ordinary == 0 || 100 * Counts.RP <= ThresholdPercent * Ordinary;
+  }
+
+  static bool hasLowerRPDecisionRatio(const DecisionCounts &New, const DecisionCounts &Old) {
+    uint64_t NewDenominator = std::max<uint64_t>(New.ordinary(), 1);
+    uint64_t OldDenominator = std::max<uint64_t>(Old.ordinary(), 1);
+    return New.RP * OldDenominator < Old.RP * NewDenominator;
+  }
+
+  static bool hasMinimumRPDecisionImprovement(const DecisionCounts &New, const DecisionCounts &Old,
+                                              uint64_t MinimumPercentagePoints) {
+    uint64_t NewDenominator = std::max<uint64_t>(New.ordinary(), 1);
+    uint64_t OldDenominator = std::max<uint64_t>(Old.ordinary(), 1);
+    uint64_t OldScaled = Old.RP * NewDenominator;
+    uint64_t NewScaled = New.RP * OldDenominator;
+    if (NewScaled >= OldScaled)
+      return false;
+    return 100 * (OldScaled - NewScaled) >= MinimumPercentagePoints * OldDenominator * NewDenominator;
+  }
+
+  bool shouldPromote(const DecisionCounts &NewCounts, int32_t NewMaxPressure, const DecisionCounts &OldCounts,
+                     unsigned NewRequiredGRFTargetIndex) const {
+    if (!hasMinimumRPDecisionImprovement(NewCounts, OldCounts,
+                                         IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTPromotionRPImprovementPercent)))
+      return false;
+
+    uint64_t UtilizationPercent = IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTPromotionMinTargetUtilizationPercent);
+    return 100 * static_cast<uint64_t>(std::max(NewMaxPressure, 0)) >=
+           UtilizationPercent * GRFTargets[NewRequiredGRFTargetIndex].NumGRF;
+  }
+
+  unsigned findRequiredGRFTargetIndex(BlockState &State, GRFTargetResult &Candidate, unsigned StartGRFTargetIndex) {
+    for (unsigned I = StartGRFTargetIndex; I < Candidate.GRFTargetIndex; I++) {
+      if (State.Scheduler->scheduleFitsWithNoSpills(Candidate.ScheduleInfo.Order, GRFTargets[I].NumGRF))
+        return I;
+    }
+    return Candidate.GRFTargetIndex;
+  }
+
+  Selection selectBlockSchedule(BlockState &State, unsigned StartGRFTargetIndex) {
+    // Select an order and its required GRF target without reordering the block.
+    // A candidate can require a smaller GRF target than the one used to build it.
+    //
+    // legacy low-pressure skip applies?
+    //   +-- yes --> keep original; determine its GRF target floor in automatic mode
+    //   `-- no
+    //       |
+    //       v
+    //   get/build candidate at current GRF target
+    //     +-- none --> best exists? -- yes --> return best
+    //     |                        `-- no --> next GRF target
+    //     `-- candidate
+    //           +-- no best yet --> retain candidate
+    //           `-- best exists --> lower RP ratio?
+    //                                +-- no --> return best
+    //                                `-- yes --> same/lower required GRF target,
+    //                                            or promotion accepted?
+    //                                              +-- no --> return best
+    //                                              `-- yes --> retain candidate
+    //
+    //   retain candidate --> RP% <= acceptance threshold?
+    //                          +-- yes --> return best
+    //                          `-- no --> next GRF target
+    //
+    //   GRF targets exhausted --> best, else original fitting with no spills,
+    //                         else permitted GreedyRP from the last GRF target, else original.
+    // No-spill checks use the pressure estimate. Fixed-GRF overrides can
+    // accept candidates that exceed the budget.
+    // Fixed-GRF and legacy automatic-GRF paths preserve the low-pressure skip.
+    // 512-GRF automatic-GRF platforms schedule low-pressure blocks by default.
+    const bool ApplyLegacyLowPressureGate =
+        !AutoGRF || (!CTX->platform.supports512GRFPerThread() && IGC_IS_FLAG_DISABLED(CodeSchedulingAutoGRFEager));
+    if (State.Scheduler->shouldSkipScheduling(State.Original, ApplyLegacyLowPressureGate)) {
+      if (!AutoGRF)
+        return {SelectionKind::Original, SelectionReason::LowPressure, nullptr, StartGRFTargetIndex};
+      // Retained original orders still constrain the function's GRF target floor.
+      unsigned RequiredGRFTargetIndex = StartGRFTargetIndex;
+      while (
+          RequiredGRFTargetIndex + 1 < GRFTargets.size() &&
+          !State.Scheduler->scheduleFitsWithNoSpills(State.Original.Order, GRFTargets[RequiredGRFTargetIndex].NumGRF))
+        RequiredGRFTargetIndex++;
+      return {SelectionKind::Original, SelectionReason::LowPressure, nullptr, RequiredGRFTargetIndex};
+    }
+
+    GRFTargetResult *BestCandidate = nullptr;
+    unsigned BestRequiredGRFTargetIndex = StartGRFTargetIndex;
+    SelectionReason BestReason = SelectionReason::KeepLowerGRFTarget;
+    unsigned LastAttemptedGRFTargetIndex = StartGRFTargetIndex;
+
+    for (unsigned GRFTargetIndex = StartGRFTargetIndex; GRFTargetIndex < GRFTargets.size(); GRFTargetIndex++) {
+      GRFTargetResult &Candidate = getCandidate(State, GRFTargetIndex);
+      LastAttemptedGRFTargetIndex = GRFTargetIndex;
+
+      if (!Candidate.ScheduleInfo.HasCandidate) {
+        if (BestCandidate)
+          return {SelectionKind::Generated, SelectionReason::KeepLowerGRFTarget, BestCandidate,
+                  BestRequiredGRFTargetIndex};
+        continue;
+      }
+
+      unsigned RequiredGRFTargetIndex = findRequiredGRFTargetIndex(State, Candidate, StartGRFTargetIndex);
+      DecisionCounts NewCounts = getCandidateDecisionCounts(Candidate.ScheduleInfo);
+      if (!BestCandidate) {
+        BestCandidate = &Candidate;
+        BestRequiredGRFTargetIndex = RequiredGRFTargetIndex;
+        BestReason = SelectionReason::KeepLowerGRFTarget;
+        if (isRPDecisionRatioAtMost(NewCounts, IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTAcceptableRPDecisionPercent)))
+          return {SelectionKind::Generated, SelectionReason::RPWithinThreshold, BestCandidate,
+                  BestRequiredGRFTargetIndex};
+        continue;
+      }
+
+      DecisionCounts BestCounts = getCandidateDecisionCounts(BestCandidate->ScheduleInfo);
+      if (!hasLowerRPDecisionRatio(NewCounts, BestCounts))
+        return {SelectionKind::Generated, SelectionReason::KeepLowerGRFTarget, BestCandidate,
+                BestRequiredGRFTargetIndex};
+
+      if (RequiredGRFTargetIndex <= BestRequiredGRFTargetIndex) {
+        BestCandidate = &Candidate;
+        BestRequiredGRFTargetIndex = RequiredGRFTargetIndex;
+        BestReason = SelectionReason::SameOccupancyBetter;
+      } else if (shouldPromote(NewCounts, Candidate.ScheduleInfo.MaxPressure, BestCounts, RequiredGRFTargetIndex)) {
+        BestCandidate = &Candidate;
+        BestRequiredGRFTargetIndex = RequiredGRFTargetIndex;
+        BestReason = SelectionReason::HigherGRFTargetPromoted;
+      } else {
+        return {SelectionKind::Generated, SelectionReason::KeepLowerGRFTarget, BestCandidate,
+                BestRequiredGRFTargetIndex};
+      }
+
+      if (isRPDecisionRatioAtMost(NewCounts, IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTAcceptableRPDecisionPercent)))
+        return {SelectionKind::Generated, BestReason, BestCandidate, BestRequiredGRFTargetIndex};
+    }
+
+    if (BestCandidate)
+      return {SelectionKind::Generated, BestReason, BestCandidate, BestRequiredGRFTargetIndex};
+
+    for (unsigned GRFTargetIndex = StartGRFTargetIndex; GRFTargetIndex <= LastAttemptedGRFTargetIndex;
+         GRFTargetIndex++) {
+      GRFTargetResult &Candidate = *State.Candidates[GRFTargetIndex];
+      if (Candidate.ScheduleInfo.OriginalFitsWithNoSpills)
+        return {SelectionKind::Original, SelectionReason::OriginalOrderFitsWithNoSpills, &Candidate, GRFTargetIndex};
+    }
+
+    GRFTargetResult &LastResult = *State.Candidates[LastAttemptedGRFTargetIndex];
+    if (!LastResult.ScheduleInfo.GreedyRPOrder.empty()) {
+      return {SelectionKind::GreedyRPFallback, SelectionReason::LastGRFTargetGreedyRP, &LastResult,
+              LastAttemptedGRFTargetIndex};
+    }
+    return {SelectionKind::Original, SelectionReason::GreedyRPRejected, &LastResult, LastAttemptedGRFTargetIndex};
+  }
+
+  DecisionCounts getDecisionCounts(const Selection &Selected) const {
+    if (!Selected.Result || Selected.Kind == SelectionKind::Original)
+      return {};
+    const CandidateInfo &ScheduleInfo = Selected.Result->ScheduleInfo;
+    if (Selected.Kind == SelectionKind::Generated)
+      return getCandidateDecisionCounts(ScheduleInfo);
+    return {ScheduleInfo.GreedyRPMWDecisions, ScheduleInfo.GreedyRPRPDecisions,
+            ScheduleInfo.GreedyRPImmediateOverrideDecisions};
+  }
+
+  int32_t getSelectionMaxPressure(const Selection &Selected, const BBScheduler::OriginalScheduleInfo &Original) const {
+    if (!Selected.Result || Selected.Kind == SelectionKind::Original)
+      return Original.MaxPressure;
+    if (Selected.Kind == SelectionKind::Generated)
+      return Selected.Result->ScheduleInfo.MaxPressure;
+    return Selected.Result->ScheduleInfo.GreedyRPMaxPressure;
+  }
+
+  int32_t getMaxPressure(const BlockState &State) const {
+    return getSelectionMaxPressure(State.SelectedSchedule, State.Original);
+  }
+
+  bool shouldReplaceAfterFloorIncrease(const BlockState &State, const Selection &NewSelection,
+                                       unsigned GRFTargetFloorIndex) const {
+    const Selection &OldSelection = State.SelectedSchedule;
+    if (NewSelection.Kind == OldSelection.Kind && NewSelection.Result == OldSelection.Result)
+      return false;
+
+    if (NewSelection.Kind == SelectionKind::Original)
+      return OldSelection.Kind == SelectionKind::GreedyRPFallback;
+    if (NewSelection.Kind == SelectionKind::GreedyRPFallback)
+      return false;
+
+    DecisionCounts NewCounts = getDecisionCounts(NewSelection);
+    if (OldSelection.Kind == SelectionKind::Original) {
+      if (NewSelection.RequiredGRFTargetIndex > GRFTargetFloorIndex)
+        return false;
+      return isRPDecisionRatioAtMost(NewCounts, IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTAcceptableRPDecisionPercent));
+    }
+
+    DecisionCounts OldCounts = getDecisionCounts(OldSelection);
+    if (!hasLowerRPDecisionRatio(NewCounts, OldCounts))
+      return false;
+    if (NewSelection.RequiredGRFTargetIndex <= GRFTargetFloorIndex)
+      return true;
+
+    return shouldPromote(NewCounts, getSelectionMaxPressure(NewSelection, State.Original), OldCounts,
+                         NewSelection.RequiredGRFTargetIndex);
+  }
+
+  void reevaluateProcessedBlocks(unsigned LastProcessedBlockIndex, unsigned &GRFTargetFloorIndex) {
+    bool FloorIncreased = false;
+    do {
+      FloorIncreased = false;
+      for (unsigned BlockIndex = 0; BlockIndex <= LastProcessedBlockIndex; BlockIndex++) {
+        BlockState &State = Blocks[BlockIndex];
+        if (State.SelectedSchedule.Reason == SelectionReason::LowPressure ||
+            (State.SelectedSchedule.Result && State.SelectedSchedule.Result->GRFTargetIndex >= GRFTargetFloorIndex))
+          continue;
+
+        PrintDump("Auto GRF re-evaluating " << blockName(State.BB) << " from GRF target floor "
+                                            << GRFTargets[GRFTargetFloorIndex].NumGRF << " GRF\n");
+        Selection NewSelection = selectBlockSchedule(State, GRFTargetFloorIndex);
+        if (!shouldReplaceAfterFloorIncrease(State, NewSelection, GRFTargetFloorIndex)) {
+          printSelection(State, "retained after re-evaluation");
+          continue;
+        }
+
+        State.SelectedSchedule = NewSelection;
+        printSelection(State, "replaced after re-evaluation");
+        if (State.SelectedSchedule.RequiredGRFTargetIndex > GRFTargetFloorIndex) {
+          unsigned PreviousFloor = GRFTargetFloorIndex;
+          GRFTargetFloorIndex = State.SelectedSchedule.RequiredGRFTargetIndex;
+          PrintDump("Auto GRF target floor increased during re-evaluation: "
+                    << GRFTargets[PreviousFloor].NumGRF << " -> " << GRFTargets[GRFTargetFloorIndex].NumGRF
+                    << " GRF\n");
+          FloorIncreased = true;
+          break;
+        }
+      }
+    } while (FloorIncreased);
+  }
+
+  static const char *selectionReasonName(SelectionReason Reason) {
+    switch (Reason) {
+    case SelectionReason::Unknown:
+      IGC_ASSERT_MESSAGE(false, "Selection reason is not initialized");
+      return "unknown";
+    case SelectionReason::LowPressure:
+      return "low-pressure";
+    case SelectionReason::RPWithinThreshold:
+      return "rp-within-threshold";
+    case SelectionReason::SameOccupancyBetter:
+      return "same-occupancy-better";
+    case SelectionReason::HigherGRFTargetPromoted:
+      return "higher-grf-target-promoted";
+    case SelectionReason::KeepLowerGRFTarget:
+      return "ambiguous-keep-lower-grf-target";
+    case SelectionReason::OriginalOrderFitsWithNoSpills:
+      return "original-order-fits-with-no-spills";
+    case SelectionReason::LastGRFTargetGreedyRP:
+      return "last-grf-target-greedy-rp";
+    case SelectionReason::GreedyRPRejected:
+      return "greedy-rp-rejected";
+    }
+    IGC_ASSERT_MESSAGE(false, "Unknown automatic GRF selection reason");
+    return "unknown";
+  }
+
+  void printSelection(const BlockState &State, const char *Action) const {
+    const Selection &Selected = State.SelectedSchedule;
+    PrintDump("Auto GRF " << Action << ": block=" << blockName(State.BB)
+                          << ", requiredGRFTarget=" << GRFTargets[Selected.RequiredGRFTargetIndex].NumGRF
+                          << ", reason=" << selectionReasonName(Selected.Reason));
+    if (Selected.Result)
+      PrintDump(", constructionGRFTarget=" << GRFTargets[Selected.Result->GRFTargetIndex].NumGRF);
+    PrintDump("\n");
+  }
 };
 
 bool CodeScheduling::runOnFunction(Function &F) {
@@ -3227,6 +3926,15 @@ bool CodeScheduling::runOnFunction(Function &F) {
       LogStream << "CodeSchedulingRenameAll: " << IGC_GET_FLAG_VALUE(CodeSchedulingRenameAll) << "\n";
       LogStream << "CodeSchedulingDumpLevel: " << IGC_GET_FLAG_VALUE(CodeSchedulingDumpLevel) << "\n";
       LogStream << "EnableCodeSchedulingIfNoSpills: " << IGC_GET_FLAG_VALUE(EnableCodeSchedulingIfNoSpills) << "\n";
+      LogStream << "CodeSchedulingAutoGRFEager: " << IGC_GET_FLAG_VALUE(CodeSchedulingAutoGRFEager) << "\n";
+      LogStream << "CodeSchedulingAutoVRTAdmissionPercent: "
+                << IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTAdmissionPercent) << "\n";
+      LogStream << "CodeSchedulingAutoVRTAcceptableRPDecisionPercent: "
+                << IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTAcceptableRPDecisionPercent) << "\n";
+      LogStream << "CodeSchedulingAutoVRTPromotionRPImprovementPercent: "
+                << IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTPromotionRPImprovementPercent) << "\n";
+      LogStream << "CodeSchedulingAutoVRTPromotionMinTargetUtilizationPercent: "
+                << IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTPromotionMinTargetUtilizationPercent) << "\n";
       LogStream << "-----\n";
     };
 
@@ -3252,15 +3960,14 @@ bool CodeScheduling::runOnFunction(Function &F) {
   WI = &FRPE->getWIAnalysis(&F);
   FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
-  bool Changed = false;
+  const auto VRTTable = CTX->platform.getVRTTable();
+  const bool UseAutoGRFScheduling = CTX->getNumGRFPerThread(false, &F) == 0 && CTX->isAutoGRFSelectionEnabled(&F);
+  llvm::SmallVector<SchedulingGRFTarget, 4> GRFTargets;
+  if (UseAutoGRFScheduling)
+    GRFTargets = buildAutoGRFTargets(CTX->platform, VRTTable);
 
-  for (auto &BB : F) {
-    if (!std::any_of(BB.begin(), BB.end(), [](Instruction &I) { return isDPAS(&I); }))
-      continue;
-
-    BBScheduler Scheduler(&BB, RPE, FRPE, AA, VSA, RCA, CTX, &Config, LogStream, FGA);
-    Changed |= Scheduler.schedule();
-  }
+  FunctionScheduler Scheduler(F, RPE, FRPE, AA, VSA, RCA, CTX, Config, GRFTargets, LogStream, FGA);
+  bool Changed = Scheduler.schedule();
 
   if (IGC_IS_FLAG_ENABLED(DumpCodeScheduling) && IGC_IS_FLAG_DISABLED(PrintToConsole))
     dumpToFile(Log);

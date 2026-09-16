@@ -19,9 +19,9 @@
 
 ; CHECK: Function multi_dpas
 ; CHECK: Scheduling basic block bb1
-; CHECK: Commited the schedule
+; CHECK: Committed the schedule
 ; CHECK: Scheduling basic block bb2
-; CHECK: Commited the schedule
+; CHECK: Committed the schedule
 
 
 

@@ -355,6 +355,8 @@ DECLARE_IGC_REGKEY(bool, CodeSchedulingOnlyRecompilation, false, "Enable code sc
 
 DECLARE_IGC_REGKEY(bool, EnableCodeSchedulingIfNoSpills, false, "Try rescheduling also when there are no spills",
                    ALWAYS)
+DECLARE_IGC_REGKEY(bool, CodeSchedulingAutoGRFEager, false,
+                   "Enable low-pressure automatic GRF scheduling on platforms without 512-GRF support", ALWAYS)
 DECLARE_IGC_REGKEY(bool, CodeSchedulingGreedyRPHigherRPCommit, false,
                    "If GreedyRP was chosen, commit it also if the estimated RP "
                    "is higher than the original schedule RP",
@@ -376,6 +378,18 @@ DECLARE_IGC_REGKEY(bool, CodeSchedulingCommitGreedyRP, true,
 DECLARE_IGC_REGKEY(DWORD, CodeSchedulingRPThreshold, 0,
                    "Do scheduling only if the original register pressure is "
                    "higher than #GRF - margin + threshold",
+                   ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, CodeSchedulingAutoVRTAdmissionPercent, 140,
+                   "Maximum original register pressure, as a percentage of an automatic VRT scheduling target", ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, CodeSchedulingAutoVRTAcceptableRPDecisionPercent, 15,
+                   "Maximum percentage of register-pressure decisions in an acceptable automatic VRT schedule", ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, CodeSchedulingAutoVRTPromotionRPImprovementPercent, 15,
+                   "Minimum register-pressure decision percentage-point improvement required to use a larger "
+                   "automatic VRT scheduling target",
+                   ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, CodeSchedulingAutoVRTPromotionMinTargetUtilizationPercent, 50,
+                   "Minimum scheduled register pressure, as a percentage of a larger automatic VRT target, required "
+                   "to select that target",
                    ALWAYS)
 
 DECLARE_IGC_REGKEY(bool, DumpCodeScheduling, false, "Dump code scheduling", ALWAYS)
