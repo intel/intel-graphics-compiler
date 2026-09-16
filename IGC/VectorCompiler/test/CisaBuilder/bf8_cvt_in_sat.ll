@@ -15,9 +15,9 @@
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;
 
-; CHECK-DAG: .decl [[SRC:V[^ ]+]] v_type=G type=bf8 num_elts=16 alias
+; CHECK-DAG: .decl [[SRC:V[^ ]+]] v_type=G type=ub num_elts=16 alias
 ; CHECK-DAG: .decl [[DST:V[^ ]+]] v_type=G type=hf num_elts=16 alias
-; CHECK: mov (M1_NM, 16) [[DST]](0,0)<1> [[SRC]](0,0)<1;1,0>
+; CHECK: fcvt (M1_NM, 16) [[DST]](0,0)<1> [[SRC]](0,0)<1;1,0>
 ; CHECK-NEXT: mov.sat (M1, 16) [[SAT:V[0-9]+]](0,0)<1>
 
 

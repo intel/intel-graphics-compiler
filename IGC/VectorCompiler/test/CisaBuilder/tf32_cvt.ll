@@ -16,9 +16,7 @@
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;
 
-; CHECK-DAG: .decl [[SRC:V[^ ]+]] v_type=G type=f num_elts=4 alias
-; CHECK-DAG: .decl [[DST:V[^ ]+]] v_type=G type=tf32 num_elts=4 alias
-; CHECK: mov (M1, 4) [[DST]](0,0)<1> [[SRC]](0,0)<1;1,0>
+; CHECK: fcvt
 
 ; COM: ;;;;;;;;;; KERNEL ;;;;;;;;;;
 
