@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -17,6 +17,18 @@ declare void @spoiler(ptr) #0
 declare <32 x i16> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v32i16.p0(ptr, i32, i32, i32, i32, i32, i32, i1, i1, i32) #0
 
 declare <32 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v32i16(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32) #0
+
+declare i32 @llvm.genx.GenISA.intatomicraw.i32.p1(ptr addrspace(1), i32, i32, i32) #0
+declare i32 @llvm.genx.GenISA.intatomicrawsinglelane.i32.p1(ptr addrspace(1), i32, i32, i32) #0
+declare i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1.p1(ptr addrspace(1), ptr addrspace(1), i32, i32) #0
+declare float @llvm.genx.GenISA.floatatomicraw.f32.p1(ptr addrspace(1), i32, float, i32) #0
+declare float @llvm.genx.GenISA.floatatomicrawA64.f32.p1.p1(ptr addrspace(1), ptr addrspace(1), i32, i32) #0
+declare i32 @llvm.genx.GenISA.icmpxchgatomicraw.i32.p1(ptr addrspace(1), i32, i32, i32) #0
+declare i32 @llvm.genx.GenISA.icmpxchgatomicrawA64.i32.p1.p1(ptr addrspace(1), ptr addrspace(1), i32, i32) #0
+declare float @llvm.genx.GenISA.fcmpxchgatomicraw.f32.p1(ptr addrspace(1), i32, float, float) #0
+declare float @llvm.genx.GenISA.fcmpxchgatomicrawA64.f32.p1.p1(ptr addrspace(1), ptr addrspace(1), float, float) #0
+
+declare void @llvm.genx.GenISA.software.exception() #0
 
 ; Sink all 2d block reads to the second BB in the loop, because it contains all uses
 define void @sink1(ptr addrspace(1) %in0, ptr addrspace(1) noalias %out0, i32 %count, i32 %offsetIn0, <8 x i32> %r0) {
@@ -84,6 +96,111 @@ loop2:                                           ; preds = %loop
   br i1 %cmptmp, label %loop, label %afterloop
 
 afterloop:                                        ; preds = %loop2
+  ret void
+}
+
+; GenISA_software_exception only updates CR0, so it should not block sinking
+define void @sink_across_software_exception(ptr addrspace(1) %in0, ptr addrspace(1) noalias %out0,
+                                                       i32 %count) {
+; CHECK-LABEL: @sink_across_software_exception(
+; CHECK:       entry_preheader:
+; CHECK-NOT:     GenISA.LSC2DBlockRead
+; CHECK:         br label %[[LOOP:.*]]
+
+; CHECK:       [[LOOP]]:
+; CHECK:         call void @llvm.genx.GenISA.software.exception()
+; CHECK:         [[BASE_ADDR:%.*]] = ptrtoint ptr addrspace(1) [[IN0:%.*]] to i64
+; CHECK:         [[SINK_LOAD:%.*]] = call <32 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v32i16(i64 [[BASE_ADDR]]
+; CHECK:         store <32 x i16> [[SINK_LOAD]]
+
+entry_preheader:
+  %base.addr = ptrtoint ptr addrspace(1) %in0 to i64
+  %load = call <32 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v32i16(i64 %base.addr, i32 127, i32 1023, i32 127, i32 0, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
+  br label %loop
+
+loop:                                             ; preds = %loop, %entry_preheader
+  %index = phi i32 [ 0, %entry_preheader ], [ %inc, %loop ]
+  call void @llvm.genx.GenISA.software.exception()
+  %addr = getelementptr <32 x i16>, ptr addrspace(1) %out0, i32 %index
+  store <32 x i16> %load, ptr addrspace(1) %addr, align 64
+  %inc = add i32 %index, 1
+  %continue = icmp ult i32 %inc, %count
+  br i1 %continue, label %loop, label %afterloop
+
+afterloop:                                        ; preds = %loop
+  ret void
+}
+
+define void @sink_atomics(ptr addrspace(1) noalias %in0, ptr addrspace(1) noalias %assert.buffer,
+                                     ptr addrspace(1) noalias %out0, i32 %count) {
+; CHECK-LABEL: @sink_atomics(
+; CHECK:       entry_preheader:
+; CHECK-NOT:     load <32 x i16>
+; CHECK:         br label %[[LOOP:.*]]
+
+; CHECK:       [[LOOP]]:
+; CHECK:         call i32 @llvm.genx.GenISA.intatomicraw.i32.p1(ptr addrspace(1) [[ASSERT_BUFFER:%.*]], i32 0, i32 1, i32 0)
+; CHECK:         call i32 @llvm.genx.GenISA.intatomicrawsinglelane.i32.p1(ptr addrspace(1) [[ASSERT_BUFFER]], i32 0, i32 1, i32 0)
+; CHECK:         call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1.p1(ptr addrspace(1) [[ASSERT_BUFFER]], ptr addrspace(1) [[ASSERT_BUFFER]], i32 1, i32 0)
+; CHECK:         call float @llvm.genx.GenISA.floatatomicraw.f32.p1(ptr addrspace(1) [[ASSERT_BUFFER]], i32 0, float 1.000000e+00, i32 0)
+; CHECK:         call float @llvm.genx.GenISA.floatatomicrawA64.f32.p1.p1(ptr addrspace(1) [[ASSERT_BUFFER]], ptr addrspace(1) [[ASSERT_BUFFER]], i32 1, i32 0)
+; CHECK:         call i32 @llvm.genx.GenISA.icmpxchgatomicraw.i32.p1(ptr addrspace(1) [[ASSERT_BUFFER]], i32 0, i32 1, i32 0)
+; CHECK:         call i32 @llvm.genx.GenISA.icmpxchgatomicrawA64.i32.p1.p1(ptr addrspace(1) [[ASSERT_BUFFER]], ptr addrspace(1) [[ASSERT_BUFFER]], i32 1, i32 0)
+; CHECK:         call float @llvm.genx.GenISA.fcmpxchgatomicraw.f32.p1(ptr addrspace(1) [[ASSERT_BUFFER]], i32 0, float 1.000000e+00, float 0.000000e+00)
+; CHECK:         call float @llvm.genx.GenISA.fcmpxchgatomicrawA64.f32.p1.p1(ptr addrspace(1) [[ASSERT_BUFFER]], ptr addrspace(1) [[ASSERT_BUFFER]], float 1.000000e+00, float 0.000000e+00)
+; CHECK:         [[SINK_LOAD:%.*]] = load <32 x i16>, ptr addrspace(1) [[IN0:%.*]]
+; CHECK:         store <32 x i16> [[SINK_LOAD]]
+
+entry_preheader:
+  %load = load <32 x i16>, ptr addrspace(1) %in0, align 64
+  br label %loop
+
+loop:                                             ; preds = %loop, %entry_preheader
+  %index = phi i32 [ 0, %entry_preheader ], [ %inc, %loop ]
+  %atomic = call i32 @llvm.genx.GenISA.intatomicraw.i32.p1(ptr addrspace(1) %assert.buffer, i32 0, i32 1, i32 0)
+  %atomicSingleLane = call i32 @llvm.genx.GenISA.intatomicrawsinglelane.i32.p1(ptr addrspace(1) %assert.buffer, i32 0, i32 1, i32 0)
+  %atomicA64 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1.p1(ptr addrspace(1) %assert.buffer, ptr addrspace(1) %assert.buffer, i32 1, i32 0)
+  %atomicFloat = call float @llvm.genx.GenISA.floatatomicraw.f32.p1(ptr addrspace(1) %assert.buffer, i32 0, float 1.000000e+00, i32 0)
+  %atomicFloatA64 = call float @llvm.genx.GenISA.floatatomicrawA64.f32.p1.p1(ptr addrspace(1) %assert.buffer, ptr addrspace(1) %assert.buffer, i32 1, i32 0)
+  %atomicCmpXchg = call i32 @llvm.genx.GenISA.icmpxchgatomicraw.i32.p1(ptr addrspace(1) %assert.buffer, i32 0, i32 1, i32 0)
+  %atomicCmpXchgA64 = call i32 @llvm.genx.GenISA.icmpxchgatomicrawA64.i32.p1.p1(ptr addrspace(1) %assert.buffer, ptr addrspace(1) %assert.buffer, i32 1, i32 0)
+  %atomicFloatCmpXchg = call float @llvm.genx.GenISA.fcmpxchgatomicraw.f32.p1(ptr addrspace(1) %assert.buffer, i32 0, float 1.000000e+00, float 0.000000e+00)
+  %atomicFloatCmpXchgA64 = call float @llvm.genx.GenISA.fcmpxchgatomicrawA64.f32.p1.p1(ptr addrspace(1) %assert.buffer, ptr addrspace(1) %assert.buffer, float 1.000000e+00, float 0.000000e+00)
+  %addr = getelementptr <32 x i16>, ptr addrspace(1) %out0, i32 %index
+  store <32 x i16> %load, ptr addrspace(1) %addr, align 64
+  %inc = add i32 %index, 1
+  %continue = icmp ult i32 %inc, %count
+  br i1 %continue, label %loop, label %afterloop
+
+afterloop:                                        ; preds = %loop
+  ret void
+}
+
+; Atomic updates the same buffer that is loaded from. Can't sink
+define void @no_sink_load_aliasing_atomic(ptr addrspace(1) %buf, ptr addrspace(1) noalias %out0, i32 %count) {
+; CHECK-LABEL: @no_sink_load_aliasing_atomic(
+; CHECK:       entry_preheader:
+; CHECK:         [[LOAD:%.*]] = load <32 x i16>, ptr addrspace(1) [[BUF:%.*]]
+; CHECK:         br label %[[LOOP:.*]]
+
+; CHECK:       [[LOOP]]:
+; CHECK-NOT:     load <32 x i16>
+; CHECK:         store <32 x i16> [[LOAD]]
+
+entry_preheader:
+  %load = load <32 x i16>, ptr addrspace(1) %buf, align 64
+  br label %loop
+
+loop:                                             ; preds = %loop, %entry_preheader
+  %index = phi i32 [ 0, %entry_preheader ], [ %inc, %loop ]
+  %atomicRaw = call i32 @llvm.genx.GenISA.intatomicraw.i32.p1(ptr addrspace(1) %buf, i32 0, i32 1, i32 0)
+  %addr = getelementptr <32 x i16>, ptr addrspace(1) %out0, i32 %index
+  store <32 x i16> %load, ptr addrspace(1) %addr, align 64
+  %inc = add i32 %index, 1
+  %continue = icmp ult i32 %inc, %count
+  br i1 %continue, label %loop, label %afterloop
+
+afterloop:                                        ; preds = %loop
   ret void
 }
 

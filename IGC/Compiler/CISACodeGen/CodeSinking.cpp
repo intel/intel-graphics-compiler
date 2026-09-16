@@ -2267,7 +2267,22 @@ bool CodeLoopSinking::isSafeToLoopSinkLoad(Instruction *InstToSink, Loop *L) {
       case GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload:
       case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
       case GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload:
+      case GenISAIntrinsic::GenISA_intatomicraw:
+      case GenISAIntrinsic::GenISA_floatatomicraw:
+      case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
+      case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
+      case GenISAIntrinsic::GenISA_intatomicrawsinglelane:
         return MemoryLocation::getForArgument(Intr, 0, TLI);
+      case GenISAIntrinsic::GenISA_intatomicrawA64:
+      case GenISAIntrinsic::GenISA_floatatomicrawA64:
+      case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
+      case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
+        // A64 atomics have separate source and destination memory operands.
+        // We only handle the common case: src==dst. Otherwise aliasing needs to be checked for both source and
+        // destination separately.
+        if (Intr->getArgOperand(0) == Intr->getArgOperand(1))
+          return MemoryLocation::getForArgument(Intr, 1, TLI);
+        break;
       default:
         break;
       }
@@ -2307,6 +2322,7 @@ bool CodeLoopSinking::isSafeToLoopSinkLoad(Instruction *InstToSink, Loop *L) {
         case GenISAIntrinsic::GenISA_dpas:
         case GenISAIntrinsic::GenISA_sub_group_dpas:
         case GenISAIntrinsic::GenISA_sub_group_bdpas:
+        case GenISAIntrinsic::GenISA_software_exception:
           PrintDump(VerbosityLevel::High, "Not a real store instruction, may not alias\n");
           continue;
 
@@ -2328,6 +2344,15 @@ bool CodeLoopSinking::isSafeToLoopSinkLoad(Instruction *InstToSink, Loop *L) {
         // Supported writes
         case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
         case GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload:
+        case GenISAIntrinsic::GenISA_intatomicraw:
+        case GenISAIntrinsic::GenISA_floatatomicraw:
+        case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
+        case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
+        case GenISAIntrinsic::GenISA_intatomicrawsinglelane:
+        case GenISAIntrinsic::GenISA_intatomicrawA64:
+        case GenISAIntrinsic::GenISA_floatatomicrawA64:
+        case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
+        case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
           UnsupportedStore = false;
           break;
 
