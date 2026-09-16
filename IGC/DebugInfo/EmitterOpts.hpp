@@ -19,6 +19,8 @@ struct DebugEmitterOpts {
   bool EmitATLinkageName = true;
   bool EnableDebugInfoValidation = false;
   bool ReserveR510 = false;
+  // %ip is 64-bit, so call writes a 64-bit return address to its dst GRF.
+  bool Has64BitIP = false;
   unsigned int VISAABIVersion = 2;
 };
 } // namespace IGC

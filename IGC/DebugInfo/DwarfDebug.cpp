@@ -3458,14 +3458,15 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
   // return reg operand
   writeULEB128(data, RegisterNumbering ::IP);
 
-  // actual reg holding retval
+  // actual reg holding retval. Read as many bits as %ip is wide, else the
+  // return address is truncated and the caller frame cannot be unwound.
   data1.clear();
   write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
   write(data1, (uint16_t)GetEncodedRegNum<RegisterNumbering::GRFBase>(retRegNum));
   write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
   write(data1, (uint16_t)(retSubRegNum * 8));
   write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
-  write(data1, (uint8_t)32);
+  write(data1, (uint8_t)(EmitSettings.Has64BitIP ? 64 : 32));
 
   writeULEB128(data, data1.size());
   for (auto item : data1)
