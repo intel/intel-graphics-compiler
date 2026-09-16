@@ -8656,6 +8656,10 @@ bool G4_InstDpas::is2xInt8() const {
 }
 
 uint8_t G4_InstDpas::getOpsPerChan() const {
+  // u1/s1 (1-bit) precision is not supported
+  vISA_ASSERT_INPUT(
+      Src1Precision != GenPrecision::U1 && Src1Precision != GenPrecision::S1,
+      "dpas : u1/s1 (1-bit) precision is not supported");
   if (isBF16() || isFP16())
     return OPS_PER_CHAN_2;
   else if (isTF32())

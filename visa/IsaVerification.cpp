@@ -1779,6 +1779,11 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
     REPORT_INSTRUCTION(options, false, error, ISA_Inst_Table[opcode].str);
   };
 
+  // Check if DPAS has 1-bit (u1/s1) precision
+  auto isOneBitPrecision = [](GenPrecision P) {
+    return P == GenPrecision::U1 || P == GenPrecision::S1;
+  };
+
   auto checkDpasRawOperandAlignment = [&](const raw_opnd &opnd, unsigned align,
                                           const char *operandName) {
     const var_info_t *base;
@@ -1987,6 +1992,12 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
       uint8_t D = 0, C = 0;
       uint32_t dpasOtherOpnd = getPrimitiveOperand<uint32_t>(inst, ++i);
       UI32ToDpasInfo(dpasOtherOpnd, A, W, D, C);
+
+      REPORT_INSTRUCTION(options,
+                         !isOneBitPrecision(W) && !isOneBitPrecision(A),
+                         "%s : u1/s1 (1-bit) precision is not supported",
+                         ISA_Inst_Table[opcode].str);
+
       unsigned execSize = Get_VISA_Exec_Size(inst->getExecSize());
 
       VISA_Type dstTy = getRawOperandType(header, dst);
