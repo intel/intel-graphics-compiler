@@ -2789,7 +2789,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER &i, G4_BB *bb) {
   INST_LIST_ITER last_iter;
   // create a mov inst
   if (satMod == g4::NOSAT) {
-    bool extra_mov = dst && dst->getExecTypeSize() > TypeSize(Type_D);
+    bool extra_mov = dst->getExecTypeSize() > TypeSize(Type_D);
     extra_mov |= isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst);
 
     G4_INST *movInst = builder.createMov(

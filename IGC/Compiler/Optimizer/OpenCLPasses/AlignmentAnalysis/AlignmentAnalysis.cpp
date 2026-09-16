@@ -63,7 +63,7 @@ static bool matchesKernelArgTypeName(StructType *StTy, StringRef Name) {
 // If OpenCL name is ambiguous, we treat the pointer as opaque.
 static StructType *getKernelArgStructType(const Argument &Arg, StringRef Name) {
   // Drop the source qualifier.
-  Name.consume_front("struct ");
+  (void)Name.consume_front("struct ");
 
   StructType *Found = nullptr;
   for (const User *U : Arg.users()) {

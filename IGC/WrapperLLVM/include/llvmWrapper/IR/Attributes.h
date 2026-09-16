@@ -25,14 +25,11 @@ inline llvm::AttributeList addCapture(llvm::AttributeList &list, llvm::LLVMConte
 #if LLVM_VERSION_MAJOR >= 22
   return list.addParamAttribute(ctx, {index}, llvm::Attribute::getWithCaptureInfo(ctx, llvm::CaptureInfo(capture)));
 #else
-  if (capture == IGCLLVM::CaptureComponents::None)
-    return list.addParamAttribute(ctx, {index}, llvm::Attribute::get(ctx, llvm::Attribute::NoCapture));
-  else
-    IGC_ASSERT_EXIT_MESSAGE(
-        false, "We only support llvm::Attribute::NoCapture/llvm::CaptureComponents::None on LLVMs below 22.");
+  IGC_ASSERT_EXIT_MESSAGE(
+      capture == IGCLLVM::CaptureComponents::None,
+      "We only support llvm::Attribute::NoCapture/llvm::CaptureComponents::None on LLVMs below 22.");
+  return list.addParamAttribute(ctx, {index}, llvm::Attribute::get(ctx, llvm::Attribute::NoCapture));
 #endif
-
-  return list;
 }
 
 inline void setNoCaptureAttributeAtArgIndex(llvm::Function *F, unsigned ArgNo) {

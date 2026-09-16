@@ -138,7 +138,8 @@ inline auto insertPosition(llvm::Instruction *InsertBefore) {
 #if LLVM_VERSION_MAJOR < 18
   return InsertBefore;
 #else
-  IGC_ASSERT(InsertBefore);
+  if (!InsertBefore)
+    return llvm::BasicBlock::iterator();
   auto It = InsertBefore->getIterator();
   // If inserting at the very start of a block, set the head-bit so the
   // debug-record machinery knows the new instruction belongs before any

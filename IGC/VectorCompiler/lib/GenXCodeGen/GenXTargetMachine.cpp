@@ -275,7 +275,7 @@ TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function &F)
 }
 void GenXTTIImpl::getUnrollingPreferences(
     Loop *L, ScalarEvolution &SE, TargetTransformInfo::UnrollingPreferences &UP,
-    OptimizationRemarkEmitter *ORE) {
+    OptimizationRemarkEmitter *ORE) const {
   if (BC.ignoreLoopUnrollThresholdOnPragma() &&
       GetUnrollMetadataForLoop(L, "llvm.loop.unroll.enable"))
     UP.Threshold = UP.PartialThreshold = std::numeric_limits<unsigned>::max();

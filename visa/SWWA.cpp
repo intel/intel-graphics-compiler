@@ -495,14 +495,10 @@ void Optimizer::finishFusedCallWA_preSWSB() {
       G4_BB *perThreadBB = kernel.getPerThreadPayloadBB();
       G4_BB *crossThreadBB = kernel.getCrossThreadPayloadBB();
       if (perThreadBB != nullptr || crossThreadBB != nullptr) {
-        while (entryBB != nullptr) {
-          if (entryBB == perThreadBB || entryBB == crossThreadBB) {
-            // perthread/crossThread BB has a single succ.
-            vASSERT(entryBB->Succs.size() == 1);
-            entryBB = entryBB->Succs.front();
-            continue;
-          }
-          break;
+        while (entryBB == perThreadBB || entryBB == crossThreadBB) {
+          // perthread/crossThread BB has a single succ.
+          vASSERT(entryBB->Succs.size() == 1);
+          entryBB = entryBB->Succs.front();
         }
       }
       entryBB->insertBefore(entryBB->getFirstInsertPos(), I0);

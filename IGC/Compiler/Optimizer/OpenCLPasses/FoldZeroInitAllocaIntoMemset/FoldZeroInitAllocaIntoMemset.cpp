@@ -124,11 +124,11 @@ std::vector<WorkItem> FoldZeroInitAllocaIntoMemset::findUnnecessaryAllocaInstanc
       auto secondUser = allocaUserList.at(1);
       // order varies
       if (isa_and_nonnull<llvm::CallInst>(firstUser) && isa_and_nonnull<llvm::BitCastInst>(secondUser)) {
-        memSetCall = dyn_cast<llvm::CallInst>(firstUser);
-        bitcastInst = dyn_cast<llvm::BitCastInst>(secondUser);
+        memSetCall = cast<llvm::CallInst>(firstUser);
+        bitcastInst = cast<llvm::BitCastInst>(secondUser);
       } else if (isa_and_nonnull<llvm::BitCastInst>(firstUser) && isa_and_nonnull<llvm::CallInst>(secondUser)) {
-        bitcastInst = dyn_cast<llvm::BitCastInst>(firstUser);
-        memSetCall = dyn_cast<llvm::CallInst>(secondUser);
+        bitcastInst = cast<llvm::BitCastInst>(firstUser);
+        memSetCall = cast<llvm::CallInst>(secondUser);
       } else {
         continue;
       }
@@ -177,7 +177,7 @@ std::vector<WorkItem> FoldZeroInitAllocaIntoMemset::findUnnecessaryAllocaInstanc
         continue;
 
       // ------------- MemCpy -------------
-      auto memCpyCall = dyn_cast<llvm::CallInst>(bitcastUser);
+      auto memCpyCall = cast<llvm::CallInst>(bitcastUser);
       auto memCpycalledFunc = memCpyCall->getCalledFunction();
       if (!memCpycalledFunc || memCpycalledFunc->getIntrinsicID() != llvm::Intrinsic::memcpy)
         continue;

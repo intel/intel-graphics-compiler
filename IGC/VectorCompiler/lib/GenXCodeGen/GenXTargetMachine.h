@@ -150,7 +150,7 @@ class GenXTTIImpl : public IGCLLVM::TTIImplCRTPBase<GenXTTIImpl> {
   const GenXBackendConfig &BC;
   const GenXSubtarget &ST;
 
-  MDNode *GetUnrollMetadataForLoop(const Loop *L, StringRef Name) {
+  MDNode *GetUnrollMetadataForLoop(const Loop *L, StringRef Name) const {
     if (MDNode *LoopID = L->getLoopID())
       return GetUnrollMetadata(LoopID, Name);
     return nullptr;
@@ -161,7 +161,7 @@ public:
               const GenXSubtarget &ST)
       : BaseT(DL), BC(BC), ST(ST) {}
 
-  bool shouldBuildLookupTables() { return false; }
+  bool shouldBuildLookupTables() const { return false; }
   unsigned getFlatAddressSpace() const { return vc::AddrSpace::Generic; }
 
   InstructionCost getUserCost(const User *U, ArrayRef<const Value *> Operands,
@@ -191,7 +191,7 @@ public:
 
   void getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
                                TTI::UnrollingPreferences &UP,
-                               OptimizationRemarkEmitter *ORE);
+                               OptimizationRemarkEmitter *ORE) const;
 
   void getPeelingPreferences(Loop *, ScalarEvolution &,
                              TTI::PeelingPreferences &) const;
