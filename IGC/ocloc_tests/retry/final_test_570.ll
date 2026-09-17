@@ -4,14 +4,19 @@
 ; 121, below the default cutoff of 119, so remat was skipped and the retry kept the spill.
 ; RematRPELimit flag is only settable on Debug builds, otherwise it's set to the default value.
 
+; RematRPELimit lowered again, from 92 to 90: single flow remat now does enough on its own that
+; greedy remat, which this kernel needs, no longer runs at the old limit. Pressure goes 121 before
+; remat, 115 after single flow, against a 117 limit, so greedy sees pressure below the limit and
+; bails out. Dropping the limit to 90 keeps greedy remat running.
+
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
-; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-igc_opts 'EnableOpaquePointersBackend=1,RematRPELimit=92,VISAOptions=-asmToConsole'" &> %t_output.ll
+; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-igc_opts 'EnableOpaquePointersBackend=1,RematRPELimit=90,VISAOptions=-asmToConsole'" &> %t_output.ll
 ; RUN: FileCheck --input-file %t_output.ll %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE-LLVM22%}
 
 ; LLVM with typed pointers:
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
-; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-igc_opts 'RematRPELimit=92, VISAOptions=-asmToConsole'" &> %t_output.ll
+; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-igc_opts 'RematRPELimit=90, VISAOptions=-asmToConsole'" &> %t_output.ll
 ; RUN: FileCheck --input-file %t_output.ll %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE-LLVM22%}
 
 ; ATTENTION: if your change lowers spill size significantly congratulations! just adjust the numbers

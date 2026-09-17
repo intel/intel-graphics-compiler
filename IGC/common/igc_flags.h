@@ -1905,6 +1905,8 @@ DECLARE_IGC_REGKEY(DWORD, RematVRTProximityPercent, 5,
 DECLARE_IGC_REGKEY(bool, RematSingleFlowRematEnabled, true,
                    "Allow singleFlowRemat stage inside CloneAddressArithmeticPass", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, RematEnable, false, "Enable clone address arithmetic pass not only on retry", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, RematEnableAfterEmu, false, "Run an extra clone address arithmetic pass after Emu64Ops",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, RematLog, false, "Dump Remat Log, useful for analyzing spills as well", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, RematLogToErr, false, "Dump Remat Log, useful for analyzing spills as well", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(

@@ -208,6 +208,7 @@ static bool isSafelyRematerializable(Use &Use) {
   auto SI = llvm::isa<StoreInst>(Use.getUser());
   auto BI = llvm::isa<BitCastInst>(Use.getUser());
   auto SelI = llvm::isa<SelectInst>(Use.getUser());
+  auto BO = llvm::isa<BinaryOperator>(Use.getUser());
   auto CI = IGC_IS_FLAG_ENABLED(RematAddrSpaceCastToUse) ? llvm::isa<AddrSpaceCastInst>(Use.getUser()) : false;
   // TODO: move to whitelist option
   // sometimes it helps to rematerialize arguments for llvm.debug functions in general it's not safe.
@@ -215,7 +216,7 @@ static bool isSafelyRematerializable(Use &Use) {
   // investigated. visa can exhibit strange behavior sometimes
   auto CLI = IGC_IS_FLAG_ENABLED(RematCallsOperand) ? llvm::isa<CallInst>(Use.getUser()) : false;
 
-  bool Result = LI || SI || BI || CI || CLI || SelI;
+  bool Result = LI || SI || BI || CI || CLI || SelI || BO;
   return Result;
 }
 
@@ -228,6 +229,30 @@ static bool isAddressArithmetic(Instruction *I) {
                 (IGC_GET_FLAG_VALUE(RematAllowExtractElement) && isa<ExtractElementInst>(I));
 
   return Result;
+}
+
+static bool hasKnownPrimitiveSize(Type *Ty) { return Ty->isIntOrIntVectorTy() || Ty->isFPOrFPVectorTy(); }
+
+// An instruction is "always profitable" to rematerialize, regardless of the
+// use-count heuristic, when cloning it does not increase live-value pressure:
+//   - a size-expanding unary cast (e.g. i16->i32 zext/sext, i16->float sitofp,
+//     float->double fpext): keep the narrow source value live and produce the
+//     wider value right next to the use.
+//   - a binary operator with at least one constant operand: the clone only
+//     keeps its non-constant operand(s) live.
+static bool isAlwaysProfitableToRemat(Instruction *I) {
+  if (auto *CI = dyn_cast<CastInst>(I)) {
+    Type *SrcTy = CI->getSrcTy();
+    Type *DstTy = CI->getDestTy();
+    if (!hasKnownPrimitiveSize(SrcTy) || !hasKnownPrimitiveSize(DstTy))
+      return false;
+    return DstTy->getPrimitiveSizeInBits() > SrcTy->getPrimitiveSizeInBits();
+  }
+
+  if (auto *BO = dyn_cast<BinaryOperator>(I))
+    return (isa<Constant>(BO->getOperand(0)) || isa<Constant>(BO->getOperand(1)));
+
+  return false;
 }
 
 void addToSetRemat(llvm::Instruction *Inst, CloneAddressArithmetic::RematSet &Set) {
@@ -314,10 +339,13 @@ CloneAddressArithmetic::RematChain CloneAddressArithmetic::collectRematChain(llv
   PRINT_INST(I);
   PRINT_LOG_NL("");
 
+  bool IsCmp = llvm::isa<CmpInst>(I);
+  bool UseOnlyAlwaysProfitable = IsCmp;
+
   llvm::SmallVector<unsigned int, 4> StateVector;
   std::unordered_set<llvm::Instruction *> Explored;
 
-  // we are travdrsing ssa-chain for address arithmetic
+  // we are traversing ssa-chain for address arithmetic
   while (!BFSQ.empty()) {
 
     llvm::Instruction *CurrI = BFSQ.front();
@@ -339,11 +367,14 @@ CloneAddressArithmetic::RematChain CloneAddressArithmetic::collectRematChain(llv
       bool AddressArithmetic = isAddressArithmetic(Op);
       bool NotTooManyUses = FlowMap[Op] <= NumOfUsesLimit;
       bool NotExplored = !Explored.count(Op);
+      bool AlwaysProfitable = isAlwaysProfitableToRemat(Op);
 
       PRINT_LOG("\t\t " << "BB:" << SameBB << "Uses:" << NotTooManyUses << "Ar:" << AddressArithmetic
-                        << "Un:" << NotUniform);
-      bool Skip =
-          !(SameBB && NotConstant && NotPHI && NotTooManyUses && AddressArithmetic && NotUniform && NotExplored);
+                        << "Un:" << NotUniform << "Prof:" << AlwaysProfitable);
+      bool Skip = !(SameBB && NotConstant && NotPHI && (NotTooManyUses || AlwaysProfitable) && AddressArithmetic &&
+                    NotUniform && NotExplored);
+      if (UseOnlyAlwaysProfitable)
+        Skip = !(AlwaysProfitable && NotExplored);
       if (Skip) {
         PRINT_LOG_NL("\t\t --> Rejected");
         continue;

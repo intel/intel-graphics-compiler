@@ -1008,6 +1008,8 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     mpm.add(new CapLoopIterations(UINT_MAX));
   }
 
+  if (IGC_IS_FLAG_SET(DumpRegPressureEstimate))
+    mpm.add(new IGCRegisterPressurePrinter("before_remat"));
   // Run address remat after GVN as it may hoist address calculations and
   // create PHI nodes with addresses.
   if (IGC_IS_FLAG_ENABLED(RematEnable) ||
@@ -1191,6 +1193,13 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
       mpm.add(createPartialEmuI64OpsPass());
     } else {
       mpm.add(createEmu64OpsPass());
+    }
+
+    if (IGC_IS_FLAG_ENABLED(RematEnableAfterEmu)) {
+      mpm.add(createCloneAddressArithmeticPass());
+      // cloneAddressArithmetic leaves old instructions unnecessary
+      // dce pass helps to clean that up
+      mpm.add(createDeadCodeEliminationPass());
     }
 
     ctx.m_hasEmu64BitInsts = true;
