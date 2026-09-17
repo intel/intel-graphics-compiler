@@ -1212,9 +1212,11 @@ public:
   }
 
   bool needsLocalScopeEvictTGM() const {
-    return isCoreChildOf(IGFX_XE3P_CORE)
-               ? (!m_SkuTable.FtrNondeterministicTGMLoadData || IGC_IS_FLAG_ENABLED(ForceLocalScopeEvictTGM))
-               : true;
+    const auto forceLocalScopeEvictTGM = static_cast<IGC::TriboolFlag>(IGC_GET_FLAG_VALUE(ForceLocalScopeEvictTGM));
+    if (forceLocalScopeEvictTGM == IGC::TriboolFlag::Disabled || forceLocalScopeEvictTGM == IGC::TriboolFlag::Enabled)
+      return forceLocalScopeEvictTGM == IGC::TriboolFlag::Enabled;
+
+    return isCoreChildOf(IGFX_XE3P_CORE) ? !m_SkuTable.FtrNondeterministicTGMLoadData : true;
   }
 
   bool needWaSamplerNoMask() const { return m_WaTable.Wa_22011157800 && !IGC_IS_FLAG_DISABLED(DiableWaSamplerNoMask); }

@@ -661,8 +661,9 @@ DECLARE_IGC_REGKEY(DWORD, RovOpt, 3,
 DECLARE_IGC_REGKEY(bool, EnableLSCFence, true, "Enable LSC Fence in ConvertDXIL for the device has LSC", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, MinCompressionThreshold, 60,
                    "Set the minimum compression threshold that is desired (100 is disabling it)", ALWAYS)
-DECLARE_IGC_REGKEY(bool, ForceLocalScopeEvictTGM, false, "Forces upgrading fence.tgm.local.none to evictions",
-                   DEBUG_ONLY)
+DECLARE_IGC_REGKEY_ENUM(ForceLocalScopeEvictTGM, -1,
+                        "Upgrade fence.tgm.local.none to evictions: Default uses platform/SKU behavior",
+                        TRIBOOL_OPTIONS, DEBUG_ONLY)
 DECLARE_IGC_REGKEY(
     bool, EnableStatelessToStateful, true,
     "Enable Stateless To Stateful transformation for global and constant address space in OpenCL kernels", DEBUG_ONLY)
