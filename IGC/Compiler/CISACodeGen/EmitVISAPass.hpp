@@ -460,8 +460,6 @@ public:
   void emitVectorBitCast(llvm::BitCastInst *BCI);
   void emitVectorLoad(llvm::LoadInst *LI, llvm::Value *offset, llvm::ConstantInt *immOffset);
   void emitVectorStore(llvm::StoreInst *SI, llvm::Value *offset, llvm::ConstantInt *immOffset);
-  void prepareLSCUniformBase(CVariable *&uniformBase, int &immOffset, LSC_ADDR_SIZE addrSize,
-                             const ResourceDescriptor &resource);
   void emitLSCVectorLoad(llvm::Instruction *Inst, llvm::Value *Ptr, llvm::Value *uniformBase, llvm::Value *offset,
                          llvm::ConstantInt *immOffset, ConstantInt *immScale, LSC_CACHE_OPTS cacheOpts,
                          LSC_DOC_ADDR_SPACE addrSpace, bool signExtendOffset, bool zeroExtendOffset);

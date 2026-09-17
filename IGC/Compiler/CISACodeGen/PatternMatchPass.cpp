@@ -3220,28 +3220,13 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
   if (auto OffsetInst = dyn_cast<Instruction>(Offset)) {
     if ((OffsetInst->getOpcode() == Instruction::SExt || OffsetInst->getOpcode() == Instruction::ZExt) &&
         OffsetInst->getType()->isIntegerTy(64) && OffsetInst->getOperand(0)->getType()->isIntegerTy(32)) {
-      bool IsSigned = OffsetInst->getOpcode() == Instruction::SExt;
-      auto *ConstantBase = dyn_cast<ConstantInt>(Base);
-      // If A32S is selected, emission moves an affected negative immediate
-      // into IND0. Check that prospective base before allowing A32S.
-      bool AdjustBase = m_Platform.needsLSCA32SNegativeOffsetWA() && ImmOffset && ImmOffset->isNegative() &&
-                        PointerOperand->getType()->getPointerAddressSpace() != ADDRESS_SPACE_THREAD_ARG;
-      bool IsZeroBase = ConstantBase && (AdjustBase ? (ConstantBase->getValue() + ImmOffset->getValue()).isZero()
-                                                    : ConstantBase->isZero());
-      bool NeedsA32SWA = m_Platform.hasEfficient64bEnabled() && isA64AddressingModel && IsSigned &&
-                         m_Platform.needsLSCA32SUniformBaseWA() && !IsZeroBase;
 
-      if (!NeedsA32SWA) {
-        Offset = OffsetInst->getOperand(0);
-        signExtendOffset = IsSigned;
-        zeroExtendOffset = !IsSigned;
-      } else if (valueIsPositive(OffsetInst->getOperand(0), m_DL, nullptr, &I)) {
-        // Signed and unsigned extension agree for a nonnegative index.
-        Offset = OffsetInst->getOperand(0);
+      Offset = OffsetInst->getOperand(0);
+      if (OffsetInst->getOpcode() == Instruction::SExt) {
+        signExtendOffset = true;
+      } else if (OffsetInst->getOpcode() == Instruction::ZExt) {
         zeroExtendOffset = true;
       }
-      // Otherwise retain the i64 extension before scaling. A64 still permits
-      // folding the uniform base, scale and immediate offset into the send.
     }
   }
 
