@@ -31,7 +31,6 @@ class RTBuilder : public IGCIRBuilder<>,
 
 public:
   const IGC::CodeGenContext &getCtx() const { return Ctx; }
-  unsigned getSurfaceStateSize() const { return Ctx.m_DriverInfo.getSurfaceStateSize(); }
   // Here are more specialized values that enforce more type safety
   // between the accessor methods of RTBuilder at the C++ level to avoid
   // passing the wrong values in.

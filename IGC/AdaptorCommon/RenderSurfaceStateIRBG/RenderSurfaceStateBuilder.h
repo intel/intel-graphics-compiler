@@ -29,7 +29,6 @@ protected:
     static_assert(DerivedFromIRBuilder<Derived>, "Derived must inherit from llvm::IRBuilderBase");
     static_assert(HasGetCtxBase<Derived>,
                   "Derived must implement getCtx() returning an object with getLLVMContext() and getModule()");
-    static_assert(HasSurfaceStateSize<Derived>, "Derived must implement: unsigned getSurfaceStateSize() const");
   }
 
   Derived &derived() { return static_cast<Derived &>(*this); }

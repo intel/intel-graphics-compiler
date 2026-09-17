@@ -40,9 +40,4 @@ concept HasGetCtxBase = requires(const T &t) {
 template <typename T>
 concept HasRTStackReflectionCtx = HasGetCtxBase<T>;
 
-template <typename T>
-concept HasSurfaceStateSize = requires(const T &t) {
-  { t.getSurfaceStateSize() } -> std::same_as<unsigned>;
-};
-
 } // namespace llvm
