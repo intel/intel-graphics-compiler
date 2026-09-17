@@ -296,6 +296,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeLdShrinkPass(Registry);
   initializeSplitIndirectEEtoSelPass(Registry);
   initializeExpandNonUniformInsertElementPass(Registry);
+  initializeClampNegativeMipLODBiasToZeroPass(Registry);
   initializeAnnotateUniformAllocasPass(Registry);
   initializeAtomicOptPassPass(Registry);
   initializePrepareLoadsStoresPassPass(Registry);

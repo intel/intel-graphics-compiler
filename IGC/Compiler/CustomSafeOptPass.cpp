@@ -6470,6 +6470,93 @@ IGC_INITIALIZE_PASS_BEGIN(ExpandNonUniformInsertElement, "ExpandNonUniformInsert
 IGC_INITIALIZE_PASS_END(ExpandNonUniformInsertElement, "ExpandNonUniformInsertElement", "ExpandNonUniformInsertElement",
                         false, false)
 
+namespace {
+class ClampNegativeMipLODBiasToZero : public FunctionPass {
+public:
+  static char ID;
+  ClampNegativeMipLODBiasToZero() : FunctionPass(ID) {
+    initializeClampNegativeMipLODBiasToZeroPass(*PassRegistry::getPassRegistry());
+  }
+  llvm::StringRef getPassName() const override { return "ClampNegativeMipLODBiasToZero"; }
+  bool runOnFunction(Function &F) override;
+
+private:
+  bool processSampleInst(llvm::CallInst *CI);
+  int getBiasOperandIndex(llvm::GenISAIntrinsic::ID InstId) const;
+};
+} // namespace
+
+char ClampNegativeMipLODBiasToZero::ID = 0;
+FunctionPass *IGC::createClampNegativeMipLODBiasToZeroPass() { return new ClampNegativeMipLODBiasToZero(); }
+
+// Maps the GenISA sample intrinsic IDs that take a mip/LOD bias operand
+// to the index of that operand. Unsupported instructions return -1
+int ClampNegativeMipLODBiasToZero::getBiasOperandIndex(GenISAIntrinsic::ID InstId) const {
+  switch (InstId) {
+  case GenISAIntrinsic::GenISA_sampleBptr:
+    return 0;
+  case GenISAIntrinsic::GenISA_sampleBCptr:
+    return 1;
+  default:
+    return -1;
+  }
+}
+
+bool ClampNegativeMipLODBiasToZero::processSampleInst(CallInst *CI) {
+  GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(CI);
+  if (!GII)
+    return false;
+
+  GenISAIntrinsic::ID InstId = GII->getIntrinsicID();
+  int BiasIdx = getBiasOperandIndex(InstId);
+  if (BiasIdx < 0)
+    return false;
+
+  Value *Bias = CI->getArgOperand(BiasIdx);
+  Constant *Zero = ConstantFP::get(Bias->getType(), 0.0);
+
+  // If the bias is a negative constant, replace with 0. Otherwise no change is needed
+  if (auto *CFP = dyn_cast<ConstantFP>(Bias)) {
+    if (!CFP->isNegative())
+      return false;
+
+    CI->setArgOperand(BiasIdx, Zero);
+    return true;
+  }
+
+  IRBuilder<> Builder(CI);
+
+  Function *MaxnumFn = IGCLLVM::getOrInsertDeclaration(CI->getModule(), Intrinsic::maxnum, Bias->getType());
+  Value *ClampedBias = Builder.CreateCall(MaxnumFn, {Bias, Zero});
+
+  CI->setArgOperand(BiasIdx, ClampedBias);
+
+  return true;
+}
+
+bool ClampNegativeMipLODBiasToZero::runOnFunction(Function &F) {
+  bool Changed = false;
+
+  SmallVector<CallInst *, 16> SampleInsts;
+  for (auto &I : instructions(F)) {
+    if (auto *CI = dyn_cast<CallInst>(&I)) {
+      if (isa<GenIntrinsicInst>(CI))
+        SampleInsts.push_back(CI);
+    }
+  }
+
+  for (CallInst *CI : SampleInsts) {
+    Changed |= processSampleInst(CI);
+  }
+
+  return Changed;
+}
+
+IGC_INITIALIZE_PASS_BEGIN(ClampNegativeMipLODBiasToZero, "ClampNegativeMipLODBiasToZero",
+                          "ClampNegativeMipLODBiasToZero", false, false)
+IGC_INITIALIZE_PASS_END(ClampNegativeMipLODBiasToZero, "ClampNegativeMipLODBiasToZero", "ClampNegativeMipLODBiasToZero",
+                        false, false)
+
 ////////////////////////////////////////////////////////////////////////
 // LogicalAndToBranch trying to find logical AND like below:
 //    res = simpleCond0 && complexCond1
