@@ -12,7 +12,7 @@
 ; SpvSubgroupMMAResolution - SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate
 ;
 ; Coverage on CRI:
-; - positive lowering of all 14 supported matrix dimensions and types defined in populateSimd16ScaledTable()
+; - positive lowering of all 14 supported matrix dimensions and types defined in getSimd16ScaledTable()
 ; - 17 negative diagnostics, one call per error path inside lowerToBdpasBuiltin(),
 ; - negative test for sub-group size 32
 ; - dead-builtin removal

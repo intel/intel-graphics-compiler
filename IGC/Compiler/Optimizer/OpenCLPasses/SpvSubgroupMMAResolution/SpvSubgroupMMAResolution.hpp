@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/DenseSet.h>
+#include <llvm/ADT/Hashing.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstVisitor.h>
@@ -48,16 +49,28 @@ public:
   void visitCallInst(llvm::CallInst &CI);
 
 private:
-  using OperandsTable = std::unordered_map<int, llvm::StringRef>;
-  using BTable = std::unordered_map<ElType, OperandsTable>;
-  using ATable = std::unordered_map<ElType, BTable>;
-  using RTable = std::unordered_map<ElType, ATable>;
-  using SupportedTable = std::unordered_map<uint32_t, RTable>;
+  struct SupportedTableKey {
+    uint32_t K;
+    ElType ResultElemTy;
+    ElType AElemTy;
+    ElType BElemTy;
+    uint32_t Operands;
 
-  static void populateSimd8Table();
-  static void populateSimd16Table();
-  static void populateSimd16ScaledTable();
-  SupportedTable *getSupportedTable();
+    bool operator==(const SupportedTableKey &Other) const = default;
+  };
+
+  struct SupportedTableKeyHash {
+    size_t operator()(const SupportedTableKey &Key) const {
+      return llvm::hash_combine(Key.K, Key.ResultElemTy, Key.AElemTy, Key.BElemTy, Key.Operands);
+    }
+  };
+
+  using SupportedTable = std::unordered_map<SupportedTableKey, llvm::StringRef, SupportedTableKeyHash>;
+
+  static const SupportedTable &getSimd8Table();
+  static const SupportedTable &getSimd16Table();
+  static const SupportedTable &getSimd16ScaledTable();
+  const SupportedTable &getSupportedTable() const;
 
   void emitError(const llvm::Twine &message, const llvm::CallInst &CI);
 
@@ -65,7 +78,6 @@ private:
   llvm::StringRef getElTypeStr(const ElType Ty) const;
   ElType getValidMatrixType(const llvm::Type *Ty) const;
   int getElemCount(const llvm::Type *Ty) const;
-  template <typename TableType> std::string getValidTypesStr(const TableType &table) const;
 
   bool validateI32Constant(const llvm::Value *V, const llvm::Twine &ParamName, llvm::StringRef BuiltinName,
                            const llvm::CallInst &CI);
@@ -77,21 +89,8 @@ private:
   bool validateBdpasElemCounts(int M, int AElemCount, int BElemCount, const llvm::CallInst &CI);
   bool validateScaleType(const llvm::Value *Scale, llvm::StringRef ParamName, int K, const llvm::CallInst &CI);
 
-  template <typename T>
-  bool validateKDimInTable(const T KIt, int K, const SupportedTable *table, llvm::StringRef BuiltinName,
-                           const llvm::CallInst &CI);
-  template <typename T>
-  bool validateResultElementInTable(const T RIt, int K, ElType ResultElemTy, const RTable &table,
-                                    llvm::StringRef BuiltinName, const llvm::CallInst &CI);
-  template <typename T>
-  bool validateAElementInTable(const T AIt, int K, ElType ResultElemTy, ElType AElemTy, const ATable &table,
-                               llvm::StringRef BuiltinName, const llvm::CallInst &CI);
-  template <typename T>
-  bool validateBElementInTable(const T BIt, int K, ElType ResultElemTy, ElType AElemTy, ElType BElemTy,
-                               const BTable &table, llvm::StringRef BuiltinName, const llvm::CallInst &CI);
-  template <typename T>
-  bool validateOperands(const T OpIt, int K, ElType ResultElemTy, ElType AElemTy, ElType BElemTy, uint32_t Operands,
-                        const OperandsTable &operandMap, llvm::StringRef BuiltinName, const llvm::CallInst &CI);
+  void diagnoseUnsupportedCombination(const SupportedTableKey &Key, const SupportedTable &Table,
+                                      llvm::StringRef BuiltinName, const llvm::CallInst &CI);
 
   bool isDoubleSubgroup(llvm::CallInst &CI);
 
@@ -104,9 +103,6 @@ private:
   IGC::CodeGenContext *m_Ctx = nullptr;
   IGC::IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
   llvm::Module *m_Module = nullptr;
-  static SupportedTable m_Simd8Table;
-  static SupportedTable m_Simd16Table;
-  static SupportedTable m_Simd16ScaledTable;
 };
 
 // Legacy Pass Manager wrapper.

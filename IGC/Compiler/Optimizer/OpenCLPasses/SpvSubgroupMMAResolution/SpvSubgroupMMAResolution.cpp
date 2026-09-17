@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "SpvSubgroupMMAResolution.hpp"
 
+#include <algorithm>
 #include <cmath> // for ceil
 
 #include "common/LLVMWarningsPush.hpp"
@@ -32,9 +33,6 @@ static constexpr StringRef DpasOpName = "__spirv_SubgroupMatrixMultiplyAccumulat
 static constexpr StringRef BdpasOpName = "__spirv_SubgroupScaledMatrixMultiplyAccumulateINTEL";
 
 char SpvSubgroupMMAResolutionLPM::ID = 0;
-SpvSubgroupMMAResolution::SupportedTable SpvSubgroupMMAResolution::m_Simd8Table;
-SpvSubgroupMMAResolution::SupportedTable SpvSubgroupMMAResolution::m_Simd16Table;
-SpvSubgroupMMAResolution::SupportedTable SpvSubgroupMMAResolution::m_Simd16ScaledTable;
 
 #define PASS_FLAG "igc-spv-subgroup-mma-resolution"
 #define PASS_DESC "Lowering of SPIR-V INTEL subgroup_matrix_multiply_accumulate instructions"
@@ -154,156 +152,182 @@ static std::string GetHumanReadableOperand(uint32_t operand) {
   return llvm::join(operands, " | ");
 }
 
-void SpvSubgroupMMAResolution::populateSimd8Table() {
-  // 8-bit integer matrix sources (signed and unsigned), 32-bit integer accumulator:
-  m_Simd8Table[32][ElType::I32][ElType::I32][ElType::I32][MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL] = "u8_u8_";
-  m_Simd8Table[32][ElType::I32][ElType::I32][ElType::I32]
-              [MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL | MatrixASignedComponentsINTEL] = "s8_u8_";
-  m_Simd8Table[32][ElType::I32][ElType::I32][ElType::I32]
-              [MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL | MatrixBSignedComponentsINTEL] = "u8_s8_";
-  m_Simd8Table[32][ElType::I32][ElType::I32][ElType::I32][MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL |
-                                                          MatrixASignedComponentsINTEL | MatrixBSignedComponentsINTEL] =
-      "s8_s8_";
+const SpvSubgroupMMAResolution::SupportedTable &SpvSubgroupMMAResolution::getSimd8Table() {
+  static const SupportedTable Table = {
+      // 8-bit integer matrix sources (signed and unsigned), 32-bit integer accumulator:
+      {{32, ElType::I32, ElType::I32, ElType::I32, MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL}, "u8_u8_"},
+      {{32, ElType::I32, ElType::I32, ElType::I32,
+        MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL | MatrixASignedComponentsINTEL},
+       "s8_u8_"},
+      {{32, ElType::I32, ElType::I32, ElType::I32,
+        MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL | MatrixBSignedComponentsINTEL},
+       "u8_s8_"},
+      {{32, ElType::I32, ElType::I32, ElType::I32,
+        MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL | MatrixASignedComponentsINTEL | MatrixBSignedComponentsINTEL},
+       "s8_s8_"},
 
-  // 4-bit integer matrix sources (signed and unsigned), 32-bit integer accumulator:
-  m_Simd8Table[64][ElType::I32][ElType::I32][ElType::I32][MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL] = "u4_u4_";
-  m_Simd8Table[64][ElType::I32][ElType::I32][ElType::I32]
-              [MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL | MatrixASignedComponentsINTEL] = "s4_u4_";
-  m_Simd8Table[64][ElType::I32][ElType::I32][ElType::I32]
-              [MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL | MatrixBSignedComponentsINTEL] = "u4_s4_";
-  m_Simd8Table[64][ElType::I32][ElType::I32][ElType::I32][MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL |
-                                                          MatrixASignedComponentsINTEL | MatrixBSignedComponentsINTEL] =
-      "s4_s4_";
+      // 4-bit integer matrix sources (signed and unsigned), 32-bit integer accumulator:
+      {{64, ElType::I32, ElType::I32, ElType::I32, MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL}, "u4_u4_"},
+      {{64, ElType::I32, ElType::I32, ElType::I32,
+        MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL | MatrixASignedComponentsINTEL},
+       "s4_u4_"},
+      {{64, ElType::I32, ElType::I32, ElType::I32,
+        MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL | MatrixBSignedComponentsINTEL},
+       "u4_s4_"},
+      {{64, ElType::I32, ElType::I32, ElType::I32,
+        MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL | MatrixASignedComponentsINTEL | MatrixBSignedComponentsINTEL},
+       "s4_s4_"},
 
-  // fp16 matrix sources, fp32 accumulator:
-  m_Simd8Table[16][ElType::F32][ElType::I32][ElType::I32][MatrixAPackedFloat16INTEL | MatrixBPackedFloat16INTEL] =
-      "hf_hf_";
-  // bf16 matrix sources, fp32 accumulator:
-  m_Simd8Table[16][ElType::F32][ElType::I32][ElType::I32][MatrixAPackedBFloat16INTEL | MatrixBPackedBFloat16INTEL] =
-      "bf_bf_";
+      // fp16 matrix sources, fp32 accumulator:
+      {{16, ElType::F32, ElType::I32, ElType::I32, MatrixAPackedFloat16INTEL | MatrixBPackedFloat16INTEL}, "hf_hf_"},
+      // bf16 matrix sources, fp32 accumulator:
+      {{16, ElType::F32, ElType::I32, ElType::I32, MatrixAPackedBFloat16INTEL | MatrixBPackedBFloat16INTEL}, "bf_bf_"},
+  };
+  return Table;
 }
 
-void SpvSubgroupMMAResolution::populateSimd16Table() {
-  // 8-bit integer matrix sources (signed and unsigned), 32-bit integer accumulator:
-  m_Simd16Table[32][ElType::I32][ElType::I16][ElType::I32][MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL] = "u8_u8_";
-  m_Simd16Table[32][ElType::I32][ElType::I16][ElType::I32]
-               [MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL | MatrixASignedComponentsINTEL] = "s8_u8_";
-  m_Simd16Table[32][ElType::I32][ElType::I16][ElType::I32]
-               [MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL | MatrixBSignedComponentsINTEL] = "u8_s8_";
-  m_Simd16Table[32][ElType::I32][ElType::I16][ElType::I32][MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL |
-                                                           MatrixASignedComponentsINTEL |
-                                                           MatrixBSignedComponentsINTEL] = "s8_s8_";
+const SpvSubgroupMMAResolution::SupportedTable &SpvSubgroupMMAResolution::getSimd16Table() {
+  static const SupportedTable Table = {
+      // 8-bit integer matrix sources (signed and unsigned), 32-bit integer accumulator:
+      {{32, ElType::I32, ElType::I16, ElType::I32, MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL}, "u8_u8_"},
+      {{32, ElType::I32, ElType::I16, ElType::I32,
+        MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL | MatrixASignedComponentsINTEL},
+       "s8_u8_"},
+      {{32, ElType::I32, ElType::I16, ElType::I32,
+        MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL | MatrixBSignedComponentsINTEL},
+       "u8_s8_"},
+      {{32, ElType::I32, ElType::I16, ElType::I32,
+        MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL | MatrixASignedComponentsINTEL | MatrixBSignedComponentsINTEL},
+       "s8_s8_"},
 
-  // 4-bit integer matrix sources (signed and unsigned), 32-bit integer accumulator:
-  m_Simd16Table[64][ElType::I32][ElType::I16][ElType::I32][MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL] = "u4_u4_";
-  m_Simd16Table[64][ElType::I32][ElType::I16][ElType::I32]
-               [MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL | MatrixASignedComponentsINTEL] = "s4_u4_";
-  m_Simd16Table[64][ElType::I32][ElType::I16][ElType::I32]
-               [MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL | MatrixBSignedComponentsINTEL] = "u4_s4_";
-  m_Simd16Table[64][ElType::I32][ElType::I16][ElType::I32][MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL |
-                                                           MatrixASignedComponentsINTEL |
-                                                           MatrixBSignedComponentsINTEL] = "s4_s4_";
+      // 4-bit integer matrix sources (signed and unsigned), 32-bit integer accumulator:
+      {{64, ElType::I32, ElType::I16, ElType::I32, MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL}, "u4_u4_"},
+      {{64, ElType::I32, ElType::I16, ElType::I32,
+        MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL | MatrixASignedComponentsINTEL},
+       "s4_u4_"},
+      {{64, ElType::I32, ElType::I16, ElType::I32,
+        MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL | MatrixBSignedComponentsINTEL},
+       "u4_s4_"},
+      {{64, ElType::I32, ElType::I16, ElType::I32,
+        MatrixAPackedInt4INTEL | MatrixBPackedInt4INTEL | MatrixASignedComponentsINTEL | MatrixBSignedComponentsINTEL},
+       "s4_s4_"},
 
-  // fp16 matrix sources, fp32 accumulator:
-  m_Simd16Table[16][ElType::F32][ElType::I16][ElType::I32][MatrixAPackedFloat16INTEL | MatrixBPackedFloat16INTEL] =
-      "f_f_hf_hf_";
-  // bf16 matrix sources, fp32 accumulator:
-  m_Simd16Table[16][ElType::F32][ElType::I16][ElType::I32][MatrixAPackedBFloat16INTEL | MatrixBPackedBFloat16INTEL] =
-      "f_f_bf_bf_";
-  // fp16 matrix sources, fp16 accumulator:
-  m_Simd16Table[16][ElType::F16][ElType::I16][ElType::I32][MatrixAPackedFloat16INTEL | MatrixBPackedFloat16INTEL] =
-      "hf_hf_hf_hf_";
-  // bf16 matrix sources, bf16 accumulator:
-  m_Simd16Table[16][ElType::I16][ElType::I16][ElType::I32][MatrixResultBFloat16INTEL | MatrixAPackedBFloat16INTEL |
-                                                           MatrixBPackedBFloat16INTEL | MatrixCBFloat16INTEL] =
-      "bf_bf_bf_bf_";
+      // fp16 matrix sources, fp32 accumulator:
+      {{16, ElType::F32, ElType::I16, ElType::I32, MatrixAPackedFloat16INTEL | MatrixBPackedFloat16INTEL},
+       "f_f_hf_hf_"},
+      // bf16 matrix sources, fp32 accumulator:
+      {{16, ElType::F32, ElType::I16, ElType::I32, MatrixAPackedBFloat16INTEL | MatrixBPackedBFloat16INTEL},
+       "f_f_bf_bf_"},
+      // fp16 matrix sources, fp16 accumulator:
+      {{16, ElType::F16, ElType::I16, ElType::I32, MatrixAPackedFloat16INTEL | MatrixBPackedFloat16INTEL},
+       "hf_hf_hf_hf_"},
+      // bf16 matrix sources, bf16 accumulator:
+      {{16, ElType::I16, ElType::I16, ElType::I32,
+        MatrixResultBFloat16INTEL | MatrixAPackedBFloat16INTEL | MatrixBPackedBFloat16INTEL | MatrixCBFloat16INTEL},
+       "bf_bf_bf_bf_"},
 
-  // tf32 matrix sources, fp32 accumulator:
-  m_Simd16Table[8][ElType::F32][ElType::F32][ElType::F32][MatrixATF32INTEL | MatrixBTF32INTEL] = "f_f_tf32_tf32_";
+      // tf32 matrix sources, fp32 accumulator:
+      {{8, ElType::F32, ElType::F32, ElType::F32, MatrixATF32INTEL | MatrixBTF32INTEL}, "f_f_tf32_tf32_"},
 
-  // fp8 matrix sources (hf8 and bf8), fp32 accumulator:
-  m_Simd16Table[32][ElType::F32][ElType::I16][ElType::I32]
-               [MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E5M2INTEL] = "f_f_bf8_bf8_";
-  m_Simd16Table[32][ElType::F32][ElType::I16][ElType::I32]
-               [MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E5M2INTEL] = "f_f_hf8_bf8_";
-  m_Simd16Table[32][ElType::F32][ElType::I16][ElType::I32]
-               [MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E4M3INTEL] = "f_f_bf8_hf8_";
-  m_Simd16Table[32][ElType::F32][ElType::I16][ElType::I32]
-               [MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E4M3INTEL] = "f_f_hf8_hf8_";
+      // fp8 matrix sources (hf8 and bf8), fp32 accumulator:
+      {{32, ElType::F32, ElType::I16, ElType::I32, MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E5M2INTEL},
+       "f_f_bf8_bf8_"},
+      {{32, ElType::F32, ElType::I16, ElType::I32, MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E5M2INTEL},
+       "f_f_hf8_bf8_"},
+      {{32, ElType::F32, ElType::I16, ElType::I32, MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E4M3INTEL},
+       "f_f_bf8_hf8_"},
+      {{32, ElType::F32, ElType::I16, ElType::I32, MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E4M3INTEL},
+       "f_f_hf8_hf8_"},
 
-  // fp8 matrix sources (hf8 and bf8), bf16 accumulator:
-  m_Simd16Table[32][ElType::I16][ElType::I16][ElType::I32][MatrixResultBFloat16INTEL | MatrixAPackedFloat8E5M2INTEL |
-                                                           MatrixBPackedFloat8E5M2INTEL | MatrixCBFloat16INTEL] =
-      "bf_bf_bf8_bf8_";
-  m_Simd16Table[32][ElType::I16][ElType::I16][ElType::I32][MatrixResultBFloat16INTEL | MatrixAPackedFloat8E4M3INTEL |
-                                                           MatrixBPackedFloat8E5M2INTEL | MatrixCBFloat16INTEL] =
-      "bf_bf_hf8_bf8_";
-  m_Simd16Table[32][ElType::I16][ElType::I16][ElType::I32][MatrixResultBFloat16INTEL | MatrixAPackedFloat8E5M2INTEL |
-                                                           MatrixBPackedFloat8E4M3INTEL | MatrixCBFloat16INTEL] =
-      "bf_bf_bf8_hf8_";
-  m_Simd16Table[32][ElType::I16][ElType::I16][ElType::I32][MatrixResultBFloat16INTEL | MatrixAPackedFloat8E4M3INTEL |
-                                                           MatrixBPackedFloat8E4M3INTEL | MatrixCBFloat16INTEL] =
-      "bf_bf_hf8_hf8_";
+      // fp8 matrix sources (hf8 and bf8), bf16 accumulator:
+      {{32, ElType::I16, ElType::I16, ElType::I32,
+        MatrixResultBFloat16INTEL | MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E5M2INTEL | MatrixCBFloat16INTEL},
+       "bf_bf_bf8_bf8_"},
+      {{32, ElType::I16, ElType::I16, ElType::I32,
+        MatrixResultBFloat16INTEL | MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E5M2INTEL | MatrixCBFloat16INTEL},
+       "bf_bf_hf8_bf8_"},
+      {{32, ElType::I16, ElType::I16, ElType::I32,
+        MatrixResultBFloat16INTEL | MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E4M3INTEL | MatrixCBFloat16INTEL},
+       "bf_bf_bf8_hf8_"},
+      {{32, ElType::I16, ElType::I16, ElType::I32,
+        MatrixResultBFloat16INTEL | MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E4M3INTEL | MatrixCBFloat16INTEL},
+       "bf_bf_hf8_hf8_"},
 
-  // fp4 matrix sources, fp32 accumulator:
-  m_Simd16Table[64][ElType::F32][ElType::I16][ElType::I32]
-               [MatrixAPackedFloat4E2M1INTEL | MatrixBPackedFloat4E2M1INTEL] = "f_f_e2m1_e2m1_";
+      // fp4 matrix sources, fp32 accumulator:
+      {{64, ElType::F32, ElType::I16, ElType::I32, MatrixAPackedFloat4E2M1INTEL | MatrixBPackedFloat4E2M1INTEL},
+       "f_f_e2m1_e2m1_"},
 
-  // fp4 matrix sources, bf16 accumulator:
-  m_Simd16Table[64][ElType::I16][ElType::I16][ElType::I32][MatrixResultBFloat16INTEL | MatrixAPackedFloat4E2M1INTEL |
-                                                           MatrixBPackedFloat4E2M1INTEL | MatrixCBFloat16INTEL] =
-      "bf_bf_e2m1_e2m1_";
+      // fp4 matrix sources, bf16 accumulator:
+      {{64, ElType::I16, ElType::I16, ElType::I32,
+        MatrixResultBFloat16INTEL | MatrixAPackedFloat4E2M1INTEL | MatrixBPackedFloat4E2M1INTEL | MatrixCBFloat16INTEL},
+       "bf_bf_e2m1_e2m1_"},
+  };
+  return Table;
 }
 
-void SpvSubgroupMMAResolution::populateSimd16ScaledTable() {
-  const uint32_t ScaleFlags = ScaleAFloat8E8M0INTEL | ScaleBFloat8E8M0INTEL;
+const SpvSubgroupMMAResolution::SupportedTable &SpvSubgroupMMAResolution::getSimd16ScaledTable() {
+  static constexpr uint32_t ScaleFlags = ScaleAFloat8E8M0INTEL | ScaleBFloat8E8M0INTEL;
+  static const SupportedTable Table = {
+      // fp16 matrix sources, fp32 accumulator:
+      {{16, ElType::F32, ElType::I16, ElType::I32, MatrixAPackedFloat16INTEL | MatrixBPackedFloat16INTEL | ScaleFlags},
+       "f_f_hf_hf_"},
+      // bf16 matrix sources, fp32 accumulator:
+      {{16, ElType::F32, ElType::I16, ElType::I32,
+        MatrixAPackedBFloat16INTEL | MatrixBPackedBFloat16INTEL | ScaleFlags},
+       "f_f_bf_bf_"},
+      // fp16 matrix sources, fp16 accumulator:
+      {{16, ElType::F16, ElType::I16, ElType::I32, MatrixAPackedFloat16INTEL | MatrixBPackedFloat16INTEL | ScaleFlags},
+       "hf_hf_hf_hf_"},
+      // bf16 matrix sources, bf16 accumulator:
+      {{16, ElType::I16, ElType::I16, ElType::I32,
+        MatrixResultBFloat16INTEL | MatrixAPackedBFloat16INTEL | MatrixBPackedBFloat16INTEL | MatrixCBFloat16INTEL |
+            ScaleFlags},
+       "bf_bf_bf_bf_"},
 
-  // fp16 matrix sources, fp32 accumulator:
-  m_Simd16ScaledTable[16][ElType::F32][ElType::I16][ElType::I32]
-                     [MatrixAPackedFloat16INTEL | MatrixBPackedFloat16INTEL | ScaleFlags] = "f_f_hf_hf_";
-  // bf16 matrix sources, fp32 accumulator:
-  m_Simd16ScaledTable[16][ElType::F32][ElType::I16][ElType::I32]
-                     [MatrixAPackedBFloat16INTEL | MatrixBPackedBFloat16INTEL | ScaleFlags] = "f_f_bf_bf_";
-  // fp16 matrix sources, fp16 accumulator:
-  m_Simd16ScaledTable[16][ElType::F16][ElType::I16][ElType::I32]
-                     [MatrixAPackedFloat16INTEL | MatrixBPackedFloat16INTEL | ScaleFlags] = "hf_hf_hf_hf_";
-  // bf16 matrix sources, bf16 accumulator:
-  m_Simd16ScaledTable[16][ElType::I16][ElType::I16][ElType::I32]
-                     [MatrixResultBFloat16INTEL | MatrixAPackedBFloat16INTEL | MatrixBPackedBFloat16INTEL |
-                      MatrixCBFloat16INTEL | ScaleFlags] = "bf_bf_bf_bf_";
+      // fp8 matrix sources (e4m3 and e5m2), fp32 accumulator:
+      {{32, ElType::F32, ElType::I16, ElType::I32,
+        MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E5M2INTEL | ScaleFlags},
+       "f_f_bf8_bf8_"},
+      {{32, ElType::F32, ElType::I16, ElType::I32,
+        MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E5M2INTEL | ScaleFlags},
+       "f_f_hf8_bf8_"},
+      {{32, ElType::F32, ElType::I16, ElType::I32,
+        MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E4M3INTEL | ScaleFlags},
+       "f_f_bf8_hf8_"},
+      {{32, ElType::F32, ElType::I16, ElType::I32,
+        MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E4M3INTEL | ScaleFlags},
+       "f_f_hf8_hf8_"},
 
-  // fp8 matrix sources (e4m3 and e5m2), fp32 accumulator:
-  m_Simd16ScaledTable[32][ElType::F32][ElType::I16][ElType::I32]
-                     [MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E5M2INTEL | ScaleFlags] = "f_f_bf8_bf8_";
-  m_Simd16ScaledTable[32][ElType::F32][ElType::I16][ElType::I32]
-                     [MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E5M2INTEL | ScaleFlags] = "f_f_hf8_bf8_";
-  m_Simd16ScaledTable[32][ElType::F32][ElType::I16][ElType::I32]
-                     [MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E4M3INTEL | ScaleFlags] = "f_f_bf8_hf8_";
-  m_Simd16ScaledTable[32][ElType::F32][ElType::I16][ElType::I32]
-                     [MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E4M3INTEL | ScaleFlags] = "f_f_hf8_hf8_";
+      // fp8 matrix sources (e4m3 and e5m2), bf16 accumulator:
+      {{32, ElType::I16, ElType::I16, ElType::I32,
+        MatrixResultBFloat16INTEL | MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E5M2INTEL | MatrixCBFloat16INTEL |
+            ScaleFlags},
+       "bf_bf_bf8_bf8_"},
+      {{32, ElType::I16, ElType::I16, ElType::I32,
+        MatrixResultBFloat16INTEL | MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E5M2INTEL | MatrixCBFloat16INTEL |
+            ScaleFlags},
+       "bf_bf_hf8_bf8_"},
+      {{32, ElType::I16, ElType::I16, ElType::I32,
+        MatrixResultBFloat16INTEL | MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E4M3INTEL | MatrixCBFloat16INTEL |
+            ScaleFlags},
+       "bf_bf_bf8_hf8_"},
+      {{32, ElType::I16, ElType::I16, ElType::I32,
+        MatrixResultBFloat16INTEL | MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E4M3INTEL | MatrixCBFloat16INTEL |
+            ScaleFlags},
+       "bf_bf_hf8_hf8_"},
 
-  // fp8 matrix sources (e4m3 and e5m2), bf16 accumulator:
-  m_Simd16ScaledTable[32][ElType::I16][ElType::I16][ElType::I32]
-                     [MatrixResultBFloat16INTEL | MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E5M2INTEL |
-                      MatrixCBFloat16INTEL | ScaleFlags] = "bf_bf_bf8_bf8_";
-  m_Simd16ScaledTable[32][ElType::I16][ElType::I16][ElType::I32]
-                     [MatrixResultBFloat16INTEL | MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E5M2INTEL |
-                      MatrixCBFloat16INTEL | ScaleFlags] = "bf_bf_hf8_bf8_";
-  m_Simd16ScaledTable[32][ElType::I16][ElType::I16][ElType::I32]
-                     [MatrixResultBFloat16INTEL | MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E4M3INTEL |
-                      MatrixCBFloat16INTEL | ScaleFlags] = "bf_bf_bf8_hf8_";
-  m_Simd16ScaledTable[32][ElType::I16][ElType::I16][ElType::I32]
-                     [MatrixResultBFloat16INTEL | MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E4M3INTEL |
-                      MatrixCBFloat16INTEL | ScaleFlags] = "bf_bf_hf8_hf8_";
+      // fp4 matrix sources, fp32 accumulator:
+      {{64, ElType::F32, ElType::I16, ElType::I32,
+        MatrixAPackedFloat4E2M1INTEL | MatrixBPackedFloat4E2M1INTEL | ScaleFlags},
+       "f_f_e2m1_e2m1_"},
 
-  // fp4 matrix sources, fp32 accumulator:
-  m_Simd16ScaledTable[64][ElType::F32][ElType::I16][ElType::I32]
-                     [MatrixAPackedFloat4E2M1INTEL | MatrixBPackedFloat4E2M1INTEL | ScaleFlags] = "f_f_e2m1_e2m1_";
-
-  // fp4 matrix sources, bf16 accumulator:
-  m_Simd16ScaledTable[64][ElType::I16][ElType::I16][ElType::I32]
-                     [MatrixResultBFloat16INTEL | MatrixAPackedFloat4E2M1INTEL | MatrixBPackedFloat4E2M1INTEL |
-                      MatrixCBFloat16INTEL | ScaleFlags] = "bf_bf_e2m1_e2m1_";
+      // fp4 matrix sources, bf16 accumulator:
+      {{64, ElType::I16, ElType::I16, ElType::I32,
+        MatrixResultBFloat16INTEL | MatrixAPackedFloat4E2M1INTEL | MatrixBPackedFloat4E2M1INTEL | MatrixCBFloat16INTEL |
+            ScaleFlags},
+       "bf_bf_e2m1_e2m1_"},
+  };
+  return Table;
 }
 
 void SpvSubgroupMMAResolution::emitError(const Twine &message, const CallInst &CI) {
@@ -474,100 +498,104 @@ bool SpvSubgroupMMAResolution::isDoubleSubgroup(CallInst &CI) {
   return m_simdResolver->resolve(CI.getFunction()) == 32;
 }
 
-SpvSubgroupMMAResolution::SupportedTable *SpvSubgroupMMAResolution::getSupportedTable() {
-  if (m_Ctx->platform.hasExecSize16DPAS()) {
-    if (m_Simd16Table.empty())
-      populateSimd16Table();
-    return &m_Simd16Table;
+const SpvSubgroupMMAResolution::SupportedTable &SpvSubgroupMMAResolution::getSupportedTable() const {
+  return m_Ctx->platform.hasExecSize16DPAS() ? getSimd16Table() : getSimd8Table();
+}
+
+void SpvSubgroupMMAResolution::diagnoseUnsupportedCombination(const SupportedTableKey &Key, const SupportedTable &Table,
+                                                              StringRef BuiltinName, const CallInst &CI) {
+  auto sortAndDeduplicate = [](auto &Values) {
+    std::ranges::sort(Values);
+    Values.erase(std::ranges::unique(Values).begin(), Values.end());
+  };
+
+  // Validate K dimension.
+  SmallVector<std::string, 8> ValidKDims;
+  for (const auto &[Candidate, _] : Table)
+    ValidKDims.push_back(std::to_string(Candidate.K));
+  sortAndDeduplicate(ValidKDims);
+
+  if (std::ranges::find(ValidKDims, std::to_string(Key.K)) == ValidKDims.end()) {
+    emitError(Twine(BuiltinName) + ": expected K Dim = " + llvm::join(ValidKDims, " or ") +
+                  " for targeted HW. Actual: " + Twine(Key.K),
+              CI);
+    return;
   }
-  if (m_Simd8Table.empty())
-    populateSimd8Table();
-  return &m_Simd8Table;
-}
 
-template <typename T>
-bool SpvSubgroupMMAResolution::validateKDimInTable(const T KIt, int K, const SupportedTable *table,
-                                                   StringRef BuiltinName, const CallInst &CI) {
-  if (KIt != table->end())
-    return true;
+  auto getValidTypes = [&](auto MatchesPrefix, auto GetType) {
+    SmallVector<std::string, 8> ValidTypes;
+    for (const auto &[Candidate, _] : Table) {
+      if (MatchesPrefix(Candidate))
+        ValidTypes.push_back(getElTypeStr(GetType(Candidate)).str());
+    }
+    sortAndDeduplicate(ValidTypes);
+    return llvm::join(ValidTypes, " or ");
+  };
 
-  SmallVector<std::string, 8> validKDims;
-  for (const auto &it : *table)
-    validKDims.push_back(std::to_string(it.first));
-  llvm::sort(validKDims);
+  auto hasMatchingType = [&](auto MatchesPrefix, auto GetType, ElType Type) {
+    return std::ranges::any_of(
+        Table, [&](const auto &Entry) { return MatchesPrefix(Entry.first) && GetType(Entry.first) == Type; });
+  };
 
-  emitError(Twine(BuiltinName) + ": expected K Dim = " + llvm::join(validKDims, " or ") +
-                " for targeted HW. Actual: " + Twine(K),
-            CI);
-  return false;
-}
+  // Validate Result element type.
+  auto MatchesK = [&](const SupportedTableKey &Candidate) { return Candidate.K == Key.K; };
+  auto GetResultType = [](const SupportedTableKey &Candidate) { return Candidate.ResultElemTy; };
+  if (!hasMatchingType(MatchesK, GetResultType, Key.ResultElemTy)) {
+    std::string ValidResultTypes = getValidTypes(MatchesK, GetResultType);
+    emitError(Twine(BuiltinName) + ": expected Result element type to be " + ValidResultTypes +
+                  " for K Dim = " + Twine(Key.K) + " for targeted HW. Actual: " + getElTypeStr(Key.ResultElemTy),
+              CI);
+    return;
+  }
 
-template <typename TableType> std::string SpvSubgroupMMAResolution::getValidTypesStr(const TableType &table) const {
-  SmallVector<std::string, 8> validTypes;
-  for (const auto &it : table)
-    validTypes.push_back(getElTypeStr(it.first).str());
-  llvm::sort(validTypes);
-  return llvm::join(validTypes, " or ");
-}
+  // Validate Matrix A element type.
+  auto MatchesKAndResult = [&](const SupportedTableKey &Candidate) {
+    return Candidate.K == Key.K && Candidate.ResultElemTy == Key.ResultElemTy;
+  };
+  auto GetAType = [](const SupportedTableKey &Candidate) { return Candidate.AElemTy; };
+  if (!hasMatchingType(MatchesKAndResult, GetAType, Key.AElemTy)) {
+    std::string ValidATypes = getValidTypes(MatchesKAndResult, GetAType);
+    emitError(Twine(BuiltinName) + ": expected A element type to be " + ValidATypes + " for K Dim = " + Twine(Key.K) +
+                  ", for Result element type " + getElTypeStr(Key.ResultElemTy) +
+                  ", for targeted HW. Actual: " + getElTypeStr(Key.AElemTy),
+              CI);
+    return;
+  }
 
-template <typename T>
-bool SpvSubgroupMMAResolution::validateResultElementInTable(const T RIt, int K, ElType ResultElemTy,
-                                                            const RTable &table, StringRef BuiltinName,
-                                                            const CallInst &CI) {
-  if (RIt != table.end())
-    return true;
+  // Validate Matrix B element type.
+  auto MatchesKResultAndA = [&](const SupportedTableKey &Candidate) {
+    return Candidate.K == Key.K && Candidate.ResultElemTy == Key.ResultElemTy && Candidate.AElemTy == Key.AElemTy;
+  };
+  auto GetBType = [](const SupportedTableKey &Candidate) { return Candidate.BElemTy; };
+  if (!hasMatchingType(MatchesKResultAndA, GetBType, Key.BElemTy)) {
+    std::string ValidBTypes = getValidTypes(MatchesKResultAndA, GetBType);
+    emitError(Twine(BuiltinName) + ": expected B element type to be " + ValidBTypes + " for K Dim = " + Twine(Key.K) +
+                  ", for Result element type " + getElTypeStr(Key.ResultElemTy) + ", for A element type " +
+                  getElTypeStr(Key.AElemTy) + ", for targeted HW. Actual: " + getElTypeStr(Key.BElemTy),
+              CI);
+    return;
+  }
 
-  emitError(Twine(BuiltinName) + ": expected Result element type to be " + getValidTypesStr(table) +
-                " for K Dim = " + Twine(K) + " for targeted HW. Actual: " + getElTypeStr(ResultElemTy),
-            CI);
-  return false;
-}
-
-template <typename T>
-bool SpvSubgroupMMAResolution::validateAElementInTable(const T AIt, int K, ElType ResultElemTy, ElType AElemTy,
-                                                       const ATable &table, StringRef BuiltinName, const CallInst &CI) {
-  if (AIt != table.end())
-    return true;
-
-  emitError(Twine(BuiltinName) + ": expected A element type to be " + getValidTypesStr(table) +
-                " for K Dim = " + Twine(K) + ", for Result element type " + getElTypeStr(ResultElemTy) +
-                ", for targeted HW. Actual: " + getElTypeStr(AElemTy),
-            CI);
-  return false;
-}
-
-template <typename T>
-bool SpvSubgroupMMAResolution::validateBElementInTable(const T BIt, int K, ElType ResultElemTy, ElType AElemTy,
-                                                       ElType BElemTy, const BTable &table, StringRef BuiltinName,
-                                                       const CallInst &CI) {
-  if (BIt != table.end())
-    return true;
-
-  emitError(Twine(BuiltinName) + ": expected B element type to be " + getValidTypesStr(table) +
-                " for K Dim = " + Twine(K) + ", for Result element type " + getElTypeStr(ResultElemTy) +
-                ", for A element type " + getElTypeStr(AElemTy) + ", for targeted HW. Actual: " + getElTypeStr(BElemTy),
-            CI);
-  return false;
-}
-
-template <typename T>
-bool SpvSubgroupMMAResolution::validateOperands(const T OpIt, int K, ElType ResultElemTy, ElType AElemTy,
-                                                ElType BElemTy, uint32_t Operands, const OperandsTable &operandMap,
-                                                StringRef BuiltinName, const CallInst &CI) {
-  if (OpIt != operandMap.end())
-    return true;
+  // Validate operands for the matching dimension and element types.
+  SmallVector<uint32_t, 8> ValidOperands;
+  SupportedTableKey MatchKey = Key;
+  for (const auto &[Candidate, _] : Table) {
+    MatchKey.Operands = Candidate.Operands;
+    if (Candidate == MatchKey)
+      ValidOperands.push_back(Candidate.Operands);
+  }
+  sortAndDeduplicate(ValidOperands);
 
   std::stringstream ss;
   ss << BuiltinName.str() << ": expected Operands to be one of these combinations:\n";
-  for (const auto &it : operandMap)
-    ss << it.first << ": " << GetHumanReadableOperand(it.first) << "\n";
-  ss << "for K Dim = " << K << ", for Result element type " << getElTypeStr(ResultElemTy).str();
-  ss << ", for A element type " << getElTypeStr(AElemTy).str() << ", for B element type " << getElTypeStr(BElemTy).str()
-     << ", for targeted HW.\n";
-  ss << "Actual: " << Operands << ": " << GetHumanReadableOperand(Operands);
+  for (uint32_t Operands : ValidOperands)
+    ss << Operands << ": " << GetHumanReadableOperand(Operands) << "\n";
+  ss << "for K Dim = " << Key.K << ", for Result element type " << getElTypeStr(Key.ResultElemTy).str();
+  ss << ", for A element type " << getElTypeStr(Key.AElemTy).str() << ", for B element type "
+     << getElTypeStr(Key.BElemTy).str() << ", for targeted HW.\n";
+  ss << "Actual: " << Key.Operands << ": " << GetHumanReadableOperand(Key.Operands);
 
   emitError(ss.str(), CI);
-  return false;
 }
 
 void SpvSubgroupMMAResolution::lowerToDpasBuiltin(CallInst &CI, Function *F) {
@@ -615,26 +643,13 @@ void SpvSubgroupMMAResolution::lowerToDpasBuiltin(CallInst &CI, Function *F) {
     return;
   int K = cast<ConstantInt>(kDim)->getZExtValue();
 
-  SupportedTable *table = getSupportedTable();
-  auto KIt = table->find(K);
-  if (!validateKDimInTable(KIt, K, table, DpasOpName, CI))
+  const SupportedTable &Table = getSupportedTable();
+  SupportedTableKey Key{static_cast<uint32_t>(K), ResultElemTy, AElemTy, BElemTy, Operands};
+  auto SupportedIt = Table.find(Key);
+  if (SupportedIt == Table.end()) {
+    diagnoseUnsupportedCombination(Key, Table, DpasOpName, CI);
     return;
-
-  auto ResultIt = KIt->second.find(ResultElemTy);
-  if (!validateResultElementInTable(ResultIt, K, ResultElemTy, KIt->second, DpasOpName, CI))
-    return;
-
-  auto AIt = ResultIt->second.find(AElemTy);
-  if (!validateAElementInTable(AIt, K, ResultElemTy, AElemTy, ResultIt->second, DpasOpName, CI))
-    return;
-
-  auto BIt = AIt->second.find(BElemTy);
-  if (!validateBElementInTable(BIt, K, ResultElemTy, AElemTy, BElemTy, AIt->second, DpasOpName, CI))
-    return;
-
-  auto OperandsIt = BIt->second.find(Operands);
-  if (!validateOperands(OperandsIt, K, ResultElemTy, AElemTy, BElemTy, Operands, BIt->second, DpasOpName, CI))
-    return;
+  }
 
   // creating IB built-in
   SmallVector<Value *, 3> args({c, a, b});
@@ -652,7 +667,7 @@ void SpvSubgroupMMAResolution::lowerToDpasBuiltin(CallInst &CI, Function *F) {
   std::stringstream newFuncName;
   newFuncName << "__builtin_IB_sub_group" << subgroupSize;
   newFuncName << "_" << (ResultElemTy == I32 ? "i" : "f");
-  newFuncName << "dpas_" << OperandsIt->second.str() << "8_" << M;
+  newFuncName << "dpas_" << SupportedIt->second.str() << "8_" << M;
 
   auto newFunc = m_Module->getOrInsertFunction(newFuncName.str(), FT);
   auto newCall = CallInst::Create(newFunc, args, "", IGCLLVM::insertPosition(&CI));
@@ -734,28 +749,13 @@ void SpvSubgroupMMAResolution::lowerToBdpasBuiltin(CallInst &CI, Function *F) {
   if (!validateScaleType(scaleB, "Scale B", K, CI))
     return;
 
-  if (m_Simd16ScaledTable.empty())
-    populateSimd16ScaledTable();
-
-  auto KIt = m_Simd16ScaledTable.find(K);
-  if (!validateKDimInTable(KIt, K, &m_Simd16ScaledTable, BdpasOpName, CI))
+  const SupportedTable &Table = getSimd16ScaledTable();
+  SupportedTableKey Key{static_cast<uint32_t>(K), ResultElemTy, AElemTy, BElemTy, Operands};
+  auto SupportedIt = Table.find(Key);
+  if (SupportedIt == Table.end()) {
+    diagnoseUnsupportedCombination(Key, Table, BdpasOpName, CI);
     return;
-
-  auto ResultIt = KIt->second.find(ResultElemTy);
-  if (!validateResultElementInTable(ResultIt, K, ResultElemTy, KIt->second, BdpasOpName, CI))
-    return;
-
-  auto AIt = ResultIt->second.find(AElemTy);
-  if (!validateAElementInTable(AIt, K, ResultElemTy, AElemTy, ResultIt->second, BdpasOpName, CI))
-    return;
-
-  auto BIt = AIt->second.find(BElemTy);
-  if (!validateBElementInTable(BIt, K, ResultElemTy, AElemTy, BElemTy, AIt->second, BdpasOpName, CI))
-    return;
-
-  auto OperandsIt = BIt->second.find(Operands);
-  if (!validateOperands(OperandsIt, K, ResultElemTy, AElemTy, BElemTy, Operands, BIt->second, BdpasOpName, CI))
-    return;
+  }
 
   // Create IB built-in
   SmallVector<Value *, 5> args({c, a, b, scaleA, scaleB});
@@ -764,7 +764,7 @@ void SpvSubgroupMMAResolution::lowerToBdpasBuiltin(CallInst &CI, Function *F) {
 
   // Per spec, SD=8 and RC=8 are hardcoded
   std::stringstream newFuncName;
-  newFuncName << "__builtin_IB_sub_group16_bdpas_" << OperandsIt->second.str() << "8_8";
+  newFuncName << "__builtin_IB_sub_group16_bdpas_" << SupportedIt->second.str() << "8_8";
 
   auto newFunc = m_Module->getOrInsertFunction(newFuncName.str(), FT);
   auto newCall = CallInst::Create(newFunc, args, "", IGCLLVM::insertPosition(&CI));
