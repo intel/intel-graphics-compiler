@@ -1723,7 +1723,13 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
     V = DstDesc.WrPredefReg ? DstDesc.WrPredefReg : DstDesc.WrRegion;
     // if (!V->user_empty() && GenXIntrinsic::isWritePredefReg(V->user_back()))
     //   V = V->user_back();
-    Reg = getRegForValueOrNullAndSaveAlias(V, Signed, OverrideType, IsBF);
+    // NOTE: ExplicitVisaType must reach the register allocated for the
+    // wrregion target too, otherwise a hf8/bf8/tf32 conversion baled into
+    // a wrregion (a common pattern when a wide conversion gets split into
+    // several sub-width calls that get recombined) silently gets the
+    // plain container type (e.g. ub) instead of the real micro-float type.
+    Reg = getRegForValueOrNullAndSaveAlias(V, Signed, OverrideType, IsBF,
+                                           ExplicitVisaType);
   }
 
   // Write the vISA general operand with region:
@@ -3439,6 +3445,34 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       Signed = UNSIGNED;
     if (AI.isRet()) {
       unsigned ExplicitVisaType = ISA_TYPE_NUM;
+      if ((IntrinID == GenXIntrinsic::genx_hf8_cvt ||
+           IntrinID == GenXIntrinsic::genx_qf_cvt ||
+           IntrinID == vc::InternalIntrinsic::round_to_tf32
+           ) &&
+          AI.getSaturation() != II::SATURATION_SATURATE) {
+        Type *RetTy = CI->getType();
+        if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(RetTy))
+          RetTy = VT->getElementType();
+
+        // i8/i32 are just storage types for hf8/bf8/tf32; mov needs the
+        // real micro-float VISA type, not fcvt's implicit container
+        // retyping.
+        if (RetTy->isIntegerTy(8)) {
+          switch (IntrinID) {
+          case GenXIntrinsic::genx_hf8_cvt:
+            ExplicitVisaType = ISA_TYPE_HF8;
+            break;
+          case GenXIntrinsic::genx_qf_cvt:
+            ExplicitVisaType = ISA_TYPE_BF8;
+            break;
+          default:
+            break;
+          }
+        } else if (RetTy->isIntegerTy(32) &&
+                   IntrinID == vc::InternalIntrinsic::round_to_tf32) {
+          ExplicitVisaType = ISA_TYPE_TF32;
+        }
+      }
       if (AI.getSaturation() == II::SATURATION_SATURATE)
         Mod |= MODIFIER_SAT;
       ResultOperand = createDestination(CI, Signed, Mod, DstDesc, nullptr,
@@ -3455,6 +3489,28 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       if (IntrinID == GenXIntrinsic::genx_bdpas &&
           (AI.getArgIdx() == 3 || AI.getArgIdx() == 4))
         ExplicitVisaType = ISA_TYPE_UB;
+      else if (IntrinID == GenXIntrinsic::genx_hf8_cvt ||
+               IntrinID == GenXIntrinsic::genx_qf_cvt
+      ) {
+        Type *ArgTy = CI->getOperand(AI.getArgIdx())->getType();
+        if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(ArgTy))
+          ArgTy = VT->getElementType();
+
+        // For hf8/bf8 conversion intrinsics, i8 is just a storage type; mov
+        // needs the real micro-float VISA type on the byte-typed operand.
+        if (ArgTy->isIntegerTy(8)) {
+          switch (IntrinID) {
+          case GenXIntrinsic::genx_hf8_cvt:
+            ExplicitVisaType = ISA_TYPE_HF8;
+            break;
+          case GenXIntrinsic::genx_qf_cvt:
+            ExplicitVisaType = ISA_TYPE_BF8;
+            break;
+          default:
+            break;
+          }
+        }
+      }
       ResultOperand = createSourceOperand(
           CI, Signed, AI.getArgIdx(), BI, 0, nullptr, MaxWidth,
           AI.generalNullAllowed(), ExplicitVisaType);
