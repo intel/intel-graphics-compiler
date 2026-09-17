@@ -831,44 +831,6 @@ int IR_Builder::translateLscUntypedInstUnified(
     }
   }
 
-  if (getOption(vISA_WA_FlatA32SNegGlobalOffset) &&
-      addrInfo.type == LSC_ADDR_TYPE_FLAT &&
-      addrInfo.size == LSC_ADDR_SIZE_32bS && addrInfo.immOffset < 0) {
-    if (isNullZero(surface)) {
-      surface = createImm((int64_t)addrInfo.immOffset, Type_D);
-    } else if (surface->isImm() && !surface->isRelocImm()) {
-      surface =
-          createImm(surface->asImm()->getImm() + (int64_t)addrInfo.immOffset,
-                    surface->getType());
-    } else {
-      // Fold the offset into a new base when it cannot be combined statically
-      G4_Type baseType = IS_SIGNED_INT(surface->getType()) ? Type_Q : Type_UQ;
-      G4_Declare *foldedBaseDcl =
-          createTempVar(1, baseType, Get_G4_SubRegAlign_From_Type(baseType));
-      G4_DstRegRegion *foldedBaseDst = createDstRegRegion(foldedBaseDcl, 1);
-      G4_Imm *offsetImm = createImm((int64_t)addrInfo.immOffset, Type_D);
-      createBinOp(G4_add, g4::SIMD1, foldedBaseDst, surface, offsetImm,
-                  InstOpt_WriteEnable, true);
-      surface = createSrcRegRegion(foldedBaseDcl, getRegionScalar());
-    }
-    addrInfo.immOffset = 0;
-  }
-
-  if (getOption(vISA_WA_FlatA32SNonzeroIND0) &&
-      addrInfo.type == LSC_ADDR_TYPE_FLAT &&
-      addrInfo.size == LSC_ADDR_SIZE_32bS && !isNullZero(surface)) {
-    vISA_ASSERT(src0Addr != nullptr && !src0Addr->isNullReg(),
-                "expected a real src0Addr payload for a UGM flat LSC message "
-                "when applying the nonzero-IND0 WA");
-    G4_Declare *wideAddrDcl = createTempVar(execSize, Type_Q, getGRFAlign());
-    G4_DstRegRegion *wideAddrDst =
-        createDst(wideAddrDcl->getRegVar(), 0, 0, 1, Type_Q);
-    createMov(execSize, wideAddrDst, src0Addr, instOpt, true);
-    src0Addr =
-        createSrc(wideAddrDcl->getRegVar(), 0, 0, getRegionStride1(), Type_Q);
-    addrInfo.size = LSC_ADDR_SIZE_64b;
-  }
-
   SFID sfid = SFID::NULL_SFID;
   switch (lscSfid) {
   case LSC_UGM:

@@ -5948,10 +5948,6 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-wideMulMadOpsEn");
   if (ST.hasEfficient64b())
     addArgument("-enableEfficient64b");
-  if (ST.needWaLscA32SNegativeOffset())
-    addArgument("-waFlatA32SNegGlobalOffset");
-  if (ST.needWaLscA32SUniformBase())
-    addArgument("-waFlatA32SNonzeroIND0");
   if (ST.getTargetId() == GenXSubtarget::Xe3PLPG)
     addArgument("-enable320and448Vrt");
 

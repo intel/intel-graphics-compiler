@@ -4159,12 +4159,6 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   if (m_program->m_Platform->needWASlmGlobalOffsetS20()) {
     SaveOption(vISA_WA_SLMGlobalOffsetS20, true);
   }
-  if (m_program->m_Platform->needsLSCA32SNegativeOffsetWA()) {
-    SaveOption(vISA_WA_FlatA32SNegGlobalOffset, true);
-  }
-  if (m_program->m_Platform->needsLSCA32SUniformBaseWA()) {
-    SaveOption(vISA_WA_FlatA32SNonzeroIND0, true);
-  }
 
   if (context->type == ShaderType::OPENCL_SHADER) {
     auto ClContext = static_cast<OpenCLProgramContext *>(context);
