@@ -6,6 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; REQUIRES: llvm-23-plus
+
 ; RUN: igc_opt --opaque-pointers -igc-builtin-import -disable-verify -S < %s | FileCheck %s
 
 ; This test checks whether unused BiF functions/globals are removed correctly.

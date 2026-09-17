@@ -150,6 +150,7 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
     }
   }
 
+#if LLVM_VERSION_MAJOR >= 23
   // Remove unused BiF functions & globals
   // Previously - removal of unused functions was performed earlier - before linking
   // ld.linkInModule(std::move(*BiFSection), llvm::Linker::OverrideFromSrc)
@@ -185,6 +186,7 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
       removeUnusedBiF(GV);
     }
   }
+#endif // LLVM_VERSION_MAJOR >= 23
 
   BIF_COMPILER_TIME_END(TIME_OCL_BiFMgr_LinkAllSections);
 
@@ -398,6 +400,31 @@ void BiFManagerHandler::cleanModule(llvm::Module &Base) {
   for (auto &pFunc : Base) {
     Explore(&pFunc);
   }
+
+#if LLVM_VERSION_MAJOR < 23
+  // Nuke the unused functions so we can materializeAll() quickly.
+  // On LLVMs >= 23 we perform it at later stages of BiF management: in LinkBiF method.
+  auto CleanUnused = [](Module *Module) {
+    for (auto I = Module->begin(), E = Module->end(); I != E;) {
+      auto *F = &(*I++);
+      if ((F->isDeclaration() || F->isMaterializable()) &&
+          // We cannot remove the llvm intrinsics, because
+          // they could be collected by the BitcodeReader in
+          // list UpgradedIntrinsics. If we remove it now -
+          // it would crash during materializing.
+          !F->isIntrinsic()) {
+        if (F->materialized_use_begin() == F->use_end()) {
+          F->eraseFromParent();
+        }
+      }
+    }
+  };
+
+  for (auto bifsection_i = LoadedBiFSections.begin(); bifsection_i != LoadedBiFSections.end(); ++bifsection_i) {
+    llvm::Module *Module = bifsection_i->second.get();
+    CleanUnused(Module);
+  }
+#endif
 }
 
 bool BiFManagerHandler::isModulePtrSize32(llvm::Module *pMain) {
