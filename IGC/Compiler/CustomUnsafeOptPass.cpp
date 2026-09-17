@@ -1522,9 +1522,13 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator &I) {
         break;
 
       case Instruction::FMul:
-        if ((fp0 && fp0->isZero()) || (fp1 && fp1->isZero())) {
+        if (((fp0 && fp0->isZero()) || (fp1 && fp1->isZero())) && (I.hasNoNaNs() || allowUnsafeMathOpt(m_ctx))) {
           // X * 0 => 0
           // 0 * X => 0
+          //
+          // Requires 'nnan'. The fold is exact for every finite X.
+          // For an infinite or NaN X the IEEE result is NaN, which nnan turns into poison and so
+          // permits folding to zero. Without nnan the NaN is a value the shader has asked to observe.
           I.replaceAllUsesWith(ConstantFP::get(opType, 0));
           collectForErase(I);
           ++Stat_FloatRemoved;
