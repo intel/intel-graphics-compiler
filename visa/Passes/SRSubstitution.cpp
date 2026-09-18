@@ -524,7 +524,7 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
     }
   }
 
-  G4_Operand *src1 = inst->getSrc(0);
+  G4_Operand *src1 = inst->getSrc(1);
   if (src1 && !src1->isNullReg()) {
     int src1Size = inst->getMsgDesc()->getSrc1LenRegs();
     for (int i = 0; i < src1Size; i++) {
