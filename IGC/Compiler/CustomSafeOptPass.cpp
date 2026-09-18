@@ -7431,7 +7431,9 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
     OrZero = BIT(6),          // Enabled IGC\EnableAtomicBranch = 0x40
     AndFF = BIT(7),           // Enabled IGC\EnableAtomicBranch = 0x80
     CheckOr = BIT(8),         // Enabled IGC\EnableAtomicBranch = 0x100
-    CheckAnd = BIT(9)         // Enabled IGC\EnableAtomicBranch = 0x200
+    CheckAnd = BIT(9),        // Enabled IGC\EnableAtomicBranch = 0x200
+    SignMin = BIT(10),        // Enabled IGC\EnableAtomicBranch = 0x400
+    SignMax = BIT(11)         // Enabled IGC\EnableAtomicBranch = 0x800
   };
 
   // Allow several modes to be applied
@@ -7445,6 +7447,8 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
   const bool andFFMode = ((mode & AndFF) == AndFF);
   const bool checkOrMode = ((mode & CheckOr) == CheckOr);
   const bool checkAndMode = ((mode & CheckAnd) == CheckAnd);
+  const bool signMinMode = ((mode & SignMin) == SignMin);
+  const bool signMaxMode = ((mode & SignMax) == SignMax);
 
   auto createReadFromAtomic = [=](IRBuilder<> &builder, Instruction *inst, bool isTyped) {
     Constant *zero = ConstantInt::get(inst->getType(), 0);
@@ -7541,7 +7545,7 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
           src = dyn_cast<Instruction>(inst->getOperand(4));
           op = dyn_cast<ConstantInt>(inst->getOperand(5));
         } else if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicraw ||
-                   (statelessMode && (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicrawA64) &&
+                   (statelessMode && inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomicrawA64 &&
                     (inst->getOperand(0) == inst->getOperand(1)))) {
           src = dyn_cast<Instruction>(inst->getOperand(2));
           op = dyn_cast<ConstantInt>(inst->getOperand(3));
@@ -7570,6 +7574,10 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
             return AtomicOp::EATOMIC_OR;
           case AtomicOp::EATOMIC_AND64:
             return AtomicOp::EATOMIC_AND;
+          case AtomicOp::EATOMIC_IMIN64:
+            return AtomicOp::EATOMIC_IMIN;
+          case AtomicOp::EATOMIC_IMAX64:
+            return AtomicOp::EATOMIC_IMAX;
           default:
             return atomicOp;
           }
@@ -7581,7 +7589,9 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
                              atomicOp == AtomicOp::EATOMIC_UMAX)) ||
             (umaxMode && (atomicOp == AtomicOp::EATOMIC_UMAX)) || (uminMode && (atomicOp == AtomicOp::EATOMIC_UMIN)) ||
             ((orZeroMode || checkOrMode) && (atomicOp == AtomicOp::EATOMIC_OR)) ||
-            ((andFFMode || checkAndMode) && (atomicOp == AtomicOp::EATOMIC_AND))) {
+            ((andFFMode || checkAndMode) && (atomicOp == AtomicOp::EATOMIC_AND)) ||
+            (signMinMode && atomicOp == AtomicOp::EATOMIC_IMIN) ||
+            (signMaxMode && atomicOp == AtomicOp::EATOMIC_IMAX)) {
           atomicSplit.push_back(std::make_pair(inst, atomicOp));
         }
       }
@@ -7623,25 +7633,41 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
 
       isModified = true;
     } else if ((umaxMode && (op == AtomicOp::EATOMIC_UMAX)) || (uminMode && (op == AtomicOp::EATOMIC_UMIN)) ||
-               (checkOrMode && (op == AtomicOp::EATOMIC_OR)) || (checkAndMode && (op == AtomicOp::EATOMIC_AND))) {
+               (checkOrMode && (op == AtomicOp::EATOMIC_OR)) || (checkAndMode && (op == AtomicOp::EATOMIC_AND)) ||
+               (signMinMode && op == AtomicOp::EATOMIC_IMIN) || (signMaxMode && op == AtomicOp::EATOMIC_IMAX)) {
       // Create an if-then structure.
       // x = typedread or load
       // if (the atomic would change memory)
       //    use the original atomic inst
       readI = createReadFromAtomic(builder, inst, isTyped);
       Instruction *condInst = nullptr;
-      if (op == AtomicOp::EATOMIC_UMAX || op == AtomicOp::EATOMIC_UMIN) {
-        // if (src > (for UMax) or < (for Umin) x)
-        CmpInst::Predicate predicate = (op == AtomicOp::EATOMIC_UMAX) ? ICmpInst::ICMP_UGT : ICmpInst::ICMP_ULT;
-        condInst = cast<Instruction>(builder.CreateICmp(predicate, src, readI));
-      } else if (op == AtomicOp::EATOMIC_OR) {
+      switch (op) {
+      case AtomicOp::EATOMIC_UMAX:
+        condInst = cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_UGT, src, readI));
+        break;
+      case AtomicOp::EATOMIC_UMIN:
+        condInst = cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_ULT, src, readI));
+        break;
+      case AtomicOp::EATOMIC_IMIN:
+        condInst = cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_SLT, src, readI));
+        break;
+      case AtomicOp::EATOMIC_IMAX:
+        condInst = cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_SGT, src, readI));
+        break;
+      case AtomicOp::EATOMIC_OR: {
         // if ((x | src) != x), i.e. the OR would set new bits
         Value *newVal = builder.CreateOr(readI, src);
         condInst = cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_NE, newVal, readI));
-      } else {
+        break;
+      }
+      case AtomicOp::EATOMIC_AND: {
         // AND: if ((x & src) != x), i.e. the AND would clear bits
         Value *newVal = builder.CreateAnd(readI, src);
         condInst = cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_NE, newVal, readI));
+        break;
+      }
+      default:
+        IGC_ASSERT_UNREACHABLE();
       }
 
       splitBBAndName(condInst, inst, &ThenTerm, nullptr, MergeBlock);

@@ -580,7 +580,7 @@ DECLARE_IGC_REGKEY(
 DECLARE_IGC_REGKEY(DWORD, EnableAtomicBranch, 0,
                    "Bitmask to enable Atomic branch optimization that predicates the atomic with if/else. "
                    "Modes 1/0x40/0x80 skip the atomic based on the source value only (no memory read). "
-                   "Modes 2/4/0x100/0x200 first read the current memory value and skip the atomic when it "
+                   "Modes 2/4/0x100/0x200/0x400/0x800 first read the current memory value and skip the atomic when it "
                    "would not change memory. "
                    "1: if Val == 0 skip iadd/sub/umax (source-only). "
                    "2: read memory, skip umax when memory is already greater or equal to value read. "
@@ -591,7 +591,9 @@ DECLARE_IGC_REGKEY(DWORD, EnableAtomicBranch, 0,
                    "0x40: if Val == 0 skip AtomicOr (source-only). "
                    "0x80: if Val == all-ones skip AtomicAnd (source-only). "
                    "0x100: read memory, skip AtomicOr when it would set no new bits. "
-                   "0x200: read memory, skip AtomicAnd when it would clear no bits. ",
+                   "0x200: read memory, skip AtomicAnd when it would clear no bits. "
+                   "0x400: read memory, skip signed min when memory is already less than or equal to value read. "
+                   "0x800: read memory, skip signed max when memory is already greater than or equal to value read. ",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableThreeWayLoadSpiltOpt, false, "Enable three way load spilt opt.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableTypedWriteZeroStoreCheck, false,
