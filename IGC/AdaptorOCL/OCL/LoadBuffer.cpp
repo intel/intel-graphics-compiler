@@ -60,12 +60,11 @@ MemoryBuffer *llvm::LoadBufferFromResource(const char *pResName, const char *pRe
   }
 
   if (symbol) {
-    // Create a copy of the buffer for the caller. This copy is managed
-    buffer = MemoryBuffer::getMemBufferCopy(StringRef((char *)symbol, *(uint32_t *)sizeSymbol)).release();
+    // The symbol lives in the executing module, which stays mapped for as long as any IGC code runs.
+    buffer = MemoryBuffer::getMemBuffer(StringRef((char *)symbol, *(uint32_t *)sizeSymbol), "", false).release();
   }
 
-  // Drop the reference taken by getIgcHandle. The module stays mapped, as it is the one
-  // currently executing, and the buffer above is already a copy.
+  // Drop the reference taken by getIgcHandle.
   if (module != RTLD_DEFAULT) {
     dlclose(module);
   }
