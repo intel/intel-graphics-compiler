@@ -10,6 +10,7 @@
 # @param BiFModule_SRC_LIS - list of all files to by
 # @param BiFModule_SRC_SHA_PATH - path to dump the file with checksum for sources
 
+include("${IGC_BIF_CONFIG}")
 include(${CMAKE_CURRENT_LIST_DIR}/BiFMCConst.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/BiFMCGetListFiles.cmake)
 
