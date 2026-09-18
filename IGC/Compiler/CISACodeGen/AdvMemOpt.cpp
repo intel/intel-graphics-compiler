@@ -20,12 +20,16 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/AdvMemOpt.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CISACodeGen/PrepareLoadsStoresUtils.h"
+#include "Compiler/CISACodeGen/helper.h"
 #include "llvmWrapper/Analysis/TargetLibraryInfo.h"
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "llvmWrapper/ADT/Optional.h"
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include <algorithm>
+#include <limits>
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -42,6 +46,11 @@ class AdvMemOpt : public FunctionPass {
   PostDominatorTree *PDT = nullptr;
   WIAnalysis *WI = nullptr;
   TargetLibraryInfo *TLI = nullptr;
+  IGCLivenessAnalysisRunner *RPE = nullptr;
+  unsigned SIMD = 0;
+  // Fraction of the GRF file held back at the hoist destination, so hoisting
+  // leaves register allocation something to work with. 16 GRFs at 128.
+  static constexpr unsigned ReservedGRFDenominator = 8;
 
 public:
   static char ID;
@@ -63,13 +72,19 @@ private:
     AU.addRequired<LoopInfoWrapperPass>();
     AU.addRequired<PostDominatorTreeWrapperPass>();
     AU.addRequired<TargetLibraryInfoWrapperPass>();
+    // Required, not preserved: hoisting moves instructions, so the live sets go
+    // stale for the remat passes downstream in AddLegalizationPasses.
+    AU.addRequired<IGCLivenessAnalysis>();
   }
 
   bool collectOperandInst(SmallPtrSetImpl<Instruction *> &, Instruction *, BasicBlock *) const;
   bool collectTrivialUser(SmallPtrSetImpl<Instruction *> &, Instruction *) const;
   bool hoistUniformLoad(ArrayRef<BasicBlock *>) const;
 
-  bool hoistInst(Instruction *inst, BasicBlock *) const;
+  unsigned occupiedRegisters(BasicBlock &Lead) const;
+  unsigned hoistBudgetInRegisters(BasicBlock *Lead) const;
+
+  bool hoistInst(Instruction *inst, BasicBlock *, unsigned &BudgetInRegisters) const;
 
   bool isLeadCandidate(BasicBlock *) const;
 
@@ -98,6 +113,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass);
 IGC_INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
 IGC_INITIALIZE_PASS_END(AdvMemOpt, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 } // End namespace IGC
 
@@ -116,6 +132,9 @@ bool AdvMemOpt::runOnFunction(Function &F) {
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   WI = &getAnalysis<WIAnalysis>();
   TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+  RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
+  SIMD = numLanes(IGC::bestGuessSIMDSize(getAnalysis<CodeGenContextWrapper>().getCodeGenContext(), &F,
+                                         getAnalysisIfAvailable<GenXFunctionGroupAnalysis>()));
 
   SmallVector<Loop *, 8> InnermostLoops;
   for (auto I = LI->begin(), E = LI->end(); I != E; ++I)
@@ -334,12 +353,66 @@ bool AdvMemOpt::collectTrivialUser(SmallPtrSetImpl<Instruction *> &Set, Instruct
   return false;
 }
 
-bool AdvMemOpt::hoistInst(Instruction *LD, BasicBlock *BB) const {
+// Registers held by the values live out of 'Lead', charging each value a whole
+// GRF of its own.
+//
+// getMaxRegCountForBB() instead sums all live values in bytes and rounds once,
+// which reads a crowd of uniform values as nearly empty: a uniform i32 counts 4
+// bytes, so a GRF's worth of them looks like one register even though the
+// allocator gives each its own. That crowd is what this pass leaves behind.
+unsigned AdvMemOpt::occupiedRegisters(BasicBlock &Lead) const {
+  auto OI = RPE->getOutSet().find(&Lead);
+  if (OI == RPE->getOutSet().end())
+    return 0;
+
+  const DataLayout &DL = Lead.getModule()->getDataLayout();
+  unsigned Registers = 0;
+  for (Value *V : OI->second)
+    Registers += RPE->bytesToRegisters(RPE->computeSizeInBytes(V, SIMD, &WI->Runner, DL));
+  return Registers;
+}
+
+// Register headroom at 'Lead'. Hoisting stretches a live range up to 'Lead', so
+// the cost lands on whatever is already live there.
+//
+// Occupancy is the worse of two readings: the byte estimate, which catches
+// lane-varying pressure peaking mid-block, and the live-out count, which catches
+// the uniform crowd the byte estimate reads as free. Measured once per lead; the
+// caller then subtracts what it spends.
+unsigned AdvMemOpt::hoistBudgetInRegisters(BasicBlock *Lead) const {
+  auto *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  const unsigned GRFBudget = Ctx->getNumGRFPerThread(true, Lead->getParent());
+  if (!GRFBudget)
+    return std::numeric_limits<unsigned>::max();
+
+  const unsigned Reserved = GRFBudget / ReservedGRFDenominator;
+  const unsigned Used = std::max(RPE->getMaxRegCountForBB(*Lead, SIMD, &WI->Runner), occupiedRegisters(*Lead));
+  if (Used + Reserved >= GRFBudget)
+    return 0;
+
+  return GRFBudget - Reserved - Used;
+}
+
+bool AdvMemOpt::hoistInst(Instruction *LD, BasicBlock *BB, unsigned &BudgetInRegisters) const {
   SmallPtrSet<Instruction *, 32> ToHoist;
   if (collectOperandInst(ToHoist, LD, BB))
     return false;
   if (collectTrivialUser(ToHoist, LD))
     return false;
+
+  // 'ToHoist' is the complete move set, so charge the budget before moving
+  // anything. Round each value up to a whole register, matching how occupancy is
+  // counted at the lead.
+  const DataLayout &DL = LD->getModule()->getDataLayout();
+  unsigned CostInRegisters = 0;
+  for (Instruction *I : ToHoist)
+    CostInRegisters += RPE->bytesToRegisters(RPE->computeSizeInBytes(I, SIMD, &WI->Runner, DL));
+  if (CostInRegisters > BudgetInRegisters) {
+    LLVM_DEBUG(dbgs() << " - - Out of register headroom at the lead block. Bail out.\n");
+    return false;
+  }
+  BudgetInRegisters -= CostInRegisters;
+
   BasicBlock *FromBB = LD->getParent();
   Instruction *Pos = BB->getTerminator();
   for (auto II = IGCLLVM::getFirstNonPHI(FromBB)->getIterator(), IE = FromBB->end(); II != IE; /*EMPTY*/) {
@@ -369,7 +442,9 @@ bool AdvMemOpt::hoistUniformLoad(ArrayRef<BasicBlock *> Line) const {
 
     // Found lead.
     BasicBlock *Lead = *BI++;
-    LLVM_DEBUG(dbgs() << "Found lead to hoist to: " << Lead->getName() << "\n");
+    unsigned BudgetInRegisters = hoistBudgetInRegisters(Lead);
+    LLVM_DEBUG(dbgs() << "Found lead to hoist to: " << Lead->getName() << " (budget " << BudgetInRegisters
+                      << " registers)\n");
 
     for (; BI != BE; ++BI) {
       BasicBlock *Curr = *BI;
@@ -396,8 +471,8 @@ bool AdvMemOpt::hoistUniformLoad(ArrayRef<BasicBlock *> Line) const {
           continue;
         }
 
-        if (!hoistInst(LD->inst(), Lead)) {
-          LLVM_DEBUG(dbgs() << " - - Uniform load could not be hoisted safely. Bail out.\n");
+        if (!hoistInst(LD->inst(), Lead, BudgetInRegisters)) {
+          LLVM_DEBUG(dbgs() << " - - Uniform load not hoisted (unsafe or out of budget). Bail out.\n");
           break;
         }
         Changed = true;

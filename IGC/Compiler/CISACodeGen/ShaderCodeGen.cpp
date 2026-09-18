@@ -1714,13 +1714,6 @@ void OptimizeIR(CodeGenContext *const pContext) {
       }
       GFX_ONLY_PASS { mpm.add(new GenUpdateCB()); }
 
-      // Own SimplifyCFG because bonusInstThreshold is per-instance, as with hoistCommonInsts above. Placed after the
-      // LoopUnroll passes, so a wider budget cannot change what unroll costs and decides. Kept off the other
-      // SimplifyCFG calls because default 0 then adds no pass at all, leaving the pipeline untouched.
-      if (unsigned BonusInstThreshold = IGC_GET_FLAG_VALUE(SimplifyCFGBonusInstThreshold)) {
-        mpm.add(llvm::createCFGSimplificationPass(SimplifyCFGOptions().bonusInstThreshold(BonusInstThreshold)));
-      }
-
       // Inserting PromoteToPredicatedMemoryAccess after GVN and several
       // other passes, to not block optimizations changing LLVM
       // load/stores, but before multiple SimplifyCFGs to allow more
@@ -1760,7 +1753,13 @@ void OptimizeIR(CodeGenContext *const pContext) {
         mpm.add(createBranchToSelectPass());
       }
 
-      mpm.add(llvm::createCFGSimplificationPass());
+      // Apply the bonus budget to the existing post-unroll CFG cleanup. An
+      // earlier SimplifyCFG changes JumpThreading's input and can expand pixel
+      // shaders enough to make SIMD32 spill, even at LLVM's default budget.
+      SimplifyCFGOptions PostUnrollCFGOptions;
+      if (unsigned BonusInstThreshold = IGC_GET_FLAG_VALUE(SimplifyCFGBonusInstThreshold))
+        PostUnrollCFGOptions.bonusInstThreshold(BonusInstThreshold);
+      mpm.add(llvm::createCFGSimplificationPass(PostUnrollCFGOptions));
       mpm.add(llvm::createEarlyCSEPass());
       if (pContext->m_instrTypes.hasNonPrimitiveAlloca) {
         // run custom safe opts to potentially get rid of indirect
