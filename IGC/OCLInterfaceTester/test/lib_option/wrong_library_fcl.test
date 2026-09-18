@@ -1,0 +1,15 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# fcl test with provided igc library via --lib
+
+# REQUIRES: fcl
+
+# RUN: not IGCOCLInterfaceTester fcl_preferred_ir --lib %igc_lib 2>&1 | FileCheck %s
+
+# CHECK: error: check 'fcl_preferred_ir' needs the FCL interfaces, which {{.*}} does not provide

@@ -1,0 +1,17 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# An unrecognized code-type name must fail with a clear error and a non-zero exit code
+
+# REQUIRES: fcl
+
+# RUN: not IGCOCLInterfaceTester fcl_translation_pairs < %s 2>&1 | FileCheck %s
+
+OCL_C NOT_A_CODE_TYPE
+
+# CHECK: error: expected two known code-type names in line 'OCL_C NOT_A_CODE_TYPE'
