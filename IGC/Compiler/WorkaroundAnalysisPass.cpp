@@ -290,7 +290,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I) {
     } break;
     case llvm::GenISAIntrinsic::GenISA_readsurfacetypeandformat: {
       CodeGenContext *pCodeGenCtx = m_pCtxWrapper->getCodeGenContext();
-      if (pCodeGenCtx && pCodeGenCtx->platform.supportsReadStateInfo()) {
+      if (pCodeGenCtx && pCodeGenCtx->platform.requiresA64SurfaceStateRead()) {
         convertReadSurfaceTypeAndFormatToA64(I, pCodeGenCtx);
       }
     } break;

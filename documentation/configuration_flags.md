@@ -86,7 +86,6 @@ $ export IGC_ShaderDumpEnable=1
 | `EnablePromoteI8` | Enable promoting i8 (char) to i16 on all ALU insts that does support i8. It's only for XeHPC+ for now. | Available |
 | `EnableQWRotateInstructions` | Enable QW type support for rotate instructions. PVC only. | Available |
 | `EnableQuickTokenAlloc` | Insert dependence resolve for kernel stitching | Available |
-| `EnableReadStateToA64Read` | Instead of using Read State info to fetch surface format etc use direct A64 read of Surface state                   for Xe3P+ platforms | - |
 | `EnableRemoveLoopDependency` | Enable removing of fantom loop dependency introduced by SROA | Available |
 | `EnableSWSBInstStall` | Enable force stall to specific(start) instruction start for software scoreboard generation | Available |
 | `EnableSWSBInstStallEnd` | Enable force stall to end instruction for software scoreboard generation | Available |

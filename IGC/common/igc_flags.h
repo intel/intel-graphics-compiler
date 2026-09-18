@@ -218,11 +218,6 @@ DECLARE_IGC_REGKEY_ENUM(EnableOverfetching, -1,
                         " 0 - force disabled,"
                         " 1 - force enabled",
                         TRIBOOL_OPTIONS, ALWAYS)
-DECLARE_IGC_REGKEY(bool, EnableReadStateToA64Read, false,
-                   "Instead of using Read State info to fetch surface format etc use direct A64 read of Surface state "
-                   "for Xe3P+ platforms",
-                   DEBUG_ONLY)
-
 DECLARE_IGC_REGKEY(DWORD, ForceHWThreadNumberPerEU, 0, "Total HW thread number per-EU.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, UseMathWithLUT, false,
                    "Use the implementations of cos, cospi, log, sin, sincos, and sinpi with Look-Up Tables (LUT).",
