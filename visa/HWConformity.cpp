@@ -1694,6 +1694,14 @@ bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB *bb) {
       IS_BTYPE(dstType) && (IS_DFTYPE(srcType) || IS_QTYPE(srcType));
 
   if (scalarByteToFloat || dstByteSrc64b) {
+    // A float->int mov clamps in HW (f > Imax gives Imax, f < Imin gives Imin,
+    // NaN gives 0), so a direct DF->B/UB conversion would clamp to the byte
+    // range. The narrowing mov of this expansion truncates instead, so it must
+    // saturate: clamping to word then byte matches clamping to byte directly.
+    // Saturation is set on both movs, redundantly on the conversion itself.
+    // Q/UQ->B/UB is left alone: truncation is expected for an integer source.
+    if (dstByteSrc64b && IS_DFTYPE(srcType))
+      inst->setSaturate(g4::SAT);
     replaceDst(i, Type_W);
     return true;
   }
@@ -1900,7 +1908,11 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB *bb, G4_Type extype,
   }
 
   if (byteDst && extypesize == 8) {
-    // Gen doesn't support hstride 8, so we add a W move here
+    // Gen doesn't support hstride 8, so we add a W move here.
+    // For a DF->B/UB mov the added move is the narrowing one and must
+    // saturate; see fixMov() for why.
+    if (inst->opcode() == G4_mov && IS_DFTYPE(extype))
+      inst->setSaturate(g4::SAT);
     replaceDst(i, Type_W);
     return true;
   }

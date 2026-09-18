@@ -2941,6 +2941,14 @@ void HWConformityPro::fixMov(INST_LIST_ITER it, G4_BB *bb) {
   bool srcByteDst64b =
       IS_BTYPE(srcType) && (IS_DFTYPE(dstType) || IS_QTYPE(dstType));
   if (dstByteSrc64b || srcByteDst64b) {
+    // A float->int mov clamps in HW (f > Imax gives Imax, f < Imin gives Imin,
+    // NaN gives 0), so a direct DF->B/UB conversion would clamp to the byte
+    // range. The narrowing mov of this expansion truncates instead, so it must
+    // saturate: clamping to dword then byte matches clamping to byte directly.
+    // Saturation is set on both movs, redundantly on the conversion itself.
+    // Q/UQ->B/UB is left alone: truncation is expected for an integer source.
+    if (dstByteSrc64b && IS_DFTYPE(srcType))
+      inst->setSaturate(g4::SAT);
     replaceDst(it, bb, Type_D, /*tmpStride*/ 0, Any);
     return;
   }
