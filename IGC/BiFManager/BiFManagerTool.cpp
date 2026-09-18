@@ -76,6 +76,9 @@ void BiFManagerTool::writeHashMapSingle(llvm::raw_fd_ostream &fileDataHeader, Bi
         record += ", ";
       }
     }
+    // Zero padding of the array would otherwise read as a dependency on section 0.
+    if (listOfDependency.size() < static_cast<size_t>(MaxDependencyList))
+      record += ", -1";
     record += " }; }";
 
     ++rec_i;
@@ -232,7 +235,7 @@ void BiFManagerTool::prepareDependencies(BiFDictionary &BiFMapBitType, int BiFMa
 }
 
 int BiFManagerTool::findDependency(BiFDictionary &BiFMapBitType) {
-  size_t MaxDependencyList = 0;
+  size_t MaxDependencyList = 1;
 
   llvm::SmallPtrSet<llvm::Function *, 16> visitedFuncs;
 

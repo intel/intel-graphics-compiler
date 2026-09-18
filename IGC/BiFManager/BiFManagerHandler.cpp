@@ -236,7 +236,7 @@ void BiFManagerHandler::preapareBiFSections(llvm::Module &pMainModule, TFunction
   };
 
   auto process_deps = [&](const auto &deps) {
-    for (auto dep_i = deps.begin(); dep_i != deps.end(); ++dep_i) {
+    for (auto dep_i = deps.begin(); dep_i != deps.end() && *dep_i >= 0; ++dep_i) {
       auto bifIndexSection = *dep_i;
 
       if (neededModules.count(bifIndexSection) > 0) {
