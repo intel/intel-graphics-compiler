@@ -382,24 +382,18 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
     }
   };
 
-  // if variable occupies 1 or 2 whole GRFs and uses Default32Bit augmentation
-  // mask then make the copy use M0 mask instead of using WriteEnable. Compare
-  // bytes against bytes per GRF: a sub-GRF declare must keep WriteEnable, it
-  // is copied by the leftover-bytes loop below which only emits that.
+  // if variable fits within 1 or 2 GRFs and uses Default32Bit augmentation mask
+  // then make the copy use M0 mask instead of using WriteEnable.
   // TODO: Copy should use same EM as original variable.
-  const unsigned int bytesPerGRF = kernel.numEltPerGRF<Type_UB>();
   unsigned int instOption = InstOpt_WriteEnable;
   if (isDefault32bMask) {
-    if (bytesRemaining % bytesPerGRF == 0 &&
-        bytesRemaining <= bytesPerGRF * 2) {
+    if (bytesRemaining % kernel.numEltPerGRF<Type_UD>() == 0 &&
+        bytesRemaining <= kernel.numEltPerGRF<Type_UB>() * 2) {
       instOption = G4_InstOption::InstOpt_M0;
     }
   } else if (maxDstSize == 4) {
-    // Default64Bit with 4GRF align: the row loop uses Type_DF only when it
-    // copies all 4 GRFs at once, and only then does each EM bit gate one
-    // 64-bit element. Narrower copies use Type_F and must keep WriteEnable.
-    if (bytesRemaining == bytesPerGRF * 4 &&
-        kernel.getSimdSize() >= kernel.numEltPerGRF<Type_DF>() * 4) {
+    if (bytesRemaining % kernel.numEltPerGRF<Type_UQ>() == 0 &&
+        bytesRemaining <= kernel.numEltPerGRF<Type_UQ>() * 4) {
       instOption = G4_InstOption::InstOpt_M0;
     }
   }
@@ -415,10 +409,11 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
 
       unsigned int rowsCopied = 1;
       G4_Type movType = Type_F;
-      if (maxDstSize == 4 && bytesRemaining >= bytesPerGRF * 4) {
+      if (maxDstSize == 4 &&
+          bytesRemaining >= kernel.numEltPerGRF<Type_UB>() * 4) {
         rowsCopied = 4;
         movType = Type_DF;
-      } else if (bytesRemaining >= bytesPerGRF * 2) {
+      } else if (bytesRemaining >= kernel.numEltPerGRF<Type_UB>() * 2) {
         // copy 2 GRFs at a time if byte size permits
         if (instOption == InstOpt_WriteEnable ||
             kernel.getSimdSize() >= execSize * 2) {
@@ -452,7 +447,7 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
 
       i += rowsCopied;
 
-      if (bytesRemaining < bytesPerGRF)
+      if (bytesRemaining < kernel.numEltPerGRF<Type_UB>())
         break;
     }
   }
@@ -499,8 +494,10 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
     if (execSize == g4::SIMD1)
       rd = kernel.fg.builder->getRegionScalar();
 
-    unsigned int row = (dst->getByteSize() - bytesRemaining) / bytesPerGRF;
-    unsigned int col = (dst->getByteSize() - bytesRemaining) % bytesPerGRF;
+    unsigned int row =
+        (dst->getByteSize() - bytesRemaining) / kernel.numEltPerGRF<Type_UB>();
+    unsigned int col =
+        (dst->getByteSize() - bytesRemaining) % kernel.numEltPerGRF<Type_UB>();
     if (G4_Type_Table[type].byteSize > 1) {
       vISA_ASSERT(col % 2 == 0, "Unexpected condition");
       col /= 2;
