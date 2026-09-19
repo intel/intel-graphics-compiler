@@ -32,7 +32,9 @@ static INLINE float __intel_sincos_f32_p0f32( float x, __private float* cosval, 
     }
     else  if(BIF_FLAG_CTRL_GET(UseHighAccuracyMath))
     {
-        sin_x = __ocl_svml_sincosf_noLUT(x, &cos_x);
+        // fabs for sin(-0.0) handling
+        sin_x = __ocl_svml_sincosf_noLUT(__spirv_ocl_fabs(x), &cos_x);
+        sin_x = as_float(as_uint(sin_x) ^ (as_uint(x) & FLOAT_SIGN_MASK));
     }
     else  if(BIF_FLAG_CTRL_GET(UseMathWithLUT))
     {
@@ -48,7 +50,9 @@ static INLINE float __intel_sincos_f32_p0f32( float x, __private float* cosval, 
         }
         else
         {
-            sin_x = __ocl_svml_sincosf_noLUT(x, &cos_x);
+            // abs_float for sin(-0.0) handling
+            sin_x = __ocl_svml_sincosf_noLUT(abs_float, &cos_x);
+            sin_x = as_float(as_uint(sin_x) ^ (as_uint(x) & FLOAT_SIGN_MASK));
         }
     }
     *cosval = cos_x;

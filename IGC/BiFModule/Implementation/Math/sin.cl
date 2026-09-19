@@ -41,7 +41,9 @@ static INLINE float __intel_sin_f32( float x, bool doFast )
             }
             else
             {
-                return __ocl_svml_sinf_noLUT(x);
+                // xor for sin(-0.0) result correction
+                float res = __ocl_svml_sinf_noLUT(abs_float);
+                return as_float(as_uint(res) ^ (as_uint(x) & FLOAT_SIGN_MASK));
             }
         }
     }
