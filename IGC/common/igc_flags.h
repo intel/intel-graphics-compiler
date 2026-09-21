@@ -1988,6 +1988,9 @@ DECLARE_IGC_REGKEY(DWORD, EarlyRetryDefaultGRFThreshold, 190,
                    "Cutoff value for register estimation, when highter than that kernel skips first compilation stage "
                    "and goes to retry immediately for default GRF.",
                    DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, EnableVRTEarlyRetry, true, "Enable early retry decision based on VRT table", ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, VRTEarlyRetryBudgetPercent, 150, "Scales Highest VRT Budget for early retry decision.",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableOCL512GRFForDPAS, false,
                    "On OCL recompilation, lift the GRF ceiling to 512 for SIMD16 (not forced-SIMD32) DPAS "
                    "kernels",

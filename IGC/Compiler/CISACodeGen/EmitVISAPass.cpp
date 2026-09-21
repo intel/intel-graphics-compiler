@@ -560,6 +560,17 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext *ctx, MetaDataUtils *pMdUtil
   }
 }
 
+// The last entry of a VRT mode table holds the largest GRF budget the hardware
+// can hand to a thread. Pressure above it cannot be satisfied by any VRT mode
+static bool isPastHighestVRTBudget(llvm::ArrayRef<VRT::ModeEntry> Table, unsigned MaxRegPressure,
+                                   unsigned BudgetPercent) {
+  if (Table.empty())
+    return false;
+
+  uint64_t Cutoff = (uint64_t)Table.back().first * BudgetPercent / 100;
+  return MaxRegPressure > Cutoff;
+}
+
 bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function *F) {
   // we only skip first compilation stage, if compilation pipeline
   // was configured to start from retry already, otherwise we do nothing
@@ -577,8 +588,18 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function
   if (F->size() == 1)
     return false;
 
+  auto MaxRegPressure = getMaxRegPressureInFunctionGroup(F);
+
+  // false --> return 0 if nothing was set through flags
+  auto GRFPerThread = m_pCtx->getNumGRFPerThread(false, F);
+  bool NotSpecifiedDirectly = GRFPerThread == 0;
+  auto VRTTable = m_pCtx->platform.getVRTTable();
+  if (IGC_IS_FLAG_ENABLED(EnableVRTEarlyRetry) && !VRTTable.empty() && NotSpecifiedDirectly) {
+    return isPastHighestVRTBudget(VRTTable, MaxRegPressure, IGC_GET_FLAG_VALUE(VRTEarlyRetryBudgetPercent));
+  }
+
+  GRFPerThread = m_pCtx->getNumGRFPerThread(true, F);
   auto Threshold = IGC_GET_FLAG_VALUE(EarlyRetryLargeGRFThreshold);
-  auto GRFPerThread = m_pCtx->getNumGRFPerThread(true, F);
   // If we are not in large GRF mode and auto GRF is disabled we use
   // threshold set for default GRF size if it is lower. We also, as a workaround
   // skip lowering the threshold if we have indirect operands in the kernel to
@@ -587,7 +608,6 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function
       !m_pCtx->m_instrTypes.mayHaveIndirectOperands) {
     Threshold = std::min(Threshold, IGC_GET_FLAG_VALUE(EarlyRetryDefaultGRFThreshold));
   }
-  auto MaxRegPressure = getMaxRegPressureInFunctionGroup(F);
   bool PassedThreshold = MaxRegPressure >= Threshold;
   return PassedThreshold;
 }
