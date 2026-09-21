@@ -44,18 +44,12 @@ struct SBaseVecDesc {
   //   as 'a' is grf-aligned (ld's return payload), 'b' should be aligned
   //   at grf too in order to make 'a' the part of 'b'.
   e_alignment Align;
+  // BaseVector : dessa node value
   llvm::Value *BaseVector;
-  // Keep the original vector type as BaseVector is a dessa node value,
-  // which could be a different value with a differnt type. For vector
-  // aliasing, both sub and base must have the same element size.
-  llvm::VectorType *OrigType;
   // All BaseVector's aliasers (subVec)
   llvm::SmallVector<SSubVecDesc *, 16> Aliasers;
 
-  SBaseVecDesc(llvm::Value *V, llvm::Value *OV, e_alignment A)
-      : Align(A), BaseVector(V), OrigType(llvm::dyn_cast<llvm::VectorType>(OV->getType())) {
-    IGC_ASSERT(OrigType != nullptr);
-  }
+  SBaseVecDesc(llvm::Value *V, e_alignment A) : Align(A), BaseVector(V) {}
 };
 
 struct SSubVecDesc {
@@ -72,17 +66,22 @@ struct SSubVecDesc {
   //     Aliaser = BaseVector[StartElementOffset, StartElementOffset+n]
 
   // Aliaser and Aliasee
-  //   They are dessa node values.
-  llvm::Value *Aliaser;
+  //   They both are dessa node values.
+  llvm::Value *Aliaser; // dessa node value
 
-  // Keep all aliasers of BaseVecotr. Valid for the root entry only,
-  // that is, Aliaser == BaseVector
+  // Aliasee: Aliasee info is kept in SBaseVecDesc.
   SBaseVecDesc *Aliasee;
 
-  short StartElementOffset; // in the unit of BaseVector's element type
+  // As subgroupBitcastShuffle aliases two variables that may have different
+  // element sizes. To support it, have to use StartByteOffset instead of
+  // StartElementOffset to handle cases that aliased vectors have different
+  // element sizes.
+  uint16_t StartByteOffset; // Aliaser's starting byte offset from its Aliasee
+
+  short StartElementOffset; // element ix to the base vector.
   short NumElts;            // the number of elements of Aliaser
 
-  SSubVecDesc(llvm::Value *V) : Aliaser(V), Aliasee(nullptr), StartElementOffset(0) {
+  SSubVecDesc(llvm::Value *V) : Aliaser(V), Aliasee(nullptr), StartByteOffset(0), StartElementOffset(0) {
     IGCLLVM::FixedVectorType *VTy = llvm::dyn_cast<IGCLLVM::FixedVectorType>(V->getType());
     NumElts = VTy ? (short)VTy->getNumElements() : 1;
   }
@@ -324,7 +323,7 @@ public:
   void addVecAlias(llvm::Value *Aliaser, llvm::Value *Aliasee, llvm::Value *OrigBaseVec, int Idx,
                    e_alignment AliaseeAlign = EALIGN_AUTO);
   SSubVecDesc *getOrCreateSubVecDesc(llvm::Value *V);
-  SBaseVecDesc *getOrCreateBaseVecDesc(llvm::Value *V, llvm::Value *OV, e_alignment A);
+  SBaseVecDesc *getOrCreateBaseVecDesc(llvm::Value *V, e_alignment A);
   void getAllAliasVals(ValueVectorTy &AliasVals, llvm::Value *Aliaser, llvm::Value *VecAliasee, int Idx);
 
   // No need to emit code for instructions in this map due to aliasing
@@ -411,21 +410,28 @@ private:
   bool isAliased(llvm::Value *V) const;
   bool isAliaser(llvm::Value *V) const;
 
-  // For alias(S,B), each of S and B can be one of three states.
+  // VectorAlias bit fields: [1:0] sub-vector aliasing, [3:2] extractElement
+  // aliasing, [5:4] lifetime-start. Within each field, 1 = isolated values
+  // only, 2 = isolated and non-isolated.
+  uint16_t subVecAliasLevel() const { return m_pCtx->getVectorCoalescingControl() & 0x3; }
+  uint16_t extractEltAliasLevel() const { return (m_pCtx->getVectorCoalescingControl() >> 2) & 0x3; }
+  uint16_t lifeTimeLevel() const { return (m_pCtx->getVectorCoalescingControl() >> 4) & 0x3; }
+
+  // For alias(S, B), each participating value is classified into one of
+  // three states.
   enum class AState {
-    SKIP,  // skip aliasing
-    OK,    // aliasing okay if the other is target
-    TARGET // aliasing okay if no one is SKIP
+    SKIP,  // this value must not be aliased
+    OK,    // aliasing is allowed if the other is target
+    TARGET // aliasing is allowed if the other is not SKIP
   };
   bool isExtractMaskCandidate(llvm::Value *V) const;
   AState getCandidateStateUse(llvm::Value *V) const;
   AState getCandidateStateDef(llvm::Value *V) const;
-  bool aliasOkay(AState A, AState B, AState C) const {
-    if ((A == AState::TARGET || B == AState::TARGET || C == AState::TARGET) && A != AState::SKIP && B != AState::SKIP &&
-        C != AState::SKIP) {
-      return true;
-    }
-    return false;
+
+  static bool aliasOkay(AState S0, AState S1, AState S2) {
+    const bool AnyTarget = (S0 == AState::TARGET || S1 == AState::TARGET || S2 == AState::TARGET);
+    const bool AnySkip = (S0 == AState::SKIP || S1 == AState::SKIP || S2 == AState::SKIP);
+    return AnyTarget && !AnySkip;
   }
   bool checkSubAlign(e_alignment &BaseAlign, llvm::Value *Subvec, llvm::Value *Basevec, int Base_ix);
 

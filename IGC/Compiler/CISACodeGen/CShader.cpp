@@ -442,8 +442,8 @@ void CShader::CreateImplicitArgs() {
 
 DebugInfoData &IGC::CShader::GetDebugInfoData() { return diData; }
 
-// For sub-vector aliasing, pre-allocating cvariables for those
-// valeus that have sub-vector aliasing before emit instructions.
+// For sub-vector aliasing, pre-allocating cvariables for those values
+// that have sub-vector aliasing before emitting instructions.
 // (The sub-vector aliasing is done in VariableReuseAnalysis.)
 void CShader::CreateAliasVars() {
   // Create CVariables for vector aliasing (This is more
@@ -465,11 +465,8 @@ void CShader::CreateAliasVars() {
         (void)GetSymbol(rV, false, BV->Align);
       }
       CVariable *rootCVar = GetSymbol(baseVal);
-      Type *eltTy = BV->OrigType->getScalarType();
-      uint32_t bEltBytes = (uint32_t)m_DL->getTypeStoreSize(eltTy);
 
-      // Generate all vector aliasers and their
-      // dessa root if any.
+      // Generate all vector aliasers and their dessa root if any.
       for (int i = 0, sz = (int)BV->Aliasers.size(); i < sz; ++i) {
         SSubVecDesc *aSV = BV->Aliasers[i];
         Value *V = aSV->Aliaser;
@@ -481,8 +478,7 @@ void CShader::CreateAliasVars() {
             Vals[1] = dessaRootVal;
         }
         // index to baseVal, use baseElt to compute offset
-        int startIx = aSV->StartElementOffset;
-        int offsetInBytes = bEltBytes * startIx;
+        int offsetInBytes = aSV->StartByteOffset;
 
         for (int i = 0; i < 2; ++i) {
           V = Vals[i];

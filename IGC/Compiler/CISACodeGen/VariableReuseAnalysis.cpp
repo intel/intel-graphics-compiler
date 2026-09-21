@@ -30,10 +30,25 @@ inline int getNumElts(Value *V) {
   return VTy ? (int)VTy->getNumElements() : 1;
 }
 
-inline int getTypeSizeInBits(Type *Ty) {
+inline uint32_t getTypeSizeInBits(Type *Ty) {
   int scalarBits = Ty->getScalarSizeInBits();
   IGCLLVM::FixedVectorType *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
-  return scalarBits * (VTy ? (int)VTy->getNumElements() : 1);
+  return scalarBits * (VTy ? (uint32_t)VTy->getNumElements() : 1);
+}
+
+// Return the number of bytes for Ty's scalar type
+inline uint16_t getScalarTypeStoreSize(const Type *Ty, const DataLayout *DL) {
+  Type *eltTy = Ty->getScalarType();
+  return (uint16_t)DL->getTypeStoreSize(eltTy);
+}
+
+// EALIGN_AUTO means no requirement, so it loses to any explicit alignment.
+inline e_alignment maxAlignment(e_alignment A, e_alignment B) {
+  if (A == EALIGN_AUTO)
+    return B;
+  if (B == EALIGN_AUTO)
+    return A;
+  return A > B ? A : B;
 }
 
 e_alignment getMinAlignment(Value *V, WIAnalysis *WIA, CodeGenContext *pContext) {
@@ -320,9 +335,7 @@ void VariableReuseAnalysis::mergeVariables(Function *F) {
 }
 
 void VariableReuseAnalysis::visitLiveInstructions(Function *F) {
-  // VectorAlias = 0x4
-  //             = 0x8
-  const auto control = ((m_pCtx->getVectorCoalescingControl() >> 2) & 0x3);
+  const auto control = extractEltAliasLevel();
   if (control == 0) {
     return;
   }
@@ -419,7 +432,7 @@ void VariableReuseAnalysis::postProcessing() {
   // VectorAlias = 0x10
   //             = 0x20
   BlockCoalescing *theBC = &getAnalysis<BlockCoalescing>();
-  const auto control = ((m_pCtx->getVectorCoalescingControl() >> 4) & 0x3);
+  const auto control = lifeTimeLevel();
   if (!m_DeSSA || control == 0)
     return;
 
@@ -512,7 +525,7 @@ Value *VariableReuseAnalysis::getAliasRootValue(Value *V) {
 }
 
 void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst &I) {
-  const auto control = ((m_pCtx->getVectorCoalescingControl() >> 2) & 0x3);
+  const auto control = extractEltAliasLevel();
   // VectorAlias=0x4 : for isolated values
   //            =0x8 : for both isolated and non-isolated values
   if (control == 0) {
@@ -662,7 +675,8 @@ void VariableReuseAnalysis::printAlias(raw_ostream &OS, const Function *F) const
       bool isSinglVal = m_DeSSA ? m_DeSSA->isSingleValued(aliaser) : true;
       const char *Noop = HasBeenNoop ? " [no-op]" : " ";
       const char *inCC = !isSinglVal ? ".inDessaCC" : "";
-      OS << "    " << *aliaser << "  [" << aSV->StartElementOffset << "]" << inCC << Noop << "\n";
+      OS << "    " << *aliaser << "  [" << aSV->StartByteOffset << "B (elt_ix:" << aSV->StartElementOffset << ")]"
+         << inCC << Noop << "\n";
     }
     OS << "\n";
   }
@@ -721,33 +735,31 @@ void VariableReuseAnalysis::dumpAlias() const { printAlias(dbgs(), m_F); }
 // Add alias Aliaser -> Aliasee[Idx]
 void VariableReuseAnalysis::addVecAlias(Value *Aliaser, Value *Aliasee, Value *OrigBaseVec, int Idx,
                                         e_alignment AliaseeAlign) {
-  auto getLargerAlign = [](e_alignment A0, e_alignment A1) -> e_alignment {
-    if (A0 == EALIGN_AUTO)
-      return A1;
-    if (A1 == EALIGN_AUTO)
-      return A0;
-    return A0 > A1 ? A0 : A1;
-  };
-
   int StartIx = Idx;
-  // if Aliasee is an aliaser now, its aliasee will be the new aliasee
+  uint16_t StartBytes = (uint16_t)Idx * getScalarTypeStoreSize(OrigBaseVec->getType(), m_DL);
+
+  // As aliasee also has an entry in m_aliasMap (marker entry), get the aliasee
+  // from m_aliasMap if there is one; otherwise, create a new one. This works even
+  // though input 'Aliasee' has already been an aliaser.
   SBaseVecDesc *aliaseeBV;
   auto SMI = m_aliasMap.find(Aliasee);
   if (SMI != m_aliasMap.end()) {
     SSubVecDesc *SV = SMI->second;
     aliaseeBV = SV->Aliasee;
     StartIx += SV->StartElementOffset;
+    StartBytes += SV->StartByteOffset;
   } else {
-    aliaseeBV = getOrCreateBaseVecDesc(Aliasee, OrigBaseVec, AliaseeAlign);
+    aliaseeBV = getOrCreateBaseVecDesc(Aliasee, AliaseeAlign);
   }
   // update align
-  aliaseeBV->Align = getLargerAlign(aliaseeBV->Align, AliaseeAlign);
+  aliaseeBV->Align = maxAlignment(aliaseeBV->Align, AliaseeAlign);
 
   SSubVecDesc *aliaserSV = getOrCreateSubVecDesc(Aliaser);
   aliaserSV->Aliasee = aliaseeBV;
   aliaserSV->StartElementOffset = StartIx;
+  aliaserSV->StartByteOffset = StartBytes;
 
-  // If Aliaser exists as aliasee, must re-alias its aliasers.
+  // If input 'Aliaser' exists as aliasee, must re-alias its aliasers.
   auto BMI = m_baseVecMap.find(Aliaser);
   if (BMI != m_baseVecMap.end()) {
     SBaseVecDesc *BVD = BMI->second;
@@ -755,10 +767,11 @@ void VariableReuseAnalysis::addVecAlias(Value *Aliaser, Value *Aliasee, Value *O
       SSubVecDesc *SV = BVD->Aliasers[i];
       SV->Aliasee = aliaseeBV;
       SV->StartElementOffset += StartIx;
+      SV->StartByteOffset += StartBytes;
       aliaseeBV->Aliasers.push_back(SV);
     }
 
-    aliaseeBV->Align = getLargerAlign(aliaseeBV->Align, BVD->Align);
+    aliaseeBV->Align = maxAlignment(aliaseeBV->Align, BVD->Align);
 
     // Delete BMI as it is no longer a base vector.
     m_baseVecMap.erase(BMI);
@@ -767,8 +780,8 @@ void VariableReuseAnalysis::addVecAlias(Value *Aliaser, Value *Aliasee, Value *O
   // Finally, add aliaserSV into Aliasee's Aliaser vector
   aliaseeBV->Aliasers.push_back(aliaserSV);
 
-  const auto control1 = (m_pCtx->getVectorCoalescingControl() & 0x3);
-  const auto control2 = ((m_pCtx->getVectorCoalescingControl() >> 2) & 0x3);
+  const auto control1 = subVecAliasLevel();
+  const auto control2 = extractEltAliasLevel();
   if (control1 > 1 || control2 > 1) {
     // If aliaser isn't single-valued, add it to its root map.
     if (!m_DeSSA->isSingleValued(Aliaser)) {
@@ -791,9 +804,9 @@ SSubVecDesc *VariableReuseAnalysis::getOrCreateSubVecDesc(Value *V) {
   return m_aliasMap[V];
 }
 
-SBaseVecDesc *VariableReuseAnalysis::getOrCreateBaseVecDesc(Value *V, Value *OV, e_alignment A) {
+SBaseVecDesc *VariableReuseAnalysis::getOrCreateBaseVecDesc(Value *V, e_alignment A) {
   if (m_baseVecMap.count(V) == 0) {
-    SBaseVecDesc *BV = new (BaseVecAllocator.Allocate()) SBaseVecDesc(V, OV, A);
+    SBaseVecDesc *BV = new (BaseVecAllocator.Allocate()) SBaseVecDesc(V, A);
     m_baseVecMap.insert(std::make_pair(V, BV));
   }
   return m_baseVecMap[V];
@@ -859,10 +872,13 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(InsertElementInst *FirstIEI
                                                      bool OnlySameBB) {
   int nelts = getNumElts(FirstIEI);
 
-  // Sanity
-  // insertelement to <1 x n> vector is valid
-  if (nelts < (isa<IGCLLVM::FixedVectorType>(FirstIEI->getType()) ? 1 : 2))
-    return false;
+  // Only handle vector whose element size is multiple of 8-bit.
+  {
+    Type *EltTy = FirstIEI->getType()->getScalarType();
+    if (!EltTy->isPointerTy() && (EltTy->getPrimitiveSizeInBits() % 8) != 0) {
+      return false;
+    }
+  }
 
   AllIEIs.resize(nelts);
 
@@ -919,6 +935,13 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(InsertElementInst *FirstIEI
   if (V == nullptr) {
     return false;
   }
+
+  // Restriction:
+  //   subgroupBitCastShuffle is allowed only when VectorAlias=1.
+  //   vEltBytes/control is used to enforce this restriction.
+  const auto control = subVecAliasLevel();
+  const uint32_t vEltBytes = getScalarTypeStoreSize(V->getType(), m_DL);
+
   Value *V_nv = m_DeSSA->getNodeValue(V);
   Value *V_root = getRootValue(V_nv);
   auto V_dep = m_WIA->whichDepend(V);
@@ -940,19 +963,18 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(InsertElementInst *FirstIEI
       continue;
     }
     Value *FromVec = AllIEIs[i].FromVec;
-
-    if (GenIntrinsicInst *GII = dyn_cast_or_null<GenIntrinsicInst>(FromVec)) {
-      auto GIIid = GII->getIntrinsicID();
-      if (GIIid == GenISAIntrinsic::GenISA_SubgroupBitcastShuffle)
-        return false;
-    }
-
     if (FromVec) {
       Value *FromVec_nv = m_DeSSA->getNodeValue(FromVec);
       // check if FromVec has been coalesced with IEI already by DeSSA.
       // (Wouldn't happen under current DeSSA, but might happen in future)
       if (V_root == getRootValue(FromVec_nv))
         return false;
+
+      if (vEltBytes != getScalarTypeStoreSize(FromVec_nv->getType(), m_DL)) {
+        // [TODO] Improve this if needed
+        if (control > 1)
+          return false;
+      }
     }
 
     // Make sure FromVec or E have the same uniformness as V.
@@ -1004,7 +1026,7 @@ bool VariableReuseAnalysis::getElementValue(InsertElementInst *IEI, int &IEI_ix,
   V_ix = 0;
   IEI_ix = 0;
 
-  // Check if I has constant index, skip if not.
+  // Check if IEI has constant index, skip if not.
   ConstantInt *CI = dyn_cast<ConstantInt>(IEI->getOperand(2));
   if (!CI) {
     return false;
@@ -1039,6 +1061,8 @@ bool VariableReuseAnalysis::getElementValue(InsertElementInst *IEI, int &IEI_ix,
     return true;
   }
 
+  // V and IEI shall have the same element size
+  IGC_ASSERT(getScalarTypeStoreSize(V->getType(), m_DL) == getScalarTypeStoreSize(IEI->getType(), m_DL));
   // case 1.
   V_ix = (int)CI1->getZExtValue();
   return true;
@@ -1064,7 +1088,7 @@ void VariableReuseAnalysis::InsertElementAliasing(Function *F) {
   //   0x0: disable vector aliasing
   //   0x1: subvec aliasing for isolated values (getRootValue()=null)
   //   0x2: subvec aliasing for both isolated and non-isolated value)
-  const auto control = (m_pCtx->getVectorCoalescingControl() & 0x3);
+  const auto control = subVecAliasLevel();
   // To avoid increasing GRF pressure, skip if F is too large or not an entry
   const int32_t NumBBThreshold = IGC_GET_FLAG_VALUE(VectorAliasBBThreshold);
   bool OnlySameBB = getNumBBs(F) > NumBBThreshold;
@@ -1173,12 +1197,13 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy &AllIEIs) {
     return false;
   }
 
-  // Skip if they are not single-valued
   bool isSub_singleVal = m_DeSSA->isSingleValued(Sub_nv);
   bool isBase_singleVal = m_DeSSA->isSingleValued(Base_nv);
   if (!isSub_singleVal || !isBase_singleVal) {
-    if ((m_pCtx->getVectorCoalescingControl() & 0x3) < 2)
+    if (subVecAliasLevel() < 2) {
+      // Skip if they are not single-valued
       return false;
+    }
 
     // Skip if they are already coalesced by DeSSA
     Value *rootBase_nv = m_DeSSA->getRootValue(Base_nv);
@@ -1222,10 +1247,10 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy &AllIEIs) {
   return true;
 }
 
-// Check if IEI is a base vector created by other sub-vectors
-// or scalars. If it is, create alias and return true.
+// Check if IEI chain is a base vector created by other sub-vectors or scalars.
+// If it is, create alias and return true.
 bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &AllIEIs) {
-  const auto control = (m_pCtx->getVectorCoalescingControl() & 0x3);
+  const auto control = subVecAliasLevel();
   SmallVector<std::pair<Value *, int>, 8> SubVecs;
   auto IsInSubVecs = [&SubVecs](Value *Val) {
     for (int j = 0, sz = (int)SubVecs.size(); j < sz; ++j) {
@@ -1247,7 +1272,7 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &All
   }
 
   // Find all subvec that are part of BaseVec. AllIEIs may be formed from
-  // multiple subvec and scalar.
+  // multiple subvec and scalars.
   bool isSubCandidate = true;
   int nelts = (int)AllIEIs.size();
   Value *Sub = AllIEIs[0].FromVec;
@@ -1294,16 +1319,15 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &All
       if (isSubCandidate) {
         Value *aliaser = Sub ? Sub : Elt;
         int sub_nelts = getNumElts(aliaser);
-        // If Sub's size is not smaller than IEI's, or not all sub's
-        // elements are used, skip.
+        // If Sub's size is smaller than IEI chain's and all sub's
+        // elements are used, it is a valid sub.
         if (sub_nelts < nelts && (i - SubStartIx) == (sub_nelts - 1)) {
           SubVecs.push_back(std::make_pair(aliaser, SubStartIx));
         }
       }
 
-      // NextSub should be the new sub-vector.
-      // Make sure it is not used yet.
-      // Note this works for special case in which NextSub = nullptr.
+      // NextSub is the next one to check.
+      // Make sure that NextSub has not been aliased (in SubVecs) yet.
       isSubCandidate = true;
       Value *NextElt = (i < (nelts - 1)) ? AllIEIs[i + 1].Elt : nullptr;
       if (!NextElt || (NextSub && IsInSubVecs(NextSub)) || (!NextSub && IsInSubVecs(NextElt))) {
@@ -1356,7 +1380,7 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &All
     addVecAlias(V_nv, Base_nv, FirstIEI, V_ix, BaseAlign);
 
     int V_sz = getNumElts(V);
-    if (V_sz > 1) {
+    if (V->getType()->isVectorTy()) {
       // set up No-op inst map to skip emitting them later.
       for (int j = V_ix, sz = V_ix + V_sz; j < sz; ++j) {
         // Safe to mark IEI as no-op as its aliaser will set it
@@ -1439,7 +1463,9 @@ bool VariableReuseAnalysis::aliasInterfere(Value *Sub, Value *Base, int BaseIdx)
   return false;
 }
 
-// Check if a value is used in instructions that we handle.
+// Check if a value 'V' is preferred to be coalesced (aliased).
+//   This is to avoid aliasing blindly, instead try to do aliasing when
+//   aliasing is potentially beneficial.
 VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateUse(Value *V) const {
   // If any of its use is used as func arg, skip
   AState retSt = AState::OK;
@@ -1529,17 +1555,10 @@ bool VariableReuseAnalysis::isExtractMaskCandidate(Value *V) const {
   return fullMask > mask;
 }
 
-// Check if SubVec is aligned if it becomes a sub-vector at Base_ix of
-// BaseVec. If so, return true with SubVec alignment in BaseAlign.
+// This function is to check if SubVec still meets its alignment requirement
+// once it becomes BaseVec[Base_ix : Base_ix + SubVec.Size - 1] (sub-vector
+// of BaseVec). If so, return true with SubVec alignment in BaseAlign.
 bool VariableReuseAnalysis::checkSubAlign(e_alignment &BaseAlign, Value *SubVec, Value *BaseVec, int Base_ix) {
-  auto maxAlign = [](e_alignment A, e_alignment B) {
-    if (A == EALIGN_AUTO)
-      return B;
-    if (B == EALIGN_AUTO)
-      return A;
-    return A > B ? A : B;
-  };
-
   auto toBytes = [](e_alignment A) {
     switch (A) {
     case EALIGN_BYTE:
@@ -1566,10 +1585,6 @@ bool VariableReuseAnalysis::checkSubAlign(e_alignment &BaseAlign, Value *SubVec,
 
   BaseAlign = EALIGN_AUTO;
 
-  // Get element bytes from original base vector
-  Type *eltTy = BaseVec->getType()->getScalarType();
-  uint32_t eltBytes = (uint32_t)m_DL->getTypeStoreSize(eltTy);
-
   // get all coalesced values for subvec and find the max alignment
   SmallVector<Value *, 16> allVals;
   m_DeSSA->getAllCoalescedValues(SubVec, allVals);
@@ -1578,7 +1593,7 @@ bool VariableReuseAnalysis::checkSubAlign(e_alignment &BaseAlign, Value *SubVec,
   for (auto II : allVals) {
     Value *V = II;
     e_alignment thisAlign = getMinAlignment(V, m_WIA, m_pCtx);
-    sub_align = maxAlign(sub_align, thisAlign);
+    sub_align = maxAlignment(sub_align, thisAlign);
   }
   int sub_alignBytes = toBytes(sub_align);
   if (sub_alignBytes == 0) {
@@ -1589,17 +1604,24 @@ bool VariableReuseAnalysis::checkSubAlign(e_alignment &BaseAlign, Value *SubVec,
   // m_SimdSize is unavailable, using smallest simdsize for now.
   int simdsize = numLanes(m_pCtx->platform.getMinDispatchMode());
   int uLanes = (m_WIA->isUniform(BaseVec) ? 1 : simdsize);
-  // If base is an aliaser at this time, must check its aliasee
 
+  // Get element bytes from original base vector
+  IGC_ASSERT(getScalarTypeStoreSize(SubVec->getType(), m_DL) == getScalarTypeStoreSize(BaseVec->getType(), m_DL));
+  uint32_t eltBytes = getScalarTypeStoreSize(BaseVec->getType(), m_DL);
+  uint32_t sub2BaseByteOff = Base_ix * eltBytes;
+
+  // If base is an aliaser at this time, must check its aliasee.
+  // baseByteOff is its byte offset to its aliasee.
+  // Note: BaseVec and its Node value may have different element size
+  //       due to subgroupBitcastShuffle() aliasing
+  uint32_t baseByteOff = 0;
   Value *BaseVec_nd = m_DeSSA->getNodeValue(BaseVec);
-  int ix1 = 0;
   auto MII = m_aliasMap.find(BaseVec_nd);
   if (MII != m_aliasMap.end()) {
     SSubVecDesc *SV = MII->second;
-    ix1 = SV->StartElementOffset;
+    baseByteOff = SV->StartByteOffset;
   }
-  int ix = Base_ix + ix1;
-  int startOffset = eltBytes * uLanes * ix;
+  int startOffset = (sub2BaseByteOff + baseByteOff) * uLanes;
   if ((startOffset % sub_alignBytes) != 0) {
     // cannot be correctly aligned, skip
     return false;
