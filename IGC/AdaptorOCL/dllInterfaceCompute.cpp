@@ -470,13 +470,12 @@ bool TranslateSPIRVToLLVM(const STB_TranslateInputArgs &InputArgs, llvm::LLVMCon
       Opts.setSpecConst(SC.first, SC.second);
   }
 
-  if (platform.eProductFamily == IGFX_PVC) {
+  if (platform.eProductFamily == IGFX_PVC || platform.eProductFamily == IGFX_CRI) {
     if (CheckForImageUsage(SPIRVBinary.str())) {
-      stringErrMsg = "For PVC platform images should not be used";
+      stringErrMsg = "Images should not be used for this platform!";
       return false;
     }
   }
-
 
   // Actual translation from SPIR-V to LLVM
   success = llvm::readSpirv(Context, Opts, IS, LLVMModule, stringErrMsg);
