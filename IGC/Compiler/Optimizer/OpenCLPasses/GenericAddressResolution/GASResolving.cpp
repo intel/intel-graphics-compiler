@@ -458,7 +458,7 @@ bool GASResolving::isKernelArgByValPtrCandidate(Instruction *I) const {
   }
 
   auto *ArgEltTy = IGCLLVM::getArgAttrEltTy(Arg);
-  if (!isa<StructType>(ArgEltTy) || !typeContainsPointer(ArgEltTy, ADDRESS_SPACE_GENERIC)) {
+  if (!ArgEltTy || !isa<StructType>(ArgEltTy) || !typeContainsPointer(ArgEltTy, ADDRESS_SPACE_GENERIC)) {
     return false;
   }
 

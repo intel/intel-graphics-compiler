@@ -88,6 +88,7 @@ public:
   switch ((unsigned)Fixup.getKind()) {
   default:
     IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
+    break;
   case FK_Data_8:
 #if LLVM_VERSION_MAJOR <= 17
     IGC_ASSERT_MESSAGE(Target.isAbsolute() || Target.getSymA()->getKind() == MCSymbolRefExpr::VK_None,

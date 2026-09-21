@@ -690,8 +690,7 @@ void IGCPassManager::add(Pass *P) {
     PassManager::add(createTimeStatsIGCPass(m_pContext, m_name + '_' + pname, STATS_COUNTER_START));
   }
 
-  guard.release();
-  PassManager::add(P);
+  PassManager::add(guard.release());
 
   if (IGC_REGKEY_OR_FLAG_ENABLED(DumpTimeStatsPerPass, TIME_STATS_PER_PASS)) {
     PassManager::add(createTimeStatsIGCPass(m_pContext, m_name + '_' + pname, STATS_COUNTER_END));
