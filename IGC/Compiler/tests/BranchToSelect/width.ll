@@ -11,9 +11,11 @@
 
 ; Speculation is limited to values that live in a single 32-bit register and to ops
 ; that lower to one native instruction. A value wider than 32 bits (i64, double) is
-; never speculated -- it occupies two GRFs and legalizes into a multi-op sequence --
-; and multiplies wider than 16 bits are rejected too (32-bit mul is mul+mach, 64-bit
-; is emulated). Pointers are exempt: they are inherently 64-bit, but pointer plumbing
+; normally rejected because it occupies two GRFs and legalizes into a multi-op
+; sequence. Scalar icmp eq i64 is the sole compare exception; its fixed three-op
+; emulation cost is charged against the speculation limit. Multiplications wider
+; than 16 bits are rejected too (32-bit mul is mul+mach, 64-bit is emulated).
+; Pointers are exempt: they are inherently 64-bit, but pointer plumbing
 ; (gep/ptrtoint/casts) is not emulated arithmetic, so it stays speculatable.
 
 ; Negative: an i64 integer add is wide -- not speculated, branch survives.

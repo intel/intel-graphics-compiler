@@ -769,22 +769,23 @@ DECLARE_IGC_REGKEY(bool, EnablePromoteToPredicatedMemoryAccess, false, "Enable p
 DECLARE_IGC_REGKEY(bool, EnableBranchToSelect, true,
                    "Enable flattening of small speculatable branch regions into selects", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, BranchToSelectMaxSpeculatedInsts, 30,
-                   "Max instruction count of a single branch successor BranchToSelect will hoist. A backstop against "
-                   "linearizing a pathologically large arm, not the profitability test -- for a divergent branch both "
-                   "arms already execute under a lane mask, so profitability is decided on register pressure "
-                   "(BranchToSelectMaxPressureDelta). Mirrors LLVM EarlyIfConversion's BlockInstrLimit.",
+                   "Max estimated post-legalization operation cost of instructions hoisted from one branch successor "
+                   "block. A backstop against linearizing a large block, not the profitability test -- for a "
+                   "divergent branch both successors already execute under a lane mask, so profitability is decided on "
+                   "register pressure (BranchToSelectMaxPressureDelta). See LLVM EarlyIfConversion's BlockInstrLimit.",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, BranchToSelectMaxPressureDelta, 256,
                    "Max net register pressure one BranchToSelect fold may add, in bytes of register file at the "
                    "SIMD16 reference width: a divergent i32 weighs 64, a uniform i32 weighs 4, a divergent i64 128. "
                    "The default admits four divergent i32 values. A triangle scores 0 and always fits; a diamond is "
-                   "charged the smaller of its two arms' live-out weights. Merge PHIs replaced 1:1 by a select are "
-                   "not charged, so a chain of independent regions does not accumulate against this budget.",
+                   "charged the smaller of its two successors' live-out weights. Merge PHIs replaced 1:1 by a "
+                   "select are not charged, so a chain of independent regions does not accumulate against this "
+                   "budget.",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, BranchToSelectDivergentOnly, true,
                    "Restrict BranchToSelect to branches with a divergent (non work-item-uniform) condition. A uniform "
-                   "branch is a scalar jump that runs only one arm, so flattening it just makes the not-taken arm's "
-                   "work unconditional. Disable to flatten uniform branches too.",
+                   "branch is a scalar jump that runs only one successor, so flattening it just makes the not-taken "
+                   "successor's work unconditional. Disable to flatten uniform branches too.",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, SimplifyCFGBonusInstThreshold, 0,
                    "Max instructions SimplifyCFG will clone to merge two branches sharing a destination "

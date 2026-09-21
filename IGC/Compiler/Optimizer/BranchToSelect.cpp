@@ -70,8 +70,9 @@ SPDX-License-Identifier: MIT
 // budget. Register pressure is. Hence three separate gates:
 //
 //   - isSpeculatable: may this instruction run unconditionally at all.
-//   - m_maxSpeculatedInsts: instructions in one hoisted arm. A backstop against a
-//     pathologically large region, like LLVM EarlyIfConversion's BlockInstrLimit.
+//   - m_maxSpeculatedInsts: estimated post-legalization operation cost of instructions
+//     hoisted from one successor block. A backstop against a pathologically large region,
+//     like LLVM EarlyIfConversion's BlockInstrLimit.
 //   - foldPressureDelta: the profitability test. Net register pressure added,
 //     bounded by m_maxPressureDelta.
 //
@@ -142,8 +143,9 @@ private:
   // Move all non-terminator instructions of Blk to just before P's terminator.
   void hoistInto(BasicBlock *Blk, BasicBlock *P);
 
-  // True if I is safe to run unconditionally and stays a single native operation at
-  // its operand widths, i.e. is on the hoist allow-list.
+  // True if I is safe to run unconditionally and is on the hoist allow-list. Scalar
+  // i64 equality is the one wide exception; classifySuccessor charges its fixed
+  // post-legalization cost separately.
   bool isSpeculatable(const Instruction *I) const;
 
   // Register-file weight of V in bytes (see DivergentLaneFactor).
@@ -165,7 +167,8 @@ private:
   // Whether the divergence gate is on (fold only divergent branches). Set with regkey.
   bool m_divergentOnly = true;
 
-  // Backstop: max instructions in one hoisted arm. Set with regkey.
+  // Backstop: max estimated post-legalization operation cost of instructions hoisted
+  // from one successor block. Set with regkey.
   unsigned m_maxSpeculatedInsts = 0;
 
   // Profitability budget: max net pressure one fold may add. Set with regkey.
@@ -202,6 +205,11 @@ static bool isWideScalar(const llvm::Type *T) {
   return S->isFloatingPointTy() && !isFastFPType(S);
 }
 
+static bool isScalarI64Equality(const Instruction *I) {
+  const auto *Cmp = dyn_cast<ICmpInst>(I);
+  return Cmp && Cmp->getPredicate() == CmpInst::ICMP_EQ && Cmp->getOperand(0)->getType()->isIntegerTy(64);
+}
+
 // The value a merge PHI receives over a shared pad's edge may itself be a PHI in that
 // pad. Peel it to the value the pad is handed along P's edge, which is what P has to
 // feed the select.
@@ -233,10 +241,11 @@ void BranchToSelect::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<MetaDataUtilsWrapper>();
 }
 
-// May I run unconditionally? True only for an instruction that cannot fault or trap, has
-// no side effects, and lowers to a single native operation at the widths given. Anything
-// wider legalizes into a multi-op or multi-GRF sequence; anything not listed is rejected
-// outright, so an unrecognized opcode or intrinsic is never speculated.
+// May I run unconditionally? True only for an instruction that cannot fault or trap and
+// has no side effects. Most entries lower to one native operation at the widths given;
+// scalar i64 equality is the only wide exception, and its fixed emulation cost is charged
+// by classifySuccessor. Anything not listed is rejected outright, so an unrecognized
+// opcode or intrinsic is never speculated.
 bool BranchToSelect::isSpeculatable(const Instruction *I) const {
   switch (I->getOpcode()) {
   case Instruction::Freeze:
@@ -275,8 +284,16 @@ bool BranchToSelect::isSpeculatable(const Instruction *I) const {
       return false;
     return true;
 
-  // Compares follow the operand width (the result is i1); reject a 64-bit / f64 compare.
+  // Compares follow the operand width (the result is i1). Scalar i64 equality is the
+  // one wide exception: i64 emulation lowers it to two i32 equalities and one i1 AND.
   case Instruction::ICmp:
+    if (isScalarI64Equality(I))
+      return true;
+    if (isWideScalar(I->getOperand(0)->getType()))
+      return false;
+    return true;
+
+  // An f64 compare may be native or emulated, and its emulated cost is not fixed.
   case Instruction::FCmp:
     if (isWideScalar(I->getOperand(0)->getType()))
       return false;
@@ -362,7 +379,7 @@ BranchToSelect::SuccessorKind BranchToSelect::classifySuccessor(BasicBlock *S, B
     // and deleting it affects no other path. Accept it if every instruction is
     // legal to speculate and the arm is not pathologically large; whether the fold
     // pays off is foldPressureDelta's call.
-    unsigned InstCount = 0;
+    unsigned SpeculatedInstCost = 0;
     for (Instruction &I : *S) {
       if (I.isTerminator())
         break;
@@ -389,9 +406,12 @@ BranchToSelect::SuccessorKind BranchToSelect::classifySuccessor(BasicBlock *S, B
       if (!isSpeculatable(&I))
         return SuccessorKind::None;
 
-      // Backstop: refuse an arm so large that linearizing it would reshape the
-      // block wholesale, however cheap each instruction looks.
-      if (++InstCount > m_maxSpeculatedInsts)
+      // Backstop: refuse a successor block so large that linearizing it would reshape
+      // the predecessor block wholesale, however cheap each instruction looks. Scalar i64 equality
+      // is represented by two i32 equality operations and one i1 AND after
+      // emulation, so charge that fixed three-operation cost here.
+      SpeculatedInstCost += isScalarI64Equality(&I) ? 3 : 1;
+      if (SpeculatedInstCost > m_maxSpeculatedInsts)
         return SuccessorKind::None;
     }
 
