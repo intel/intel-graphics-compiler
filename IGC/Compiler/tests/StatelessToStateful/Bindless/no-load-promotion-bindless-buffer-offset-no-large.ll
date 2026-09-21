@@ -9,15 +9,17 @@
 ; REQUIRES: llvm-16-plus
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless | FileCheck %s
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless -platformmtl | FileCheck %s --check-prefix=SLOWBL
-; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless -platformarl --device-id 0x7D67 | FileCheck %s --check-prefix=SLOWBL
+; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless -platformarl | FileCheck %s
+; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless -platformarl --device-id 0x7D67 | FileCheck %s
+; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless -platformarl --device-id 0xB640 | FileCheck %s
 ;
 ; In bindless + buffer-offset no-large mode, load promotion is allowed for
 ; bindless addressing mode (fast ldraw.indexed) on most platforms - the first RUN
-; line covers that. On MTL (eProductFamily==IGFX_METEORLAKE) and on ARL-S
-; (eProductFamily==IGFX_ARROWLAKE with an ARL-S device ID) load promotion is
-; disabled to avoid a performance regression; both are checked with the SLOWBL
-; prefix. ARL-H and ARL-U are not affected. Store promotion remains enabled
-; everywhere.
+; line and the explicit non-ARL-S ARL run line cover that. On MTL
+; (eProductFamily==IGFX_METEORLAKE) load promotion is disabled to avoid a
+; performance regression and is checked with the SLOWBL prefix. ARL, including
+; the ARL-S device IDs covered here, follows the fast path. Store promotion
+; remains enabled everywhere.
 
 ; CHECK-LABEL: @test_no_load_promotion
 ; CHECK: [[SRCOFF:%.*]] = inttoptr i32 %bindlessOffset to ptr addrspace(2490368)
