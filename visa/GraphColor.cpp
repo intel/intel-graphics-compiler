@@ -11263,20 +11263,12 @@ bool GlobalRA::hybridRA(LocalRA &lra) {
     RPE rpe(*this, &liveAnalysis);
     rpe.run();
 
-    // When register pressure is too low, hybridRA will hurt performance.
-    // Because FF algorithm is applied in the local RA
-    // Low register pressure doesn't mean local RA can handle. Such as there are
-    // many short global live ranges.
-    bool tooLowRP = rpe.getMaxRP() < kernel.getNumRegTotal() / 2;
-
     bool spillLikely =
         kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
         rpe.getMaxRP() >= kernel.getNumRegTotal() - 16;
-    if (spillLikely || tooLowRP) {
-      RA_TRACE(
-          std::cout
-          << "\t--skip hybrid RA due to high pressure or too low pressure: "
-          << rpe.getMaxRP() << "\n");
+    if (spillLikely) {
+      RA_TRACE(std::cout << "\t--skip hybrid RA due to high pressure: "
+                         << rpe.getMaxRP() << "\n");
       kernel.Declares.resize(numOrigDcl);
       lra.undoLocalRAAssignments(false);
       // We check src/dst overlap WA because here to keep intf graph simple.
