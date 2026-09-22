@@ -654,8 +654,7 @@ int IR_Builder::translateLscUntypedInst(
   // And have properly sized inputs, but this assumption is proving false.
   auto checkDeclSize = [&](const char *what, G4_Declare *dcl, int visaRegsInDcl,
                            int genRegsNeeded, VISA_Exec_Size execSize) {
-    if (((execSize < EXEC_SIZE_32) && (visaRegsInDcl < genRegsNeeded)) ||
-        ((execSize == EXEC_SIZE_32) && (visaRegsInDcl * 2 < genRegsNeeded))) {
+    if (visaRegsInDcl < genRegsNeeded) {
       std::stringstream ss;
       ss << what << " register dimensions don't fit data type\n";
       ss << "vISA decl given is: ";
@@ -702,29 +701,44 @@ int IR_Builder::translateLscUntypedInst(
   };
 
   // Some sanity checking of vISA region sizes with the computed sizes
-  G4_Declare *addrDcl =
-      src0Addr->getBase()->asRegVar()->getDeclare()->getRootDeclare();
+  auto rootDeclOf = [](G4_Operand *opnd) -> G4_Declare * {
+    const G4_VarBase *base = opnd->getBase();
+    return (base && base->isRegVar()) ? opnd->getBaseRegVarRootDeclare()
+                                      : nullptr;
+  };
+
+  G4_Declare *addrDcl = rootDeclOf(src0Addr);
   check(addrDcl, "cannot find declaration for address register");
 
   // disable size checks if execSize is < min payload width,
   // since declares is allowed to be smaller than payload size in this case
   if (execSize >= minExecSize) {
     if (addrDcl) {
-      auto addrRegSize = addrDcl->getElemSize() * addrDcl->getTotalElems();
-      auto visaAddrRegsInDcl = std::max<int>(addrRegSize / getGRFSize(), 1);
-      checkDeclSize("address", addrDcl, visaAddrRegsInDcl, addrRegs,
+      checkDeclSize("address", addrDcl, addrDcl->getNumRows(), addrRegs,
                     visaExecSize);
     }
 
     // loading/store into the null register for prefetch
     if (!isNullOperand(dstRead)) {
       // sanity check the number of destination operands with the types given
-      G4_Declare *dstDcl =
-          dstRead->getBase()->asRegVar()->getDeclare()->getRootDeclare();
+      G4_Declare *dstDcl = rootDeclOf(dstRead);
       check(dstDcl != nullptr, "cannot find declaration for data register");
-      unsigned dataRegBytes = dstDcl->getTotalElems() * dstDcl->getElemSize();
-      auto visaRegsInDcl = std::max<int>(dataRegBytes / getGRFSize(), 1);
-      checkDeclSize("data", dstDcl, visaRegsInDcl, dstLen, visaExecSize);
+      if (dstDcl) {
+        checkDeclSize("data", dstDcl, dstDcl->getNumRows(), dstLen,
+                      visaExecSize);
+      }
+    }
+
+    // stores and atomics carry their data in src1; for a ternary atomic this
+    // is the payload coalesced from src1 and src2 above
+    if (!isNullOperand(src1Data)) {
+      G4_Declare *src1Dcl = rootDeclOf(src1Data);
+      check(src1Dcl != nullptr,
+            "cannot find declaration for write data register");
+      if (src1Dcl) {
+        checkDeclSize("write data", src1Dcl, src1Dcl->getNumRows(), src1Len,
+                      visaExecSize);
+      }
     }
   }
 

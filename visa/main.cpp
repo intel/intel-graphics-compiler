@@ -281,8 +281,8 @@ int parseText(llvm::StringRef fileName, int argc, const char *argv[],
   resetGlobalVariables();
   fclose(CISAin);
   if (fail) {
-    if (cisa_builder->HasParseError()) {
-      std::cerr << cisa_builder->GetParseError() << "\n";
+    if (cisa_builder->HasCriticalMsg()) {
+      std::cerr << cisa_builder->GetCriticalMsg();
     } else {
       std::cerr << "error during parsing: CISAparse() returned " << fail
                 << "\n";
