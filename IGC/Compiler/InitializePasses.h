@@ -172,6 +172,9 @@ void initializeSetFastMathFlagsLPMPass(llvm::PassRegistry &);
 void initializeSinkPointerConstAddPassPass(llvm::PassRegistry &);
 void initializeSPIRMetaDataTranslationLPMPass(llvm::PassRegistry &);
 void initializeSplitStructurePhisPassPass(llvm::PassRegistry &);
+#if LLVM_VERSION_MAJOR == 22
+void initializeDiamondChainMergePassPass(llvm::PassRegistry &);
+#endif // LLVM_VERSION_MAJOR == 22
 void initializeMergeMemFromBranchOptPass(llvm::PassRegistry &);
 void initializeMergeScalarPhisPassPass(llvm::PassRegistry &);
 void initializeSubgroup2DBlockIoResolutionLPMPass(llvm::PassRegistry &);

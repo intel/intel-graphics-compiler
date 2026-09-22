@@ -771,6 +771,10 @@ DECLARE_IGC_REGKEY(bool, DisableLoopSplitWidePHIs, false,
                    "Disable splitting of loop PHI values to eliminate subvector extract operations", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableBarrierControlFlowOptimizationPass, false,
                    "Enable barrier control flow optimization pass", DEBUG_ONLY)
+// DiamondChainMergePass is built against LLVM 22 only.  The key stays declared
+// on every LLVM version so the regkey table and configuration_flags.md do not
+// change shape; it simply has no effect where the pass is not built.
+DECLARE_IGC_REGKEY(bool, EnableDiamondChainMergePass, false, "Enable DiamondChainMergePass optimization", ALWAYS)
 DECLARE_IGC_REGKEY(bool, DisableBarrierSkipOptimization, false,
                    "Disable barrier skip optimization for small thread groups", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableWaveShuffleIndexSinking, true,

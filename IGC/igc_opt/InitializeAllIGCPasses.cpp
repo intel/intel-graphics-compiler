@@ -169,6 +169,9 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeSetFastMathFlagsLPMPass(Registry);
   initializeSPIRMetaDataTranslationLPMPass(Registry);
   initializeSplitStructurePhisPassPass(Registry);
+#if LLVM_VERSION_MAJOR == 22
+  initializeDiamondChainMergePassPass(Registry);
+#endif // LLVM_VERSION_MAJOR == 22
   initializeMergeScalarPhisPassPass(Registry);
   initializePromotePhiToSourceWidthPass(Registry);
   initializeTypeLegalizerPass(Registry);

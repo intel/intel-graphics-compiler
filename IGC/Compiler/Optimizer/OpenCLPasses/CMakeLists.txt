@@ -38,6 +38,12 @@ add_subdirectory(BufferBoundsChecking)
 add_subdirectory(LSCFuncs)
 add_subdirectory(Decompose2DBlockFuncsWithHoisting)
 add_subdirectory(Decompose2DBlockFuncs)
+# DiamondChainMergePass is built against LLVM 22 only.  On any other LLVM the
+# subdirectory is skipped and IGC_BUILD__{SRC,HDR}__OpenCLPasses_DiamondChainMergePass
+# stay unset, so the source/header lists below expand to nothing.
+if(LLVM_VERSION_MAJOR EQUAL 22)
+  add_subdirectory(DiamondChainMergePass)
+endif()
 add_subdirectory(LocalBuffers)
 add_subdirectory(MinimumValidAddressChecking)
 add_subdirectory(NamedBarriers)
@@ -87,6 +93,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_CorrectlyRoundedDivSqrt}
     ${IGC_BUILD__SRC__OpenCLPasses_Decompose2DBlockFuncsWithHoisting}
     ${IGC_BUILD__SRC__OpenCLPasses_Decompose2DBlockFuncs}
+    ${IGC_BUILD__SRC__OpenCLPasses_DiamondChainMergePass}
     ${IGC_BUILD__SRC__OpenCLPasses_DeviceEnqueueFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_DisableLoopUnrollOnRetry}
     ${IGC_BUILD__SRC__OpenCLPasses_DpasFuncs}
@@ -163,6 +170,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_DeviceEnqueueFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_Decompose2DBlockFuncsWithHoisting}
     ${IGC_BUILD__HDR__OpenCLPasses_Decompose2DBlockFuncs}
+    ${IGC_BUILD__HDR__OpenCLPasses_DiamondChainMergePass}
     ${IGC_BUILD__HDR__OpenCLPasses_DisableLoopUnrollOnRetry}
     ${IGC_BUILD__HDR__OpenCLPasses_DpasFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_BfloatBuiltins}

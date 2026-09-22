@@ -96,6 +96,9 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/SubGroupFuncs/SubGroupFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BIFTransforms/BIFTransforms.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BreakdownIntrinsic/BreakdownIntrinsic.h"
+#if LLVM_VERSION_MAJOR == 22
+#include "Compiler/Optimizer/OpenCLPasses/DiamondChainMergePass/DiamondChainMergePass.hpp"
+#endif // LLVM_VERSION_MAJOR == 22
 #include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass/TransformUnmaskedFunctionsPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/DisableInlining/DisableInlining.h"
 #include "Compiler/Optimizer/OpenCLPasses/DropTargetFunctions/DropTargetFunctions.h"
@@ -631,6 +634,17 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
 
   // Break down the intrinsics into smaller operations (eg. fmuladd to fmul add)
   IGC_ADD_PASS_AUTO(npm, lpm, BreakdownIntrinsicPass);
+
+#if LLVM_VERSION_MAJOR == 22
+  // Merge diamond-shaped conditional chains after the main cleanup/optimization
+  // passes have stabilized the CFG and loop/unroll-related work has already run.
+  // This pass is still a legacy FunctionPass, so it is scheduled directly on the
+  // LPM instead of via the NPM AUTO wrapper.
+  // Built against LLVM 22 only; EnableDiamondChainMergePass is inert elsewhere.
+  if (IGC_IS_FLAG_ENABLED(EnableDiamondChainMergePass)) {
+    lpm.add(new DiamondChainMergePass());
+  }
+#endif // LLVM_VERSION_MAJOR == 22
 
   {
     if (IGC_IS_FLAG_ENABLED(EnableConstantPromotion)) {
