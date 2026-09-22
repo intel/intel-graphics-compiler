@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InlineAsm.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/PatternMatch.h>
@@ -92,6 +93,7 @@ void CodeGenPatternMatch::releaseMemory() {
   PairOutputMap.clear();
   UniformBools.clear();
   LoopExitingBlocksCache.clear();
+  VectorConstantUseCounts.clear();
   delete[] m_blocks;
   m_blocks = nullptr;
 }
@@ -1423,21 +1425,26 @@ void CodeGenPatternMatch::visitInstruction(llvm::Instruction &I) {
 
 void CodeGenPatternMatch::visitExtractElementInst(llvm::ExtractElementInst &I) {
   Value *VecOpnd = I.getVectorOperand();
-  if (isa<Constant>(VecOpnd)) {
-    const Function *F = I.getParent()->getParent();
-    unsigned NUse = 0;
-    for (auto User : VecOpnd->users()) {
-      if (auto Inst = dyn_cast<Instruction>(User)) {
-        NUse += (Inst->getParent()->getParent() == F);
-      }
-    }
-
+  if (auto *C = dyn_cast<Constant>(VecOpnd)) {
     // Only add it to pool when there are multiple uses within this
     // function; otherwise no benefit but to hurt RP.
-    if (NUse > 1)
+    if (getVectorConstantUseCount(*I.getFunction(), C) > 1)
       AddToConstantPool(I.getParent(), VecOpnd);
   }
   MatchSingleInstruction(I);
+}
+
+unsigned CodeGenPatternMatch::getVectorConstantUseCount(const Function &F, const Constant *C) {
+  // ConstantData has no use list; count operands once per function.
+  if (VectorConstantUseCounts.empty()) {
+    for (const auto &Inst : instructions(F)) {
+      for (const Value *Op : Inst.operand_values()) {
+        if (Op->getType()->isVectorTy() && isa<Constant>(Op))
+          ++VectorConstantUseCounts[cast<Constant>(Op)];
+      }
+    }
+  }
+  return VectorConstantUseCounts.lookup(C);
 }
 
 void CodeGenPatternMatch::visitPHINode(PHINode &I) {
@@ -1809,8 +1816,11 @@ bool CodeGenPatternMatch::matchWideMul64Pair(Instruction &I) {
 
   Value *src0 = I.getOperand(0);
   Value *src1 = I.getOperand(1);
-
-  for (User *user : src0->users()) {
+  // ConstantData has no use list; search the users of the other operand.
+  Value *SearchSrc = isa<ConstantData>(src0) ? src1 : src0;
+  if (isa<ConstantData>(SearchSrc))
+    return false;
+  for (User *user : SearchSrc->users()) {
     Instruction *anotherInst = dyn_cast<Instruction>(user);
     if (!anotherInst)
       continue;

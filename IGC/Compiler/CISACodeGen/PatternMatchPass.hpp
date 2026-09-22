@@ -335,6 +335,8 @@ private:
   llvm::DenseSet<const llvm::Value *> UniformBools;
   llvm::DenseMap<const llvm::BinaryOperator *, bool> NecessaryMulCandidates;
   llvm::DenseMap<llvm::Loop *, llvm::SmallVector<llvm::BasicBlock *, 4>> LoopExitingBlocksCache;
+  llvm::DenseMap<const llvm::Constant *, unsigned> VectorConstantUseCounts;
+  unsigned getVectorConstantUseCount(const llvm::Function &F, const llvm::Constant *C);
 
   // Find bool values that will be emitted as uniform variables.
   // Otherwise they will be expanded to the SIMD size, by default.
