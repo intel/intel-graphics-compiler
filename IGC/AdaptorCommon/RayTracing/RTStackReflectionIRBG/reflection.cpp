@@ -32,7 +32,6 @@ namespace bi {
 PUREBUILTIN bool supportStochasticLod();
 PUREBUILTIN RTGAS RayDispatchGlobalData *getGlobalBufferPtr();
 PUREBUILTIN uint64_t canonizePointer(uint64_t);
-BUILTIN void createReadSyncTraceRay(uint32_t);
 PUREBUILTIN bool isRayQueryReturnOptimizationEnabled();
 
 
@@ -919,7 +918,6 @@ IMPL bool _syncStackToShadowMemory(RTSAS RTStack2<GenT> *__restrict__ HWStackPtr
                                    RTShadowAS RTStack2<GenT> *__restrict__ SMStackPtr, uint32_t ProceedReturnVal,
                                    uint32_t *ShadowMemRTCtrlPtr) {
   if (SMStackPtr->potentialHit.done == 0) {
-    hook::bi::createReadSyncTraceRay(ProceedReturnVal);
     *ShadowMemRTCtrlPtr = (uint32_t)TraceRayCtrl::TRACE_RAY_CONTINUE;
 
     auto *HWPH = (RTSAS uint32_t *)&HWStackPtr->potentialHit;

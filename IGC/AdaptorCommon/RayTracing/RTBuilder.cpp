@@ -1957,13 +1957,6 @@ void RTBuilder::copyMemHitInProceed(SyncStackPointerVal *HWStackPtr, SyncStackPo
 
 Value *RTBuilder::syncStackToShadowMemory(SyncStackPointerVal *HWStackPtr, SyncStackPointerVal *SMStackPtr,
                                           Value *ProceedReturnVal, Value *ShadowMemRTCtrlPtr) {
-  if (Ctx.platform.isRayQueryReturnOptimizationPackedStatusEnabled()) {
-    Function *postProcessRayQueryReturn = GenISAIntrinsic::getDeclaration(
-        this->GetInsertBlock()->getModule(), GenISAIntrinsic::GenISA_PostProcessRayQueryReturn);
-
-    ProceedReturnVal = this->CreateCall(postProcessRayQueryReturn, ProceedReturnVal);
-  }
-
   switch (getMemoryStyle()) {
 #define STYLE(X)                                                                                                       \
   case RTMemoryStyle::X:                                                                                               \

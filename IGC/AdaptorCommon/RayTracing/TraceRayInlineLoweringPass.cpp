@@ -377,6 +377,15 @@ Value *TraceRayInlineLoweringPass::emitProceedMainBody(RTBuilder &builder, Value
   Value *retSyncRT = builder.createSyncTraceRay(builder.getBvhLevel(ShadowMemStackPointer, false), traceRayCtrl,
                                                 nullptr, VALUE_NAME("trace_ray_query"));
 
+  // Complete and unpack the response before the already-done path is merged.
+  // The ballot lowering must keep both operations with their TraceRaySync.
+  builder.createReadSyncTraceRay(retSyncRT);
+  if (m_CGCtx->platform.isRayQueryReturnOptimizationPackedStatusEnabled()) {
+    auto *postProcess = GenISAIntrinsic::getDeclaration(builder.GetInsertBlock()->getModule(),
+                                                        GenISAIntrinsic::GenISA_PostProcessRayQueryReturn);
+    retSyncRT = builder.CreateCall(postProcess, retSyncRT);
+  }
+
   return retSyncRT;
 }
 
@@ -392,6 +401,8 @@ Value *TraceRayInlineLoweringPass::emitProceedMainBody(RTBuilder &builder, Value
 //    //To continue tracing we have to spill/fill the HWMemory's sync rtStack back and forth from/to ShadowMemory's one
 //    HWMemory.RTStack = ShadowMemory.RayQueryObject.RTStack;
 //    createSyncTraceRay(); //Sync bit set to 1
+//    ReadSyncTraceRay(retSyncTR);
+//    // Unpack the response here on platforms with packed return status.
 //    return retSyncTR;
 //}
 //........
@@ -399,7 +410,6 @@ Value *TraceRayInlineLoweringPass::emitProceedMainBody(RTBuilder &builder, Value
 //    //Abort if potentialHit.done is set
 //    if (potentialHit.done)
 //      return false;
-//    ReadSyncTraceRay(retSyncTR);
 //    ShadowMemory.RayQueryObject.RTStack = HWMemory.RTStack
 //    // Initially we use TRACE_RAY_INITIAL, but from now on we have to use TRACE_RAY_CONTINUE
 //    obj.ctrl = TRACE_RAY_CONTINUE;
