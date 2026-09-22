@@ -20,7 +20,9 @@
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -internal_options "-cl-intel-enable-auto-large-GRF-mode" -options "-igc_opts 'DumpASMToConsole=1, EnableOpaquePointersBackend=1'" 2>&1 | FileCheck %s
 
 ; Negative control: with the threshold disabled (VISASpillAllowed=1) the same kernel bumps to 256 GRF.
-; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -internal_options "-cl-intel-enable-auto-large-GRF-mode" -options "-igc_opts 'DumpASMToConsole=1, VISASpillAllowed=1, EnableOpaquePointersBackend=1'" 2>&1 | FileCheck %s --check-prefix=NOFIX
+; -vrtFillCost 0 is needed because that heuristic can veto the bump the byte
+; threshold asks for, which would keep this kernel at 128 GRF.
+; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -internal_options "-cl-intel-enable-auto-large-GRF-mode" -options "-igc_opts 'DumpASMToConsole=1, VISASpillAllowed=1, VISAOptions=-vrtFillCost 0, EnableOpaquePointersBackend=1'" 2>&1 | FileCheck %s --check-prefix=NOFIX
 
 ; CHECK: numGRF=128
 ; NOFIX: numGRF=256

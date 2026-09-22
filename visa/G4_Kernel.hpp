@@ -245,6 +245,15 @@ public:
     return configs[currentMode].numGRF;
   }
 
+  // Get the threads/EU of the next larger GRF available
+  unsigned getNumThreadsForLargerGRF() const {
+    for (auto i = currentMode + 1; i < configs.size(); ++i) {
+      if (configs[i].VRTEnable && configs[i].numGRF <= upperBoundGRF)
+        return configs[i].numThreads;
+    }
+    return configs[currentMode].numThreads;
+  }
+
   // Get the next smaller GRF available
   unsigned getSmallerGRF() const {
     for (auto i = static_cast<int>(currentMode) - 1; i >= 0 ; --i) {

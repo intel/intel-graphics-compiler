@@ -254,6 +254,61 @@ DEF_VISA_OPTION(vISA_SamplerRegs, ET_INT32, "-samplerRegs",
                 "Number of registers that are discounted in a BB with "
                 "sampler instructions when computing RPE.",
                 8)
+DEF_VISA_OPTION(vISA_VRTFillCost, ET_BOOL_TRUE, "-vrtFillCost",
+                "Veto the VRT GRF bump the spill size threshold asks for when "
+                "the loop-weighted cost of the fills the spill set needs is "
+                "under budget, so spills in cold code with hideable fill "
+                "latency keep the threads instead of forcing a bump. Can only "
+                "hold a bump back, never trigger one, and only on the first RA "
+                "iteration. On by default; pass -vrtFillCost 0 to let the "
+                "spill size threshold decide alone.",
+                true)
+DEF_VISA_OPTION(vISA_VRTFillCostDump, ET_BOOL, "-vrtFillCostDump",
+                "Dump the per-BB fill counts, pressure, and budget that "
+                "-vrtFillCost bases the VRT GRF bump on.",
+                false)
+DEF_VISA_OPTION(vISA_VRTFillReuseDistance, ET_INT32, "-vrtFillReuseDist",
+                "USAGE: -vrtFillReuseDist <k>.\n"
+                "Number of instructions a single fill is assumed to serve "
+                "uses for, when estimating fills per BB for -vrtFillCost.",
+                100)
+DEF_VISA_OPTION(vISA_VRTHighPressurePercent, ET_INT32, "-vrtHighPressurePct",
+                "USAGE: -vrtHighPressurePct <k>.\n"
+                "Percentage of the GRF count at or above which a BB's "
+                "register pressure is considered critical by -vrtFillCost.",
+                80)
+DEF_VISA_OPTION(vISA_VRTFillSpacingThreshold, ET_INT32, "-vrtFillSpacing",
+                "USAGE: -vrtFillSpacing <k>.\n"
+                "Minimum instructions per fill for a non-critical BB's fills "
+                "to count as latency-hidden and free under -vrtFillCost.",
+                40)
+DEF_VISA_OPTION(vISA_VRTFillCostBudgetPercent, ET_INT32, "-vrtFillCostPct",
+                "USAGE: -vrtFillCostPct <k>.\n"
+                "Percentage of the kernel's loop-weighted instruction count "
+                "that the weighted fill cost may reach before -vrtFillCost "
+                "bumps the GRF number.",
+                2)
+DEF_VISA_OPTION(vISA_VRTLoopWeightBase, ET_INT32, "-vrtLoopWeightBase",
+                "USAGE: -vrtLoopWeightBase <k>.\n"
+                "Assumed trip count per loop level, used to weigh the "
+                "instruction count a BB at nesting level n contributes to the "
+                "-vrtFillCost budget: k^n.",
+                10)
+DEF_VISA_OPTION(vISA_VRTFillLoopWeightBase, ET_INT32, "-vrtFillLoopWeightBase",
+                "USAGE: -vrtFillLoopWeightBase <k>.\n"
+                "Weight base for the fills themselves in -vrtFillCost: a fill "
+                "in a BB at nesting level n costs k^(n+1), so the cheapest "
+                "fill still costs k. Larger than -vrtLoopWeightBase makes a "
+                "fill inside a loop outweigh the loop's own instructions, so "
+                "hot fills force a GRF bump.",
+                25)
+DEF_VISA_OPTION(vISA_VRTThreadLossRefPercent, ET_INT32, "-vrtThreadLossRefPct",
+                "USAGE: -vrtThreadLossRefPct <n>.\n"
+                "Thread loss, in percent, at which -vrtFillCost uses its "
+                "budget unscaled. The budget is scaled by the bump's actual "
+                "thread loss over this value, so bumping to a config that "
+                "costs more threads/EU requires a larger fill cost.",
+                20)
 DEF_VISA_OPTION(vISA_ScalarPipe, ET_INT32, "-scalarPipe",
                 "USAGE: -scalarPipe <num>\n", 0)
 DEF_VISA_OPTION(vISA_LVN, ET_BOOL, "-nolvn", UNUSED, true)
