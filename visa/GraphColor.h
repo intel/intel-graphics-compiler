@@ -2085,12 +2085,7 @@ public:
   void reportSpillInfo(const LivenessAnalysis &liveness,
                        const GraphColor &coloring) const;
   static uint32_t getRefCount(int loopNestLevel);
-  bool canIncreaseGRF(unsigned spillSize, bool infCostSpilled,
-                      GraphColor &coloring, RPE &rpe, bool fastCompile);
-  // True when -vrtFillCost drives the bump instead of the byte threshold.
-  bool useFillCostHeuristic(bool fastCompile) const;
-  // True when the spill set's loop-weighted fill cost is over budget.
-  bool fillCostExceedsBudget(GraphColor &coloring, RPE &rpe);
+  bool canIncreaseGRF(unsigned spillSize, bool infCostSpilled);
   void updateSubRegAlignment(G4_SubReg_Align subAlign);
   bool isChannelSliced();
   // Used by LRA/GRA/hybrid RA
@@ -2283,7 +2278,7 @@ private:
   void writeVerboseStatsNumVars(LivenessAnalysis &liveAnalysis,
                                 FINALIZER_INFO *jitInfo);
   void writeVerboseRPEStats(RPE &rpe);
-  bool VRTIncreasedGRF(GraphColor &coloring, RPE &rpe, bool fastCompile);
+  bool VRTIncreasedGRF(GraphColor &coloring);
   bool canVRTIncreasedGRF(GraphColor &coloring);
   // nullopt = condition not met; true = GRF bumped; false = GRF at max.
   std::optional<bool>

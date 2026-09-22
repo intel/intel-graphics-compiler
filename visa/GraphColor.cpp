@@ -2304,26 +2304,18 @@ void Interference::buildInterferenceForFcall(
   }
 }
 
-bool GlobalRA::canIncreaseGRF(unsigned spillSize, bool infCostSpilled,
-                              GraphColor &coloring, RPE &rpe,
-                              bool fastCompile) {
+bool GlobalRA::canIncreaseGRF(unsigned spillSize, bool infCostSpilled) {
   // If we estimate insufficient # GRFs early on, we may end up
   // spilling an infinite spill cost variable. As last ditch effort,
   // we bump up # GRFs and retry compilation. If we estimate GRF
   // config well, then we should never see infCostSpilled == true.
 
-  // Size test fires and, with -vrtFillCost on, fill cost does not veto it.
-  bool spillTooExpensive =
-      (spillSize > 0 && spillSize >= kernel.grfMode.getSpillThreshold()) &&
-      (!useFillCostHeuristic(fastCompile) ||
-       fillCostExceedsBudget(coloring, rpe));
-
   // Conditions to increase #GRFs assuming first RA iteration did not succeed:
   //  - Variable with inf spill cost, or
   //  - #GRFs selected and next larger one has same number of threads, or
-  //  - Spill is too expensive to keep at this GRF number
+  //  - Spill size is above threshold
   if ((infCostSpilled || kernel.grfMode.hasLargerGRFSameThreads() ||
-       spillTooExpensive) &&
+       (spillSize > 0 && spillSize >= kernel.grfMode.getSpillThreshold())) &&
       kernel.grfMode.canUpdateMode()) {
     if (kernel.updateKernelToLargerGRF()) {
       // GRF successfully increased
@@ -11890,8 +11882,7 @@ void GlobalRA::writeVerboseRPEStats(RPE &rpe) {
   }
 }
 
-bool GlobalRA::VRTIncreasedGRF(GraphColor &coloring, RPE &rpe,
-                               bool fastCompile) {
+bool GlobalRA::VRTIncreasedGRF(GraphColor &coloring) {
   if (kernel.useAutoGRFSelection()) {
     bool infCostSpilled =
         coloring.getSpilledLiveRanges().end() !=
@@ -11902,7 +11893,7 @@ bool GlobalRA::VRTIncreasedGRF(GraphColor &coloring, RPE &rpe,
                      });
     // Check if GRF can be increased to avoid large spills
     if (canIncreaseGRF(computeSpillSize(coloring.getSpilledLiveRanges()),
-                       infCostSpilled, coloring, rpe, fastCompile))
+                       infCostSpilled))
       return true;
   }
   return false;
@@ -12084,137 +12075,6 @@ unsigned GlobalRA::computeSpillSize(const LIVERANGE_LIST &spilledLRs) {
     spillSize += lr->getDcl()->getByteSize();
   }
   return spillSize;
-}
-
-bool GlobalRA::useFillCostHeuristic(bool fastCompile) const {
-  // RPE is not run under fastCompile, so per-BB pressure is 0.
-  if (!kernel.getOption(vISA_VRTFillCost) || fastCompile)
-    return false;
-  // Later iterations see fills already inserted, which a bump cannot remove.
-  return getIterNo() == 0;
-}
-
-// Estimate the fill cost of the current spill set and compare it against a
-// budget, so spills whose fill latency is hideable do not force a GRF bump.
-// One fill is assumed to serve uses within vISA_VRTFillReuseDistance insts.
-// Cost is vISA_VRTFillCostBudgetPercent of the loop weighted inst count,
-// scaled by the threads/EU the bump costs.
-bool GlobalRA::fillCostExceedsBudget(GraphColor &coloring, RPE &rpe) {
-  const unsigned reuseDist = builder.getuint32Option(vISA_VRTFillReuseDistance);
-  const unsigned highRPPct =
-      builder.getuint32Option(vISA_VRTHighPressurePercent);
-  const unsigned minSpacing =
-      builder.getuint32Option(vISA_VRTFillSpacingThreshold);
-  const unsigned budgetPct =
-      builder.getuint32Option(vISA_VRTFillCostBudgetPercent);
-  const uint64_t instWeightBase =
-      builder.getuint32Option(vISA_VRTLoopWeightBase);
-  const uint64_t fillWeightBase =
-      builder.getuint32Option(vISA_VRTFillLoopWeightBase);
-  // 0 would divide by zero.
-  const uint64_t refLossPct =
-      std::max(1u, builder.getuint32Option(vISA_VRTThreadLossRefPercent));
-  // Deeper nests change no decision, and the clamp bounds the weight.
-  const unsigned MaxNestLevel = 6;
-
-  std::unordered_set<const G4_Declare *> spilled;
-  for (auto *lr : coloring.getSpilledLiveRanges())
-    spilled.insert(lr->getDcl()->getRootDeclare());
-  if (spilled.empty())
-    return false;
-
-  auto &loops = kernel.fg.getLoops();
-  auto nestLevelOf = [&](G4_BB *bb) {
-    auto *innerMostLoop = loops.getInnerMostLoop(bb);
-    return innerMostLoop ? innerMostLoop->getNestingLevel() : 0;
-  };
-  // Steeper base for fills, so a fill in a loop outweighs the body it hides in.
-  auto loopWeight = [&](uint64_t base, unsigned level) {
-    uint64_t weight = 1;
-    for (unsigned i = 0, e = std::min(level, MaxNestLevel); i != e; ++i)
-      weight *= base;
-    return weight;
-  };
-
-  uint64_t weightedFills = 0, weightedInsts = 0;
-  for (auto *bb : kernel.fg) {
-    // Spilled dcl -> position of the fill currently covering it.
-    std::unordered_map<const G4_Declare *, unsigned> coveredAt;
-    unsigned numInsts = 0, numFills = 0, maxRP = 0;
-
-    for (auto *inst : *bb) {
-      if (inst->isLabel())
-        continue;
-      ++numInsts;
-      maxRP = std::max(maxRP, rpe.getRegisterPressure(inst));
-      for (int i = 0, numSrc = inst->getNumSrc(); i != numSrc; ++i) {
-        auto *src = inst->getSrc(i);
-        if (!src || !src->isSrcRegRegion())
-          continue;
-        auto *dcl = src->getTopDcl();
-        if (!dcl || !spilled.count(dcl->getRootDeclare()))
-          continue;
-        auto [covered, isNewDcl] =
-            coveredAt.try_emplace(dcl->getRootDeclare(), numInsts);
-        if (isNewDcl || (numInsts - covered->second) > reuseDist) {
-          ++numFills;
-          covered->second = numInsts;
-          VRT_FILL_COST_DUMP(std::cout << "\t\t--fill BB" << bb->getId() << " @"
-                                       << numInsts << " for "
-                                       << dcl->getRootDeclare()->getName()
-                                       << ": ";
-                             inst->emit(std::cout); std::cout << "\n");
-        }
-      }
-      if (auto *dst = inst->getDst()) {
-        if (auto *dcl = dst->getTopDcl())
-          coveredAt.erase(dcl->getRootDeclare());
-      }
-    }
-
-    weightedInsts +=
-        (uint64_t)numInsts * loopWeight(instWeightBase, nestLevelOf(bb));
-    if (numFills == 0)
-      continue;
-
-    bool criticalRP = (maxRP * 100) >= (kernel.getNumRegTotal() * highRPPct);
-    unsigned instsPerFill = numInsts / numFills;
-    bool hidden = !criticalRP && instsPerFill > minSpacing;
-    // Fills start one level up, so the cheapest fill still weighs the base.
-    if (!hidden)
-      weightedFills +=
-          (uint64_t)numFills * loopWeight(fillWeightBase, nestLevelOf(bb) + 1);
-
-    VRT_FILL_COST_DUMP(std::cout
-                       << "\t--fill cost BB" << bb->getId() << ": nest "
-                       << nestLevelOf(bb) << ", " << numInsts << " insts, "
-                       << numFills << " fills, " << instsPerFill
-                       << " insts/fill, max RP " << maxRP << " -> "
-                       << (hidden ? "hidden" : "counted") << "\n");
-  }
-
-  const uint64_t curThreads = kernel.grfMode.getNumThreads();
-  const uint64_t nextThreads = kernel.grfMode.getNumThreadsForLargerGRF();
-  if (nextThreads >= curThreads)
-    return true;
-  const uint64_t threadsLost = curThreads - nextThreads;
-
-  // fills >= insts * budgetPct% * (threadsLost/curThreads) / refPct%, in
-  // integer math with the percentages cancelling.
-  uint64_t lhs = weightedFills * refLossPct * curThreads;
-  uint64_t rhs = weightedInsts * budgetPct * threadsLost;
-  bool overBudget = lhs >= rhs;
-  VRT_FILL_COST_DUMP(std::cout
-                     << "\t--fill cost " << weightedFills << " vs budget "
-                     << rhs / (refLossPct * curThreads) << " ("
-                     << (budgetPct * threadsLost * 100) /
-                            (refLossPct * curThreads)
-                     << "/100 % of " << weightedInsts << " weighted insts, "
-                     << curThreads << "->" << nextThreads << " threads = "
-                     << (threadsLost * 100) / curThreads << "% loss vs "
-                     << refLossPct << "% ref) -> "
-                     << (overBudget ? "bump GRF\n" : "allow spill\n"));
-  return overBudget;
 }
 
 bool GlobalRA::spillSpaceCompression(int spillSize,
@@ -12682,7 +12542,7 @@ int GlobalRA::coloringRegAlloc() {
       // At Xe3 128->160 loses occupancy, so defer the bump and let remat/split run first.
       if (builder.getuint32Option(vISA_GRFBumpUpNumber) > 1 &&
           !kernel.grfMode.prefersOccupancyOverStepUp()) {
-        if (VRTIncreasedGRF(coloring, rpe, fastCompile)) {
+        if (VRTIncreasedGRF(coloring)) {
           RA_TRACE(std::cout << "\t--VRT GRF bump to "
                              << kernel.getNumRegTotal() << ". Re-run RA\n");
           continue;
@@ -12727,7 +12587,7 @@ int GlobalRA::coloringRegAlloc() {
       // Checked after remat and split since bumping the GRF is not reversible and
       // remat in some cases can achieve a spill-free allocation at the smaller GRF
       // number.
-      if (VRTIncreasedGRF(coloring, rpe, fastCompile)) {
+      if (VRTIncreasedGRF(coloring)) {
           RA_TRACE(std::cout << "\t--VRT GRF bump to " << kernel.getNumRegTotal()
               << ". Re-run RA\n");
           continue;

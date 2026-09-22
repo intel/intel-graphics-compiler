@@ -28,7 +28,6 @@ using namespace vISA;
 
 #if defined (_DEBUG) || defined(_INTERNAL)
 bool vISA::RATraceFlag = false;
-bool vISA::VRTFillCostDumpFlag = false;
 #endif
 
 bool LivenessAnalysis::isLocalVar(G4_Declare *decl) const {
@@ -2970,7 +2969,6 @@ int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
 
 #if defined(_DEBUG) || defined(_INTERNAL)
   vISA::RATraceFlag = builder.getOption(vISA_RATrace);
-  vISA::VRTFillCostDumpFlag = builder.getOption(vISA_VRTFillCostDump);
 #endif
 
   // This must be done before Points-to analysis as it may modify CFG and add
