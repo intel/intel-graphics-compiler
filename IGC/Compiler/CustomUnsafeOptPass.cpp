@@ -1425,8 +1425,10 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator &I) {
 
       switch (I.getOpcode()) {
       case Instruction::FSub:
-        if (op0 == op1) {
-          // X - X => 0
+        if (op0 == op1 && (I.hasNoNaNs() || allowUnsafeMathOpt(m_ctx))) {
+          // X - X => 0 for every finite X
+          // NaN-NaN=NaN => poison => 0
+          // Inf-Inf=NaN => poison => 0
           I.replaceAllUsesWith(ConstantFP::get(opType, 0));
           collectForErase(I);
           ++Stat_FloatRemoved;
@@ -1522,9 +1524,13 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator &I) {
         break;
 
       case Instruction::FMul:
-        if ((fp0 && fp0->isZero()) || (fp1 && fp1->isZero())) {
-          // X * 0 => 0
-          // 0 * X => 0
+        if (((fp0 && fp0->isZero()) || (fp1 && fp1->isZero())) && (I.hasNoNaNs() || allowUnsafeMathOpt(m_ctx))) {
+          // X * 0 => 0 for every finite X
+          // 0 * X => 0 for every finite X
+          // NaN*0=NaN => poison => 0
+          // 0*NaN=NaN => poison => 0
+          // Inf*0=NaN => poison => 0
+          // 0*Inf=NaN => poison => 0
           I.replaceAllUsesWith(ConstantFP::get(opType, 0));
           collectForErase(I);
           ++Stat_FloatRemoved;
