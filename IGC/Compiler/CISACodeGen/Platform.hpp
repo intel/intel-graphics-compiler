@@ -775,10 +775,7 @@ public:
   // supportDpasInstruction()), and works the same for offline and online compilation.
   // ARL-H and ARL-U are not affected.
   bool hasSlowBindlessLoads() const {
-    const bool isSlowMTL = m_platformInfo.eProductFamily == IGFX_METEORLAKE;
-    const bool isSlowARLS =
-        GFX_IS_ARL_S(m_platformInfo.usDeviceID) && IGC_IS_FLAG_DISABLED(DisableARLSSlowBindlessLoads);
-    return isSlowMTL || isSlowARLS;
+    return m_platformInfo.eProductFamily == IGFX_METEORLAKE || GFX_IS_ARL_S(m_platformInfo.usDeviceID);
   }
 
   bool L3CacheCoherentCrossTiles() const { return isCoreChildOf(IGFX_XE_HPC_CORE); }

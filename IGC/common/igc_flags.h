@@ -678,8 +678,6 @@ DECLARE_IGC_REGKEY_ENUM(ForceLocalScopeEvictTGM, -1,
 DECLARE_IGC_REGKEY(
     bool, EnableStatelessToStateful, true,
     "Enable Stateless To Stateful transformation for global and constant address space in OpenCL kernels", DEBUG_ONLY)
-DECLARE_IGC_REGKEY(bool, DisableARLSSlowBindlessLoads, true,
-                   "Treat ARL-S as not affected by the slow bindless-load heuristic in StatelessToStateful", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableStatelessOffsetNarrowing, true,
                    "Enable narrowing of 64-bit stateless pointer arithmetic to 32-bit if offsets fit in 32 bits",
                    DEBUG_ONLY)
