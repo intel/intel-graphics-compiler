@@ -8,7 +8,8 @@
 
 ; REQUIRES: regkeys,llvm-16-plus
 ;
-; RUN: igc_opt --opaque-pointers --ocl --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=1 --regkey EnableOpaquePointersBackend=1 -S %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --ocl --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=1 --regkey EnableOpaquePointersBackend=1 --regkey EnableAggressiveSOAPromotion=0 -S %s | FileCheck %s --check-prefixes=CHECK,NOAGG
+; RUN: igc_opt --opaque-pointers --ocl --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=1 --regkey EnableOpaquePointersBackend=1 --regkey EnableAggressiveSOAPromotion=1 -S %s | FileCheck %s --check-prefixes=CHECK,AGG
 ;
 ; This test is testing "MismatchDetected" algorithm in LowerGEPForPrivMem.cpp
 ; The purpose of this test is to validate whether various combinations of allocas/geps/load/stores
@@ -53,9 +54,18 @@ exit:
 
 ; Case Alloca->Store->Gep->Store: This case is not valid due to different sizes
 
-; CHECK:    store <4 x i32> zeroinitializer, ptr {{.*}}
-; CHECK:    [[OFFSET_GEP:%.*]] = getelementptr i8, ptr {{.*}}, i32 16
-; CHECK:    store i32 0, ptr [[OFFSET_GEP]], align 4
+; NOAGG:    store <4 x i32> zeroinitializer, ptr {{.*}}
+; NOAGG:    [[OFFSET_GEP:%.*]] = getelementptr i8, ptr {{.*}}, i32 16
+; NOAGG:    store i32 0, ptr [[OFFSET_GEP]], align 4
+
+; With aggressive promotion the homogeneous struct array is flattened to
+; 24 x i32. The <4 x i32> store is split into elements 0..3 and the i32 store at byte
+; offset 16 maps to element 4.
+; AGG:      [[ELT4_OFF:%.*]] = mul i32 [[SIMDSIZE]], 16
+; AGG-NEXT: [[ELT4_ADDR:%.*]] = add nuw nsw i32 {{%.*}}, [[ELT4_OFF]]
+; AGG-NEXT: [[ELT4_PTR:%.*]] = inttoptr i32 [[ELT4_ADDR]] to ptr
+; AGG-NEXT: [[ELT4_GEP:%.*]] = getelementptr i32, ptr [[ELT4_PTR]], i32 0
+; AGG-NEXT: store i32 0, ptr [[ELT4_GEP]], align 4
 
   %offset.i.i.i.i = alloca [8 x %"struct.ispc::vec_t"], align 4
   store <4 x i32> zeroinitializer, ptr %offset.i.i.i.i, align 4

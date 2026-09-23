@@ -561,6 +561,9 @@ bool SOALayoutChecker::checkStruct(StructType *StTy) {
 
   uint32_t StTyBytes = (uint32_t)pDL->getTypeStoreSize(StTy);
 
+  if (StTyBytes == 0)
+    return false;
+
   // Larger struct shall be multiple of partition size
   if (StTyBytes > SOAPartitionBytes && (StTyBytes % SOAPartitionBytes) != 0)
     return false;

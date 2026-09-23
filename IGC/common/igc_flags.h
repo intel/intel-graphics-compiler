@@ -2165,7 +2165,7 @@ DECLARE_IGC_REGKEY(DWORD, PHIOfAllocaPtrSplitMinSize, 64,
                    "Minimum alloca size in bytes to be considered worthwhile for the "
                    "EnablePHIOfAllocaPtrSplit pass.",
                    ALWAYS)
-DECLARE_IGC_REGKEY(bool, EnableAggressiveSOAPromotion, false,
+DECLARE_IGC_REGKEY(bool, EnableAggressiveSOAPromotion, true,
                    "If true, enables the aggressive SoA-promotion capabilities. "
                    "Top-level/flattened homogeneous struct promotion, heterogeneous struct fields etc",
                    ALWAYS)
