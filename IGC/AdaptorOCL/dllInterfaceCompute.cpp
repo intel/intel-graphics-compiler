@@ -1126,7 +1126,8 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
 
   // Parse the module we want to compile
   llvm::Module *pKernelModule = nullptr;
-  LLVMContextWrapper *llvmContext = new LLVMContextWrapper;
+  auto llvmContextOwner = std::make_unique<LLVMContextWrapper>();
+  LLVMContextWrapper *llvmContext = llvmContextOwner.get();
   RegisterComputeErrHandlers(*llvmContext);
   RegisterErrHandlers();
 
@@ -1199,7 +1200,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
 
   USC::SShaderStageBTLayout zeroLayout = USC::g_cZeroShaderStageBTLayout;
   IGC::COCLBTILayout oclLayout(&zeroLayout);
-  OpenCLProgramContext oclContext(oclLayout, IGCPlatform, pInputArgs, *driverInfo, llvmContext);
+  OpenCLProgramContext oclContext(oclLayout, IGCPlatform, pInputArgs, *driverInfo, llvmContextOwner.release());
 
   bool compilerTimeNeedsEnd = false;
 
