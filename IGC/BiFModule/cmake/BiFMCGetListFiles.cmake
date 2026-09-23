@@ -17,9 +17,14 @@ function(get_bif_src_list opencl-h_SRC bifM_SRC listOut)
     endforeach()
 
     # Get all opencl-c headers for clang
-    get_filename_component(opencl-headers-dir ${opencl-h_SRC} DIRECTORY)
-    list(APPEND listSRC ${opencl-headers-dir}/opencl-c-base.h)
-    list(APPEND listSRC ${opencl-h_SRC})
+    foreach(header IN LISTS opencl-h_SRC)
+        list(APPEND listSRC "${header}")
+        get_filename_component(opencl-headers-dir "${header}" DIRECTORY)
+        if(EXISTS "${opencl-headers-dir}/opencl-c-base.h")
+            list(APPEND listSRC "${opencl-headers-dir}/opencl-c-base.h")
+        endif()
+    endforeach()
+    list(REMOVE_DUPLICATES listSRC)
 
     # Get igfxfmid.h
     set(INC_SRC "${bifM_SRC}../../inc")

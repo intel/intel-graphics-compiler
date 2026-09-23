@@ -16,7 +16,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/BiFMCGetListFiles.cmake)
 
 file(REMOVE ${BiFModule_SRC_SHA_PATH})
 
-get_bif_src_list(${opencl-header} ${BiFModule_SRC} BiFModule_SRC_LIST)
+get_bif_src_list("${opencl-header}" "${BiFModule_SRC}" BiFModule_SRC_LIST)
 
 # Collect all checksum of all source files into one file
 set(allFilesChecksum "")
