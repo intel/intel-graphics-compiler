@@ -1958,6 +1958,9 @@ DECLARE_IGC_REGKEY(DWORD, EarlySIMD16DropForXE3Threshold, 256, "Threshold for th
 DECLARE_IGC_REGKEY(DWORD, OCLVRTSimd16DropSimd32High, 160,
                    "Drop SIMD32 to SIMD16 on VRT platforms when SIMD32 RPE exceeds this value", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, OCLVRTSimd16DropSimd16Low, 120, "...and SIMD16 RPE is below this value", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, EnableVRTSimd16Drop, true, "Enable SIMD16 drop decision based on VRT table", ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, VRTSimd16DropBudgetPercent, 170, "Scales Highest VRT Budget for SIMD16 drop decision.",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, RegPressureVerbocity, 2, "Different printing types", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, RetryRevertExcessiveSpillingKernelThreshold, 10000,
                    "Sets the threshold for Retry Manager to know which kernel is considered as Excessive Spilling and "

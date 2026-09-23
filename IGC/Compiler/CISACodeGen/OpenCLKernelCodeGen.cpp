@@ -2615,6 +2615,16 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
   return simdStatus == SIMDStatus::SIMD_PASS;
 }
 
+// The last entry of a VRT mode table holds the largest GRF budget the hardware
+// can hand to a thread. Pressure past it cannot be satisfied by any VRT mode
+static bool isPastHighestVRTBudget(llvm::ArrayRef<VRT::ModeEntry> Table, uint32_t Pressure, uint32_t BudgetPercent) {
+  if (Table.empty())
+    return false;
+
+  uint64_t Cutoff = (uint64_t)Table.back().first * BudgetPercent / 100;
+  return Pressure > Cutoff;
+}
+
 static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, uint32_t simd32Pressure,
                                SIMDMode simdMode, CodeGenContext *pCtx, MetaDataUtils *pMdUtils, llvm::Function *F) {
   if (simdMode != SIMDMode::SIMD32 || !isEntryFunc(pMdUtils, F)) {
@@ -2636,6 +2646,13 @@ static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, ui
 
   if (!autoGRF || pCtx->getNumGRFPerThread(false, F) != 0) {
     return false;
+  }
+
+  auto VRTTable = pCtx->platform.getVRTTable();
+  bool NotSpecifiedDirectly = pCtx->getNumGRFPerThread(false, F) == 0;
+  if (IGC_IS_FLAG_ENABLED(EnableVRTSimd16Drop) && !VRTTable.empty() && NotSpecifiedDirectly) {
+    if (isPastHighestVRTBudget(VRTTable, simd32Pressure, IGC_GET_FLAG_VALUE(VRTSimd16DropBudgetPercent)))
+      return true;
   }
 
   auto threshold = IGC_GET_FLAG_VALUE(EarlySIMD16DropForXE3Threshold);
