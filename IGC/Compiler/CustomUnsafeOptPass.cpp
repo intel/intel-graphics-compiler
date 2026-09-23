@@ -3828,10 +3828,9 @@ void HoistFMulInLoopPass::combineNode(MulNode *node, MulToNodeMapTy &nodeMap, bo
   }
 
   // check whether the product is used by other places
-  if (!isRoot && !isLeafNode(node) && !node->replace && node->invariants.size()) {
+  if (!isRoot && !isLeafNode(node) && node->invariants.size()) {
     bool skipValue = false;
-    Value *value;
-    value = node->value;
+    Value *value = node->replace ? node->replace : node->value;
     for (auto *UI : value->users()) {
       Instruction *ui = dyn_cast<Instruction>(UI);
       if (ui && (nodeMap.find(ui) == nodeMap.end() || ui->getOpcode() != Instruction::FMul)) {
@@ -3846,6 +3845,7 @@ void HoistFMulInLoopPass::combineNode(MulNode *node, MulToNodeMapTy &nodeMap, bo
       node->left = node->right = nullptr;
       node->hasInvariant = false;
       node->invariants.clear();
+      node->replace = nullptr;
     }
   }
 
