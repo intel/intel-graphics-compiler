@@ -11819,18 +11819,7 @@ int GlobalRA::localSplit(bool fastCompile, VarSplit& splitPass) {
 
 std::pair<bool, bool> GlobalRA::bankConflict() {
   bool doBankConflictReduction = false, highInternalConflict = false;
-
-  // Low-RP VRT kernels still hit the local BC-RA path even when force-BCR is
-  // off; skip that path for this specific regime while keeping the normal
-  // enableBCR path enabled elsewhere.
-  const bool skipLowRPVRTBankConflict =
-      builder.getPlatform() >= Xe3P_CRI &&
-      builder.getPlatform() != Xe3P_Graphics &&
-      builder.getOption(vISA_enableBCR) && !builder.getOption(vISA_forceBCR) &&
-      kernel.getNumRegTotal() <= 128;
-
-  if (!skipLowRPVRTBankConflict &&
-      builder.getOption(vISA_LocalBankConflictReduction) &&
+  if (builder.getOption(vISA_LocalBankConflictReduction) &&
       builder.hasBankCollision()) {
     bool reduceBCInRR = false;
     bool reduceBCInTAandFF = false;
