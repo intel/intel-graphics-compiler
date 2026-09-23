@@ -130,6 +130,25 @@ private:
       Loads.push_back(&LI);
     }
   }
+
+  void visitICmpInst(ICmpInst &) {
+    // no-op visitor
+  }
+
+  // Continue walk past phi/select.
+  // Otherwise the walk would stop prematurely and miss potential escapes.
+  void visitPHINode(PHINode &PN) {
+    IsOffsetKnown = false;
+    enqueueUsers(PN);
+  }
+
+  void visitSelectInst(SelectInst &SI) {
+    IsOffsetKnown = false;
+    enqueueUsers(SI);
+  }
+
+  // Conservatively mark unknown instructions as pointer escape.
+  void visitInstruction(Instruction &I) { PI.setEscaped(&I); }
 };
 
 bool PromoteConstantStructs::runOnFunction(Function &F) {
@@ -187,10 +206,8 @@ bool PromoteConstantStructs::processLoad(LoadInst *LI, SetVector<BasicBlock *> &
 
   auto ML = MemoryLocation::get(LI);
   for (auto StBB : StoreBBs) {
-    SmallVector<BasicBlock *, 32> Worklist;
-    Worklist.push_back(StBB);
 
-    if (!isPotentiallyReachableFromMany(Worklist, LI->getParent(), nullptr, DT, LPI))
+    if (!isPotentiallyReachable(StBB, LI->getParent(), nullptr, DT, LPI))
       continue;
 
     Instruction *InstPt = StBB->getTerminator();
