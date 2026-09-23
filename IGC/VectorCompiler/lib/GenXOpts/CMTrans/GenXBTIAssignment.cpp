@@ -24,12 +24,17 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/KernelInfo.h"
+#include "vc/Utils/General/FunctionAttrs.h"
+#include "vc/Utils/General/Types.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 
 #include "Probe/Assertion.h"
 
 #include "llvmWrapper/ADT/StringRef.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/Function.h>
@@ -86,6 +91,12 @@ private:
   bool rewriteArguments(vc::KernelMetadata &KM, Function &F,
                         const std::vector<int> &BTIndices,
                         const std::vector<StringRef> &ExtendedArgDescs);
+
+#if LLVM_VERSION_MAJOR >= 16
+  // Returns the replacement kernel if \p F had to be rebuilt, nullptr
+  // otherwise.
+  Function *legalizeKernelResourceArgTypes(Function &F);
+#endif // LLVM_VERSION_MAJOR
 
   bool processKernel(Function &F);
 };
@@ -414,23 +425,154 @@ static std::vector<StringRef> getExtendedArgDescs(vc::KernelMetadata &KM) {
 }
 
 bool BTIAssignment::processKernel(Function &F) {
-  vc::KernelMetadata KM{&F};
+  Function *Kernel = &F;
+  bool Changed = false;
+
+#if LLVM_VERSION_MAJOR >= 16
+  // Has to run before the metadata below is read: it may replace the kernel,
+  // and KernelMetadata caches the function it was built from.
+  if (Function *NewKernel = legalizeKernelResourceArgTypes(F)) {
+    Kernel = NewKernel;
+    Changed = true;
+  }
+#endif // LLVM_VERSION_MAJOR
+
+  vc::KernelMetadata KM{Kernel};
 
   std::vector<StringRef> ExtArgDescs = getExtendedArgDescs(KM);
 
   std::vector<int> BTIndices = computeBTIndices(KM, ExtArgDescs);
 
-  bool Changed = rewriteArguments(KM, F, BTIndices, ExtArgDescs);
+  Changed |= rewriteArguments(KM, *Kernel, BTIndices, ExtArgDescs);
 
   KM.updateBTIndicesMD(std::move(BTIndices));
 
   return Changed;
 }
 
+#if LLVM_VERSION_MAJOR >= 16
+// Convert SPIR-V target-extension resource arguments (images, buffers,
+// samplers) to pointer types and replace "__spirv_ConvertPtrToU" calls with
+// real ptrtoint instructions so later passes can handle them. This is only
+// needed for bindless resources. On the BTI path rewriteArguments replaces the
+// conversion with the assigned index.
+Function *BTIAssignment::legalizeKernelResourceArgTypes(Function &F) {
+  auto &Ctx = M.getContext();
+  vc::KernelMetadata KM{&F};
+
+  auto ArgKinds = KM.getArgKinds();
+  if (ArgKinds.size() != F.arg_size())
+    return nullptr;
+
+  if (!F.use_empty())
+    return nullptr;
+
+  std::vector<StringRef> ExtArgDescs = getExtendedArgDescs(KM);
+
+  auto NeedsPointerType = [this](const Argument &Arg, unsigned Kind,
+                                 StringRef Desc) {
+    if (Kind != vc::KernelMetadata::AK_SURFACE &&
+        Kind != vc::KernelMetadata::AK_SAMPLER)
+      return false;
+    if (!Arg.getType()->isTargetExtTy())
+      return false;
+    // Mirrors the bindless bail-outs in rewriteArguments.
+    return (useBindlessBuffers && vc::isDescBufferType(Desc)) ||
+           (useBindlessImages && vc::isDescImageType(Desc)) ||
+           (useBindlessSamplers && vc::isDescSamplerType(Desc));
+  };
+
+  // Use the address spaces the typed pointer representation produced for these
+  // resources: images and buffer surfaces are global, samplers are constant.
+  auto getResourcePtrTy = [&Ctx](unsigned Kind) {
+    const unsigned AS = Kind == vc::KernelMetadata::AK_SAMPLER
+                            ? vc::AddrSpace::Constant
+                            : vc::AddrSpace::Global;
+    return IGCLLVM::PointerType::get(Ctx, AS);
+  };
+
+  auto IsConvertPtrToUCall = [](const User *U, const Argument &Arg) {
+    const auto *CI = dyn_cast<CallInst>(U);
+    if (!CI || IGCLLVM::getNumArgOperands(CI) != 1 ||
+        CI->getArgOperand(0) != &Arg)
+      return false;
+    const auto *Callee = CI->getCalledFunction();
+    return Callee && Callee->getName().contains("__spirv_ConvertPtrToU");
+  };
+
+  SmallVector<Type *, 8> NewArgTys;
+  bool NeedsRetyping = false;
+  for (auto &&[ArgRef, Kind, Desc] :
+       llvm::zip(F.args(), ArgKinds, ExtArgDescs)) {
+    Argument &Arg = ArgRef;
+    if (!NeedsPointerType(Arg, Kind, Desc)) {
+      NewArgTys.push_back(Arg.getType());
+      continue;
+    }
+    if (!llvm::all_of(Arg.users(), [&](const User *U) {
+          return IsConvertPtrToUCall(U, Arg);
+        })) {
+      vc::diagnose(Ctx, "BTIAssignment",
+                   "unsupported use of a target extension type resource "
+                   "argument in kernel '" +
+                       F.getName() + "'");
+      return nullptr;
+    }
+    NewArgTys.push_back(getResourcePtrTy(Kind));
+    NeedsRetyping = true;
+  }
+
+  if (!NeedsRetyping)
+    return nullptr;
+
+  // Only argument types change, so every piece of kernel metadata that is
+  // indexed by argument position (kinds, descs, offsets) stays valid.
+  auto *NFTy = FunctionType::get(F.getReturnType(), NewArgTys, F.isVarArg());
+  auto *NF = Function::Create(NFTy, F.getLinkage(), F.getName());
+  vc::transferNameAndCCWithNewAttr(F.getAttributes(), F, *NF);
+  // Not covered by transferNameAndCCWithNewAttr. The DLL storage class in
+  // particular is load bearing: vc::isKernel() recognizes a kernel by
+  // DLLExport, so dropping it would hide the kernel from every later pass.
+  NF->setDLLStorageClass(F.getDLLStorageClass());
+  NF->setVisibility(F.getVisibility());
+  M.getFunctionList().insert(F.getIterator(), NF);
+  vc::transferDISubprogram(F, *NF);
+  IGCLLVM::splice(NF, NF->begin(), &F);
+
+  for (auto &&[OldArg, NewArg] : llvm::zip(F.args(), NF->args())) {
+    NewArg.takeName(&OldArg);
+    if (OldArg.getType() == NewArg.getType()) {
+      OldArg.replaceAllUsesWith(&NewArg);
+      continue;
+    }
+    // All uses were checked above to be __spirv_ConvertPtrToU calls, which the
+    // SPIR-V reader emits because ptrtoint is illegal on a target extension
+    // type. Now that the argument is a pointer, use a real ptrtoint.
+    for (User *U : llvm::make_early_inc_range(OldArg.users())) {
+      auto *CI = cast<CallInst>(U);
+      IRBuilder<> IRB{CI};
+      auto *Cast = IRB.CreatePtrToInt(&NewArg, CI->getType(), CI->getName());
+      CI->replaceAllUsesWith(Cast);
+      CI->eraseFromParent();
+    }
+  }
+
+  vc::replaceFunctionRefMD(F, *NF);
+  F.eraseFromParent();
+
+  return NF;
+}
+
+#endif // LLVM_VERSION_MAJOR
+
 bool BTIAssignment::run() {
-  bool Changed = false;
+  SmallVector<Function *, 4> Kernels;
   for (Function &Kernel : vc::kernels(M))
-    Changed |= processKernel(Kernel);
+    Kernels.push_back(&Kernel);
+
+  bool Changed = false;
+  for (Function *Kernel : Kernels)
+    Changed |= processKernel(*Kernel);
 
   return Changed;
 }
