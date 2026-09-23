@@ -572,6 +572,7 @@ private:
   void sortLiveIntervals();
   void startIntervalForLiveIn(FuncInfo *funcInfo, G4_BB *bb);
   void handleCallSite(G4_BB *curBB, unsigned int &funcCnt);
+  void handleFCallSiteForFlag(G4_INST *fcall);
   void handleDstOpnd(FuncInfo *funcInfo, G4_BB *curBB, G4_INST *inst);
   void handleCondMod(FuncInfo* funcInfo, G4_INST *inst);
   void endIntervalForLiveOut(FuncInfo *funcInfo, G4_BB *bb);

@@ -4320,6 +4320,24 @@ void Augmentation::startIntervalForLiveIn(FuncInfo *funcInfo, G4_BB *bb) {
   }
 }
 
+// The flag caller-save pseudo declare of a stack call has no defining
+// instruction, so without this it never gets a live-interval and interferes
+// only with flags that scalar liveness reports live across the call. Lanes
+// parked by an enclosing divergent goto are not in that set, yet the callee's
+// NoMask flag writes still destroy their bits. Give the pseudo a point
+// interval at the call so that the linear scan makes it interfere with every
+// flag whose lexical interval spans the call, as VCA_SAVE does for GRF via
+// its CallerSave intrinsic.
+void Augmentation::handleFCallSiteForFlag(G4_INST *fcall) {
+  auto it = kernel.fg.fcallToPseudoDclMap.find(fcall->asCFInst());
+  if (it == kernel.fg.fcallToPseudoDclMap.end())
+    return;
+  G4_Declare *flagDcl = it->second.Flag;
+  gra.setAugmentationMask(flagDcl, AugmentationMasks::NonDefault);
+  updateStartInterval(flagDcl, fcall);
+  updateEndInterval(flagDcl, fcall);
+}
+
 void Augmentation::handleCallSite(G4_BB *curBB, unsigned int &funcCnt) {
   const char *name =
       kernel.fg.builder->getNameString(32, "SCALL_%d", funcCnt++);
@@ -4852,6 +4870,9 @@ void Augmentation::buildLiveIntervals(FuncInfo* funcInfo) {
         handleCallSite(curBB, funcCnt);
         continue;
       }
+
+      if (inst->isFCall() && liveAnalysis.livenessClass(G4_FLAG))
+        handleFCallSiteForFlag(inst);
 
       handleDstOpnd(funcInfo, curBB, inst);
 
