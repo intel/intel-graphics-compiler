@@ -1062,7 +1062,7 @@ bool IGCVectorizer::handleIntrinsic(VecArr &Slice) {
   auto *CreatedInst = llvm::CallInst::Create(Decl, Operands);
   CreatedInst->setName("vectorized_intrinsic");
   CreatedInst->setDebugLoc(First->getDebugLoc());
-  CreatedInst->insertAfter(InsertPoint);
+  IGCLLVM::insertBefore(CreatedInst, InsertPoint);
   CreatedVectorInstructions.push_back(CreatedInst);
 
   PRINT_LOG("Intrinsic instruction created: ");
