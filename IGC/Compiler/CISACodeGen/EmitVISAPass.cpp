@@ -1433,6 +1433,44 @@ void EmitPass::MovPhiSources(llvm::BasicBlock *aBB) {
   IGCLLVM::TerminatorInst *TI = aBB->getTerminator();
   IGC_ASSERT(nullptr != TI);
 
+  // Collect the phi-move of PN's incoming value(s) from fromBB.
+  auto collectPhiMove = [&](llvm::PHINode *PN, llvm::BasicBlock *fromBB) {
+    for (uint i = 0, e = PN->getNumOperands(); i != e; ++i) {
+      if (PN->getIncomingBlock(i) == fromBB) {
+        Value *Src = PN->getOperand(i);
+
+        if (isa<UndefValue>(Src)) {
+          if (IGC_IS_FLAG_ENABLED(AssignZeroToUndefPhiNodes)) {
+            Src = Constant::getNullValue(Src->getType());
+          }
+        }
+
+        Value *dstRootV = m_deSSA ? m_deSSA->getRootValue(PN) : PN;
+        Value *srcRootV = m_deSSA ? m_deSSA->getRootValue(Src) : Src;
+        dstRootV = dstRootV ? dstRootV : PN;
+        srcRootV = srcRootV ? srcRootV : Src;
+        // To check if src-side phi mov is needed, we must use dessa
+        // rootValue instead of CVariable, as value alias in dessa
+        // might have the same variable with two different CVariable.
+        if (dstRootV != srcRootV) {
+          VTyInfo vTyInfo(Src);
+          PhiSrcMoveInfo *phiInfo = new (phiAllocator) PhiSrcMoveInfo();
+          phiInfo->srcCVar = vTyInfo.isSplat ? nullptr : m_currShader->GetSymbol(Src);
+          phiInfo->dstCVar = m_currShader->GetSymbol(PN);
+          phiInfo->dstRootV = dstRootV;
+          phiInfo->srcRootV = srcRootV;
+          phiSrcDstList.push_back(phiInfo);
+          dstVTyMap.insert(std::make_pair(phiInfo->dstCVar, vTyInfo));
+        }
+
+        // only handled in resource loop emit pass
+        if (PN->getMetadata("MyUniqueExclusiveLoadMetadata") != nullptr) {
+          m_encoder->SetUniqueExcusiveLoad(true);
+        }
+      }
+    }
+  };
+
   // main code to generate phi-mov
   for (unsigned succ = 0, e = TI->getNumSuccessors(); succ != e; ++succ) {
     llvm::BasicBlock *Succ = TI->getSuccessor(succ);
@@ -1444,40 +1482,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock *aBB) {
       if (PN->use_empty()) {
         continue;
       }
-      for (uint i = 0, e = PN->getNumOperands(); i != e; ++i) {
-        if (PN->getIncomingBlock(i) == bb) {
-          Value *Src = PN->getOperand(i);
-
-          if (isa<UndefValue>(Src)) {
-            if (IGC_IS_FLAG_ENABLED(AssignZeroToUndefPhiNodes)) {
-              Src = Constant::getNullValue(Src->getType());
-            }
-          }
-
-          Value *dstRootV = m_deSSA ? m_deSSA->getRootValue(PN) : PN;
-          Value *srcRootV = m_deSSA ? m_deSSA->getRootValue(Src) : Src;
-          dstRootV = dstRootV ? dstRootV : PN;
-          srcRootV = srcRootV ? srcRootV : Src;
-          // To check if src-side phi mov is needed, we must use dessa
-          // rootValue instead of CVariable, as value alias in dessa
-          // might have the same variable with two different CVariable.
-          if (dstRootV != srcRootV) {
-            VTyInfo vTyInfo(Src);
-            PhiSrcMoveInfo *phiInfo = new (phiAllocator) PhiSrcMoveInfo();
-            phiInfo->srcCVar = vTyInfo.isSplat ? nullptr : m_currShader->GetSymbol(Src);
-            phiInfo->dstCVar = m_currShader->GetSymbol(PN);
-            phiInfo->dstRootV = dstRootV;
-            phiInfo->srcRootV = srcRootV;
-            phiSrcDstList.push_back(phiInfo);
-            dstVTyMap.insert(std::make_pair(phiInfo->dstCVar, vTyInfo));
-          }
-
-          // only handled in resource loop emit pass
-          if (PN->getMetadata("MyUniqueExclusiveLoadMetadata") != nullptr) {
-            m_encoder->SetUniqueExcusiveLoad(true);
-          }
-        }
-      }
+      collectPhiMove(PN, bb);
     }
   }
 
