@@ -2287,8 +2287,7 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
         }
         return configs[currentMode].numGRF;
       } else if (spillAllowed &&
-                 maxRP <=
-                     configs[i].numGRF + getStepUpSpillThresholdInRegs(i) &&
+                 maxRP <= configs[i].numGRF + spillThresholdInRegs &&
                  (largestInputReg + 8) <= configs[i].numGRF) {
         return configs[currentMode].numGRF;
       }
@@ -2297,52 +2296,6 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
   // RP is greater than the maximum GRF available, so set the largest GRF
   // available
   return configs[currentMode].numGRF;
-}
-
-// Return the next VRT-enabled config above mode, or configs.size() if none exists.
-unsigned GRFMode::getStepUpMode(unsigned mode) const {
-  for (auto i = mode + 1; i < configs.size(); ++i) {
-    if (configs[i].numGRF > upperBoundGRF)
-      break;
-    if (configs[i].VRTEnable)
-      return i;
-  }
-  return configs.size();
-}
-
-// True when stepping up from mode loses HW threads per EU.
-bool GRFMode::losesThreadsOnStepUp(unsigned mode) const {
-  unsigned stepUp = getStepUpMode(mode);
-  if (stepUp == configs.size())
-    return false;
-  return configs[stepUp].numThreads < configs[mode].numThreads;
-}
-
-// Keep the higher-occupancy config when the next step would cost threads/EU.
-bool GRFMode::prefersOccupancyOverStepUp(unsigned mode) const {
-  if (platform < Xe3 || mode > defaultMode)
-    return false;
-  if (options->getuInt32Option(vISA_OccupancyGRFHoldFactor) <= 1)
-    return false;
-  return losesThreadsOnStepUp(mode);
-}
-
-// Widen the spill budget only at a thread-losing step-up boundary.
-unsigned GRFMode::getStepUpSpillThresholdInRegs(unsigned mode) const {
-  unsigned thresholdInRegs = getSpillThreshold(mode) / grfSize;
-  // No spill budget in this config: RA cannot spill here at all.
-  if (thresholdInRegs == 0)
-    return 0;
-
-  if (allowedStepsInMode == 0 || !prefersOccupancyOverStepUp(mode))
-    return thresholdInRegs;
-
-  unsigned widened =
-      thresholdInRegs * options->getuInt32Option(vISA_OccupancyGRFHoldFactor);
-  unsigned stepUp = getStepUpMode(mode);
-  vISA_ASSERT(stepUp < configs.size(), "expected a config to step up into");
-  unsigned gapInRegs = configs[stepUp].numGRF - configs[mode].numGRF;
-  return std::min(widened, gapInRegs);
 }
 
 // Check if next larger GRF has the same number of threads per EU

@@ -12538,15 +12538,16 @@ int GlobalRA::coloringRegAlloc() {
         }
       }
 
-      // IGC uses vISA_GRFBumpUpNumber > 1 only when threads/EU are not the price.
-      // At Xe3 128->160 loses occupancy, so defer the bump and let remat/split run first.
-      if (builder.getuint32Option(vISA_GRFBumpUpNumber) > 1 &&
-          !kernel.grfMode.prefersOccupancyOverStepUp()) {
-        if (VRTIncreasedGRF(coloring)) {
-          RA_TRACE(std::cout << "\t--VRT GRF bump to "
-                             << kernel.getNumRegTotal() << ". Re-run RA\n");
-          continue;
-        }
+      // IGC sets vISA_GRFBumpUpNumber to 2 for OpenCL (default 1),
+      // declaring that registers per thread matter more than threads there and
+      // that stepping the GRF number up is cheap. Holding such kernels at a
+      // smaller GRF via remat regresses them, so keep the original eager bump.
+      if (builder.getuint32Option(vISA_GRFBumpUpNumber) > 1) {
+          if (VRTIncreasedGRF(coloring)) {
+              RA_TRACE(std::cout << "\t--VRT GRF bump to " << kernel.getNumRegTotal()
+                  << ". Re-run RA\n");
+              continue;
+          }
       }
 
       if (auto bump = forceGRFBumpOnInfCostAddrTaken(coloring, liveAnalysis)) {

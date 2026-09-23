@@ -61,13 +61,6 @@ DECLARE_IGC_REGKEY(DWORD, VISADynamicSpillSamplerWeight, -1,
                    "sampler-heavy kernels.",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, VISASpillAllowed256GRF, 0, "Spill size allowed specifically for 256 GRF case", DEBUG_ONLY)
-DECLARE_IGC_REGKEY(DWORD, VISAOccupancyGRFHoldFactor, 4,
-                   "Multiplier applied to the GRF-selection spill budget in a GRF config whose next "
-                   "step up costs HW threads per EU (Xe3+). Keeps a kernel whose estimated register "
-                   "pressure slightly exceeds the config at the higher-occupancy one; RA still steps "
-                   "the config up if it spills past the base budget. 0 and 1 restore the previous "
-                   "occupancy-blind behavior.",
-                   ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, VISAGRFBumpUpNumber, 1,
                    "Sets the number of steps/configs which the RA will try to use (during retry) to compile the kernel",
                    ALWAYS)

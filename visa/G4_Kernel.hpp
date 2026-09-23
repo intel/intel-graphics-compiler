@@ -167,16 +167,9 @@ public:
                                 bool forceGRFModedUp = false);
   bool hasLargerGRFSameThreads() const;
   bool hasSmallerGRFSameThreads() const;
-  unsigned getStepUpMode(unsigned mode) const;
-  bool losesThreadsOnStepUp(unsigned mode) const;
-  bool prefersOccupancyOverStepUp(unsigned mode) const;
-  bool prefersOccupancyOverStepUp() const {
-    return prefersOccupancyOverStepUp(currentMode);
-  }
 
   unsigned getSpillThreshold(unsigned mode) const;
   unsigned getSpillThreshold() const { return getSpillThreshold(currentMode); }
-  unsigned getStepUpSpillThresholdInRegs(unsigned mode) const;
   void setDynamicSpillThreshold(unsigned val) { dynamicSpillThreshold = val; }
   unsigned getDynamicSpillThreshold() const { return dynamicSpillThreshold; }
 

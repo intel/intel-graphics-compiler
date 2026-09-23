@@ -226,16 +226,6 @@ DEF_VISA_OPTION(vISA_ForceGRFModeUp, ET_INT32, "-forceGRFModeUp",
                 "Set the GRF mode k higher than the one selected by default"
                 "heuristics. 0 means no increase in GRF mode.",
                 0)
-DEF_VISA_OPTION(vISA_OccupancyGRFHoldFactor, ET_INT32,
-                "-occupancyGRFHoldFactor",
-                "USAGE: -occupancyGRFHoldFactor <k>.\n"
-                "Multiplier applied to the GRF-selection spill budget in a "
-                "config whose next step up costs HW threads per EU (Xe3+). "
-                "Lets a kernel whose estimated pressure slightly exceeds the "
-                "config stay at the higher-occupancy one; RA still steps the "
-                "config up if it actually spills past the base budget. "
-                "0 and 1 disable the occupancy-aware GRF selection entirely.",
-                4)
 DEF_VISA_OPTION(
     vISA_AdjustedRPE, ET_BOOL, "-adjustedrpe",
     "Use an adjusted pressure that allows more spills in BBs where they are "
