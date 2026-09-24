@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/ADT/APInt.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/DerivedTypes.h>
@@ -43,6 +44,7 @@ public:
     AU.setPreservesCFG();
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<LoopInfoWrapperPass>();
   }
   void visitPHINode(PHINode &);
   void visitExtractElement(ExtractElementInst &);
@@ -64,6 +66,7 @@ namespace IGC {
 IGC_INITIALIZE_PASS_BEGIN(GenSimplification, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_END(GenSimplification, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 } // namespace IGC
 
@@ -132,30 +135,42 @@ bool GenSimplification::simplifyVectorPHINodeCase1(PHINode &PN) const {
 bool GenSimplification::simplifyVectorPHINodeCase2(PHINode &PN) const {
   IGC_ASSERT(isa<VectorType>(PN.getType()));
 
+  Type *Ty = PN.getType();
+  Type *EltTy = Ty->getScalarType();
+  unsigned NumElts = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
+
   // Check all users are 'extractelement' with constant indices.
   for (auto *U : PN.users()) {
     auto EEI = dyn_cast<ExtractElementInst>(U);
     if (!EEI)
       return false;
     ConstantInt *Idx = dyn_cast<ConstantInt>(EEI->getIndexOperand());
-    if (!Idx)
+    if (!Idx || Idx->getValue().uge(NumElts))
       return false;
   }
 
-  Type *Ty = PN.getType();
-  Type *EltTy = Ty->getScalarType();
-  unsigned NumElts = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
-
   SmallVector<Value *, 8> Lanes;
   SmallVector<SmallVector<Value *, 8>, 4> Values;
+  auto *L = getAnalysis<LoopInfoWrapperPass>().getLoopInfo().getLoopFor(PN.getParent());
+  auto *Entry =
+      L && L->getHeader() == PN.getParent() && PN.getNumIncomingValues() == 2 ? L->getLoopPredecessor() : nullptr;
+  int EntryIndex = Entry ? PN.getBasicBlockIndex(Entry) : -1;
+  auto *EntryLoad = EntryIndex < 0 ? nullptr : dyn_cast<LoadInst>(PN.getIncomingValue(EntryIndex));
 
-  // Check all operands are constants or chains of 'insertelement'.
+  // Accept constants, insertion chains, and a vector load on loop entry.
   for (unsigned i = 0, e = PN.getNumIncomingValues(); i != e; ++i) {
     auto V = PN.getIncomingValue(i);
     // Refill lanes.
     Lanes.clear();
     Lanes.resize(NumElts);
     std::fill(Lanes.begin(), Lanes.end(), UndefValue::get(EltTy));
+    if (EntryLoad && i == static_cast<unsigned>(EntryIndex)) {
+      Values.push_back(Lanes);
+      continue;
+    }
+    // Entry extracts are worthwhile when they eliminate backedge packing.
+    if (EntryLoad && !isa<InsertElementInst>(V))
+      return false;
     // Constant
     if (auto C = dyn_cast<Constant>(V)) {
       for (unsigned j = 0; j != NumElts; ++j) {
@@ -171,7 +186,7 @@ bool GenSimplification::simplifyVectorPHINodeCase2(PHINode &PN) const {
     APInt IdxMask(NumElts, 0); // Variable length bit mask.
     while (auto IEI = dyn_cast<InsertElementInst>(V)) {
       ConstantInt *Idx = dyn_cast<ConstantInt>(IEI->getOperand(2));
-      if (!Idx)
+      if (!Idx || Idx->getValue().uge(NumElts))
         return false;
       unsigned j = unsigned(Idx->getZExtValue());
       // Skip if 'j' is already populated.
@@ -182,9 +197,17 @@ bool GenSimplification::simplifyVectorPHINodeCase2(PHINode &PN) const {
       // Move next.
       V = IEI->getOperand(0);
     }
-    if (!isa<UndefValue>(V))
+    if (!isa<UndefValue>(V) || (EntryLoad && !IdxMask.isAllOnes()))
       return false;
     Values.push_back(Lanes);
+  }
+
+  if (EntryLoad) {
+    // Delay IR changes until every incoming value has been validated.
+    IRBuilder<> EntryIRB(Entry->getTerminator());
+    EntryIRB.SetCurrentDebugLocation(EntryLoad->getDebugLoc());
+    for (unsigned j = 0; j != NumElts; ++j)
+      Values[EntryIndex][j] = EntryIRB.CreateExtractElement(EntryLoad, j, PN.getName() + ".init");
   }
 
   IRBuilder<> IRB(&PN);
