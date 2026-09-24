@@ -356,7 +356,6 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeResourceLoopUnrollPass(Registry);
   initializeSubgroup2DBlockIoResolutionLPMPass(Registry);
   initializeSpvSubgroupMMAResolutionLPMPass(Registry);
-  initializeSpvSubgroupBitcastShuffleResolutionLPMPass(Registry);
   initializeInjectPrintfLPMPass(Registry);
   initializeWaveShuffleIndexSinkingPass(Registry);
   IGC::initializeAddRequiredMemoryFencesPass(Registry);

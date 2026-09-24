@@ -63,24 +63,12 @@ void SpvSubgroupBitcastShuffleResolution::visitCallInst(CallInst &CI) {
   auto ResultTy = CI.getType();
   auto DataTy = CI.getArgOperand(0)->getType();
 
-  // The Supported Types table restricts SPV_INTEL_subgroup_bitcast_shuffle to
-  // integers despite the instruction's broader numerical-type description.
-  auto IsSupportedType = [](Type *Ty) {
-    Type *ScalarTy = Ty->getScalarType();
-    if (!ScalarTy->isIntegerTy(8) && !ScalarTy->isIntegerTy(16) && !ScalarTy->isIntegerTy(32) &&
-        !ScalarTy->isIntegerTy(64))
-      return false;
+  auto ResultBits = ResultTy->getPrimitiveSizeInBits();
+  auto DataBits = DataTy->getPrimitiveSizeInBits();
 
-    if (auto *VecTy = dyn_cast<FixedVectorType>(Ty)) {
-      unsigned NumElements = VecTy->getNumElements();
-      return NumElements == 2 || NumElements == 4 || NumElements == 8 || NumElements == 16;
-    }
-    return Ty->isIntegerTy();
-  };
-
-  if (!IsSupportedType(ResultTy) || !IsSupportedType(DataTy)) {
-    m_Ctx->EmitError("__spirv_SubgroupBitcastShuffleINTEL: result and operand types must be 8-, 16-, 32-, or 64-bit "
-                     "integers or vectors of 2, 4, 8, or 16 such integers",
+  if (ResultBits == 0 || DataBits == 0) {
+    m_Ctx->EmitError("__spirv_SubgroupBitcastShuffleINTEL: result and operand types must be a scalar or vector of "
+                     "integer or floating point",
                      &CI);
     return;
   }
@@ -88,7 +76,7 @@ void SpvSubgroupBitcastShuffleResolution::visitCallInst(CallInst &CI) {
     m_Ctx->EmitError("__spirv_SubgroupBitcastShuffleINTEL: result and operand types must differ", &CI);
     return;
   }
-  if (ResultTy->getPrimitiveSizeInBits() != DataTy->getPrimitiveSizeInBits()) {
+  if (ResultBits != DataBits) {
     m_Ctx->EmitError("__spirv_SubgroupBitcastShuffleINTEL: result and operand types must have the same size", &CI);
     return;
   }

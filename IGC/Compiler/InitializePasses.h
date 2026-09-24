@@ -177,7 +177,6 @@ void initializeMergeScalarPhisPassPass(llvm::PassRegistry &);
 void initializeSubgroup2DBlockIoResolutionLPMPass(llvm::PassRegistry &);
 void initializeSpvPredicatedIOResolutionLPMPass(llvm::PassRegistry &);
 void initializeSpvSubgroupMMAResolutionLPMPass(llvm::PassRegistry &);
-void initializeSpvSubgroupBitcastShuffleResolutionLPMPass(llvm::PassRegistry &);
 void initializeSplitLoadsPass(llvm::PassRegistry &);
 void initializeSplitPHIsOfAllocaPointersPass(llvm::PassRegistry &);
 void initializeSplitSelectsOfAllocaPointersPass(llvm::PassRegistry &);
