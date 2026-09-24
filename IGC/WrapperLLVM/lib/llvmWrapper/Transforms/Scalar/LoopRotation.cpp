@@ -9,10 +9,12 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 
 #include "llvm/Analysis/AssumptionCache.h"
+#include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/Analysis/LoopAnalysisManager.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Analysis/MemorySSA.h"
 #include "llvm/Analysis/LazyBlockFrequencyInfo.h"
@@ -21,9 +23,12 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/PassManager.h"
 #include "llvm/Pass.h"
 #include "llvm/Passes/PassBuilder.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Scalar/LoopPassManager.h"
-#include "llvm/Transforms/Scalar/LoopRotation.h"
+#include "llvm/Transforms/Utils/LCSSA.h"
+#include "llvm/Transforms/Utils/LoopRotationUtils.h"
+#include "llvm/Transforms/Utils/LoopSimplify.h"
+#include "llvm/Transforms/Utils/LoopUtils.h"
 
 #include "common/LLVMWarningsPop.hpp"
 
@@ -35,8 +40,10 @@ using namespace llvm;
 
 namespace IGCLLVM {
 
-LoopRotateLegacyPassWrapper::LoopRotateLegacyPassWrapper(bool EnableHeaderDuplication, bool PrepareForLTO)
-    : FunctionPass(ID), EnableHeaderDuplication(EnableHeaderDuplication), PrepareForLTO(PrepareForLTO) {
+LoopRotateLegacyPassWrapper::LoopRotateLegacyPassWrapper(bool EnableHeaderDuplication, bool PrepareForLTO,
+                                                         int MaxHeaderSize)
+    : FunctionPass(ID), EnableHeaderDuplication(EnableHeaderDuplication), PrepareForLTO(PrepareForLTO),
+      MaxHeaderSize(MaxHeaderSize) {
   initializeLoopRotateLegacyPassWrapperPass(*PassRegistry::getPassRegistry());
   PB.registerModuleAnalyses(MAM);
   PB.registerCGSCCAnalyses(CGAM);
@@ -49,9 +56,32 @@ bool LoopRotateLegacyPassWrapper::runOnFunction(Function &F) {
   if (skipFunction(F))
     return false;
 
-  auto Adaptor = createFunctionToLoopPassAdaptor(LoopRotatePass(EnableHeaderDuplication, PrepareForLTO));
-  PreservedAnalyses PA = Adaptor.run(F, FAM);
-  return !PA.areAllPreserved();
+  auto *DefaultOpt = static_cast<cl::opt<unsigned> *>(cl::getRegisteredOptions().lookup("rotation-max-header-size"));
+  unsigned DefaultThreshold = DefaultOpt ? DefaultOpt->getValue() : 16;
+  unsigned MaxThreshold = !EnableHeaderDuplication ? 0 : MaxHeaderSize < 0 ? DefaultThreshold : unsigned(MaxHeaderSize);
+
+  FunctionPassManager Canonicalize;
+  Canonicalize.addPass(LoopSimplifyPass());
+  Canonicalize.addPass(LCSSAPass());
+  bool Changed = !Canonicalize.run(F, FAM).areAllPreserved();
+
+  auto &LI = FAM.getResult<LoopAnalysis>(F);
+  auto &DT = FAM.getResult<DominatorTreeAnalysis>(F);
+  auto &SE = FAM.getResult<ScalarEvolutionAnalysis>(F);
+  auto &AC = FAM.getResult<AssumptionAnalysis>(F);
+  auto &TTI = FAM.getResult<TargetIRAnalysis>(F);
+  auto &TLI = FAM.getResult<TargetLibraryAnalysis>(F);
+  const SimplifyQuery SQ(F.getParent()->getDataLayout(), &TLI, &DT, &AC);
+
+  auto Loops = LI.getLoopsInPreorder();
+  for (Loop *L : llvm::reverse(Loops)) {
+    unsigned Threshold = hasVectorizeTransformation(L) == TM_ForcedByUser ? DefaultThreshold : MaxThreshold;
+    Changed |= LoopRotation(L, &LI, &TTI, &AC, &DT, &SE, nullptr, SQ, false, Threshold, false, PrepareForLTO);
+  }
+
+  if (Changed)
+    FAM.invalidate(F, PreservedAnalyses::none());
+  return Changed;
 }
 
 void LoopRotateLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
@@ -70,7 +100,7 @@ llvm::Pass *createLegacyWrappedLoopRotatePass(int MaxHeaderSize, bool PrepareFor
   return llvm::createLoopRotatePass(MaxHeaderSize, PrepareForLTO);
 #else
   bool EnableHeaderDuplication = (MaxHeaderSize != 0);
-  return new LoopRotateLegacyPassWrapper(EnableHeaderDuplication, PrepareForLTO);
+  return new LoopRotateLegacyPassWrapper(EnableHeaderDuplication, PrepareForLTO, MaxHeaderSize);
 #endif
 }
 

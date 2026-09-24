@@ -21,7 +21,7 @@ using namespace llvm;
 namespace IGCLLVM {
 
 struct LoopRotateLegacyPassWrapper : public FunctionPass {
-  LoopRotateLegacyPassWrapper(bool EnableHeaderDuplication = true, bool PrepareForLTO = false);
+  LoopRotateLegacyPassWrapper(bool EnableHeaderDuplication = true, bool PrepareForLTO = false, int MaxHeaderSize = -1);
   static char ID;
 
   bool runOnFunction(llvm::Function &F) override;
@@ -31,6 +31,7 @@ struct LoopRotateLegacyPassWrapper : public FunctionPass {
 private:
   bool EnableHeaderDuplication;
   bool PrepareForLTO;
+  int MaxHeaderSize;
   LoopAnalysisManager LAM;
   FunctionAnalysisManager FAM;
   CGSCCAnalysisManager CGAM;
