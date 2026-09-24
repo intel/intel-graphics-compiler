@@ -6065,7 +6065,7 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   if (BC.isCostModelEnabled())
     addArgument("-kernelCostInfo");
 
-  if (ST.getTargetId() == GenXSubtarget::Xe2)
+  if (ST.getTargetId() >= GenXSubtarget::Xe2 && !ST.hasEfficient64b())
     addArgument("-samplerHeaderWA");
 
   return Argv;
