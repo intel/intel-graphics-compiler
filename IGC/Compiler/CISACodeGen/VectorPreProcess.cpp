@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstIterator.h>
+#include <llvm/IR/PatternMatch.h>
 #include <llvm/Support/MathExtras.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -1633,13 +1634,10 @@ Instruction *VectorPreProcess::simplifyLoadStore(Instruction *Inst) {
     ChainVal = IEI->getOperand(0);
   }
 
-  // FIXME: this is to WA an issue that splitLoadStore does not split
-  // vectors of size 5, 6, 7.
-  if (MaxIndex + 1 > 4)
-    return Inst;
-
-  // Inserted less than N values into Undef.
-  if (MaxIndex >= 0 && MaxIndex + 1 < (int)N && isa<UndefValue>(ChainVal)) {
+  // Fewer than N lanes were inserted into an undefined base: undef, poison, or a
+  // constant vector whose lanes are all undef/poison. Store only the inserted
+  // lanes and leave the rest of memory untouched.
+  if (MaxIndex >= 0 && MaxIndex + 1 < (int)N && PatternMatch::match(ChainVal, PatternMatch::m_Undef())) {
     IRBuilder<> Builder(ASI.getInst());
     Type *NewVecTy = FixedVectorType::get(cast<VectorType>(Val->getType())->getElementType(), MaxIndex + 1);
     Value *SVal = UndefValue::get(NewVecTy);
