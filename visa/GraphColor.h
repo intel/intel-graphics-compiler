@@ -1631,6 +1631,8 @@ public:
   bool useLocalRA = false;
   bool forceBCR = false;
   bool twoSrcBundleBCR = false;
+  bool relaxedDegreeDecided = false;
+  bool relaxedDegree = false;
   uint32_t nextSpillOffset = 0;
   uint32_t scratchOffset = 0;
 
@@ -2097,6 +2099,7 @@ public:
   // Used by LRA/GRA/hybrid RA
   void augAlign();
   int getAlignFromAugBucket(G4_Declare *);
+  bool useRelaxedDegree();
   void getBankAlignment(LiveRange *lr, BankAlign &align);
   void printLiveIntervals();
   void reportUndefinedUses(LivenessAnalysis &liveAnalysis, G4_BB *bb,
