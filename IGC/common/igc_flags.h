@@ -782,7 +782,7 @@ DECLARE_IGC_REGKEY(bool, BranchToSelectDivergentOnly, true,
                    "branch is a scalar jump that runs only one successor, so flattening it just makes the not-taken "
                    "successor's work unconditional. Disable to flatten uniform branches too.",
                    DEBUG_ONLY)
-DECLARE_IGC_REGKEY(DWORD, SimplifyCFGBonusInstThreshold, 0,
+DECLARE_IGC_REGKEY(DWORD, SimplifyCFGBonusInstThreshold, 2,
                    "Max instructions SimplifyCFG will clone to merge two branches sharing a destination "
                    "(short-circuit || chains) in the existing post-unroll CFG cleanup. 0 - use LLVM's default of 1.",
                    DEBUG_ONLY)
@@ -1385,12 +1385,12 @@ DECLARE_IGC_REGKEY(bool, EnableFunctionPointer, true, "Enables support for funct
 DECLARE_IGC_REGKEY(bool, EnableSIMDVariantCompilation, false, "Enables compiling kernels in variant SIMD sizes",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, ForceFFIDOverwrite, false, "Force overwriting ffid in sr0.0", DEBUG_ONLY)
-DECLARE_IGC_REGKEY(bool, AdvMemOptAggressiveHoist, false,
+DECLARE_IGC_REGKEY(bool, AdvMemOptAggressiveHoist, true,
                    "Widen uniform-load hoisting. Walk the immediate post-dominator instead of direct successors,"
                    "so the block list steps over if/else diamonds, and accept a PHI operand already available"
                    "at the destination.",
                    DEBUG_ONLY)
-DECLARE_IGC_REGKEY(bool, EnableUniformSLMLoadWiden, false,
+DECLARE_IGC_REGKEY(bool, EnableUniformSLMLoadWiden, true,
                    "Uniform SLM load merging outside OpenCL, plus the round-up that keeps the result a "
                    "single send: a hull one element short of an LSC vector length (7/15/31/63) goes up "
                    "to the next, costing one never-extracted element of overread. OpenCL merges on "
