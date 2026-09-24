@@ -32,6 +32,7 @@ set(RTSTACK_DEPENDENCIES
 # Generate RT Stack reflection headers
 generate_irbuilder_headers(
     NAME RTStackReflection
+    TEST_CALL_PREFIX "__igc_rt"
     SOURCE_FILE ${REFLECTION_SOURCE}
     YAML_PATH ${YAML_DESC_PATH}
     OUTPUT_DIR ${RT_ROOT_FOLDER}

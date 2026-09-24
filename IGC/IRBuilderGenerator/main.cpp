@@ -130,6 +130,10 @@ static cl::opt<std::string> GenDescPath("gen-desc",
 
 static cl::opt<bool> DoMangle("mangle-names", cl::desc("Mangles all strings"), cl::init(false));
 
+static cl::opt<std::string> TestCallPrefix("test-call-prefix",
+                                           cl::desc("Generate optional declaration-only test calls with this prefix"),
+                                           cl::init(""));
+
 enum class FuncScope { PRIVATE, PUBLIC };
 
 static cl::opt<FuncScope> AutogenScope("scope", cl::desc("Which functions to process"),
@@ -482,6 +486,8 @@ public:
       return "derived().getFloatTy()";
     } else if (Ty->isDoubleTy()) {
       return "derived().getDoubleTy()";
+    } else if (Ty->isVoidTy()) {
+      return "derived().getVoidTy()";
     } else {
       errs() << "Couldn't handle type: ";
       Ty->print(errs());
@@ -731,7 +737,11 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
       OS << makeList(Funcs, [&](const auto &P) { return "typename " + P.second; }, ", ");
       OS << ">\n";
     }
-    OS << (F.getReturnType()->isVoidTy() ? "void" : "auto*");
+    if (F.getReturnType()->isVoidTy()) {
+      OS << "void";
+    } else {
+      OS << "Value*\n";
+    }
     OS << " " << F.getName() << "(";
     OS << makeList(F.args(), [&](const Argument &A) { return "Value* " + repr(&A); }, ", ");
     if (!Funcs.empty()) {
@@ -747,6 +757,24 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
   }
   OS << ")\n";
   OS << "{\n";
+
+  if (!TestCallPrefix.empty()) {
+    OS << "#if defined(_DEBUG) || defined(_RELEASE_INTERNAL)\n";
+    OS << "  if (shouldEmitTestCalls()) {\n";
+    OS << "    ";
+    if (!F.getReturnType()->isVoidTy())
+      OS << "return ";
+    OS << "createTestCall(\"" << TestCallPrefix << F.getName() << "\", " << reprTy(F.getReturnType()) << ", {";
+    OS << makeList(F.args(), [&](const Argument &A) { return repr(&A); }, ", ");
+    OS << "}";
+    if (ReturnVal)
+      OS << ", _ReturnName";
+    OS << ");\n";
+    if (F.getReturnType()->isVoidTy())
+      OS << "    return;\n";
+    OS << "  }\n";
+    OS << "#endif // defined(_DEBUG) || defined(_RELEASE_INTERNAL)\n";
+  }
 
   for (auto &Arg : F.args()) {
     if (Arg.use_empty())

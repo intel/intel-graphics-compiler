@@ -11,6 +11,9 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Constants.h"
+#if defined(_DEBUG) || defined(_RELEASE_INTERNAL)
+#include "llvm/IR/Module.h"
+#endif // defined(_DEBUG) || defined(_RELEASE_INTERNAL)
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 
@@ -20,6 +23,10 @@ SPDX-License-Identifier: MIT
 #include "BuilderConcepts.h"
 
 namespace llvm {
+
+#if defined(_DEBUG) || defined(_RELEASE_INTERNAL)
+bool useRTStackReflectionTestCalls();
+#endif // defined(_DEBUG) || defined(_RELEASE_INTERNAL)
 
 // CRTP mixin providing RTStack reflection IRBuilder functionality.
 //
@@ -58,6 +65,29 @@ protected:
 
   Derived &derived() { return static_cast<Derived &>(*this); }
   const Derived &derived() const { return static_cast<const Derived &>(*this); }
+
+#if defined(_DEBUG) || defined(_RELEASE_INTERNAL)
+  static bool shouldEmitTestCalls() { return useRTStackReflectionTestCalls(); }
+
+  Value *createTestCall(StringRef Name, Type *ReturnTy, ArrayRef<Value *> Args, const Twine &ReturnName = "") {
+    SmallVector<Type *, 16> ArgTypes;
+    for (Value *Arg : Args)
+      ArgTypes.push_back(Arg->getType());
+    auto *FTy = FunctionType::get(ReturnTy, ArgTypes, false);
+    auto *M = derived().getCtx().getModule();
+
+    // A builder can be used with different address spaces in the same module.
+    std::string FunctionName = Name.str();
+    unsigned Suffix = 0;
+    while (auto *Existing = M->getNamedValue(FunctionName)) {
+      auto *F = dyn_cast<Function>(Existing);
+      if (F && F->isDeclaration() && F->getFunctionType() == FTy)
+        break;
+      FunctionName = (Name + "." + Twine(++Suffix)).str();
+    }
+    return derived().CreateCall(M->getOrInsertFunction(FunctionName, FTy), Args, ReturnName);
+  }
+#endif // defined(_DEBUG) || defined(_RELEASE_INTERNAL)
 
 protected:
 #include "AutoGenRTStackReflectionPrivate.h"

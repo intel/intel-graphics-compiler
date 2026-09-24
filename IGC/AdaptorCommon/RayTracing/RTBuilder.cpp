@@ -27,6 +27,9 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/IR/Verifier.h>
+#if defined(_DEBUG) || defined(_RELEASE_INTERNAL)
+#include <llvm/Support/CommandLine.h>
+#endif // defined(_DEBUG) || defined(_RELEASE_INTERNAL)
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/ADT/Optional.h>
 #include "llvmWrapper/IR/Argument.h"
@@ -47,6 +50,14 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace RTStackFormat;
 using namespace IGC;
+
+#if defined(_DEBUG) || defined(_RELEASE_INTERNAL)
+static cl::opt<bool> RTStackReflectionTestCalls(
+    "rt-stack-reflection-test-calls", cl::Hidden, cl::init(false),
+    cl::desc("Emit declaration-only RT stack builder calls instead of their bodies (LIT testing only)"));
+
+bool llvm::useRTStackReflectionTestCalls() { return RTStackReflectionTestCalls; }
+#endif // defined(_DEBUG) || defined(_RELEASE_INTERNAL)
 
 namespace {
 class VAdapt {

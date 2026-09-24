@@ -264,6 +264,33 @@ ALIGNOF MyStruct _alignof_MyStruct() { return {}; }
 #### `[[clang::annotate("private")]]` / `[[clang::annotate("public")]]`
 Controls whether functions appear in private or public headers. Use `--scope=private` or `--scope=public` when invoking the tool.
 
+### Declaration-only calls for pass tests
+
+RT stack reflection builders support `igc_opt --rt-stack-reflection-test-calls`
+in Debug and ReleaseInternal builds. The option and helper are omitted from
+Release builds. This hidden option defaults to false. When enabled, each generated `create`
+method emits a call to a declaration named `__igc_rt` followed by its builder
+name, instead of emitting the method's instructions or invoking its hooks.
+For example, `_setDoneBit_Xe(stack, committed)` emits a call to
+`@__igc_rt_setDoneBit_Xe` with those operands in the same order.
+Type and alignment builders are unchanged.
+
+Use this mode to check a pass's operation selection, operands, and control flow
+without depending on reflection's generated memory accesses or basic blocks.
+These declarations have no implementation and are only for isolated pass tests;
+tests of builder semantics and end-to-end compilation must use the default mode.
+Callback template parameters are not LLVM operands and are not invoked in test mode.
+
+Declarations use the actual operand types and remapped pointer return address
+spaces. Repeated calls with the same signature reuse the declaration; different
+signatures or existing definitions receive numeric suffixes to avoid collisions.
+
+To opt another generated builder into this facility, pass `TEST_CALL_PREFIX`
+to `generate_irbuilder_headers` (the generator's `--test-call-prefix` option).
+Its mixin must provide `shouldEmitTestCalls()` and
+`createTestCall(StringRef, Type *, ArrayRef<Value *>, const Twine & = "")`.
+Without a prefix, generated code retains its existing interface and behavior.
+
 ### Hook System
 
 Functions in the `hook` namespace are replaced during code generation:

@@ -14,12 +14,13 @@
 #   SOURCE_FILE - The input C++ file to compile (e.g., reflection.cpp)
 #   YAML_PATH - (Optional) Path to the address space descriptor YAML file
 #   OUTPUT_DIR - Directory where generated headers will be placed
+#   TEST_CALL_PREFIX - Enable optional declaration-only calls for pass tests
 #   INCLUDE_DIRS - List of include directories for clang
 #   DEPENDS - List of dependencies for the generation step
 #
 function(generate_irbuilder_headers)
     set(options "")
-    set(oneValueArgs NAME SOURCE_FILE YAML_PATH OUTPUT_DIR SETUP_MODE)
+    set(oneValueArgs NAME SOURCE_FILE YAML_PATH OUTPUT_DIR SETUP_MODE TEST_CALL_PREFIX)
     set(multiValueArgs INCLUDE_DIRS DEPENDS)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -159,11 +160,16 @@ function(generate_irbuilder_headers)
     )
 
     # Step 2: Generate private header
+    set(TEST_CALL_FLAGS "")
+    if(ARG_TEST_CALL_PREFIX)
+        set(TEST_CALL_FLAGS "--test-call-prefix=${ARG_TEST_CALL_PREFIX}")
+    endif()
     add_custom_command(
         OUTPUT ${PRIVATE_HEADER_PATH}
         COMMAND
             $<TARGET_FILE:IRBuilderGenerator>
             --scope=private
+            ${TEST_CALL_FLAGS}
             ${MANGLE_NAMES_FLAG}
             ${YAML_PATH_FLAG}
             ${TEMP_BC_PATH}
@@ -179,6 +185,7 @@ function(generate_irbuilder_headers)
         COMMAND
             $<TARGET_FILE:IRBuilderGenerator>
             --scope=public
+            ${TEST_CALL_FLAGS}
             ${MANGLE_NAMES_FLAG}
             ${YAML_PATH_FLAG}
             ${TEMP_BC_PATH}
