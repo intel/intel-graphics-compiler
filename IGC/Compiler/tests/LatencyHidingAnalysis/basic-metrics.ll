@@ -38,7 +38,9 @@
 
 define spir_kernel void @test_basic_hiding(i64 %base) {
 ; CHECK: function: "test_basic_hiding"
+; CHECK: retry_state: 0
 ; CHECK:   - name: "entry"
+; CHECK:     index: 0
 ; CHECK:     loads: 2
 ; CHECK:     dpas: 3
 ; CHECK:     dpas_hiding_sum: 4

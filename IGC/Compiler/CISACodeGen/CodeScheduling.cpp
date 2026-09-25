@@ -113,6 +113,55 @@ static llvm::SmallVector<SchedulingGRFTarget, 4> buildAutoGRFTargets(const CPlat
   return GRFTargets;
 }
 
+struct RegkeyState {
+  const char *Name;
+  uint64_t Value;
+  bool IsSet;
+};
+
+static std::vector<RegkeyState> getSchedulingRegkeyStates() {
+#define SCHEDULING_REGKEY_STATE(Name)                                                                                  \
+  RegkeyState { #Name, static_cast<uint64_t>(IGC_GET_FLAG_VALUE(Name)), IGC_IS_FLAG_SET(Name) }
+  return {SCHEDULING_REGKEY_STATE(DisableCodeScheduling),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingOnlyRecompilation),
+          SCHEDULING_REGKEY_STATE(EnableCodeSchedulingIfNoSpills),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingAutoGRFEager),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingForceMWOnly),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingForceRPOnly),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingAttemptsLimit),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingRPMargin),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingRPThreshold),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingCommitGreedyRP),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingGreedyRPHigherRPCommit),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingMWOptimizedHigherRPCommit),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingAutoVRTAdmissionPercent),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingAutoVRTAcceptableRPDecisionPercent),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingAutoVRTPromotionRPImprovementPercent),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingAutoVRTPromotionMinTargetUtilizationPercent),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingDumpLevel),
+          SCHEDULING_REGKEY_STATE(CodeSchedulingRenameAll),
+          SCHEDULING_REGKEY_STATE(Decompose2DBlockFuncsMode),
+          SCHEDULING_REGKEY_STATE(TotalGRFNum)};
+#undef SCHEDULING_REGKEY_STATE
+}
+
+// Single-quoted YAML scalars need only embedded quotes doubled.
+static std::string quoteYAMLString(llvm::StringRef Value) {
+  std::string Result = "'";
+  for (char C : Value) {
+    Result += C;
+    if (C == '\'')
+      Result += '\'';
+  }
+  return Result + "'";
+}
+
+static void appendYAMLLine(std::string &Out, unsigned Indent, llvm::StringRef Text) {
+  Out.append(Indent, ' ');
+  Out.append(Text.data(), Text.size());
+  Out.push_back('\n');
+}
+
 static std::string blockName(const BasicBlock *BB) { return BB->hasName() ? BB->getName().str() : "Unnamed"; }
 
 // Get Value name as string for debug purposes
@@ -1128,6 +1177,66 @@ public:
     Mixed,
   };
 
+  enum class CandidateSource {
+    None,
+    GreedyMW,
+    Checkpoint,
+    ForcedMW,
+    ForcedRP,
+  };
+
+  enum class AttemptStrategy {
+    GreedyMW,
+    GreedyRP,
+    GreedyRPCopy,
+    Checkpoint,
+    ForcedMW,
+    ForcedRP,
+  };
+
+  enum class AttemptResult {
+    Retained,
+    Critical,
+    Pruned,
+  };
+
+  static const char *attemptStrategyName(AttemptStrategy Strategy) {
+    switch (Strategy) {
+    case AttemptStrategy::GreedyMW:
+      return "greedy-mw";
+    case AttemptStrategy::GreedyRP:
+      return "greedy-rp";
+    case AttemptStrategy::GreedyRPCopy:
+      return "greedy-rp-copy";
+    case AttemptStrategy::Checkpoint:
+      return "checkpoint";
+    case AttemptStrategy::ForcedMW:
+      return "forced-mw";
+    case AttemptStrategy::ForcedRP:
+      return "forced-rp";
+    }
+    IGC_ASSERT_UNREACHABLE();
+    return "unknown";
+  }
+
+  static const char *attemptResultName(AttemptResult Result) {
+    switch (Result) {
+    case AttemptResult::Retained:
+      return "retained";
+    case AttemptResult::Critical:
+      return "critical";
+    case AttemptResult::Pruned:
+      return "pruned";
+    }
+    IGC_ASSERT_UNREACHABLE();
+    return "unknown";
+  }
+
+  struct CommitResult {
+    bool OrderChanged = false;
+    unsigned Moved = 0;
+  };
+
   struct OriginalScheduleInfo {
     int32_t InitialPressure = 0;
     int32_t MaxPressure = 0;
@@ -1148,14 +1257,23 @@ public:
     uint64_t GreedyRPMWDecisions = 0;
     uint64_t GreedyRPRPDecisions = 0;
     uint64_t GreedyRPImmediateOverrideDecisions = 0;
+    CandidateSource Source = CandidateSource::None;
+    unsigned Attempts = 0;
+    bool AttemptLimitReached = false;
+    unsigned AbandonedCheckpoints = 0;
+    bool HigherPressureRejected = false;
+    bool HasGreedyRPMetrics = false;
+    bool GreedyRPOrderSaved = false;
     llvm::SmallVector<Instruction *, 32> Order;
     llvm::SmallVector<Instruction *, 32> GreedyRPOrder;
   };
 
   BBScheduler(BasicBlock *BB, IGCLivenessAnalysisRunner *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
               AAResults *AA, VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, CodeGenContext *CTX,
-              SchedulingConfig *Config, llvm::raw_ostream *LogStream, GenXFunctionGroupAnalysis *FGA)
-      : BB(BB), RPE(RPE), FRPE(FRPE), AA(AA), VSA(VSA), RCA(RCA), CTX(CTX), C(*Config), LogStream(LogStream), FGA(FGA) {
+              SchedulingConfig *Config, llvm::raw_ostream *LogStream, GenXFunctionGroupAnalysis *FGA,
+              unsigned BlockIndex)
+      : BB(BB), RPE(RPE), FRPE(FRPE), AA(AA), VSA(VSA), RCA(RCA), CTX(CTX), C(*Config), LogStream(LogStream), FGA(FGA),
+        BlockIndex(BlockIndex) {
     F = BB->getParent();
     WI = &FRPE->getWIAnalysis(F);
   }
@@ -1264,17 +1382,29 @@ public:
         Result.Kind = ScheduleKind::Mixed;
     };
 
-    auto RetainCandidate = [&](std::unique_ptr<Schedule> Candidate) {
+    auto RetainCandidate = [&](std::unique_ptr<Schedule> Candidate, CandidateSource Source) {
       RecordCandidateMetrics(*Candidate);
+      Result.Source = Source;
       bool AllowHigherPressure = IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly)
                                      ? IGC_IS_FLAG_ENABLED(CodeSchedulingGreedyRPHigherRPCommit)
                                      : IGC_IS_FLAG_ENABLED(CodeSchedulingMWOptimizedHigherRPCommit);
       if (!AutoGRF && !AllowHigherPressure && Result.MaxPressure > Original.MaxPressure) {
+        Result.HigherPressureRejected = true;
         PrintDump("Candidate has higher pressure than the original, skipping commit\n");
         return;
       }
       Result.HasCandidate = true;
       Result.Order = Candidate->getInstructionOrder();
+    };
+
+    // Attempts are numbered per GRF target; the text dump delimits checkpoint attempts with these lines.
+    auto RecordAttempt = [&](Schedule &Candidate, AttemptStrategy Strategy, AttemptResult AttemptOutcome) {
+      unsigned Id = Result.Attempts++;
+      PrintDump("Attempt " << Id << " (" << attemptStrategyName(Strategy)
+                           << "): result=" << attemptResultName(AttemptOutcome)
+                           << ", complete=" << Candidate.isComplete() << ", maxRP=" << Candidate.getMaxRegpressure()
+                           << ", MW=" << Candidate.getMWDecisions() << ", RP=" << Candidate.getRPDecisions()
+                           << ", ImO=" << Candidate.getImmediateOverrideDecisions() << "\n");
     };
 
     std::vector<std::unique_ptr<Schedule>> Schedules;
@@ -1289,6 +1419,7 @@ public:
     // Automatic GRF selection still rejects candidates that exceed the GRF target.
     if (IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly) || IGC_IS_FLAG_ENABLED(CodeSchedulingForceMWOnly)) {
       const bool ForceRPOnly = IGC_IS_FLAG_ENABLED(CodeSchedulingForceRPOnly);
+      Result.Source = ForceRPOnly ? CandidateSource::ForcedRP : CandidateSource::ForcedMW;
       auto ForcedSchedule = std::make_unique<Schedule>(*InitialSchedule);
       if (ForceRPOnly) {
         PrintDump("Greedy RP attempt\n");
@@ -1301,10 +1432,13 @@ public:
       while (!ForcedSchedule->isComplete())
         ForcedSchedule->scheduleNextInstruction(false);
 
+      RecordCandidateMetrics(*ForcedSchedule);
+      const AttemptResult AttemptOutcome =
+          ForcedSchedule->canEverHaveSpills() ? AttemptResult::Critical : AttemptResult::Retained;
+      RecordAttempt(*ForcedSchedule, ForceRPOnly ? AttemptStrategy::ForcedRP : AttemptStrategy::ForcedMW,
+                    AttemptOutcome);
       if (!AutoGRF || !ForcedSchedule->canEverHaveSpills())
-        RetainCandidate(std::move(ForcedSchedule));
-      else
-        RecordCandidateMetrics(*ForcedSchedule);
+        RetainCandidate(std::move(ForcedSchedule), Result.Source);
       return Result;
     }
 
@@ -1320,9 +1454,11 @@ public:
     }
 
     if (!GreedyMWSchedule->canEverHaveSpills()) {
-      RetainCandidate(std::move(GreedyMWSchedule));
+      RecordAttempt(*GreedyMWSchedule, AttemptStrategy::GreedyMW, AttemptResult::Retained);
+      RetainCandidate(std::move(GreedyMWSchedule), CandidateSource::GreedyMW);
       return Result;
     }
+    RecordAttempt(*GreedyMWSchedule, AttemptStrategy::GreedyMW, AttemptResult::Critical);
 
     for (auto It = NewSchedules.rbegin(); It != NewSchedules.rend(); ++It) {
       It->get()->setGreedyMW(false);
@@ -1330,9 +1466,11 @@ public:
     }
 
     std::unique_ptr<Schedule> GreedyRPSchedule;
+    AttemptStrategy GreedyRPStrategy = AttemptStrategy::GreedyRP;
     if (GreedyMWSchedule->isComplete() && GreedyMWSchedule->isEqualGreedyRP()) {
       PrintDump("Greedy MW schedule is equal to Greedy RP schedule\n");
       GreedyRPSchedule = std::make_unique<Schedule>(*GreedyMWSchedule);
+      GreedyRPStrategy = AttemptStrategy::GreedyRPCopy;
     } else {
       PrintDump("Greedy RP attempt\n");
       GreedyRPSchedule = std::make_unique<Schedule>(*InitialSchedule);
@@ -1343,6 +1481,8 @@ public:
       GreedyRPSchedule->scheduleNextInstruction(false);
 
     bool GreedyRPFitsWithNoSpills = !GreedyRPSchedule->canEverHaveSpills();
+    RecordAttempt(*GreedyRPSchedule, GreedyRPStrategy,
+                  GreedyRPFitsWithNoSpills ? AttemptResult::Retained : AttemptResult::Critical);
     if (!Schedules.empty()) {
       const auto RefLiveIntervals = GreedyMWSchedule->getMaxLiveIntervals();
       for (auto &Candidate : Schedules)
@@ -1352,31 +1492,45 @@ public:
     uint64_t Attempt = 1;
     while (!Schedules.empty()) {
       Schedule *Candidate = Schedules.back().get();
+      PrintDump("Checkpoint attempt " << Result.Attempts << "\n");
       std::vector<std::unique_ptr<Schedule>> Checkpoints;
+      bool Pruned = false;
       while (!Candidate->isComplete()) {
         std::unique_ptr<Schedule> Checkpoint = Candidate->scheduleNextInstruction();
         if (Checkpoint)
           Checkpoints.push_back(std::move(Checkpoint));
-        if (GreedyRPFitsWithNoSpills && Candidate->canEverHaveSpills())
+        if (GreedyRPFitsWithNoSpills && Candidate->canEverHaveSpills()) {
+          Pruned = true;
           break;
+        }
       }
 
       if (Candidate->isComplete() && !Candidate->canEverHaveSpills()) {
+        RecordAttempt(*Candidate, AttemptStrategy::Checkpoint, AttemptResult::Retained);
         std::unique_ptr<Schedule> Selected = std::move(Schedules.back());
         Schedules.pop_back();
-        RetainCandidate(std::move(Selected));
+        RetainCandidate(std::move(Selected), CandidateSource::Checkpoint);
         return Result;
       }
+
+      RecordAttempt(*Candidate, AttemptStrategy::Checkpoint, Pruned ? AttemptResult::Pruned : AttemptResult::Critical);
 
       Schedules.pop_back();
       for (auto It = Checkpoints.rbegin(); It != Checkpoints.rend(); ++It)
         Schedules.push_back(std::move(*It));
 
-      if (Attempt > static_cast<uint64_t>(IGC_GET_FLAG_VALUE(CodeSchedulingAttemptsLimit)))
+      if (Attempt > static_cast<uint64_t>(IGC_GET_FLAG_VALUE(CodeSchedulingAttemptsLimit))) {
+        if (!Schedules.empty()) {
+          Result.AttemptLimitReached = true;
+          Result.AbandonedCheckpoints = static_cast<unsigned>(Schedules.size());
+          PrintDump("Attempt limit reached: " << Result.AbandonedCheckpoints << " pending checkpoint(s) abandoned\n");
+        }
         break;
+      }
       Attempt++;
     }
 
+    Result.HasGreedyRPMetrics = true;
     Result.GreedyRPMaxPressure = GreedyRPSchedule->getMaxRegpressure();
     Result.GreedyRPMWDecisions = GreedyRPSchedule->getMWDecisions();
     Result.GreedyRPRPDecisions = GreedyRPSchedule->getRPDecisions();
@@ -1385,6 +1539,7 @@ public:
         (Result.GreedyRPMaxPressure <= Original.MaxPressure ||
          IGC_IS_FLAG_ENABLED(CodeSchedulingGreedyRPHigherRPCommit)))
       Result.GreedyRPOrder = GreedyRPSchedule->getInstructionOrder();
+    Result.GreedyRPOrderSaved = !Result.GreedyRPOrder.empty();
     return Result;
   }
 
@@ -1402,13 +1557,19 @@ public:
     return true;
   }
 
-  void commitOrder(llvm::ArrayRef<Instruction *> Order) {
+  CommitResult commitOrder(llvm::ArrayRef<Instruction *> Order) {
+    CommitResult Result;
     if (IGC_IS_FLAG_ENABLED(DumpCodeScheduling)) {
       auto Original = BB->begin();
       while (isa<PHINode>(*Original))
         ++Original;
-      bool Changed = llvm::any_of(Order, [&](Instruction *I) { return I != &*Original++; });
-      PrintDump("Schedule is " << (Changed ? "changed" : "not changed") << "\n");
+      for (Instruction *I : Order) {
+        if (I != &*Original)
+          ++Result.Moved;
+        ++Original;
+      }
+      Result.OrderChanged = Result.Moved != 0;
+      PrintDump("Schedule is " << (Result.OrderChanged ? "changed" : "not changed") << "\n");
     }
     Instruction *InsertPoint = nullptr;
     for (Instruction *I : Order) {
@@ -1418,7 +1579,9 @@ public:
         I->moveAfter(InsertPoint);
       InsertPoint = I;
     }
-    PrintDump("Committed the schedule\n");
+    PrintDump("Committed the schedule: block=" << blockName(BB) << ", index=" << BlockIndex
+                                               << ", changed=" << Result.OrderChanged << "\n");
+    return Result;
   }
 
 private:
@@ -1434,6 +1597,7 @@ private:
   SchedulingConfig C;
   llvm::raw_ostream *LogStream;
   GenXFunctionGroupAnalysis *FGA;
+  unsigned BlockIndex;
   std::unique_ptr<Schedule> InitialSchedule;
 
   // Helper function to format debug information string
@@ -1442,9 +1606,11 @@ private:
     const int ESTIMATION_NUMBERS_WIDTH = 12;
     const int INFO_WIDTH = 20;
     std::string Info = std::to_string(CurrentPressure) + ", " + std::to_string(Estimate);
-    Info.resize(ESTIMATION_NUMBERS_WIDTH, ' ');
+    if (Info.size() < ESTIMATION_NUMBERS_WIDTH)
+      Info.resize(ESTIMATION_NUMBERS_WIDTH, ' ');
     Info = "(" + Info + ") " + Type + ": ";
-    Info.resize(INFO_WIDTH, ' ');
+    if (Info.size() < INFO_WIDTH)
+      Info.resize(INFO_WIDTH, ' ');
 
     if (!AddString.empty()) {
       Info += AddString;
@@ -1497,7 +1663,8 @@ private:
       if (IGC_IS_FLAG_ENABLED(DumpCodeScheduling)) {
         const int INFO_WIDTH = 16;
         std::string Info = "#" + std::to_string(OriginalPosition) + ", MW: " + std::to_string(MaxWeight) + " ";
-        Info.resize(INFO_WIDTH, ' ');
+        if (Info.size() < INFO_WIDTH)
+          Info.resize(INFO_WIDTH, ' ');
         LogStream << Info;
         I->print(LogStream);
         LogStream << "\n";
@@ -3108,7 +3275,6 @@ private:
         bool UsedImmediateOverride = false;
 
         auto *DT = VSA->getDestVector(Node->I);
-        std::string VS_String = "   ";
 
         // PrioritizeDPASOverImmediateVS heuristic: if we have an immediate ready instruction that is a DPAS,
         // prioritize it over the immediate ready vector shuffle
@@ -3162,15 +3328,15 @@ private:
               }
               if (Node != OriginalImmediateNode) {
                 DT = nullptr;
-                VS_String = "DPH"; // DPAS heuristic
                 UsedImmediateOverride = true;
               }
             }
           }
         }
 
-        std::string Info = formatDebugInfo(RT.getCurrentPressure(), RT.estimate(Node->I), "Im",
-                                           getVectorShuffleString(Node->I, VSA, RCA));
+        std::string Info =
+            formatDebugInfo(RT.getCurrentPressure(), RT.estimate(Node->I), UsedImmediateOverride ? "ImO" : "Im",
+                            getVectorShuffleString(Node->I, VSA, RCA));
 
         PrintDump(Info);
         Node->print(*LogStream);
@@ -3355,14 +3521,29 @@ class FunctionScheduler {
     RPWithinThreshold,
     SameOccupancyBetter,
     HigherGRFTargetPromoted,
-    KeepLowerGRFTarget,
+    HigherTargetNoFit,
+    HigherTargetNotBetter,
+    HigherTargetPromotionRejected,
+    TargetsExhaustedRPAboveThreshold,
     OriginalOrderFitsWithNoSpills,
     LastGRFTargetGreedyRP,
     GreedyRPRejected,
   };
 
+  enum class BlockOutcome {
+    CommittedChanged,
+    CommittedUnchanged,
+    KeptOriginalFits,
+    KeptOriginalGreedyRPRejected,
+    KeptOriginalEmptyOrder,
+    SkippedNoSpillPossible,
+    SkippedBelowThreshold,
+  };
+
   struct GRFTargetResult {
     unsigned GRFTargetIndex = 0;
+    unsigned RequiredGRFTargetIndex = 0;
+    bool HasRequiredGRFTarget = false;
     CandidateInfo ScheduleInfo;
   };
 
@@ -3378,8 +3559,55 @@ class FunctionScheduler {
     std::unique_ptr<BBScheduler> Scheduler;
     BBScheduler::OriginalScheduleInfo Original;
     unsigned AdmissionGRFTargetIndex = 0;
+    unsigned Index = 0;
+    unsigned TraversalIndex = 0;
+    BBScheduler::CommitResult Commit;
+    bool CommitPerformed = false;
     std::vector<std::unique_ptr<GRFTargetResult>> Candidates;
     Selection SelectedSchedule;
+  };
+
+  static BlockOutcome classifyOutcome(const BlockState &State) {
+    // Mirrors the checks in BBScheduler::shouldSkipScheduling.
+    if (State.SelectedSchedule.Reason == SelectionReason::LowPressure)
+      return !State.Original.CanHaveSpills && IGC_IS_FLAG_DISABLED(EnableCodeSchedulingIfNoSpills)
+                 ? BlockOutcome::SkippedNoSpillPossible
+                 : BlockOutcome::SkippedBelowThreshold;
+    if (State.CommitPerformed)
+      return State.Commit.OrderChanged ? BlockOutcome::CommittedChanged : BlockOutcome::CommittedUnchanged;
+    if (State.SelectedSchedule.Reason == SelectionReason::OriginalOrderFitsWithNoSpills)
+      return BlockOutcome::KeptOriginalFits;
+    if (State.SelectedSchedule.Reason == SelectionReason::GreedyRPRejected)
+      return BlockOutcome::KeptOriginalGreedyRPRejected;
+    return BlockOutcome::KeptOriginalEmptyOrder;
+  }
+
+  static const char *blockOutcomeName(BlockOutcome Outcome) {
+    switch (Outcome) {
+    case BlockOutcome::CommittedChanged:
+      return "committed-changed";
+    case BlockOutcome::CommittedUnchanged:
+      return "committed-unchanged";
+    case BlockOutcome::KeptOriginalFits:
+      return "kept-original-fits";
+    case BlockOutcome::KeptOriginalGreedyRPRejected:
+      return "kept-original-greedy-rp-rejected";
+    case BlockOutcome::KeptOriginalEmptyOrder:
+      return "kept-original-empty-order";
+    case BlockOutcome::SkippedNoSpillPossible:
+      return "skipped-no-spill-possible";
+    case BlockOutcome::SkippedBelowThreshold:
+      return "skipped-below-threshold";
+    }
+    IGC_ASSERT_UNREACHABLE();
+    return "kept-original-empty-order";
+  }
+
+  struct FloorIncrease {
+    unsigned FromGRF = 0;
+    unsigned ToGRF = 0;
+    unsigned BlockIndex = 0;
+    bool DuringReevaluation = false;
   };
 
   struct DecisionCounts {
@@ -3443,6 +3671,7 @@ public:
       PrintDump("\n");
     } else {
       PrintDump("Auto GRF scheduling: disabled\n");
+      PrintDump("Fixed GRF scheduling: grf=" << getNumGRFPerThreadForDump() << "\n");
     }
 
     bool Changed = false;
@@ -3463,11 +3692,17 @@ public:
 
       State.SelectedSchedule = selectBlockSchedule(State, StartGRFTargetIndex);
       if (!AutoGRF) {
+        PrintDump("Fixed GRF selected: block="
+                  << blockName(State.BB) << ", kind=" << selectionKindName(State.SelectedSchedule.Kind)
+                  << ", reason=" << selectionReasonName(State.SelectedSchedule.Reason) << "\n");
         Changed |= commitBlock(State);
         // Fixed budgets never revisit blocks; release the graph before the next block.
-        State.SelectedSchedule = {};
-        State.Candidates.clear();
         State.Scheduler.reset();
+        if (IGC_IS_FLAG_DISABLED(DumpCodeScheduling)) {
+          State.SelectedSchedule = {};
+          State.Candidates.clear();
+          State.Original.Order.clear();
+        }
         continue;
       }
       printSelection(State, "selected");
@@ -3475,6 +3710,8 @@ public:
       if (State.SelectedSchedule.RequiredGRFTargetIndex > GRFTargetFloorIndex) {
         unsigned PreviousFloor = GRFTargetFloorIndex;
         GRFTargetFloorIndex = State.SelectedSchedule.RequiredGRFTargetIndex;
+        FloorIncreases.push_back(
+            {GRFTargets[PreviousFloor].NumGRF, GRFTargets[GRFTargetFloorIndex].NumGRF, State.Index, false});
         PrintDump("Auto GRF target floor increased: " << GRFTargets[PreviousFloor].NumGRF << " -> "
                                                       << GRFTargets[GRFTargetFloorIndex].NumGRF << " GRF by "
                                                       << blockName(State.BB) << "\n");
@@ -3492,18 +3729,33 @@ public:
       uint64_t Ordinary = Counts.ordinary();
       uint64_t Percent = Ordinary == 0 ? 0 : 100 * Counts.RP / Ordinary;
       PrintDump("  {block=" << blockName(State.BB) << ", RPDecisions=" << Counts.RP
-                            << ", OrdinaryDecisions=" << Ordinary << ", percent=" << Percent << "}\n");
+                            << ", OrdinaryDecisions=" << Ordinary << ", percent=" << Percent
+                            << ", kind=" << selectionKindName(State.SelectedSchedule.Kind) << "}\n");
       MaxPressure = std::max(MaxPressure, getMaxPressure(State));
     }
     PrintDump("]\n");
     PrintDump("Auto GRF final GRF target floor: " << GRFTargets[GRFTargetFloorIndex].NumGRF << " GRF\n");
     PrintDump("Auto GRF retained maximum pressure: " << MaxPressure << "\n");
 
-    for (const BlockState &State : Blocks)
+    FinalGRFTargetFloorIndex = GRFTargetFloorIndex;
+    HasFinalGRFTargetFloor = true;
+    for (BlockState &State : Blocks) {
       Changed |= commitBlock(State);
-    Blocks.clear();
+      State.Scheduler.reset();
+      State.Original.Order.clear();
+      for (auto &Candidate : State.Candidates) {
+        if (!Candidate)
+          continue;
+        Candidate->ScheduleInfo.Order.clear();
+        Candidate->ScheduleInfo.GreedyRPOrder.clear();
+      }
+    }
+    if (IGC_IS_FLAG_DISABLED(DumpCodeScheduling))
+      Blocks.clear();
     return Changed;
   }
+
+  std::string dumpYAML();
 
 private:
   Function &F;
@@ -3518,14 +3770,18 @@ private:
   llvm::SmallVector<SchedulingGRFTarget, 4> GRFTargets;
   llvm::raw_ostream *LogStream;
   GenXFunctionGroupAnalysis *FGA;
+  unsigned FinalGRFTargetFloorIndex = 0;
+  bool HasFinalGRFTargetFloor = false;
   std::vector<BlockState> Blocks;
+  std::vector<FloorIncrease> FloorIncreases;
 
   void analyzeBlock(BlockState &State) {
-    State.Scheduler = std::make_unique<BBScheduler>(State.BB, RPE, FRPE, AA, VSA, RCA, CTX, &Config, LogStream, FGA);
+    State.Scheduler =
+        std::make_unique<BBScheduler>(State.BB, RPE, FRPE, AA, VSA, RCA, CTX, &Config, LogStream, FGA, State.Index);
     State.Original = State.Scheduler->analyzeOriginalSchedule(!AutoGRF);
   }
 
-  static bool commitBlock(const BlockState &State) {
+  bool commitBlock(BlockState &State) {
     llvm::ArrayRef<Instruction *> Order;
     switch (State.SelectedSchedule.Kind) {
     case SelectionKind::Original:
@@ -3539,7 +3795,8 @@ private:
     }
     if (Order.empty())
       return false;
-    State.Scheduler->commitOrder(Order);
+    State.CommitPerformed = true;
+    State.Commit = State.Scheduler->commitOrder(Order);
     return true;
   }
 
@@ -3554,12 +3811,15 @@ private:
   }
 
   void collectBlocks() {
+    unsigned Index = 0;
     for (BasicBlock &BB : F) {
+      unsigned BlockIndex = Index++;
       if (!llvm::any_of(BB, [](Instruction &I) { return isDPAS(&I); }))
         continue;
 
       BlockState State;
       State.BB = &BB;
+      State.Index = BlockIndex;
       if (AutoGRF) {
         analyzeBlock(State);
         State.AdmissionGRFTargetIndex = getAdmissionGRFTargetIndex(State.Original.MaxPressure);
@@ -3576,6 +3836,8 @@ private:
         return A.Original.InitialPressure > B.Original.InitialPressure;
       });
     }
+    for (unsigned Index = 0; Index < Blocks.size(); ++Index)
+      Blocks[Index].TraversalIndex = Index;
   }
 
   GRFTargetResult &getCandidate(BlockState &State, unsigned GRFTargetIndex) {
@@ -3708,7 +3970,7 @@ private:
 
     GRFTargetResult *BestCandidate = nullptr;
     unsigned BestRequiredGRFTargetIndex = StartGRFTargetIndex;
-    SelectionReason BestReason = SelectionReason::KeepLowerGRFTarget;
+    SelectionReason BestReason = SelectionReason::TargetsExhaustedRPAboveThreshold;
     unsigned LastAttemptedGRFTargetIndex = StartGRFTargetIndex;
 
     for (unsigned GRFTargetIndex = StartGRFTargetIndex; GRFTargetIndex < GRFTargets.size(); GRFTargetIndex++) {
@@ -3717,17 +3979,19 @@ private:
 
       if (!Candidate.ScheduleInfo.HasCandidate) {
         if (BestCandidate)
-          return {SelectionKind::Generated, SelectionReason::KeepLowerGRFTarget, BestCandidate,
+          return {SelectionKind::Generated, SelectionReason::HigherTargetNoFit, BestCandidate,
                   BestRequiredGRFTargetIndex};
         continue;
       }
 
       unsigned RequiredGRFTargetIndex = findRequiredGRFTargetIndex(State, Candidate, StartGRFTargetIndex);
+      Candidate.RequiredGRFTargetIndex = RequiredGRFTargetIndex;
+      Candidate.HasRequiredGRFTarget = true;
       DecisionCounts NewCounts = getCandidateDecisionCounts(Candidate.ScheduleInfo);
       if (!BestCandidate) {
         BestCandidate = &Candidate;
         BestRequiredGRFTargetIndex = RequiredGRFTargetIndex;
-        BestReason = SelectionReason::KeepLowerGRFTarget;
+        BestReason = SelectionReason::TargetsExhaustedRPAboveThreshold;
         if (isRPDecisionRatioAtMost(NewCounts, IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTAcceptableRPDecisionPercent)))
           return {SelectionKind::Generated, SelectionReason::RPWithinThreshold, BestCandidate,
                   BestRequiredGRFTargetIndex};
@@ -3736,7 +4000,7 @@ private:
 
       DecisionCounts BestCounts = getCandidateDecisionCounts(BestCandidate->ScheduleInfo);
       if (!hasLowerRPDecisionRatio(NewCounts, BestCounts))
-        return {SelectionKind::Generated, SelectionReason::KeepLowerGRFTarget, BestCandidate,
+        return {SelectionKind::Generated, SelectionReason::HigherTargetNotBetter, BestCandidate,
                 BestRequiredGRFTargetIndex};
 
       if (RequiredGRFTargetIndex <= BestRequiredGRFTargetIndex) {
@@ -3748,7 +4012,7 @@ private:
         BestRequiredGRFTargetIndex = RequiredGRFTargetIndex;
         BestReason = SelectionReason::HigherGRFTargetPromoted;
       } else {
-        return {SelectionKind::Generated, SelectionReason::KeepLowerGRFTarget, BestCandidate,
+        return {SelectionKind::Generated, SelectionReason::HigherTargetPromotionRejected, BestCandidate,
                 BestRequiredGRFTargetIndex};
       }
 
@@ -3762,8 +4026,11 @@ private:
     for (unsigned GRFTargetIndex = StartGRFTargetIndex; GRFTargetIndex <= LastAttemptedGRFTargetIndex;
          GRFTargetIndex++) {
       GRFTargetResult &Candidate = *State.Candidates[GRFTargetIndex];
-      if (Candidate.ScheduleInfo.OriginalFitsWithNoSpills)
+      if (Candidate.ScheduleInfo.OriginalFitsWithNoSpills) {
+        Candidate.RequiredGRFTargetIndex = GRFTargetIndex;
+        Candidate.HasRequiredGRFTarget = true;
         return {SelectionKind::Original, SelectionReason::OriginalOrderFitsWithNoSpills, &Candidate, GRFTargetIndex};
+      }
     }
 
     GRFTargetResult &LastResult = *State.Candidates[LastAttemptedGRFTargetIndex];
@@ -3847,9 +4114,11 @@ private:
         if (State.SelectedSchedule.RequiredGRFTargetIndex > GRFTargetFloorIndex) {
           unsigned PreviousFloor = GRFTargetFloorIndex;
           GRFTargetFloorIndex = State.SelectedSchedule.RequiredGRFTargetIndex;
+          FloorIncreases.push_back(
+              {GRFTargets[PreviousFloor].NumGRF, GRFTargets[GRFTargetFloorIndex].NumGRF, State.Index, true});
           PrintDump("Auto GRF target floor increased during re-evaluation: "
                     << GRFTargets[PreviousFloor].NumGRF << " -> " << GRFTargets[GRFTargetFloorIndex].NumGRF
-                    << " GRF\n");
+                    << " GRF by " << blockName(State.BB) << "\n");
           FloorIncreased = true;
           break;
         }
@@ -3870,8 +4139,14 @@ private:
       return "same-occupancy-better";
     case SelectionReason::HigherGRFTargetPromoted:
       return "higher-grf-target-promoted";
-    case SelectionReason::KeepLowerGRFTarget:
-      return "ambiguous-keep-lower-grf-target";
+    case SelectionReason::HigherTargetNoFit:
+      return "higher-target-no-fit";
+    case SelectionReason::HigherTargetNotBetter:
+      return "higher-target-not-better";
+    case SelectionReason::HigherTargetPromotionRejected:
+      return "higher-target-promotion-rejected";
+    case SelectionReason::TargetsExhaustedRPAboveThreshold:
+      return "targets-exhausted-rp-above-threshold";
     case SelectionReason::OriginalOrderFitsWithNoSpills:
       return "original-order-fits-with-no-spills";
     case SelectionReason::LastGRFTargetGreedyRP:
@@ -3883,16 +4158,200 @@ private:
     return "unknown";
   }
 
+  static const char *selectionKindName(SelectionKind Kind) {
+    switch (Kind) {
+    case SelectionKind::Original:
+      return "original";
+    case SelectionKind::Generated:
+      return "generated";
+    case SelectionKind::GreedyRPFallback:
+      return "greedy-rp-fallback";
+    }
+    IGC_ASSERT_UNREACHABLE();
+    return "original";
+  }
+
+  // The budget the pass schedules against on the fixed-GRF path, including the tracker's default.
+  int32_t getNumGRFPerThreadForDump() {
+    int32_t NumGRF = static_cast<int32_t>(CTX->getNumGRFPerThread(false, &F));
+    if (!AutoGRF && NumGRF == 0)
+      NumGRF = Config.get(SchedulingConfig::Option::DefaultNumGRF);
+    return NumGRF;
+  }
+
   void printSelection(const BlockState &State, const char *Action) const {
     const Selection &Selected = State.SelectedSchedule;
     PrintDump("Auto GRF " << Action << ": block=" << blockName(State.BB)
                           << ", requiredGRFTarget=" << GRFTargets[Selected.RequiredGRFTargetIndex].NumGRF
                           << ", reason=" << selectionReasonName(Selected.Reason));
-    if (Selected.Result)
+    if (Selected.Result && Selected.Kind != SelectionKind::Original)
       PrintDump(", constructionGRFTarget=" << GRFTargets[Selected.Result->GRFTargetIndex].NumGRF);
+    PrintDump(", kind=" << selectionKindName(Selected.Kind));
     PrintDump("\n");
   }
 };
+
+std::string FunctionScheduler::dumpYAML() {
+  std::string Out;
+  Out.reserve(32768);
+  auto Append = [&](unsigned Indent, const std::string &Text) { appendYAMLLine(Out, Indent, Text); };
+  auto Boolean = [](bool Value) { return Value ? "true" : "false"; };
+  auto ScheduleKindName = [](BBScheduler::ScheduleKind Kind) {
+    switch (Kind) {
+    case BBScheduler::ScheduleKind::MaxWeightOnly:
+      return "max-weight-only";
+    case BBScheduler::ScheduleKind::RegisterPressureOnly:
+      return "register-pressure-only";
+    case BBScheduler::ScheduleKind::Mixed:
+      return "mixed";
+    }
+    IGC_ASSERT_UNREACHABLE();
+    return "mixed";
+  };
+  auto CandidateSourceName = [](BBScheduler::CandidateSource Source) {
+    switch (Source) {
+    case BBScheduler::CandidateSource::None:
+      return "null";
+    case BBScheduler::CandidateSource::GreedyMW:
+      return "greedy-mw";
+    case BBScheduler::CandidateSource::Checkpoint:
+      return "checkpoint";
+    case BBScheduler::CandidateSource::ForcedMW:
+      return "forced-mw";
+    case BBScheduler::CandidateSource::ForcedRP:
+      return "forced-rp";
+    }
+    IGC_ASSERT_UNREACHABLE();
+    return "null";
+  };
+
+  Append(0, "---");
+  Append(0, "function: " + quoteYAMLString(F.getName()));
+  Append(0, "grf_policy: {mode: " + std::string(AutoGRF ? "auto" : "fixed") +
+                ", num_grf_per_thread: " + std::to_string(getNumGRFPerThreadForDump()) + "}");
+
+  if (AutoGRF || (!Blocks.empty() && !GRFTargets.empty())) {
+    Append(0, "targets:");
+    for (const SchedulingGRFTarget &Target : GRFTargets) {
+      std::string Threads = AutoGRF ? std::to_string(Target.ThreadsPerEU) : "null";
+      Append(2, "- {grf: " + std::to_string(Target.NumGRF) + ", threads_per_eu: " + Threads + "}");
+    }
+  } else {
+    Append(0, "targets: []");
+  }
+
+  Append(0, "config: {string: " + quoteYAMLString(Config.toString()) + "}");
+  Append(0, "blocks_in_function: " + std::to_string(F.size()));
+
+  if (Blocks.empty()) {
+    Append(0, "blocks: []");
+  } else {
+    Append(0, "blocks:");
+    for (const BlockState &State : Blocks) {
+      // Reordering keeps the instructions of a block, so the counts match the scheduler input.
+      unsigned Insts = 0, Phis = 0, Loads2D = 0, Prefetches2D = 0, DPAS = 0;
+      for (Instruction &I : *State.BB) {
+        if (isa<PHINode>(&I)) {
+          ++Phis;
+          continue;
+        }
+        ++Insts;
+        Loads2D += is2dBlockRead(&I);
+        Prefetches2D += is2dBlockPrefetch(&I);
+        DPAS += isDPAS(&I);
+      }
+      Append(2, "- name: " + (State.BB->hasName() ? quoteYAMLString(State.BB->getName()) : "null"));
+      Append(4, "index: " + std::to_string(State.Index));
+      Append(4, "traversal: " + std::to_string(State.TraversalIndex));
+      Append(4, "input: {insts: " + std::to_string(Insts) + ", phis: " + std::to_string(Phis) +
+                    ", loads_2d: " + std::to_string(Loads2D) + ", prefetches_2d: " + std::to_string(Prefetches2D) +
+                    ", dpas: " + std::to_string(DPAS) + "}");
+      std::string AdmissionGRF = AutoGRF ? std::to_string(GRFTargets[State.AdmissionGRFTargetIndex].NumGRF) : "null";
+      Append(4, "original: {initial_pressure_grf: " + std::to_string(State.Original.InitialPressure) +
+                    ", max_pressure_grf: " + std::to_string(State.Original.MaxPressure) +
+                    ", admission_target_grf: " + AdmissionGRF + "}");
+
+      std::vector<const GRFTargetResult *> Targets;
+      for (const auto &Candidate : State.Candidates) {
+        if (Candidate)
+          Targets.push_back(Candidate.get());
+      }
+      if (Targets.empty()) {
+        Append(4, "targets: []");
+      } else {
+        Append(4, "targets:");
+        for (const GRFTargetResult *Candidate : Targets) {
+          const CandidateInfo &ScheduleInfo = Candidate->ScheduleInfo;
+          const bool Fits = ScheduleInfo.HasCandidate;
+          std::string RequiredGRF =
+              Candidate->HasRequiredGRFTarget && Candidate->RequiredGRFTargetIndex < GRFTargets.size()
+                  ? std::to_string(GRFTargets[Candidate->RequiredGRFTargetIndex].NumGRF)
+                  : "null";
+          std::string Flow = "- {grf: " + std::to_string(GRFTargets[Candidate->GRFTargetIndex].NumGRF) +
+                             ", fits: " + Boolean(Fits) + ", source: " + CandidateSourceName(ScheduleInfo.Source) +
+                             ", attempts: " + std::to_string(ScheduleInfo.Attempts);
+          Flow += ", attempt_limit_reached: ";
+          Flow += Boolean(ScheduleInfo.AttemptLimitReached);
+          Flow += ", abandoned_checkpoints: " + std::to_string(ScheduleInfo.AbandonedCheckpoints);
+          Flow += ", max_pressure_grf: ";
+          Flow += Fits ? std::to_string(ScheduleInfo.MaxPressure) : "null";
+          Flow += ", kind: ";
+          Flow += Fits ? ScheduleKindName(ScheduleInfo.Kind) : "null";
+          Flow += ", mw: ";
+          Flow += Fits ? std::to_string(ScheduleInfo.MWDecisions) : "null";
+          Flow += ", rp: ";
+          Flow += Fits ? std::to_string(ScheduleInfo.RPDecisions) : "null";
+          Flow += ", immediate_override: ";
+          Flow += Fits ? std::to_string(ScheduleInfo.ImmediateOverrideDecisions) : "null";
+          Flow += ", original_fits: ";
+          Flow += Boolean(ScheduleInfo.OriginalFitsWithNoSpills);
+          Flow += ", required_grf: " + RequiredGRF + ", higher_pressure_rejected: ";
+          Flow += Boolean(ScheduleInfo.HigherPressureRejected);
+          Flow += ", greedy_rp: ";
+          if (!ScheduleInfo.HasGreedyRPMetrics) {
+            Flow += "null";
+          } else {
+            Flow += "{max_pressure_grf: " + std::to_string(ScheduleInfo.GreedyRPMaxPressure) +
+                    ", mw: " + std::to_string(ScheduleInfo.GreedyRPMWDecisions) +
+                    ", rp: " + std::to_string(ScheduleInfo.GreedyRPRPDecisions) +
+                    ", immediate_override: " + std::to_string(ScheduleInfo.GreedyRPImmediateOverrideDecisions) +
+                    ", order_saved: " + Boolean(ScheduleInfo.GreedyRPOrderSaved) + "}";
+          }
+          Flow += "}";
+          Append(6, Flow);
+        }
+      }
+
+      const Selection &Selected = State.SelectedSchedule;
+      std::string ConstructionGRF = Selected.Kind != SelectionKind::Original && Selected.Result
+                                        ? std::to_string(GRFTargets[Selected.Result->GRFTargetIndex].NumGRF)
+                                        : "null";
+      Append(4, "selection: {kind: " + std::string(selectionKindName(Selected.Kind)) +
+                    ", reason: " + selectionReasonName(Selected.Reason) + ", construction_grf: " + ConstructionGRF +
+                    ", required_grf: " + std::to_string(GRFTargets[Selected.RequiredGRFTargetIndex].NumGRF) + "}");
+      Append(4, "commit: {performed: " + std::string(Boolean(State.CommitPerformed)) + ", order_changed: " +
+                    Boolean(State.Commit.OrderChanged) + ", moved: " + std::to_string(State.Commit.Moved) + "}");
+      Append(4, "outcome: " + std::string(blockOutcomeName(classifyOutcome(State))));
+    }
+  }
+
+  if (FloorIncreases.empty()) {
+    Append(0, "floor_increases: []");
+  } else {
+    Append(0, "floor_increases:");
+    for (const FloorIncrease &Increase : FloorIncreases)
+      Append(2, "- {from_grf: " + std::to_string(Increase.FromGRF) + ", to_grf: " + std::to_string(Increase.ToGRF) +
+                    ", block_index: " + std::to_string(Increase.BlockIndex) +
+                    ", during_reevaluation: " + Boolean(Increase.DuringReevaluation) + "}");
+  }
+
+  std::string FinalFloor = HasFinalGRFTargetFloor && FinalGRFTargetFloorIndex < GRFTargets.size()
+                               ? std::to_string(GRFTargets[FinalGRFTargetFloorIndex].NumGRF)
+                               : "null";
+  Append(0, "final_floor_grf: " + FinalFloor);
+
+  return Out;
+}
 
 bool CodeScheduling::runOnFunction(Function &F) {
   if (skipFunction(F))
@@ -3918,24 +4377,12 @@ bool CodeScheduling::runOnFunction(Function &F) {
   }
 
   if (IGC_IS_FLAG_ENABLED(DumpCodeScheduling)) {
-    auto printGlobalSettings = [](llvm::raw_ostream &LogStream) {
-      LogStream << "CodeSchedulingForceMWOnly: " << IGC_GET_FLAG_VALUE(CodeSchedulingForceMWOnly) << "\n";
-      LogStream << "CodeSchedulingForceRPOnly: " << IGC_GET_FLAG_VALUE(CodeSchedulingForceRPOnly) << "\n";
-      LogStream << "CodeSchedulingAttemptsLimit: " << IGC_GET_FLAG_VALUE(CodeSchedulingAttemptsLimit) << "\n";
-      LogStream << "CodeSchedulingRPMargin: " << IGC_GET_FLAG_VALUE(CodeSchedulingRPMargin) << "\n";
-      LogStream << "CodeSchedulingRenameAll: " << IGC_GET_FLAG_VALUE(CodeSchedulingRenameAll) << "\n";
-      LogStream << "CodeSchedulingDumpLevel: " << IGC_GET_FLAG_VALUE(CodeSchedulingDumpLevel) << "\n";
-      LogStream << "EnableCodeSchedulingIfNoSpills: " << IGC_GET_FLAG_VALUE(EnableCodeSchedulingIfNoSpills) << "\n";
-      LogStream << "CodeSchedulingAutoGRFEager: " << IGC_GET_FLAG_VALUE(CodeSchedulingAutoGRFEager) << "\n";
-      LogStream << "CodeSchedulingAutoVRTAdmissionPercent: "
-                << IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTAdmissionPercent) << "\n";
-      LogStream << "CodeSchedulingAutoVRTAcceptableRPDecisionPercent: "
-                << IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTAcceptableRPDecisionPercent) << "\n";
-      LogStream << "CodeSchedulingAutoVRTPromotionRPImprovementPercent: "
-                << IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTPromotionRPImprovementPercent) << "\n";
-      LogStream << "CodeSchedulingAutoVRTPromotionMinTargetUtilizationPercent: "
-                << IGC_GET_FLAG_VALUE(CodeSchedulingAutoVRTPromotionMinTargetUtilizationPercent) << "\n";
-      LogStream << "-----\n";
+    auto printGlobalSettings = [](llvm::raw_ostream &Settings) {
+      for (const RegkeyState &Entry : getSchedulingRegkeyStates())
+        Settings << Entry.Name << ": " << Entry.Value << " (" << (Entry.IsSet ? "set" : "default") << ")\n";
+      Settings << "CodeSchedulingConfig: \"" << IGC_GET_REGKEYSTRING(CodeSchedulingConfig) << "\" ("
+               << (IGC_IS_FLAG_SET(CodeSchedulingConfig) ? "set" : "default") << ")\n";
+      Settings << "-----\n";
     };
 
     Log.clear();
@@ -3984,6 +4431,14 @@ bool CodeScheduling::runOnFunction(Function &F) {
     RPE->publishNormalizedPressurePair(F, MaxPressurePair + ExternalPressure, SIMD);
   }
 
+  if (IGC_IS_FLAG_ENABLED(DumpCodeScheduling)) {
+    std::string Yaml = Scheduler.dumpYAML();
+    if (IGC_IS_FLAG_ENABLED(PrintToConsole))
+      llvm::outs() << Yaml;
+    else
+      dumpYAMLToFile(Yaml);
+  }
+
   return Changed;
 }
 
@@ -3999,6 +4454,23 @@ void CodeScheduling::dumpToFile(const std::string &Log) {
   if (OutputFile.is_open()) {
     OutputFile << Log;
   }
+  OutputFile.close();
+  IGC::Debug::DumpUnlock();
+}
+
+void CodeScheduling::dumpYAMLToFile(const std::string &Yaml) {
+  auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
+                  .Hash(CTX->hash)
+                  .Type(CTX->type)
+                  .Retry(CTX->m_retryManager->GetRetryId())
+                  .Pass("scheduling")
+                  .Extension("yaml");
+  IGC::Debug::DumpLock();
+  const auto OpenMode = FirstYAMLDump ? std::ios_base::out : std::ios_base::app;
+  FirstYAMLDump = false;
+  std::ofstream OutputFile(Name.str(), OpenMode);
+  if (OutputFile.is_open())
+    OutputFile << Yaml;
   OutputFile.close();
   IGC::Debug::DumpUnlock();
 }

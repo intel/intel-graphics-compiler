@@ -42,6 +42,7 @@ public:
 
   struct BBAnalysisResult {
     std::string BBName;
+    unsigned Index = 0; // position of the block in its function
     int NumLoads;
     int NumDPAS;
     int TotalInstructions;

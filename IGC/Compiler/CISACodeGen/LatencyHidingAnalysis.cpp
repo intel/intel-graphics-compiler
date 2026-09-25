@@ -430,10 +430,12 @@ void LatencyHidingAnalysis::dumpResults(Function &F) {
   Out += "---\n";
   Out += "tag: \"" + yamlEscape(DumpTag) + "\"\n";
   Out += "function: \"" + yamlEscape(F.getName().str()) + "\"\n";
+  Out += "retry_state: " + std::to_string(CTX->m_retryManager->GetRetryId()) + "\n";
   Out += "basic_blocks:\n";
 
   for (const auto &R : FunctionResults) {
     Out += "  - name: \"" + yamlEscape(R.BBName) + "\"\n";
+    Out += "    index: " + std::to_string(R.Index) + "\n";
     Out += "    loads: " + std::to_string(R.NumLoads) + "\n";
     Out += "    dpas: " + std::to_string(R.NumDPAS) + "\n";
     Out += "    total_insts: " + std::to_string(R.TotalInstructions) + "\n";
@@ -518,7 +520,9 @@ bool LatencyHidingAnalysis::runOnFunction(Function &F) {
   FunctionResults.clear();
   BBToResultIdx.clear();
 
+  unsigned BlockIndex = 0;
   for (auto &BB : F) {
+    unsigned Index = BlockIndex++;
     // Skip BBs without both 2D block loads and DPAS
     bool Has2DLoad = false;
     bool HasDPAS = false;
@@ -535,6 +539,7 @@ bool LatencyHidingAnalysis::runOnFunction(Function &F) {
 
     BBToResultIdx[&BB] = FunctionResults.size();
     FunctionResults.push_back(analyzeBB(BB));
+    FunctionResults.back().Index = Index;
   }
 
   if (!FunctionResults.empty() && (ShouldDump || IGC_IS_FLAG_ENABLED(PrintToConsole)))

@@ -257,8 +257,8 @@
 ; NO-EFFICIENT-64B: Auto GRF targets: {192 GRF, 8 threads} {256 GRF, 4 threads}
 ; NO-EFFICIENT-64B: Auto GRF block traversal: {bb2, initialRP={{[0-9]+}}} {bb1, initialRP={{[0-9]+}}}
 ; NO-EFFICIENT-64B: FunctionRPDecisionPercent = [
-; NO-EFFICIENT-64B-NEXT:   {block=bb2, RPDecisions={{[0-9]+}}, OrdinaryDecisions={{[0-9]+}}, percent={{[0-9]+}}}
-; NO-EFFICIENT-64B-NEXT:   {block=bb1, RPDecisions={{[0-9]+}}, OrdinaryDecisions={{[0-9]+}}, percent={{[0-9]+}}}
+; NO-EFFICIENT-64B-NEXT:   {block=bb2, RPDecisions={{[0-9]+}}, OrdinaryDecisions={{[0-9]+}}, percent={{[0-9]+}}, kind=generated}
+; NO-EFFICIENT-64B-NEXT:   {block=bb1, RPDecisions={{[0-9]+}}, OrdinaryDecisions={{[0-9]+}}, percent={{[0-9]+}}, kind=generated}
 ; NO-EFFICIENT-64B-NEXT: ]
 ;
 ; EFFICIENT-64B-LABEL: Function auto_vrt

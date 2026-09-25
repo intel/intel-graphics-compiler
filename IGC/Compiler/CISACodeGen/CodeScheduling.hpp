@@ -67,8 +67,10 @@ private:
   std::string Log;
   llvm::raw_string_ostream LogStringStream;
   llvm::raw_ostream *LogStream = nullptr;
+  bool FirstYAMLDump = true;
 
   void dumpToFile(const std::string &Log);
+  void dumpYAMLToFile(const std::string &Yaml);
 };
 
 void initializeCodeSchedulingPass(llvm::PassRegistry &);

@@ -48,6 +48,39 @@
 
 ; RUN: FileCheck %s --check-prefix=CHECK --input-file=%t.no_debug.ll
 ; RUN: FileCheck %s --check-prefix=CHECK --input-file=%t.with_debug.stripped.ll
+; RUN: igc_opt --opaque-pointers -platformCri --regkey DisableCodeScheduling=0 \
+; RUN:         --regkey TotalGRFNum=128 --regkey EnableCodeSchedulingIfNoSpills=1 \
+; RUN:         --regkey CodeSchedulingRPThreshold=-512 --regkey CodeSchedulingRPMargin=88 \
+; RUN:         --regkey PrintToConsole=1 --regkey DumpCodeScheduling=1 \
+; RUN:         --igc-code-scheduling --verify -disable-output %s 2>&1 \
+; RUN:         | FileCheck %s --check-prefix=DETAIL
+; RUN: igc_opt --opaque-pointers -platformCri --regkey DisableCodeScheduling=0 \
+; RUN:         --regkey TotalGRFNum=128 --regkey EnableCodeSchedulingIfNoSpills=1 \
+; RUN:         --regkey CodeSchedulingRPThreshold=-512 --regkey CodeSchedulingRPMargin=88 \
+; RUN:         --regkey CodeSchedulingAttemptsLimit=0 \
+; RUN:         --regkey PrintToConsole=1 --regkey DumpCodeScheduling=1 \
+; RUN:         --igc-code-scheduling --verify -disable-output %s 2>&1 \
+; RUN:         | FileCheck %s --check-prefix=LIMIT --implicit-check-not='Attempt 3 ('
+
+; Checkpoint attempts are delimited in the text dump, and blocks with the same
+; name in different functions are reported separately with their block index.
+; DETAIL-LABEL: Function no_barrier
+; DETAIL: Checkpoint attempt [[ID:[0-9]+]]
+; DETAIL: Attempt [[ID]] (checkpoint): result=
+; DETAIL: function: 'no_barrier'
+; DETAIL: - name: 'for.body19.i'
+; DETAIL-NEXT: index: 1
+; DETAIL: source: {{[a-z-]+}}, attempts: {{[0-9]+}}, attempt_limit_reached: false, abandoned_checkpoints: 0
+; DETAIL-LABEL: Function with_barrier
+; DETAIL: function: 'with_barrier'
+; DETAIL: - name: 'for.body19.i'
+; DETAIL-NEXT: index: 1
+
+; The attempt limit abandons pending checkpoints without reporting them as attempts.
+; LIMIT: Attempt limit reached: {{[1-9][0-9]*}} pending checkpoint(s) abandoned
+; LIMIT: function: 'no_barrier'
+; LIMIT: name: 'for.body19.i'
+; LIMIT: attempts: 3, attempt_limit_reached: true, abandoned_checkpoints: {{[1-9][0-9]*}}
 
 
 define spir_kernel void @no_barrier(ptr addrspace(1) %_arg_A, ptr addrspace(1) %_arg_B, i16 %localIdY) {
