@@ -11,7 +11,7 @@
 ; a HW flag and cannot alias a wide vector as a bool vector.
 ; Legalization now rewrites the extract into an element extract + shift + mask + trunc.
 
-; REQUIRES: regkeys, llvm-22-plus
+; REQUIRES: regkeys, llvm-22-plus, cri-supported
 
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% < %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device cri -options "-igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s

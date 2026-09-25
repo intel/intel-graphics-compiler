@@ -8,16 +8,16 @@
 
 
 ; UNSUPPORTED: system-windows
-; REQUIRES: spirv-as, regkeys, bmg-supported, ptl-supported
+; REQUIRES: spirv-as, regkeys
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
 
-; RUN: ocloc compile -spirv_input -file %t.spv -device ptl -output_no_suffix -output %t_ptl_out \
-; RUN:   -options "-igc_opts 'ShaderDumpEnable=1,DumpToCustomDir=%t_ptl_dump'" | FileCheck %s --check-prefix=NO-WARN
-; RUN: FileCheck %s --check-prefix=PTL --input-file %t_ptl_dump/*.zeinfo
+; RUN: %if ptl-supported %{ ocloc compile -spirv_input -file %t.spv -device ptl -output_no_suffix -output %t_ptl_out \
+; RUN:   -options "-igc_opts 'ShaderDumpEnable=1,DumpToCustomDir=%t_ptl_dump'" | FileCheck %s --check-prefix=NO-WARN %}
+; RUN: %if ptl-supported %{ FileCheck %s --check-prefix=PTL --input-file %t_ptl_dump/*.zeinfo %}
 
-; RUN: ocloc compile -spirv_input -file %t.spv -device bmg -output_no_suffix -output %t_bmg_out \
-; RUN:   -options "-igc_opts 'ShaderDumpEnable=1,DumpToCustomDir=%t_bmg_dump'" | FileCheck %s --check-prefix=WARN
-; RUN: FileCheck %s --check-prefix=BMG --input-file %t_bmg_dump/*.zeinfo
+; RUN: %if bmg-supported %{ ocloc compile -spirv_input -file %t.spv -device bmg -output_no_suffix -output %t_bmg_out \
+; RUN:   -options "-igc_opts 'ShaderDumpEnable=1,DumpToCustomDir=%t_bmg_dump'" | FileCheck %s --check-prefix=WARN %}
+; RUN: %if bmg-supported %{ FileCheck %s --check-prefix=BMG --input-file %t_bmg_dump/*.zeinfo %}
 
 ; PTL: grf_count:       192
 ; BMG: grf_count:       128
