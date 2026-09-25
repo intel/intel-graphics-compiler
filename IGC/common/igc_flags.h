@@ -2106,13 +2106,13 @@ DECLARE_IGC_REGKEY(DWORD, EnablePrivMemNewSOATranspose, 1,
                    "2 : 1 plus new algo for array of dw[xn]/qw[xn],etc "
                    "3 : 2 plus new algo for array of complicated struct.",
                    ALWAYS)
-DECLARE_IGC_REGKEY(bool, EnableSOAFallbackToOldAlgorithm, true,
+DECLARE_IGC_REGKEY(bool, EnableSOAFallbackToOldAlgorithm, false,
                    "Enable fallback to old SOA algorithm when new algorithm is not applicable", ALWAYS)
-DECLARE_IGC_REGKEY(bool, EnablePrivMemNewSOAForScalarArrays, true,
+DECLARE_IGC_REGKEY(bool, EnablePrivMemNewSOAForScalarArrays, false,
                    "Enables new SOA algorithm also for scalar float/int arrays.", ALWAYS)
 DECLARE_IGC_REGKEY(bool, NewSOATransposeForOpenCL, true,
                    "If true, EnablePrivMemNewSOATranspose only applies to OpenCL kernels. For testing purpose", ALWAYS)
-DECLARE_IGC_REGKEY(bool, EnableSelectOfAllocaPtrSplit, true,
+DECLARE_IGC_REGKEY(bool, EnableSelectOfAllocaPtrSplit, false,
                    "If true, enables splitting SELECT instruction containing pointers "
                    "where one operand is alloca-derived (load duplication / store branching). "
                    "Enables SoA promotion for allocas otherwise blocked by SELECT pattern.",
@@ -2122,7 +2122,7 @@ DECLARE_IGC_REGKEY(bool, DisablePredicatedLoadForAllocaPtrSelectSplit, false,
                    "private memory is in stateless global, instead of the predicated-loads. "
                    "For testing/debugging. May cause OOB reads in stateless global.",
                    DEBUG_ONLY)
-DECLARE_IGC_REGKEY(bool, EnablePHIOfAllocaPtrSplit, true,
+DECLARE_IGC_REGKEY(bool, EnablePHIOfAllocaPtrSplit, false,
                    "If true, enables splitting PHI instruction containing pointers "
                    "where at least one incoming value is alloca-derived (per-predecessor load + value phi). "
                    "Enables SoA promotion for allocas otherwise blocked by PHI pattern.",

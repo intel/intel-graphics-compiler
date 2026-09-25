@@ -6,10 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: regkeys
-;
-; RUN: igc_opt --opaque-pointers --igc-private-mem-resolution --platformbmg \
-; RUN:   --regkey EnablePrivMemNewSOAForScalarArrays=0 -S %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-private-mem-resolution --platformbmg -S %s | FileCheck %s
 
 ; A dynamically indexed typed GEP followed by a constant byte-offset ("ptradd")
 ; GEP - the shape InstCombine produces for `arr[i + 1]`. The byte offset is an
