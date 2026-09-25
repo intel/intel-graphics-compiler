@@ -39,21 +39,12 @@ function(build_bif_bitcode)
   igc_bif_tool_path(bif-llvm-link_exe "${LLVM_LINK_EXE}")
   igc_bif_tool_path(bif-llvm-opt_exe "${LLVM_OPT_EXE}")
   igc_bif_tool_path(clang-tool clang-tool)
-  set(bif-tool-targets)
-  foreach(tool IN ITEMS "${LLVM_AS_EXE}" "${LLVM_LINK_EXE}" "${LLVM_OPT_EXE}" clang-tool)
-    if(TARGET "${tool}")
-      list(APPEND bif-tool-targets "${tool}")
-    endif()
-  endforeach()
   set(BiFManager-bin "$<TARGET_FILE:${IGC_BUILD__PROJ_NAME_PREFIX}BiFManager-bin>")
   set(BIF_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}")
   set(BIF_ARCH "${IGC_OPTION__ARCHITECTURE_TARGET}")
   set(BiFModuleCacheTarget "$<IF:$<CONFIG:Release>,Release,Non-Release>")
   if(IGC_OPTION__BIF_UPDATE_IR)
     igc_bif_tool_path(bif-llvm-dis_exe "${LLVM_DIS_EXE}")
-    if(TARGET "${LLVM_DIS_EXE}")
-      list(APPEND bif-tool-targets "${LLVM_DIS_EXE}")
-    endif()
   endif()
   set(configVariables
       IGC_BUILD__BIF_ROOT_DIR IGC_BUILD__BIF_DIR
@@ -79,7 +70,7 @@ function(build_bif_bitcode)
       COMMAND "${CMAKE_COMMAND}" "-DIGC_BIF_CONFIG=${IGC_BIF_CONFIG}"
           -P "${IGC_BIF_CMAKE_DIR}/BiFBuildBitcode.cmake"
       DEPENDS "${BiFModule_SRC_SHA_PATH}" "${IGC_BIF_CONFIG}" "${BiFManager-bin}"
-          "${IGC_BUILD__PROJ__IBiF_matrix_generator}" ${bif-tool-targets}
+          "${IGC_BUILD__PROJ__IBiF_matrix_generator}"
       COMMENT "Building BiF package"
       VERBATIM)
   set(target "${IGC_BUILD__PROJ_NAME_PREFIX}BiFModuleCache")
