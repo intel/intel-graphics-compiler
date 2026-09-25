@@ -4546,6 +4546,107 @@ bool SpillManagerGRF::spillLiveRanges(G4_Kernel *kernel) {
 // that all spill/fill may share the same A0, so we only need to save/restore A0
 // when it's actually referenced in the BB.
 //
+static const unsigned MAX_ENCODABLE_A0_WORDS = 16;
+
+// Check if current kernel/leaf stack call function has an address register
+// available that can be used in spill/fill messages. The address register
+// must be Even aligned and 2 consecutive words must be free. If such a
+// register is found, it's stored in dedicatedSpillFillA0SubReg. Then during
+// spill/fill expansion, we use this register without emitting any save/restore
+// for a0. If such a register is not found then we use a0.2 and insert
+// with save/restore code when expanding spill/fill.
+void GlobalRA::findFreeA0ForGRFSpillFill() {
+  vISA_ASSERT(!dedicatedSpillFillA0SubReg.has_value(), "already searched");
+
+  if (!builder.canDedicateA0ForSpillFill() ||
+      kernel.fg.getHasStackCalls() ||
+      (!builder.getIsKernel() && !kernel.fg.getIsStackCallFunc()) ||
+      !builder.hasScratchSurface() ||
+      builder.getOption(vISA_setA0toTdrForSendc) ||
+      builder.getOption(vISA_LinearScan))
+    return;
+
+  const unsigned numWords =
+      std::min(builder.getNumAddrRegisters(), MAX_ENCODABLE_A0_WORDS);
+  BitSet busyWords(numWords, false);
+
+  for (G4_Declare *dcl : kernel.Declares) {
+    G4_Declare *rootDcl = dcl->getRootDeclare();
+    if (rootDcl->getRegFile() != G4_ADDRESS ||
+        !rootDcl->getRegVar()->isPhyRegAssigned() ||
+        !rootDcl->getRegVar()->getPhyReg()->isA0())
+      continue;
+
+    // Address dcl with physical register assignment is found.
+    // Mark bitset budyWords with physical address registers that this
+    // dcl touches.
+    unsigned startWord = rootDcl->getRegVar()->getPhyRegOff() *
+                         rootDcl->getElemSize() / G4_WSIZE;
+    unsigned numUnits = PhyRegUsage::numAllocUnit(rootDcl->getNumElems(),
+                                                  rootDcl->getElemType());
+    for (unsigned w = startWord; w < startWord + numUnits && w < numWords; ++w)
+      busyWords.set(w, true);
+  }
+
+  // busyWords is a bitset of physical address registers that are already in
+  // use by current program. Find consecutive Even aligned words of a0 to use
+  // for spill/fill from unused part of a0.
+  std::optional<unsigned> freeDword;
+  for (unsigned w = 0; w + 1 < busyWords.getSize(); w += 2) {
+    if (!busyWords.isSet(w) && !busyWords.isSet(w + 1)) {
+      freeDword = w / 2;
+      break;
+    }
+  }
+
+  if (!freeDword.has_value()) {
+    RA_TRACE(std::cout << "\t== no free a0 dword for spill/fill ==\n");
+    return;
+  }
+
+  auto usesPhysicalA0 = [](G4_Operand *opnd) {
+    if (!opnd)
+      return false;
+    G4_VarBase *base = opnd->getBase();
+    return base && !base->isRegVar() && base->isPhyAreg() &&
+           base->asAreg()->isA0();
+  };
+
+  for (G4_BB *bb : kernel.fg) {
+    for (G4_INST *inst : *bb) {
+      bool found = usesPhysicalA0(inst->getDst());
+      for (int i = 0, numSrc = inst->getNumSrc(); !found && i < numSrc; ++i)
+        found = usesPhysicalA0(inst->getSrc(i));
+      if (found) {
+        RA_TRACE(std::cout << "\t== a0 used without a declare, no dedicated "
+                              "spill/fill a0 ==\n");
+        return;
+      }
+    }
+  }
+
+  dedicatedSpillFillA0SubReg = freeDword;
+  RA_TRACE(std::cout << "\t== dedicating a0." << *dedicatedSpillFillA0SubReg
+                     << ":ud to spill/fill ==\n");
+}
+
+G4_INST *GlobalRA::createA0SSOMove(G4_Declare *a0Dcl) {
+  // SSO is stored in r126.7
+  auto dst = builder.createDstRegRegion(a0Dcl, 1);
+  auto SSOsrc =
+      builder.createSrc(builder.getSpillSurfaceOffset()->getRegVar(), 0, 0,
+                        builder.getRegionScalar(), Type_UD);
+  if (builder.getPlatform() >= Xe3 && builder.isKernelArgumentEnabled()) {
+    // SSO starts from the beginning of DW, no shift needed
+    // mov (1) a0.2   SSO   {NM}
+    return builder.createMov(g4::SIMD1, dst, SSOsrc, InstOpt_WriteEnable, false);
+  }
+  // shr (1) a0.2   SSO   0x4 {NM}
+  auto imm4 = builder.createImm(4, Type_UD);
+  return builder.createBinOp(G4_shr, g4::SIMD1, dst, SSOsrc, imm4,
+                             InstOpt_WriteEnable, false);
+}
+
 void GlobalRA::saveRestoreA0(G4_BB *bb) {
   G4_Declare *tmpDcl = nullptr;
   unsigned int subReg = 0;
@@ -4582,15 +4683,17 @@ void GlobalRA::saveRestoreA0(G4_BB *bb) {
   auto a0SaveMov = [this, tmpDcl, subReg]() {
     auto dstSave =
         builder.createDst(tmpDcl->getRegVar(), 0, subReg, 1, Type_UD);
-    auto srcSave = builder.createSrc(builder.getBuiltinA0Dot2()->getRegVar(), 0,
-                                     0, builder.getRegionScalar(), Type_UD);
+    auto srcSave =
+        builder.createSrc(builder.getSpillFillExDescDcl()->getRegVar(), 0, 0,
+                          builder.getRegionScalar(), Type_UD);
     auto saveInst = builder.createMov(g4::SIMD1, dstSave, srcSave,
                                       InstOpt_WriteEnable, false);
     return saveInst;
   };
 
   auto a0RestoreMov = [this, tmpDcl, subReg]() {
-    auto dstRestore = builder.createDstRegRegion(builder.getBuiltinA0Dot2(), 1);
+    auto dstRestore =
+        builder.createDstRegRegion(builder.getSpillFillExDescDcl(), 1);
     auto srcRestore = builder.createSrc(tmpDcl->getRegVar(), 0, subReg,
                                         builder.getRegionScalar(), Type_UD);
     auto restoreInst = builder.createMov(g4::SIMD1, dstRestore, srcRestore,
@@ -4599,22 +4702,7 @@ void GlobalRA::saveRestoreA0(G4_BB *bb) {
   };
 
   auto a0SSOMove = [this]() {
-    // SSO is stored in r126.7
-    auto dst = builder.createDstRegRegion(builder.getBuiltinA0Dot2(), 1);
-    auto SSOsrc =
-        builder.createSrc(builder.getSpillSurfaceOffset()->getRegVar(), 0, 0,
-                          builder.getRegionScalar(), Type_UD);
-    if (builder.getPlatform() >= Xe3 && builder.isKernelArgumentEnabled()) {
-      // SSO starts from the beginning of DW, no shift needed
-      // mov (1) a0.2   SSO   {NM}
-      return builder.createMov(g4::SIMD1, dst, SSOsrc, InstOpt_WriteEnable,
-                               false);
-    } else {
-      // shr (1) a0.2   SSO   0x4 {NM}
-      auto imm4 = builder.createImm(4, Type_UD);
-      return builder.createBinOp(G4_shr, g4::SIMD1, dst, SSOsrc, imm4,
-                                 InstOpt_WriteEnable, false);
-    }
+    return createA0SSOMove(builder.getSpillFillExDescDcl());
   };
 
   auto isPrologOrEpilog = [this](G4_INST *inst) {
@@ -4867,7 +4955,8 @@ void GlobalRA::expandSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
 
     auto sendInst = builder->createLscSendInst(
         nullptr, postDst, src0Addr, payloadToUse, g4::SIMD1, desc,
-        inst->getOption(), LSC_ADDR_TYPE_SS, 0x0, false);
+        inst->getOption(), LSC_ADDR_TYPE_SS, 0x0, false,
+        builder->getSpillFillExDescDcl());
 
     sendInst->addComment(makeSpillFillComment(
         "spill", "to", inst->getFP() ? "FP" : "offset", spillOffset,
@@ -4983,7 +5072,8 @@ void GlobalRA::expandScatterSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
 
   auto sendInst = builder->createLscSendInst(
       nullptr, postDst, src0Addr, payloadToUse, execSize, desc,
-      inst->getOption(), LSC_ADDR_TYPE_SS, 0x0, false);
+      inst->getOption(), LSC_ADDR_TYPE_SS, 0x0, false,
+      builder->getSpillFillExDescDcl());
 
   sendInst->addComment(makeSpillFillComment(
       "scatter spill", "to", inst->getFP() ? "FP" : "offset", spillOffset,
@@ -5073,7 +5163,7 @@ void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
         nullptr, dstRead,
         builder->createSrcRegRegion(fillAddr, builder->getRegionScalar()),
         nullptr, g4::SIMD1, desc, inst->getOption(), LSC_ADDR_TYPE_SS, 0x0,
-        false);
+        false, builder->getSpillFillExDescDcl());
 
     sendInst->addComment(makeSpillFillComment(
         "fill", "from", inst->getFP() ? "FP" : "offset", fillOffset,
@@ -5322,7 +5412,7 @@ void GlobalRA::expandSpillNonStackcall(uint32_t numRows, uint32_t offset,
       G4_Imm *msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
 
       // a0 is set by saveRestoreA0()
-      auto a0Src = builder->createSrcRegRegion(builder->getBuiltinA0Dot2(),
+      auto a0Src = builder->createSrcRegRegion(builder->getSpillFillExDescDcl(),
                                                builder->getRegionScalar());
       sendInst = builder->createInternalSplitSendInst(
           execSize, inst->getDst(), header, payloadToUse, msgDescImm,
@@ -5432,7 +5522,7 @@ void GlobalRA::expandSpillStackcall(uint32_t numRows, uint32_t offset,
         G4_Imm *msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
 
         // a0 is set by saveRestoreA0()
-        auto a0Src = builder->createSrcRegRegion(builder->getBuiltinA0Dot2(),
+        auto a0Src = builder->createSrcRegRegion(builder->getSpillFillExDescDcl(),
                                                  builder->getRegionScalar());
         sendInst = builder->createInternalSplitSendInst(
             execSize, inst->getDst(), sendSrc0, payloadToUse, msgDescImm,
@@ -5580,7 +5670,7 @@ void GlobalRA::expandFillNonStackcall(uint32_t numRows, uint32_t offset,
       G4_Operand *msgDescOpnd = builder->createImm(msgDesc->getDesc(), Type_UD);
 
       // a0 is set by saveRestoreA0()
-      auto src1 = builder->createSrc(builder->getBuiltinA0Dot2()->getRegVar(),
+      auto src1 = builder->createSrc(builder->getSpillFillExDescDcl()->getRegVar(),
                                      0, 0, builder->getRegionScalar(), Type_UD);
 
       sendInst = builder->createInternalSplitSendInst(
@@ -5691,7 +5781,7 @@ void GlobalRA::expandFillStackcall(uint32_t numRows, uint32_t offset,
 
         // a0 is set by saveRestoreA0()
         auto src1 =
-            builder->createSrc(builder->getBuiltinA0Dot2()->getRegVar(), 0, 0,
+            builder->createSrc(builder->getSpillFillExDescDcl()->getRegVar(), 0, 0,
                                builder->getRegionScalar(), Type_UD);
 
         sendInst = builder->createInternalSplitSendInst(
@@ -5937,6 +6027,84 @@ void GlobalRA::initAddrRegForImmOffUseNonStackCall() {
       builder.createImm(0x10000, Type_UD), InstOpt_WriteEnable, false);
   entryBB->insertBefore(iter, movInst);
 }
+
+bool GlobalRA::canUseDedicatedSpillFillA0() const {
+  return dedicatedSpillFillA0SubReg.has_value() &&
+         builder.canDedicateA0ForSpillFill() && !kernel.fg.getHasStackCalls();
+}
+
+void GlobalRA::initDedicatedSpillFillA0() {
+  G4_BB *entryBB = builder.kernel.fg.getEntryBB();
+
+  auto insertPos = entryBB->end();
+  if (kernel.fg.getIsStackCallFunc()) {
+    insertPos = std::find_if(entryBB->begin(), entryBB->end(),
+                             [](G4_INST *inst) { return !inst->isLabel(); });
+  } else {
+    G4_Declare *sso = builder.getSpillSurfaceOffset()->getRootDeclare();
+    for (auto it = entryBB->begin(), ite = entryBB->end(); it != ite; ++it) {
+      G4_DstRegRegion *dst = (*it)->getDst();
+      if (dst && dst->getTopDcl() == sso)
+        insertPos = std::next(it);
+    }
+  }
+  vISA_ASSERT(insertPos != entryBB->end(),
+              "expecting a def of scratch surface offset in entry BB");
+
+  G4_Declare *a0Dcl = builder.createTempAddress(1, "SpillFillA0");
+  a0Dcl->setSubRegAlign(Even_Word);
+  a0Dcl->getRegVar()->setPhyReg(builder.phyregpool.getAddrReg(),
+                                *dedicatedSpillFillA0SubReg);
+  a0Dcl->setLiveOut();
+  a0Dcl->setDoNotSpill();
+  builder.setSpillFillA0Dcl(a0Dcl);
+
+  G4_INST *init = createA0SSOMove(a0Dcl);
+  init->setVISAId(UNMAPPABLE_VISA_INDEX);
+  entryBB->insertBefore(insertPos, init);
+}
+
+void GlobalRA::verifyDedicatedSpillFillA0() const {
+  if (!builder.hasDedicatedSpillFillA0())
+    return;
+
+  const unsigned loWord = *dedicatedSpillFillA0SubReg * 2;
+  [[maybe_unused]] const unsigned hiWord = loWord + 1;
+  const G4_Declare *a0Dcl = builder.getSpillFillExDescDcl();
+
+  for (G4_BB *bb : kernel.fg) {
+    for (G4_INST *inst : *bb) {
+      G4_DstRegRegion *dst = inst->getDst();
+      if (!dst)
+        continue;
+      G4_VarBase *base = dst->getBase();
+      if (!base)
+        continue;
+
+      [[maybe_unused]] unsigned startWord = 0;
+      [[maybe_unused]] unsigned numWords = 0;
+      if (base->isRegVar()) {
+        G4_Declare *rootDcl = base->asRegVar()->getDeclare()->getRootDeclare();
+        G4_RegVar *rootVar = rootDcl->getRegVar();
+        if (rootDcl->getRegFile() != G4_ADDRESS || rootDcl == a0Dcl ||
+            !rootVar->isPhyRegAssigned() || !rootVar->getPhyReg()->isA0())
+          continue;
+        startWord = rootVar->getPhyRegOff() * rootDcl->getElemSize() / G4_WSIZE;
+        numWords = PhyRegUsage::numAllocUnit(rootDcl->getNumElems(),
+                                             rootDcl->getElemType());
+      } else if (base->isPhyAreg() && base->asAreg()->isA0()) {
+        startWord = 0;
+        numWords = builder.getNumAddrRegisters();
+      } else {
+        continue;
+      }
+
+      vISA_ASSERT(hiWord < startWord || loWord >= startWord + numWords,
+                  "a0 dword reserved for spill/fill is written elsewhere");
+    }
+  }
+}
+
 void GlobalRA::expandSpillFillIntrinsicsXE3P(unsigned int spillSizeInBytes) {
   bool hasStackCall =
       kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
@@ -6000,9 +6168,12 @@ void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {
       ((!hasStackCall && spillSizeInBytes > 0)))
     initAddrRegForImmOffUseNonStackCall();
 
+  if (canUseDedicatedSpillFillA0() && spillSizeInBytes > 0)
+    initDedicatedSpillFillA0();
 
   for (auto bb : kernel.fg) {
     if (builder.hasScratchSurface() &&
+        !builder.hasDedicatedSpillFillA0() &&
         (hasStackCall || kernel.fg.builder->hasValidOldA0Dot2() ||
          (useLscForSpillFill &&
           (spillSizeInBytes + globalScratchOffset) >= SCRATCH_MSG_LIMIT &&

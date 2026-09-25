@@ -864,6 +864,10 @@ bool isEfficient64bEnabled() const {
 bool isKernelArgumentEnabled() const {
   return getPlatform() >= Xe3 && getOption(vISA_EnableKernelArgument);
 }
+bool canDedicateA0ForSpillFill() const {
+  return getPlatform() >= Xe2 && !isEfficient64bEnabled() &&
+         getOption(vISA_dedicatedA0ForSpillFill);
+}
 
 // Return true if platform has structured control-flow instructions.
 // Note: stop using SCF for DG2+ even though DG2/PVC still support it.

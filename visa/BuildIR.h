@@ -322,6 +322,12 @@ private:
   // pre-defined declare that binds to A0.2:ud
   G4_Declare *builtinA0Dot2 = nullptr; // used for splitsend's ext msg
                                        // descriptor
+  // A0 declare used exclusively for spill/fill. The DWord of address register
+  // assigned to this declare must be used only by spill/fill code. This
+  // requires 1 DW of a0 to be exclusively available for spill/fill code only.
+  // If no such free a0 exists then this is nullptr and we fall back to using
+  // a0.2 with save/restore.
+  G4_Declare *spillFillA0Dcl = nullptr;
   // pre-defined declare that binds to HWTid (R0.5:ud)
   G4_Declare *builtinHWTID = nullptr;
   // pre-defined declare that binds to SR0.1:ud
@@ -780,6 +786,11 @@ public:
   void setRealR0(G4_Declare *dcl) { realR0 = dcl; }
   G4_Declare *getBuiltinA0() { return builtinA0; }
   G4_Declare *getBuiltinA0Dot2() { return builtinA0Dot2; }
+  bool hasDedicatedSpillFillA0() const { return spillFillA0Dcl != nullptr; }
+  G4_Declare *getSpillFillExDescDcl() {
+    return hasDedicatedSpillFillA0() ? spillFillA0Dcl : builtinA0Dot2;
+  }
+  void setSpillFillA0Dcl(G4_Declare *dcl) { spillFillA0Dcl = dcl; }
   G4_Declare *getBuiltinHWTID() const { return builtinHWTID; }
   G4_Declare *getBuiltinSR0Dot1() const { return builtinSR0Dot1; }
 
@@ -1736,7 +1747,8 @@ public:
                                  G4_ExecSize execsize,
                                  G4_SendDescRaw *msgDesc,
                                  G4_InstOpts option, LSC_ADDR_TYPE addrType,
-                                 unsigned surfOff, bool emitA0RegDef);
+                                 unsigned surfOff, bool emitA0RegDef,
+                                 G4_Declare *exDescAddrDcl = nullptr);
 
   /// createLscSendgInst - function to construct send instruction for
   ///                      Xe3 using the new message descriptor format

@@ -2210,6 +2210,8 @@ void FlowGraph::setABIForStackCallFunctionCalls() {
 
 // Function to verify RA results
 void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
+  verifyDedicatedSpillFillA0();
+
   for (auto bb : kernel.fg) {
     unsigned int numGRF = kernel.getNumRegTotal();
 

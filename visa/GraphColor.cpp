@@ -12402,6 +12402,8 @@ int GlobalRA::coloringRegAlloc() {
 
     addrRegAlloc();
 
+    findFreeA0ForGRFSpillFill();
+
     flagRegAlloc();
   }
   if (builder.getuint32Option(vISA_ScalarPipe)) {

@@ -3846,12 +3846,12 @@ G4_InstSend *IR_Builder::createLscSendInst(
     G4_Predicate *pred, G4_DstRegRegion *dst, G4_SrcRegRegion *src0,
     G4_SrcRegRegion *src1, G4_ExecSize execSize, G4_SendDescRaw *msgDesc,
     G4_InstOpts option, LSC_ADDR_TYPE addrType, unsigned ssIdx,
-    bool emitA0RegDef) {
+    bool emitA0RegDef, G4_Declare *exDescAddrDcl) {
 
   uint32_t exDesc = msgDesc->getExtendedDesc();
   G4_Operand *surface = msgDesc->getBti(); // BTI or SS/BSS
   G4_Operand *exDescOpnd = nullptr;
-  G4_Declare *addrDecl = builtinA0Dot2;
+  G4_Declare *addrDecl = exDescAddrDcl ? exDescAddrDcl : builtinA0Dot2;
 
   if (surface && surface->isSrcRegRegion()) {
     if (emitA0RegDef) {

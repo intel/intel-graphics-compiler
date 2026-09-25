@@ -1488,6 +1488,10 @@ private:
   void expandSpillFillIntrinsics(unsigned);
   void expandSpillFillIntrinsicsXE3P(unsigned int);
   void saveRestoreA0(G4_BB *);
+  G4_INST *createA0SSOMove(G4_Declare *a0Dcl);
+  void findFreeA0ForGRFSpillFill();
+  bool canUseDedicatedSpillFillA0() const;
+  void initDedicatedSpillFillA0();
   void initAddrRegForImmOffUseNonStackCall();
   void initAddrRegForImmOffUseEfficient64bNonStackCall();
   static const RAVarInfo defaultValues;
@@ -1555,6 +1559,7 @@ private:
   uint32_t numGRFSpill = 0;
   uint32_t numGRFFill = 0;
   bool canUseLscImmediateOffsetSpillFill = false;
+  std::optional<unsigned> dedicatedSpillFillA0SubReg;
 
   unsigned int numReservedGRFsFailSafe = BoundedRA::NOT_FOUND;
 
@@ -2157,6 +2162,7 @@ public:
   void setUndefinedVarCmp();
   void markGraphBlockLocalVars();
   void verifyRA(LivenessAnalysis &liveAnalysis);
+  void verifyDedicatedSpillFillA0() const;
   void verifySpillFill();
   void resetGlobalRAStates();
   bool canSkipFDE() const;

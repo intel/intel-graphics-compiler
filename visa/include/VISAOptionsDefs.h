@@ -288,6 +288,15 @@ DEF_VISA_OPTION(vISA_dynamicAddrForExDescInLscSend, ET_BOOL_TRUE,
                 "Use unfixed address which is assigned by RA instead of a0.2 as "
                 "the extend messaged descriptor in LSC send messages",
                 true)
+DEF_VISA_OPTION(vISA_dedicatedA0ForSpillFill, ET_BOOL_TRUE,
+                "-dedicatedA0ForSpillFill",
+                "If address RA leaves an unused a0 subregister, reserve it "
+                "exclusively for the spill/fill extended message descriptor "
+                "and initialize it once in the kernel prologue, instead of "
+                "re-deriving a0.2 from SSO and save/restoring it around every "
+                "spill/fill run in every BB. Kernel-only, no stack calls. "
+                "On by default; pass -dedicatedA0ForSpillFill 0 to disable.",
+                true)
 
 //=== code gen options ===
 DEF_VISA_OPTION(vISA_noSrc1Byte, ET_BOOL, "-nosrc1byte", UNUSED, false)
