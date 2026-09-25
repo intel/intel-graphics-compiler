@@ -2860,6 +2860,28 @@ void EmitPass::emitMayUnalignedVectorCopy(CVariable *Dst, uint32_t Dst_off, CVar
   const bool S_uniform = Src->IsUniform();
   VISA_Type visaTy = m_currShader->GetType(Ty);
 
+  // Booleans live in flag registers and cannot be aliased, so a boolean
+  // struct member is kept as a byte holding 0 or 1.
+  if (Ty->isIntegerTy(1)) {
+    CVariable *D = Dst->GetType() == ISA_TYPE_BOOL
+                       ? Dst
+                       : m_currShader->GetNewAlias(Dst, ISA_TYPE_UB, Dst_off, D_uniform ? 1 : nLanes);
+    CVariable *S = Src->GetType() == ISA_TYPE_BOOL
+                       ? Src
+                       : m_currShader->GetNewAlias(Src, ISA_TYPE_UB, Src_off, S_uniform ? 1 : nLanes);
+    if (D->GetType() == ISA_TYPE_BOOL) {
+      m_encoder->Cmp(EPREDICATE_NE, D, S, m_currShader->ImmToVariable(0, ISA_TYPE_UB));
+    } else if (S->GetType() == ISA_TYPE_BOOL) {
+      m_encoder->Select(S, D, m_currShader->ImmToVariable(1, ISA_TYPE_UB), m_currShader->ImmToVariable(0, ISA_TYPE_UB));
+    } else {
+      m_encoder->Copy(D, S);
+    }
+    m_encoder->Push();
+    return;
+  }
+
+  IGC_ASSERT_MESSAGE(!(v_ty && eltTy->isIntegerTy(1)), "Vector of i1 struct members is not yet supported");
+
   uint32_t currAlign = (uint32_t)MinAlign(eltBytes, Dst_off);
   currAlign = (uint32_t)MinAlign(currAlign, Src_off);
   if (currAlign >= eltBytes) {
