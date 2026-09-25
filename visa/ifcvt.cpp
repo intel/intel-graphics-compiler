@@ -718,7 +718,11 @@ void runIfCvt(FlowGraph &fg) {
   for (G4_BB *BB : fg) {
     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
       G4_INST *I = *BI;
-      if (I->opcode() != G4_sel || !I->getPredicate() || I->getCondMod())
+      // A saturated 'sel' writes sat(dst) on the lanes selecting the source
+      // equal to dst, which is not a no-op; dropping it would lose the
+      // saturation.
+      if (I->opcode() != G4_sel || !I->getPredicate() || I->getCondMod() ||
+          I->getSaturate())
         continue;
 
       auto compareOperand = [](G4_DstRegRegion *A, G4_Operand *B,
