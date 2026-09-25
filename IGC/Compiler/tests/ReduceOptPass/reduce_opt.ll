@@ -12,7 +12,7 @@
 declare spir_func <3 x i64> @__spirv_BuiltInGlobalSize()
 declare spir_func <3 x i64> @__spirv_BuiltInGlobalOffset()
 declare spir_func <3 x i64> @__spirv_BuiltInGlobalInvocationId()
-declare spir_func i32 @__spirv_GroupIMulKHR_i32_i32_i32(i32, i32, i32)
+declare spir_func i32 @__spirv_GroupIMulKHRiii(i32, i32, i32)
 
 define spir_kernel void @kernel1(i32 addrspace(1)* %arg0, i32 addrspace(1)* %arg1) {
   %size = call spir_func <3 x i64> @__spirv_BuiltInGlobalSize()
@@ -36,7 +36,7 @@ define spir_kernel void @kernel1(i32 addrspace(1)* %arg0, i32 addrspace(1)* %arg
   %gep0 = getelementptr inbounds i32, i32 addrspace(1)* %arg0, i64 %add1
   %addr0 = addrspacecast i32 addrspace(1)* %gep0 to i32 addrspace(4)*
   %ld = load i32, i32 addrspace(4)* %addr0, align 4
-  %red = call spir_func i32 @__spirv_GroupIMulKHR_i32_i32_i32(i32 2, i32 0, i32 %ld)
+  %red = call spir_func i32 @__spirv_GroupIMulKHRiii(i32 2, i32 0, i32 %ld)
   %cnd = icmp eq i64 %add1, 0
   %tof = sitofp i32 %red to float
   ; This pass optimized only reduce instruction
@@ -54,7 +54,7 @@ define spir_kernel void @kernel1(i32 addrspace(1)* %arg0, i32 addrspace(1)* %arg
 }
 
 
-declare spir_func i32 @__spirv_GroupIAdd_i32_i32_i32(i32, i32, i32)
+declare spir_func i32 @__spirv_GroupIAddiii(i32, i32, i32)
 declare spir_func <3 x i64> @__spirv_BuiltInLocalInvocationId()
 declare spir_func <3 x i64> @__spirv_BuiltInWorkgroupSize()
 
@@ -73,7 +73,7 @@ define spir_kernel void @kernel2(i32 addrspace(1)* %arg0, i32 addrspace(1)* %arg
   %gep0 = getelementptr inbounds i32, i32 addrspace(1)* %arg0, i64 %add1
   %addr0 = addrspacecast i32 addrspace(1)* %gep0 to i32 addrspace(4)*
   %ld0 = load i32, i32 addrspace(4)* %addr0, align 4
-  %red = call spir_func i32 @__spirv_GroupIAdd_i32_i32_i32(i32 2, i32 0, i32 %ld0)
+  %red = call spir_func i32 @__spirv_GroupIAddiii(i32 2, i32 0, i32 %ld0)
   %cnd = icmp eq i64 %add1, 0
   %add2 = add nsw i32 %red, 100
   ; This pass optimized only reduce instruction

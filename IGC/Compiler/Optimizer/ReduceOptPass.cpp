@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "ReduceOptPass.hpp"
 #include "IGCIRBuilder.h"
 #include <llvm/IR/Function.h>
+#include "Probe/Assertion.h"
 #include "llvmWrapper/IR/Instructions.h"
 
 #include "Compiler/IGCPassSupport.h"
@@ -62,17 +63,31 @@ bool ReduceOptPass::createReduceWI0(Instruction *ReduceInstr) {
   if (Op == "")
     return false;
 
-  auto TypePos = Name.find_last_of('_');
-  if (TypePos == std::string::npos)
-    return false;
+  std::string Type;
+  auto Op2Type = ReduceInstr->getOperand(2)->getType();
 
-  std::string Type = Name.substr(TypePos);
+  switch (Op2Type->getTypeID()) {
+  case Type::IntegerTyID:
+    Type = "_i" + std::to_string(Op2Type->getIntegerBitWidth());
+    break;
+  case Type::HalfTyID:
+    Type = "_f16";
+    break;
+  case Type::FloatTyID:
+    Type = "_f32";
+    break;
+  case Type::DoubleTyID:
+    Type = "_f64";
+    break;
+  default:
+    IGC_ASSERT_MESSAGE(0, "Unhandled type in GroupReduce instruction.");
+    return false;
+  }
   std::string NameWI0 = Prefix + Op + Type;
 
   IRBuilder<> Builder(ReduceInstr);
 
-  FunctionType *NewReduceFuncT =
-      FunctionType::get(ReduceInstr->getOperand(2)->getType(), ReduceInstr->getOperand(2)->getType(), false);
+  FunctionType *NewReduceFuncT = FunctionType::get(Op2Type, Op2Type, false);
 
   FunctionCallee NewReduceCallee = M->getOrInsertFunction(NameWI0, NewReduceFuncT);
   cast<Function>(NewReduceCallee.getCallee())->setCallingConv(CallingConv::SPIR_FUNC);
