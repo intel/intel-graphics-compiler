@@ -25,6 +25,32 @@ endif()
 set(COMMON_CLANG_LIB_NAME_WITH_PREFIX "lib${COMMON_CLANG_LIBRARY_NAME}")
 set(COMMON_CLANG_LIB_FULL_NAME "${COMMON_CLANG_LIB_NAME_WITH_PREFIX}*${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
+# file(GLOB_RECURSE) yields a list, and an installation may legitimately ship
+# more than one opencl-c.h, e.g. <prefix>/include/cclang/opencl-c.h from
+# opencl-clang next to <prefix>/lib/clang/<ver>/include/opencl-c.h from clang
+# itself. Every consumer of ${opencl-header} expects exactly one path and
+# dereferences it unquoted, so a list silently shifts their arguments. Reduce
+# the glob result in _var to the lexicographically first candidate so the
+# choice is deterministic, and honour the IGC_OPTION__OPENCL_HEADER_PATH
+# override on every branch, not just CCLANG_FROM_SYSTEM.
+function(igc_select_opencl_header _var)
+  if(DEFINED IGC_OPTION__OPENCL_HEADER_PATH)
+    if(NOT EXISTS "${IGC_OPTION__OPENCL_HEADER_PATH}")
+      message(FATAL_ERROR "[IGC] : couldn't find opencl-c.h in user defined path IGC_OPTION__OPENCL_HEADER_PATH=${IGC_OPTION__OPENCL_HEADER_PATH}")
+    endif()
+    set(${_var} "${IGC_OPTION__OPENCL_HEADER_PATH}" PARENT_SCOPE)
+    return()
+  endif()
+  set(_found "${${_var}}")
+  list(LENGTH _found _len)
+  if(_len GREATER 1)
+    list(SORT _found)
+    list(GET _found 0 _first)
+    message(STATUS "[IGC] : Found ${_len} opencl-c.h candidates: ${_found} - using ${_first}. Set IGC_OPTION__OPENCL_HEADER_PATH to select another one.")
+    set(${_var} "${_first}" PARENT_SCOPE)
+  endif()
+endfunction()
+
 find_library(CCLANG_FROM_SYSTEM ${COMMON_CLANG_LIBRARY_NAME})
 
 ### Check if user manual setup some of flag
@@ -141,6 +167,7 @@ if(CCLANG_FROM_SYSTEM)
       # Get path to opencl-c.h based on the location of CLANG_EXE
       get_filename_component(CLANG_EXE_PARENT_DIR ${CLANG_EXE} DIRECTORY)
       file(GLOB_RECURSE opencl-header ${CLANG_EXE_PARENT_DIR}/../*opencl-c.h)
+      igc_select_opencl_header(opencl-header)
       if(opencl-header)
         message(STATUS "[IGC] Found opencl-c.h: ${opencl-header}")
       else(opencl-header)
@@ -202,6 +229,7 @@ elseif(${CCLANG_BUILD_PREBUILDS})
 
     # Find opencl-header recursively in CCLANG_BUILD_PREBUILDS_DIR
     file(GLOB_RECURSE opencl-header ${CCLANG_BUILD_PREBUILDS_DIR}/*opencl-c.h)
+    igc_select_opencl_header(opencl-header)
   else()
     message(FATAL_ERROR "[IGC] : The clang-tool(${CLANG_TOOL_VERSION}) from prebuilts is newer than llvm(${LLVM_PACKAGE_VERSION}) version for IGC.")
   endif()
