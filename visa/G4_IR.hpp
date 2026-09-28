@@ -790,16 +790,12 @@ public:
   bool isFloatPipeInstructionXe() const;
 
   // This is to check whether this instruction performs a custom float cvt
-  // (tf32/bf8/hf8). Before fcvt's functionality is moved into mov, this
-  // function simply returns true if it is fcvt. As fcvt's functionality
-  // is moved into mov, this should check both fcvt (backward compatibility)
-  // and mov.
+  // (tf32/bf8/hf8), i.e. a mov with an FP8 or TF32 operand.
   bool isCustomFloatCvt() const {
-    return opcode() == G4_fcvt ||
-           (opcode() == G4_mov && (IS_FP8TYPE(getDst()->getType()) ||
-                                   IS_FP8TYPE(getSrc(0)->getType()) ||
-                                   getDst()->getType() == Type_TF32 ||
-                                   getSrc(0)->getType() == Type_TF32));
+    return opcode() == G4_mov && (IS_FP8TYPE(getDst()->getType()) ||
+                                  IS_FP8TYPE(getSrc(0)->getType()) ||
+                                  getDst()->getType() == Type_TF32 ||
+                                  getSrc(0)->getType() == Type_TF32);
   }
 
   int getMaxDepDistance() const;

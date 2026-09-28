@@ -1070,7 +1070,7 @@ bool G4_INST::isLongPipeInstructionXe() const {
 }
 
 bool G4_INST::isFloatInIntegerPipe() const {
-  if (opcode() != G4_mov && opcode() != G4_srnd && opcode() != G4_fcvt) {
+  if (opcode() != G4_mov && opcode() != G4_srnd) {
     return false;
   }
 
@@ -7875,7 +7875,6 @@ bool G4_INST::canDstBeAcc() const {
   case G4_fbl:
   case G4_fbh:
   case G4_shl:
-  case G4_fcvt:
     return builder.removedAccRestrictionsAsGRF();
   case G4_math:
     return builder.removedAccRestrictionsAsGRF() &&
@@ -8084,7 +8083,6 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
   case G4_math:
   case G4_addc:
   case G4_subb:
-  case G4_fcvt:
     return builder.removedAccRestrictionsAsGRF();
   default:
     return false;

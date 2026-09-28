@@ -72,8 +72,6 @@ private:
 
   void fixMadw(INST_LIST_ITER it, G4_BB *bb);
 
-  void fixFcvt(INST_LIST_ITER it, G4_BB *bb);
-
   void fixSrnd(INST_LIST_ITER it, G4_BB *bb);
 
   void fixMov(INST_LIST_ITER it, G4_BB *bb);

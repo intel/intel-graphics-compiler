@@ -1062,9 +1062,6 @@ BinaryEncodingIGA::getIgaOpInfo(const G4_INST *inst, const Model *m,
     igaOp = Op::SYNC;
     sf = SyncFC::FENCE;
     break;
-  case G4_fcvt:
-    igaOp = Op::MOV;
-    break;
   case G4_shfl:
     igaOp = Op::SHFL;
     sf = getShuffleFC(inst);
@@ -2118,17 +2115,6 @@ Type BinaryEncodingIGA::getIGAType(const G4_INST *I, Gen4_Operand_Number O,
                                    TARGET_PLATFORM P) {
 
   G4_Type Ty = I->getOperand(O)->getType();
-  if (I->opcode() == G4_fcvt) {
-    if (Ty == Type_UB) {
-      return Type::BF8;
-    }
-    if (Ty == Type_B) {
-      return Type::HF8;
-    }
-    if (Ty == Type_UD) {
-      return Type::TF32;
-    }
-  }
   if (I->opcode() == G4_srnd) {
     if (O == Opnd_dst && Ty == Type_UB) {
       return Type::BF8;

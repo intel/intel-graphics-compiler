@@ -141,7 +141,6 @@ struct SBFootprint {
   const unsigned short RightB;
   unsigned short offset = 0;
   bool isPrecision = false;
-  bool isFcvtByteType = false;
   bool isCmpUseOnly = false;
   G4_INST *inst;
 
@@ -158,14 +157,14 @@ struct SBFootprint {
     isPrecision = false;
   }
   SBFootprint(FOOTPRINT_TYPE ft, G4_Type t, unsigned short LB,
-              unsigned short RB, G4_INST *i, bool isByteType = false)
-      : fType(ft), type((unsigned short)t), LeftB(LB), RightB(RB), isFcvtByteType(isByteType), inst(i){
+              unsigned short RB, G4_INST *i)
+      : fType(ft), type((unsigned short)t), LeftB(LB), RightB(RB), inst(i) {
     isPrecision = false;
   }
   SBFootprint(FOOTPRINT_TYPE ft, GenPrecision p, unsigned short LB,
-              unsigned short RB, G4_INST *i, bool isByteType = false)
+              unsigned short RB, G4_INST *i)
       : fType(ft), type((unsigned short)p), LeftB(LB), RightB(RB),
-        isPrecision(true), isFcvtByteType(isByteType), inst(i) {
+        isPrecision(true), inst(i) {
   }
 
   void setOffset(unsigned short o) { offset = o; }

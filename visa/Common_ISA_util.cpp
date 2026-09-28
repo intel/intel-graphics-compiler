@@ -183,8 +183,6 @@ G4_opcode GetGenOpcodeFromVISAOpcode(ISA_Opcode opcode) {
     return G4_add3;
   case ISA_BFN:
     return G4_bfn;
-  case ISA_FCVT:
-    return G4_fcvt;
   case ISA_SRND:
     return G4_srnd;
   case ISA_EXP:

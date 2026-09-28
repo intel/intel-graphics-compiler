@@ -1565,10 +1565,9 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
   }
 
   if (inst->getPlatform() > Xe3) {
-    // Except for mov, fcvt and srnd instructions, HWConformityPro has fixed
+    // Except for mov and srnd instructions, HWConformityPro has fixed
     // the BF mixed mode and BF pure mode by promoting all BF operands to float.
-    vISA_ASSERT(inst->opcode() == G4_mov || inst->opcode() == G4_fcvt ||
-                    inst->opcode() == G4_srnd,
+    vISA_ASSERT(inst->opcode() == G4_mov || inst->opcode() == G4_srnd,
                 "BF mixed or pure modes are not allowed by vISA!!");
     return;
   }

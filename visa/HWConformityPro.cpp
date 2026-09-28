@@ -86,9 +86,6 @@ void HWConformityPro::fixSpecificInstRestricts(G4_BB *bb) {
     if (opcode == G4_madw)
       fixMadw(it, bb);
 
-    if(opcode == G4_fcvt)
-      fixFcvt(it, bb);
-
     if (opcode == G4_srnd)
       fixSrnd(it, bb);
 
@@ -134,11 +131,9 @@ void HWConformityPro::fixRegRegionRestricts(G4_BB *bb) {
     // Fix dst and src overlap
     fixDstSrcOverlap(it, bb);
 
-    // G4_srnd is handled in fixFcvt() separately
     // G4_srnd is handled in fixSrnd() separately
     // Raw MOV is handled in fixRawMovRegRegionRestrictions()
-    if (inst->nonALUInstructions() || inst->isRawMov() ||
-        opcode == G4_srnd ||opcode == G4_fcvt)
+    if (inst->nonALUInstructions() || inst->isRawMov() || opcode == G4_srnd)
       continue;
 
     // Fix 64-bit immediate source operand
@@ -596,9 +591,8 @@ void HWConformityPro::fixRegRegionIntPipe(INST_LIST_ITER it, G4_BB *bb) {
   vISA_ASSERT(inst->isIntegerPipeInstructionXe(),
               "Expect int pipe instructions!");
 
-  // G4_fcvt and G4_srnd are fixed separately
-  if (inst->opcode() == G4_fcvt || inst->opcode() == G4_srnd ||
-      inst->isRawMov())
+  // G4_srnd is fixed separately
+  if (inst->opcode() == G4_srnd || inst->isRawMov())
     return;
 
   // Starting bit position of a channel in a register is not shift between src
@@ -2389,98 +2383,6 @@ void HWConformityPro::fixMadw(INST_LIST_ITER it, G4_BB *bb) {
   addOrAdd3Inst->setPredicate(builder.duplicateOperand(origPredicate));
   addOrAdd3Inst->setOptionOff(InstOpt_AccWrCtrl);
   bb->insertAfter(insertIter, addOrAdd3Inst);
-}
-
-// Restrictions for fcvt instruction:
-// 1, For down conversion (hf -> bf8/fp8), if dst is packed(stride is 1) with
-//    subreg offset .0/.16/.32/.48, src must be packed(stride is 1) as well with
-//    subreg offset .0/.16 and must not span more than 1 registers. Additionally
-//    modulo 32 of destination offset must be equal to source offset when
-//    converting from 16bit to 8bit format. Otherwise, follow the int pipeline
-//    rules to check register region restrictions which treat fp8/bf8 to int8
-//    and hf to int16.
-// 2, For up conversion (bf8/fp8 -> hf), follow the int pipeline rules to check
-//    register region restrictions which treat fp8/bf8 to int8 and hf to int16.
-//    Packed int8 should be already supported with the src0 testriction rules.
-// 3, For float to tf32 coversion, follow the int pipeline rule which
-//    should have no restriction on this case.
-void HWConformityPro::fixFcvt(INST_LIST_ITER it, G4_BB *bb) {
-  G4_INST *inst = *it;
-  vISA_ASSERT(inst->opcode() == G4_fcvt, "expect fcvt instruction");
-
-  auto dst = inst->getDst();
-  auto src = inst->getSrc(0);
-  auto dstType = dst->getType();
-  auto srcType = src->getType();
-  if (IS_BTYPE(dstType) || IS_BTYPE(srcType)) {
-    vISA_ASSERT(((IS_BTYPE(dstType) && srcType == Type_HF) ||
-                 (IS_BTYPE(srcType) && dstType == Type_HF)),
-                "Only FP8<->HF conversion is supported");
-    vISA_ASSERT(!inst->getPredicate() && !inst->getCondMod(),
-                "FP8<->HF move does not support pred/cond mod");
-    vISA_ASSERT(src->isSrcRegRegion(),
-                "HF<->FP8 currently supports non-imm source only");
-    vISA_ASSERT(src->isSrcRegRegion() && !src->asSrcRegRegion()->isIndirect() &&
-                    src->asSrcRegRegion()->getModifier() == Mod_src_undef,
-                "FP8<->HF move does not support source modifier");
-
-    // Packed layout support for hf to hf8/bf8 coversion:
-    // Dst is packed with subreg offset .0/.16/.32/.48, then src must be packed
-    // as well with subreg offset .0/.16 and must not span more than 1 register.
-    bool isPackedDst = dst->getHorzStride() == 1;
-    bool isScalarSrc = src->asSrcRegRegion()->getRegion()->isScalar();
-    // Dst subreg offset is .0 or .16 or .32 or .48
-    bool dstOffsetAlignedTo16Bytes = builder.tryToAlignOperand(dst, 16);
-    // For packed down converts HW doesn't support scalar broadcast on src. So,
-    // do not do packed regioning fix.
-    if (IS_BTYPE(dstType) && isPackedDst && dstOffsetAlignedTo16Bytes &&
-        !isScalarSrc) {
-      // Src must be packed with offset .0 or .16 and must not span more than
-      // 1 register.
-      bool isPackedSrc =
-          src->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize());
-      if (!isPackedSrc || !builder.tryToAlignOperand(src, 32) ||
-          src->crossGRF(builder)) {
-        replaceSrcWithRawMov(it, bb, 0, /*tmpStride*/ 1, builder.getGRFAlign());
-        src = inst->getSrc(0);
-      }
-
-      // check if dst subreg offset is .0 or .32
-      bool dstOffsetAlignedTo32Bytes = builder.tryToAlignOperand(dst, 32);
-      // check if src subreg offset is .0 only
-      bool srcOffsetGrfAligned =
-          builder.tryToAlignOperand(src, builder.getGRFSize());
-      // Modulo 32 of destination offset must be equal to source offset when
-      // converting from 16bit to 8bit format
-      if (dstOffsetAlignedTo32Bytes && !srcOffsetGrfAligned) {
-        // dst subreg offset is .0/.32, and src subreg offset is .16
-        replaceSrcWithRawMov(it, bb, 0, /*tmpStride*/ 1, builder.getGRFAlign());
-      } else if (!dstOffsetAlignedTo32Bytes && srcOffsetGrfAligned) {
-        // dst subreg offset is .16/.48, and src subreg offset is .0
-        replaceDstWithRawMov(it, bb, /*tmpStride*/ 1, builder.getGRFAlign());
-      }
-
-      inst->setOptionOn(InstOpt_WriteEnable);
-      return;
-    }
-
-    // Must follow the restrictions of int pipeline, which treat hf as int16
-    // and bf8/hf8 as int8
-
-    // Packed destination, where destination datatype times destination stride
-    // is less than the execution datatype is not allowed if execution size is
-    // more than one.
-    auto dstStrideInBytes = dst->getTypeSize() * dst->getHorzStride();
-    auto execChannelWidth = inst->getExecTypeSizeXe3p();
-    if (inst->getExecSize() != g4::SIMD1 &&
-        (dstStrideInBytes < execChannelWidth ||
-         !isAllowedTrueRegionPatternOnSrc0(src)))
-      // Fix by moving dst to a tmp with same datatype and dword-aligned
-      replaceDstWithRawMov(it, bb, 4 / TypeSize(dstType),
-                           builder.getGRFAlign());
-    inst->setOptionOn(InstOpt_WriteEnable);
-    return;
-  }
 }
 
 // Restrictions for srnd instruction:
