@@ -1254,6 +1254,21 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction &I) {
     I.eraseFromParent();
     Changed = true;
   } break;
+  case Instruction::PtrToInt: {
+    // %1 = ptrtoint %ptr to i3
+    // %2 = zext i3 %1 to i64
+    // ----->
+    // %1 = ptrtoint %ptr to i64
+    // %2 = and i64 %1, 0x7
+
+    auto PtrToInt = cast<PtrToIntInst>(prevInst);
+    auto newPtrToInt = m_builder->CreatePtrToInt(PtrToInt->getOperand(0), I.getType());
+    auto andInst = m_builder->CreateAnd(newPtrToInt, APInt::getMaxValue(srcSize).getZExtValue());
+    I.replaceAllUsesWith(andInst);
+    I.eraseFromParent();
+    Changed = true;
+    break;
+  }
   default:
     IGC_ASSERT_MESSAGE(
         0, "Unhandled source to ZExt Instruction seen with illegal int type. Legalization support missing.");
