@@ -161,6 +161,7 @@ public:
   void EmitIntrinsicMessage(llvm::IntrinsicInst *inst);
   void EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst);
   void EmitSIToFPZExt(const SSource &source, const DstModifier &dstMod);
+  void EmitFPExtOfFPTrunc(const SSource &source, const DstModifier &dstMod);
   void EmitIntegerTruncWithSat(bool isSignedDst, bool isSignedSrc, const SSource &source, const DstModifier &dstMod);
   void EmitPack4i8(const std::array<EOPCODE, 4> &opcodes, const std::array<SSource, 4> &sources0,
                    const std::array<SSource, 4> &sources1, const std::array<bool, 4> isSat, const DstModifier &dstMod);

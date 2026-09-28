@@ -3691,6 +3691,22 @@ void EmitPass::EmitSIToFPZExt(const SSource &source, const DstModifier &dstMod) 
   m_encoder->Push();
 }
 
+void EmitPass::EmitFPExtOfFPTrunc(const SSource &source, const DstModifier &dstMod) {
+  CVariable *src = GetSrcVariable(source);
+  CVariable *tmp =
+      m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize) * 2, ISA_TYPE_HF, EALIGN_GRF, false,
+                                   m_destination->GetNumberInstance(), CName(m_destination->getName(), "_fptrunc"));
+  SetSourceModifiers(0, source);
+  m_encoder->SetDstRegion(2);
+  m_encoder->Cast(tmp, src);
+  m_encoder->Push();
+
+  m_encoder->SetSrcRegion(0, 2, 1, 0);
+  m_encoder->SetDstModifier(dstMod);
+  m_encoder->Cast(m_destination, tmp);
+  m_encoder->Push();
+}
+
 void EmitPass::emitCtlz(const SSource &source) {
   // This does not go through the standard EmitAluIntrinsic pass because
   // that creates a redundant SetP due to an unused i1 literal.

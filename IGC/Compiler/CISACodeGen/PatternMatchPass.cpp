@@ -926,9 +926,35 @@ bool CodeGenPatternMatch::MatchSIToFPZExt(llvm::SIToFPInst *S2FI) {
   return true;
 }
 
+// Matches the following sequence:
+//  %tmp = fptrunc float %src to half
+//  %dst = fpext half %tmp to float
+bool CodeGenPatternMatch::MatchFPExtOfFPTrunc(llvm::FPExtInst &I) {
+  FPTruncInst *FPTrunc = dyn_cast<FPTruncInst>(I.getOperand(0));
+  if (!FPTrunc || !FPTrunc->hasOneUse() || FPTrunc->getParent() != I.getParent())
+    return false;
+  if (!I.getType()->isFloatTy() || !FPTrunc->getType()->isHalfTy() || !FPTrunc->getSrcTy()->isFloatTy())
+    return false;
+  if (m_WI->isUniform(&I))
+    return false;
+
+  struct FPExtOfFPTruncPattern : public Pattern {
+    SSource src;
+    virtual void Emit(EmitPass *pass, const DstModifier &dstMod) { pass->EmitFPExtOfFPTrunc(src, dstMod); }
+  };
+
+  FPExtOfFPTruncPattern *pat = new (m_allocator) FPExtOfFPTruncPattern();
+  pat->src = GetSource(FPTrunc->getOperand(0), true, false, IsSourceOfSample(&I));
+  AddPattern(pat);
+
+  return true;
+}
+
 void CodeGenPatternMatch::visitCastInst(llvm::CastInst &I) {
   [[maybe_unused]] bool match = 0;
-  if (I.getOpcode() == Instruction::SExt) {
+  if (I.getOpcode() == Instruction::FPExt) {
+    match = MatchFPExtOfFPTrunc(cast<FPExtInst>(I)) || MatchModifier(I);
+  } else if (I.getOpcode() == Instruction::SExt) {
     match = MatchUnpack4i8(I) || MatchCmpSext(I) || MatchModifier(I);
   } else if (I.getOpcode() == Instruction::ZExt) {
     match = MatchUnpack4i8(I) || MatchZExtByteLoad(I) || MatchModifier(I);

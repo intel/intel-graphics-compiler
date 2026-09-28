@@ -239,6 +239,7 @@ public:
   std::tuple<llvm::Value *, bool, bool> isIntegerSatTrunc(llvm::SelectInst *);
 
   bool MatchSIToFPZExt(llvm::SIToFPInst *S2FI);
+  bool MatchFPExtOfFPTrunc(llvm::FPExtInst &I);
 
   bool matchAddPair(llvm::ExtractValueInst *);
   bool matchSubPair(llvm::ExtractValueInst *);
