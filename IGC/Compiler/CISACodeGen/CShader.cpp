@@ -216,11 +216,12 @@ void CShader::EOTGatewaySendg() {
 }
 
 
-void CShader::EOTRenderTarget(CVariable *r1, bool isPerCoarse) {
+void CShader::EOTRenderTarget(CVariable *r1, bool isPerCoarse, bool hasDepth) {
   CVariable *src[4] = {nullptr, nullptr, nullptr, nullptr};
   bool isUndefined[4] = {true, true, true, true};
   CVariable *const nullSurfaceBti = ImmToVariable(m_pBtiLayout->GetNullSurfaceIdx(), ISA_TYPE_D);
   CVariable *const blendStateIndex = ImmToVariable(0, ISA_TYPE_D);
+  CVariable *const surfaceStatePointer = m_Platform->hasEfficient64bEnabled() ? ImmToVariable(0, ISA_TYPE_UQ) : nullptr;
   SetBindingTableEntryCountAndBitmap(true, BUFFER_TYPE_UNKNOWN, 0, m_pBtiLayout->GetNullSurfaceIdx());
   encoder.RenderTargetWrite(src, isUndefined,
                             true,        // lastRenderTarget,
@@ -228,13 +229,13 @@ void CShader::EOTRenderTarget(CVariable *r1, bool isPerCoarse) {
                             false,       // perSample,
                             isPerCoarse, // coarseMode,
                             false,       // isHeaderMaskFromCe0,
-                            nullptr, 0, nullSurfaceBti, blendStateIndex,
-                            nullptr, // source0Alpha,
-                            nullptr, // oMaskOpnd,
-                            nullptr, // outputDepthOpnd,
-                            nullptr, // stencilOpnd,
-                            nullptr, // cpscounter,
-                            nullptr, // sampleIndex,
+                            surfaceStatePointer, 0, nullSurfaceBti, blendStateIndex,
+                            nullptr,                        // source0Alpha,
+                            nullptr,                        // oMaskOpnd,
+                            hasDepth ? GetNULL() : nullptr, // outputDepthOpnd,
+                            nullptr,                        // stencilOpnd,
+                            nullptr,                        // cpscounter,
+                            nullptr,                        // sampleIndex,
                             r1);
   encoder.Push();
 }

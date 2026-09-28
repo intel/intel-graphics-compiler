@@ -115,7 +115,7 @@ public:
   void EOTGateway(CVariable *payload = nullptr);
   void EOTGatewaySendg();
   CVariable *prepareRTSurfaceStatePointer(CVariable *rtvHeapBaseAddress, uint RT_BTIndex, CVariable *rtIndexOpnd);
-  void EOTRenderTarget(CVariable *r1, bool isPerCoarse);
+  void EOTRenderTarget(CVariable *r1, bool isPerCoarse, bool hasDepth = false);
   virtual void AddEpilogue(llvm::ReturnInst *ret);
 
   virtual CVariable *GetURBOutputHandle() {

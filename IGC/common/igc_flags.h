@@ -119,6 +119,10 @@ DECLARE_IGC_REGKEY(bool, NoMaskWA, true, "Enable NoMask WA by using software-com
 DECLARE_IGC_REGKEY(bool, ForceNoMaskWA, false, "[tmp, testing] Force NoMaskWA on any platforms", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableCallUniform, true, "[tmp, testing] Ignore indirect call's uniform", ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableCallWA, true, "Control call WA when EU fusion is on. 0: off; 1: on", ALWAYS)
+DECLARE_IGC_REGKEY_ENUM(EnableDiscardEOT, -1,
+                        "End single-phase pixel shaders with an inline null-RT EOT when all pixels are discarded. "
+                        "-1: enabled without EU fusion; 0: force legacy branch; 1: force inline EOT.",
+                        TRIBOOL_OPTIONS, ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableMathDPASWA, false, "PVC math instruction running with DPAS issue", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(
     bool, ForceSubReturn, true,

@@ -391,7 +391,6 @@ public:
   void emitAddrSpaceCast(llvm::AddrSpaceCastInst *addrSpaceCast);
   void emitCondBrInst(IGCLLVM::CondBrInst *br, const SSource &cond, e_predMode predMode);
   void emitUncondBrInst(IGCLLVM::UncondBrInst *br);
-  void emitDiscardBranch(IGCLLVM::CondBrInst *br, const SSource &cond);
   void emitAluNoModifier(llvm::GenIntrinsicInst *inst);
 
   CVariable *GetVMaskPred(CVariable *&predicate);

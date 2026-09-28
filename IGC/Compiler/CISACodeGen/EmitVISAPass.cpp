@@ -183,7 +183,17 @@ EmitPass::EmitPass(CShaderProgram::KernelShaderMap &shaders, SIMDMode mode, bool
   initializeEmitPassPass(*PassRegistry::getPassRegistry());
 }
 
-EmitPass::~EmitPass() { destroyShaderMap(m_ownedShaders); }
+EmitPass::~EmitPass() {
+  // OpenCL kernels free their output in their destructor. Other shader types
+  // transfer it to the caller, which standalone pass execution lacks.
+  for (const auto &entry : m_ownedShaders) {
+    CShaderProgram *program = entry.second;
+    if (program->GetContext()->type == ShaderType::OPENCL_SHADER)
+      continue;
+    program->freeShaderOutput(program->GetShader(m_SimdMode, m_ShaderDispatchMode));
+  }
+  destroyShaderMap(m_ownedShaders);
+}
 
 // Switch to payload section
 // When switching to payload section, the code redirects vKernel pointing to the
@@ -13329,13 +13339,6 @@ void EmitPass::emitUncondBrInst(IGCLLVM::UncondBrInst *branch) {
   }
 }
 
-void EmitPass::emitDiscardBranch(IGCLLVM::CondBrInst *branch, const SSource &cond) {
-  if (m_pattern->NeedVMask()) {
-    emitCondBrInst(branch, cond, EPRED_ALL);
-  } else {
-    emitCondBrInst(branch, cond, EPRED_NORMAL);
-  }
-}
 
 void EmitPass::SplitSIMD(llvm::Instruction *inst, uint numSources, uint headerSize, CVariable *payload, SIMDMode mode,
                          uint half) {

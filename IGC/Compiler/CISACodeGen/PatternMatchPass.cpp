@@ -4628,14 +4628,9 @@ bool CodeGenPatternMatch::MatchBranch(llvm::Instruction &I) {
     SSource cond;
     llvm::Instruction *inst;
     e_predMode predMode = EPRED_NORMAL;
-    bool isDiscardBranch = false;
     virtual void Emit(EmitPass *pass, const DstModifier &modifier) {
       if (IGCLLVM::CondBrInst *condBr = dyn_cast<IGCLLVM::CondBrInst>(inst)) {
-        if (isDiscardBranch) {
-          pass->emitDiscardBranch(condBr, cond);
-        } else {
-          pass->emitCondBrInst(condBr, cond, predMode);
-        }
+        pass->emitCondBrInst(condBr, cond, predMode);
       } else {
         pass->emitUncondBrInst(cast<IGCLLVM::UncondBrInst>(inst));
       }
@@ -4645,26 +4640,7 @@ bool CodeGenPatternMatch::MatchBranch(llvm::Instruction &I) {
   pattern->inst = &I;
 
   if (auto CBI = dyn_cast<IGCLLVM::CondBrInst>(&I)) {
-    Value *orSrc0 = nullptr;
-    Value *orSrc1 = nullptr;
-    Value *cond = CBI->getCondition();
-    if (dyn_cast<GenIntrinsicInst>(cond, GenISAIntrinsic::GenISA_UpdateDiscardMask)) {
-      pattern->isDiscardBranch = true;
-    } else if (match(cond, m_Or(m_Value(orSrc0), m_Value(orSrc1)))) {
-      // %6 = call i1 @llvm.genx.GenISA.UpdateDiscardMask(i1 %0, i1 %2)
-      // %7 = or i1 %6, %2  (or: %7 = or i1 %2, %6)
-      // br i1 %7, label %DiscardRet, label %PostDiscard
-      if (auto intr = dyn_cast<GenIntrinsicInst>(orSrc0, GenISAIntrinsic::GenISA_UpdateDiscardMask)) {
-        if (intr->getOperand(1) == orSrc1) {
-          pattern->isDiscardBranch = true;
-        }
-      } else if (auto intr = dyn_cast<GenIntrinsicInst>(orSrc1, GenISAIntrinsic::GenISA_UpdateDiscardMask)) {
-        if (intr->getOperand(1) == orSrc0) {
-          pattern->isDiscardBranch = true;
-        }
-      }
-    }
-    pattern->cond = GetSource(cast<IGCLLVM::CondBrInst>(&I)->getCondition(), false, false, IsSourceOfSample(&I));
+    pattern->cond = GetSource(CBI->getCondition(), false, false, IsSourceOfSample(&I));
   }
   AddPattern(pattern);
   return true;
