@@ -8582,22 +8582,32 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
                 instKill = true;
                 continue;
               }
-              // WAW need be tracked in both scalar and SIMD control flow
-              // The reason is that:
-              //  1. RA track the liveness in use-->define way
-              //  2. SWSB track  in define-->use way.
-              //  For the case like following
-              //
-              //    if
-              //     v1 <--    //v1 is never be used
-              //     if
-              //        <--v1
-              //     endif
-              //    endif
-              //    v2 <--
-              // RA may assign same register to v1 and v2.
-              // Scalar CFG cannot capture the dependence v1-->v2 when they are
-              // assigned with same registers.
+              // WAW must be tracked in both the scalar and the SIMD CFG pass,
+              // while RAW is tracked in the scalar pass only. The reason:
+              //  1. RA computes liveness backward (use-->define), so it frees
+              //     a GRF right after its last use and may reuse it for the
+              //     dst of a later send.
+              //  2. SWSB tracks forward (define-->use), and in the scalar
+              //     pass a read of that GRF ends the tracking of the send's
+              //     dst (send_may_kill.dst, set on RAW in
+              //     setSendOpndMayKilled()). That is sound only if the read
+              //     is on every path from the define to the later write.
+              //  3. It is not: the JIP of a join/endif contributes no scalar
+              //     CFG edge (endif is excluded in constructFlowGraph(), and
+              //     join is inserted at the head of an existing BB after the
+              //     CFG is built), so the scalar CFG has no path bypassing
+              //     such a read. SWSBBuildSIMDCFG() adds the missing
+              //     pred-->JIP-target edges, and on them nothing reads the
+              //     GRF, so the send's write can still be in flight when the
+              //     later write issues.
+              // For example, with RA assigning r10 to both sends:
+              //    BB1:      goto L
+              //    BB2:      r10 <-- send   // its only read is in BB3
+              //    BB3:  L:  join (JIP=L2)  // JIP has no scalar CFG edge
+              //              ... <-- r10    // bypassed by the SIMD CF edge
+              //    BB4: L2:  r10 <-- send   // WAW the scalar pass misses
+              // Accordingly the SIMD CFG pass kills dst liveness on writes
+              // only (send_WAW_may_kill), never on reads.
               if (afterWrite || dep == WAW) // There is no RAW kill for SIMDCF
               {
                 if (enableDPASTokenReduction &&
@@ -8967,22 +8977,9 @@ void SWSB::addGlobalDependenceWithReachingDef(
                 send_live.setDst(curLiveNode->getSendID(), false);
                 continue;
               }
-              // WAW need be tracked in both scalar and SIMD control flow
-              // The reason is that:
-              //  1. RA track the liveness in use-->define way
-              //  2. SWSB track  in define-->use way.
-              //  For the case like following
-              //
-              //    if
-              //     v1 <--    //v1 is never be used
-              //     if
-              //        <--v1
-              //     endif
-              //    endif
-              //    v2 <--
-              // RA may assign same register to v1 and v2.
-              // Scalar CFG cannot capture the dependence v1-->v2 when they are
-              // assigned with same registers.
+              // WAW must be tracked in both the scalar and the SIMD CFG pass,
+              // while RAW is tracked in the scalar pass only. See the
+              // explanation in addGlobalDependence().
               if (afterWrite || dep == WAW) // There is no RAW kill for SIMDCF
               {
                 if (fg.builder->getOption(vISA_EnableDPASTokenReduction) &&
