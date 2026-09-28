@@ -2723,10 +2723,19 @@ HWConformityPro::insertMovAfterAndGetInserted(INST_LIST_ITER it, G4_BB *bb,
     }
   }
 
+  // With all-scalar sources, the inst is shrunk to simd1 and the new mov
+  // broadcasts the result, unless the inst must keep its exec size.
+  const bool keepExecSize =
+      !scalarSrc ||
+      // sel keeps its predicate, which selects per channel.
+      inst->opcode() == G4_sel ||
+      // Implicit acc src is read per channel.
+      inst->getImplAccSrc() ||
+      // Cond mod and implicit acc dst (e.g., addc/subb) are written per
+      // channel; simd1 would leave the other channels un-updated.
+      inst->getCondMod() || inst->getImplAccDst();
   G4_ExecSize exec_size = inst->getExecSize();
-  G4_ExecSize newExecSize = ((inst->opcode() == G4_sel || !scalarSrc)
-                                 ? exec_size
-                                 : g4::SIMD1);
+  G4_ExecSize newExecSize = keepExecSize ? exec_size : g4::SIMD1;
 
   G4_Type execType = inst->isRawMov() ? dst->getType() : inst->getExecType();
   if (TypeSize(execType) == 8 && IS_BTYPE(type)) {

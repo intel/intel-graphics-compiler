@@ -150,16 +150,24 @@ G4_DstRegRegion *HWConformity::insertMovAfter(INST_LIST_ITER &it,
     }
   }
 
-  // fcvt/srnd do not support simd1
-  // [8/2026] fcvt: to be precise, bf8 <-> hf does not support simd1 and its
-  //   dst and src should be packed. tf32 <- F does not have this restriction.
-  //   Here simply using isCustomFloatCvt() to mimic opcode == fcvt
-  const bool sameExecSize =
-      (inst->opcode() == G4_srnd || inst->isCustomFloatCvt());
-  G4_ExecSize newExecSize = ((inst->opcode() == G4_sel || sameExecSize ||
-                              inst->getImplAccSrc() || !scalarSrc)
-                                 ? exec_size
-                                 : g4::SIMD1);
+  // With all-scalar sources, the inst is shrunk to simd1 and the new mov
+  // broadcasts the result, unless the inst must keep its exec size.
+  const bool keepExecSize =
+      !scalarSrc ||
+      // sel keeps its predicate, which selects per channel.
+      inst->opcode() == G4_sel ||
+      // fcvt/srnd do not support simd1
+      // [8/2026] fcvt: to be precise, bf8 <-> hf does not support simd1 and
+      //   its dst and src should be packed. tf32 <- F does not have this
+      //   restriction. Here simply using isCustomFloatCvt() to mimic
+      //   opcode == fcvt
+      inst->opcode() == G4_srnd || inst->isCustomFloatCvt() ||
+      // Implicit acc src is read per channel.
+      inst->getImplAccSrc() ||
+      // Cond mod and implicit acc dst (e.g., addc/subb) are written per
+      // channel; simd1 would leave the other channels un-updated.
+      inst->getCondMod() || inst->getImplAccDst();
+  G4_ExecSize newExecSize = keepExecSize ? exec_size : g4::SIMD1;
 
   uint32_t opExecWidthBytes = newExecSize * TypeSize(execType);
   if (execType == Type_DF && IS_BTYPE(type)) {
