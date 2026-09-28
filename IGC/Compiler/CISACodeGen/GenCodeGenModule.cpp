@@ -503,6 +503,8 @@ bool GenXCodeGenModule::runOnModule(Module &M) {
   // Check and set FG attribute flags
   FGA->setGroupAttributes();
 
+  Modified |= dropGRFBudgetForUnknownCallees();
+
   // By swapping, we sort the function list to ensure codegen order for
   // functions. This relies on llvm module pass manager's implementation detail.
   SmallVector<Function *, 16> OrderedList;
@@ -538,6 +540,39 @@ bool GenXCodeGenModule::runOnModule(Module &M) {
   Modified |= DeduceNonNullAttribute(M);
 
   return Modified;
+}
+
+bool GenXCodeGenModule::dropGRFBudgetForUnknownCallees() {
+  CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  if (pCtx->type != ShaderType::OPENCL_SHADER)
+    return false;
+
+  constexpr const char *NumGRFPerThreadAttr = "num-grf-per-thread";
+  bool Changed = false;
+  for (auto *FG : *FGA) {
+    if (FGA->isIndirectCallGroup(FG) || !(FG->hasIndirectCall() || FG->hasPartialCallGraph()))
+      continue;
+
+    Function *Kernel = FG->getHead();
+    if (!Kernel->hasFnAttribute(NumGRFPerThreadAttr))
+      continue;
+
+    uint32_t Requested = 0;
+    Kernel->getFnAttribute(NumGRFPerThreadAttr).getValueAsString().getAsInteger(10, Requested);
+    Kernel->removeFnAttr(NumGRFPerThreadAttr);
+    Changed = true;
+
+    // A budget of 0 (AutoINTEL) or one that matches the module configuration
+    // does not change the generated code, so there is nothing to report.
+    if (Requested == 0 || Requested == pCtx->getNumGRFPerThread(true, Kernel))
+      continue;
+
+    std::string Msg = "Ignoring requested maximum of " + std::to_string(Requested) +
+                      " registers per thread: the kernel makes indirect or external function calls, which "
+                      "require the module register configuration";
+    pCtx->EmitWarning(Msg.c_str(), Kernel);
+  }
+  return Changed;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

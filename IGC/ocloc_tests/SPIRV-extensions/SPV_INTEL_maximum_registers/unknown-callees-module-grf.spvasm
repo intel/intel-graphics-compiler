@@ -1,0 +1,118 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; Same rule as unknown-callees.spvasm, with a module configuration of 256 GRFs
+; from -ze-exp-register-file-size=256. A kernel that calls an external function
+; uses the module configuration whatever it requests: a smaller budget, an
+; automatic budget (AutoINTEL or 0) and a matching budget all end up with 256
+; GRFs, so the kernel and its callees agree on the stack-call ABI. A kernel
+; without such calls keeps its budget, which takes precedence over the module
+; option.
+
+; UNSUPPORTED: system-windows
+; REQUIRES: spirv-as, regkeys, bmg-supported
+; RUN: rm -rf %t_dump
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device bmg -output_no_suffix -output %t_out \
+; RUN:   -options "-ze-exp-register-file-size=256 -igc_opts 'ShaderDumpEnable=1,DumpToCustomDir=%t_dump,DisableDuplicateWarnings=0'" > %t.log 2>&1
+; RUN: FileCheck %s --check-prefix=WARN --input-file %t.log
+; RUN: FileCheck %s --check-prefix=NO-WARN --input-file %t.log
+; RUN: FileCheck %s --input-file %t_dump/*.zeinfo
+
+                  OpCapability Addresses
+                  OpCapability Linkage
+                  OpCapability Kernel
+                  OpCapability RegisterLimitsINTEL
+                  OpExtension "SPV_INTEL_maximum_registers"
+                  OpMemoryModel Physical64 OpenCL
+
+                  OpEntryPoint Kernel %ext_128    "ext_128"
+                  OpEntryPoint Kernel %ext_256    "ext_256"
+                  OpEntryPoint Kernel %ext_auto   "ext_auto"
+                  OpEntryPoint Kernel %ext_zero   "ext_zero"
+                  OpEntryPoint Kernel %nocall_128 "nocall_128"
+
+                  OpExecutionMode %ext_128    MaximumRegistersINTEL 128
+                  OpExecutionMode %ext_256    MaximumRegistersINTEL 256
+                  OpExecutionMode %ext_auto   NamedMaximumRegistersINTEL AutoINTEL
+                  OpExecutionMode %ext_zero   MaximumRegistersINTEL 0
+                  OpExecutionMode %nocall_128 MaximumRegistersINTEL 128
+
+                  OpName %ext_128    "ext_128"
+                  OpName %ext_256    "ext_256"
+                  OpName %ext_auto   "ext_auto"
+                  OpName %ext_zero   "ext_zero"
+                  OpName %nocall_128 "nocall_128"
+                  OpName %ext_func   "ext_func"
+
+                  ; Defined in another module and resolved at link time.
+                  OpDecorate %ext_func LinkageAttributes "ext_func" Import
+
+; --- Types --------------------------------------------------------------------
+
+          %void = OpTypeVoid
+       %fn_void = OpTypeFunction %void
+
+; --- Callees ------------------------------------------------------------------
+
+      %ext_func = OpFunction %void None %fn_void
+                  OpFunctionEnd
+
+; --- Kernels ------------------------------------------------------------------
+
+; Requests 128, a smaller budget than the module, and calls the imported
+; function: the module's 256 GRFs are used, with a warning.
+; WARN: warning: in kernel 'ext_128': Ignoring requested maximum of 128 registers per thread: the kernel makes indirect or external function calls, which require the module register configuration
+; CHECK-LABEL: - name: ext_128
+; CHECK:         grf_count:       256
+       %ext_128 = OpFunction %void None %fn_void
+     %bb_ext128 = OpLabel
+             %1 = OpFunctionCall %void %ext_func
+                  OpReturn
+                  OpFunctionEnd
+
+; Requests 256, the same budget as the module: nothing to report.
+; NO-WARN-NOT: in kernel 'ext_256': Ignoring
+; CHECK-LABEL: - name: ext_256
+; CHECK:         grf_count:       256
+       %ext_256 = OpFunction %void None %fn_void
+     %bb_ext256 = OpLabel
+             %2 = OpFunctionCall %void %ext_func
+                  OpReturn
+                  OpFunctionEnd
+
+; Requests an automatic budget: stack calls disable automatic GRF selection, so
+; the module configuration is used without a warning.
+; NO-WARN-NOT: in kernel 'ext_auto': Ignoring
+; CHECK-LABEL: - name: ext_auto
+; CHECK:         grf_count:       256
+      %ext_auto = OpFunction %void None %fn_void
+    %bb_extauto = OpLabel
+             %3 = OpFunctionCall %void %ext_func
+                  OpReturn
+                  OpFunctionEnd
+
+; Requests 0, which is handled as an automatic budget.
+; NO-WARN-NOT: in kernel 'ext_zero': Ignoring
+; CHECK-LABEL: - name: ext_zero
+; CHECK:         grf_count:       256
+      %ext_zero = OpFunction %void None %fn_void
+    %bb_extzero = OpLabel
+             %4 = OpFunctionCall %void %ext_func
+                  OpReturn
+                  OpFunctionEnd
+
+; Requests 128 and makes no calls, so its budget takes precedence over the
+; module option.
+; NO-WARN-NOT: in kernel 'nocall_128': Ignoring
+; CHECK-LABEL: - name: nocall_128
+; CHECK:         grf_count:       128
+    %nocall_128 = OpFunction %void None %fn_void
+  %bb_nocall128 = OpLabel
+                  OpReturn
+                  OpFunctionEnd

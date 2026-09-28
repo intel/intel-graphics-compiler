@@ -1,0 +1,121 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; An unsupported register count is legalized to the closest supported one. On a
+; tie the smaller count is used, as the request is a maximum. PTL selects from
+; 32, 64, ..., 256 in steps of 32; BMG selects 128 or 256. The kernels are empty;
+; only the legalized register count is checked.
+
+; UNSUPPORTED: system-windows
+; REQUIRES: spirv-as, regkeys
+; RUN: rm -rf %t_ptl_dump %t_bmg_dump
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+
+; RUN: %if ptl-supported %{ \
+; RUN:   ocloc compile -spirv_input -file %t.spv -device ptl -output_no_suffix -output %t_ptl_out \
+; RUN:     -options "-igc_opts 'ShaderDumpEnable=1,DumpToCustomDir=%t_ptl_dump'" && \
+; RUN:   FileCheck %s --check-prefix=PTL --input-file %t_ptl_dump/*.zeinfo %}
+
+; RUN: %if bmg-supported %{ \
+; RUN:   ocloc compile -spirv_input -file %t.spv -device bmg -output_no_suffix -output %t_bmg_out \
+; RUN:     -options "-igc_opts 'ShaderDumpEnable=1,DumpToCustomDir=%t_bmg_dump'" && \
+; RUN:   FileCheck %s --check-prefix=BMG --input-file %t_bmg_dump/*.zeinfo %}
+
+                  OpCapability Addresses
+                  OpCapability Kernel
+                  OpCapability RegisterLimitsINTEL
+                  OpExtension "SPV_INTEL_maximum_registers"
+                  OpMemoryModel Physical64 OpenCL
+
+                  OpEntryPoint Kernel %req_20  "req_20"
+                  OpEntryPoint Kernel %req_100 "req_100"
+                  OpEntryPoint Kernel %req_112 "req_112"
+                  OpEntryPoint Kernel %req_150 "req_150"
+                  OpEntryPoint Kernel %req_200 "req_200"
+                  OpEntryPoint Kernel %req_250 "req_250"
+
+                  OpExecutionMode %req_20  MaximumRegistersINTEL 20
+                  OpExecutionMode %req_100 MaximumRegistersINTEL 100
+                  OpExecutionMode %req_112 MaximumRegistersINTEL 112
+                  OpExecutionMode %req_150 MaximumRegistersINTEL 150
+                  OpExecutionMode %req_200 MaximumRegistersINTEL 200
+                  OpExecutionMode %req_250 MaximumRegistersINTEL 250
+
+                  OpName %req_20  "req_20"
+                  OpName %req_100 "req_100"
+                  OpName %req_112 "req_112"
+                  OpName %req_150 "req_150"
+                  OpName %req_200 "req_200"
+                  OpName %req_250 "req_250"
+
+; --- Types --------------------------------------------------------------------
+
+          %void = OpTypeVoid
+       %fn_void = OpTypeFunction %void
+
+; --- Kernels ------------------------------------------------------------------
+
+; Requests 20, below the smallest supported count.
+; PTL-LABEL: - name: req_20
+; PTL:         grf_count:       32
+; BMG-LABEL: - name: req_20
+; BMG:         grf_count:       128
+        %req_20 = OpFunction %void None %fn_void
+      %bb_req20 = OpLabel
+                  OpReturn
+                  OpFunctionEnd
+
+; Requests 100.
+; PTL-LABEL: - name: req_100
+; PTL:         grf_count:       96
+; BMG-LABEL: - name: req_100
+; BMG:         grf_count:       128
+       %req_100 = OpFunction %void None %fn_void
+     %bb_req100 = OpLabel
+                  OpReturn
+                  OpFunctionEnd
+
+; Requests 112, a tie between 96 and 128 on PTL, so the smaller count is used.
+; PTL-LABEL: - name: req_112
+; PTL:         grf_count:       96
+; BMG-LABEL: - name: req_112
+; BMG:         grf_count:       128
+       %req_112 = OpFunction %void None %fn_void
+     %bb_req112 = OpLabel
+                  OpReturn
+                  OpFunctionEnd
+
+; Requests 150.
+; PTL-LABEL: - name: req_150
+; PTL:         grf_count:       160
+; BMG-LABEL: - name: req_150
+; BMG:         grf_count:       128
+       %req_150 = OpFunction %void None %fn_void
+     %bb_req150 = OpLabel
+                  OpReturn
+                  OpFunctionEnd
+
+; Requests 200.
+; PTL-LABEL: - name: req_200
+; PTL:         grf_count:       192
+; BMG-LABEL: - name: req_200
+; BMG:         grf_count:       256
+       %req_200 = OpFunction %void None %fn_void
+     %bb_req200 = OpLabel
+                  OpReturn
+                  OpFunctionEnd
+
+; Requests 250.
+; PTL-LABEL: - name: req_250
+; PTL:         grf_count:       256
+; BMG-LABEL: - name: req_250
+; BMG:         grf_count:       256
+       %req_250 = OpFunction %void None %fn_void
+     %bb_req250 = OpLabel
+                  OpReturn
+                  OpFunctionEnd

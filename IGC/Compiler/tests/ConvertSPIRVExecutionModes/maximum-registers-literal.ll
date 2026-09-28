@@ -18,7 +18,7 @@ define spir_kernel void @kernel_256() {
   ret void
 }
 
-; 200 is not a selectable configuration on BMG - round down to 128.
+; 200 is not a selectable configuration on BMG - use the closest one, 256.
 define spir_kernel void @kernel_200() {
   ret void
 }
@@ -35,14 +35,14 @@ define spir_kernel void @kernel_32() {
 
 ; CHECK: define spir_kernel void @kernel_128() #[[GRF128:[0-9]+]]
 ; CHECK: define spir_kernel void @kernel_256() #[[GRF256:[0-9]+]]
-; CHECK: define spir_kernel void @kernel_200() #[[GRF128]]
+; CHECK: define spir_kernel void @kernel_200() #[[GRF256]]
 ; CHECK: define spir_kernel void @kernel_512() #[[GRF256]]
 ; CHECK: define spir_kernel void @kernel_32() #[[GRF128]]
 
 ; CHECK: attributes #[[GRF128]] = { "num-grf-per-thread"="128" }
 ; CHECK: attributes #[[GRF256]] = { "num-grf-per-thread"="256" }
 
-; WARN-DAG: warning: in kernel 'kernel_200': Requested maximum of 200 registers per thread is not supported on this platform; using 128
+; WARN-DAG: warning: in kernel 'kernel_200': Requested maximum of 200 registers per thread is not supported on this platform; using 256
 ; WARN-DAG: warning: in kernel 'kernel_512': Requested maximum of 512 registers per thread is not supported on this platform; using 256
 ; WARN-DAG: warning: in kernel 'kernel_32': Requested maximum of 32 registers per thread is not supported on this platform; using 128
 

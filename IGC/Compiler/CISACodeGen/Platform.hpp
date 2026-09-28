@@ -999,6 +999,7 @@ public:
     return List;
   }
 
+  // Returns the supported GRF count closest to NumGRF. On a tie the smaller count wins
   uint32_t legalizeNumGRF(uint32_t NumGRF) const {
     if (NumGRF == 0)
       return 0;
@@ -1006,7 +1007,9 @@ public:
     auto Supported = getSupportedGRFSizes();
     uint32_t Legalized = Supported.front();
     for (uint32_t Candidate : Supported) {
-      if (NumGRF >= Candidate && Candidate > Legalized)
+      uint32_t CandidateDistance = Candidate > NumGRF ? Candidate - NumGRF : NumGRF - Candidate;
+      uint32_t LegalizedDistance = Legalized > NumGRF ? Legalized - NumGRF : NumGRF - Legalized;
+      if (CandidateDistance < LegalizedDistance)
         Legalized = Candidate;
     }
     return Legalized;

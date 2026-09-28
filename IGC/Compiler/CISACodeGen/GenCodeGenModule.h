@@ -54,6 +54,7 @@ private:
   void processSCC(std::vector<llvm::CallGraphNode *> *SCCNodes);
   void setFuncProperties(llvm::CallGraph &CG);
   void copyFuncProperties(llvm::Function *To, llvm::Function *From);
+  bool dropGRFBudgetForUnknownCallees();
 
   GenXFunctionGroupAnalysis *FGA;
   IGC::IGCMD::MetaDataUtils *pMdUtils;

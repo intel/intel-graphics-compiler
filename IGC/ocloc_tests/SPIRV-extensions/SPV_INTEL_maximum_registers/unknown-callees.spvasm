@@ -1,0 +1,135 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; The stack-call ABI places its registers in the last GRFs of a kernel, so a
+; caller and its callee must be compiled for the same number of GRFs. Indirectly
+; called and externally linked functions are compiled for the module register
+; configuration, so the register budget is ignored for kernels that call them.
+; Kernels without such calls keep their budget.
+;
+; No module GRF option is passed, so the module configuration is the BMG default
+; of 128 GRFs. See unknown-callees-module-grf.spvasm for a module configuration
+; of 256 GRFs.
+
+; UNSUPPORTED: system-windows
+; REQUIRES: spirv-as, regkeys, bmg-supported
+; RUN: rm -rf %t_dump
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device bmg -output_no_suffix -output %t_out \
+; RUN:   -options "-igc_opts 'ShaderDumpEnable=1,DumpToCustomDir=%t_dump,DisableDuplicateWarnings=0'" > %t.log 2>&1
+; RUN: FileCheck %s --check-prefix=WARN --input-file %t.log
+; RUN: FileCheck %s --check-prefix=NO-WARN --input-file %t.log
+; RUN: FileCheck %s --input-file %t_dump/*.zeinfo
+
+                  OpCapability Addresses
+                  OpCapability Linkage
+                  OpCapability Kernel
+                  OpCapability RegisterLimitsINTEL
+                  OpCapability FunctionPointersINTEL
+                  OpCapability IndirectReferencesINTEL
+                  OpExtension "SPV_INTEL_maximum_registers"
+                  OpExtension "SPV_INTEL_function_pointers"
+                  OpMemoryModel Physical64 OpenCL
+
+                  OpEntryPoint Kernel %ext_call      "ext_call"
+                  OpEntryPoint Kernel %indirect_call "indirect_call"
+                  OpEntryPoint Kernel %ext_call_128  "ext_call_128"
+                  OpEntryPoint Kernel %no_call       "no_call"
+
+                  OpExecutionMode %ext_call      MaximumRegistersINTEL 256
+                  OpExecutionMode %indirect_call MaximumRegistersINTEL 256
+                  OpExecutionMode %ext_call_128  MaximumRegistersINTEL 128
+                  OpExecutionMode %no_call       MaximumRegistersINTEL 256
+
+                  OpName %ext_call      "ext_call"
+                  OpName %indirect_call "indirect_call"
+                  OpName %ext_call_128  "ext_call_128"
+                  OpName %no_call       "no_call"
+                  OpName %ext_func      "ext_func"
+                  OpName %callee_a      "callee_a"
+                  OpName %callee_b      "callee_b"
+
+                  ; Defined in another module and resolved at link time.
+                  OpDecorate %ext_func LinkageAttributes "ext_func" Import
+                  ; Only called through function pointers.
+                  OpDecorate %callee_a ReferencedIndirectlyINTEL
+                  OpDecorate %callee_b ReferencedIndirectlyINTEL
+
+; --- Types and constants ------------------------------------------------------
+
+          %void = OpTypeVoid
+          %bool = OpTypeBool
+          %uint = OpTypeInt 32 0
+        %uint_0 = OpConstant %uint 0
+       %fn_void = OpTypeFunction %void
+  %fn_void_uint = OpTypeFunction %void %uint
+        %fn_ptr = OpTypePointer CodeSectionINTEL %fn_void
+  %callee_a_ptr = OpConstantFunctionPointerINTEL %fn_ptr %callee_a
+  %callee_b_ptr = OpConstantFunctionPointerINTEL %fn_ptr %callee_b
+
+; --- Callees ------------------------------------------------------------------
+
+      %ext_func = OpFunction %void None %fn_void
+                  OpFunctionEnd
+
+      %callee_a = OpFunction %void None %fn_void
+          %bb_a = OpLabel
+                  OpReturn
+                  OpFunctionEnd
+
+      %callee_b = OpFunction %void None %fn_void
+          %bb_b = OpLabel
+                  OpReturn
+                  OpFunctionEnd
+
+; --- Kernels ------------------------------------------------------------------
+
+; Requests 256 and calls the imported function: the module's 128 GRFs are used,
+; with a warning.
+; WARN-DAG: warning: in kernel 'ext_call': Ignoring requested maximum of 256 registers per thread: the kernel makes indirect or external function calls, which require the module register configuration
+; CHECK-LABEL: - name: ext_call
+; CHECK:         grf_count:       128
+      %ext_call = OpFunction %void None %fn_void
+        %bb_ext = OpLabel
+             %1 = OpFunctionCall %void %ext_func
+                  OpReturn
+                  OpFunctionEnd
+
+; Requests 256 and picks the callee from a kernel argument, so the call cannot
+; be folded into a direct call: the module's 128 GRFs are used, with a warning.
+; WARN-DAG: warning: in kernel 'indirect_call': Ignoring requested maximum of 256 registers per thread: the kernel makes indirect or external function calls, which require the module register configuration
+; CHECK-LABEL: - name: indirect_call
+; CHECK:         grf_count:       128
+ %indirect_call = OpFunction %void None %fn_void_uint
+           %sel = OpFunctionParameter %uint
+        %bb_ind = OpLabel
+     %use_first = OpINotEqual %bool %sel %uint_0
+        %callee = OpSelect %fn_ptr %use_first %callee_a_ptr %callee_b_ptr
+             %2 = OpFunctionPointerCallINTEL %void %callee
+                  OpReturn
+                  OpFunctionEnd
+
+; Requests 128, which matches the module, and calls the imported function: no
+; warning.
+; NO-WARN-NOT: in kernel 'ext_call_128': Ignoring
+; CHECK-LABEL: - name: ext_call_128
+; CHECK:         grf_count:       128
+  %ext_call_128 = OpFunction %void None %fn_void
+     %bb_ext128 = OpLabel
+             %3 = OpFunctionCall %void %ext_func
+                  OpReturn
+                  OpFunctionEnd
+
+; Requests 256 and makes no calls, so its budget is kept.
+; NO-WARN-NOT: in kernel 'no_call': Ignoring
+; CHECK-LABEL: - name: no_call
+; CHECK:         grf_count:       256
+       %no_call = OpFunction %void None %fn_void
+     %bb_nocall = OpLabel
+                  OpReturn
+                  OpFunctionEnd
