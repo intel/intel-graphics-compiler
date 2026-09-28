@@ -313,6 +313,12 @@ static bool hasIndirectOperand(G4_INST *inst) {
   return false;
 }
 
+// Return true if inst's destination uses indirect addressing.
+static bool hasIndirectDst(G4_INST *inst) {
+  G4_DstRegRegion *dst = inst->getDst();
+  return dst && !dst->isNullReg() && dst->isIndirect();
+}
+
 void SpillFillPropagation::mapGRFsToDcl(unsigned int startGRF,
                                         unsigned int numGRFs, G4_Declare *dcl) {
   for (unsigned grf = startGRF; grf != (startGRF + numGRFs); ++grf) {
@@ -405,8 +411,13 @@ void SpillFillPropagation::processBBForward(G4_BB *bb) {
       continue;
     }
 
-    // Indirect addressing: conservatively clear the entire table.
-    if (hasIndirectOperand(inst)) {
+    // Indirect dst may write any GRF in the points-to set, which we don't
+    // track, so clear everything. An indirect src is only a read and cannot
+    // invalidate any mapping, so let it fall through to the dst handling
+    // below. That matters for address taken spills, whose fills are emitted
+    // right before each indirect inst: clearing there would drop the table
+    // after every one of them and no duplicate could be propagated away.
+    if (hasIndirectDst(inst)) {
       clearTable();
       ++it;
       continue;
