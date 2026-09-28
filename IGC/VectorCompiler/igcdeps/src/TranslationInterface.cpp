@@ -368,7 +368,10 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
   Opts.DisableExtraCoalescingMode =
       deriveDefaultableFlagValue<vc::DisableExtraCoalescingControl>(
           IGC_GET_FLAG_VALUE(VCDisableExtraCoalescing));
-  if (__IGC_OPAQUE_POINTERS_API_ENABLED ||
+  // VC only serves the compute APIs, so it follows the compute pointer mode.
+  // Its embedded BiF is selected to match by
+  // IGC_OPTION__API_ENABLE_OPAQUE_POINTERS_COMPUTE.
+  if (__IGC_OPAQUE_POINTERS_COMPUTE_ENABLED ||
       IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend))
     Opts.EnableOpaquePointers = true;
 

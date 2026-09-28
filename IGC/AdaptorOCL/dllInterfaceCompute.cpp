@@ -1123,9 +1123,13 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
 
   MEM_USAGERESET;
 
-  // Parse the module we want to compile
+  // Parse the module we want to compile.
+  // This context is created before the OpenCLProgramContext that will adopt it,
+  // so the compute pointer mode has to be requested explicitly here (the input
+  // is parsed into this context further down and the mode cannot change after
+  // that).
   llvm::Module *pKernelModule = nullptr;
-  auto llvmContextOwner = std::make_unique<LLVMContextWrapper>();
+  auto llvmContextOwner = std::make_unique<LLVMContextWrapper>(true, IGC::GetComputePointerMode());
   LLVMContextWrapper *llvmContext = llvmContextOwner.get();
   RegisterComputeErrHandlers(*llvmContext);
   RegisterErrHandlers();

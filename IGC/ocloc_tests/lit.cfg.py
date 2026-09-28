@@ -136,8 +136,9 @@ if llvm_ver >= 14:
 
 # LLVM 17 removed typed pointers. A typed-pointer build can still be switched to
 # opaque pointers per test with EnableOpaquePointersBackend=1, but an opaque
-# build cannot go back to typed.
-if llvm_ver <= 16 and config.api_opaque_pointers != "1":
+# build cannot go back to typed. ocloc is a compute tool, so gate this on the
+# compute pointer mode rather than the default one.
+if llvm_ver <= 16 and config.api_opaque_pointers_compute != "1":
   config.available_features.add('typed-pointers')
 
 # On LLVM 17 tools like llvm-as do not have "opaque-pointers" flag, so in order to keep tests working on all LLVMs

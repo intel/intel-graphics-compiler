@@ -1119,8 +1119,10 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
     optionsEx += " -opaque-pointers";
   } else {
 #endif
+    // The frontend output is only ever consumed by the OpenCL adaptor, so it
+    // follows the compute pointer mode rather than the default one.
     optionsEx += " ";
-    optionsEx += __IGC_OPAQUE_POINTERS_DEFAULT_ARG_CLANG;
+    optionsEx += __IGC_OPAQUE_POINTERS_COMPUTE_ARG_CLANG;
 #if LLVM_VERSION_MAJOR < 17 && defined(IGC_DEBUG_VARIABLES)
   }
 #endif

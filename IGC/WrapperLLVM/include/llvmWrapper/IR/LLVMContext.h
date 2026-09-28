@@ -35,6 +35,17 @@ inline void setOpaquePointers(llvm::LLVMContext *Ctx) {
   Ctx->setOpaquePointers(enableOpaquePointers);
 #endif
 }
+
+// Whether the given context still represents pointers with an element type.
+// From LLVM 17 on there is no typed pointer mode at all.
+inline bool supportsTypedPointers(llvm::LLVMContext &Ctx) {
+#if LLVM_VERSION_MAJOR < 17
+  return Ctx.supportsTypedPointers();
+#else
+  (void)Ctx;
+  return false;
+#endif // LLVM_VERSION_MAJOR
+}
 } // end namespace IGCLLVM
 
 namespace IGC {

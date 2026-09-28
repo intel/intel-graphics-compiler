@@ -793,7 +793,7 @@ bool SOALayoutChecker::visitBitCastInst(BitCastInst &BI) {
     return true;
   }
   // no sense in comparing pointer base types on opaque pointers, just check users
-  if (AreOpaquePointersEnabled()) {
+  if (AreOpaquePointersEnabled(BI.getContext())) {
     return checkUsers(BI);
   }
   // FIXME: remove this once we only support opaque pointers

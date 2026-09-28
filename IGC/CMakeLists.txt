@@ -295,6 +295,16 @@ else()
   endif()
 endif()
 
+# The pointer mode of the compute APIs can be chosen independently of the rest
+# of the driver. LLVM 16 stores the mode per LLVMContext, so a single build can
+# serve APIs running in either mode.
+# TODO: Remove this flag once only LLVM 17+ is supported (no possibility to enable typed pointers).
+if(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS OR IGC_OPTION__LLVM_PREFERRED_VERSION VERSION_GREATER_EQUAL 16)
+  option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS_COMPUTE "Enable opaque pointers for the compute APIs (OpenCL, Level Zero, Universal Adapter) and the Vector Compiler, independently of IGC_OPTION__API_ENABLE_OPAQUE_POINTERS. Enabled by default for LLVM 16+." ON)
+else()
+  option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS_COMPUTE "Enable opaque pointers for the compute APIs (OpenCL, Level Zero, Universal Adapter) and the Vector Compiler, independently of IGC_OPTION__API_ENABLE_OPAQUE_POINTERS. Enabled by default for LLVM 16+." OFF)
+endif()
+
 option(IGC_OPTION__ENABLE_BF16_BIF "Enables BF16 support in BiF (requires patched Clang)" ON)
 # Clang patches needed for BF16 support can be found here (example for Clang 16):
 # https://github.com/intel/opencl-clang/tree/ocl-open-160/patches/clang

@@ -93,7 +93,10 @@ else()
 endif()
 
 add_custom_target(VCBiFPreparation DEPENDS ${BIF_OUTPUT_TYPED_PTRS} ${BIF_OUTPUT_OPAQUE_PTRS})
-if(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS)
+# VC only ever serves the compute APIs, so its BiF follows the compute pointer
+# mode rather than the default one. Must stay in sync with the mode VC applies
+# to its own context. See vc::CompileOptions::EnableOpaquePointers.
+if(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS_COMPUTE)
   add_library(VCEmbeddedBiF OBJECT ${BIF_OUTPUT_OPAQUE_PTRS})
   message("[VectorCompiler] BiF opaque pointers ${VCEmbeddedBiF} ${OBJECT}")
 else()

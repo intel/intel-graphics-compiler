@@ -593,7 +593,7 @@ static bool determinePointerAlignment(const KernelArg *arg, Value *base, const D
   if (knownAlignment >= desiredAlignmentLevel)
     return true;
 
-  if (AreOpaquePointersEnabled()) {
+  if (AreOpaquePointersEnabled(base->getType()->getContext())) {
     if (originalInstructionAlignment.has_value() &&
         IGC::isStatefulAddrSpace(base->getType()->getPointerAddressSpace())) {
       knownAlignment = originalInstructionAlignment.value();

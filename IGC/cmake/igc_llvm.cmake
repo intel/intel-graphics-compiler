@@ -79,6 +79,7 @@ add_compile_definitions(LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})
 if(LLVM_VERSION_MAJOR GREATER_EQUAL 17 OR IGC_BUILD_LLVM_INTERIM)
   message("Force Enable Opaque Pointers due to LLVM >= 17")
   SET(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS ON)
+  SET(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS_COMPUTE ON)
 else()
   set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT "-opaque-pointers=1")
   set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT "-opaque-pointers=0")
@@ -101,9 +102,25 @@ else(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS)
   add_compile_definitions(__IGC_OPAQUE_POINTERS_API_ENABLED=false)
 endif()
 
+# The compute APIs and the Vector Compiler get their own pointer mode. Only
+# artifacts consumed exclusively by them may use the variables below, because
+# LLVM can read typed-pointer bitcode in an opaque-pointer context but not the
+# reverse.
+if(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS_COMPUTE)
+  set(IGC_BUILD__OPAQUE_POINTERS_COMPUTE_ARG_OPT ${IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT})
+  set(IGC_BUILD__OPAQUE_POINTERS_COMPUTE_ARG_CLANG ${IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG})
+  add_compile_definitions(__IGC_OPAQUE_POINTERS_COMPUTE_ENABLED=true)
+else()
+  set(IGC_BUILD__OPAQUE_POINTERS_COMPUTE_ARG_OPT ${IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT})
+  set(IGC_BUILD__OPAQUE_POINTERS_COMPUTE_ARG_CLANG ${IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG})
+  add_compile_definitions(__IGC_OPAQUE_POINTERS_COMPUTE_ENABLED=false)
+endif()
+
 message("OPT OpaquePtrs Status: ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT}")
 message("Clang OpaquePtrs Status: ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG}")
+message("Clang OpaquePtrs Status (compute): ${IGC_BUILD__OPAQUE_POINTERS_COMPUTE_ARG_CLANG}")
 add_compile_definitions(__IGC_OPAQUE_POINTERS_DEFAULT_ARG_CLANG="${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG}")
+add_compile_definitions(__IGC_OPAQUE_POINTERS_COMPUTE_ARG_CLANG="${IGC_BUILD__OPAQUE_POINTERS_COMPUTE_ARG_CLANG}")
 
 # Include LLVM headers as system ones.
 # This will disable warnings on linux.

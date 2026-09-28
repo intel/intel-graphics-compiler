@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
+#include "Compiler/PointersSettings.h"
 #include "visa/include/RelocationInfo.h"
 #include <ZEInfo.hpp>
 #include "AdaptorOCL/OCL/KernelAnnotations.hpp"
@@ -855,7 +856,13 @@ class LLVMContextWrapper : public llvm::LLVMContext {
   LLVMContextWrapper &operator=(LLVMContextWrapper &) = delete;
 
 public:
-  LLVMContextWrapper(bool createResourceDimTypes = true);
+  /// \p ptrMode fixes the pointer representation of this context. It must be
+  /// the mode of the API being served. See GetDefaultPointerMode() and
+  /// GetComputePointerMode(). It cannot be changed once any pointer type has
+  /// been created in the context.
+  LLVMContextWrapper(bool createResourceDimTypes, PointerMode ptrMode);
+  LLVMContextWrapper(bool createResourceDimTypes = true)
+      : LLVMContextWrapper(createResourceDimTypes, GetDefaultPointerMode()) {}
   /// ref count the LLVMContext as now CodeGenContext owns it
   unsigned int refCount = 0;
   /// IntrinsicIDCache - Cache of intrinsic pointer to numeric ID mappings

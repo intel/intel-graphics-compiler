@@ -302,7 +302,7 @@ RetryManagerVISA::CacheEntry *RetryManagerVISA::GetCacheEntry(SIMDMode simdMode)
   return result != std::end(cache) ? result : nullptr;
 }
 
-LLVMContextWrapper::LLVMContextWrapper(bool createResourceDimTypes) : m_UserAddrSpaceMD(this) {
+LLVMContextWrapper::LLVMContextWrapper(bool createResourceDimTypes, PointerMode ptrMode) : m_UserAddrSpaceMD(this) {
   if (createResourceDimTypes) {
     CreateResourceDimensionTypes(*this);
   }
@@ -313,8 +313,8 @@ LLVMContextWrapper::LLVMContextWrapper(bool createResourceDimTypes) : m_UserAddr
   // for maintenance purposes. It is not possible to ForceTypedPointers when any opaque pointers are present
   // in an LLVM IR module, then opaque pointer mode is force enabled. EnableOpaquePointersBackend does not
   // perform automatic conversion of builtin types which should be represented using TargetExtTy.
-  // TODO: For transition purposes, consider introducing an IGC internal option to tweak typed/opaque pointers
-  // with a precedence over the environment flag.
+  // The mode is a property of this context alone. LLVM 16 keeps it per context, so contexts running in
+  // different modes can coexist in one process.
 
   // TODO: Remove/Re-evaluate once fully moved to the LLVM 16 opaque ptrs.
   // This WA_OpaquePointersCL flag is related to the same flag in LLVM itself
@@ -332,15 +332,8 @@ LLVMContextWrapper::LLVMContextWrapper(bool createResourceDimTypes) : m_UserAddr
   }
 
   if (IGC::canOverwriteLLVMCtxPtrMode(basePtr, IGC_IsPointerModeAlreadySet)) {
-    bool enableOpaquePointers = AreOpaquePointersEnabled();
-    IGCLLVM::setOpaquePointers(basePtr, enableOpaquePointers);
+    IGCLLVM::setOpaquePointers(basePtr, ptrMode == PointerMode::Opaque);
     IGC_IsPointerModeAlreadySet = true;
-  } else {
-    // On LLVM 14 where opaques are not enabled by default via **cmakes**,
-    // the AreOpaquePointersEnabled() method wasn't aware that opaques were enabled by flag.
-    // We need to save this information in order to be consistent,
-    // otherwise AreOpaquePointersEnabled will return false even when opaques are enabled.
-    InitializeOpaquePointersSettings(opaquesEnabledByFlag);
   }
   // TODO: end
 }
@@ -407,7 +400,11 @@ void CodeGenContext::initLLVMContextWrapper(bool createResourceDimTypes) {
   if (llvmCtxWrapper)
     llvmCtxWrapper->Release();
 
-  llvmCtxWrapper = new LLVMContextWrapper(createResourceDimTypes);
+  // OPENCL_SHADER is the only compute-API shader type. Every other type follows
+  // the default pointer mode.
+  const PointerMode ptrMode = (type == ShaderType::OPENCL_SHADER) ? GetComputePointerMode() : GetDefaultPointerMode();
+
+  llvmCtxWrapper = new LLVMContextWrapper(createResourceDimTypes, ptrMode);
   llvmCtxWrapper->AddRef();
 }
 

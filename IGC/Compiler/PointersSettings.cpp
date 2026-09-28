@@ -8,8 +8,8 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Support/CommandLine.h"
 #include "common/igc_regkeys.hpp"
+#include <llvmWrapper/IR/LLVMContext.h>
 #include <PointersSettings.h>
-#include <optional>
 
 using namespace llvm;
 namespace IGC {
@@ -18,25 +18,27 @@ static cl::opt<bool> ForceTypedPointers("typed-pointers",
                                                  "are used, then opaque will be used)"),
                                         cl::init(false));
 
-std::optional<bool> OpaquePointersCache;
+// The pointer mode must not be cached process-wide. A single process can host
+// both typed and opaque pointer contexts at the same time.
+static PointerMode resolvePointerMode(bool EnabledAtBuildTime) {
+#if LLVM_VERSION_MAJOR >= 17
+  // No typed pointer mode exists anymore, so nothing can force it off.
+  (void)EnabledAtBuildTime;
+  return PointerMode::Opaque;
+#else
+  if (ForceTypedPointers.getValue())
+    return PointerMode::Typed;
 
-bool AreOpaquePointersEnabled() {
-  if (OpaquePointersCache.has_value())
-    return OpaquePointersCache.value();
+  if (EnabledAtBuildTime || IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend))
+    return PointerMode::Opaque;
 
-  bool enableOpaquePointers = __IGC_OPAQUE_POINTERS_API_ENABLED || IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend);
-
-  if (ForceTypedPointers.getValue()) {
-    enableOpaquePointers = false;
-  }
-
-  OpaquePointersCache = enableOpaquePointers;
-
-  return enableOpaquePointers;
+  return PointerMode::Typed;
+#endif // LLVM_VERSION_MAJOR
 }
 
-void InitializeOpaquePointersSettings(bool value) {
-  if (!OpaquePointersCache.has_value())
-    OpaquePointersCache = value;
-}
+PointerMode GetDefaultPointerMode() { return resolvePointerMode(__IGC_OPAQUE_POINTERS_API_ENABLED); }
+
+PointerMode GetComputePointerMode() { return resolvePointerMode(__IGC_OPAQUE_POINTERS_COMPUTE_ENABLED); }
+
+bool AreOpaquePointersEnabled(llvm::LLVMContext &Ctx) { return !IGCLLVM::supportsTypedPointers(Ctx); }
 } // namespace IGC

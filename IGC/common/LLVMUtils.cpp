@@ -879,7 +879,7 @@ void DumpLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName) {
       bool tempCtxPtrModeAlreadySet = true;
 #endif
       if (IGC::canOverwriteLLVMCtxPtrMode(&tempCtx, tempCtxPtrModeAlreadySet))
-        IGCLLVM::setOpaquePointers(&tempCtx, AreOpaquePointersEnabled());
+        IGCLLVM::setOpaquePointers(&tempCtx, AreOpaquePointersEnabled(*pContext->getLLVMContext()));
       std::unique_ptr<Module> tempMod = parseIRFile(fileName, Err, tempCtx);
       if (!tempMod) {
         std::stringstream ss;
