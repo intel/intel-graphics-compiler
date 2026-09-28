@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/ModuleSlotTracker.h>
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -367,16 +368,17 @@ class IGCRegisterPressurePrinter : public llvm::FunctionPass {
   unsigned int ExternalPressure = 0;
   unsigned int MaxPressureInFunction = 0;
 
-  void intraBlock(llvm::BasicBlock &BB, std::string &Output, unsigned int SIMD);
-  void dumpRegPressure(llvm::Function &F, unsigned int SIMD);
-  void printInstruction(llvm::Instruction *Inst, std::string &Str);
+  void intraBlock(llvm::BasicBlock &BB, std::string &Output, unsigned int SIMD, llvm::ModuleSlotTracker &MST);
+  void dumpRegPressure(llvm::Function &F, unsigned int SIMD, llvm::ModuleSlotTracker &MST);
+  void printInstruction(llvm::Instruction *Inst, std::string &Str, llvm::ModuleSlotTracker &MST);
   void printNames(const ValueSet &Set, std::string &name);
   void printName(llvm::Value *Val, std::string &String);
   void printDefNames(const ValueSet &Set, std::string &name);
-  void printSets(llvm::BasicBlock *BB, std::string &Output, unsigned int SIMD);
+  void printSets(llvm::BasicBlock *BB, std::string &Output, unsigned int SIMD, llvm::ModuleSlotTracker &MST);
   void printDefs(const ValueSet &In, const ValueSet &Out, std::string &Output);
   void printPhi(const PhiSet &Set, std::string &Output);
-  void printIntraBlock(llvm::BasicBlock &BB, std::string &Output, InsideBlockPressureMap &BBListing);
+  void printIntraBlock(llvm::BasicBlock &BB, std::string &Output, InsideBlockPressureMap &BBListing,
+                       llvm::ModuleSlotTracker &MST);
 
 public:
   llvm::StringRef getPassName() const override { return "IGCRegPressurePrinter"; }

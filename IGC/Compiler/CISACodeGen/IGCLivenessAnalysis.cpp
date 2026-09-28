@@ -315,14 +315,15 @@ IGCRegisterPressurePrinter::IGCRegisterPressurePrinter(const std::string &FileNa
   DumpToFile = true;
 };
 
-void IGCRegisterPressurePrinter::printInstruction(llvm::Instruction *Inst, std::string &Str) {
+void IGCRegisterPressurePrinter::printInstruction(llvm::Instruction *Inst, std::string &Str,
+                                                  llvm::ModuleSlotTracker &MST) {
   llvm::raw_string_ostream rso(Str);
-  Inst->print(rso, false);
+  Inst->print(rso, MST, false);
   rso << "\n";
 }
 
 void IGCRegisterPressurePrinter::printIntraBlock(llvm::BasicBlock &BB, std::string &Output,
-                                                 InsideBlockPressureMap &BBListing) {
+                                                 InsideBlockPressureMap &BBListing, llvm::ModuleSlotTracker &MST) {
   for (auto &I : BB) {
     llvm::Instruction *Inst = &I;
     if (WI->isUniform(Inst)) {
@@ -342,17 +343,18 @@ void IGCRegisterPressurePrinter::printIntraBlock(llvm::BasicBlock &BB, std::stri
                 " NP: " + std::to_string(PairInRegisters.NonUniform) + " \t";
     Output +=
         std::to_string((unsigned int)SizeInBytes) + " \t (" + std::to_string(AmountOfRegistersRoundUp) + ")" + "    \t";
-    printInstruction(Inst, Output);
+    printInstruction(Inst, Output, MST);
   }
 }
 
-void IGCRegisterPressurePrinter::intraBlock(llvm::BasicBlock &BB, std::string &Output, unsigned int SIMD) {
+void IGCRegisterPressurePrinter::intraBlock(llvm::BasicBlock &BB, std::string &Output, unsigned int SIMD,
+                                            llvm::ModuleSlotTracker &MST) {
   InsideBlockPressureMap BBListing;
   RPE->collectPressureForBB(BB, BBListing, SIMD, &WI->Runner);
-  printIntraBlock(BB, Output, BBListing);
+  printIntraBlock(BB, Output, BBListing, MST);
 }
 
-void IGCRegisterPressurePrinter::dumpRegPressure(llvm::Function &F, unsigned int SIMD) {
+void IGCRegisterPressurePrinter::dumpRegPressure(llvm::Function &F, unsigned int SIMD, llvm::ModuleSlotTracker &MST) {
   const char *Filter = IGC_GET_REGKEYSTRING(DumpRegPressureEstimateFilter);
   if (Filter && *Filter != '\0' && !std::regex_search(F.getName().str(), std::regex(Filter)))
     return;
@@ -402,7 +404,7 @@ void IGCRegisterPressurePrinter::dumpRegPressure(llvm::Function &F, unsigned int
 
     for (BasicBlock &BB : F) {
       // prints information for one BB
-      printSets(&BB, Output, SIMD);
+      printSets(&BB, Output, SIMD, MST);
       if (OutputFile.is_open())
         OutputFile << Output;
       Output.clear();
@@ -455,7 +457,8 @@ void IGCRegisterPressurePrinter::printName(llvm::Value *Val, std::string &String
   Val->printAsOperand(Rso, false);
 }
 
-void IGCRegisterPressurePrinter::printSets(llvm::BasicBlock *BB, std::string &Output, unsigned int SIMD) {
+void IGCRegisterPressurePrinter::printSets(llvm::BasicBlock *BB, std::string &Output, unsigned int SIMD,
+                                           llvm::ModuleSlotTracker &MST) {
   if (PrinterType <= 0)
     return;
 
@@ -480,7 +483,7 @@ void IGCRegisterPressurePrinter::printSets(llvm::BasicBlock *BB, std::string &Ou
     printNames(PtrSetOut, Output);
   Output += "\n";
 
-  intraBlock(*BB, Output, SIMD);
+  intraBlock(*BB, Output, SIMD, MST);
 }
 
 void IGCRegisterPressurePrinter::printNames(const ValueSet &Set, std::string &Name) {
@@ -545,10 +548,14 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
   MaxPressurePair = {};
   FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
+  // Reuse slot numbering across all printed instructions instead of
+  // recomputing it for every Instruction::print call.
+  llvm::ModuleSlotTracker MST(F.getParent());
+
   unsigned int SIMD = numLanes(IGC::bestGuessSIMDSize(CGCtx, &F, FGA));
 
   if (DumpToFile) {
-    dumpRegPressure(F, SIMD);
+    dumpRegPressure(F, SIMD, MST);
   } else {
     // basically only for LIT testing
     std::string Output;
@@ -557,7 +564,7 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
     Output.reserve(32768);
     Output += "SIMD: " + std::to_string(SIMD) + ", external pressure: " + std::to_string(ExternalPressure) + "\n";
     for (BasicBlock &BB : F) {
-      printSets(&BB, Output, SIMD);
+      printSets(&BB, Output, SIMD, MST);
     }
     Output += "\n";
     Output += "==============================================\n";
