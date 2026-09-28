@@ -28,12 +28,17 @@ define spir_kernel void @quux(< 16 x float>* %ptr) {
   %extractedValue_14 = extractelement <16 x float> %bulkData, i64 14
   %extractedValue_15 = extractelement <16 x float> %bulkData, i64 15
 
+  ; CHECK: %vector15 = insertelement <8 x float> {{.*}}, float %extractedValue_7, i32 7
+  ; CHECK: %vector7 = insertelement <8 x float> {{.*}}, float %extractedValue_15, i32 7
   br label %._crit_edge
 
   ; CHECK-LABEL: ._crit_edge:
 ._crit_edge:                                      ; preds = %._crit_edge, %0
 
-  ; CHECK-NOT: phi <8 x float>{{.*}}
+  ; the <16 x float> load is wider than either 8 wide strand, so both repack
+  ; into their own <8 x float>: elements 0..7 for the multiplier and 8..15 for
+  ; the loop carried value
+  ; CHECK: phi <8 x float> [ %vector7, %0 ], [ %a34, %._crit_edge ]
   %1 = phi float [ %extractedValue_8, %0 ],  [ %a35, %._crit_edge ]
   %2 = phi float [ %extractedValue_9, %0 ],  [ %a36, %._crit_edge ]
   %3 = phi float [ %extractedValue_10, %0 ], [ %a37, %._crit_edge ]
@@ -43,7 +48,7 @@ define spir_kernel void @quux(< 16 x float>* %ptr) {
   %7 = phi float [ %extractedValue_14, %0 ], [ %a41, %._crit_edge ]
   %8 = phi float [ %extractedValue_15, %0 ], [ %a42, %._crit_edge ]
 
-  ; CHECK-NOT: fmul fast <8 x float>{{.*}}
+  ; CHECK: fmul fast <8 x float> %vectorized_phi, %vector15
   %a17 = fmul fast float %1, %extractedValue_0
   %a18 = fmul fast float %2, %extractedValue_1
   %a19 = fmul fast float %3, %extractedValue_2

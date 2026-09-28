@@ -1084,6 +1084,13 @@ bool IGCVectorizer::handleExtractElement(VecArr &Slice) {
   if (!checkNaiveSwizzle(Slice))
     return false;
 
+  unsigned int Base = getConstantValueAsInt(First->getOperand(1));
+  if (Base != 0 || getVectorSize(First->getOperand(0)) != Slice.size()) {
+    Instruction *InsertPoint = getInsertPointForVector(Slice, Slice);
+    createVector(Slice, IGCLLVM::getNextNonDebugInstruction(InsertPoint));
+    return true;
+  }
+
   Value *Source = First->getOperand(0);
   for (auto &el : Slice)
     ScalarToVector[el] = Source;
@@ -1438,15 +1445,19 @@ bool IGCVectorizer::checkInsertElement(Instruction *First, VecArr &Slice) {
 bool IGCVectorizer::checkNaiveSwizzle(VecArr &Slice) {
 
   Value *CompareSource = Slice[0]->getOperand(0);
+  if (!llvm::isa<ConstantInt>(Slice[0]->getOperand(1))) {
+    PRINT_LOG_NL("Not supported index swizzle");
+    return false;
+  }
+  unsigned int Base = getConstantValueAsInt(Slice[0]->getOperand(1));
+
   for (unsigned int i = 0; i < Slice.size(); ++i) {
     if (CompareSource != Slice[i]->getOperand(0)) {
       PRINT_LOG_NL("Source operand differ between extract elements");
       return false;
     }
     unsigned int Index = getConstantValueAsInt(Slice[i]->getOperand(1));
-    // elements are stored so index of the array
-    // corresponds with the way how final data should be laid out
-    if (Index != i) {
+    if (Index != Base + i) {
       PRINT_LOG_NL("Not supported index swizzle");
       return false;
     }
@@ -1456,11 +1467,6 @@ bool IGCVectorizer::checkNaiveSwizzle(VecArr &Slice) {
 
 bool IGCVectorizer::checkExtractElement(VecArr &Slice) {
   Value *CompareSource = Slice[0]->getOperand(0);
-
-  if (getVectorSize(CompareSource) != Slice.size()) {
-    PRINT_LOG_NL("Extract is wider than the slice, need additional handling, not implemented");
-    return false;
-  }
 
   if (!llvm::isa<Instruction>(CompareSource)) {
     PRINT_LOG_NL("Source is not an instruction");

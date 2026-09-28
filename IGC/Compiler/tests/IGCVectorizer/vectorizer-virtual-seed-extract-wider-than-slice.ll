@@ -9,11 +9,13 @@
 ; REQUIRES: llvm-16-plus, regkeys
 ; RUN: igc_opt -S --opaque-pointers --igc-vectorizer --regkey=VectorizerEnableVirtualSeeds=1 -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --platformbmg < %s 2>&1 | FileCheck %s
 
-; The swizzle source is wider (<16 x float>) than the group size (8), which is
-; not handled: profitability fails and no virtual seed is built.
+; The swizzle source is wider (<16 x float>) than the group size (8). The wide
+; source cannot be reused directly, so the seed is materialized with a fresh
+; <8 x float> insertelement chain and the virtual seed is still built.
 
-; CHECK: Extract is wider than the slice, need additional handling, not implemented
-; CHECK-NOT: vectorized_cast
+; CHECK: insertelement <8 x float> undef, float %e0, i32 0
+; CHECK: insertelement <8 x float> {{.*}}, float %e7, i32 7
+; CHECK: %vectorized_cast = bitcast <8 x float> {{.*}} to <8 x i32>
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
