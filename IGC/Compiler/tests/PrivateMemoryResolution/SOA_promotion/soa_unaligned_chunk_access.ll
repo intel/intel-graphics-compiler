@@ -10,6 +10,7 @@
 ;
 ; RUN: igc_opt --opaque-pointers --ocl --platformPtl \
 ; RUN:   --regkey EnablePrivMemNewSOATranspose=2 \
+; RUN:   --regkey EnableSOAFallbackToOldAlgorithm=0 \
 ; RUN:   --igc-private-mem-resolution -S %s | FileCheck %s
 ;
 ; Check that an access at a non-partition-aligned offset doesn't lose its intra-chunk bytes

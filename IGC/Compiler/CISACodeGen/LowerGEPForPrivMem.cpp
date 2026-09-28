@@ -387,16 +387,12 @@ SOALayoutChecker::SOALayoutChecker(AllocaInst &allocaToCheck, bool isOCL,
   }
 }
 
-// Return true if any load/store reachable from the alloca accesses a vector
-// whose total size exceeds the SOA partition. The new-algo lowering
-// (TransposePrivMem) assumes every access fits within one partition and emits a
-// single contiguous load/store; it cannot stride a vector across partitions.
-// Such accesses must be left to the legacy TransposeHelperPrivateMem path, which
-// scalarizes them into per-partition element loads/stores.
-static bool hasMultiPartitionVectorAccess(llvm::AllocaInst &AI, uint32_t partitionBytes, const llvm::DataLayout &DL) {
+// Reject vector allocas with access greater then one partition and allocas that
+// unaligned access covering more then one partition.
+bool SOALayoutChecker::hasAccessUnsupportedByNewAlgo(bool CheckWideVectors) const {
   llvm::SmallPtrSet<llvm::Value *, 32> Seen;
   llvm::SmallVector<llvm::Value *, 32> Worklist;
-  Worklist.push_back(&AI);
+  Worklist.push_back(&allocaRef);
   while (!Worklist.empty()) {
     llvm::Value *V = Worklist.pop_back_val();
     if (!Seen.insert(V).second) {
@@ -409,17 +405,6 @@ static bool hasMultiPartitionVectorAccess(llvm::AllocaInst &AI, uint32_t partiti
           continue;
       }
 
-      if (auto *PLI = llvm::dyn_cast<llvm::PredicatedLoadIntrinsic>(U)) {
-        llvm::Type *AccTy = PLI->getType();
-        if (AccTy->isVectorTy() && DL.getTypeStoreSize(AccTy) > partitionBytes)
-          return true;
-        continue;
-      }
-      if (llvm::isa<llvm::CallBase>(*U)) {
-        // Be conservative about function calls. Assume they may read/write the entire alloca.
-        return true;
-      }
-
       if (llvm::isa<llvm::GetElementPtrInst, llvm::BitCastInst, llvm::AddrSpaceCastInst, llvm::PHINode,
                     llvm::SelectInst>(U)) {
         Worklist.push_back(U);
@@ -427,14 +412,28 @@ static bool hasMultiPartitionVectorAccess(llvm::AllocaInst &AI, uint32_t partiti
       }
 
       llvm::Type *AccTy = nullptr;
-      if (auto *LI = llvm::dyn_cast<llvm::LoadInst>(U)) {
+      llvm::Value *Ptr = nullptr;
+      if (auto *PLI = llvm::dyn_cast<llvm::PredicatedLoadIntrinsic>(U)) {
+        AccTy = PLI->getType();
+        Ptr = PLI->getPointerOperand();
+      } else if (llvm::isa<llvm::CallBase>(U)) {
+        return true;
+      } else if (auto *LI = llvm::dyn_cast<llvm::LoadInst>(U)) {
         AccTy = LI->getType();
+        Ptr = LI->getPointerOperand();
       } else if (auto *SI = llvm::dyn_cast<llvm::StoreInst>(U)) {
         if (SI->getPointerOperand() == V) {
           AccTy = SI->getValueOperand()->getType();
+          Ptr = V;
         }
       }
-      if (AccTy && AccTy->isVectorTy() && DL.getTypeStoreSize(AccTy) > partitionBytes)
+      if (!AccTy)
+        continue;
+
+      uint64_t AccBytes = pDL->getTypeStoreSize(AccTy);
+      if (AccBytes >= SOAPartitionBytes && !isPartitionAlignedChain(Ptr))
+        return true;
+      if (CheckWideVectors && AccTy->isVectorTy() && AccBytes > SOAPartitionBytes)
         return true;
     }
   }
@@ -496,19 +495,13 @@ SOALayoutInfo SOALayoutChecker::getOrGatherInfo() {
       }
     }
 
-    // A vector access wider than one partition cannot be lowered by the new-algo
-    // (contiguous) TransposePrivMem; only the legacy scalarizing path can stride
-    // it across partitions. Structs are excluded (their access pattern is checked
-    // by checkStruct above).
-    bool WideVecAccess = (STy == nullptr) && hasMultiPartitionVectorAccess(allocaRef, SOAPartitionBytes, *pDL);
+    // Wide vector accesses are only a problem for non-struct base types.
+    bool HasUnsupportedAccess = hasAccessUnsupportedByNewAlgo(/*CheckWideVectors=*/STy == nullptr);
 
     uint64_t AllocatedBytes = pDL->getTypeAllocSize(allocaRef.getAllocatedType());
     bool PartialTailChunk = (AllocatedBytes % SOAPartitionBytes) != 0;
 
-    // Skip for non-power-of-2 partition size, for wide-vector accesses that
-    // only the legacy path can lower, or for a reservation that is not a whole
-    // number of chunks.
-    if (isPowerOf2_32(SOAPartitionBytes) && !WideVecAccess && !PartialTailChunk) {
+    if (isPowerOf2_32(SOAPartitionBytes) && !HasUnsupportedAccess && !PartialTailChunk) {
       pInfo->useNewAlgoTranspose = true;
       pInfo->canUseSOALayout = checkUsers(allocaRef);
       pInfo->SOAPartitionBytes = SOAPartitionBytes;
@@ -517,9 +510,7 @@ SOALayoutInfo SOALayoutChecker::getOrGatherInfo() {
     if (IGC_IS_FLAG_DISABLED(EnableSOAFallbackToOldAlgorithm)) {
       return *pInfo;
     }
-    // Non-power-of-2 element (e.g. <3 x float>) or a wide-vector access: fall
-    // through to the legacy scalar/vector path below which handles these via
-    // checkUsers directly.
+    // Fallback to the legacy scalar/vector path.
   }
   // only handle case with a simple base type
   if (!(pInfo->baseType->getScalarType()->isFloatingPointTy() || pInfo->baseType->getScalarType()->isIntegerTy()))
@@ -1203,16 +1194,12 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   }
 
   Type *pUserTy = nullptr;
-  Value *pAccessPtr = nullptr;
   if (auto *storeInst = dyn_cast<StoreInst>(&I)) {
     pUserTy = storeInst->getValueOperand()->getType();
-    pAccessPtr = storeInst->getPointerOperand();
   } else if (auto *loadInst = dyn_cast<LoadInst>(&I)) {
     pUserTy = loadInst->getType();
-    pAccessPtr = loadInst->getPointerOperand();
   } else if (auto *predLoad = dyn_cast<PredicatedLoadIntrinsic>(&I)) {
     pUserTy = predLoad->getType();
-    pAccessPtr = predLoad->getPointerOperand();
   } else
     return false;
 
@@ -1224,13 +1211,6 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   // 0 for a struct, so when the parent GEP's result element type is an aggregate too both
   // sides of the pgepTySize != vecTySize comparison are 0 and the whole block is skipped.
   if (pUserTy->isAggregateType()) {
-    pInfo->canUseSOALayout = false;
-    return true;
-  }
-
-  // Verify TransposePrivMem's assumption that access starts at intra-chunk offset 0.
-  if (pInfo->useNewAlgoTranspose && pDL->getTypeStoreSize(pUserTy) >= SOAPartitionBytes &&
-      !isPartitionAlignedChain(pAccessPtr)) {
     pInfo->canUseSOALayout = false;
     return true;
   }
