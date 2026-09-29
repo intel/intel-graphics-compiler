@@ -191,6 +191,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/LoopDeletion.h"
 #include "llvmWrapper/Transforms/Scalar/LoopLoadElimination.h"
 #include "llvmWrapper/Transforms/Scalar/LoopRotation.h"
+#include "llvmWrapper/Transforms/Scalar/LowerExpectIntrinsic.h"
 #include "llvmWrapper/Transforms/Scalar/SCCP.h"
 #include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
 #include "llvmWrapper/Transforms/Scalar/LICM.h"
@@ -1443,6 +1444,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       mpm.add(new MSAAInsertDiscard());
     }
     mpm.add(createSamplerPerfOptPass());
+    mpm.add(IGCLLVM::createLegacyWrappedLowerExpectIntrinsicPass());
 
 
     if ((!IGC_IS_FLAG_ENABLED(DisableDynamicTextureFolding) &&
