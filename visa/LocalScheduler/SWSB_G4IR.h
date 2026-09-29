@@ -462,6 +462,10 @@ public:
     return depTokens[i].depNode->getNodeID();
   }
 
+  // The node whose token is waited on. Null for READ_ALL/WRITE_ALL, which
+  // have no single producer.
+  SBNode *getDepTokenNode(unsigned int i) const { return depTokens[i].depNode; }
+
   void setTokenReuseNode(SBNode *node) { tokenReusedNode = node; }
   void setUseSBIDCntr() { canUseSBIDCntr = true; }
   void unsetUseSBIDCntr() { canUseSBIDCntr = false; }
@@ -992,6 +996,9 @@ class SWSB {
   const unsigned tokenAfterWriteSendSlmCycle;
   const unsigned tokenAfterWriteSendMemoryCycle;
   const unsigned tokenAfterWriteSendSamplerCycle;
+  // -SBIDDepComment. Read once so that every per-wait step guarded by it costs
+  // a single bool test when the annotation is off.
+  const bool addSBIDDepComment;
   int tokenAfterDPASCycle;
 
   // For profiling
@@ -1095,6 +1102,20 @@ class SWSB {
                    uint32_t &AATokenReuseCount);
   void assignDepToken(SBNode *node);
   void assignDepTokens();
+
+  // One SBID wait to describe in the asm comment: the producer whose token is
+  // waited on, and whether the wait is on its write or on its reads.
+  struct TokenWait {
+    SBNode *depNode;
+    SWSBTokenType type;
+    unsigned short token; // the SBID being waited on
+  };
+  void addTokenWaitComment(G4_INST *waitInst,
+                           const std::vector<TokenWait> &waits) const;
+  // Single-producer form, so the common case does not build a vector when the
+  // annotation is off.
+  void addTokenWaitComment(G4_INST *waitInst, SBNode *depNode,
+                           SWSBTokenType type, unsigned short token) const;
   bool insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
                           INST_LIST_ITER inst_it, int newInstID,
                           BitSet *dstTokens, BitSet *srcTokens,
@@ -1194,7 +1215,8 @@ public:
                 ? (k.fg.builder->isXeLP()
                        ? 175u
                        : 210u) // TOKEN_AFTER_WRITE_SEND_L3_SAMPLER_CYCLE
-                : 60u)         // TOKEN_AFTER_WRITE_SEND_L1_SAMPLER_CYCLE
+                : 60u), // TOKEN_AFTER_WRITE_SEND_L1_SAMPLER_CYCLE
+        addSBIDDepComment(k.fg.builder->getOption(vISA_SBIDDepComment))
   {
     globalRegisterNum =
         kernel.getNumRegTotal() + k.fg.builder->getNumScalarRegisters();

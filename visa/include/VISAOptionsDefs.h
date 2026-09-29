@@ -674,6 +674,7 @@ DEF_VISA_OPTION(vISA_DistPropTokenAllocation, ET_BOOL,
 DEF_VISA_OPTION(vISA_byteGranulairySendDep, ET_BOOL, "-byteGranulairySendDep", UNUSED, false)
 DEF_VISA_OPTION(vISA_SWSBStitch, ET_BOOL, "-SWSBStitch", UNUSED, false)
 DEF_VISA_OPTION(vISA_SBIDDepLoc, ET_BOOL, "-SBIDDepLoc", UNUSED, false)
+DEF_VISA_OPTION(vISA_SBIDDepComment, ET_BOOL, "-SBIDDepComment", UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpSBID, ET_BOOL, "-dumpSBID", UNUSED, false)
 DEF_VISA_OPTION(vISA_AssignTokenUsingStdSort, ET_BOOL,
                 "-assignSWSBTokUsingStdSort", UNUSED, false)
@@ -687,6 +688,13 @@ DEF_VISA_OPTION(vISA_EnableDPASTokenReduction, ET_BOOL, "-DPASTokenReduction",
 DEF_VISA_OPTION(vISA_EnableDPASBundleConflictReduction, ET_BOOL,
                 "-DPASBundleReduction", UNUSED, true)
 DEF_VISA_OPTION(vISA_NoDPASMacro, ET_BOOL, "-noDPASMacro", UNUSED, false)
+DEF_VISA_OPTION(vISA_DPASMacroBySrc1RS, ET_BOOL, "-dpasMacroBySrc1RS", UNUSED,
+                false)
+DEF_VISA_OPTION(vISA_DPASSrc1RSBufferSize, ET_INT32, "-dpasSrc1RSBufferSize",
+                "USAGE: -dpasSrc1RSBufferSize <bytes>, override the dpas src1 "
+                "read suppression buffer size; 0 (default) keeps the platform "
+                "value\n",
+                0)
 DEF_VISA_OPTION(vISA_DPASMacroSize, ET_INT32, "-dpasMacroSize",
                 "USAGE: -dpasMacroSize <n>, cap a DPAS macro block at <n> "
                 "instructions; 0 (default) means no cap\n",

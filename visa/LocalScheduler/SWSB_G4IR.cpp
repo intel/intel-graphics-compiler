@@ -4003,6 +4003,82 @@ G4_INST *SWSB::insertSyncAllWRInstruction(G4_BB *bb, unsigned int SBIDs,
   return syncInst;
 }
 
+// Append the GRF ranges of one footprint chain as "r10-r13,r20". A chain has
+// more than one entry for indirect access, where the ranges are not
+// contiguous.
+static void appendFootprintRegs(std::stringstream &ss, const SBFootprint *fp,
+                                unsigned bytesPerGRF, bool &firstReg) {
+  for (; fp != nullptr; fp = fp->next) {
+    if (fp->fType != GRF_T) { // acc/flag/a0 are not what the SBID protects
+      continue;
+    }
+    unsigned leftGRF = fp->LeftB / bytesPerGRF;
+    unsigned rightGRF = fp->RightB / bytesPerGRF;
+    ss << (firstReg ? "" : ",") << "r" << leftGRF;
+    if (rightGRF != leftGRF) {
+      ss << "-r" << rightGRF;
+    }
+    firstReg = false;
+  }
+}
+
+// Annotate an instruction that carries one or more SBID waits with the SBID
+// and the producer behind it, so the asm dump reads e.g.
+//    sync.allwr null {$3,$5}  // waiting on $3.dst=$11106(r10-r13), $5.dst=$11242(r20-r27)
+// Each entry names the SBID being waited on, then the producer that set it.
+// "$<id>" is the same id printed at the end of the producer's line, so it can
+// be used to locate the producer. The registers are the ones the wait
+// protects: the producer's destination for an after-write wait, its sources
+// for an after-read one. Enabled by -SBIDDepComment; when it is off none of
+// the bookkeeping that feeds this runs.
+void SWSB::addTokenWaitComment(G4_INST *waitInst, SBNode *depNode,
+                               SWSBTokenType type,
+                               unsigned short token) const {
+  if (!addSBIDDepComment) {
+    return;
+  }
+  addTokenWaitComment(waitInst, std::vector<TokenWait>{{depNode, type, token}});
+}
+
+void SWSB::addTokenWaitComment(G4_INST *waitInst,
+                               const std::vector<TokenWait> &waits) const {
+  if (!addSBIDDepComment) {
+    return;
+  }
+
+  const unsigned bytesPerGRF = fg.builder->numEltPerGRF<Type_UB>();
+  std::stringstream ss;
+  bool firstWait = true;
+  for (const TokenWait &wait : waits) {
+    // No producer to point at, or the producer carries no vISA id.
+    if (wait.depNode == nullptr ||
+        wait.depNode->getLastInstruction()->getVISAId() == -1) {
+      continue;
+    }
+
+    ss << (firstWait ? "waiting on $" : ", $") << wait.token
+       << (wait.type == SWSBTokenType::AFTER_WRITE ? ".dst=$" : ".src=$")
+       << wait.depNode->getLastInstruction()->getVISAId() << "(";
+    bool firstReg = true;
+    if (wait.type == SWSBTokenType::AFTER_WRITE) {
+      appendFootprintRegs(ss, wait.depNode->getFirstFootprint(Opnd_dst),
+                          bytesPerGRF, firstReg);
+    } else {
+      for (Gen4_Operand_Number opndNum :
+           {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3}) {
+        appendFootprintRegs(ss, wait.depNode->getFirstFootprint(opndNum),
+                            bytesPerGRF, firstReg);
+      }
+    }
+    ss << ")";
+    firstWait = false;
+  }
+
+  if (!firstWait) {
+    waitInst->addComment(ss.str());
+  }
+}
+
 bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
                            INST_LIST_ITER inst_it, int newInstID,
                            BitSet *dstTokens, BitSet *srcTokens, bool &keepDst,
@@ -4016,6 +4092,9 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
   unsigned short src = 0;
   std::vector<std::pair<unsigned short, unsigned>> dst_loc;
   std::vector<std::pair<unsigned short, unsigned>> src_loc;
+  // Producers behind the tokens collected in dst/src, for the asm comment
+  std::vector<TokenWait> dst_waits;
+  std::vector<TokenWait> src_waits;
 
   bool multipleDst = false;
   bool multipleSrc = false;
@@ -4029,6 +4108,7 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
     G4_INST *synAllInst = nullptr;
     token = node->getDepToken(i, type);
     unsigned depNodeID = node->getDepTokenNodeID(i);
+    SBNode *depNode = node->getDepTokenNode(i);
     unsigned short bitToken = (unsigned short)(1 << token);
     vASSERT(token != UNKNOWN_TOKEN);
 
@@ -4067,6 +4147,7 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
           inst->setToken(token);
           inst->setTokenType(type);
           inst->setTokenLoc(token, depNodeID);
+          addTokenWaitComment(inst, depNode, type, token);
           token = UNKNOWN_TOKEN;
           i++;
           continue;
@@ -4075,6 +4156,8 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
         if (type == SWSBTokenType::AFTER_READ) {
           src |= bitToken;
           src_loc.push_back(std::make_pair(token, depNodeID));
+          if (addSBIDDepComment)
+            src_waits.push_back({depNode, type, token});
           if (!multipleSrc && (src & ~bitToken)) {
             multipleSrc = true;
           }
@@ -4084,6 +4167,8 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
           vASSERT(type == SWSBTokenType::AFTER_WRITE);
           dst |= bitToken;
           dst_loc.push_back(std::make_pair(token, depNodeID));
+          if (addSBIDDepComment)
+            dst_waits.push_back({depNode, type, token});
           if (!multipleDst && (dst & ~bitToken)) {
             multipleDst = true;
           }
@@ -4134,6 +4219,7 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
     for (const auto& loc : dst_loc) {
       synInst->setTokenLoc(loc.first, loc.second);
     }
+    addTokenWaitComment(synInst, dst_waits);
   }
 
   if (src) {
@@ -4151,6 +4237,7 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
     for (const auto& loc : src_loc) {
       synInst->setTokenLoc(loc.first, loc.second);
     }
+    addTokenWaitComment(synInst, src_waits);
   }
 
   return insertedSync;
@@ -4315,12 +4402,16 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
   unsigned short srcToken = (unsigned short)-1;
   std::vector<std::pair<unsigned short, unsigned>> dst_loc;
   std::vector<std::pair<unsigned short, unsigned>> src_loc;
+  // Producers behind the tokens collected in dst/src, for the asm comment
+  std::vector<TokenWait> dst_waits;
+  std::vector<TokenWait> src_waits;
   SWSBTokenType type = G4_INST::SWSBTokenType::TOKEN_NONE;
   bool insertedSync = false;
 
   for (unsigned int i = 0; i < node->getDepTokenNum();) {
     token = node->getDepToken(i, type);
     unsigned depNodeID = node->getDepTokenNodeID(i);
+    SBNode *depNode = node->getDepTokenNode(i);
     unsigned int bitToken = (unsigned int)(1 << token);
     vASSERT(token != UNKNOWN_TOKEN);
 
@@ -4349,6 +4440,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
           inst->setToken(token);
           inst->setTokenType(SWSBTokenType::AFTER_WRITE);
           inst->setTokenLoc(token, depNodeID);
+          addTokenWaitComment(inst, depNode, SWSBTokenType::AFTER_WRITE, token);
           token = UNKNOWN_TOKEN;
           i++;
           continue;
@@ -4356,6 +4448,8 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
 
         dst |= bitToken;
         dst_loc.push_back(std::make_pair(token, depNodeID));
+        if (addSBIDDepComment)
+          dst_waits.push_back({depNode, SWSBTokenType::AFTER_WRITE, token});
         if (!multipleDst && (dst & ~bitToken)) {
           multipleDst = true;
         }
@@ -4377,6 +4471,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
   for (unsigned int i = 0; i < node->getDepTokenNum();) {
     token = node->getDepToken(i, type);
     unsigned depNodeID = node->getDepTokenNodeID(i);
+    SBNode *depNode = node->getDepTokenNode(i);
     unsigned int bitToken = (unsigned int)(1 << token);
     vASSERT(token != UNKNOWN_TOKEN);
 
@@ -4393,12 +4488,15 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
           inst->setToken(token);
           inst->setTokenType(SWSBTokenType::AFTER_READ);
           inst->setTokenLoc(token, depNodeID);
+          addTokenWaitComment(inst, depNode, SWSBTokenType::AFTER_READ, token);
           token = UNKNOWN_TOKEN;
           i++;
           continue;
         }
         src |= bitToken;
         src_loc.push_back(std::make_pair(token, depNodeID));
+        if (addSBIDDepComment)
+          src_waits.push_back({depNode, SWSBTokenType::AFTER_READ, token});
         if (!multipleSrc && (src & ~bitToken)) {
           multipleSrc = true;
         }
@@ -4432,6 +4530,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
     for (const auto& loc : dst_loc) {
       synInst->setTokenLoc(loc.first, loc.second);
     }
+    addTokenWaitComment(synInst, dst_waits);
     insertedSync = true;
   }
 
@@ -4449,6 +4548,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
     for (const auto& loc : src_loc) {
       synInst->setTokenLoc(loc.first, loc.second);
     }
+    addTokenWaitComment(synInst, src_waits);
     insertedSync = true;
   }
 
@@ -6591,6 +6691,12 @@ bool G4_BB_SB::hasRAWDependenceBetweenDPASNodes(SBNode *node,
 
 unsigned short G4_BB_SB::getDpasSrcCacheSize(Gen4_Operand_Number opNum) const {
   if (opNum == Gen4_Operand_Number::Opnd_src1) {
+    // -dpasSrc1RSBufferSize overrides the platform read suppression buffer
+    // size, in bytes; 0 keeps the platform value. Clamped to what the return
+    // type holds.
+    unsigned overrideSize = builder.getuint32Option(vISA_DPASSrc1RSBufferSize);
+    if (overrideSize)
+      return (unsigned short)(overrideSize > 0xFFFF ? 0xFFFF : overrideSize);
     // Double the cache size because there're 2 DPAS units. Doing so could
     // allow building a bigger macro. It's not precise but there should be no
     // harm to put more DPAS into the same macro even if no read suppression.
@@ -6946,7 +7052,10 @@ bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode,
     return false;
   };
 
-  if (builder.hasDpasSrc2ReadSupression() && curC == nextC &&
+  // -dpasMacroBySrc1RS builds the block from src1 read suppression alone, so
+  // src2 read suppression is not allowed to extend it.
+  if (!builder.getOption(vISA_DPASMacroBySrc1RS) &&
+      builder.hasDpasSrc2ReadSupression() && curC == nextC &&
       ((curC == 8 && !isDFInst(*nextDpasInst)) ||
        (curC == 4 && isDFInst(*nextDpasInst))) &&
       dpasSrcFootPrintCache(Opnd_src2, curNode, nextNode) &&

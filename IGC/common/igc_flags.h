@@ -121,6 +121,12 @@ DECLARE_IGC_REGKEY(
 DECLARE_IGC_REGKEY(bool, EnableKeepDpasMacro, false,
                    "If enabled, dpas macro sequence from input will not be broken up by visa scheduler", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, DpasMacroSize, 0, "The size of dpas macro block", ALWAYS)
+DECLARE_IGC_REGKEY(bool, DpasMacroBySrc1RS, false,
+                   "Build the dpas macro block from src1 read suppression alone; src2 read suppression does not "
+                   "extend it",
+                   ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, DpasSrc1RSBufferSize, 0,
+                   "Override the dpas src1 read suppression buffer size, in bytes. 0 keeps the platform value", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, DisableMixMode, 0, "Disables mix mode in vISA BE.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, DisableHFMath, 0, "Disables HF math instructions.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(debugString, VISAOptions, 0, "Options to vISA. Space-separated options.", ALWAYS)
@@ -154,6 +160,10 @@ DECLARE_IGC_REGKEY(bool, PVCSendWARWA, true, "enable PVC send WAR WA", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, WARSWSBLocalStart, 0, "WAR localization start BB", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, WARSWSBLocalEnd, 0, "WAR localization end BB", ALWAYS)
 DECLARE_IGC_REGKEY(bool, SWSBReplaceARWithAW, false, "replace .src with .dst", ALWAYS)
+DECLARE_IGC_REGKEY(bool, SBIDDepComment, false,
+                   "Annotate each SBID wait in the asm dump with the SBID, the instruction id of the producer that "
+                   "set it, and the registers the wait protects",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, EnableIndirectInstStart, 0,
                    "Enable the indirect sent, start with candidate of the id value specified by the key", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, EnableIndirectInstEnd, 0,

@@ -4736,6 +4736,10 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_SBIDDepLoc, true);
   }
 
+  if (IGC_IS_FLAG_ENABLED(SBIDDepComment)) {
+    SaveOption(vISA_SBIDDepComment, true);
+  }
+
   // Enable SendFusion for SIMD8
   // TODO: Re-enable SendFusion when VMask is enabled. The hardware should
   // support this, but
@@ -4919,6 +4923,12 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   }
   if (uint32_t Val = IGC_GET_FLAG_VALUE(DpasMacroSize)) {
     SaveOption(vISA_DPASMacroSize, Val);
+  }
+  if (IGC_IS_FLAG_ENABLED(DpasMacroBySrc1RS)) {
+    SaveOption(vISA_DPASMacroBySrc1RS, true);
+  }
+  if (uint32_t Val = IGC_GET_FLAG_VALUE(DpasSrc1RSBufferSize)) {
+    SaveOption(vISA_DPASSrc1RSBufferSize, Val);
   }
   if (context->type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(EnableKernelCostInfo)) {
     SaveOption(vISA_KernelCostInfo, true);
