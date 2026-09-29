@@ -687,6 +687,10 @@ DEF_VISA_OPTION(vISA_EnableDPASTokenReduction, ET_BOOL, "-DPASTokenReduction",
 DEF_VISA_OPTION(vISA_EnableDPASBundleConflictReduction, ET_BOOL,
                 "-DPASBundleReduction", UNUSED, true)
 DEF_VISA_OPTION(vISA_NoDPASMacro, ET_BOOL, "-noDPASMacro", UNUSED, false)
+DEF_VISA_OPTION(vISA_DPASMacroSize, ET_INT32, "-dpasMacroSize",
+                "USAGE: -dpasMacroSize <n>, cap a DPAS macro block at <n> "
+                "instructions; 0 (default) means no cap\n",
+                0)
 DEF_VISA_OPTION(vISA_forceDPASMacro, ET_BOOL, "-forceDPASMacro", "DEPRECATED, is a nop", false)
 DEF_VISA_OPTION(vISA_KeepDPASMacroInSchedule, ET_BOOL, "-keepDPASMacroInSchedule", UNUSED, false)
 DEF_VISA_OPTION(vISA_scheduleforDPASMacro, ET_BOOL, "-scheduleforDPASMacro",

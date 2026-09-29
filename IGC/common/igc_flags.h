@@ -120,6 +120,7 @@ DECLARE_IGC_REGKEY(
     DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableKeepDpasMacro, false,
                    "If enabled, dpas macro sequence from input will not be broken up by visa scheduler", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(DWORD, DpasMacroSize, 0, "The size of dpas macro block", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, DisableMixMode, 0, "Disables mix mode in vISA BE.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, DisableHFMath, 0, "Disables HF math instructions.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(debugString, VISAOptions, 0, "Options to vISA. Space-separated options.", ALWAYS)

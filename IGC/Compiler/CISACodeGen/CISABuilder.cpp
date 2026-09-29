@@ -4917,6 +4917,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   if (IGC_IS_FLAG_ENABLED(EnableKeepDpasMacro)) {
     SaveOption(vISA_KeepDPASMacroInSchedule, true);
   }
+  if (uint32_t Val = IGC_GET_FLAG_VALUE(DpasMacroSize)) {
+    SaveOption(vISA_DPASMacroSize, Val);
+  }
   if (context->type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(EnableKernelCostInfo)) {
     SaveOption(vISA_KernelCostInfo, true);
   }

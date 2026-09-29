@@ -7159,6 +7159,10 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
   bool addComment = builder.getOptions()->getOption(vISA_outputToFile) ||
                     builder.getOptions()->getOption(vISA_asmToConsole) ||
                     builder.getOptions()->getOption(vISA_DebugConsoleDump);
+  // Upper bound on the number of dpas instructions in one macro block, as
+  // requested by -dpasMacroSize. 0 means the size is decided by isLastDpas()
+  // alone.
+  const unsigned maxDpasMacroSize = builder.getuint32Option(vISA_DPASMacroSize);
 
   std::list<G4_INST *>::iterator iInst(bb->begin()), iInstEnd(bb->end()),
       iInstNext(bb->begin());
@@ -7329,6 +7333,15 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
 
           nextNode = SBNode(nodeID, ALUID, bb->getId(), nextInst);
           getGRFFootPrint(&nextNode, p);
+
+          // End the macro when it already holds the number of instructions
+          // requested by -dpasMacroSize. dpas_count + 1 counts curInst, which
+          // has just been added to the macro. Checked before isLastDpas() so
+          // that curInst is not marked with InstOpt_Fwd for an instruction
+          // that ends up in the next macro.
+          if (maxDpasMacroSize && dpas_count + 1 >= maxDpasMacroSize) {
+            break;
+          }
 
           // check if current dpas instruction can be added into the macro
           if (isLastDpas(node, &nextNode, &dpasCountInLastGroupWithSameSrc1)) {
