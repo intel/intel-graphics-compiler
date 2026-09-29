@@ -198,7 +198,8 @@ void CustomSafeOptPass::visitXor(Instruction &XorInstr) {
 
   IRBuilder<> builder(ICmpInstr);
   auto NegatedCmpPred = cast<ICmpInst>(ICmpInstr)->getInversePredicate();
-  auto NewCmp = cast<ICmpInst>(builder.CreateICmp(NegatedCmpPred, ICmpInstr->getOperand(0), ICmpInstr->getOperand(1)));
+  // CreateICmp constant-folds to a ConstantInt when both operands are constants.
+  Value *NewCmp = builder.CreateICmp(NegatedCmpPred, ICmpInstr->getOperand(0), ICmpInstr->getOperand(1));
 
   for (auto I : UsersList) {
     if (SelectInst *S = dyn_cast<SelectInst>(I)) {
@@ -213,25 +214,26 @@ void CustomSafeOptPass::visitXor(Instruction &XorInstr) {
     }
   }
 
-  // DIExpression in debug variable instructions must be extended with additional DWARF opcodes:
-  // DW_OP_constu 1, DW_OP_xor, DW_OP_stack_value
+  // The xor's location carries over only if a new instruction was actually created.
   const DebugLoc &DL = XorInstr.getDebugLoc();
   if (Instruction *NewCmpInst = dyn_cast<Instruction>(NewCmp)) {
     NewCmpInst->setDebugLoc(DL);
-    auto *Val = static_cast<Value *>(ICmpInstr);
+  }
+
+  // DIExpression in debug variable instructions must be extended with additional DWARF opcodes:
+  // DW_OP_constu 1, DW_OP_xor, DW_OP_stack_value
 #if LLVM_VERSION_MAJOR >= 22
-    SmallVector<DbgVariableRecord *, 1> DbgValues;
-    llvm::findDbgValues(Val, DbgValues);
+  SmallVector<DbgVariableRecord *, 1> DbgValues;
+  llvm::findDbgValues(ICmpInstr, DbgValues);
 #else
-    SmallVector<DbgValueInst *, 1> DbgValues;
-    llvm::findDbgValues(DbgValues, Val);
+  SmallVector<DbgValueInst *, 1> DbgValues;
+  llvm::findDbgValues(DbgValues, ICmpInstr);
 #endif
-    for (auto DV : DbgValues) {
-      DIExpression *OldExpr = DV->getExpression();
-      DIExpression *NewExpr =
-          DIExpression::append(OldExpr, {dwarf::DW_OP_constu, 1, dwarf::DW_OP_xor, dwarf::DW_OP_stack_value});
-      IGCLLVM::setExpression(DV, NewExpr);
-    }
+  for (auto DV : DbgValues) {
+    DIExpression *OldExpr = DV->getExpression();
+    DIExpression *NewExpr =
+        DIExpression::append(OldExpr, {dwarf::DW_OP_constu, 1, dwarf::DW_OP_xor, dwarf::DW_OP_stack_value});
+    IGCLLVM::setExpression(DV, NewExpr);
   }
 
   XorInstr.replaceAllUsesWith(NewCmp);
@@ -278,25 +280,28 @@ void CustomSafeOptPass::visitAnd(BinaryOperator &I) {
   BrInst->setCondition(OrInst);
   BrInst->swapSuccessors();
 
-  // after optimization DIExpression in debug variable instructions can be extended with additional DWARF opcodes:
-  // DW_OP_constu 1, DW_OP_xor, DW_OP_stack_value
+  // The and's location carries over only if a new instruction was actually created.
   const DebugLoc &DL = I.getDebugLoc();
   if (Instruction *NewOrInst = dyn_cast<Instruction>(OrInst)) {
     NewOrInst->setDebugLoc(DL);
-    auto *Val = static_cast<Value *>(&I);
+  }
+
+  // after optimization DIExpression in debug variable instructions can be extended with additional DWARF opcodes:
+  // DW_OP_constu 1, DW_OP_xor, DW_OP_stack_value
+  // Required whether or not OrInst folded to a constant.
+  auto *Val = static_cast<Value *>(&I);
 #if LLVM_VERSION_MAJOR >= 22
-    SmallVector<DbgVariableRecord *, 1> DbgValues;
-    llvm::findDbgValues(Val, DbgValues);
+  SmallVector<DbgVariableRecord *, 1> DbgValues;
+  llvm::findDbgValues(Val, DbgValues);
 #else
-    SmallVector<DbgValueInst *, 1> DbgValues;
-    llvm::findDbgValues(DbgValues, Val);
+  SmallVector<DbgValueInst *, 1> DbgValues;
+  llvm::findDbgValues(DbgValues, Val);
 #endif
-    for (auto DV : DbgValues) {
-      DIExpression *OldExpr = DV->getExpression();
-      DIExpression *NewExpr =
-          DIExpression::append(OldExpr, {dwarf::DW_OP_constu, 1, dwarf::DW_OP_xor, dwarf::DW_OP_stack_value});
-      IGCLLVM::setExpression(DV, NewExpr);
-    }
+  for (auto DV : DbgValues) {
+    DIExpression *OldExpr = DV->getExpression();
+    DIExpression *NewExpr =
+        DIExpression::append(OldExpr, {dwarf::DW_OP_constu, 1, dwarf::DW_OP_xor, dwarf::DW_OP_stack_value});
+    IGCLLVM::setExpression(DV, NewExpr);
   }
   I.replaceAllUsesWith(OrInst);
   I.eraseFromParent();
