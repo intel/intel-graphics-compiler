@@ -12086,10 +12086,10 @@ GlobalRA::abortOnSpill(unsigned int GRFSpillFillCount, unsigned int spillSize,
   unsigned int instNum = instCount();
   bool isUnderThreshold = false;
 
-  if (builder.getOptions()->getOption(vISA_AdjustedRPE)) {
-    // When adjusted RPE is enabled, the GRF spill (if any) was intentionally
-    // allowed to keep a lower GRF count; decide abort purely on the spill
-    // budget and do not let the frequency-based analysis abort it.
+  if (builder.getOptions()->getOption(vISA_BlockLevelSpillAllowed)) {
+    // When block-level spill is allowed, the GRF spill (if any) was
+    // intentionally allowed to keep a lower GRF count; decide abort purely on
+    // the spill budget and do not let the frequency-based analysis abort it.
     isUnderThreshold = spillSize < kernel.grfMode.getSpillThreshold();
   } else {
     isUnderThreshold =

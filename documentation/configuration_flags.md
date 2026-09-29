@@ -144,6 +144,7 @@ $ export IGC_ShaderDumpEnable=1
 | `TotalGRFNum4CS` | Total GRF setting for both IGC-LLVM and vISA, for ComputeShader-only experiment. | - |
 | `UseLinearScanRA` | use Linear Scan as default register allocation algorithm | - |
 | `UseMathWithLUT` | Use the implementations of cos, cospi, log, sin, sincos, and sinpi with Look-Up Tables (LUT). | - |
+| `VISABlockLevelSpillAllowed` | Let finalizer use an adjusted register pressure that allows more spills in                   blocks where they are latency-hidden (sampler-heavy blocks) or unlikely to be                   frequently executed (cold blocks), so GRF selection can pick a smaller count                   and retain more HW threads per EU. | - |
 | `VISADynamicSpillAllowed` | Let finalizer decide spill size allowed to not increase GRF number in VRT.                   Enabling this option overrides VISASpillAllowed and increase the spill threshold                   for simdness by VISADynamicSpillThresholdPercent. | - |
 | `VISADynamicSpillSamplerWeight` | Weight applied to each non-LSC sampler send when estimating memory pressure for                   the dynamic spill threshold. Negative values raise the spill budget for                   sampler-heavy kernels. | - |
 | `VISADynamicSpillThresholdPercent` | Percentage of the kernel's total instructions allowed to be spill/fill traffic                   when VISADynamicSpillAllowed is set. Also used as the multiplier applied to the                   SIMD spill threshold for simdness selection. | - |

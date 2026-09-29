@@ -4028,6 +4028,12 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     }
   }
 
+  // Let vISA discount spills in latency-hidden or cold blocks when selecting
+  // the GRF number, so a block-local spill does not force a GRF bump.
+  if (IGC_IS_FLAG_ENABLED(VISABlockLevelSpillAllowed)) {
+    SaveOption(vISA_BlockLevelSpillAllowed, true);
+  }
+
   if (m_program->m_Platform->isCoreChildOf(IGFX_XE3_CORE)) {
     if (IGC_IS_FLAG_ENABLED(VISADynamicSpillAllowed)) {
       SaveOption(vISA_DynamicSpillThreshold, true);

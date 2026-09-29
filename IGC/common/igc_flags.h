@@ -60,6 +60,12 @@ DECLARE_IGC_REGKEY(DWORD, VISADynamicSpillSamplerWeight, -1,
                    "the dynamic spill threshold. Negative values raise the spill budget for "
                    "sampler-heavy kernels.",
                    DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, VISABlockLevelSpillAllowed, false,
+                   "Let finalizer use an adjusted register pressure that allows more spills in "
+                   "blocks where they are latency-hidden (sampler-heavy blocks) or unlikely to be "
+                   "frequently executed (cold blocks), so GRF selection can pick a smaller count "
+                   "and retain more HW threads per EU.",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, VISASpillAllowed256GRF, 0, "Spill size allowed specifically for 256 GRF case", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, VISAGRFBumpUpNumber, 1,
                    "Sets the number of steps/configs which the RA will try to use (during retry) to compile the kernel",

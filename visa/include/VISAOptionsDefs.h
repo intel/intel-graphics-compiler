@@ -227,7 +227,7 @@ DEF_VISA_OPTION(vISA_ForceGRFModeUp, ET_INT32, "-forceGRFModeUp",
                 "heuristics. 0 means no increase in GRF mode.",
                 0)
 DEF_VISA_OPTION(
-    vISA_AdjustedRPE, ET_BOOL, "-adjustedrpe",
+    vISA_BlockLevelSpillAllowed, ET_BOOL, "-blockLevelSpillAllowed",
     "Use an adjusted pressure that allows more spills in BBs where they are "
     "latency-hidden (sampler-heavy BBs) or unlikely to be frequently executed "
     "(cold BBs), so GRF selection can pick a smaller count and retain more HW "

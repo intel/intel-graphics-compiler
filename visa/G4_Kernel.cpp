@@ -2330,7 +2330,7 @@ unsigned GRFMode::getSpillThreshold(unsigned mode) const {
   // Xe3 floors at 128 because of the regression in HSD-18043576923, even though
   // 96 is still a full-occupancy config there.
   // Two opt-in heuristics may lower that floor to 96 for perf experiments:
-  //   spillThresholdBonusInGRFs -- adjusted RPE bonus (-adjustedrpe)
+  //   spillThresholdBonusInGRFs -- adjusted RPE bonus (-blockLevelSpillAllowed)
   //   dynamicSpillThreshold     -- dynamic budget (vISA_DynamicSpillThreshold)
   // Neither may go below 96; the next check enforces that.
   if (platform == Xe3 && numGRF < 128 &&

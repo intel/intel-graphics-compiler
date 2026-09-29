@@ -1334,7 +1334,7 @@ public:
   bool hasSpills(uint mscratchSpaceUsedBySpills, uint numGRF, uint spillThreshold = 0) {
     uint allowed = (numGRF == 256 && m_spillAllowedFor256GRF) ? m_spillAllowedFor256GRF : m_spillAllowed;
     // vISA may have intentionally allowed a larger spill budget for this kernel
-    // (e.g. -adjustedrpe base+bonus, reported via SProgramOutput::m_spillThreshold);
+    // (e.g. -blockLevelSpillAllowed base+bonus, reported via SProgramOutput::m_spillThreshold);
     // honor whichever budget is larger so an intentionally-spilled shader is not
     // treated as failed.
     if (spillThreshold > allowed)

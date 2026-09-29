@@ -769,7 +769,7 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
   // allows more spills in BBs where they are latency-hidden (sampler-heavy
   // BBs) or unlikely to be frequently executed (cold BBs), so GRF selection
   // can pick a smaller count and retain more HW threads per EU.
-  if (kernel.getOption(vISA_AdjustedRPE))
+  if (kernel.getOption(vISA_BlockLevelSpillAllowed))
     kernel.grfMode.setSpillThresholdBonusInGRFs(computeAdjustedKernelPressure(rp, kernel));
   kernel.updateKernelByRegPressure(KernelPressure);
   bool GRFdecreased = kernel.getNumRegTotal() < oldGRFNum;
@@ -814,7 +814,7 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
     // Final GRF selection: reapply adjusted pressure after latency scheduling
     // (rp was recomputed above if Changed). Overwrites the bonus set before
     // latency scheduling so the new register pressure drives GRF selection.
-    if (kernel.getOption(vISA_AdjustedRPE))
+    if (kernel.getOption(vISA_BlockLevelSpillAllowed))
       kernel.grfMode.setSpillThresholdBonusInGRFs(
           computeAdjustedKernelPressure(rp, kernel));
   }
