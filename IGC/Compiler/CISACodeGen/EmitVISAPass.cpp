@@ -6441,7 +6441,8 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
     bool twoGrfSimd32 =
         moviBaseCondition && (srcGRFSize == 2) && (dstGRFSize == 2) && (m_currShader->m_SIMDSize == SIMDMode::SIMD32);
     bool doAdvMovi = false;
-    bool split4Movi = twoGrfSimd32 && m_currShader->m_Platform->canDoMultipleLineMOVOpt() && !doAdvMovi;
+    bool split4Movi = twoGrfSimd32 && m_currShader->m_Platform->canDoMultipleLineMOVOpt() && !doAdvMovi &&
+                      m_currShader->m_Platform->getNumAddrRegisters() < numLanes(SIMDMode::SIMD32);
     bool keep1Movi = twoGrfSimd32 && doAdvMovi;
 
     if (defaultConditions || forcePreventOOB || split4Movi || keep1Movi) {
