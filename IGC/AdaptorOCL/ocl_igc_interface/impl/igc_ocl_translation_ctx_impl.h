@@ -43,6 +43,9 @@ bool TranslateBuild(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutpu
 
 bool VerifyPlatformConsistency(const PLATFORM &Platform, std::string &Diagnostic);
 
+bool VerifyPlatformRequirements(const IGC::CPlatform &Platform, const STB_TranslateInputArgs &InputArgs,
+                                std::string &Diagnostic);
+
 bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
                         TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &platform,
                         float profilingTimerResolution, const ShaderHash &inputShHash);
@@ -280,6 +283,12 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase {
     }
     if (!outputInterface->GetImpl()->AddWarning(platformDiagnostic)) {
       return nullptr; // OOM
+    }
+
+    std::string requirementsDiagnostic;
+    if (!TC::VerifyPlatformRequirements(igcPlatform, inputArgs, requirementsDiagnostic)) {
+      outputInterface->GetImpl()->SetError(TranslationErrorType::FailedCompilation, requirementsDiagnostic.c_str());
+      return outputInterface.release();
     }
 
     bool success = false;
