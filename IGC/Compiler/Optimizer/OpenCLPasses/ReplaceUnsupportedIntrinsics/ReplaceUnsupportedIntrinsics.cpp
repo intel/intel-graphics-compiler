@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
+#include <llvm/IR/PatternMatch.h>
 #include <map>
 #include "Probe/Assertion.h"
 
@@ -112,6 +113,9 @@ private:
   void replaceI64MinMax(IntrinsicInst *I);
   void replaceHalvesDivsSqrts(IntrinsicInst *I);
   void replaceVectorReduce(IntrinsicInst *I);
+#if LLVM_VERSION_MAJOR >= 17
+  void replaceLdexp(IntrinsicInst *I);
+#endif
 #if LLVM_VERSION_MAJOR >= 22
   void replaceCmp(IntrinsicInst *I);
 #endif
@@ -171,6 +175,9 @@ const std::map<Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t>
     { Intrinsic::vector_reduce_fmul,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
     { Intrinsic::vector_reduce_fmax,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
     { Intrinsic::vector_reduce_fmin,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+#if LLVM_VERSION_MAJOR >= 17
+    { Intrinsic::ldexp,                         &ReplaceUnsupportedIntrinsics::replaceLdexp },
+#endif
 #if LLVM_VERSION_MAJOR >= 22
     { Intrinsic::scmp,                          &ReplaceUnsupportedIntrinsics::replaceCmp },
     { Intrinsic::ucmp,                          &ReplaceUnsupportedIntrinsics::replaceCmp },
@@ -1616,6 +1623,43 @@ void ReplaceUnsupportedIntrinsics::replaceVectorReduce(IntrinsicInst *I) {
   I->replaceAllUsesWith(Acc);
   I->eraseFromParent();
 }
+
+/*
+Replace calls to @llvm.ldexp.* with @llvm.exp2
+As LLVM's InstCombiner tends to replace exp2(n) with ldexp(1.0, n)
+
+Whenever user calls ldexp() from OpenCL Kernel, it gets resolved
+by builtin function, so there's no need to support it here.
+
+%1 = call float @llvm.ldexp.f32.i32(float %num, i32 %exp)
+--->
+%1 = sitofp i32 %exp to float
+%2 = call float @llvm.exp2.f32(float %exp)
+*/
+#if LLVM_VERSION_MAJOR >= 17
+void ReplaceUnsupportedIntrinsics::replaceLdexp(IntrinsicInst *I) {
+  IGC_ASSERT(I->getIntrinsicID() == Intrinsic::ldexp);
+  IGCLLVM::IRBuilder<> Builder(I);
+
+  Value *Num = I->getArgOperand(0);
+  Value *Exp = I->getArgOperand(1);
+  Type *FpTy = I->getType();
+  if (!match(Num, llvm::PatternMatch::m_FPOne())) {
+    m_Ctx->EmitError("@llvm.ldexp with num != 1.0f argument is not supported.", I);
+    return;
+  }
+
+  // It shouldn't be a problem as exp2(double) isn't natively supported and we shouldn't end up with
+  // @llvm.exp2 intrinsic at all, hence no transformation to @llvm.ldexp
+  IGC_ASSERT(!FpTy->isDoubleTy() && "double precision is not supported for @llvm.ldexp");
+
+  Exp = Builder.CreateSIToFP(Exp, FpTy);
+  Instruction *Exp2Instr = Builder.CreateIntrinsicWithoutFolding(Intrinsic::exp2, {FpTy}, {Exp});
+  Exp2Instr->copyFastMathFlags(I);
+  I->replaceAllUsesWith(Exp2Instr);
+  I->eraseFromParent();
+}
+#endif
 
 void ReplaceUnsupportedIntrinsics::visitIntrinsicInst(IntrinsicInst &I) {
   if (m_intrinsicToFunc.find(I.getIntrinsicID()) != m_intrinsicToFunc.end()) {

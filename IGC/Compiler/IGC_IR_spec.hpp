@@ -118,6 +118,9 @@ IGC_IR_LLVM_INTRINSIC(vector_reduce_smax)
 IGC_IR_LLVM_INTRINSIC(vector_reduce_smin)
 IGC_IR_LLVM_INTRINSIC(vector_reduce_umax)
 IGC_IR_LLVM_INTRINSIC(vector_reduce_umin)
+#if LLVM_VERSION_MAJOR >= 17
+IGC_IR_LLVM_INTRINSIC(ldexp)
+#endif
 #if LLVM_VERSION_MAJOR >= 22
 IGC_IR_LLVM_INTRINSIC(scmp)
 IGC_IR_LLVM_INTRINSIC(ucmp)
