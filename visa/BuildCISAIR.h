@@ -778,7 +778,9 @@ private:
   // spill/stack size estimation. After Stitch_Compiled_Units the
   // "mainFunction" is merged with subFunctions and becomes a single
   // binary, which should also contains the functions' info of subFunctions.
-  void summarizeFunctionInfo(
+  // Returns VISA_SPILL when a main function provably needs more stack than
+  // the platform can address.
+  int summarizeFunctionInfo(
       KernelListTy &mainFunctions, KernelListTy &subFunctions);
 
   vISA::G4_Kernel *GetCallerKernel(vISA::G4_INST *);

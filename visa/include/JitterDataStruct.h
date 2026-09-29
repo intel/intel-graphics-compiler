@@ -63,9 +63,11 @@ public:
 
   // spillMemUsed is the scratch size in byte of entire vISA stack for this
   // function/kernel. It contains spill size and caller/callee save size.
-  // For kernel/entry functions, the value is the sum of potential callees
-  // within the same vISABuilder, but it does not consider recursive or
-  // indirect calls.
+  // For kernel/entry functions, the value covers the potential callees within
+  // the same vISABuilder: the largest requirement over the direct call paths
+  // when those are known, otherwise the sum over every callee. A recursive or
+  // indirect call leaves the call graph unknown, so the sum is used and the
+  // result is capped at the platform's max PTSS.
   uint32_t spillMemUsed = 0;
   uint32_t dynamicSpillThreshold = 0;
 

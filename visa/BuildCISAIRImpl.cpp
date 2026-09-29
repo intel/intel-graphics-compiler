@@ -27,14 +27,21 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/StringMacros.hpp"
 #include "MetadataDumpRA.h"
 
+#include <algorithm>
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <list>
 #include <mutex>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
@@ -1384,6 +1391,26 @@ void CISA_IR_Builder::LinkTimeOptimization(
   }
 }
 
+// Callee of the direct stack call ending \p bb.
+// Returns nullptr when there is no callee found: \p bb does not end in
+// a stack call, the call is indirect and so its target is not known here, or
+// the target name does not belong to \p builder.
+static VISAKernelImpl *getDirectFCallTarget(CISA_IR_Builder *builder,
+                                            G4_BB *bb) {
+  if (!bb->isEndWithFCall())
+    return nullptr;
+
+  G4_INST *fcall = bb->back();
+  if (fcall->asCFInst()->isIndirectCall())
+    return nullptr;
+
+  G4_Operand *target = fcall->getSrc(0);
+  if (!target || !target->isLabel())
+    return nullptr;
+
+  return builder->getKernel(target->asLabel()->getLabelName());
+}
+
 static void retrieveBarrierInfoFromCallee(VISAKernelImpl *entry,
                                           std::set<VISAKernelImpl *> &visited) {
   auto res = visited.insert(entry);
@@ -1391,15 +1418,10 @@ static void retrieveBarrierInfoFromCallee(VISAKernelImpl *entry,
     return;
 
   for (G4_BB *bb : entry->getKernel()->fg) {
-    if (!bb->isEndWithFCall())
+    VISAKernelImpl *callee = getDirectFCallTarget(entry->getCISABuilder(), bb);
+    if (!callee)
       continue;
 
-    G4_INST *fcall = bb->back();
-    if (fcall->asCFInst()->isIndirectCall())
-      continue;
-
-    const char *funcName = fcall->getSrc(0)->asLabel()->getLabelName();
-    VISAKernelImpl *callee = entry->getCISABuilder()->getKernel(funcName);
     // Propagate properties of callee to caller recursively.
     retrieveBarrierInfoFromCallee(callee, visited);
     entry->getIRBuilder()->usedBarries() |=
@@ -1913,7 +1935,11 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
     // before stitching, propagate sub-functions' info into main functions
     // This function is better called before stitching to avoid redundant
     // search of BB for barrier counts after stitching.
-    summarizeFunctionInfo(mainFunctions, subFunctions);
+    int summaryStatus = summarizeFunctionInfo(mainFunctions, subFunctions);
+    if (summaryStatus != VISA_SUCCESS) {
+      stopTimer(TimerID::TOTAL);
+      return summaryStatus;
+    }
 
     bool hasPayloadPrologue =
         m_options.getuInt32Option(vISA_CodePatch) >= CodePatch_Payload_Prologue;
@@ -2111,9 +2137,113 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
   return status;
 }
 
-void CISA_IR_Builder::summarizeFunctionInfo(
-    KernelListTy &mainFunctions,
-    KernelListTy &subFunction) {
+// Largest stack usage of any direct-call path starting at \p entry.
+// Returns std::nullopt when the reachable call graph is not fully known:
+//  - an indirect call, whose target is not visible,
+//  - a target name not known to this builder, whose frame size is unavailable,
+//  - recursion, whose depth is a runtime property.
+//
+// \p memo caches the result per function so each is walked once.
+static std::optional<uint64_t> getMaxStackSizeOnCallPath(
+    VISAKernelImpl *entry,
+    std::unordered_map<const VISAKernelImpl *, std::optional<uint64_t>> &memo) {
+
+  auto usable = [](VISAKernelImpl *f) {
+     // Cases f is not usable: (1) a label can name a function outside this
+     // builder (2) LinkTimeOptimization sets the builder to null for functions
+     // it inlines.
+    return f && f->getKernel() && f->getKernel()->fg.builder;
+  };
+
+  if (!usable(entry))
+    return std::nullopt;
+
+  auto known = memo.find(entry);
+  if (known != memo.end())
+    return known->second;
+
+  std::unordered_map<VISAKernelImpl *, std::vector<VISAKernelImpl *>> callees;
+
+  // Record the direct callees of \p f. False when an edge cannot be followed,
+  // which leaves the requirement of f, and of all that reaches it, unknown.
+  auto collectCallees = [&](VISAKernelImpl *f) {
+    std::vector<VISAKernelImpl *> &out = callees[f];
+    for (G4_BB *bb : f->getKernel()->fg) {
+      if (!bb->isEndWithFCall())
+        continue;
+      VISAKernelImpl *callee = getDirectFCallTarget(f->getCISABuilder(), bb);
+      if (!usable(callee))
+        return false;
+      out.push_back(callee);
+    }
+    return true;
+  };
+
+  // Each entry is a function and the index of its next callee to settle;
+  // onPath mirrors their identities for cycle (recursion) detection.
+  std::vector<std::pair<VISAKernelImpl *, size_t>> path;
+  std::unordered_set<const VISAKernelImpl *> onPath;
+
+  auto descend = [&](VISAKernelImpl *f) {
+    path.emplace_back(f, 0);
+    onPath.insert(f);
+  };
+
+  // Every function still on the path reaches whatever could not be followed,
+  // so none of them gets a bound. Add them to memo and return null.
+  auto abandon = [&]() -> std::optional<uint64_t> {
+    for (auto &[func, next] : path)
+      memo[func] = std::nullopt;
+    return std::nullopt;
+  };
+
+  descend(entry);
+  if (!collectCallees(entry))
+    return abandon();
+
+  while (!path.empty()) {
+    VISAKernelImpl *func = path.back().first;
+    size_t next = path.back().second;
+
+    if (next < callees[func].size()) {
+      path.back().second = next + 1;
+      VISAKernelImpl *callee = callees[func][next];
+
+      // A callee already on the path closes a cycle (recursion).
+      if (onPath.count(callee))
+        return abandon();
+
+      auto settled = memo.find(callee);
+      if (settled != memo.end()) {
+        if (!settled->second)
+          return abandon();
+        continue;
+      }
+
+      if (!collectCallees(callee))
+        return abandon();
+      descend(callee);
+      continue;
+    }
+
+    // Every callee has settled with a value, so this function needs its own
+    // frame plus the largest of them.
+    uint64_t maxCalleeSize = 0;
+    for (VISAKernelImpl *callee : callees[func])
+      maxCalleeSize = std::max(maxCalleeSize, *memo.at(callee));
+
+    memo[func] =
+        func->getKernel()->fg.builder->getJitInfo()->stats.spillMemUsed +
+        maxCalleeSize;
+    onPath.erase(func);
+    path.pop_back();
+  }
+
+  return memo.at(entry);
+}
+
+int CISA_IR_Builder::summarizeFunctionInfo(KernelListTy &mainFunctions,
+                                           KernelListTy &subFunction) {
 
   // Set usesBarrier property for each kernel and function appropriately.
   // resursively propagate barrier information from callees to their caller.
@@ -2136,23 +2266,55 @@ void CISA_IR_Builder::summarizeFunctionInfo(
     k.getKernel()->fg.builder->getJitInfo()->stats.spillMemUsed = size;
   };
 
+  // cached results of getMaxStackSizeOnCallPath
+  std::unordered_map<const VISAKernelImpl *, std::optional<uint64_t>> memo;
+
+  int status = VISA_SUCCESS;
   for (auto mfunc : mainFunctions) {
-    uint32_t totalStackSize = getStackSize(*mfunc);
-    for (auto sfunc: subFunction) {
-      // propagate subFunctions' perf stats into mainFunctions'
+    // propagate subFunctions' perf stats into mainFunctions'
+    for (auto sfunc : subFunction)
       mfunc->addFuncPerfStats(
           sfunc->getKernel()->fg.builder->getJitInfo()->statsVerbose);
 
-      // Accumulate all subFunctions' spill size and set it to the main
-      // function. vISA doesn't have the call graph so conservatively
-      // estimate the required size.
-      totalStackSize += getStackSize(*sfunc);
+    auto exactSize = getMaxStackSizeOnCallPath(mfunc, memo);
+
+    if (!exactSize) {
+      // With no usable call graph, assume every function may be live at once.
+      uint32_t conservativeStackSize = getStackSize(*mfunc);
+      for (auto sfunc : subFunction) {
+        uint32_t funcStackSize = getStackSize(*sfunc);
+        vISA_ASSERT(conservativeStackSize <=
+                        std::numeric_limits<uint32_t>::max() - funcStackSize,
+                    "stack size accumulation overflowed");
+        conservativeStackSize += funcStackSize;
+      }
+
+      // The estimate might be larger than what is actually needed. Clamp to
+      // max scratch size if it exceeds it.
+      setStackSizeAndClamp(*mfunc, conservativeStackSize);
+      continue;
     }
 
-    // The estimated size might be larger than what is actually needed.
-    // Clamp to max scratch size if the estimated size exceeds it.
-    setStackSizeAndClamp(*mfunc, totalStackSize);
+    // The requirement is exact, so exceeding the limit is a real failure.
+    auto maxPTSS = mfunc->getKernel()->fg.builder->getMaxPTSS();
+    if (*exactSize > maxPTSS) {
+      criticalMsgStream() << "Stack size required by " << mfunc->getName()
+                          << " is " << *exactSize
+                          << " bytes, which exceeds the platform maximum of "
+                          << maxPTSS << " bytes.\n";
+      // report VISA_SPILL so IGC can decide to retry or report an user error.
+      status = VISA_SPILL;
+    }
+
+    // Report the known requirement as it stands, even past the limit (status
+    // is VISA_SPILL for the case).
+    vISA_ASSERT(*exactSize <= std::numeric_limits<uint32_t>::max(),
+        "stack size overflowed");
+    mfunc->getKernel()->fg.builder->getJitInfo()->stats.spillMemUsed =
+        (uint32_t)*exactSize;
   }
+
+  return status;
 }
 
 int CISA_IR_Builder::verifyVISAIR() {
