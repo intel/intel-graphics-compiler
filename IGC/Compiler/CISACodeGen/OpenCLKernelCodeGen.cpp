@@ -2625,6 +2625,15 @@ static bool isPastHighestVRTBudget(llvm::ArrayRef<VRT::ModeEntry> Table, uint32_
   return Pressure > Cutoff;
 }
 
+static constexpr uint32_t LargePrivateMemoryKernelThresholdBytes = 5000;
+static constexpr uint32_t LargePrivateMemoryKernelSimd16LowThreshold = 96;
+
+static bool hasLargePrivateMemoryKernel(CodeGenContext *pCtx, llvm::Function *F) {
+  auto StackMemIter = pCtx->getModuleMetaData()->PrivateMemoryPerFG.find(F);
+  return StackMemIter != pCtx->getModuleMetaData()->PrivateMemoryPerFG.end() &&
+         StackMemIter->second > LargePrivateMemoryKernelThresholdBytes;
+}
+
 static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, uint32_t simd32Pressure,
                                SIMDMode simdMode, CodeGenContext *pCtx, MetaDataUtils *pMdUtils, llvm::Function *F) {
   if (simdMode != SIMDMode::SIMD32 || !isEntryFunc(pMdUtils, F)) {
@@ -2662,7 +2671,15 @@ static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, ui
   if (pCtx->supportsVRT() && pCtx->platform.GetPlatformFamily() == IGFX_XE3_CORE) {
     auto simd32High = IGC_GET_FLAG_VALUE(OCLVRTSimd16DropSimd32High);
     auto simd16Low = IGC_GET_FLAG_VALUE(OCLVRTSimd16DropSimd16Low);
-    if ((simd32Pressure > simd32High && simd16Pressure > 0 && simd16Pressure < simd16Low) || simd32Pressure > threshold)
+    bool largePrivateMemoryKernel = hasLargePrivateMemoryKernel(pCtx, F);
+    if (largePrivateMemoryKernel && simd16Low > LargePrivateMemoryKernelSimd16LowThreshold)
+      simd16Low = LargePrivateMemoryKernelSimd16LowThreshold;
+    if (simd32Pressure > simd32High && simd16Pressure > 0 && simd16Pressure < simd16Low)
+      return true;
+
+    // Preserve the XE3 VRT threshold fallback for existing low-private-memory
+    // workloads, but keep large private-memory kernels on the SIMD32 path.
+    if (!largePrivateMemoryKernel && simd32Pressure > threshold)
       return true;
   }
 
