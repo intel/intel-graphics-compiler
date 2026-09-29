@@ -12,8 +12,45 @@ SPDX-License-Identifier: MIT
 #include "../BuildIR.h"
 #include "../FlowGraph.h"
 #include "../G4_IR.hpp"
+#include "../LoopAnalysis.h"
+
+#include <unordered_map>
+#include <vector>
 
 namespace vISA {
+
+// Approximate live range over a linear numbering of the kernel's instructions.
+// Liveness is not available this early, so this is built from VarReferences
+// def/use sites plus loop membership. Heuristic only, never correctness.
+class ScalarLiveRangeApprox {
+public:
+  static constexpr unsigned InvalidId = 0xffffffffu;
+
+  struct Span {
+    unsigned start = InvalidId;
+    unsigned end = 0;
+    bool valid() const { return start != InvalidId && end >= start; }
+    unsigned length() const { return valid() ? (end - start + 1) : 0; }
+  };
+
+  explicit ScalarLiveRangeApprox(G4_Kernel &k);
+
+  // Invalid Span means unknown; callers must abstain.
+  const Span &getSpan(G4_Declare *dcl);
+
+  unsigned getNumInsts() const { return numInsts; }
+  unsigned getInstId(const G4_INST *inst) const;
+
+private:
+  unsigned getLoopLastId(Loop *loop);
+
+  G4_Kernel &kernel;
+  VarReferences refs;
+  std::unordered_map<const G4_BB *, unsigned> bbLastId;
+  std::unordered_map<Loop *, unsigned> loopLastId;
+  std::unordered_map<G4_Declare *, Span> spans;
+  unsigned numInsts = 0;
+};
 
 // use by mergeScalar
 #define OPND_PATTERN_ENUM(DO)                                                  \
@@ -71,7 +108,13 @@ struct BUNDLE_INFO {
 
   bool doMerge(IR_Builder &builder,
                std::unordered_set<G4_Declare *> &modifiedDcl,
-               std::vector<G4_Declare *> &newInputs);
+               std::vector<G4_Declare *> &newInputs,
+               ScalarLiveRangeApprox *lra = nullptr);
+
+  // False if the merged live range would be too long to be worth coalescing
+  // into. See vISA_MergeScalarLRMaxSpan.
+  bool isLiveRangeProfitable(const IR_Builder &builder,
+                             ScalarLiveRangeApprox &lra) const;
 
   void print(std::ostream &output) const {
     output << "Bundle:\n";

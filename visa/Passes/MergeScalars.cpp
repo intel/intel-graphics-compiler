@@ -13,6 +13,91 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
+ScalarLiveRangeApprox::ScalarLiveRangeApprox(G4_Kernel &k)
+    : kernel(k), refs(k, /*onlyGRF*/ true, /*needBounds*/ false) {
+  for (auto bb : kernel.fg) {
+    for (auto inst : *bb) {
+      inst->setLexicalId(numInsts++);
+    }
+    if (numInsts > 0 && !bb->empty())
+      bbLastId[bb] = numInsts - 1;
+  }
+  // Eager: MergeScalar deletes instructions as it goes, so a lazy recompute
+  // mid-pass would no longer line up with the numbering above.
+  refs.recomputeIfStale();
+}
+
+unsigned ScalarLiveRangeApprox::getInstId(const G4_INST *inst) const {
+  return inst->getLexicalId();
+}
+
+unsigned ScalarLiveRangeApprox::getLoopLastId(Loop *loop) {
+  auto it = loopLastId.find(loop);
+  if (it != loopLastId.end())
+    return it->second;
+
+  unsigned last = 0;
+  for (auto bb : loop->getBBs()) {
+    auto bbIt = bbLastId.find(bb);
+    if (bbIt != bbLastId.end())
+      last = std::max(last, bbIt->second);
+  }
+  loopLastId[loop] = last;
+  return last;
+}
+
+const ScalarLiveRangeApprox::Span &
+ScalarLiveRangeApprox::getSpan(G4_Declare *dcl) {
+  auto it = spans.find(dcl);
+  if (it != spans.end())
+    return it->second;
+
+  Span s;
+  auto *defs = refs.getDefs(dcl);
+  auto *uses = refs.getUses(dcl);
+
+  if (!defs || defs->empty() || !uses || uses->empty()) {
+    spans[dcl] = s;
+    return spans[dcl];
+  }
+
+  std::vector<G4_BB *> defBBs;
+  for (auto &d : *defs) {
+    unsigned id = getInstId(std::get<0>(d));
+    if (id == InvalidId)
+      continue;
+    s.start = std::min(s.start, id);
+    s.end = std::max(s.end, id);
+    defBBs.push_back(std::get<1>(d));
+  }
+
+  if (s.start == InvalidId) {
+    spans[dcl] = s;
+    return spans[dcl];
+  }
+
+  for (auto &u : *uses) {
+    unsigned id = getInstId(std::get<0>(u));
+    if (id != InvalidId)
+      s.end = std::max(s.end, id);
+
+    // A use in a loop with no def in it is loop-carried: live to loop end.
+    G4_BB *useBB = std::get<1>(u);
+    for (Loop *loop = kernel.fg.getLoops().getInnerMostLoop(useBB); loop;
+         loop = loop->parent) {
+      bool holdsDef = std::any_of(
+          defBBs.begin(), defBBs.end(),
+          [loop](G4_BB *defBB) { return loop->contains(defBB); });
+      if (holdsDef)
+        break;
+      s.end = std::max(s.end, getLoopLastId(loop));
+    }
+  }
+
+  spans[dcl] = s;
+  return spans[dcl];
+}
+
 // This will create a new dcl or reuse the existing one if available.
 // The returned dcl will have
 //    its Reg's byte address == input's
@@ -55,6 +140,88 @@ static G4_Declare *getInputDeclare(IR_Builder &builder,
   return newInputDcl;
 }
 
+// Decide whether merging this bundle is profitable; lra supplies the
+// approximate live ranges.
+//
+// Merging a DISJOINT group aliases every member into one declare, so each
+// member becomes live over the union of the group's ranges. A simple
+// length-based heuristic decides profitability: too long an extension makes
+// the variable cross a high register pressure region and spill. If any
+// group's merged range exceeds vISA_MergeScalarLRMaxSpan (1500 instructions
+// by default, 0 disables), the whole bundle is rejected.
+bool BUNDLE_INFO::isLiveRangeProfitable(const IR_Builder &builder,
+                                        ScalarLiveRangeApprox &lra) const {
+  const uint32_t maxSpan = builder.getuint32Option(vISA_MergeScalarLRMaxSpan);
+  if (maxSpan == 0)
+    return true;
+  const bool trace = builder.getOption(vISA_MergeScalarTrace);
+
+  // Operand positions that will produce a merged variable; -1 is the dst.
+  std::vector<int> groups;
+  if (dstPattern == OPND_PATTERN::DISJOINT &&
+      inst[0]->getDst()->getTopDcl()->getAliasDeclare() == nullptr)
+    groups.push_back(-1);
+  for (int i = 0; i < inst[0]->getNumSrc(); ++i) {
+    if (srcPattern[i] == OPND_PATTERN::DISJOINT &&
+        inst[0]->getSrc(i)->getTopDcl()->getAliasDeclare() == nullptr)
+      groups.push_back(i);
+  }
+
+  if (groups.empty())
+    return true;
+
+  for (int pos : groups) {
+    std::vector<G4_Declare *> members;
+    for (int i = 0; i < size; ++i) {
+      G4_Operand *opnd = pos < 0
+                             ? static_cast<G4_Operand *>(inst[i]->getDst())
+                             : inst[i]->getSrc(pos);
+      members.push_back(opnd->getTopDcl());
+    }
+
+    // Abstain if any member is unknown: the union would be understated and we
+    // could reject a good bundle.
+    ScalarLiveRangeApprox::Span merged;
+    bool allKnown = true;
+    for (auto dcl : members) {
+      const auto &s = lra.getSpan(dcl);
+      if (!s.valid()) {
+        allKnown = false;
+        break;
+      }
+      merged.start = std::min(merged.start, s.start);
+      merged.end = std::max(merged.end, s.end);
+    }
+
+    if (trace) {
+      std::cout << "  " << (pos < 0 ? "dst" : "src" + std::to_string(pos))
+                << " group of " << size << ":";
+      if (!allKnown) {
+        std::cout << " live range unknown for at least one member, skipping "
+                     "check\n";
+      } else {
+        std::cout << " merged range [" << merged.start << ", " << merged.end
+                  << "] len=" << merged.length() << "\n";
+      }
+    }
+
+    if (!allKnown)
+      continue;
+
+    const uint32_t mergedLen = merged.length();
+
+    // Reject if merged live-range length exceeds heuristic value.
+    if (mergedLen > maxSpan) {
+      if (trace)
+        std::cout << "    -> REJECT bundle: merged range of " << mergedLen
+                  << " instructions is above the maxSpan " << maxSpan << "\n";
+      return false;
+    }
+  }
+
+  return true;
+}
+
 //
 //  merge all instructions in the bundle into a single one, by modifying the
 //  first instruction in the bundle and delete the rest returns true if merge is
@@ -64,7 +231,8 @@ static G4_Declare *getInputDeclare(IR_Builder &builder,
 //
 bool BUNDLE_INFO::doMerge(IR_Builder &builder,
                           std::unordered_set<G4_Declare *> &modifiedDcl,
-                          std::vector<G4_Declare *> &newInputs) {
+                          std::vector<G4_Declare *> &newInputs,
+                          ScalarLiveRangeApprox *lra) {
   if (size == 1) {
     return false;
   }
@@ -133,6 +301,20 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
         uniqueDeclares.insert(dcl);
       }
     }
+  }
+
+  // Legal from here on, so the members of every merged group are now known.
+  if (lra) {
+    if (builder.getOption(vISA_MergeScalarTrace)) {
+      std::cout << "MergeScalar: evaluating bundle of " << size
+                << " inst starting at BB" << bb->getId() << ":\n";
+      inst[0]->emit(std::cout);
+      std::cout << "\n";
+    }
+    if (!isLiveRangeProfitable(builder, *lra))
+      return false;
+    if (builder.getOption(vISA_MergeScalarTrace))
+      std::cout << "    -> ACCEPT bundle\n";
   }
 
   G4_ExecSize execSize = (G4_ExecSize)size;

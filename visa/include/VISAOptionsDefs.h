@@ -137,6 +137,20 @@ DEF_VISA_OPTION(vISA_OptReport, ET_BOOL, "-optreport", "DEPRECATED, is a nop",
 DEF_VISA_OPTION(vISA_removeRedundMov, ET_BOOL, "-keepRedundMov", UNUSED, true)
 DEF_VISA_OPTION(vISA_MergeScalar, ET_BOOL, "-nomergescalar", UNUSED, true)
 DEF_VISA_OPTION(vISA_MergeScalarMax, ET_BOOL, "-mergescalarmax", UNUSED, false)
+DEF_VISA_OPTION(vISA_MergeScalarTrace, ET_BOOL, "-mergescalartrace",
+                "USAGE: -mergescalartrace\n"
+                "Dump the approximate live-range MergeScalar computes for each "
+                "merge candidate, and the accept/reject decision per bundle.",
+                false)
+DEF_VISA_OPTION(vISA_MergeScalarLRMaxSpan, ET_INT32, "-mergeScalarLRMaxSpan",
+                "USAGE: -mergeScalarLRMaxSpan <numInsts>\n"
+                "Reject a MergeScalar bundle when the merged variable's "
+                "approximate live range would be longer than this many "
+                "instructions. A variable live that long is loop-carried or "
+                "otherwise structural, and coalescing a short-lived scalar "
+                "into it inflates register pressure everywhere. 0 disables the "
+                "check.",
+                1500)
 DEF_VISA_OPTION(vISA_EnableMACOpt, ET_BOOL, "-nomac", UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableDCE, ET_BOOL_TRUE, "-dce", UNUSED, false)
 DEF_VISA_OPTION(vISA_DisableleHFOpt, ET_BOOL, "-disableHFOpt", UNUSED, false)

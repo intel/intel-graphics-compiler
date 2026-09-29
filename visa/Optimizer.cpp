@@ -7484,6 +7484,21 @@ void Optimizer::mergeScalarInst() {
   // stats
   int numBundles = 0;
   int numDeletedInst = 0;
+  int numRejectedBundles = 0;
+
+  const bool trace = builder.getOption(vISA_MergeScalarTrace);
+  const uint32_t maxSpan = builder.getuint32Option(vISA_MergeScalarLRMaxSpan);
+
+  if (trace) {
+    std::cout << "=== MergeScalar live-range guard ===\n";
+    std::cout << "max merged span:\t" << maxSpan << "\n";
+    if (maxSpan == 0)
+      std::cout << "guard disabled\n";
+  }
+
+  // Pre-merge snapshot. Merging only deletes instructions and aliases
+  // declares, so it stays good enough for the remaining bundles.
+  std::unique_ptr<ScalarLiveRangeApprox> lra;
 
   for (G4_BB *bb : fg) {
     std::vector<BUNDLE_INFO> bundles;
@@ -7505,11 +7520,19 @@ void Optimizer::mergeScalarInst() {
       }
     }
 
+    if (!bundles.empty() && maxSpan > 0 && !lra) {
+      lra = std::make_unique<ScalarLiveRangeApprox>(kernel);
+      if (trace)
+        std::cout << "instructions:\t\t" << lra->getNumInsts() << "\n";
+    }
+
     for (auto &bundle : bundles) {
-      bool success = bundle.doMerge(builder, modifiedDcl, newInputs);
+      bool success = bundle.doMerge(builder, modifiedDcl, newInputs, lra.get());
       if (success) {
         numBundles++;
         numDeletedInst += bundle.size - 1;
+      } else {
+        numRejectedBundles++;
       }
     }
   }
@@ -7517,6 +7540,13 @@ void Optimizer::mergeScalarInst() {
   // we have to reset the bound for all operands whose declares have been
   // modified
   recomputeBound(modifiedDcl);
+
+  if (trace) {
+    std::cout << "=== MergeScalar summary ===\n";
+    std::cout << "Number of optimized bundles:\t" << numBundles << "\n";
+    std::cout << "Number of instructions saved:\t" << numDeletedInst << "\n";
+    std::cout << "Number of rejected bundles:\t" << numRejectedBundles << "\n";
+  }
 
   VISA_DEBUG({
     std::cout << "             === Merge Scalar Optimization ===\n";
