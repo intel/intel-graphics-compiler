@@ -281,6 +281,10 @@ private:
   bool hasFollowDistOneAReg = false;
   bool followDistOneAReg = false;
   unsigned depDelay = 0;
+  // Value of the BB's predicate flag def counter. Two nodes of the same BB
+  // indicating equal valid value are predicated on the same flag value. Used by
+  // G4_BB_SB::canLaterReadSubsume().
+  int predFlagDefID = INVALID_ID;
 
   struct DepToken {
     unsigned short token;
@@ -348,6 +352,9 @@ public:
   G4_INST *getLastInstruction() const { return instVec.back(); }
   void setDepDelay(unsigned val) { depDelay = val; }
   unsigned getDepDelay() const { return depDelay; }
+
+  void setPredFlagDefID(int id) { predFlagDefID = id; }
+  int getPredFlagDefID() const { return predFlagDefID; }
 
   int getALUID() const { return ALUID; }
   unsigned getNodeID() const { return nodeID; };
@@ -670,9 +677,22 @@ private:
   int tokenAfterDPASCycle;
   int globalRegisterNum = 0;
 
+  // Predicate flag def tracking, local to the SBDDD scan of this BB. Indexed by
+  // flag register number, holding the counter value of the latest def of that
+  // flag seen so far.
+  std::vector<int> lastFlagDefID;
+  int flagDefIDCounter = 0;
+
 private:
   // dpas read suppression buffer size
   unsigned short getDpasSrcCacheSize(Gen4_Operand_Number opNum) const;
+
+  // Predicate flag def tracking, see lastFlagDefID.
+  int getPredFlagDefID(const G4_INST *inst) const;
+  void updateFlagDefID(G4_INST *inst);
+  bool canLaterReadSubsume(const SBNode *liveNode, const SBNode *node,
+                           const G4_INST *liveInst,
+                           const G4_INST *curInst) const;
 
 public:
   LiveGRFBuckets *send_use_kills = nullptr;

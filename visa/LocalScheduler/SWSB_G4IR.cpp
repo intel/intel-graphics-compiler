@@ -198,7 +198,10 @@ static bool hasSamePredicator(const G4_INST *inst1, const G4_INST *inst2) {
     unsigned short refOff2 = pred2->getBase()->ExRegNum(flagRegNumValid);
     unsigned short subRefOff2 = pred2->getBase()->asRegVar()->getPhyRegOff();
 
-    if (refOff1 == refOff2 && subRefOff1 == subRefOff2) {
+    // (f1.0) and (~f1.0) are not the same predicator
+    if (refOff1 == refOff2 && subRefOff1 == subRefOff2 &&
+        pred1->getState() == pred2->getState() &&
+        pred1->getControl() == pred2->getControl()) {
       return true;
     }
     return false;
@@ -257,6 +260,14 @@ static bool hasSameExecMask(const G4_INST *inst1, const G4_INST *inst2) {
   }
 
   return true;
+}
+
+// When liveInst has NoMask and curInst does not, an all-off exec mask
+// shoots curInst down although liveInst issued. Subsume is not allowed. E.g.
+// liveInst has (W& f0.0) and curInst has (f0.0).
+static bool execMaskAllowsSubsume(const G4_INST *liveInst,
+                                  const G4_INST *curInst) {
+  return curInst->isWriteEnableInst() || !liveInst->isWriteEnableInst();
 }
 
 static bool WARDepRequired(IR_Builder *builder, const G4_INST *inst1, const G4_INST *inst2) {
@@ -7239,6 +7250,80 @@ static void handleAddrAddMov(G4_INST *inst)
   }
 }
 
+// Return the def counter value of the flag inst is predicated on, or
+// INVALID_ID when inst is unpredicated or the flag cannot be identified.
+int G4_BB_SB::getPredFlagDefID(const G4_INST *inst) const {
+  G4_Predicate *pred = inst->getPredicate();
+  if (!pred) {
+    return INVALID_ID;
+  }
+
+  bool valid = true;
+  unsigned short flagReg = pred->getBase()->ExRegNum(valid);
+  if (!valid || flagReg >= lastFlagDefID.size()) {
+    return INVALID_ID;
+  }
+  return lastFlagDefID[flagReg];
+}
+
+// Account for the flags inst defines. Must be called after the node of inst has
+// been stamped, so that an instruction reading and writing the same flag keeps
+// the def counter value its predicate was evaluated with.
+void G4_BB_SB::updateFlagDefID(G4_INST *inst) {
+  auto bumpAll = [this]() {
+    flagDefIDCounter++;
+    std::fill(lastFlagDefID.begin(), lastFlagDefID.end(), flagDefIDCounter);
+  };
+
+  auto bumpOne = [this, &bumpAll](G4_VarBase *base) {
+    if (!base || !base->isFlag()) {
+      return;
+    }
+    bool valid = true;
+    unsigned short flagReg = base->ExRegNum(valid);
+    if (!valid || flagReg >= lastFlagDefID.size()) {
+      // Cannot attribute the def to a single flag, invalidate all of them.
+      bumpAll();
+      return;
+    }
+    lastFlagDefID[flagReg] = ++flagDefIDCounter;
+  };
+
+  if (G4_CondMod *condMod = inst->getCondMod()) {
+    bumpOne(condMod->getBase());
+  }
+  if (G4_DstRegRegion *dst = inst->getDst()) {
+    bumpOne(dst->getBase());
+  }
+  // A call may clobber any flag inside the callee.
+  if (inst->isCall() || inst->isFCall()) {
+    bumpAll();
+  }
+}
+
+// Decide whether curInst's read of a register may subsume liveNode's read of
+// it, i.e. whether liveNode's operand can be dropped from the live buckets
+// because a later wait on curInst's SBID also covers it.
+bool G4_BB_SB::canLaterReadSubsume(const SBNode *liveNode, const SBNode *node,
+                                   const G4_INST *liveInst,
+                                   const G4_INST *curInst) const {
+  if (!execMaskAllowsSubsume(liveInst, curInst)) {
+    return false;
+  }
+
+  if (!curInst->getPredicate()) {
+    return true;
+  }
+
+  if (liveNode->getBBID() != node->getBBID()) {
+    return false;
+  }
+
+  // The predicate flag of curInst is the same as liveNode's
+  return liveNode->getPredFlagDefID() != INVALID_ID &&
+         liveNode->getPredFlagDefID() == node->getPredFlagDefID();
+}
+
 void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
                      LiveGRFBuckets *&globalSendsLB,
                      LiveGRFBuckets *&GRFAlignedGlobalSendsLB, SBNODE_VECT *SBNodes,
@@ -7263,6 +7348,11 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     latestInstID[i] = &indexes->latestInstID[i];
   }
   SBNODE_LIST tmpSBSendNodes;
+  // Flag def tracking is local to this scan. getNumFlagRegisters() counts each
+  // 16 bits as a flag register, so it is an upper bound on the flag register
+  // number ExRegNum() returns.
+  lastFlagDefID.assign(builder.getNumFlagRegisters(), 0);
+  flagDefIDCounter = 0;
   bool hasFollowDistOneAReg = false;
   bool hasFollowDistOneIndirectReg = false;
   bool addComment = builder.getOptions()->getOption(vISA_outputToFile) ||
@@ -7295,6 +7385,10 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     SBNode *node = new (allocator) SBNode(nodeID, ALUID, bb->getId(), curInst);
     SBNodes->emplace_back(node);
     curInst->setLocalId(0);
+
+    // Record which def of its predicate flag this node sees
+    node->setPredFlagDefID(getPredFlagDefID(curInst));
+    updateFlagDefID(curInst);
     if (builder.hasSWSBCounter() && bb->getLabel() &&
         bb->getLabel()->isDivergentResourceLoop() &&
         curInst->isSend() && builder.getOptions()->getOption(vISA_UseSBIDCntrFeature)) {
@@ -7850,7 +7944,8 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
 
           if (dep == NODEP && hasSameFunctionID(liveInst, curInst) &&
               hasSamePredicator(liveInst, curInst) &&
-              hasSameExecMask(liveInst, curInst)) {
+              hasSameExecMask(liveInst, curInst) &&
+              canLaterReadSubsume(liveNode, node, liveInst, curInst)) {
             if (curFootprint->isWholeOverlap(liveFootprint)) {
               LB->killOperand(bn_it);
               continue;
@@ -8870,9 +8965,14 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
               }
             }
 
+            // A predicated curInst may be shot down entirely and a later wait
+            // on that SBID does not cover curLiveNode's read. curLiveNode is
+            // a global send, so the flag cannot be tracked. Conservatively let
+            // only an unpredicated send's read subsume it.
             if (dep == NODEP && hasSameFunctionID(liveInst, curInst) &&
-                hasSamePredicator(liveInst, curInst) &&
-                hasSameExecMask(liveInst, curInst)) {
+                hasSameExecMask(liveInst, curInst) &&
+                !curInst->getPredicate() &&
+                execMaskAllowsSubsume(liveInst, curInst)) {
               if (curFootprint->isWholeOverlap(liveFootprint)) {
                 send_use_kills.killOperand(bn_it);
                 continue;
@@ -9221,9 +9321,14 @@ void SWSB::addGlobalDependenceWithReachingDef(
               }
             }
 
+            // A predicated curInst may be shot down entirely and a later wait
+            // on that SBID does not cover curLiveNode's read. curLiveNode is
+            // a global send, so the flag cannot be tracked. Conservatively let
+            // only an unpredicated send's read subsume it.
             if (dep == NODEP && hasSameFunctionID(liveInst, curInst) &&
-                hasSamePredicator(liveInst, curInst) &&
-                hasSameExecMask(liveInst, curInst)) {
+                hasSameExecMask(liveInst, curInst) &&
+                !curInst->getPredicate() &&
+                execMaskAllowsSubsume(liveInst, curInst)) {
               if (curFootprint->isWholeOverlap(liveFootprint)) {
                 send_use_kills.killOperand(bn_it);
                 continue;
