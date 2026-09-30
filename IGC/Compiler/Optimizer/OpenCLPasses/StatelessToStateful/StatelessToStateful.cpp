@@ -968,26 +968,6 @@ void StatelessToStateful::addToPromotionMap(Instruction &I, Value *Ptr,
       m_promotionMap.size() < maxPromotionCount &&
       pointerIsPositiveOffsetFromKernelArgument(m_F, Ptr, offset, baseArgNumber, true, OriginalInstructionAlignment);
 
-  // Skip only bindful a32 promotions in bindless+buffer_offset no-large mode.
-  // Bindless stateful ldraw.indexed loads are allowed (they are fast).
-  if (isPromotable) {
-    ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    const bool skipLoadPromotionForBindlessBufferOffset = modMD->compOpt.UseBindlessMode &&
-                                                          modMD->compOpt.HasBufferOffsetArg &&
-                                                          !modMD->compOpt.GreaterThan4GBBufferRequired;
-
-    const bool isLoadPromotionCandidate = I.getOpcode() == Instruction::Load;
-    const bool isBindfulMode = m_targetAddressing == TargetAddressing::BINDFUL;
-    const bool isSlowBindlessLoadPlatform = m_ctx->platform.hasSlowBindlessLoads();
-
-    // Keep MTL and ARL-S on the conservative path: bindless load promotion regresses
-    // performance there.
-    if (skipLoadPromotionForBindlessBufferOffset && isLoadPromotionCandidate &&
-        (isBindfulMode || isSlowBindlessLoadPlatform)) {
-      return;
-    }
-  }
-
   if (isPromotable) {
     InstructionInfo II(&I, Ptr, offset);
     m_promotionMap[baseArgNumber].push_back(II);
@@ -1086,22 +1066,6 @@ void StatelessToStateful::visitCallInst(CallInst &I) {
 
 void StatelessToStateful::visitLoadInst(LoadInst &I) {
   Value *ptr = I.getPointerOperand();
-
-  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-  const bool skipLoadPromotionForBindlessBufferOffset = modMD->compOpt.UseBindlessMode &&
-                                                        modMD->compOpt.HasBufferOffsetArg &&
-                                                        !modMD->compOpt.GreaterThan4GBBufferRequired;
-
-  // Skip only bindful a32 loads, and bindless loads on MTL and ARL-S, in
-  // bindless+buffer_offset no-large mode.
-  const bool isBindfulMode = m_targetAddressing == TargetAddressing::BINDFUL;
-  const bool isSlowBindlessLoadPlatform = m_ctx->platform.hasSlowBindlessLoads();
-
-  if (skipLoadPromotionForBindlessBufferOffset && pointerIsFromKernelArgument(*ptr) &&
-      (isBindfulMode || isSlowBindlessLoadPlatform)) {
-    return;
-  }
-
   addToPromotionMap(I, ptr, I.getAlign());
 
   // check if there's non-kernel-arg load/store
