@@ -516,7 +516,7 @@ def SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate : ExperimentalExtension
 def SPV_INTEL_device_barrier : ExperimentalExtension<
   "SPV_INTEL_device_barrier",
   [ Capability<"DeviceBarrierINTEL"> ],
-  "https://github.com/intel/llvm/pull/12092"
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_device_barrier.html"
 >;
 
 def SPV_INTEL_rounded_divide_sqrt : ExperimentalExtension<
