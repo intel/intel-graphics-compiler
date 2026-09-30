@@ -335,6 +335,7 @@ private:
   void insertDummyCompactInst();
   void swapSrc1Src2OfMadForCompaction();
   void removeLifetimeOps();
+  void postRACopyPropagation();
   void recomputeBound(std::unordered_set<G4_Declare *> &declares);
 
   void mapOrphans();
@@ -395,6 +396,7 @@ public:
     PI_preRegAlloc,           // always
     PI_regAlloc,              // always
     PI_removeLifetimeOps,     // always
+    PI_postRACopyPropagation,
     PI_removeRedundMov,       // always
     PI_removeEmptyBlocks,     // always
     PI_insertFallThroughJump, // always

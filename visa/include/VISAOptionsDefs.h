@@ -463,6 +463,9 @@ DEF_VISA_OPTION(vISA_DisableSpillCoalescing, ET_BOOL, "-nospillcleanup", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_GRFPostRASpillCodeCleanup, ET_BOOL_TRUE, "-postRAspillCleanup",
                 UNUSED, true)
+DEF_VISA_OPTION(vISA_PostRACopyProp, ET_BOOL, "-noPostRACopyProp",
+                "Disable post-RA local copy propagation of spill cleanup movs",
+                true)
 DEF_VISA_OPTION(vISA_GlobalSendVarSplit, ET_BOOL, "-globalSendVarSplit", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_NoRemat, ET_BOOL, "-noremat", UNUSED, false)
