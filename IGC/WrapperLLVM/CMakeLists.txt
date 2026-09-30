@@ -27,6 +27,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/TargetLibraryInfo.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/TargetTransformInfo.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/LoopAccessAnalysis.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/LPMAABridge.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/DemandedBits.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/CodeGen/CommandFlags.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/MC/MCAsmInfo.h"

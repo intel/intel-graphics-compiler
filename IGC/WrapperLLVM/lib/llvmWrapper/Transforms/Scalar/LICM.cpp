@@ -27,6 +27,8 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPop.hpp"
 
+#include "llvmWrapper/Analysis/LPMAABridge.h"
+#include "llvmWrapper/Analysis/TargetLibraryInfo.h"
 #include "llvmWrapper/Transforms/Scalar/LICM.h"
 #include "llvmWrapper/Transforms/InitializePasses.h"
 #include "Compiler/IGCPassSupport.h"
@@ -34,30 +36,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 
 using namespace llvm;
-#if LLVM_VERSION_MAJOR >= 16
-namespace {
-
-// NPM AA analysis that delegates to the LPM's full AAResults chain
-class LPMAABridge : public AnalysisInfoMixin<LPMAABridge>, public AAResultBase {
-  friend AnalysisInfoMixin<LPMAABridge>;
-  static AnalysisKey Key;
-  AAResults *LPMAResults;
-
-public:
-  using Result = LPMAABridge;
-  explicit LPMAABridge(AAResults *AA) : LPMAResults(AA) {}
-  LPMAABridge(LPMAABridge &&) = default;
-
-  LPMAABridge run(Function &, FunctionAnalysisManager &) { return LPMAABridge(LPMAResults); }
-
-  AliasResult alias(const MemoryLocation &LocA, const MemoryLocation &LocB, AAQueryInfo &, const Instruction *) {
-    return LPMAResults->alias(LocA, LocB);
-  }
-};
-
-AnalysisKey LPMAABridge::Key;
-} // anonymous namespace
-#endif // LLVM_VERSION_MAJOR >= 16
 
 namespace IGCLLVM {
 
@@ -73,10 +51,8 @@ bool LICMLegacyPassWrapper::runOnFunction(Function &F) {
     return false;
 
   // Inject IGC's AddressSpaceAAResult into the NPM FAM.
-  // PassBuilder only registers standard LLVM AAs. Pre-register
-  // a custom AAManager with the LPM's full chain before registerFunctionAnalyses()
-  // so version wins the registration race.
-  AAResults &LPMAResults = getAnalysis<AAResultsWrapperPass>().getAAResults();
+  AAResults ExternalAA(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
+  addExternalAAResults(*this, F, ExternalAA);
 
   // Skip non-simplified loops (indirectbr, irreducible CFG).
   // FunctionToLoopPassAdaptor runs verifyLoop() before each pass, but these
@@ -94,14 +70,7 @@ bool LICMLegacyPassWrapper::runOnFunction(Function &F) {
   ModuleAnalysisManager MAM;
   PassBuilder PB(nullptr, PipelineTuningOptions(), std::nullopt, &PIC);
 
-  // Pre-register bridge analysis and custom AAManager before
-  // registerFunctionAnalyses().
-  FAM.registerPass([&LPMAResults] { return LPMAABridge(&LPMAResults); });
-  {
-    AAManager CustomAA = PB.buildDefaultAAPipeline();
-    CustomAA.registerFunctionAnalysis<LPMAABridge>();
-    FAM.registerPass([AA = std::move(CustomAA)]() mutable { return std::move(AA); });
-  }
+  registerLPMAAChain(FAM, PB, ExternalAA);
 
   PB.registerModuleAnalyses(MAM);
   PB.registerCGSCCAnalyses(CGAM);
@@ -126,6 +95,7 @@ void LICMLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addPreserved<DominatorTreeWrapperPass>();
   AU.addPreserved<LoopInfoWrapperPass>();
   AU.addRequired<TargetLibraryInfoWrapperPass>();
+  AU.addUsedIfAvailable<ExternalAAWrapperPass>();
   AU.addRequired<MemorySSAWrapperPass>();
   AU.addPreserved<MemorySSAWrapperPass>();
   AU.addRequired<TargetTransformInfoWrapperPass>();

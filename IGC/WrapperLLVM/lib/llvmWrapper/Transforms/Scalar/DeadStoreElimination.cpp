@@ -17,6 +17,8 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPop.hpp"
 
+#include "llvmWrapper/Analysis/LPMAABridge.h"
+#include "llvmWrapper/Analysis/TargetLibraryInfo.h"
 #include "llvmWrapper/Transforms/Scalar/DeadStoreElimination.h"
 #include "llvmWrapper/Transforms/InitializePasses.h"
 #include "Compiler/IGCPassSupport.h"
@@ -32,11 +34,19 @@ DSELegacyPassWrapper::DSELegacyPassWrapper() : FunctionPass(ID) {
 bool DSELegacyPassWrapper::runOnFunction(Function &F) {
   if (skipFunction(F))
     return false;
+#if LLVM_VERSION_MAJOR >= 16
+  // Without IGC's AddressSpaceAA, a global load between two SLM stores is MayAlias and blocks DSE.
+  AAResults ExternalAA(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
+  addExternalAAResults(*this, F, ExternalAA);
+#endif
   LoopAnalysisManager LAM;
   FunctionAnalysisManager FAM;
   CGSCCAnalysisManager CGAM;
   ModuleAnalysisManager MAM;
   PassBuilder PB;
+#if LLVM_VERSION_MAJOR >= 16
+  registerLPMAAChain(FAM, PB, ExternalAA);
+#endif
   PB.registerModuleAnalyses(MAM);
   PB.registerCGSCCAnalyses(CGAM);
   PB.registerFunctionAnalyses(FAM);
@@ -53,6 +63,7 @@ void DSELegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesCFG();
   AU.addRequired<AAResultsWrapperPass>();
   AU.addRequired<TargetLibraryInfoWrapperPass>();
+  AU.addUsedIfAvailable<ExternalAAWrapperPass>();
   AU.addPreserved<GlobalsAAWrapperPass>();
   AU.addRequired<DominatorTreeWrapperPass>();
   AU.addPreserved<DominatorTreeWrapperPass>();
