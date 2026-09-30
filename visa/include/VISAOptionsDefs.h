@@ -189,6 +189,7 @@ DEF_VISA_OPTION(vISA_ifCvtPartialConvertibleMaxInsts, ET_INT32,
                 "Max instructions for partial if-conversion", 3)
 DEF_VISA_OPTION(vISA_ifCvtPartialConvert, ET_BOOL_TRUE, "-ifcvtpartial",
                 UNUSED, true)
+DEF_VISA_OPTION(vISA_ifCvtSendFirst, ET_BOOL, "-ifcvtSendFirst", UNUSED, false)
 DEF_VISA_OPTION(vISA_AutoGRFSelection, ET_BOOL_TRUE, "-autoGRFSelection",
                 "Enable compiler heuristics for GRF selection", false)
 DEF_VISA_OPTION(

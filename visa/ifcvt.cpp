@@ -68,6 +68,8 @@ class IfConverter {
   FlowGraph &fg;
   unsigned FullyConvertibleMaxInsts;
   unsigned PartialConvertibleMaxInsts;
+  // -ifcvtSendFirst. Off by default; the merge order is unchanged then.
+  bool SendFirst;
 
   // getSinglePredecessor - Get the single predecessor or null
   // otherwise.
@@ -474,6 +476,9 @@ class IfConverter {
 
   void fullConvert(IfConvertible &);
   void partialConvert(IfConvertible &);
+  bool fullConvertSendFirst(IfConvertible &IC, INST_LIST_ITER pos, bool isGoto,
+                            bool doTailMerging,
+                            bool needReversePredicateForGoto);
 
 public:
   IfConverter(FlowGraph &g) : fg(g) {
@@ -481,6 +486,7 @@ public:
         fg.builder->getuint32Option(vISA_ifCvtFullyConvertibleMaxInsts);
     PartialConvertibleMaxInsts =
         fg.builder->getuint32Option(vISA_ifCvtPartialConvertibleMaxInsts);
+    SendFirst = fg.builder->getOption(vISA_ifCvtSendFirst);
   }
 
   void analyze(std::vector<IfConvertible> &);
@@ -524,6 +530,118 @@ void IfConverter::analyze(std::vector<IfConvertible> &list) {
   }
 }
 
+/// fullConvertSendFirst - Do the whole FullConvert for a diamond, but merge
+/// the arm holding the send first, so the send issues earlier and the other
+/// arm's instructions cover more of its latency. The arms carry complementary
+/// predicates, so the order they are merged in does not change what any lane
+/// computes.
+///
+/// Only applies when
+///  - both arms are present, i.e. a diamond,
+///  - neither arm keeps a branch once the merge has dropped the block
+///    structure instructions; a kept branch has to stay last, so nothing may
+///    be moved past it, and
+///  - exactly one arm has a send and it is the 'else' arm; when the 'if' arm
+///    is the one with the send the default order already puts it first.
+///
+/// Returns false and changes nothing when the shape does not qualify, leaving
+/// the caller to run the default conversion. Enabled by -ifcvtSendFirst.
+bool IfConverter::fullConvertSendFirst(IfConvertible &IC, INST_LIST_ITER pos,
+                                       bool isGoto, bool doTailMerging,
+                                       bool needReversePredicateForGoto) {
+  G4_Predicate &pred = *IC.pred;
+  G4_BB *head = IC.head;
+  G4_BB *tail = IC.tail;
+  G4_BB *s0 = IC.succIf;
+  G4_BB *s1 = IC.succElse;
+
+  if (!s1)
+    return false;
+
+  // Instructions the conversion does not carry into head: the label and the
+  // block structure instructions. Mirrors the skip rules of the default merge
+  // in fullConvert(); 'isGoto && s1' there is just 'isGoto' here.
+  auto isDropped = [&](G4_INST *I, G4_BB *BB, bool isElseArm) {
+    G4_opcode op = I->opcode();
+    if (op == G4_label)
+      return true;
+    if (isElseArm)
+      return op == G4_join || (doTailMerging && op == G4_goto);
+    if (isGoto)
+      return op == G4_goto || isFlagClearingFollowedByGoto(I, BB);
+    return op == G4_else || (doTailMerging && op == G4_goto);
+  };
+
+  auto scan = [&](G4_BB *BB, bool isElseArm, bool &hasSend, bool &hasBranch) {
+    hasSend = false;
+    hasBranch = false;
+    for (G4_INST *I : *BB) {
+      if (isDropped(I, BB, isElseArm))
+        continue;
+      if (I->isSend())
+        hasSend = true;
+      if (I->isFlowControl())
+        hasBranch = true;
+    }
+  };
+
+  bool s0HasSend = false, s0HasBranch = false;
+  bool s1HasSend = false, s1HasBranch = false;
+  scan(s0, /*isElseArm=*/false, s0HasSend, s0HasBranch);
+  scan(s1, /*isElseArm=*/true, s1HasSend, s1HasBranch);
+  if (s0HasBranch || s1HasBranch || !s1HasSend || s0HasSend)
+    return false;
+
+  // Predicate every instruction the conversion keeps and move it into head.
+  auto mergeArm = [&](G4_BB *BB, bool isElseArm, bool reversePred) {
+    for (/* EMPTY */; !BB->empty(); BB->pop_front()) {
+      G4_INST *I = BB->front();
+      G4_opcode op = I->opcode();
+      if (isDropped(I, BB, isElseArm))
+        continue;
+      /* Predicate instructions if it's not goto-style or it's not
+       * neither goto nor its flag clearing instruction */
+      if (!isGoto || !(op == G4_goto || isFlagClearingFollowedByGoto(I, BB))) {
+        // Negative predicate instructions if needed.
+        if (reversePred) {
+          G4_Predicate *negPred = fg.builder->createPredicate(pred);
+          reversePredicate(negPred);
+          I->setPredicate(negPred);
+        } else {
+          I->setPredicate(fg.builder->createPredicate(pred));
+        }
+      }
+      head->insertBefore(pos, I);
+    }
+    BB->markEmpty(fg.builder);
+  };
+
+  // Each arm keeps the polarity it would have had in the default order.
+  mergeArm(s1, /*isElseArm=*/true, !needReversePredicateForGoto);
+  mergeArm(s0, /*isElseArm=*/false, needReversePredicateForGoto);
+
+  // From here on this mirrors the tail of fullConvert(); keep the two in sync.
+
+  // Remove 'if' instruction in head.
+  head->erase(pos);
+
+  if (!doTailMerging)
+    return true;
+
+  // Remove 'label' and 'endif'/'join' instructions in tail.
+  vISA_ASSERT(tail->front()->opcode() == G4_label,
+              "BB is not started with 'label'!");
+  tail->pop_front();
+  vISA_ASSERT(tail->front()->opcode() == G4_endif ||
+                  tail->front()->opcode() == G4_join,
+              "Convertible if is not ended with 'endif'!");
+  tail->pop_front();
+  // Merge head and tail to get more code scheduling chance.
+  head->splice(head->end(), tail);
+  tail->markEmpty(fg.builder);
+  return true;
+}
+
 void IfConverter::fullConvert(IfConvertible &IC) {
   G4_Predicate &pred = *IC.pred;
   G4_BB *head = IC.head;
@@ -542,6 +660,14 @@ void IfConverter::fullConvert(IfConvertible &IC) {
 
   // forward goto's behavior is platform dependent
   bool needReversePredicateForGoto = (isGoto && fg.builder->gotoJumpOnTrue());
+
+  // -ifcvtSendFirst: for a qualifying diamond the whole conversion is done
+  // there, with the arm holding the send merged first. Everything below is
+  // the default order and is left untouched.
+  if (SendFirst && fullConvertSendFirst(IC, pos, isGoto, doTailMerging,
+                                        needReversePredicateForGoto))
+    return;
+
   // Merge predicated 'if' into header.
   for (/* EMPTY */; !s0->empty(); s0->pop_front()) {
     auto I = s0->front();
