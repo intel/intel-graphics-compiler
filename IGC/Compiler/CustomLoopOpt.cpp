@@ -8,6 +8,8 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/DenseMap.h>
+#include <llvm/ADT/SmallPtrSet.h>
+#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/LoopUtils.h>
@@ -1032,6 +1034,7 @@ public:
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const {
     AU.addPreservedID(LCSSAID);
     AU.addRequired<llvm::LoopInfoWrapperPass>();
+    AU.addRequired<llvm::DominatorTreeWrapperPass>();
   }
 
   bool runOnFunction(Function &F);
@@ -1053,6 +1056,7 @@ public:
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(SpecialCasesDisableLICM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_END(SpecialCasesDisableLICM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char SpecialCasesDisableLICM::ID = 0;
@@ -1122,7 +1126,6 @@ bool SpecialCasesDisableLICM::LoopHasInvariantSwitchDispatch(const Loop &L) {
         llvm::any_of(SeenICMP, [Cmp](const ICmpInst *I) { return I->isIdenticalTo(Cmp); })) {
       continue;
     }
-    SeenICMP.push_back(Cmp);
     Value *LHS = Cmp->getOperand(0);
     Value *RHS = Cmp->getOperand(1);
 
@@ -1133,9 +1136,56 @@ bool SpecialCasesDisableLICM::LoopHasInvariantSwitchDispatch(const Loop &L) {
     if (!isa<ConstantInt>(RHS) || !L.isLoopInvariant(LHS)) {
       continue;
     }
+    SeenICMP.push_back(Cmp);
     ++InvariantBranchCounts[LHS];
   }
-  return llvm::any_of(InvariantBranchCounts, [](const auto &Entry) { return Entry.second >= MIN_DISPATCH_BRANCHES; });
+  if (!llvm::any_of(InvariantBranchCounts, [](const auto &Entry) { return Entry.second >= MIN_DISPATCH_BRANCHES; }) ||
+      !L.getLoopLatch()) {
+    return false;
+  }
+
+  constexpr unsigned MIN_HOISTABLE_INSTRUCTIONS = 32;
+
+  SmallPtrSet<Value *, 32> SeenInvariantInstr;
+  auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  for (BasicBlock *BB : L.blocks()) {
+    if (LI.getLoopFor(BB) != &L || DT.dominates(BB, L.getLoopLatch()))
+      continue;
+
+    SeenInvariantInstr.clear();
+    unsigned HoistableCount = 0;
+    for (Instruction &I : *BB) {
+
+      // Don't count debug instructions to avoid unnecessary differences between builds.
+      // Ignore other pseudo instructions, as we are interested in the approximate amount of hoistable instructions
+      // only.
+      if (IGCLLVM::isDebugOrPseudoInst(I) || I.isLifetimeStartOrEnd() || I.isDroppable())
+        continue;
+
+      if (isa<PHINode>(I) || I.isTerminator() || I.mayReadOrWriteMemory() || !isSafeToSpeculativelyExecute(&I))
+        continue;
+      // Check if all operands are either loop-invariant or are the result of a invariant instruction, so transitively
+      // invariant
+      if (!llvm::all_of(I.operands(), [&](Value *V) { return L.isLoopInvariant(V) || SeenInvariantInstr.contains(V); }))
+        continue;
+      SeenInvariantInstr.insert(&I);
+      // Values only feeding droppable users (e.g. llvm.assume) are dead in codegen.
+      if (I.hasNUndroppableUsesOrMore(1))
+        ++HoistableCount;
+    }
+    if (HoistableCount < MIN_HOISTABLE_INSTRUCTIONS)
+      continue;
+
+    for (ICmpInst *Cmp : SeenICMP) {
+      Value *Dispatch = Cmp->getOperand(0);
+      if (isa<ConstantInt>(Dispatch))
+        Dispatch = Cmp->getOperand(1);
+      if (InvariantBranchCounts.lookup(Dispatch) >= MIN_DISPATCH_BRANCHES && DT.dominates(Cmp->getParent(), BB))
+        return true;
+    }
+  }
+  return false;
 }
 
 bool SpecialCasesDisableLICM::LoopHasLoadFromLocalAddressSpace(const Loop &L) {
