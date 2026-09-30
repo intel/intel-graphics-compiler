@@ -965,7 +965,7 @@ public:
     auto StartIdx =
         GetSignConstant(UseInst->getOperand(RdIndex)) * vc::ByteBits;
     auto ElSizeInBits = vc::getTypeSize(VTy->getElementType(), &DL).inBits();
-    IGC_ASSERT(Width);
+    IGC_ASSERT_EXIT(Width);
     unsigned NumElements = VTy->getNumElements() / Width;
     OffsetsVector Offsets;
 
