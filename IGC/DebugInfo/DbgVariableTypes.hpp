@@ -161,4 +161,15 @@ inline void findDbgUsers(llvm::SmallVectorImpl<DbgVarInstEntry *> &Users, llvm::
 #endif
 }
 
+// Same as findDbgUsers, restricted to dbg.value.
+inline void findDbgValues(llvm::SmallVectorImpl<DbgVarInstEntry *> &Values, llvm::Value *V) {
+#if LLVM_VERSION_MAJOR >= 22
+  llvm::findDbgValues(V, Values);
+#else
+  llvm::SmallVector<llvm::DbgValueInst *, 1> DVIs;
+  llvm::findDbgValues(DVIs, V);
+  Values.append(DVIs.begin(), DVIs.end());
+#endif
+}
+
 } // namespace IGC

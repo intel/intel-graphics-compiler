@@ -38,6 +38,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CustomUnsafeOptPass.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/IGCPassSupport.h"
+#include "DebugInfo/DbgVariableTypes.hpp"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
@@ -1061,25 +1062,14 @@ bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator &I) {
               const DebugLoc &DL = NewfmulInst->getDebugLoc();
               fsubInstr->setDebugLoc(DL);
               auto *Val = static_cast<Value *>(fmulInst);
-#if LLVM_VERSION_MAJOR >= 22
-              SmallVector<DbgVariableRecord *, 1> DbgValues;
-              llvm::findDbgValues(Val, DbgValues);
-              for (auto DV : DbgValues) {
-                DIExpression *OldExpr = DV->getExpression();
-                DIExpression *NewExpr =
-                    DIExpression::append(OldExpr, {dwarf::DW_OP_constu, 0, dwarf::DW_OP_swap, dwarf::DW_OP_minus});
-                DV->setExpression(NewExpr);
-              }
-#else
-              SmallVector<DbgValueInst *, 1> DbgValues;
-              llvm::findDbgValues(DbgValues, Val);
+              SmallVector<IGC::DbgVarInstEntry *, 1> DbgValues;
+              IGC::findDbgValues(DbgValues, Val);
               for (auto DV : DbgValues) {
                 DIExpression *OldExpr = DV->getExpression();
                 DIExpression *NewExpr =
                     DIExpression::append(OldExpr, {dwarf::DW_OP_constu, 0, dwarf::DW_OP_swap, dwarf::DW_OP_minus});
                 IGCLLVM::setExpression(DV, NewExpr);
               }
-#endif
             }
           }
         }

@@ -62,6 +62,7 @@ cmp+sel to avoid expensive VxH mov.
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include "DebugInfo/DbgVariableTypes.hpp"
 #include "common/IGCConstantFolder.h"
 #include "common/debug/DebugMacros.hpp"
 #include "common/LLVMWarningsPush.hpp"
@@ -222,13 +223,8 @@ void CustomSafeOptPass::visitXor(Instruction &XorInstr) {
 
   // DIExpression in debug variable instructions must be extended with additional DWARF opcodes:
   // DW_OP_constu 1, DW_OP_xor, DW_OP_stack_value
-#if LLVM_VERSION_MAJOR >= 22
-  SmallVector<DbgVariableRecord *, 1> DbgValues;
-  llvm::findDbgValues(ICmpInstr, DbgValues);
-#else
-  SmallVector<DbgValueInst *, 1> DbgValues;
-  llvm::findDbgValues(DbgValues, ICmpInstr);
-#endif
+  SmallVector<IGC::DbgVarInstEntry *, 1> DbgValues;
+  IGC::findDbgValues(DbgValues, ICmpInstr);
   for (auto DV : DbgValues) {
     DIExpression *OldExpr = DV->getExpression();
     DIExpression *NewExpr =
@@ -290,13 +286,8 @@ void CustomSafeOptPass::visitAnd(BinaryOperator &I) {
   // DW_OP_constu 1, DW_OP_xor, DW_OP_stack_value
   // Required whether or not OrInst folded to a constant.
   auto *Val = static_cast<Value *>(&I);
-#if LLVM_VERSION_MAJOR >= 22
-  SmallVector<DbgVariableRecord *, 1> DbgValues;
-  llvm::findDbgValues(Val, DbgValues);
-#else
-  SmallVector<DbgValueInst *, 1> DbgValues;
-  llvm::findDbgValues(DbgValues, Val);
-#endif
+  SmallVector<IGC::DbgVarInstEntry *, 1> DbgValues;
+  IGC::findDbgValues(DbgValues, Val);
   for (auto DV : DbgValues) {
     DIExpression *OldExpr = DV->getExpression();
     DIExpression *NewExpr =
