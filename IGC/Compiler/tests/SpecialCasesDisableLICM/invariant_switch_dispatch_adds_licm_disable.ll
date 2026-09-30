@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2025 Intel Corporation
+; Copyright (C) 2025-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -17,11 +17,10 @@
 
 ; CHECK-LABEL: @test_invariant_switch_dispatch(
 ; CHECK: br i1 %exit_cond, label %exit, label %header, !llvm.loop !0
-
 ; CHECK: !0 = distinct !{!0, !1}
 ; CHECK: !1 = !{!"llvm.licm.disable"}
 
-define spir_kernel void @test_invariant_switch_dispatch(i32 %dispatch_val) {
+define spir_kernel void @test_invariant_switch_dispatch(i32 %dispatch_val, float %input, ptr addrspace(1) %output) {
 preheader:
   br label %header
 
@@ -90,6 +89,39 @@ dispatch14:
   br i1 %c14, label %arm, label %latch
 
 arm:
+  %v0 = fmul float %input, 2.000000e+00
+  %v1 = fmul float %v0, 2.000000e+00
+  %v2 = fmul float %v1, 2.000000e+00
+  %v3 = fmul float %v2, 2.000000e+00
+  %v4 = fmul float %v3, 2.000000e+00
+  %v5 = fmul float %v4, 2.000000e+00
+  %v6 = fmul float %v5, 2.000000e+00
+  %v7 = fmul float %v6, 2.000000e+00
+  %v8 = fmul float %v7, 2.000000e+00
+  %v9 = fmul float %v8, 2.000000e+00
+  %v10 = fmul float %v9, 2.000000e+00
+  %v11 = fmul float %v10, 2.000000e+00
+  %v12 = fmul float %v11, 2.000000e+00
+  %v13 = fmul float %v12, 2.000000e+00
+  %v14 = fmul float %v13, 2.000000e+00
+  %v15 = fmul float %v14, 2.000000e+00
+  %v16 = fmul float %v15, 2.000000e+00
+  %v17 = fmul float %v16, 2.000000e+00
+  %v18 = fmul float %v17, 2.000000e+00
+  %v19 = fmul float %v18, 2.000000e+00
+  %v20 = fmul float %v19, 2.000000e+00
+  %v21 = fmul float %v20, 2.000000e+00
+  %v22 = fmul float %v21, 2.000000e+00
+  %v23 = fmul float %v22, 2.000000e+00
+  %v24 = fmul float %v23, 2.000000e+00
+  %v25 = fmul float %v24, 2.000000e+00
+  %v26 = fmul float %v25, 2.000000e+00
+  %v27 = fmul float %v26, 2.000000e+00
+  %v28 = fmul float %v27, 2.000000e+00
+  %v29 = fmul float %v28, 2.000000e+00
+  %v30 = fmul float %v29, 2.000000e+00
+  %v31 = fmul float %v30, 2.000000e+00
+  store float %v31, ptr addrspace(1) %output, align 4
   br label %latch
 
 latch:
