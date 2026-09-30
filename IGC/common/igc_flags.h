@@ -640,7 +640,7 @@ DECLARE_IGC_REGKEY(bool, EnableGEPLSR, true, "Enables GEP Loop Strength Reductio
 DECLARE_IGC_REGKEY(bool, RunGEPLSRAfterLICM, false, "Runs GEP Loop Strength Reduction pass after first LICM", true)
 DECLARE_IGC_REGKEY(DWORD, GEPLSRThresholdRatio, 100,
                    "Ratio for register pressure threshold in GEP Loop Strength Reduction pass", true)
-DECLARE_IGC_REGKEY(bool, EnableLICMInvariantSwitchDispatchDetection, false,
+DECLARE_IGC_REGKEY(bool, EnableLICMInvariantSwitchDispatchDetection, true,
                    "Enable detection of invariant switch dispatch in LICM.", true)
 DECLARE_IGC_REGKEY(bool, EnableGEPLSRToPreheader, true,
                    "Enables reduction to loop's preheader in GEP Loop Strength Reduction pass", true)
