@@ -4223,7 +4223,12 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst) {
   IGCConstantFolder constantFolder;
   Constant *C = nullptr;
   if (inst) {
-    Constant *C0 = dyn_cast<Constant>(inst->getOperand(0));
+    // IGCConstantFolder casts to ConstantInt/ConstantFP, so skip other constants (e.g. ConstantExpr).
+    auto getFoldableOperand = [inst](unsigned idx) -> Constant * {
+      Value *V = inst->getOperand(idx);
+      return isa<ConstantInt, ConstantFP, UndefValue>(V) ? cast<Constant>(V) : nullptr;
+    };
+    Constant *C0 = getFoldableOperand(0);
     EOPCODE igcop = GetOpCode(inst);
 
     switch (igcop) {
@@ -4285,26 +4290,28 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst) {
     case llvm_f32tof16_rtz: {
       if (C0) {
         C = constantFolder.CreateFPTrunc(C0, Type::getHalfTy(inst->getContext()), llvm::APFloatBase::rmTowardZero);
+        if (!C)
+          break;
         C = constantFolder.CreateBitCast(C, Type::getInt16Ty(inst->getContext()));
         C = constantFolder.CreateZExtOrBitCast(C, Type::getInt32Ty(inst->getContext()));
         C = constantFolder.CreateBitCast(C, inst->getType());
       }
     } break;
     case llvm_fadd_rtz: {
-      Constant *C1 = dyn_cast<Constant>(inst->getOperand(1));
+      Constant *C1 = getFoldableOperand(1);
       if (C0 && C1) {
         C = constantFolder.CreateFAdd(C0, C1, llvm::APFloatBase::rmTowardZero);
       }
     } break;
     case llvm_fmul_rtz: {
-      Constant *C1 = dyn_cast<Constant>(inst->getOperand(1));
+      Constant *C1 = getFoldableOperand(1);
       if (C0 && C1) {
         C = constantFolder.CreateFMul(C0, C1, llvm::APFloatBase::rmTowardZero);
       }
     } break;
     case llvm_ubfe: {
-      Constant *C1 = dyn_cast<Constant>(inst->getOperand(1));
-      Constant *C2 = dyn_cast<Constant>(inst->getOperand(2));
+      Constant *C1 = getFoldableOperand(1);
+      Constant *C2 = getFoldableOperand(2);
       if (C0 && IGCLLVM::Constant::isNullValue(C0)) {
         C = llvm::ConstantInt::get(inst->getType(), 0);
       } else if (C0 && C1 && C2) {
@@ -4312,8 +4319,8 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst) {
       }
     } break;
     case llvm_ibfe: {
-      Constant *C1 = dyn_cast<Constant>(inst->getOperand(1));
-      Constant *C2 = dyn_cast<Constant>(inst->getOperand(2));
+      Constant *C1 = getFoldableOperand(1);
+      Constant *C2 = getFoldableOperand(2);
       if (C0 && IGCLLVM::Constant::isNullValue(C0)) {
         C = llvm::ConstantInt::get(inst->getType(), 0);
       } else if (C0 && C1 && C2) {
@@ -4354,9 +4361,9 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst) {
       }
     } break;
     case llvm_bfi: {
-      Constant *C1 = dyn_cast<Constant>(inst->getOperand(1));
-      Constant *C2 = dyn_cast<Constant>(inst->getOperand(2));
-      Constant *C3 = dyn_cast<Constant>(inst->getOperand(3));
+      Constant *C1 = getFoldableOperand(1);
+      Constant *C2 = getFoldableOperand(2);
+      Constant *C3 = getFoldableOperand(3);
       if (C0 && IGCLLVM::Constant::isNullValue(C0) && C3) {
         C = C3;
       } else if (C0 && C1 && C2 && C3) {

@@ -84,7 +84,7 @@ define i32 @test_bfrev_const() {
 ; CHECK-NOT:   @llvm.genx.GenISA.bfrev
 ; CHECK:       ret i32
 ;
-  %r = call i32 @llvm.genx.GenISA.bfrev.i32(i32 1)
+  %r = call i32 @llvm.genx.GenISA.bfrev(i32 1)
   ret i32 %r
 }
 
@@ -93,7 +93,7 @@ define i32 @test_bfrev_const() {
 define i32 @test_bfrev_non_constant(i32 %x) {
 ; CHECK-LABEL: @test_bfrev_non_constant(
 ; CHECK:       call i32 @llvm.genx.GenISA.bfrev
-  %result = call i32 @llvm.genx.GenISA.bfrev.i32(i32 %x)
+  %result = call i32 @llvm.genx.GenISA.bfrev(i32 %x)
   ret i32 %result
 }
 
@@ -119,9 +119,57 @@ define i32 @test_fbl_const() {
   ret i32 %r
 }
 
+; ConstantExpr operands are not folded.
+
+@tbl = addrspace(2) constant [4 x i32] [i32 1, i32 2, i32 3, i32 4]
+
+define i32 @test_fbl_constexpr() {
+; CHECK-LABEL: @test_fbl_constexpr(
+; CHECK:       call i32 @llvm.genx.GenISA.firstbitLo(i32 ptrtoint
+  %r = call i32 @llvm.genx.GenISA.firstbitLo(i32 ptrtoint (ptr addrspace(2) @tbl to i32))
+  ret i32 %r
+}
+
+define i32 @test_ubfe_constexpr() {
+; CHECK-LABEL: @test_ubfe_constexpr(
+; CHECK:       call i32 @llvm.genx.GenISA.ubfe(i32 3, i32 1, i32 ptrtoint
+  %r = call i32 @llvm.genx.GenISA.ubfe(i32 3, i32 1, i32 ptrtoint (ptr addrspace(2) @tbl to i32))
+  ret i32 %r
+}
+
+define i32 @test_bfrev_constexpr() {
+; CHECK-LABEL: @test_bfrev_constexpr(
+; CHECK:       call i32 @llvm.genx.GenISA.bfrev(i32 ptrtoint
+  %r = call i32 @llvm.genx.GenISA.bfrev(i32 ptrtoint (ptr addrspace(2) @tbl to i32))
+  ret i32 %r
+}
+
+define i32 @test_bfi_constexpr_base() {
+; CHECK-LABEL: @test_bfi_constexpr_base(
+; CHECK:       call i32 @llvm.genx.GenISA.bfi(i32 4, i32 8, i32 15, i32 ptrtoint
+  %r = call i32 @llvm.genx.GenISA.bfi(i32 4, i32 8, i32 15, i32 ptrtoint (ptr addrspace(2) @tbl to i32))
+  ret i32 %r
+}
+
+define float @test_fsat_constexpr() {
+; CHECK-LABEL: @test_fsat_constexpr(
+; CHECK:       call float @llvm.genx.GenISA.fsat.f32(float bitcast
+  %r = call float @llvm.genx.GenISA.fsat.f32(float bitcast (i32 ptrtoint (ptr addrspace(2) @tbl to i32) to float))
+  ret float %r
+}
+
+define float @test_f32tof16_rtz_snan() {
+; CHECK-LABEL: @test_f32tof16_rtz_snan(
+; CHECK:       call float @llvm.genx.GenISA.f32tof16.rtz(float
+  %r = call float @llvm.genx.GenISA.f32tof16.rtz(float 0x7FF4000000000000)
+  ret float %r
+}
+
+declare float @llvm.genx.GenISA.f32tof16.rtz(float)
+declare float @llvm.genx.GenISA.fsat.f32(float)
 declare i32 @llvm.genx.GenISA.ubfe(i32, i32, i32)
 declare i32 @llvm.genx.GenISA.ibfe.i32(i32, i32, i32)
 declare i32 @llvm.genx.GenISA.bfi(i32, i32, i32, i32)
-declare i32 @llvm.genx.GenISA.bfrev.i32(i32)
+declare i32 @llvm.genx.GenISA.bfrev(i32)
 declare i32 @llvm.genx.GenISA.firstbitHi(i32)
 declare i32 @llvm.genx.GenISA.firstbitLo(i32)
