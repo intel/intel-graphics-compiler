@@ -1848,7 +1848,11 @@ bool CodeGenPatternMatch::matchWideMul64Pair(Instruction &I) {
 bool CodeGenPatternMatch::MatchAbsNeg(llvm::Instruction &I) {
   struct MovModifierPattern : public Pattern {
     SSource source;
-    virtual void Emit(EmitPass *pass, const DstModifier &modifier) { pass->Mov(source, modifier); }
+    bool useBfloatModifierEmu;
+    void Emit(EmitPass *pass, const DstModifier &modifier) override {
+      useBfloatModifierEmu ? pass->BFAbsNeg(source, modifier) : pass->Mov(source, modifier);
+    }
+    bool supportsSaturate() override { return !useBfloatModifierEmu; }
   };
   [[maybe_unused]] bool match = false;
   e_modifier mod{};
@@ -1856,6 +1860,7 @@ bool CodeGenPatternMatch::MatchAbsNeg(llvm::Instruction &I) {
   if (GetModifier(I, mod, source)) {
     MovModifierPattern *pattern = new (m_allocator) MovModifierPattern();
     pattern->source = GetSource(source, mod, false, IsSourceOfSample(&I));
+    pattern->useBfloatModifierEmu = I.getType()->getScalarType()->isBFloatTy() && !m_Platform.supportsPureBF();
     match = true;
     AddPattern(pattern);
   }
@@ -4688,7 +4693,7 @@ bool CodeGenPatternMatch::MatchFloatingPointSatModifier(llvm::Instruction &I) {
     }
     if (!match) {
       satPattern->pattern = nullptr;
-      satPattern->source = GetSource(source, true, false, IsSourceOfSample(&I));
+      satPattern->source = GetSource(source, !I.getType()->getScalarType()->isBFloatTy(), false, IsSourceOfSample(&I));
       match = true;
     }
     if (isUniform(&I) && source->hasOneUse()) {
