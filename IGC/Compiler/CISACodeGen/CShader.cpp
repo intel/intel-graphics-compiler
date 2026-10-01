@@ -1659,6 +1659,20 @@ uint CShader::GetNbElementAndMask(llvm::Value *value, uint32_t &mask) {
       uint32_t eltTyBytes = CEncoder::GetCISADataTypeSize(visaTy);
       uint32_t nbElement = (uint32_t)divideCeil(numGRFs * getGRFSize(), eltTyBytes);
 
+      // The block geometry only describes how much data the message returns.
+      // To every other consumer the result is still an ordinary per-lane
+      // value, so the variable must also be wide enough for the dispatch
+      // size. An SG16 joint matrix builtin inlined into a SIMD32 kernel
+      // returns a 1x16 d32 block (one GRF) and then feeds it to a SIMD32
+      // store whose payload is two GRFs. In this case we need two GRFs
+      // payload for it.
+      if (!GetIsUniform(value)) {
+        uint32_t perLane = numLanes(m_SIMDSize);
+        if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(inst->getType()))
+          perLane *= (uint32_t)VTy->getNumElements();
+        nbElement = std::max(nbElement, perLane);
+      }
+
       return nbElement;
     }
     default:

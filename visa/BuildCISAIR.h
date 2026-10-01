@@ -122,6 +122,8 @@ public:
 
   std::string GetCriticalMsg() override { return criticalMsg.str(); }
 
+  bool HasCriticalMsg() const { return !criticalMsg.str().empty(); }
+
   bool debugParse() const { return m_options.getOption(vISA_DebugParse); }
 
   int verifyVISAIR();
