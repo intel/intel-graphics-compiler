@@ -388,8 +388,8 @@ SOALayoutChecker::SOALayoutChecker(AllocaInst &allocaToCheck, bool isOCL,
 }
 
 // Reject vector allocas with access not-supported by new SoA algorithm:
-// - access greater than partition size
-// - unaligned access covering partition size or greater
+// - access greater than partition size for vectors
+// - accesses that are not aligned to their size or the partition size
 // - accesses that are not power of two but are smaller then partition
 bool SOALayoutChecker::hasAccessUnsupportedByNewAlgo(bool CheckWideVectors) const {
   llvm::SmallPtrSet<llvm::Value *, 32> Seen;
@@ -435,7 +435,7 @@ bool SOALayoutChecker::hasAccessUnsupportedByNewAlgo(bool CheckWideVectors) cons
       uint64_t AccBytes = pDL->getTypeStoreSize(AccTy);
       if (AccBytes < SOAPartitionBytes && !isPowerOf2_32((uint32_t)AccBytes))
         return true;
-      if (AccBytes >= SOAPartitionBytes && !isPartitionAlignedChain(Ptr))
+      if (!isAlignedChain(Ptr, (AccBytes < SOAPartitionBytes) ? AccBytes : SOAPartitionBytes))
         return true;
       if (CheckWideVectors && AccTy->isVectorTy() && AccBytes > SOAPartitionBytes)
         return true;
@@ -648,18 +648,18 @@ bool SOALayoutChecker::isChunkSpanningType(Type *Ty) const {
 }
 
 // Return true if a dynamic GEP index contributing Idx * Stride bytes provably leaves the running
-// byte offset a multiple of SOAPartitionBytes. Only the trailing zeros of Idx are known, and they
+// byte offset a multiple of given alignment. Only the trailing zeros of Idx are known, and they
 // add to those of the stride, so the product is aligned when the two together cover
-// log2(SOAPartitionBytes).
-bool SOALayoutChecker::isPartitionAlignedDynamicOffset(Value *Idx, uint64_t Stride) const {
-  if (Stride == 0 || !useAggressiveStructSOA() || !isPowerOf2_32(SOAPartitionBytes))
+// log2(TargetAlignment).
+bool SOALayoutChecker::isAlignedDynamicOffset(Value *Idx, uint64_t Stride, uint64_t TargetAlignment) const {
+  if (Stride == 0 || !isPowerOf2_32(TargetAlignment))
     return false;
 
   KnownBits KB = computeKnownBits(Idx, *pDL);
-  return KB.countMinTrailingZeros() + IGCLLVM::countr_zero(Stride) >= Log2_32(SOAPartitionBytes);
+  return KB.countMinTrailingZeros() + IGCLLVM::countr_zero(Stride) >= Log2_32(TargetAlignment);
 }
 
-bool SOALayoutChecker::isPartitionAlignedChain(const Value *Ptr) const {
+bool SOALayoutChecker::isAlignedChain(const Value *Ptr, uint64_t TargetAlignment) const {
   uint64_t ConstBytes = 0;
   while (Ptr != &allocaRef) {
     if (auto *GEP = dyn_cast<GetElementPtrInst>(Ptr)) {
@@ -677,7 +677,7 @@ bool SOALayoutChecker::isPartitionAlignedChain(const Value *Ptr) const {
         // A dynamic index contributes an unknown multiple of its stride, so it keeps the
         // offset partition-aligned when the stride itself is. If it is not,
         // the alignment can still be provable from the index value.
-        if ((Stride % SOAPartitionBytes) != 0 && !isPartitionAlignedDynamicOffset(Idx, Stride))
+        if ((Stride % TargetAlignment) != 0 && !isAlignedDynamicOffset(Idx, Stride, TargetAlignment))
           return false;
       }
       Ptr = GEP->getPointerOperand();
@@ -702,7 +702,7 @@ bool SOALayoutChecker::isPartitionAlignedChain(const Value *Ptr) const {
     // so it can not be assumed aligned.
     return false;
   }
-  return (ConstBytes % SOAPartitionBytes) == 0;
+  return (ConstBytes % TargetAlignment) == 0;
 }
 
 // On the heterogeneous-struct path an i8-typed GEP contributes a raw byte offset to the linearOffset
@@ -723,7 +723,7 @@ bool SOALayoutChecker::isSupportedByteGEP(GetElementPtrInst *GEP) const {
   // A dynamic offset (e.g. a field index scaled by the field size) can only be proven aligned from the
   // value itself. The constant-typed-GEP base it is chained onto contributes an offset getOrGatherInfo
   // already keeps partition-aligned, so proving the dynamic addend aligned is enough.
-  return isPartitionAlignedDynamicOffset(GEP->getOperand(1), /*Stride=*/1);
+  return isAlignedDynamicOffset(GEP->getOperand(1), /*Stride=*/1, /*TargetAlignment=*/SOAPartitionBytes);
 }
 
 // Return true if the byte offsets this GEP can contribute keep the chunk split in TransposePrivMem's

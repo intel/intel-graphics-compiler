@@ -157,11 +157,11 @@ private:
   bool useAggressiveStructSOA() const;
   bool hasAccessUnsupportedByNewAlgo(bool CheckWideVectors) const;
   // Return true if every byte offset \p Ptr can carry relative to the alloca is provably a
-  // multiple of SOAPartitionBytes.
-  bool isPartitionAlignedChain(const llvm::Value *Ptr) const;
+  // multiple of given alignment.
+  bool isAlignedChain(const llvm::Value *Ptr, uint64_t TargetAlignment) const;
   // Return true if a dynamic GEP index contributing \p Idx * \p Stride bytes provably keeps
-  // the running byte offset a multiple of SOAPartitionBytes.
-  bool isPartitionAlignedDynamicOffset(llvm::Value *Idx, uint64_t Stride) const;
+  // the running byte offset a multiple of given alignment.
+  bool isAlignedDynamicOffset(llvm::Value *Idx, uint64_t Stride, uint64_t TargetAlignment) const;
   // ===== end of fields for new algo =====
 
   bool isVectorSOA = true;
