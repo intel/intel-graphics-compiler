@@ -177,6 +177,10 @@ defm : CommonJoined<"ldstcombine-max-storebytes=">, Alias<ldstcombine_max_storeb
 defm ldstcombine_max_loadbytes : CommonSeparate<"ldstcombine_max-loadbytes">;
 defm : CommonJoined<"ldstcombine-max-loadbytes=">, Alias<ldstcombine_max_loadbytes_common>;
 
+// -[cl-intel|ze-opt]-mem-access-throttle
+defm mem_access_throttle : CommonFlag<"mem-access-throttle">,
+  HelpText<"Pause after a store of a value computed from two or more loads, to limit the rate of outgoing writes. CRI only.">;
+
 // }} Backend internal options
 
 // Internal options from source translation {{

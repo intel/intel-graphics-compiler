@@ -126,6 +126,7 @@ void initializeLowerImplicitArgIntrinsicsPass(llvm::PassRegistry &);
 void initializeLowerSIMDSizePass(llvm::PassRegistry &);
 void initializeLowPrecisionOptPass(llvm::PassRegistry &);
 void initializeMarkReadOnlyLoadPass(llvm::PassRegistry &);
+void initializeMemAccessThrottlePass(llvm::PassRegistry &);
 void initializeMetaDataUtilsWrapperInitializerPass(llvm::PassRegistry &);
 void initializeMetaDataUtilsWrapperPass(llvm::PassRegistry &);
 void initializeMatchCommonKernelPatternsPass(llvm::PassRegistry &);

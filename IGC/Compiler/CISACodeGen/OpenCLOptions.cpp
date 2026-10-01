@@ -248,6 +248,10 @@ void InternalOptions::parseOptions(const char *internalOpts) {
     }
   }
 
+  if (internalOptions.hasArg(OPT_mem_access_throttle_common)) {
+    MemAccessThrottle = true;
+  }
+
   if (const llvm::opt::Arg *arg = internalOptions.getLastArg(OPT_ldstcombine_common)) {
     // Valid value: 0|1|2
     llvm::StringRef valStr = arg->getValue();

@@ -1624,6 +1624,13 @@ DECLARE_IGC_REGKEY(bool, PreservePaddingInAggregateArgumentsPass, true, "Preserv
                    ALWAYS)
 
 DECLARE_IGC_GROUP("Performance experiments")
+DECLARE_IGC_REGKEY_ENUM(MemAccessThrottle, -1,
+                        "Pause after a store of a value computed from two or more loads, to limit the rate of "
+                        "outgoing writes (CRI only, see the CRI two-way peer write bandwidth guide)."
+                        "-1 - controlled by the -ze-opt-mem-access-throttle internal option"
+                        " 0 - force disabled"
+                        " 1 - force enabled",
+                        TRIBOOL_OPTIONS, ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, ManageableBarriersMode, 0,
                    "Set the ManageableBarriers mode in which should work"
                    "0 - Mix Mode of simple and dynamic ManageableBarriers"

@@ -108,6 +108,9 @@ public:
   uint32_t MaxStoreBytes = 0; // default
   uint32_t MaxLoadBytes = 0;  // default
 
+  // Overridden by the MemAccessThrottle regkey.
+  bool MemAccessThrottle = false;
+
   uint32_t IntelPrivateMemoryMinimalSizePerThread = 0;
   uint32_t IntelScratchSpacePrivateMemoryMinimalSizePerThread = 0;
 

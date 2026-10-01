@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/LatencyHidingAnalysis.hpp"
 #include "Compiler/CISACodeGen/AddressArithmeticSinking.hpp"
 #include "Compiler/CISACodeGen/StateIndexAddrChainCanonicalize.hpp"
+#include "Compiler/CISACodeGen/MemAccessThrottle.hpp"
 #include "Compiler/CISACodeGen/AtomicOptPass.hpp"
 #include "Compiler/CISACodeGen/BlockMemOpAddrScalarizationPass.hpp"
 #include "Compiler/CISACodeGen/SinkCommonOffsetFromGEP.h"
@@ -849,6 +850,12 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     } else {
       mpm.add(createIGCInstructionCombiningPass());
     }
+  }
+
+  // After MemOpt/LdStCombine so wide accesses are merged, before VectorProcess
+  // splits them again.
+  if (doMemAccessThrottle(&ctx)) {
+    mpm.add(createMemAccessThrottlePass());
   }
 
   if (IGC_GET_FLAG_VALUE(ExpandNonUniformInsertElementThreshold) > 0) {

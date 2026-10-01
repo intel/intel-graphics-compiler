@@ -139,6 +139,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeLowerGEPForPrivMemPass(Registry);
   initializeLowPrecisionOptPass(Registry);
   initializeMatchCommonKernelPatternsPass(Registry);
+  initializeMemAccessThrottlePass(Registry);
   initializeMetaDataUtilsWrapperInitializerPass(Registry);
   initializeMetaDataUtilsWrapperPass(Registry);
   initializeMemOptPass(Registry);
