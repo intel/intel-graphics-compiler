@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "DiamondChainMergePass.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/Uniformity.h"
 #include "llvm/Analysis/CFG.h"
@@ -297,9 +298,10 @@ static bool hasAnyConvergentInst(BasicBlock *BB) {
 // unconditionally before continuing.  Validated candidates are stored in
 // Candidates for later use by mergeBasicBlocks().
 bool DiamondChainIfElseTracker::findPatterns() {
-  // Group CondBr instructions by their i1 operand.  Iterating the function
-  // in IR order preserves the natural top-down block ordering.
-  DenseMap<Value *, SmallVector<BranchInst *, 8>> CondBrsByValue;
+  // Group CondBr instructions by their i1 operand while preserving the first
+  // time each condition is encountered in function order. MapVector keeps the
+  // insertion order of each condition without DenseMap iteration instability.
+  MapVector<Value *, SmallVector<BranchInst *, 8>> CondBrGroups;
   for (BasicBlock &BB : Func) {
     // Ignore dead blocks: they frequently contain synthetic poison-based
     // branches that are not valid merge candidates.
@@ -312,7 +314,7 @@ bool DiamondChainIfElseTracker::findPatterns() {
       Value *Cond = BI->getCondition();
       if (isInvalidGroupingCond(Cond))
         continue;
-      CondBrsByValue[Cond].push_back(BI);
+      CondBrGroups[Cond].push_back(BI);
     }
   }
 
@@ -332,7 +334,7 @@ bool DiamondChainIfElseTracker::findPatterns() {
     return Swapped;
   };
 
-  for (auto &[CondVal, BrList] : CondBrsByValue) {
+  for (auto &[CondVal, BrList] : CondBrGroups) {
     // Need at least two branches with the same condition to have anything
     // to merge.
     if (BrList.size() < 2)
@@ -1041,9 +1043,9 @@ bool DiamondChainIfElseTracker::verifySingleCandidate(MergeCandidate &C) {
 // would leave an unprocessed block in the middle of the merged sequence,
 // corrupting the CFG.
 void DiamondChainIfElseTracker::verifyCandidates() {
-  // Candidate order is irrelevant for subsequent processing, so remove
-  // rejected entries by replacing them with the last element. This avoids
-  // shifting the tail of the vector for every rejected candidate.
+  // Preserve the discovery order of valid candidates so the final merge loop
+  // can process the tail of the chain first. Rejected entries are compacted
+  // out without reordering the remaining valid candidates.
   size_t I = 0;
   while (I < Candidates.size()) {
     if (verifySingleCandidate(Candidates[I])) {
@@ -1051,8 +1053,8 @@ void DiamondChainIfElseTracker::verifyCandidates() {
       continue;
     }
 
-    if (I + 1 != Candidates.size())
-      Candidates[I] = std::move(Candidates.back());
+    for (size_t J = I + 1; J < Candidates.size(); ++J)
+      Candidates[J - 1] = std::move(Candidates[J]);
     Candidates.pop_back();
   }
 
@@ -1994,8 +1996,9 @@ bool DiamondChainMergePass::runOnFunction(Function &F) {
   Tracker.verifyCandidates();
 
   auto &Candidates = Tracker.getCandidates();
-  size_t I = 0;
-  while (I < Candidates.size()) {
+  size_t I = Candidates.size();
+  while (I > 0) {
+    --I;
     if (Tracker.tryMergeWholeTriangleChain(Candidates[I], BlocksToRemove)) {
       Changed = true;
       if (I + 1 != Candidates.size())
@@ -2003,20 +2006,22 @@ bool DiamondChainMergePass::runOnFunction(Function &F) {
       Candidates.pop_back();
       continue;
     }
-    ++I;
   }
 
+  // Merge each validated candidate into its accumulator blocks, starting from
+  // the tail so earlier triples see already-updated path-local remaps.
   ValueToValueMapTy CumulativeTrueVMap;
   ValueToValueMapTy CumulativeFalseVMap;
-  for (const auto &Candidate : Tracker.getCandidates()) {
+  for (size_t I = Candidates.size(); I > 0; --I) {
+    const auto &Candidate = Candidates[I - 1];
     Changed |= Tracker.cloneAccumulatorTriangleTailBB(Candidate.DstTrue, Candidate.DstFalse, CumulativeTrueVMap,
                                                       CumulativeFalseVMap);
 
     Changed |= Tracker.cloneDstMergeBB(Candidate.DstTrue, Candidate.DstFalse, Candidate.DstMergeBB, CumulativeTrueVMap,
                                        CumulativeFalseVMap, BlocksToRemove);
 
-    for (size_t I = 0; I < Candidate.TrueBlocks.size(); ++I) {
-      bool FlipDst = Candidate.FlipDstForTriple[I];
+    for (size_t J = 0; J < Candidate.TrueBlocks.size(); ++J) {
+      bool FlipDst = Candidate.FlipDstForTriple[J];
 
       BasicBlock *DstForTruePath = FlipDst ? Candidate.DstFalse : Candidate.DstTrue;
       BasicBlock *DstForFalsePath = FlipDst ? Candidate.DstTrue : Candidate.DstFalse;
@@ -2025,8 +2030,8 @@ bool DiamondChainMergePass::runOnFunction(Function &F) {
       ValueToValueMapTy &FalsePathMap = FlipDst ? CumulativeTrueVMap : CumulativeFalseVMap;
 
       Changed |=
-          Tracker.mergeBasicBlocks(DstForTruePath, DstForFalsePath, Candidate.TrueBlocks[I], Candidate.FalseBlocks[I],
-                                   Candidate.MergeBlocks[I], TruePathMap, FalsePathMap, BlocksToRemove);
+          Tracker.mergeBasicBlocks(DstForTruePath, DstForFalsePath, Candidate.TrueBlocks[J], Candidate.FalseBlocks[J],
+                                   Candidate.MergeBlocks[J], TruePathMap, FalsePathMap, BlocksToRemove);
     }
 
     Changed |= Tracker.repairEscapedRegionDefs(Candidate, CumulativeTrueVMap, CumulativeFalseVMap, BlocksToRemove);
