@@ -3652,6 +3652,41 @@ unsigned Augmentation::getByteSizeFromMask(AugmentationMasks type) {
   return 0;
 }
 
+AugmentationMasks
+GlobalRA::adjustAugMaskForSubDcl(const G4_Declare *subDcl,
+                                 AugmentationMasks m) const {
+  unsigned byteSize = 0;
+  switch (m) {
+  case AugmentationMasks::Default16Bit:
+    byteSize = 2;
+    break;
+  case AugmentationMasks::Default32Bit:
+    byteSize = 4;
+    break;
+  case AugmentationMasks::Default64Bit:
+    byteSize = 8;
+    break;
+  default:
+    return m;
+  }
+
+  unsigned simdSize = kernel.getSimdSize();
+  // treat simd32 as simd16 when the program is split in to 2 simd16.
+  if (simdSize == g4::SIMD32 && kernel.getChannelSlicing())
+    simdSize = 16;
+
+  unsigned wrapAround = simdSize * byteSize;
+
+  // The parent's mask asserts that byte i is written by EM bit i/byteSize,
+  // counted from the parent's byte 0. A sub-declare starting at an offset that
+  // is not a multiple of the wrap-around period starts at a non-zero EM bit,
+  // so the inherited label would misdescribe its lane mapping.
+  if (getSubOffset(subDcl) % wrapAround != 0)
+    return AugmentationMasks::NonDefault;
+
+  return m;
+}
+
 bool Augmentation::isDefaultMaskDcl(G4_Declare *dcl, unsigned simdSize,
                                     AugmentationMasks type) {
   // default mask is one where dst's hstride is 1 and

@@ -1911,11 +1911,21 @@ public:
     return getVar(dcl).augMask;
   }
 
+  // An augmentation mask is interpreted relative to the declare's own byte 0
+  // (see Augmentation::isDefaultMaskDcl, which restarts the expected EM bit at
+  // every wrap-around boundary measured from byte 0). A sub-declare therefore
+  // may inherit its parent's mask only when it begins on a wrap-around
+  // boundary. A sub-declare that starts midway through the parent - e.g. bytes
+  // 128-255 of a SIMD32 :q variable, which are written under M16 - describes a
+  // different lane mapping than the label claims, so it must be NonDefault.
+  AugmentationMasks adjustAugMaskForSubDcl(const G4_Declare *subDcl,
+                                           AugmentationMasks m) const;
+
   void setAugmentationMask(const G4_Declare *dcl, AugmentationMasks m) {
     allocVar(dcl).augMask = m;
     if (dcl->getIsSplittedDcl()) {
       for (const G4_Declare *subDcl : getSubDclList(dcl)) {
-        setAugmentationMask(subDcl, m);
+        setAugmentationMask(subDcl, adjustAugMaskForSubDcl(subDcl, m));
       }
     }
   }
