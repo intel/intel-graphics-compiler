@@ -59,6 +59,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "llvmWrapper/IR/Function.h"
 
+#include <algorithm>
 #include <queue>
 
 #define DEBUG_TYPE "genx-propagate-surface-state"
@@ -225,7 +226,14 @@ bool GenXPropagateSurfaceState::runOnModule(Module &M) {
     Fmap.erase(It);
   }
 
+  // Collect the old functions up front: MapOldToNew is a ValueMap keyed by
+  // Function*, so erasing an Old function inside this loop would trigger its
+  // value-handle callback to remove that very entry from MapOldToNew while
+  // we're iterating it, corrupting the iteration and silently skipping an
+  // unrelated entry (leaving it never erased/redirected).
+  SmallVector<Function *, 8> OldFuncs;
   for (auto &&[Old, New] : MapOldToNew) {
+    OldFuncs.push_back(Old);
     for (auto UseIt = Old->use_begin(); UseIt != Old->use_end();) {
       Use &U = *UseIt++;
       auto *CI = cast<CallInst>(U.getUser());
@@ -243,8 +251,9 @@ bool GenXPropagateSurfaceState::runOnModule(Module &M) {
       CI->replaceAllUsesWith(NewCI);
       CI->eraseFromParent();
     }
-    Old->eraseFromParent();
   }
+  for (auto *Old : OldFuncs)
+    Old->eraseFromParent();
 
   return Modify;
 }
