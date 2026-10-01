@@ -1991,7 +1991,9 @@ void OptimizeIR(CodeGenContext *const pContext) {
     // Speculatively cluster the sampler iterations produced by the forced
     // partial unroll of a data-dependent sampler loop (GenTTI UP.Force gate).
     // This runs while the cloned-iteration structure is still recognizable.
-    if (pContext->m_instrTypes.numOfLoop && IGC_IS_FLAG_ENABLED(EnableSamplerLoopSpeculation)) {
+    const bool EnableSamplerLoopSpeculation = IGC_IS_FLAG_ENABLED(EnableSamplerLoopSpeculation) ||
+                                              pContext->getModuleMetaData()->compOpt.EnableSamplerLoopSpeculation;
+    if (pContext->m_instrTypes.numOfLoop && EnableSamplerLoopSpeculation) {
       mpm.add(createSamplerLoopSpeculation());
     }
 

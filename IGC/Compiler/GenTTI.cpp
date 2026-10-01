@@ -543,8 +543,10 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
         }
       }
 
+      const bool SamplerLoopSpeculationEnabled = IGC_IS_FLAG_ENABLED(EnableSamplerLoopSpeculation) ||
+                                                 ctx->getModuleMetaData()->compOpt.EnableSamplerLoopSpeculation;
       const bool ForceSamplerLoopUnroll =
-          IGC_IS_FLAG_ENABLED(EnableSamplerLoopSpeculation) && SamplerCount == 1 && !HasDisallowedSamplerLoopSideEffect;
+          SamplerLoopSpeculationEnabled && SamplerCount == 1 && !HasDisallowedSamplerLoopSideEffect;
 
       // Runtime unroll it.
       if (((!HasCall && !HasStore && MayHasLoadInHeaderOnly) || ForceSamplerLoopUnroll) && Count < 100) {

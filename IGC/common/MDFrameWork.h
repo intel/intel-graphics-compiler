@@ -571,6 +571,7 @@ enum class ShaderTypeMD
         unsigned VISASpillAllowed                       = 0;
         unsigned ConstantCoalescingMaxBBDepthDelta      = 0;
         unsigned ConstantCoalescingDepthCheckMinBytes   = 0;
+        bool EnableSamplerLoopSpeculation               = false;
     };
 
     enum class ThreadIDLayout
