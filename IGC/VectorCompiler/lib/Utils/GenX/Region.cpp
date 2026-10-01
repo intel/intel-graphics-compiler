@@ -624,7 +624,7 @@ Value *CMRegion::getStartIdx(const Twine &Name, Instruction *InsertBefore,
                              const DebugLoc &DL) {
   IntegerType *I16Ty = Type::getInt16Ty(InsertBefore->getContext());
   if (!Indirect)
-    return ConstantInt::get(I16Ty, Offset);
+    return ConstantInt::get(I16Ty, Offset, /*IsSigned=*/true);
   // Deal with indirect (variable index) region.
   if (auto VT = dyn_cast<IGCLLVM::FixedVectorType>(Indirect->getType())) {
     if (VT->getNumElements() != NumElements) {
@@ -638,7 +638,7 @@ Value *CMRegion::getStartIdx(const Twine &Name, Instruction *InsertBefore,
   }
   Value *Index = Indirect;
   if (Offset) {
-    Constant *OffsetVal = ConstantInt::get(I16Ty, Offset);
+    Constant *OffsetVal = ConstantInt::get(I16Ty, Offset, /*IsSigned=*/true);
     if (auto VT = dyn_cast<IGCLLVM::FixedVectorType>(Indirect->getType()))
       OffsetVal = ConstantVector::getSplat(
           IGCLLVM::getElementCount(VT->getNumElements()), OffsetVal);

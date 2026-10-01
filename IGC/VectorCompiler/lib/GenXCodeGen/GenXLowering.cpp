@@ -2565,8 +2565,12 @@ bool GenXLowering::lowerCast(Instruction *Inst) {
           Inst->getOperand(0), ConstantFP::get(Inst->getType(), OneVal),
           ConstantFP::get(Inst->getType(), 0), Inst->getName(), Inst);
     else
+      // Signed, since OneVal may be -1 (SExt case): unsigned -1 would not fit
+      // narrow destination types and trip ConstantInt::get's
+      // ImplicitTrunc=false default assert on LLVM 23+.
       NewInst = SelectInst::Create(
-          Inst->getOperand(0), ConstantInt::get(Inst->getType(), OneVal),
+          Inst->getOperand(0),
+          ConstantInt::get(Inst->getType(), OneVal, /*IsSigned=*/true),
           ConstantInt::get(Inst->getType(), 0), Inst->getName(), Inst);
     NewInst->setDebugLoc(Inst->getDebugLoc());
     Inst->replaceAllUsesWith(NewInst);

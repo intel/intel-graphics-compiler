@@ -351,7 +351,11 @@ void vc::KernelMetadata::updateArgsMD(InputIt Begin, InputIt End, MDNode *Node,
   auto *I32Ty = Type::getInt32Ty(Ctx);
   SmallVector<Metadata *, 8> NewMD;
   std::transform(Begin, End, std::back_inserter(NewMD), [I32Ty](auto Value) {
-    return ValueAsMetadata::getConstant(ConstantInt::get(I32Ty, Value));
+    // Value may legitimately be -1 (e.g. an unassigned BTI index sentinel);
+    // IsSigned=true accepts that via isIntN instead of hitting LLVM 23's
+    // ImplicitTrunc=false assert on the sign-extended uint64_t.
+    return ValueAsMetadata::getConstant(
+        ConstantInt::get(I32Ty, Value, /*IsSigned=*/true));
   });
   MDNode *NewNode = MDNode::get(Ctx, NewMD);
   Node->replaceOperandWith(NodeOpNo, NewNode);

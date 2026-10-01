@@ -736,9 +736,9 @@ Instruction *GenXCategory::createConversion(Value *V, vc::RegCategory Cat) {
       // a constant offset in an indirect operand at this stage;
       // GenXAddressCommoning sorts that out by adjusting the constant offset in
       // the llvm.genx.convert.addr.
-      return createAddAddr(Input, ConstantInt::get(V->getType(), Offset),
-                           V->getName() + ".addradd", nullptr,
-                           Func->getParent());
+      return createAddAddr(
+          Input, ConstantInt::get(V->getType(), Offset, /*IsSigned=*/true),
+          V->getName() + ".addradd", nullptr, Func->getParent());
     }
   }
   // Normal conversion. If the source is an integer creation intrinsic
