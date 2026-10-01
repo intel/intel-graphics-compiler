@@ -944,6 +944,8 @@ public:
 
   uint32_t getGRFSize() const { return isCoreChildOf(IGFX_XE_HPC_CORE) ? 64 : 32; }
 
+  uint32_t getNumFlagRegisters() const { return isCoreChildOf(IGFX_XE_HPC_CORE) ? 8 : 4; }
+
   uint32_t getMaxNumGRF(ShaderType type) const {
     if (hasEfficient64bEnabled() && isCoreChildOf(IGFX_XE3P_CORE)) {
       return (type == ShaderType::HULL_SHADER) ? 256 : 512;

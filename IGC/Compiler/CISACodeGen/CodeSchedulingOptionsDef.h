@@ -124,6 +124,16 @@ DECLARE_SCHEDULING_OPTION(LimitActiveLargeLoads, 32,
                           "Heuristic: Only allow one large load to be active at a time. "
                           "Value is in i32 elements for SIMD16, internally converted to bytes "
                           "(value * 4) and compared against load byte size. 0=disabled")
+DECLARE_SCHEDULING_OPTION(DeferMasksUntilSelectReady, 1,
+                          "Heuristic: keep a mask (an i1 value whose users are only select conditions, directly or "
+                          "through other masks) off the ready list until one of its selects has its value operands "
+                          "scheduled (0/1)")
+DECLARE_SCHEDULING_OPTION(LimitOpenMasks, 1,
+                          "Heuristic: when scheduled masks with an unscheduled user hold all flag registers except "
+                          "LimitOpenMasksFreeFlags, keep only the ready instructions that complete those users (0/1)")
+DECLARE_SCHEDULING_OPTION(LimitOpenMasksFreeFlags, 2,
+                          "Heuristic: number of flag registers of the dispatch width left to other i1 values by "
+                          "LimitOpenMasks. At least one mask is allowed")
 
 // RP management control options
 DECLARE_SCHEDULING_OPTION(GreedyRPThresholdDelta, 20, "Threshold delta for greedy register pressure scheduling")

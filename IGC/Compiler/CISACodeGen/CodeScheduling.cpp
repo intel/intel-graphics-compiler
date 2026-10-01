@@ -70,6 +70,27 @@ static bool is2dBlockPrefetch(Instruction *I) {
   return false;
 }
 
+// CodeGenPatternMatch::MatchBoolOp emits the first compare operand of an and/or
+// of i1 inside that instruction when the other operand has one use. Such a use
+// reads no flag register of the compare.
+static bool isFoldedCompareUse(const Instruction *Cmp, const User *U) {
+  auto *BO = dyn_cast<BinaryOperator>(U);
+  if (!isa<CmpInst>(Cmp) || !BO || !BO->getType()->isIntegerTy(1) ||
+      (BO->getOpcode() != Instruction::And && BO->getOpcode() != Instruction::Or))
+    return false;
+  for (unsigned i = 0; i < 2; i++)
+    if (isa<CmpInst>(BO->getOperand(i)) && BO->getOperand(1 - i)->hasOneUse())
+      return BO->getOperand(i) == Cmp;
+  return false;
+}
+
+// EmitPass emits an i1 value at its own position, and the value holds a flag
+// register until its last use that does not fold it. A compare that every user
+// folds holds none.
+static bool holdsFlagRegister(const Instruction *I) {
+  return llvm::any_of(I->users(), [&](const User *U) { return !isFoldedCompareUse(I, U); });
+}
+
 struct SchedulingGRFTarget {
   unsigned NumGRF = 0;
   unsigned ThreadsPerEU = 0;
@@ -1739,6 +1760,12 @@ private:
     SmallVector<DPASChainGroup, 4> DPASChainGroups;
     DenseMap<Instruction *, int> DPASToChainIdx; // Inst → index into DPASChains
 
+    // Mask -> the selects whose conditions it computes. A mask is a compare or
+    // an i1 logic instruction of this block whose users are only select
+    // conditions, directly or through other masks. Null when the block has no
+    // mask or the mask heuristics are off. Shared by the copies of the graph.
+    std::shared_ptr<const DenseMap<Instruction *, SmallVector<SelectInst *, 4>>> MaskSelects;
+
     DepGraph() {}
 
     DepGraph(const DepGraph &) = delete;
@@ -2201,6 +2228,42 @@ private:
         }
       }
 
+      // Stage 3. Masks and the selects they compute conditions for. Every user
+      // comes after its operands in the block, so the backward order visits
+      // the users of a value first.
+      if (C[Option::DeferMasksUntilSelectReady] || C[Option::LimitOpenMasks]) {
+        auto Masks = std::make_shared<DenseMap<Instruction *, SmallVector<SelectInst *, 4>>>();
+        for (auto &Node : llvm::reverse(InstNodes)) {
+          Instruction *I = Node.I;
+          if (!I->getType()->isIntegerTy(1) || !isa<CmpInst, BinaryOperator, SelectInst>(I))
+            continue;
+          SmallVector<SelectInst *, 4> Selects;
+          bool IsMask = true;
+          for (User *U : I->users()) {
+            auto *UI = cast<Instruction>(U);
+            auto *SI = dyn_cast<SelectInst>(UI);
+            if (UI->getParent() != BB) {
+              IsMask = false;
+            } else if (SI && SI->getCondition() == I && !SI->getType()->isIntegerTy(1)) {
+              Selects.push_back(SI);
+            } else if (auto It = Masks->find(UI); It != Masks->end()) {
+              Selects.append(It->second.begin(), It->second.end());
+            } else {
+              IsMask = false;
+            }
+            if (!IsMask)
+              break;
+          }
+          if (!IsMask || Selects.empty())
+            continue;
+          llvm::sort(Selects);
+          Selects.erase(std::unique(Selects.begin(), Selects.end()), Selects.end());
+          (*Masks)[I] = std::move(Selects);
+        }
+        if (!Masks->empty())
+          MaskSelects = std::move(Masks);
+      }
+
       if (IGC_GET_FLAG_VALUE(CodeSchedulingDumpLevel) >= VerbosityLevel::High) {
         PrintDumpLevel(VerbosityLevel::High, "Dependency graph dump:\n");
         this->print(*LogStream);
@@ -2246,6 +2309,10 @@ private:
         }
       }
 
+      if (G.MaskSelects) {
+        PrintDump("Masks: " << G.MaskSelects->size() << ", open mask limit: " << getOpenMaskLimit() << "\n");
+      }
+
       IGC_ASSERT(this->VSA->getDestVector(BB->getTerminator()) == nullptr);
     }
 
@@ -2260,7 +2327,7 @@ private:
           AllInstructionsScheduledByRP(S.AllInstructionsScheduledByRP), MaxRegpressure(S.MaxRegpressure),
           RefLiveIntervals(S.RefLiveIntervals), ScheduledInstructions(S.ScheduledInstructions),
           ActiveLargeLoad(S.ActiveLargeLoad), MWDecisions(S.MWDecisions), RPDecisions(S.RPDecisions),
-          ImmediateOverrideDecisions(S.ImmediateOverrideDecisions) {
+          ImmediateOverrideDecisions(S.ImmediateOverrideDecisions), OpenMasks(S.OpenMasks) {
       G.InstNodes.reserve(S.G.InstNodes.size());
       G.DepEdges.reserve(S.G.DepEdges.size());
 
@@ -2298,6 +2365,7 @@ private:
       G.DPASChains = S.G.DPASChains;
       G.DPASChainGroups = S.G.DPASChainGroups;
       G.DPASToChainIdx = S.G.DPASToChainIdx;
+      G.MaskSelects = S.G.MaskSelects;
 
       IGC_ASSERT(VSA->getDestVector(BB->getTerminator()) == nullptr);
     }
@@ -2341,6 +2409,8 @@ private:
 
       ScheduledList.push_back(Node);
       ScheduledInstructions.insert(Node->I);
+      if (G.MaskSelects)
+        updateOpenMasks(Node->I);
       RT.update(Node->I);
       MaxRegpressure = std::max(MaxRegpressure, RT.getCurrentPressure());
       if (RT.isRegpressureCritical()) {
@@ -2486,6 +2556,39 @@ private:
     uint64_t MWDecisions = 0;
     uint64_t RPDecisions = 0;
     uint64_t ImmediateOverrideDecisions = 0;
+
+    // Scheduled masks (G.MaskSelects) with a user that is not scheduled and
+    // does not fold them. Each of them holds a flag register.
+    DenseSet<Instruction *> OpenMasks;
+
+    // LimitOpenMasks: number of open masks from which the instructions that
+    // complete their users come first. 0 is no limit.
+    int getOpenMaskLimit() const {
+      if (!C[Option::LimitOpenMasks])
+        return 0;
+      // A SIMD32 mask takes two 16-bit flag registers.
+      int MaskFlags = static_cast<int>(CTX->platform.getNumFlagRegisters()) / (RT.getSIMD() == 32 ? 2 : 1);
+      return std::max(1, MaskFlags - C[Option::LimitOpenMasksFreeFlags]);
+    }
+
+    // An instruction of this block that is not placed yet. PHIs are not
+    // scheduled.
+    bool isUnscheduled(Value *V) {
+      auto *I = dyn_cast<Instruction>(V);
+      return I && I->getParent() == BB && !isa<PHINode>(I) && !ScheduledInstructions.count(I);
+    }
+
+    void updateOpenMasks(Instruction *I) {
+      for (Value *Op : I->operands()) {
+        auto *OpI = dyn_cast<Instruction>(Op);
+        if (OpI && OpenMasks.count(OpI) && llvm::all_of(OpI->users(), [&](User *U) {
+              return isFoldedCompareUse(OpI, U) || ScheduledInstructions.count(cast<Instruction>(U));
+            }))
+          OpenMasks.erase(OpI);
+      }
+      if (G.MaskSelects->count(I) && holdsFlagRegister(I))
+        OpenMasks.insert(I);
+    }
 
     // Helper: compute load's register footprint in bytes
     int getLoadSizeInBytes(Instruction *I) const {
@@ -2959,6 +3062,71 @@ private:
         return Nodes;
       };
 
+      // A mask is often ready long before the values its selects choose from,
+      // for example when it depends only on block inputs, and MaxWeight gives
+      // it the weight of the select's users. Computed that early, every mask
+      // holds a flag register until its select, and the flag registers spill.
+      // Keep a mask off the ready list until one of its selects has its value
+      // operands scheduled. filterOutNotReadyIcmp and the remat chains do this
+      // only for values with one user; a mask can feed several selects.
+      auto deferMasksUntilSelectReady = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
+        auto isSelectValueReady = [&](SelectInst *SI) {
+          return !isUnscheduled(SI->getTrueValue()) && !isUnscheduled(SI->getFalseValue());
+        };
+        InstNodePtrList NonFilteredNodes;
+        for (InstructionNode *Node : Nodes) {
+          auto It = G.MaskSelects->find(Node->I);
+          if (It == G.MaskSelects->end() || llvm::any_of(It->second, isSelectValueReady))
+            NonFilteredNodes.push_back(Node);
+        }
+        if (NonFilteredNodes.size() > 0) {
+          Nodes = std::move(NonFilteredNodes);
+        }
+        return Nodes;
+      };
+
+      // MaxWeight computes the masks of a block level by level: the deepest
+      // compare of every mask first, then the next level. A mask whose user
+      // waits for a sibling holds a flag register meanwhile. When
+      // getOpenMaskLimit() masks are open, keep the ready instructions that the
+      // users of the open masks wait for, so that these masks close before
+      // others open.
+      auto closeOpenMasks = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
+        // The unscheduled users of the open masks and the instructions they
+        // wait for.
+        DenseSet<Instruction *> ClosingInsts;
+        SmallVector<Instruction *, 32> Worklist;
+        auto addClosingInst = [&](Value *V) {
+          if (isUnscheduled(V) && ClosingInsts.insert(cast<Instruction>(V)).second)
+            Worklist.push_back(cast<Instruction>(V));
+        };
+        for (Instruction *M : OpenMasks)
+          for (User *U : M->users())
+            if (!isFoldedCompareUse(M, U))
+              addClosingInst(U);
+        // A select waits for its condition, i1 logic for its i1 operands, and
+        // a compare for all its operands. The values a select chooses from are
+        // left out; MaxWeight keeps ordering them.
+        while (!Worklist.empty()) {
+          Instruction *I = Worklist.pop_back_val();
+          if (!I->getType()->isIntegerTy(1) && !isa<SelectInst>(I))
+            continue;
+          for (Value *Op : I->operands())
+            if (Op->getType()->isIntegerTy(1) || isa<CmpInst>(I))
+              addClosingInst(Op);
+        }
+        InstNodePtrList NonFilteredNodes;
+        for (InstructionNode *Node : Nodes)
+          if (ClosingInsts.count(Node->I))
+            NonFilteredNodes.push_back(Node);
+        if (NonFilteredNodes.size() > 0) {
+          PrintDumpLevel(VerbosityLevel::Medium, "Open masks: " << OpenMasks.size() << ", keeping "
+                                                                << NonFilteredNodes.size() << " instructions\n");
+          Nodes = std::move(NonFilteredNodes);
+        }
+        return Nodes;
+      };
+
       auto focusLoadsOnOneDPAS = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
         // Focus loads on one DPAS: choose the DPAS user with the lowest
         // OriginalPosition and filter out loads feeding later DPASes. This
@@ -3376,6 +3544,13 @@ private:
 
         FilteredReadyList = filterOutNotReadyRematInstructions(FilteredReadyList);
         FilteredReadyList = filterOutNotReadyIcmp(FilteredReadyList);
+        if (G.MaskSelects && C[Option::DeferMasksUntilSelectReady]) {
+          FilteredReadyList = deferMasksUntilSelectReady(FilteredReadyList);
+        }
+        int OpenMaskLimit = getOpenMaskLimit();
+        if (OpenMaskLimit > 0 && static_cast<int>(OpenMasks.size()) >= OpenMaskLimit) {
+          FilteredReadyList = closeOpenMasks(FilteredReadyList);
+        }
 
         IGC_ASSERT(FilteredReadyList.size() > 0);
 
