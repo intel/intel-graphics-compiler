@@ -322,8 +322,9 @@ CacheControlFromMDNodes resolveCacheControlFromMDNodes(CodeGenContext *ctx,
     return result;
   }
 
-  if (ctx->platform.hasNewLSCCacheEncoding() && L1CacheControl && L3CacheControl &&
-      (L2CacheControl || cacheDefault > LSC_CC_INVALID)) {
+  // A default in the new encoding fills in any level that is not given.
+  if (ctx->platform.hasNewLSCCacheEncoding() &&
+      ((L1CacheControl && L2CacheControl && L3CacheControl) || cacheDefault > LSC_CC_INVALID)) {
     if (!L2CacheControl) {
       // Case when only cacheDefault from compOpt has new enum encoding value.
       // Workaround to have L1 L3 settings in L1/L2CacheControl.
@@ -376,7 +377,8 @@ CacheControlFromMDNodes resolveCacheControlFromMDNodes(CodeGenContext *ctx,
     } else {
       // StoreCacheControl
       // Only for 2-level decorations, otherwise we would hide incorrect settings.
-      if (!L3CacheControl && newL2CacheControl == static_cast<T>(StoreCacheControl::WriteBack) &&
+      if (L1CacheControl && L2CacheControl && !L3CacheControl &&
+          newL2CacheControl == static_cast<T>(StoreCacheControl::WriteBack) &&
           (newL1CacheControl == T::Streaming || newL1CacheControl == static_cast<T>(StoreCacheControl::WriteBack))) {
         // When L1 store cache is streaming or writeback,
         // writeback is not available for both L2 and L3 at the same time.
