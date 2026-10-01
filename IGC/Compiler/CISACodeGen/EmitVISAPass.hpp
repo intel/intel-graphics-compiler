@@ -117,6 +117,7 @@ public:
   void Powi(const SSource[2], const DstModifier &modifier);
   void Shl(const SSource[2], const DstModifier &modifier);
   void Mov(const SSource &source, const DstModifier &modifier);
+  void BFAbsNeg(const SSource &source, const DstModifier &modifier);
   void Unary(e_opcode opCode, const SSource sources[1], const DstModifier &modifier);
   void Binary(e_opcode opCode, const SSource sources[2], const DstModifier &modifier);
   void Tenary(e_opcode opCode, const SSource sources[3], const DstModifier &modifier);

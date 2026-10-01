@@ -5618,6 +5618,53 @@ void EmitPass::Floor(const SSource &source, const DstModifier &modifier) { Unary
 
 void EmitPass::Mov(const SSource &source, const DstModifier &modifier) { Unary(EOPCODE_MOV, &source, modifier); }
 
+void EmitPass::BFAbsNeg(const SSource &source, const DstModifier &modifier) {
+  // Pre-Xe3 platforms don't support bfloats natively, so we need to emulate source modifiers
+  // as bfloat movs are emitted as movs with :uw datatype, and for example (abs) on :uw is a no-op.
+  // (abs)x   -> and dst:uw x:uw 0x7FFF
+  // -x       -> xor dst:uw x:uw 0x8000
+  // -(abs)x  -> or  dst:uw x:uw 0x8000
+  IGC_ASSERT(m_destination->GetElemSize() == 2);
+
+  CVariable *src = GetSrcVariable(source, source.fromConstantPool);
+  // Immediate values modifiers are being applied in compile-time
+  if (src->IsImmediate()) {
+    Mov(source, modifier);
+    return;
+  }
+
+  e_opcode opCode = EOPCODE_INVALID;
+  uint16_t imm = 0x7FFF;
+  switch (source.mod) {
+  case EMOD_ABS:
+    opCode = EOPCODE_AND;
+    imm = 0x7FFF;
+    break;
+  case EMOD_NEG:
+    opCode = EOPCODE_XOR;
+    imm = 0x8000;
+    break;
+  case EMOD_NEGABS:
+    opCode = EOPCODE_OR;
+    imm = 0x8000;
+    break;
+  default:
+    IGC_ASSERT_MESSAGE(0, "unexpected source modifier");
+    break;
+  }
+
+  CVariable *dst = m_currShader->BitCast(m_destination, ISA_TYPE_UW);
+  src = m_currShader->BitCast(src, ISA_TYPE_UW);
+
+  SSource bitSource = source;
+  bitSource.mod = EMOD_NONE;
+  SetSourceModifiers(0, bitSource);
+
+  m_encoder->SetDstModifier(modifier);
+  m_encoder->GenericAlu(opCode, dst, src, m_currShader->ImmToVariable(imm, ISA_TYPE_UW));
+  m_encoder->Push();
+}
+
 void EmitPass::Rsqrt(const SSource &source, const DstModifier &modifier) { Unary(EOPCODE_RSQRT, &source, modifier); }
 
 void EmitPass::Mad(const SSource sources[3], const DstModifier &modifier) { Tenary(EOPCODE_MAD, sources, modifier); }
