@@ -1350,7 +1350,21 @@ void Legalization::visitLoadInst(LoadInst &I) {
     LoadInst *pNewLoadInst = IGC::cloneLoad(&I, m_builder->getInt8Ty(), I8PtrOp);
     Value *newVal = m_builder->CreateTrunc(pNewLoadInst, I.getType());
     I.replaceAllUsesWith(newVal);
+    return;
   }
+
+  // InstCombine folds a bitcast to a bool vector into the load. Load bytes instead,
+  // so visitExtractElementInst lowers the extracts from the bitcast.
+  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(I.getType());
+  if (!VTy || !VTy->getElementType()->isIntegerTy(1) || VTy->getNumElements() % 8 != 0)
+    return;
+  m_builder->SetInsertPoint(&I);
+  auto *ByteVecTy = IGCLLVM::FixedVectorType::get(m_builder->getInt8Ty(), VTy->getNumElements() / 8);
+  Value *BytePtr =
+      m_builder->CreateBitCast(I.getPointerOperand(), IGCLLVM::PointerType::get(ByteVecTy, I.getPointerAddressSpace()));
+  LoadInst *NewLoad = IGC::cloneLoad(&I, ByteVecTy, BytePtr);
+  I.replaceAllUsesWith(m_builder->CreateBitCast(NewLoad, VTy));
+  m_instructionsToRemove.insert(&I);
 }
 
 void Legalization::PromoteInsertElement(Value *I, Value *newVec) {
