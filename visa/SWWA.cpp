@@ -2922,7 +2922,7 @@ void Optimizer::expandMadwPostSchedule() {
           execSize, dstHi32, builder.duplicateOperand(src0),
           builder.duplicateOperand(src1), origOptions, tmpType);
 
-      machInst->setPredicate(origPredicate);
+      machInst->setPredicate(builder.duplicateOperand(origPredicate));
       *it = machInst;
       inst->removeAllDefs();
       newMul->addDefUse(machInst, Opnd_implAccSrc);
@@ -2949,7 +2949,7 @@ void Optimizer::expandMadwPostSchedule() {
             tmpType);
         auto movInst = builder.createMov(execSize, dstLo32, accSrcOpndMov,
                                          origOptions, false);
-        movInst->setPredicate(origPredicate);
+        movInst->setPredicate(builder.duplicateOperand(origPredicate));
         endIter = bb->insertAfter(endIter, movInst);
       } else {
         // addc only operates on UD data, so the whole carry-producing step is
@@ -2992,7 +2992,7 @@ void Optimizer::expandMadwPostSchedule() {
         auto addcInst =
             builder.createBinOp(G4_addc, execSize, dstLo32, lowProductSrc,
                                 addcSrc1, origOptions, false);
-        addcInst->setPredicate(origPredicate);
+        addcInst->setPredicate(builder.duplicateOperand(origPredicate));
         // addc writes the carry to acc0; model it so that the add below sees
         // the dependency.
         addcInst->setImplAccDst(builder.duplicateOperand(accDstOpnd));
@@ -3008,7 +3008,7 @@ void Optimizer::expandMadwPostSchedule() {
         auto addInst = builder.createBinOp(
             G4_add, execSize, builder.duplicateOperand(dstHi32),
             builder.duplicateOperand(accSrcOpnd), src1Add, origOptions, false);
-        addInst->setPredicate(origPredicate);
+        addInst->setPredicate(builder.duplicateOperand(origPredicate));
         endIter = bb->insertAfter(endIter, addInst);
       }
 

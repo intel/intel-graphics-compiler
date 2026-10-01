@@ -761,6 +761,334 @@ public:
   }
 };
 
+// A flag sub-register enables up to 16 channels.
+static const unsigned NUM_BITS_PER_FLAG_SUBREG = 16;
+// Largest execution size, i.e. the largest number of channels of an
+// instruction.
+static const unsigned MAX_CHANNELS = 32;
+// Number of flag registers tracked by the flag buckets (f0 to f3).
+static const unsigned NUM_FLAG_REGS = 4;
+
+// Describes which flag bits enable the channels of a predicated instruction:
+// channel i is enabled when bit (firstBit + i) of flag register flagRegNum is
+// set, or clear when the predicate is inverted.
+struct PredChannels {
+  unsigned flagRegNum = 0;
+  unsigned firstBit = 0;
+  bool inverted = false;
+};
+
+// Not every send can be predicated, and where it cannot the predicate is not
+// a per-channel write mask. Only a non-2D LSC load, store or atomic masks its
+// channels with its predicate -- the same rule isConvertible() in ifcvt.cpp
+// applies before it predicates a send. A sampler message, an RTWrite, a
+// gateway message, a fence or a block 2D message does not, so two of them with
+// complementary predicates are not independent, whatever their footprints are.
+static bool sendIsMaskedPerChannel(G4_INST *inst) {
+  // Predicating thread termination is not a per-channel matter either.
+  if (inst->isEOT() || !inst->getBuilder().hasSendPredication())
+    return false;
+
+  const G4_SendDesc *desc = inst->getMsgDesc();
+  if (!desc || !desc->isLSC())
+    return false;
+
+  MsgOp op;
+  if (desc->isGeneralized()) {
+    op = static_cast<const G4_SendgDesc *>(desc)->getOp();
+  } else {
+    const G4_SendDescRaw *raw = inst->getMsgDescRaw();
+    if (!raw || !raw->isLscOp())
+      return false;
+    op = MsgOpDecode(desc->getSFID(), (uint32_t)raw->getLscOp());
+  }
+  return MsgOpIsLoadStoreAtomic(op) && !MsgOpIs2D(op);
+}
+
+// Return true if the element a region points at for a channel is all that
+// channel accesses, which is what getChannelFootprint assumes. Several
+// instructions touch more than one element of an operand for one channel, and
+// taking a single element from the region would under-state their footprint --
+// the direction that drops a dependence that is real.
+static bool hasPerChannelRegions(const G4_INST *inst) {
+  switch (inst->opcode()) {
+  // A dot product reads two to four source elements for one channel, line and
+  // pln read a four-element vector that every channel shares, and sad2 and
+  // sada2 read a pair of elements per channel.
+  case G4_dp2:
+  case G4_dp3:
+  case G4_dp4:
+  case G4_dph:
+  case G4_line:
+  case G4_pln:
+  case G4_sad2:
+  case G4_sada2:
+  case G4_pseudo_sada2:
+  // A scattered or an indexed mov gathers its source rather than reading the
+  // element of the channel.
+  case G4_smov:
+  case G4_movi:
+    return false;
+  default:
+    break;
+  }
+
+  // A wide destination is a low and a high result in two GRF-aligned halves
+  // (madw, mullh), so a channel writes two chunks and not the one the region
+  // describes. See G4_DstRegRegion::computeRightBound.
+  if (INST_WIDE_DST(inst->opcode()))
+    return false;
+
+
+  // A DPAS reads its sources across channels, an intrinsic does not describe
+  // its operands with a region, and a control flow instruction writes the flow
+  // state rather than a region.
+  return !inst->isDpas() && !inst->isFlowControl() && !inst->isIntrinsic();
+}
+
+// Fill PC with the flag bits that enable INST's channels. Return false if INST
+// is not predicated, if its predicate does not map a single flag bit to each
+// channel, or if a channel's footprint cannot be told from its operands.
+static bool getPredChannels(G4_INST *inst, PredChannels &PC) {
+  G4_Predicate *pred = inst->getPredicate();
+  if (!pred)
+    return false;
+
+  // With an any/all control a group of flag bits enables the whole
+  // instruction, so there is no bit per channel.
+  if (pred->getControl() != PRED_DEFAULT)
+    return false;
+
+  // A send takes the bytes a channel accesses from its message descriptor
+  // instead of from a region, see getSendLaneBytes, and its predicate has to
+  // be a per-channel mask in the first place. Everything else is described by
+  // its regions.
+  if (inst->isSend()) {
+    if (!sendIsMaskedPerChannel(inst))
+      return false;
+  } else if (!hasPerChannelRegions(inst)) {
+    return false;
+  }
+
+  // The predicate of a sel selects between the sources instead of masking the
+  // write, so all of its channels write their destination.
+  if (!inst->isPartialWrite())
+    return false;
+
+  // The physical flag register is needed to tell whether two predicates read
+  // the same flag.
+  G4_VarBase *base = pred->getBase();
+  if (!base || !base->isFlag() || !base->isRegVar() ||
+      !base->asRegVar()->getPhyReg())
+    return false;
+
+  bool validRegNum = false, validSubRegNum = false;
+  unsigned regNum = base->ExRegNum(validRegNum);
+  unsigned subRegNum = base->ExSubRegNum(validSubRegNum);
+  if (!validRegNum || !validSubRegNum || regNum >= NUM_FLAG_REGS)
+    return false;
+
+  PC.flagRegNum = regNum;
+  PC.firstBit = subRegNum * NUM_BITS_PER_FLAG_SUBREG + inst->getMaskOffset();
+  PC.inverted = pred->getState() == PredState_Minus;
+  return true;
+}
+
+// A send takes its operand bounds from the message descriptor rather than from
+// the region -- see G4_InstSend::computeRightBound -- and which bytes a channel
+// accesses follows the message layout, not a type and a stride. Set LANEBYTES
+// to the bytes one channel owns of OPND and return false when the message does
+// not give every channel one chunk of that size.
+static bool getSendLaneBytes(G4_INST *inst, G4_Operand *opnd,
+                             Gen4_Operand_Number opndNum, unsigned &laneBytes) {
+  if (!sendIsMaskedPerChannel(inst))
+    return false;
+
+  const unsigned opndBytes = opnd->getRightBound() - opnd->getLeftBound() + 1;
+  const unsigned execSize = inst->getExecSize();
+  if (execSize == 1) {
+    // One channel owns the whole message: its flag bit enables or disables all
+    // of it, whatever the layout is. This is what makes a transposed message
+    // work, whose destination is one block rather than one chunk per channel.
+    laneBytes = opndBytes;
+    return true;
+  }
+
+  // Only the data operands are split per channel. An address payload is sized
+  // by the address type, which is not modelled here.
+  if (opndNum != Opnd_dst && opndNum != Opnd_src1)
+    return false;
+
+  const G4_SendDesc *desc = inst->getMsgDesc();
+  // More than one element per address spreads a channel over several
+  // GRF-aligned chunks, and 0 means the layout is not one element per channel
+  // at all.
+  if (desc->getElemsPerAddr() != 1)
+    return false;
+
+  // A transposed message moves one block for one address: every enabled
+  // channel covers all of it rather than a chunk of it.
+  unsigned elemBytes = 0;
+  if (const G4_SendDescRaw *raw = inst->getMsgDescRaw()) {
+    if (raw->getLscDataOrder() != LSC_DATA_ORDER_NONTRANSPOSE)
+      return false;
+    // For an LSC message this is the size in the register file, which is what
+    // a channel owns: 4 bytes for d32 and for the u32-widened sub-dword forms.
+    elemBytes = raw->getElemSize();
+  } else {
+    const G4_SendgDesc *sendg = static_cast<const G4_SendgDesc *>(desc);
+    if (!sendg->isDataOrderNonTranspose())
+      return false;
+    elemBytes = sendg->getDataSizeBytesReg();
+  }
+
+  // The operand has to be exactly one element per channel. It is larger when
+  // the message rounds its length up to whole GRFs, and then a channel does
+  // not start at channel-times-element either, so there is nothing to split.
+  if (!elemBytes || opndBytes != execSize * elemBytes)
+    return false;
+  // A channel owning less than a word shares one with its neighbour.
+  laneBytes = elemBytes;
+  return laneBytes >= 2;
+}
+
+// Return in LB and RB the byte footprint of the element that channel CH of
+// INST's OPNDNUM operand accesses, or false if it cannot be computed.
+// The footprint is rounded out to word boundaries because a word is the
+// smallest GRF access granularity: an element narrower than a word may be
+// accessed together with the rest of the word it belongs to.
+static bool getChannelFootprint(G4_INST *inst, Gen4_Operand_Number opndNum,
+                                unsigned ch, unsigned &LB, unsigned &RB) {
+  G4_Operand *opnd = inst->getOperand(opndNum);
+  if (!opnd)
+    return false;
+
+  if (inst->isSend()) {
+    unsigned laneBytes = 0;
+    if (!getSendLaneBytes(inst, opnd, opndNum, laneBytes))
+      return false;
+    LB = opnd->getLinearizedStart() + ch * laneBytes;
+    RB = LB + laneBytes - 1;
+    // Round out to the word granularity of a GRF access.
+    LB &= ~1u;
+    RB |= 1u;
+    return true;
+  }
+
+  const unsigned typeSize = opnd->getTypeSize();
+  unsigned chOffset = 0;
+  if (opnd->isDstRegRegion()) {
+    G4_DstRegRegion *dst = opnd->asDstRegRegion();
+    if (dst->isIndirect())
+      return false;
+    chOffset = ch * dst->getHorzStride() * typeSize;
+  } else if (opnd->isSrcRegRegion()) {
+    G4_SrcRegRegion *src = opnd->asSrcRegRegion();
+    const RegionDesc *rd = src->getRegion();
+    // A <w,h> or V region does not describe a per-channel offset.
+    if (src->isIndirect() || !rd || rd->isRegionWH() || rd->isRegionV() ||
+        rd->width == 0)
+      return false;
+    const unsigned row = ch / rd->width;
+    const unsigned col = ch % rd->width;
+    chOffset = (row * rd->vertStride + col * rd->horzStride) * typeSize;
+  } else {
+    // Only register regions have a per-channel footprint.
+    return false;
+  }
+
+  LB = opnd->getLinearizedStart() + chOffset;
+  RB = LB + typeSize - 1;
+  // Round out to the word granularity of a GRF access.
+  LB &= ~1u;
+  RB |= 1u;
+  return true;
+}
+
+// Two instructions whose predicates have opposite polarity never have the
+// same channel enabled in both. Return true if channels that can be enabled
+// at the same time, i.e. channels enabled by different flag bits, access a
+// common location: the two accesses then really do overlap. Return true as
+// well when the per-channel footprints cannot be computed, so that the
+// dependence is kept.
+static bool hasOverlapInAnyChannel(G4_INST *inst1, Gen4_Operand_Number opndNum1,
+                                   const PredChannels &PC1, G4_INST *inst2,
+                                   Gen4_Operand_Number opndNum2,
+                                   const PredChannels &PC2) {
+  const unsigned execSize1 = inst1->getExecSize();
+  const unsigned execSize2 = inst2->getExecSize();
+  // An undefined execution size is 0 and would make both loops below vacuous.
+  if (execSize1 == 0 || execSize1 > MAX_CHANNELS || execSize2 == 0 ||
+      execSize2 > MAX_CHANNELS)
+    return true;
+
+  unsigned LB2[MAX_CHANNELS], RB2[MAX_CHANNELS];
+  for (unsigned ch2 = 0; ch2 < execSize2; ++ch2) {
+    if (!getChannelFootprint(inst2, opndNum2, ch2, LB2[ch2], RB2[ch2]))
+      return true;
+  }
+
+  for (unsigned ch1 = 0; ch1 < execSize1; ++ch1) {
+    unsigned LB1 = 0, RB1 = 0;
+    if (!getChannelFootprint(inst1, opndNum1, ch1, LB1, RB1))
+      return true;
+    for (unsigned ch2 = 0; ch2 < execSize2; ++ch2) {
+      // The two channels are enabled by the same flag bit, and the predicates
+      // have opposite polarity: they are never enabled at the same time.
+      if (PC1.firstBit + ch1 == PC2.firstBit + ch2)
+        continue;
+      if (LB1 <= RB2[ch2] && RB1 >= LB2[ch2])
+        return true;
+    }
+  }
+  return false;
+}
+
+// Return true if INST writes any bit of flag register FLAGREGNUM, or if the
+// flag register it writes cannot be determined.
+static bool writesFlagReg(G4_INST *inst, unsigned flagRegNum) {
+  for (Gen4_Operand_Number opndNum : {Opnd_dst, Opnd_condMod}) {
+    G4_Operand *opnd = inst->getOperand(opndNum);
+    if (!opnd || !opnd->isFlag())
+      continue;
+    G4_VarBase *base = opnd->getBase();
+    if (!base || !base->isRegVar() || !base->asRegVar()->getPhyReg())
+      return true;
+    bool valid = false;
+    unsigned regNum = base->ExRegNum(valid);
+    if (!valid || regNum == flagRegNum)
+      return true;
+  }
+  return false;
+}
+
+// Return true if flag register FLAGREGNUM may be written by an instruction in
+// the node range [CURID, LIVEID], in which case the predicates of the two
+// nodes do not read the same flag value. All the instructions that follow
+// CURINST have already been added to LB, so such a write shows up as a live
+// write access in FLAGBUCKET. CURINST itself is not in LB yet and so is
+// checked separately.
+static bool flagMayChangeInRange(LiveBuckets &LB, int flagBucket,
+                                 G4_INST *curInst, unsigned flagRegNum,
+                                 unsigned curID, unsigned liveID) {
+  if (writesFlagReg(curInst, flagRegNum))
+    return true;
+
+  for (auto it = LB.begin(flagBucket), ite = LB.end(flagBucket); it != ite;
+       ++it) {
+    BucketNode *BNode = *it;
+    if (BNode->opndNum != Opnd_dst && BNode->opndNum != Opnd_condMod)
+      continue;
+    // A node may hold several instructions; its ID is that of the last one.
+    Node *writeNode = BNode->node;
+    unsigned lastID = writeNode->getNodeID();
+    unsigned firstID = lastID - (writeNode->getInstructions()->size() - 1);
+    if (firstID <= liveID && lastID >= curID)
+      return true;
+  }
+  return false;
+}
+
 /*
 Read suppression opportunity checking to group the three source instructions
 with read suppression into single node
@@ -1421,6 +1749,8 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
     totalACCNum = kernel->getNumAcc();
   }
   dpasIsSchedBarrier = getOptions()->getOption(vISA_DPASScheduleBarrier);
+  const bool refinePredChannelDep =
+      getOptions()->getOption(vISA_SchedPredChannelDep);
   isThreeSouceBlock = false;
   is_2XFP_Block = false;
   bool BTIIsRestrict =
@@ -1443,6 +1773,40 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
   for (int i = 0; i < PIPE_ALL; i++) {
     latestInstOfEachPipe[i] = nullptr;
   }
+
+  // Instructions guarded by complementary predicates, e.g. (f0.0) and (!f0.0),
+  // never have a channel enabled in both of them, so overlapping register
+  // footprints do not necessarily imply a dependence. Return true if the
+  // dependence between CURNODE's access of CUROPND, whose channels are enabled
+  // by CURPC, and LIVENODE's access of LIVEOPND can be dropped for that
+  // reason.
+  auto noDepWithComplementaryPred =
+      [&](Node *curNode, Gen4_Operand_Number curOpnd, const PredChannels &curPC,
+          Node *liveNode, Gen4_Operand_Number liveOpnd) {
+        // A node holding more than one instruction does not tell which of them
+        // the bucket access belongs to.
+        if (liveNode->getInstructions()->size() != 1)
+          return false;
+
+        G4_INST *curInst = curNode->getInstructions()->front();
+        G4_INST *liveInst = liveNode->getInstructions()->front();
+        PredChannels livePC;
+        if (!getPredChannels(liveInst, livePC))
+          return false;
+        // The channels must be enabled by the same flag bits with opposite
+        // polarity ...
+        if (curPC.flagRegNum != livePC.flagRegNum ||
+            curPC.inverted == livePC.inverted)
+          return false;
+        // ... and both predicates must read the same flag value.
+        if (flagMayChangeInRange(LB, FLAG0_BUCKET + (int)curPC.flagRegNum,
+                                 curInst, curPC.flagRegNum,
+                                 curNode->getNodeID(), liveNode->getNodeID()))
+          return false;
+
+        return !hasOverlapInAnyChannel(curInst, curOpnd, curPC, liveInst,
+                                       liveOpnd, livePC);
+      };
   // Building the graph in reverse relative to the original instruction
   // order, to naturally take care of the liveness of operands.
   std::list<G4_INST *>::reverse_iterator iInst(bb->rbegin()),
@@ -1600,6 +1964,23 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
       // Compute buckets for RAW
       bool transitiveEdgeToBarrier = false;
 
+      // A GRF edge to an instruction with a per-channel predicate may be
+      // dropped when the two predicates are complementary, see
+      // noDepWithComplementaryPred above. Such an instruction must therefore
+      // not kill the live nodes of a GRF bucket: a kill makes the accesses of
+      // the instructions that come before it depend on the killed node through
+      // this one, which no longer holds once the edge to it is dropped. A
+      // predicated write does not cover the whole register anyway.
+      //
+      // This is about GRF dependences only. A flag, accumulator, address,
+      // scalar or ARF dependence, and the memory dependence of a send, are
+      // left exactly as they were: all three uses below are under
+      // isGRFBucket.
+      PredChannels curPC;
+      const bool curDepIsRefinable =
+          refinePredChannelDep && node->getInstructions()->size() == 1 &&
+          getPredChannels(curInst, curPC);
+
       // For all bucket descriptors of curInst
       for (const BucketDescr &BD : BDvec) {
         const int &curBucket = BD.bucket;
@@ -1608,10 +1989,14 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
         if (!LB.hasLive(curMask, curBucket)) {
           continue;
         }
+        // The buckets below GRF_BUCKET + totalGRFNum are the GRF registers,
+        // the ones above hold every other kind of dependence.
+        const bool isGRFBucket = curBucket < ACC_BUCKET;
         // Kill type 1: When the current destination region completely
         //              covers the whole register from the first bit
         //              to the last bit.
         bool curKillsBucket =
+            !(isGRFBucket && curDepIsRefinable) &&
             curMask.killsBucket(curBucket, *kernel->fg.builder);
 
         // For each live curBucket node:
@@ -1637,8 +2022,11 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
           }
           // 1. Find DEP type
           DepType dep = DEPTYPE_MAX;
-          if (curBucket < ACC_BUCKET) {
+          if (isGRFBucket) {
             dep = getDepForOpnd(curOpnd, liveOpnd);
+            // See the comment on curDepIsRefinable above.
+            if (curDepIsRefinable)
+              curKillsLive = false;
           } else if (curBucket == ACC_BUCKET
                      || curBucket == A0_BUCKET || curBucket == S0_BUCKET) {
             dep = getDepForOpnd(curOpnd, liveOpnd);
@@ -1665,14 +2053,28 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
             vISA_ASSERT_UNREACHABLE("Bad bucket");
           }
 
-          // 2. Create Edge if there is overlap and RAW/WAW/WAR
+          // 2. Refine the overlap of two GRF accesses: when the two
+          //    instructions have complementary predicates, the channels of one
+          //    that can be enabled together with a channel of the other may
+          //    not access a common location.
+          if (dep != NODEP && hasOverlap && curDepIsRefinable && isGRFBucket &&
+              !curMask.hasSpecialAccOverlap(liveMask) &&
+              noDepWithComplementaryPred(node, curOpnd, curPC, curLiveNode,
+                                         liveOpnd)) {
+            hasOverlap = false;
+          }
+
+          // 3. Create Edge if there is overlap and RAW/WAW/WAR
           if (dep != NODEP && hasOverlap) {
             createAddEdge(node, curLiveNode, dep);
             transitiveEdgeToBarrier |= curLiveNode->hasTransitiveEdgeToBarrier;
           }
 
-          // 3. Kill if required
-          if ((dep == RAW || dep == RAW_MEMORY || dep == WAW ||
+          // 4. Kill if required. The live node may only be killed when an edge
+          //    to it was created: the accesses of the instructions before
+          //    curInst depend on it transitively through that edge.
+          if (hasOverlap &&
+              (dep == RAW || dep == RAW_MEMORY || dep == WAW ||
                dep == WAW_MEMORY) &&
               (curKillsBucket || curKillsLive)) {
             LB.kill(curMask, bn_it);

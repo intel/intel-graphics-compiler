@@ -187,9 +187,15 @@ struct Mask {
     return specialAcc != G4_AccRegSel::ACC_UNDEFINED;
   }
 
+  // Two operands that use the same special accumulator always access it,
+  // whatever their register footprints are.
+  bool hasSpecialAccOverlap(const Mask &mask2) const {
+    return mask2.withSpecialAcc() && mask2.specialAcc == specialAcc;
+  }
+
   bool hasOverlap(const Mask &mask2) const {
     return (LeftB <= mask2.RightB && RightB >= mask2.LeftB) ||
-           (mask2.withSpecialAcc() && mask2.specialAcc == specialAcc);
+           hasSpecialAccOverlap(mask2);
   }
 };
 

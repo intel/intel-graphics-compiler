@@ -638,6 +638,11 @@ DEF_VISA_OPTION(vISA_DPASScheduleBarrier, ET_BOOL, "-dpasScheduleBarrier",
                 "Treat every DPAS as a local-scheduling barrier, so no "
                 "instruction is moved across a DPAS or a DPAS macro",
                 false)
+DEF_VISA_OPTION(vISA_SchedPredChannelDep, ET_BOOL, "-schedPredChannelDep",
+                "Drop a local-scheduling dependence between two instructions "
+                "with complementary predicates whose per-channel footprints do "
+                "not overlap",
+                false)
 DEF_VISA_OPTION(vISA_DumpSendDepLatency, ET_INT32, "-dumpSendDepLatency",
                 "USAGE: -dumpSendDepLatency <0|1|2|3|4...> where 0 is NODEP, 1 "
                 "is RAW, 2 is RAW_MEMORY,... as defined in DepType",
