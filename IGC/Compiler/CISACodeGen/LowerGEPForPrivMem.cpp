@@ -387,8 +387,10 @@ SOALayoutChecker::SOALayoutChecker(AllocaInst &allocaToCheck, bool isOCL,
   }
 }
 
-// Reject vector allocas with access greater then one partition and allocas that
-// unaligned access covering more then one partition.
+// Reject vector allocas with access not-supported by new SoA algorithm:
+// - access greater than partition size
+// - unaligned access covering partition size or greater
+// - accesses that are not power of two but are smaller then partition
 bool SOALayoutChecker::hasAccessUnsupportedByNewAlgo(bool CheckWideVectors) const {
   llvm::SmallPtrSet<llvm::Value *, 32> Seen;
   llvm::SmallVector<llvm::Value *, 32> Worklist;
@@ -431,6 +433,8 @@ bool SOALayoutChecker::hasAccessUnsupportedByNewAlgo(bool CheckWideVectors) cons
         continue;
 
       uint64_t AccBytes = pDL->getTypeStoreSize(AccTy);
+      if (AccBytes < SOAPartitionBytes && !isPowerOf2_32((uint32_t)AccBytes))
+        return true;
       if (AccBytes >= SOAPartitionBytes && !isPartitionAlignedChain(Ptr))
         return true;
       if (CheckWideVectors && AccTy->isVectorTy() && AccBytes > SOAPartitionBytes)
