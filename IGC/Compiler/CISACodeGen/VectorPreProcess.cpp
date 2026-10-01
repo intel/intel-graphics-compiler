@@ -1692,14 +1692,20 @@ bool VectorPreProcess::processScalarLoadStore(Function &F) {
       auto ALI = optionalALI.value();
 
       Type *Ty = inst->getType();
-      if (Ty->isVectorTy())
-        continue;
-      unsigned bitSize = int_cast<unsigned>(m_DL->getTypeSizeInBits(Ty->getScalarType()));
-      if (bitSize != 24 && bitSize != 48)
-        continue;
+      unsigned bitSize = int_cast<unsigned>(m_DL->getTypeSizeInBits(Ty));
+      Type *newVecTy = nullptr;
+      if (Ty->isVectorTy()) {
+        // i1 elements cannot be split; Legalization lowers extracts from the bitcast.
+        if (!isa<LoadInst>(inst) || !Ty->getScalarType()->isIntegerTy(1) || bitSize % 8 != 0)
+          continue;
+        newVecTy = IGCLLVM::FixedVectorType::get(Type::getInt8Ty(inst->getContext()), bitSize / 8);
+      } else {
+        if (bitSize != 24 && bitSize != 48)
+          continue;
+        Type *newScalTy = bitSize == 24 ? Type::getInt8Ty(inst->getContext()) : Type::getInt16Ty(inst->getContext());
+        newVecTy = IGCLLVM::FixedVectorType::get(newScalTy, 3);
+      }
       IRBuilder<> Builder(inst);
-      Type *newScalTy = bitSize == 24 ? Type::getInt8Ty(inst->getContext()) : Type::getInt16Ty(inst->getContext());
-      Type *newVecTy = IGCLLVM::FixedVectorType::get(newScalTy, 3);
 
       bool isPredLd = isa<PredicatedLoadIntrinsic>(inst);
       ValVector splitMergeValues;
