@@ -842,6 +842,7 @@ bool CodeLoopSinking::runOnFunction(Function &F) {
       LogStream << "LoopSinkMinSave: " << IGC_GET_FLAG_VALUE(LoopSinkMinSave) << "\n";
       LogStream << "LoopSinkThresholdDelta: " << IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta) << "\n";
       LogStream << "LoopSinkRollbackThreshold: " << IGC_GET_FLAG_VALUE(LoopSinkRollbackThreshold) << "\n";
+      LogStream << "LoopSinkUseVRTTargets: " << IGC_GET_FLAG_VALUE(LoopSinkUseVRTTargets) << "\n";
       LogStream << "LoopSinkEnableLoadsRescheduling: " << IGC_GET_FLAG_VALUE(LoopSinkEnableLoadsRescheduling) << "\n";
       LogStream << "LoopSinkCoarserLoadsRescheduling: " << IGC_GET_FLAG_VALUE(LoopSinkCoarserLoadsRescheduling) << "\n";
       LogStream << "LoopSinkEnable2dBlockReads: " << IGC_GET_FLAG_VALUE(LoopSinkEnable2dBlockReads) << "\n";
@@ -938,17 +939,49 @@ uint CodeLoopSinking::getMaxRegCountForFunction(Function *F) {
   return MaxPressure;
 }
 
+void CodeLoopSinking::collectVRTGRFTargets(Function &F) {
+  VRTGRFTargets.clear();
+  if (IGC_IS_FLAG_DISABLED(LoopSinkUseVRTTargets) || !CTX->supportsVRT() || CTX->getNumGRFPerThread(false, &F) != 0 ||
+      !CTX->isAutoGRFSelectionEnabled(&F))
+    return;
+
+  for (const auto &[NumGRF, ThreadsPerEU] : CTX->platform.getVRTTable()) {
+    if (NumGRF < static_cast<int>(CodeGenContext::DEFAULT_TOTAL_GRF_NUM))
+      continue;
+    if (!VRTGRFTargets.empty() && VRTGRFTargets.back().ThreadsPerEU == static_cast<unsigned>(ThreadsPerEU)) {
+      VRTGRFTargets.back().NumGRF = NumGRF;
+      continue;
+    }
+    IGC_ASSERT_MESSAGE(VRTGRFTargets.empty() || VRTGRFTargets.back().ThreadsPerEU > static_cast<unsigned>(ThreadsPerEU),
+                       "VRT table must not gain threads per EU with a larger GRF budget");
+    VRTGRFTargets.push_back({static_cast<unsigned>(NumGRF), static_cast<unsigned>(ThreadsPerEU)});
+  }
+}
+
+// Returns the threads per EU of the smallest VRT target that fits the pressure,
+// or 0 when the pressure exceeds every target and the kernel spills.
+unsigned CodeLoopSinking::getVRTThreadsPerEU(unsigned Pressure) const {
+  for (const VRTGRFTarget &Target : VRTGRFTargets) {
+    if (Pressure <= Target.NumGRF)
+      return Target.ThreadsPerEU;
+  }
+  return 0;
+}
+
 // Find the loops with too high regpressure and sink the instructions from
 // preheaders into them
 bool CodeLoopSinking::loopSink(Function &F) {
+  collectVRTGRFTargets(F);
+
   bool Changed = false;
   for (auto &L : LI->getLoopsInPreorder()) {
     LoopSinkMode SinkMode = IGC_IS_FLAG_ENABLED(ForceLoopSink) ? LoopSinkMode::FullSink : LoopSinkMode::NoSink;
+    unsigned TargetGRF = CTX->getNumGRFPerThread(true, &F);
 
     if (SinkMode == LoopSinkMode::NoSink)
-      SinkMode = needLoopSink(L);
+      SinkMode = needLoopSink(L, TargetGRF);
     if (SinkMode != LoopSinkMode::NoSink)
-      Changed |= loopSink(L, SinkMode);
+      Changed |= loopSink(L, SinkMode, TargetGRF);
   }
 
   uint SIMD = numLanes(IGC::bestGuessSIMDSize(CTX, &F, FGA));
@@ -961,7 +994,7 @@ bool CodeLoopSinking::loopSink(Function &F) {
   return Changed;
 }
 
-LoopSinkMode CodeLoopSinking::needLoopSink(Loop *L) {
+LoopSinkMode CodeLoopSinking::needLoopSink(Loop *L, unsigned &TargetGRF) {
   BasicBlock *Preheader = L->getLoopPreheader();
   if (!Preheader)
     return LoopSinkMode::NoSink;
@@ -1019,24 +1052,59 @@ LoopSinkMode CodeLoopSinking::needLoopSink(Loop *L) {
   uint MaxLoopPressure = getMaxRegCountForLoop(L);
   uint FunctionExternalPressure = FRPE ? FRPE->getExternalPressureForFunction(F) : 0;
 
-  auto isSinkCriteriaMet = [&](uint MaxLoopPressure) {
+  auto isSinkCriteriaMet = [&](uint Pressure, uint NumGRF) {
     // loop sinking is needed if the loop's pressure is higher than number of GRFs by threshold
     // and preheader's potential to reduce the delta is good enough
-    return ((MaxLoopPressure > NGRF + GRFThresholdDelta) &&
-            (PreheaderDefsSizeInRegs > (MaxLoopPressure - NGRF) * LOOPSINK_PREHEADER_IMPACT_THRESHOLD));
+    return ((Pressure > NumGRF + GRFThresholdDelta) &&
+            (PreheaderDefsSizeInRegs > (Pressure - NumGRF) * LOOPSINK_PREHEADER_IMPACT_THRESHOLD));
   };
+  auto getPreheaderPotentialThreshold = [](uint Pressure, uint NumGRF) {
+    return Pressure > NumGRF ? uint((Pressure - NumGRF) * LOOPSINK_PREHEADER_IMPACT_THRESHOLD) : 0;
+  };
+
+  uint LoopPressure = MaxLoopPressure + FunctionExternalPressure;
+
+  if (!VRTGRFTargets.empty()) {
+    PrintDump(VerbosityLevel::Low, "MaxLoopPressure = " << MaxLoopPressure << "\n");
+    PrintDump(VerbosityLevel::Low, "MaxLoopPressure + FunctionExternalPressure = " << LoopPressure << "\n");
+    PrintDump(VerbosityLevel::Low, "PreheaderDefsSizeInRegs = " << PreheaderDefsSizeInRegs << "\n");
+
+    // Sink only toward a VRT target with more threads per EU than the loop has
+    // now. Try the targets with the most threads first and take the first one
+    // the preheader can reach by the usual criteria.
+    uint ThreadsPerEU = getVRTThreadsPerEU(LoopPressure);
+    PrintDump(VerbosityLevel::Low, "VRT threads per EU at the loop pressure = " << ThreadsPerEU << "\n");
+    for (const VRTGRFTarget &Target : VRTGRFTargets) {
+      if (Target.ThreadsPerEU <= ThreadsPerEU)
+        break;
+
+      PrintDump(VerbosityLevel::Low,
+                "Trying VRT target " << Target.NumGRF << " GRFs, " << Target.ThreadsPerEU << " threads per EU\n");
+      PrintDump(VerbosityLevel::Low, "Threshold to sink = " << Target.NumGRF + GRFThresholdDelta << "\n");
+      PrintDump(VerbosityLevel::Low, "PreheaderPotentialThreshold = "
+                                         << getPreheaderPotentialThreshold(LoopPressure, Target.NumGRF) << "\n");
+      if (isSinkCriteriaMet(LoopPressure, Target.NumGRF)) {
+        TargetGRF = Target.NumGRF;
+        return LoopSinkMode::SinkWhileRegpressureIsHigh;
+      }
+    }
+
+    PrintDump(VerbosityLevel::Low, ">> No sinking.\n");
+    return LoopSinkMode::NoSink;
+  }
 
   PrintDump(VerbosityLevel::Low, "Threshold to sink = " << NGRF + GRFThresholdDelta << "\n");
   PrintDump(VerbosityLevel::Low, "MaxLoopPressure = " << MaxLoopPressure << "\n");
-  PrintDump(VerbosityLevel::Low,
-            "MaxLoopPressure + FunctionExternalPressure = " << MaxLoopPressure + FunctionExternalPressure << "\n");
+  PrintDump(VerbosityLevel::Low, "MaxLoopPressure + FunctionExternalPressure = " << LoopPressure << "\n");
   PrintDump(VerbosityLevel::Low, "PreheaderDefsSizeInRegs = " << PreheaderDefsSizeInRegs << "\n");
-  PrintDump(VerbosityLevel::Low, "PreheaderPotentialThreshold = "
-                                     << uint((MaxLoopPressure - NGRF) * LOOPSINK_PREHEADER_IMPACT_THRESHOLD) << "\n");
+  PrintDump(VerbosityLevel::Low,
+            "PreheaderPotentialThreshold = " << getPreheaderPotentialThreshold(MaxLoopPressure, NGRF) << "\n");
 
   // Sink if the regpressure in the loop is high enough (including function external regpressure)
-  if (isSinkCriteriaMet(MaxLoopPressure + FunctionExternalPressure))
+  if (isSinkCriteriaMet(LoopPressure, NGRF)) {
+    TargetGRF = NGRF;
     return LoopSinkMode::SinkWhileRegpressureIsHigh;
+  }
 
   PrintDump(VerbosityLevel::Low, ">> No sinking.\n");
   return LoopSinkMode::NoSink;
@@ -1065,7 +1133,7 @@ BasicBlock *CodeLoopSinking::findLowestLoopSinkTarget(Instruction *I, Loop *L) {
   return TgtBB;
 }
 
-bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
+bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode, unsigned TargetGRF) {
   // Sink loop invariants back into the loop body if register
   // pressure can be reduced.
 
@@ -1079,7 +1147,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
   PrintDump(VerbosityLevel::Low, ">> Sinking in the loop with preheader " << Preheader->getName() << "\n");
 
   Function *F = Preheader->getParent();
-  uint NGRF = CTX->getNumGRFPerThread(true, F);
+  uint NGRF = TargetGRF;
 
   uint InitialLoopPressure = getMaxRegCountForLoop(L);
   uint MaxLoopPressure = InitialLoopPressure;
@@ -1572,12 +1640,29 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
     NeedToRollback = true;
   }
 
+  // With VRT targets, the sinking pays off only if the loop pressure reaches a
+  // VRT mode with more threads per EU, or if it decreases for a loop that
+  // exceeds every VRT budget and spills. Reaching the needed regpressure always
+  // means more threads, because the target has more threads than the loop had.
+  if (!VRTGRFTargets.empty() && Mode == LoopSinkMode::SinkWhileRegpressureIsHigh && !AchievedNeededRegpressure) {
+    uint InitialPressure = InitialLoopPressure + FunctionExternalPressure;
+    uint FinalPressure = MaxLoopPressure + FunctionExternalPressure;
+    uint InitialThreadsPerEU = getVRTThreadsPerEU(InitialPressure);
+    uint FinalThreadsPerEU = getVRTThreadsPerEU(FinalPressure);
+    bool ReducesSpills = InitialThreadsPerEU == 0 && FinalPressure < InitialPressure;
+    PrintDump(VerbosityLevel::Low, "The needed regpressure is not achieved:\n");
+    PrintDump(VerbosityLevel::Low, "VRT threads per EU before sinking = " << InitialThreadsPerEU << "\n");
+    PrintDump(VerbosityLevel::Low, "VRT threads per EU after sinking = " << FinalThreadsPerEU << "\n");
+    if (FinalThreadsPerEU <= InitialThreadsPerEU && !ReducesSpills)
+      NeedToRollback = true;
+  }
+
   // If we haven't achieved the needed regpressure, it's possible that even if the sinking
   // would be beneficial for small GRF, there still will be spills.
   // In this case there is a chance that just choosing
   // more GRF will be enough to eliminate spills and we would degrade performance
   // if we sinked. So we rollback the changes if autoGRF is provided
-  if (Mode == LoopSinkMode::SinkWhileRegpressureIsHigh && !AchievedNeededRegpressure &&
+  if (VRTGRFTargets.empty() && Mode == LoopSinkMode::SinkWhileRegpressureIsHigh && !AchievedNeededRegpressure &&
       (NGRF <= 128 && CTX->isAutoGRFSelectionEnabled(F)) &&
       MaxLoopPressure >= (NGRF + IGC_GET_FLAG_VALUE(LoopSinkRollbackThreshold))) {
     PrintDump(VerbosityLevel::Low, "AutoGRF is enabled and the needed regpressure is not achieved:\n");

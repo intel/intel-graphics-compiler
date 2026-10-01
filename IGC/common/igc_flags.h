@@ -335,6 +335,12 @@ DECLARE_IGC_REGKEY(DWORD, LoopSinkRollbackThreshold, 15,
                    "Rollback loop sinking if the estimated regpressure after the sinking is still higher than this + "
                    "#available registers, and the number of registers can be increased",
                    DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, LoopSinkUseVRTTargets, true,
+                   "With automatic GRF selection on VRT platforms, sink toward the VRT budget with the most "
+                   "threads per EU that the loop can reach, and keep the result only if it gains threads per EU "
+                   "or lowers the pressure of a loop above every VRT budget. If disabled, plan for the default "
+                   "number of GRFs",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(bool, LoopSinkEnableLoadsRescheduling, true, "Allow sinking the loads that are already in the loop",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, LoopSinkCoarserLoadsRescheduling, false,

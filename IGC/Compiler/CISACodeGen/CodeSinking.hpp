@@ -225,7 +225,7 @@ private:
 
   /// sinking
   bool loopSink(llvm::Function &F);
-  bool loopSink(llvm::Loop *LoopWithPressure, LoopSinkMode Mode);
+  bool loopSink(llvm::Loop *LoopWithPressure, LoopSinkMode Mode, unsigned TargetGRF);
 
   bool localSink(llvm::BasicBlock *BB, InstToCandidateMap &InstToCandidate, bool Aggressive = false);
 
@@ -268,7 +268,18 @@ private:
   bool mayBeLoopSinkCandidate(llvm::Instruction *I, llvm::Loop *L);
   unsigned getMaxRegCountForLoop(llvm::Loop *L);
   unsigned getMaxRegCountForFunction(llvm::Function *F);
-  LoopSinkMode needLoopSink(llvm::Loop *L);
+  LoopSinkMode needLoopSink(llvm::Loop *L, unsigned &TargetGRF);
+
+  /// GRF targets for automatic GRF selection on VRT platforms
+  struct VRTGRFTarget {
+    unsigned NumGRF = 0;
+    unsigned ThreadsPerEU = 0;
+  };
+  // Ordered by increasing NumGRF and decreasing ThreadsPerEU. Empty when the
+  // GRF count of the function is not selected from the VRT table.
+  llvm::SmallVector<VRTGRFTarget, 8> VRTGRFTargets;
+  void collectVRTGRFTargets(llvm::Function &F);
+  unsigned getVRTThreadsPerEU(unsigned Pressure) const;
 };
 
 void initializeCodeLoopSinkingPass(llvm::PassRegistry &);
