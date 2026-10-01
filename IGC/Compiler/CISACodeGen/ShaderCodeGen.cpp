@@ -1763,7 +1763,8 @@ void OptimizeIR(CodeGenContext *const pContext) {
       // earlier SimplifyCFG changes JumpThreading's input and can expand pixel
       // shaders enough to make SIMD32 spill, even at LLVM's default budget.
       SimplifyCFGOptions PostUnrollCFGOptions;
-      if (unsigned BonusInstThreshold = IGC_GET_FLAG_VALUE(SimplifyCFGBonusInstThreshold))
+      unsigned BonusInstThreshold = IGC_GET_FLAG_VALUE(SimplifyCFGBonusInstThreshold);
+      if (BonusInstThreshold && pContext->type != ShaderType::OPENCL_SHADER)
         PostUnrollCFGOptions.bonusInstThreshold(BonusInstThreshold);
       mpm.add(llvm::createCFGSimplificationPass(PostUnrollCFGOptions));
       mpm.add(llvm::createEarlyCSEPass());
