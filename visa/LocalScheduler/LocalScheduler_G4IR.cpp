@@ -219,7 +219,10 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel *k, G4_BB *block,
   if (doMessageFuse) {
     ddd.pairTypedWriteOrURBWriteNodes(bb);
   }
-  if (ddd.hasMultipleDpasNodes() &&
+  // 2xDPAS pairing merges non-adjacent DPAS nodes, which relocates DPAS
+  // instructions across intervening DPAS. Skip it when DPAS is a scheduling
+  // barrier.
+  if (!ddd.getDpasIsSchedBarrier() && ddd.hasMultipleDpasNodes() &&
       (getBuilder()->hasDpasFwdAndDoubleSrcReadSupression() ||
        getOptions()->getOption(vISA_ScheduleFor2xDpas))) {
     ddd.pair2xDpasNodes();
@@ -1417,6 +1420,7 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
   if (getOptions()->getOption(vISA_ScheduleACCDep)) {
     totalACCNum = kernel->getNumAcc();
   }
+  dpasIsSchedBarrier = getOptions()->getOption(vISA_DPASScheduleBarrier);
   isThreeSouceBlock = false;
   is_2XFP_Block = false;
   bool BTIIsRestrict =
@@ -1562,6 +1566,13 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
         }
       }
     }
+
+    // Treat DPAS as a scheduling barrier, so no instruction is moved across
+    // it. The grouping above already merged a DPAS macro into this one node,
+    // so the whole macro becomes a single barrier.
+    if (dpasIsSchedBarrier && curInst->isDpas() && node->isBarrier() == NODEP)
+      node->MarkAsBarrier(OPT_BARRIER);
+
     // Get buckets for all physical registers assigned in curInst
     getBucketDescrs(node, BDvec);
     if (curInst->isSend() && curInst->asSendInst()->isFence()) {
@@ -3421,6 +3432,12 @@ uint32_t DDD::getEdgeLatency_old(Node *node, Node *succNode, DepType depT) const
   if (depT <= NODEP || depT >= CONTROL_FLOW_BARRIER) {
     if (kernel->fg.builder->modelSendSrcReadLatency() && inst->isSend()) {
       return LT.getSendSrcReadLatency(inst);
+    }
+    // A DPAS marked as a barrier still needs its real latency modeled here,
+    // otherwise its consumers lose all latency hiding and every node upstream
+    // of it loses critical-path priority.
+    if (dpasIsSchedBarrier && inst->isDpas()) {
+      return LT.getLatency(inst);
     }
     return node->getOccupancy();
   }

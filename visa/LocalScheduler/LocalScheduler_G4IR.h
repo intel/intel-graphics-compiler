@@ -128,6 +128,7 @@ public:
   void MarkAsUnresolvedIndirAddressBarrier() {
     barrier = INDIRECT_ADDR_BARRIER;
   }
+  void MarkAsBarrier(DepType d) { barrier = d; }
   DepType isLabel() const {
     for (G4_INST *inst : instVec) {
       if (inst->isLabel()) {
@@ -315,6 +316,8 @@ class DDD {
   int totalGRFNum;
   int totalACCNum;
   unsigned NumDpasNodes = 0;
+  // vISA_DPASScheduleBarrier: every DPAS node is a scheduling barrier.
+  bool dpasIsSchedBarrier = false;
   G4_Kernel *kernel;
   PointsToAnalysis &pointsToAnalysis;
 
@@ -333,6 +336,7 @@ public:
   // Bundle each page-fault WA wait (mov) with its write into one node.
   void bundlePageFaultWANodes();
   bool hasMultipleDpasNodes() const { return NumDpasNodes > 1; }
+  bool getDpasIsSchedBarrier() const { return dpasIsSchedBarrier; }
 
   bool hasReadSuppression(G4_INST *curInst, G4_INST *nextInst, BitSet &liveDst,
                           BitSet &liveSrc) const;
