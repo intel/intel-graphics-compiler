@@ -199,11 +199,6 @@ public:
   // DW_FORM_sec_offset.
   void addLabelLoc(DIE *Die, llvm::dwarf::Attribute Attribute, llvm::MCSymbol *Label);
 
-  /// addOpAddress - Add a dwarf op address data and value using the
-  /// form given and an op of either DW_FORM_addr or DW_FORM_GNU_addr_index.
-  ///
-  void addOpAddress(DIEBlock *Die, const llvm::MCSymbol *Label);
-
   /// addDelta - Add a label delta attribute data and value.
   ///
   void addDelta(DIE *Die, llvm::dwarf::Attribute Attribute, llvm::dwarf::Form Form, const llvm::MCSymbol *Hi,

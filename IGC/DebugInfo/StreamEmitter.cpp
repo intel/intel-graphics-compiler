@@ -340,11 +340,6 @@ void StreamEmitter::SwitchSection(const MCSection *pSection, const MCExpr *pSubs
   IGCLLVM::switchSection(m_pMCStreamer, const_cast<MCSection *>(pSection), pSubsection);
 }
 
-MCSymbol *StreamEmitter::GetSymbol(const GlobalValue *pGV) const {
-  IGC_ASSERT_MESSAGE(pGV->hasName(), "TODO: fix this case");
-  return m_pContext->getOrCreateSymbol(Twine(IGCLLVM::getInternalSymbolPrefix(*m_pAsmInfo)) + pGV->getName());
-}
-
 MCSymbol *StreamEmitter::GetTempSymbol(StringRef name, uint64_t id) const {
   return m_pContext->getOrCreateSymbol(Twine(IGCLLVM::getInternalSymbolPrefix(*m_pAsmInfo)) + name + Twine(id));
 }

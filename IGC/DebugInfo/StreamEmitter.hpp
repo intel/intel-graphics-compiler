@@ -96,11 +96,6 @@ public:
   /// @param pSubsection subsiction to switch to (optional)
   void SwitchSection(const llvm::MCSection *pSection, const llvm::MCExpr *pSubsection = 0) const;
 
-  /// @brief sympol getters
-  /// @param pGV Global Variable
-  /// @return Machine Code symbol
-  llvm::MCSymbol *GetSymbol(const llvm::GlobalValue *pGV) const;
-
   /// @brief Return the MCSymbol corresponding to the assembler
   ///        temporary label with the specified stem and unique ID.
   /// @param name symbol name

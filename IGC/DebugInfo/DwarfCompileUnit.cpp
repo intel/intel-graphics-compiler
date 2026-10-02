@@ -314,15 +314,6 @@ void CompileUnit::addLabelLoc(DIE *Die, dwarf::Attribute Attribute, MCSymbol *La
   }
 }
 
-/// addOpAddress - Add a dwarf op address data and value using the
-/// form given and an op of either DW_FORM_addr or DW_FORM_GNU_addr_index.
-///
-void CompileUnit::addOpAddress(IGC::DIEBlock *Die, const MCSymbol *Sym) {
-  DD->addArangeLabel(SymbolCU(this, Sym));
-  addUInt(Die, dwarf::DW_FORM_data1, dwarf::DW_OP_addr);
-  addLabel(Die, dwarf::DW_FORM_udata, Sym);
-}
-
 /// addDelta - Add a label delta attribute data and value.
 ///
 void CompileUnit::addDelta(DIE *Die, dwarf::Attribute Attribute, dwarf::Form Form, const MCSymbol *Hi,
@@ -1401,18 +1392,11 @@ void CompileUnit::constructTemplateValueParameterDIE(DIE &Buffer, DITemplateValu
     addString(ParamDIE, dwarf::DW_AT_name, VP->getName());
   }
 
+  // A GlobalValue argument (e.g. a function pointer) gets no DW_AT_location:
+  // IGC emits no symbols for globals, so their address cannot be described.
   if (Metadata *Val = VP->getValue()) {
     if (ConstantInt *CI = mdconst::dyn_extract<ConstantInt>(Val)) {
       addConstantValue(ParamDIE, CI, isUnsignedDIType(DD, resolve(VP->getType())));
-    } else if (GlobalValue *GV = mdconst::dyn_extract<GlobalValue>(Val)) {
-      // For declaration non-type template parameters (such as global values and
-      // functions)
-      IGC::DIEBlock *Block = new (DIEValueAllocator) IGC::DIEBlock();
-      addOpAddress(Block, Asm->GetSymbol(GV));
-      // Emit DW_OP_stack_value to use the address as the immediate value of the
-      // parameter, rather than a pointer to it.
-      addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_stack_value);
-      addBlock(ParamDIE, dwarf::DW_AT_location, Block);
     } else if (VP->getTag() == dwarf::DW_TAG_GNU_template_template_param) {
       IGC_ASSERT(isa<MDString>(Val));
       addString(ParamDIE, dwarf::DW_AT_GNU_template_name, cast<MDString>(Val)->getString());
