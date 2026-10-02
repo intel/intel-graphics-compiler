@@ -1498,6 +1498,7 @@ private:
   std::vector<RAVarInfo> vars;
   std::vector<G4_Declare *> UndeclaredVars;
   std::vector<G4_Declare *> UndefinedCmpVars;
+  bool hasMultipleEOTs = false;
 
   // fake declares for each GRF reg, used by HRA
   // note only GRFs that are used by LRA get a declare
