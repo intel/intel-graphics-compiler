@@ -53,6 +53,7 @@ private:
   PassBuilder PB;
 
   void initializeAnalysisManagers(TargetTransformInfoWrapperPass &TTIWP);
+  void breakNeverTakenBackedges(llvm::Function &F);
 };
 
 Pass *createLegacyWrappedSimpleLoopUnrollPass(int OptLevel = 2, bool OnlyWhenForced = false,
