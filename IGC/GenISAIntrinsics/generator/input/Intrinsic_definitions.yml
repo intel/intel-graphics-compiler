@@ -2475,7 +2475,11 @@ intrinsics:
         comment: "update live pixel dmask from discard pixel mask"
         return_definition: !<ReturnDefinition>
             type_definition: *i1
-            comment: ""
+            comment: "The updated discard state of this lane, per lane rather than a uniform\
+                \ 'every lane discarded' flag. It is the discard pixel mask itself. Branching on\
+                \ it yields an early return only through goto semantics, which park the taking\
+                \ lanes until the execution mask empties; a target where deactivating a lane\
+                \ early is unsafe has to reduce this across the wave instead."
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
