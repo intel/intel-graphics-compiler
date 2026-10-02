@@ -302,6 +302,7 @@ def : Proc<"XeHPG", [
   FeatureMultiIndirectByteRegioning,
   FeatureSLM128K,
   FeatureThreadPayloadInMemory,
+  FeatureTransLegacy,
 ]>;
 
 def : Proc<"XeLPG", [
@@ -320,6 +321,7 @@ def : Proc<"XeLPG", [
   FeatureMultiIndirectByteRegioning,
   FeatureSLM128K,
   FeatureThreadPayloadInMemory,
+  FeatureTransLegacy,
 ]>;
 
 def : Proc<"XeLPGPlus", [
@@ -338,6 +340,7 @@ def : Proc<"XeLPGPlus", [
   FeatureMultiIndirectByteRegioning,
   FeatureSLM128K,
   FeatureThreadPayloadInMemory,
+  FeatureTransLegacy,
 ]>;
 
 def : Proc<"XeHPC", [
@@ -361,6 +364,7 @@ def : Proc<"XeHPC", [
   FeatureSLM128K,
   FeatureSwitchjmp,
   FeatureThreadPayloadInMemory,
+  FeatureTransLegacy,
 ]>;
 
 def : Proc<"XeHPCVG", [
@@ -384,6 +388,7 @@ def : Proc<"XeHPCVG", [
   FeatureSLM128K,
   FeatureSwitchjmp,
   FeatureThreadPayloadInMemory,
+  FeatureTransLegacy,
 ]>;
 
 def : Proc<"Xe2", [

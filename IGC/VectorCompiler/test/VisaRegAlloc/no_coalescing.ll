@@ -6,13 +6,13 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPC \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPC -mattr=-translate_legacy_message \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -genx-dump-regalloc \
 ; RUN: -vc-disable-coalescing \
 ; RUN: -vc-fg-dump-prefix=%basename_t_ \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
-; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPC \
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPC -mattr=-translate_legacy_message \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -genx-dump-regalloc \
 ; RUN: -vc-disable-coalescing \
@@ -31,12 +31,12 @@
 ; CHECK_NOCOALESC: Register pressure (bytes):
 ; CHECK_NOCOALESC: Flag pressure (bytes):
 
-; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPC \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPC -mattr=-translate_legacy_message \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -genx-dump-regalloc \
 ; RUN: -vc-fg-dump-prefix=%basename_t_ \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
-; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPC \
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPC -mattr=-translate_legacy_message \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -genx-dump-regalloc \
 ; RUN: -vc-fg-dump-prefix=%basename_t_ \

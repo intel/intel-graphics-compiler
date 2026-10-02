@@ -8,9 +8,9 @@
 
 ; COM: ;;;;;;;;;; RUNNERS ;;;;;;;;;;
 
-; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPG -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPG -mattr=-translate_legacy_message -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
 ; RUN: | FileCheck %s
-; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPG -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPG -mattr=-translate_legacy_message -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
 ; RUN: | FileCheck %s
 
 
