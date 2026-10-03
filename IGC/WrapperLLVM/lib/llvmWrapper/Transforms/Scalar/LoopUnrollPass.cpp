@@ -9,8 +9,6 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumptionCache.h"
-#include "llvm/Analysis/BasicAliasAnalysis.h"
-#include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/MemorySSA.h"
 #include "llvm/Analysis/ScalarEvolution.h"
@@ -22,8 +20,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/LoopUnrollPass.h"
 #include "llvm/Transforms/Scalar/LoopPassManager.h"
-#include "llvm/Transforms/Utils.h"
-#include "llvm/Transforms/Utils/LoopUtils.h"
 #include "IGC/common/LLVMWarningsPop.hpp"
 
 #include "llvmWrapper/Transforms/InitializePasses.h"
@@ -63,22 +59,6 @@ void LoopUnrollLegacyPassWrapper::initializeAnalysisManagers(TargetTransformInfo
   PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 }
 
-void LoopUnrollLegacyPassWrapper::breakNeverTakenBackedges(Function &F) {
-  // LoopUnrollPass keeps these analyses up to date and leaves loops in LCSSA form.
-  auto &LI = FAM.getResult<LoopAnalysis>(F);
-  auto &DT = FAM.getResult<DominatorTreeAnalysis>(F);
-  auto &SE = FAM.getResult<ScalarEvolutionAnalysis>(F);
-
-  // Collect the loops first: breaking a backedge erases the Loop object.
-  SmallVector<Loop *, 4> Loops;
-  for (Loop *L : LI.getLoopsInPreorder())
-    if (L->getLoopLatch() && L->isLCSSAForm(DT) && SE.getConstantMaxBackedgeTakenCount(L)->isZero())
-      Loops.push_back(L);
-
-  for (Loop *L : Loops)
-    breakLoopBackedge(L, DT, SE, LI, nullptr);
-}
-
 bool LoopUnrollLegacyPassWrapper::runOnFunction(Function &F) {
   // The legacy pass manager implementation of the pass used to skip some functions. In the new pass manager
   // implementation this is done globally through the pass manager. Check and skip explicitly here to preserve the old
@@ -100,13 +80,6 @@ bool LoopUnrollLegacyPassWrapper::runOnFunction(Function &F) {
   LoopUnrollPass Implementation(unrollOpts);
   Implementation.run(F, FAM);
 
-  // LoopUnrollPass keeps a loop whose backedge is never taken if its body is
-  // over the full unroll threshold. The loop runs once, but LICM still sinks
-  // instructions used only outside of it into the exit block, which extends
-  // the live ranges of their operands. Break the backedge, as LoopDeletion
-  // does, so later passes see straight-line code.
-  breakNeverTakenBackedges(F);
-
   // The new-PM LoopUnrollPass updated the DomTree inside the private FAM,
   // but the legacy PM's DominatorTreeWrapperPass still holds a stale copy.
   // Recalculate it so downstream legacy PM passes see a valid DomTree.
@@ -118,26 +91,14 @@ bool LoopUnrollLegacyPassWrapper::runOnFunction(Function &F) {
 void LoopUnrollLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<AssumptionCacheTracker>();
   AU.addRequired<TargetTransformInfoWrapperPass>();
-  // Require what getLoopAnalysisUsage() requires, matching what the original
-  // LLVM legacy LoopUnroll pass declared.
-  AU.addRequired<DominatorTreeWrapperPass>();
-  AU.addRequired<LoopInfoWrapperPass>();
-  AU.addRequiredID(LoopSimplifyID);
-  AU.addRequiredID(LCSSAID);
-  AU.addRequired<AAResultsWrapperPass>();
   AU.addRequired<ScalarEvolutionWrapperPass>();
-
+  AU.addPreserved<ScalarEvolutionWrapperPass>();
+  // This calls addRequired/addPreserved for DominatorTreeWrapperPass,
+  // LoopInfoWrapperPass, LoopSimplify, and LCSSA — matching what the
+  // original LLVM legacy LoopUnroll pass declared.
   // We can safely preserve DomTree because runOnFunction() recalculates
   // the legacy PM's DomTree after the new-PM LoopUnrollPass modifies it.
-  // Unrolled loops and loops with a broken backedge are removed only from the
-  // private FAM's LoopInfo and ScalarEvolution, so the legacy LoopInfo and
-  // ScalarEvolution are not preserved.
-  AU.addPreserved<DominatorTreeWrapperPass>();
-  AU.addPreservedID(LoopSimplifyID);
-  AU.addPreservedID(LCSSAID);
-  AU.addPreserved<AAResultsWrapperPass>();
-  AU.addPreserved<BasicAAWrapperPass>();
-  AU.addPreserved<GlobalsAAWrapperPass>();
+  getLoopAnalysisUsage(AU);
 }
 
 char LoopUnrollLegacyPassWrapper::ID = 0;
