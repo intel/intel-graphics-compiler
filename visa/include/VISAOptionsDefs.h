@@ -510,6 +510,23 @@ DEF_VISA_OPTION(vISA_LraFFWindowSize, ET_INT32, "-lraFFWindowSize", UNUSED, 12)
 // (and 1) disables the optimization.
 DEF_VISA_OPTION(vISA_RAAntiDepRecolorRotation, ET_INT32,
                 "-raAntiDepRecolorRotation", UNUSED, 3)
+
+DEF_VISA_OPTION(vISA_RABlockLocalScan, ET_BOOL, "-raBlockLocalScan", UNUSED,
+                false)
+// How far either side of a send the block-local scan reaches, in instructions.
+//
+// The window does two jobs, and both want the same reach. It bounds which
+// instructions a send brings into scope -- only a value first referenced inside
+// some send's window is a candidate -- and it bounds the registers a placement
+// avoids, which is what stops two nearby values landing on the same one.
+//
+// Split into two because the hazards either side are not the same. Behind a
+// send sits code that may still hold a register the send reads; ahead of it
+// sits code that can overwrite a result still in flight, which is the stall
+// this pass mainly exists to remove. 0 on either side confines the window to
+// that direction.
+DEF_VISA_OPTION(vISA_RABlockScanBwd, ET_INT32, "-raBlockScanBwd", UNUSED, 16)
+DEF_VISA_OPTION(vISA_RABlockScanFwd, ET_INT32, "-raBlockScanFwd", UNUSED, 8)
 DEF_VISA_OPTION(vISA_SplitGRFAlignedScalar, ET_BOOL, "-nosplitGRFalignedscalar",
                 UNUSED, true)
 DEF_VISA_OPTION(vISA_DoSplitOnSpill, ET_BOOL, "-nosplitonspill", UNUSED, true)
