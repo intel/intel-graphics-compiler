@@ -206,6 +206,7 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE *pSkuFeatureTable, CPlatform *platform
         InitGt_35_10HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
         break;
       case GFX_GMD_ARCH_35_RELEASE_XE3P_XPC_3511:
+        InitGt_35_11HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
         break;
       default:
         fprintf(stderr, "ERROR! Trying to select a workaround table for an unknown architecture. Aborting.\n");
