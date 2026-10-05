@@ -757,9 +757,12 @@ bool IGCVectorizer::checkPrevVectorization(VecArr &Slice, Value *&OutPrevVectori
     return false;
 
   auto Vectorized = ScalarToVector[First];
-  if (llvm::isa<InsertElementInst>(Vectorized)) {
+  auto VecSize = getVectorSize(Vectorized);
+  if (llvm::isa<InsertElementInst>(Vectorized) && VecSize == Slice.size()) {
     PRINT_LOG_NL("Was sourced by other vector instruction, but wasn't vectorized");
     OutPrevVectorization = Vectorized;
+  } else if (llvm::isa<InsertElementInst>(Vectorized)) {
+    PRINT_LOG_NL("Was sourced as part of wider vector, vectorize do not remap");
   } else {
     PRINT_LOG_NL("Already was vectorized by other slice");
     return true;
