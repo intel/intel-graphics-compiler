@@ -302,6 +302,26 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
     }
   }
 
+  // if the lifetime flows back into the block dominating all the users (e.g. the allocation escapes inside a cycle
+  // that LoopInfo did not handle above - endless or irreducible), move the lifetime start up the dominator tree
+  // to the first block outside of the cycle and include all the blocks inbetween
+  if (bbInSet.contains(userDominatorBlock)) {
+    auto *startBB = userDominatorBlock;
+    while (bbInSet.contains(startBB)) {
+      auto *idom = DT.getNode(startBB)->getIDom();
+      IGC_ASSERT_MESSAGE(idom, "Lifetime flows into the entry block?");
+      startBB = idom->getBlock();
+    }
+
+    bbOutSet.insert(startBB);
+
+    llvm::SmallPtrSet<llvm::BasicBlock *, 16> visited;
+    worklist.push_back(userDominatorBlock);
+    doWorkLoop<llvm::pred_range>(
+        worklist, bbInSet, bbOutSet, [&](auto *currbb) { return llvm::predecessors(currbb); },
+        [&](auto *currbb) { return currbb == startBB || !visited.insert(currbb).second; });
+  }
+
   // at this point we have all the blocks we need, so fill out the start/end data
 
   // Find the outflow block not in the inflow blocks to find the block which starts the lifetime - there should be
@@ -310,10 +330,12 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
   IGC_ASSERT_MESSAGE(lifetimeStartBBIt != bbOutSet.end(), "No lifetime start block?");
 
   // fill out the lifetime start/ends instruction
-  for (auto &I : **lifetimeStartBBIt) {
-    lifetimeStart = LivenessInstruction(&I, bbToIndexMap);
-    if (usersOfAllocation.contains(&I))
-      break;
+  if (lifetimeStartBBIt != bbOutSet.end()) {
+    for (auto &I : **lifetimeStartBBIt) {
+      lifetimeStart = LivenessInstruction(&I, bbToIndexMap);
+      if (usersOfAllocation.contains(&I))
+        break;
+    }
   }
 
   // if bbIn is empty, the entire lifetime is contained within userDominatorBlock
