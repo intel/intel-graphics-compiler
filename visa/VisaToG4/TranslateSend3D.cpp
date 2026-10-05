@@ -1675,6 +1675,15 @@ IR_Builder::constructSrcPayloadRenderTarget(vISA_RT_CONTROLS cntrls,
         Copy_SrcRegRegion_To_Payload(payloadUB, regOff, S, execSize, instOpt);
       }
 
+      auto isNullColor = [](G4_SrcRegRegion *src) {
+        return src == nullptr || src->isNullReg();
+      };
+      if (cntrls.isNullRT && isNullColor(R) && isNullColor(G) &&
+          isNullColor(B) && isNullColor(A) && !cntrls.s0aPresent &&
+          !cntrls.oMPresent && !cntrls.zPresent && !cntrls.isStencil) {
+        payloadUD->setUndefinedNullRTPayload();
+      }
+
       srcToUse = createSrcRegRegion(payloadUD, getRegionStride1());
     } else {
       // Coalesce and directly use original raw operand

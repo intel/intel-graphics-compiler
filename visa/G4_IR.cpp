@@ -5666,6 +5666,7 @@ G4_Declare::G4_Declare(const IR_Builder &builder, const char *n,
   isBBLocal = false;
   isForceGlobalVar = false;
   isIndirectS0 = false;
+  undefinedNullRTPayload = false;
   scopeID = 0;
 
   declId = (unsigned)dcllist.size();

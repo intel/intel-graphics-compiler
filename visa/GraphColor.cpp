@@ -6151,6 +6151,11 @@ void Augmentation::buildInterferenceIncompatibleMask() {
   // with non-default mask and other for default mask
   for (auto &interval : sortedIntervals) {
     auto *newDcl = interval.dcl;
+    // An undefined null-RT payload needs a contiguous register span, but has
+    // no values to preserve across execution masks. Keep normal interference
+    // and message constraints; incompatible-mask edges only inflate pressure.
+    if (newDcl->isUndefinedNullRTPayload())
+      continue;
     unsigned startIdx = interval.interval.start->getLexicalId();
     VISA_DEBUG_VERBOSE(std::cout << "New idx " << startIdx << "\n");
     expireIntervals(startIdx);
