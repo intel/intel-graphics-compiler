@@ -41,15 +41,15 @@ constexpr std::string_view GENERIC_CAST_TO_PTR_FN_NAME = "spirv_GenericCastToPtr
 static void replaceGenericCastToPtrCall(CallInst *TargetFnCall) {
   IRBuilder<> Builder(TargetFnCall->getParent());
   Builder.SetInsertPoint(TargetFnCall);
-  auto *AddrSpaceCast = Builder.CreateAddrSpaceCast(
-      TargetFnCall->getArgOperand(0), TargetFnCall->getCalledFunction()->getReturnType(), "generic_cast_to_ptr");
+  auto *NewAddrSpaceCast = Builder.Insert(
+      new AddrSpaceCastInst(TargetFnCall->getArgOperand(0), TargetFnCall->getCalledFunction()->getReturnType()),
+      "generic_cast_to_ptr");
   IGC_ASSERT(TargetFnCall->getCalledFunction()->getReturnType()->isPointerTy());
   IGC_ASSERT(TargetFnCall->getArgOperand(0)->getType()->isPointerTy());
-  TargetFnCall->replaceAllUsesWith(AddrSpaceCast);
+  TargetFnCall->replaceAllUsesWith(NewAddrSpaceCast);
   TargetFnCall->eraseFromParent();
 
   // Clean up the users of the address space cast
-  auto *NewAddrSpaceCast = dyn_cast<AddrSpaceCastInst>(AddrSpaceCast);
   SmallVector<AddrSpaceCastInst *, 32> UsersToRemove;
   for (auto *User : NewAddrSpaceCast->users()) {
     if (auto *AddrSpaceCastUser = dyn_cast<AddrSpaceCastInst>(User)) {

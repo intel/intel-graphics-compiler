@@ -42,3 +42,34 @@ define spir_kernel void @testFn() {
   call spir_func void @testExternFn(i8 addrspace(1)* %result)
   ret void
 }
+
+; Check that constant arguments are handled: the cast must stay an instruction, so that
+; the round-trip cast back to generic is still removed.
+
+declare spir_func void @testExternGenericFn(i8 addrspace(4)* noundef)
+
+; CHECK-LABEL: testNullArg
+; CHECK: %generic_cast_to_ptr = addrspacecast [[PTR:.*]] addrspace(4){{.*}} null to [[PTR]] addrspace(1){{.*}}
+; CHECK: call spir_func void @testExternFn([[PTR]] addrspace(1){{.*}} %generic_cast_to_ptr)
+; CHECK: call spir_func void @testExternGenericFn([[PTR]] addrspace(4){{.*}} null)
+define spir_kernel void @testNullArg() {
+  %result = call spir_func i8 addrspace(1)* @_Z41__spirv_GenericCastToPtrExplicit_ToGlobalPU3AS4ci(i8 addrspace(4)* null, i32 0)
+  call spir_func void @testExternFn(i8 addrspace(1)* %result)
+  %back = addrspacecast i8 addrspace(1)* %result to i8 addrspace(4)*
+  call spir_func void @testExternGenericFn(i8 addrspace(4)* %back)
+  ret void
+}
+
+@G = addrspace(1) global i8 0
+
+; CHECK-LABEL: testConstExprArg
+; CHECK: %generic_cast_to_ptr = addrspacecast [[PTR:.*]] addrspace(4){{.*}} addrspacecast ([[PTR]] addrspace(1){{.*}} @G to [[PTR]] addrspace(4){{.*}}) to [[PTR]] addrspace(1){{.*}}
+; CHECK: call spir_func void @testExternFn([[PTR]] addrspace(1){{.*}} %generic_cast_to_ptr)
+; CHECK: call spir_func void @testExternGenericFn([[PTR]] addrspace(4){{.*}} addrspacecast ([[PTR]] addrspace(1){{.*}} @G to [[PTR]] addrspace(4){{.*}}))
+define spir_kernel void @testConstExprArg() {
+  %result = call spir_func i8 addrspace(1)* @_Z41__spirv_GenericCastToPtrExplicit_ToGlobalPU3AS4ci(i8 addrspace(4)* addrspacecast (i8 addrspace(1)* @G to i8 addrspace(4)*), i32 0)
+  call spir_func void @testExternFn(i8 addrspace(1)* %result)
+  %back = addrspacecast i8 addrspace(1)* %result to i8 addrspace(4)*
+  call spir_func void @testExternGenericFn(i8 addrspace(4)* %back)
+  ret void
+}
