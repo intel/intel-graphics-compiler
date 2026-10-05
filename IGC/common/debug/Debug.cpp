@@ -131,13 +131,20 @@ raw_ostream &ods() {
   if (IGC_IS_FLAG_ENABLED(PrintToConsole)) {
 #if defined _WIN32 || WIN64
     {
+      // dos is unbuffered and OutputDebugStringA serializes all callers on one system-wide mutex,
+      // so concurrent compiler processes printing IR convoy on it. Only feed it when someone is
+      // listening: an attached debugger, or DUMP_TO_OUTPUTDEBUGSTRING requested explicitly.
+      const bool toODS = IsDebuggerPresent() || GetDebugFlag(DebugFlag::DUMP_TO_OUTPUTDEBUGSTRING);
       static DebugOutputStream dos;
       static TeeOutputStream tee(errs(), dos);
       if (GetDebugFlag(DebugFlag::DUMP_TO_OUTS)) {
-        return tee;
-      } else {
-        return dos;
+        if (toODS)
+          return tee;
+        return errs();
       }
+      if (toODS)
+        return dos;
+      return nulls();
     }
 #else
     {

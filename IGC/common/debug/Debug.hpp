@@ -25,7 +25,8 @@ namespace IGC {
 namespace Debug {
 void Banner(llvm::raw_ostream &OS, std::string const &message);
 
-/// Stream that writes to both std::cout and OutputDebugString
+/// Stream that writes to the console and, on Windows, to OutputDebugString when a debugger
+/// is attached or DebugFlag::DUMP_TO_OUTPUTDEBUGSTRING is set
 llvm::raw_ostream &ods();
 
 void Warning(const char *pExpr, unsigned int line, const char *pFileName, std::string const &message);
