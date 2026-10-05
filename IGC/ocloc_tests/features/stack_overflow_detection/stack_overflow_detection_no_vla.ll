@@ -22,9 +22,6 @@
 ;   }
 ; }
 
-; FIXME: Update the test for LLVM 23.
-; UNSUPPORTED: llvm-23-plus
-
 ; REQUIRES: llvm-spirv, regkeys, pvc-supported
 ;
 ; RUN: llvm-as %s -o %t.bc

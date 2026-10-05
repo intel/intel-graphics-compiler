@@ -30,7 +30,7 @@ define void @fptrunc_kernel(double addrspace(1)* %inA, float addrspace(1)* %out,
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
 ; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
 ; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
-; CHECK:  [[CALL_FTMP:%.*]] = call float @__igcbuiltin_dp_to_sp(double [[TMP3]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[CALL_FTMP:%.*]] = call spir_func float @__igcbuiltin_dp_to_sp(double [[TMP3]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
 ; CHECK:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds float, float addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store float [[CALL_FTMP]], float addrspace(1)* [[ARRAY_IDX2]], align 4
 ; CHECK:  ret void
@@ -66,7 +66,7 @@ define void @fpext_kernel(float addrspace(1)* %inA, double addrspace(1)* %out, <
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
 ; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds float, float addrspace(1)* %inA, i64 [[CONV0]]
 ; CHECK:  [[TMP3:%.*]] = load float, float addrspace(1)* [[ARRAY_IDX0]], align 4
-; CHECK:  [[CALL_FTMP:%.*]] = call double @__igcbuiltin_sp_to_dp(float [[TMP3]], i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[CALL_FTMP:%.*]] = call spir_func double @__igcbuiltin_sp_to_dp(float [[TMP3]], i32 0, i32* [[DPEmuFlag]])
 ; CHECK:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store double [[CALL_FTMP]], double addrspace(1)* [[ARRAY_IDX2]], align 8
 ; CHECK:  ret void
@@ -101,7 +101,7 @@ define spir_kernel void @sitofp_kernel(i32 addrspace(1)* %inA, double addrspace(
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
 ; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* %inA, i64 [[CONV0]]
 ; CHECK:  [[TMP3:%.*]] = load i32, i32 addrspace(1)* [[ARRAY_IDX0]], align 4
-; CHECK:  [[CALL_TMP:%.*]] = call double @__igcbuiltin_int32_to_dp(i32 [[TMP3]])
+; CHECK:  [[CALL_TMP:%.*]] = call spir_func double @__igcbuiltin_int32_to_dp(i32 [[TMP3]])
 ; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store double [[CALL_TMP]], double addrspace(1)* [[ARRAY_IDX1]], align 8
 ; CHECK:  ret void
@@ -136,7 +136,7 @@ define spir_kernel void @uitofp_kernel(i32 addrspace(1)* %inA, double addrspace(
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
 ; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* %inA, i64 [[CONV0]]
 ; CHECK:  [[TMP3:%.*]] = load i32, i32 addrspace(1)* [[ARRAY_IDX0]], align 4
-; CHECK:  [[CALL_TMP:%.*]] = call double @__igcbuiltin_uint32_to_dp(i32 [[TMP3]])
+; CHECK:  [[CALL_TMP:%.*]] = call spir_func double @__igcbuiltin_uint32_to_dp(i32 [[TMP3]])
 ; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store double [[CALL_TMP]], double addrspace(1)* [[ARRAY_IDX1]], align 8
 ; CHECK:  ret void
@@ -172,7 +172,7 @@ define spir_kernel void @fptoui_kernel(double addrspace(1)* %inA, i32 addrspace(
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
 ; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
 ; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
-; CHECK:  [[CALL_TMP:%.*]] = call i32 @__igcbuiltin_dp_to_uint32(double [[TMP3]], i32 3, i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[CALL_TMP:%.*]] = call spir_func i32 @__igcbuiltin_dp_to_uint32(double [[TMP3]], i32 3, i32 0, i32* [[DPEmuFlag]])
 ; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store i32 [[CALL_TMP]], i32 addrspace(1)* [[ARRAY_IDX1]], align 4
 ; CHECK:  ret void
@@ -208,7 +208,7 @@ define spir_kernel void @fptosi_kernel(double addrspace(1)* %inA, i32 addrspace(
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
 ; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
 ; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
-; CHECK:  [[CALL_TMP:%.*]] = call i32 @__igcbuiltin_dp_to_int32(double [[TMP3]], i32 3, i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[CALL_TMP:%.*]] = call spir_func i32 @__igcbuiltin_dp_to_int32(double [[TMP3]], i32 3, i32 0, i32* [[DPEmuFlag]])
 ; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store i32 [[CALL_TMP]], i32 addrspace(1)* [[ARRAY_IDX1]], align 4
 ; CHECK:  ret void
@@ -244,7 +244,7 @@ define spir_kernel void @fptosi64_kernel(double addrspace(1)* %inA, i64 addrspac
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
 ; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
 ; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
-; CHECK:  [[CALL_TMP:%.*]] = call i64 @__igcbuiltin_dp_to_int64(double [[TMP3]], i32 3, i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[CALL_TMP:%.*]] = call spir_func i64 @__igcbuiltin_dp_to_int64(double [[TMP3]], i32 3, i32 0, i32* [[DPEmuFlag]])
 ; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds i64, i64 addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store i64 [[CALL_TMP]], i64 addrspace(1)* [[ARRAY_IDX1]], align 8
 ; CHECK:  ret void
@@ -279,7 +279,7 @@ define spir_kernel void @fptoui64_kernel(double addrspace(1)* %inA, i64 addrspac
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
 ; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
 ; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
-; CHECK:  [[CALL_TMP:%.*]] = call i64 @__igcbuiltin_dp_to_uint64(double [[TMP3]], i32 3, i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[CALL_TMP:%.*]] = call spir_func i64 @__igcbuiltin_dp_to_uint64(double [[TMP3]], i32 3, i32 0, i32* [[DPEmuFlag]])
 ; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds i64, i64 addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store i64 [[CALL_TMP]], i64 addrspace(1)* [[ARRAY_IDX1]], align 8
 ; CHECK:  ret void
@@ -314,7 +314,7 @@ define spir_kernel void @ui64tofp_kernel(i64 addrspace(1)* %inA, double addrspac
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
 ; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds i64, i64 addrspace(1)* %inA, i64 [[CONV0]]
 ; CHECK:  [[TMP3:%.*]] = load i64, i64 addrspace(1)* [[ARRAY_IDX0]], align 8
-; CHECK:  [[CALL_TMP:%.*]] = call double @__igcbuiltin_uint64_to_dp(i64 [[TMP3]], i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[CALL_TMP:%.*]] = call spir_func double @__igcbuiltin_uint64_to_dp(i64 [[TMP3]], i32 0, i32* [[DPEmuFlag]])
 ; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store double [[CALL_TMP]], double addrspace(1)* [[ARRAY_IDX1]], align 8
 ; CHECK:  ret void
@@ -349,7 +349,7 @@ define spir_kernel void @si64tofp_kernel(i64 addrspace(1)* %inA, double addrspac
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
 ; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds i64, i64 addrspace(1)* %inA, i64 [[CONV0]]
 ; CHECK:  [[TMP3:%.*]] = load i64, i64 addrspace(1)* [[ARRAY_IDX0]], align 8
-; CHECK:  [[CALL_TMP:%.*]] = call double @__igcbuiltin_int64_to_dp(i64 [[TMP3]], i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[CALL_TMP:%.*]] = call spir_func double @__igcbuiltin_int64_to_dp(i64 [[TMP3]], i32 0, i32* [[DPEmuFlag]])
 ; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store double [[CALL_TMP]], double addrspace(1)* [[ARRAY_IDX1]], align 8
 ; CHECK:  ret void

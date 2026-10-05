@@ -22,10 +22,10 @@ define void @test(double addrspace(1)* %p, double %a, double %b, double %c) #0 {
 entry:
 ; CHECK-LABEL: @test
 ; CHECK: entry:
-; CHECK:   [[TMP0:%.*]] = call double @__igcbuiltin_dp_sqrt_nomadm_ieee(double %a)
-; CHECK:   [[TMP1:%.*]] = call double @__igcbuiltin_dp_div_nomadm_ieee_always_inline(double [[TMP0]], double %b)
-; CHECK:   [[TMP2:%.*]] = call double @__igcbuiltin_dp_sqrt_nomadm_ieee(double [[TMP1]])
-; CHECK:   [[TMP3:%.*]] = call double @__igcbuiltin_dp_div_nomadm_ieee(double [[TMP2]], double %c)
+; CHECK:   [[TMP0:%.*]] = call spir_func double @__igcbuiltin_dp_sqrt_nomadm_ieee(double %a)
+; CHECK:   [[TMP1:%.*]] = call spir_func double @__igcbuiltin_dp_div_nomadm_ieee_always_inline(double [[TMP0]], double %b)
+; CHECK:   [[TMP2:%.*]] = call spir_func double @__igcbuiltin_dp_sqrt_nomadm_ieee(double [[TMP1]])
+; CHECK:   [[TMP3:%.*]] = call spir_func double @__igcbuiltin_dp_div_nomadm_ieee(double [[TMP2]], double %c)
 ; CHECK:   store double [[TMP3]], double addrspace(1)* %p, align 8
   %call.i.i2 = call double @llvm.sqrt.f64(double %a)
   %div = fdiv double %call.i.i2, %b
@@ -37,9 +37,9 @@ entry:
 
 declare double @llvm.sqrt.f64(double) #1
 
-; CHECK: define internal double @__igcbuiltin_dp_div_nomadm_ieee{{.*}}[[ATTR0:#[0-9]+]]
-; CHECK: define internal double @__igcbuiltin_dp_sqrt_nomadm_ieee{{.*}}[[ATTR1:#[0-9]+]]
-; CHECK: define internal double @__igcbuiltin_dp_div_nomadm_ieee_always_inline{{.*}}[[ATTR2:#[0-9]+]]
+; CHECK: define internal spir_func double @__igcbuiltin_dp_div_nomadm_ieee{{.*}}[[ATTR0:#[0-9]+]]
+; CHECK: define internal spir_func double @__igcbuiltin_dp_sqrt_nomadm_ieee{{.*}}[[ATTR1:#[0-9]+]]
+; CHECK: define internal spir_func double @__igcbuiltin_dp_div_nomadm_ieee_always_inline{{.*}}[[ATTR2:#[0-9]+]]
 
 ; CHECK: attributes [[ATTR0]] = { noinline
 ; CHECK: attributes [[ATTR1]] = { alwaysinline

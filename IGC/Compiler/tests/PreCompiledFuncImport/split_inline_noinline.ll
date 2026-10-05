@@ -22,9 +22,9 @@ define void @test(double addrspace(1)* %p, double %a, double %b, double %c, doub
 entry:
 ; CHECK-LABEL: @test
 ; CHECK: entry:
-; CHECK:   [[TMP0:%.*]] = call double @__igcbuiltin_dp_div_nomadm_ieee_always_inline(double %a, double %b)
-; CHECK:   [[TMP1:%.*]] = call double @__igcbuiltin_dp_div_nomadm_ieee_always_inline(double [[TMP0]], double %c)
-; CHECK:   [[TMP2:%.*]] = call double @__igcbuiltin_dp_div_nomadm_ieee(double [[TMP1]], double %d)
+; CHECK:   [[TMP0:%.*]] = call spir_func double @__igcbuiltin_dp_div_nomadm_ieee_always_inline(double %a, double %b)
+; CHECK:   [[TMP1:%.*]] = call spir_func double @__igcbuiltin_dp_div_nomadm_ieee_always_inline(double [[TMP0]], double %c)
+; CHECK:   [[TMP2:%.*]] = call spir_func double @__igcbuiltin_dp_div_nomadm_ieee(double [[TMP1]], double %d)
 ; CHECK:   store double [[TMP2]], double addrspace(1)* %p
   %div = fdiv double %a, %b
   %div1 = fdiv double %div, %c
@@ -33,8 +33,8 @@ entry:
   ret void
 }
 
-; CHECK: define internal double @__igcbuiltin_dp_div_nomadm_ieee{{.*}}[[ATTR0:#[0-9]+]]
-; CHECK: define internal double @__igcbuiltin_dp_div_nomadm_ieee_always_inline{{.*}}[[ATTR1:#[0-9]+]]
+; CHECK: define internal spir_func double @__igcbuiltin_dp_div_nomadm_ieee{{.*}}[[ATTR0:#[0-9]+]]
+; CHECK: define internal spir_func double @__igcbuiltin_dp_div_nomadm_ieee_always_inline{{.*}}[[ATTR1:#[0-9]+]]
 
 ; CHECK: attributes [[ATTR0]] = { noinline
 ; CHECK: attributes [[ATTR1]] = { alwaysinline

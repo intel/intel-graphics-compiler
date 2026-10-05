@@ -27,10 +27,10 @@
 ; CHECK-LABEL: define internal void @sqrt_helper
 ; CHECK-DAG: call <8 x i32> @llvm.genx.GenISA.getR0
 ; CHECK-DAG: call ptr @llvm.genx.GenISA.getPrivateBase
-; CHECK: call double @__igcbuiltin_dp_sqrt(double {{.*}}, i32 {{.*}}, i32 {{.*}}, i32 {{.*}}, ptr {{.*}}, <8 x i32> {{.*}}, ptr {{.*}})
+; CHECK: call spir_func double @__igcbuiltin_dp_sqrt(double {{.*}}, i32 {{.*}}, i32 {{.*}}, i32 {{.*}}, ptr {{.*}}, <8 x i32> {{.*}}, ptr {{.*}})
 ;
 ; The emulation subroutine gains trailing R0 / PRIVATE_BASE implicit params.
-; CHECK: define internal double @__igcbuiltin_dp_sqrt(double {{.*}}, i32 {{.*}}, i32 {{.*}}, i32 {{.*}}, ptr {{.*}}, <8 x i32> {{.*}}, ptr {{.*}})
+; CHECK: define internal spir_func double @__igcbuiltin_dp_sqrt(double {{.*}}, i32 {{.*}}, i32 {{.*}}, i32 {{.*}}, ptr {{.*}}, <8 x i32> {{.*}}, ptr {{.*}})
 
 ; Function Attrs: convergent nounwind
 define spir_kernel void @test_entry(double addrspace(1)* %Dst, double addrspace(1)* %Src, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase) #0 {

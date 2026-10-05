@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 // CHECK:  [[DPEmuFlag:%.*]] = alloca i32, align 4
 // CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds {{double|\[8 x i8\]}}, ptr addrspace(1) %inA, i64 %{{.*}}
 // CHECK:  [[TMP3:%.*]] = load double, ptr addrspace(1) [[ARRAY_IDX0]], align 8
-// CHECK:  [[CALL_FTMP:%.*]] = call i32 @__igcbuiltin_dp_to_int32(double [[TMP3]], i32 3, i32 0, ptr [[DPEmuFlag]])
+// CHECK:  [[CALL_FTMP:%.*]] = call spir_func i32 @__igcbuiltin_dp_to_int32(double [[TMP3]], i32 3, i32 0, ptr [[DPEmuFlag]])
 // CHECK:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds {{i32|\[4 x i8\]}}, ptr addrspace(1) %out, i64 %{{.*}}
 // CHECK:  store i32 [[CALL_FTMP]], ptr addrspace(1) [[ARRAY_IDX2]], align 4
 // CHECK:  ret void

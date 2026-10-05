@@ -37,7 +37,7 @@ define void @fadd_kernel(double addrspace(1)* %inA, double addrspace(1)* %inB, d
 ; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
 ; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %inB, i64 [[CONV0]]
 ; CHECK:  [[TMP4:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX1]], align 8
-; CHECK:  [[CALL_FADD:%.*]] = call double @__igcbuiltin_dp_add(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[CALL_FADD:%.*]] = call spir_func double @__igcbuiltin_dp_add(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
 ; CHECK:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store double [[CALL_FADD]], double addrspace(1)* [[ARRAY_IDX2]], align 8
 ; CHECK:  ret void
@@ -77,7 +77,7 @@ define void @fsub_kernel(double addrspace(1)* %inA, double addrspace(1)* %inB, d
 ; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
 ; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %inB, i64 [[CONV0]]
 ; CHECK:  [[TMP4:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX1]], align 8
-; CHECK:  [[CALL_FSUB:%.*]] = call double @__igcbuiltin_dp_sub(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[CALL_FSUB:%.*]] = call spir_func double @__igcbuiltin_dp_sub(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
 ; CHECK:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store double [[CALL_FSUB]], double addrspace(1)* [[ARRAY_IDX2]], align 8
 ; CHECK:  ret void
@@ -117,7 +117,7 @@ define void @fmul_kernel(double addrspace(1)* %inA, double addrspace(1)* %inB, d
 ; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
 ; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %inB, i64 [[CONV0]]
 ; CHECK:  [[TMP4:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX1]], align 8
-; CHECK:  [[CALL_FMUL:%.*]] = call double @__igcbuiltin_dp_mul(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[CALL_FMUL:%.*]] = call spir_func double @__igcbuiltin_dp_mul(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
 ; CHECK:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store double [[CALL_FMUL]], double addrspace(1)* [[ARRAY_IDX2]], align 8
 ; CHECK:  ret void
@@ -157,7 +157,7 @@ define void @fdiv_kernel(double addrspace(1)* %inA, double addrspace(1)* %inB, d
 ; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
 ; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %inB, i64 [[CONV0]]
 ; CHECK:  [[TMP4:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX1]], align 8
-; CHECK:  [[CALL_FDIV:%.*]] = call double @__igcbuiltin_dp_div(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[CALL_FDIV:%.*]] = call spir_func double @__igcbuiltin_dp_div(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
 ; CHECK:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store double [[CALL_FDIV]], double addrspace(1)* [[ARRAY_IDX2]], align 8
 ; CHECK:  ret void
@@ -195,7 +195,7 @@ define void @sqrt_kernel(double addrspace(1)* %inA, double addrspace(1)* %out, <
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
 ; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
 ; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
-; CHECK:  [[CALL_SQRT:%.*]] = call double @__igcbuiltin_dp_sqrt(double [[TMP3]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[CALL_SQRT:%.*]] = call spir_func double @__igcbuiltin_dp_sqrt(double [[TMP3]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
 ; CHECK:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
 ; CHECK:  store double [[CALL_SQRT]], double addrspace(1)* [[ARRAY_IDX2]], align 8
 ; CHECK:  ret void

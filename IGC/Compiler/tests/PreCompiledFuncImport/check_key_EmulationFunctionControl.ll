@@ -23,7 +23,7 @@
 ; FC1-LABEL: define spir_kernel void @test_emudp
 ; FC1: {{; Function Attrs:}}
 ; FC1: {{; Function Attrs: alwaysinline}}
-; FC1-NEXT: define internal double @__igcbuiltin_dp_sqrt
+; FC1-NEXT: define internal spir_func double @__igcbuiltin_dp_sqrt
 
 
 ;
@@ -35,8 +35,8 @@
 ; FC2: m_enableSubroutine: 1
 ; FC2-LABEL: define spir_kernel void @test_emudp
 ; FC2: {{; Function Attrs:}}
-; FC2: {{; Function Attrs: noinline}}
-; FC2-NEXT: define internal double @__igcbuiltin_dp_sqrt
+; FC2: {{; Function Attrs:.* noinline}}
+; FC2-NEXT: define internal spir_func double @__igcbuiltin_dp_sqrt
 ; FC2-NOT:"visaStackCall"
 
 
@@ -50,8 +50,8 @@
 ; FC3: m_enableSubroutine: 1
 ; FC3-LABEL: define spir_kernel void @test_emudp
 ; FC3: {{; Function Attrs:}}
-; FC3: {{; Function Attrs: noinline }}
-; FC3-NEXT: define internal double @__igcbuiltin_dp_sqrt
+; FC3: {{; Function Attrs:.* noinline }}
+; FC3-NEXT: define internal spir_func double @__igcbuiltin_dp_sqrt
 ; FC3:"visaStackCall"
 ;
 

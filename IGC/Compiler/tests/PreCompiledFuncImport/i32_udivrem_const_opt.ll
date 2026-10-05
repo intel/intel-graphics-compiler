@@ -34,7 +34,7 @@ define i32 @udiv_i32_pow2(i32 %a) #0 {
 
 ; --- i32 udiv by non-power-of-2 constant: emulation call expected ---
 ; CHECK-LABEL:     @udiv_i32_nonpow2(
-; CHECK:           call i32 @precompiled_u32divrem
+; CHECK:           call spir_func i32 @precompiled_u32divrem
 define i32 @udiv_i32_nonpow2(i32 %a) #0 {
   %r = udiv i32 %a, 3
   ret i32 %r
@@ -42,7 +42,7 @@ define i32 @udiv_i32_nonpow2(i32 %a) #0 {
 
 ; --- i32 udiv by variable: emulation call expected ---
 ; CHECK-LABEL:     @udiv_i32_variable(
-; CHECK:           call i32 @precompiled_u32divrem
+; CHECK:           call spir_func i32 @precompiled_u32divrem
 define i32 @udiv_i32_variable(i32 %a, i32 %b) #0 {
   %r = udiv i32 %a, %b
   ret i32 %r
@@ -50,7 +50,7 @@ define i32 @udiv_i32_variable(i32 %a, i32 %b) #0 {
 
 ; --- i32 urem by non-power-of-2 constant: emulation call expected ---
 ; CHECK-LABEL:     @urem_i32_nonpow2(
-; CHECK:           call i32 @precompiled_u32divrem
+; CHECK:           call spir_func i32 @precompiled_u32divrem
 define i32 @urem_i32_nonpow2(i32 %a) #0 {
   %r = urem i32 %a, 5
   ret i32 %r
@@ -68,7 +68,7 @@ define i32 @urem_i32_pow2(i32 %a) #0 {
 
 ; --- i32 urem by variable: emulation call expected ---
 ; CHECK-LABEL:     @urem_i32_variable(
-; CHECK:           call i32 @precompiled_u32divrem
+; CHECK:           call spir_func i32 @precompiled_u32divrem
 define i32 @urem_i32_variable(i32 %a, i32 %b) #0 {
   %r = urem i32 %a, %b
   ret i32 %r
@@ -86,7 +86,7 @@ define i16 @udiv_i16_pow2(i16 %a) #0 {
 
 ; --- i16 urem by non-power-of-2 constant: emulation call expected ---
 ; CHECK-LABEL:     @urem_i16_nonpow2(
-; CHECK:           call i32 @precompiled_u32divrem
+; CHECK:           call spir_func i32 @precompiled_u32divrem
 define i16 @urem_i16_nonpow2(i16 %a) #0 {
   %r = urem i16 %a, 3
   ret i16 %r

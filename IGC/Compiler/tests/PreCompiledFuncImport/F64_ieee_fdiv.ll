@@ -21,9 +21,9 @@
 ; ------------------------------------------------
 
 ; CHECK-LABEL: define void @test_ieee_fdiv_emulation
-; CHECK: %dres1 = call double @__igcbuiltin_dp_div_nomadm_ieee(double %a, double %b)
+; CHECK: %dres1 = call spir_func double @__igcbuiltin_dp_div_nomadm_ieee(double %a, double %b)
 
-; CHECK-LABEL: define internal double @__igcbuiltin_dp_div_nomadm_ieee
+; CHECK-LABEL: define internal spir_func double @__igcbuiltin_dp_div_nomadm_ieee
 ; CHECK:(double noundef [[TMP0:%.*]], double noundef [[TMP1:%.*]])
 ; CHECK: [[TMP3:%.*]] = fcmp oeq double [[TMP1]], 0.000000e+00
 ; CHECK: br i1 [[TMP3]], label %[[L4:[0-9]*]], label %[[L11:[0-9]*]]

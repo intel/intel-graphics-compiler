@@ -34,7 +34,7 @@ define i64 @udiv_i64_pow2(i64 %a) #0 {
 
 ; --- i64 udiv by non-power-of-2 constant: emulation call expected ---
 ; CHECK-LABEL:     @udiv_i64_nonpow2(
-; CHECK:           call i64 @__igcbuiltin_u64_udiv_sp
+; CHECK:           call spir_func i64 @__igcbuiltin_u64_udiv_sp
 define i64 @udiv_i64_nonpow2(i64 %a) #0 {
   %r = udiv i64 %a, 3
   ret i64 %r
@@ -42,7 +42,7 @@ define i64 @udiv_i64_nonpow2(i64 %a) #0 {
 
 ; --- i64 udiv by variable: emulation call expected ---
 ; CHECK-LABEL:     @udiv_i64_variable(
-; CHECK:           call i64 @__igcbuiltin_u64_udiv_sp
+; CHECK:           call spir_func i64 @__igcbuiltin_u64_udiv_sp
 define i64 @udiv_i64_variable(i64 %a, i64 %b) #0 {
   %r = udiv i64 %a, %b
   ret i64 %r
@@ -50,7 +50,7 @@ define i64 @udiv_i64_variable(i64 %a, i64 %b) #0 {
 
 ; --- i64 urem by non-power-of-2 constant: emulation call expected ---
 ; CHECK-LABEL:     @urem_i64_nonpow2(
-; CHECK:           call i64 @__igcbuiltin_u64_urem_sp
+; CHECK:           call spir_func i64 @__igcbuiltin_u64_urem_sp
 define i64 @urem_i64_nonpow2(i64 %a) #0 {
   %r = urem i64 %a, 5
   ret i64 %r
@@ -68,7 +68,7 @@ define i64 @urem_i64_pow2(i64 %a) #0 {
 
 ; --- i64 urem by variable: emulation call expected ---
 ; CHECK-LABEL:     @urem_i64_variable(
-; CHECK:           call i64 @__igcbuiltin_u64_urem_sp
+; CHECK:           call spir_func i64 @__igcbuiltin_u64_urem_sp
 define i64 @urem_i64_variable(i64 %a, i64 %b) #0 {
   %r = urem i64 %a, %b
   ret i64 %r

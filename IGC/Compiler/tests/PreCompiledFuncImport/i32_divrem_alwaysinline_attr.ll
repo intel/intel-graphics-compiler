@@ -17,7 +17,7 @@
 
 ; --- unsigned division triggers precompiled_u32divrem ---
 ; CHECK-LABEL: @test_udiv(
-; CHECK:       call i32 @precompiled_u32divrem
+; CHECK:       call spir_func i32 @precompiled_u32divrem
 define i32 @test_udiv(i32 %a, i32 %b) #0 {
   %r = udiv i32 %a, %b
   ret i32 %r
@@ -25,7 +25,7 @@ define i32 @test_udiv(i32 %a, i32 %b) #0 {
 
 ; --- signed division triggers precompiled_s32divrem ---
 ; CHECK-LABEL: @test_sdiv(
-; CHECK:       call i32 @precompiled_s32divrem
+; CHECK:       call spir_func i32 @precompiled_s32divrem
 define i32 @test_sdiv(i32 %a, i32 %b) #0 {
   %r = sdiv i32 %a, %b
   ret i32 %r
