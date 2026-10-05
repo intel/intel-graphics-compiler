@@ -2032,6 +2032,25 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter) {
       return false;
     }
 
+    // Computing directly into part of an EOT payload extends the entire
+    // contiguous allocation. Keep the copies available for payload gathering.
+    auto dstDcl = inst->getDst()->getTopDcl();
+    auto defDcl = defInst->getDst()->getTopDcl();
+    if (fg.builder->isEfficient64bEnabled() &&
+        !fg.builder->hasEOTGRFBinding() &&
+        fg.builder->getuint32Option(vISA_EnableGatherWithImmPreRA) !=
+            INDIRECT_TYPE::NO_INDIRECT_SEND &&
+        fg.builder->getuint32Option(vISA_EnableGatherWithImmPreRA) !=
+            INDIRECT_TYPE::SAMPLER_MSG_ONLY &&
+        dstDcl && defDcl && dstDcl->getByteSize() > defDcl->getByteSize()) {
+      for (auto use = inst->use_begin(), end = inst->use_end(); use != end;
+           ++use) {
+        if (use->first->isEOT() && use->first->isSend() &&
+            use->first->getMsgDesc()->getSFID() == SFID::DP_RC)
+          return false;
+      }
+    }
+
     auto defSrc0 = defInst->getSrc(0);
     if (inst->getDst()->getType() == Type_BF &&
         (defSrc0->getType() != Type_F ||
