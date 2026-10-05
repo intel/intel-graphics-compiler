@@ -29,7 +29,7 @@ define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %sr
 ; CHECK-NEXT:    [[TMP1:%.*]] = mul i32 0, [[TMP0]]
 ; CHECK-NEXT:    [[TMP2:%.*]] = add i32 [[OUT_THREADOFFSET]], [[TMP1]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = inttoptr i32 [[TMP2]] to <4 x i32>*
-; CHECK-NEXT:    store <4 x i32> zeroinitializer, <4 x i32>* [[TMP3]], align 32
+; CHECK-NEXT:    store <4 x i32> zeroinitializer, <4 x i32>* [[TMP3]], align 16
 ; CHECK-NEXT:    ret void
 ;
 entry:

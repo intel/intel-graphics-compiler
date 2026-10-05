@@ -695,6 +695,8 @@ public:
       Type *ptrTy = IGCLLVM::PointerType::get(pLoad->getType(), ADDRESS_SPACE_PRIVATE);
       Value *ptr = IRB.CreateIntToPtr(address, ptrTy);
       pLoad->setOperand(0, ptr);
+      auto newAlign = IGCLLVM::getAlign(MinAlign(elementSize, IGCLLVM::getAlign(*pLoad).value()));
+      pLoad->setAlignment(newAlign);
     }
   }
   void handleStoreInst(StoreInst *pStore, Value *pScalarizedIdx) {
@@ -727,6 +729,8 @@ public:
       Type *ptrTy = IGCLLVM::PointerType::get(pStore->getValueOperand()->getType(), ADDRESS_SPACE_PRIVATE);
       Value *ptr = IRB.CreateIntToPtr(address, ptrTy);
       pStore->setOperand(1, ptr);
+      auto newAlign = IGCLLVM::getAlign(MinAlign(elementSize, IGCLLVM::getAlign(*pStore).value()));
+      pStore->setAlignment(newAlign);
     }
   }
   void handleLifetimeMark(IntrinsicInst *inst) {
@@ -846,8 +850,8 @@ void TransposePrivMem::handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx) {
 
   Value *gep =
       getTransposedEltPtr(IRB, pLoad->getType(), pScalarizedIdx, VALUE_NAME(pLoad->getName() + ".SOAPrivMemGEP"));
-  Value *val =
-      IRB.CreateAlignedLoad(cast<GetElementPtrInst>(gep)->getResultElementType(), gep, IGCLLVM::getAlign(*pLoad));
+  auto newAlign = IGCLLVM::getAlign(MinAlign(m_chunkBytes, IGCLLVM::getAlign(*pLoad).value()));
+  Value *val = IRB.CreateAlignedLoad(cast<GetElementPtrInst>(gep)->getResultElementType(), gep, newAlign);
 
   pLoad->replaceAllUsesWith(val);
   pLoad->eraseFromParent();
@@ -874,7 +878,8 @@ void TransposePrivMem::handleStoreInst(StoreInst *pStore, Value *pScalarizedIdx)
   }
 
   Value *gep = getTransposedEltPtr(IRB, ValTy, pScalarizedIdx, VALUE_NAME(pStore->getName() + ".SOAPrivMemGEP"));
-  IRB.CreateAlignedStore(pStore->getValueOperand(), gep, IGCLLVM::getAlign(*pStore));
+  auto newAlign = IGCLLVM::getAlign(MinAlign(m_chunkBytes, IGCLLVM::getAlign(*pStore).value()));
+  IRB.CreateAlignedStore(pStore->getValueOperand(), gep, newAlign);
 
   pStore->eraseFromParent();
 }
@@ -922,7 +927,8 @@ void TransposePrivMem::handlePredicatedLoadInst(PredicatedLoadIntrinsic *pPredLo
 
   Type *ITys[3] = {loadTy, gep->getType(), loadTy};
   Function *predLoadFunc = GenISAIntrinsic::getDeclaration(Mod, GenISAIntrinsic::GenISA_PredicatedLoad, ITys);
-  Value *Args[4] = {gep, pPredLoad->getAlignmentValue(), pPredLoad->getPredicate(), pPredLoad->getMergeValue()};
+  auto newAlign = MinAlign(m_chunkBytes, pPredLoad->getAlignment());
+  Value *Args[4] = {gep, IRB.getInt64(newAlign), pPredLoad->getPredicate(), pPredLoad->getMergeValue()};
   Instruction *newPredLoad = IRB.CreateCall(predLoadFunc, Args);
   newPredLoad->setDebugLoc(pPredLoad->getDebugLoc());
 
