@@ -72,8 +72,10 @@ llvm::Instruction *UpdateGlobalVarDebugInfo(llvm::GlobalVariable *pGlobalVar, ll
     IGCLLVM::DIBuilder Builder(M);
     llvm::DIGlobalVariable *GV = GVs[j]->getVariable();
     llvm::DIScope *scopeToUse = GV->getScope();
-    llvm::DILocation *locToUse = llvm::DILocation::get(scopeToUse->getContext(), GV->getLine(), 0, scopeToUse, nullptr);
-    if (llvm::isa<llvm::DICompileUnit>(scopeToUse) || llvm::isa<llvm::DINamespace>(scopeToUse)) {
+    llvm::DILocation *locToUse = nullptr;
+    if (llvm::isa_and_nonnull<llvm::DILocalScope>(scopeToUse)) {
+      locToUse = llvm::DILocation::get(scopeToUse->getContext(), GV->getLine(), 0, scopeToUse, nullptr);
+    } else {
       // Function has no DebugLoc so it is either internal
       // or optimized. So there is no point inserting
       // global var metadata as "local" to function.
