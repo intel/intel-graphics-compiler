@@ -137,6 +137,24 @@ function(igc_add_lit_target target binary_dir comment)
     )
   # Tests should be excluded from "Build Solution".
   set_target_properties(${target} PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD ON)
+
+  # dry-<target> builds what <target> needs without running lit. The manifest
+  # (suite directory, then lit command) lets scripts run lit like <target>.
+  add_custom_target(dry-${target} DEPENDS ${ARG_DEPENDS})
+  add_dependencies(${target} dry-${target})
+  set_target_properties(dry-${target} PROPERTIES
+    EXCLUDE_FROM_DEFAULT_BUILD ON
+    FOLDER "Tests/LIT Tests"
+    )
+  set(manifest "${binary_dir}" ${LIT_COMMAND})
+  if (NOT CMAKE_CFG_INTDIR STREQUAL ".")
+    string(REPLACE "${CMAKE_CFG_INTDIR}" "$<CONFIG>" manifest "${manifest}")
+  endif ()
+  string(REPLACE ";" "\n" manifest "${manifest}")
+  file(GENERATE
+    OUTPUT "${CMAKE_BINARY_DIR}/igc-lit-suites/$<CONFIG>/${target}"
+    CONTENT "${manifest}\n"
+    )
 endfunction()
 
 # Helper macro to set LLVM_EXTERNAL_LIT variable for LLVM lit tests.
