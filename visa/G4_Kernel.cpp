@@ -20,11 +20,13 @@ SPDX-License-Identifier: MIT
 #include "visa_wa.h"
 
 #include <cstddef>
+#include <cstring>
 #include <fstream>
 #include <functional>
 #include <iomanip>
 #include <list>
 #include <utility>
+#include <vector>
 
 using namespace vISA;
 
@@ -371,16 +373,30 @@ void *gtPinData::getGTPinInfoBuffer(unsigned &bufferSize,
   }
 
   if (t.scratch_area_size) {
+    constexpr uint32_t scratchSlotMinVersion = 6;
+
     gtpin::igc::igc_token_scratch_area_info_t scratchSlotData;
     scratchSlotData.scratch_area_size = t.scratch_area_size;
     vISA_ASSERT(scratchOffset >= nextScratchFree, "scratch offset mismatch");
     scratchSlotData.scratch_area_offset = scratchOffset;
 
     // gtpin scratch slots are beyond spill memory
-    scratchSlotData.token = gtpin::igc::GTPIN_IGC_TOKEN_SCRATCH_AREA_INFO;
-    scratchSlotData.token_size = sizeof(scratchSlotData);
+    const IR_Builder *builder = kernel.fg.builder;
+    scratchSlotData.scratch_slot =
+        (builder->hasScratchSurface() && !builder->isEfficient64bEnabled() &&
+         kernel.getBoolKernelAttr(Attributes::ATTR_SepSpillPvtSS))
+            ? 1
+            : 0;
 
-    writeBuffer(buffer, bufferSize, &scratchSlotData, sizeof(scratchSlotData));
+    scratchSlotData.token = gtpin::igc::GTPIN_IGC_TOKEN_SCRATCH_AREA_INFO;
+    scratchSlotData.token_size =
+        t.version >= scratchSlotMinVersion
+            ? (uint32_t)sizeof(scratchSlotData)
+            : (uint32_t)(sizeof(scratchSlotData) -
+                         sizeof(scratchSlotData.scratch_slot));
+
+    writeBuffer(buffer, bufferSize, &scratchSlotData,
+                scratchSlotData.token_size);
   }
 
   {
@@ -441,6 +457,127 @@ void *gtPinData::getGTPinInfoBuffer(unsigned &bufferSize,
 
   return gtpinBuffer;
 }
+
+#ifndef DLL_MODE
+int decodeAndDumpGTPinInfo(const char *filename) {
+  std::ifstream is(filename, std::ios::binary);
+  if (!is) {
+    std::cerr << filename << ": cannot open GTPin info file\n";
+    return EXIT_FAILURE;
+  }
+  std::vector<uint8_t> buf((std::istreambuf_iterator<char>(is)),
+                           std::istreambuf_iterator<char>());
+
+  size_t pos = 0;
+  auto rd = [&](auto &v) {
+    if (pos + sizeof(v) > buf.size())
+      return false;
+    std::memcpy(&v, buf.data() + pos, sizeof(v));
+    pos += sizeof(v);
+    return true;
+  };
+
+  uint32_t version = 0, scratchAreaSize = 0, initSize = 0, numTokens = 0;
+  uint8_t reRA = 0, grfInfo = 0, srclineMapping = 0, padding = 0;
+  if (!rd(version) || !rd(reRA) || !rd(grfInfo) || !rd(srclineMapping) ||
+      !rd(padding) || !rd(scratchAreaSize) || !rd(initSize) || !rd(numTokens)) {
+    std::cerr << filename << ": truncated GTPin info header\n";
+    return EXIT_FAILURE;
+  }
+
+  std::cout << "=== GTPin IGC Info Dump ===\n";
+  std::cout << "version: " << version << "\n";
+  std::cout << "re_ra: " << (uint32_t)reRA << "\n";
+  std::cout << "grf_info: " << (uint32_t)grfInfo << "\n";
+  std::cout << "srcline_mapping: " << (uint32_t)srclineMapping << "\n";
+  std::cout << "scratch_area_size: " << scratchAreaSize << "\n";
+  std::cout << "igc_init_size: " << initSize << "\n";
+  std::cout << "num_tokens: " << numTokens << "\n";
+
+  for (uint32_t i = 0; i != numTokens; ++i) {
+    const size_t tokenStart = pos;
+    uint32_t token = 0, tokenSize = 0;
+    if (!rd(token) || !rd(tokenSize)) {
+      std::cerr << filename << ": truncated token header\n";
+      return EXIT_FAILURE;
+    }
+    std::cout << "token: " << token << " token_size: " << tokenSize << "\n";
+
+    switch (token) {
+    case gtpin::igc::GTPIN_IGC_TOKEN_GRF_INFO: {
+      uint32_t magicStart = 0, numItems = 0;
+      rd(magicStart);
+      rd(numItems);
+      std::cout << "  magic_start: 0x" << std::hex << magicStart << std::dec
+                << "\n";
+      std::cout << "  num_items: " << numItems << "\n";
+      for (uint32_t j = 0; j != numItems; ++j) {
+        uint16_t startByte = 0, numConsecutiveBytes = 0;
+        if (!rd(startByte) || !rd(numConsecutiveBytes))
+          break;
+        std::cout << "    start_byte: " << startByte
+                  << " num_consecutive_bytes: " << numConsecutiveBytes << "\n";
+      }
+      break;
+    }
+    case gtpin::igc::GTPIN_IGC_TOKEN_SCRATCH_AREA_INFO: {
+      uint32_t areaOffset = 0, areaSize = 0;
+      rd(areaOffset);
+      rd(areaSize);
+      std::cout << "  scratch_area_offset: " << areaOffset << "\n";
+      std::cout << "  scratch_area_size: " << areaSize << "\n";
+      if (tokenSize >= sizeof(gtpin::igc::igc_token_scratch_area_info_t)) {
+        uint8_t slot = 0;
+        rd(slot);
+        std::cout << "  scratch_slot: " << (uint32_t)slot << "\n";
+      }
+      break;
+    }
+    case gtpin::igc::GTPIN_IGC_TOKEN_KERNEL_START_INFO: {
+      uint32_t perThread = 0, crossThread = 0;
+      rd(perThread);
+      rd(crossThread);
+      std::cout << "  per_thread_prolog_size: " << perThread << "\n";
+      std::cout << "  cross_thread_prolog_size: " << crossThread << "\n";
+      break;
+    }
+    case gtpin::igc::GTPIN_IGC_TOKEN_NUM_GRF_REGS: {
+      uint32_t numGRFs = 0;
+      rd(numGRFs);
+      std::cout << "  num_grf_regs: " << numGRFs << "\n";
+      break;
+    }
+    case gtpin::igc::GTPIN_IGC_TOKEN_INDIRECT_ACCESS_INFO: {
+      uint32_t numRanges = 0;
+      rd(numRanges);
+      std::cout << "  num_ranges: " << numRanges << "\n";
+      for (uint32_t j = 0; j != numRanges; ++j) {
+        uint32_t insOffset = 0;
+        uint16_t startByte = 0, numConsecutiveBytes = 0;
+        if (!rd(insOffset) || !rd(startByte) || !rd(numConsecutiveBytes))
+          break;
+        std::cout << "    ins_offset: " << insOffset
+                  << " start_byte: " << startByte
+                  << " num_consecutive_bytes: " << numConsecutiveBytes << "\n";
+      }
+      break;
+    }
+    default:
+      std::cerr << filename << ": unsupported token " << token << "\n";
+      return EXIT_FAILURE;
+    }
+
+    if (tokenStart + tokenSize > buf.size()) {
+      std::cerr << filename << ": token extends past end of buffer\n";
+      return EXIT_FAILURE;
+    }
+    pos = tokenStart + tokenSize;
+  }
+
+  std::cout << "=== End of GTPin Info Dump ===\n";
+  return EXIT_SUCCESS;
+}
+#endif // DLL_MODE
 
 void gtPinData::setScratchNextFree(unsigned next) {
   nextScratchFree = ((next + kernel.numEltPerGRF<Type_UB>() - 1) /

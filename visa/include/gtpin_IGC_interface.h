@@ -51,7 +51,7 @@ namespace igc {
 /*!
  * GTPin <-> IGC driver interface version
  */
-static const uint32_t GTPIN_IGC_INTERFACE_VERSION = 5;
+static const uint32_t GTPIN_IGC_INTERFACE_VERSION = 6;
 
 /*!
  * Tokens for patches IGC can pass to GTPin
@@ -231,6 +231,8 @@ typedef struct GTPIN_IGC_PACK_ATTRIBUTE igc_token_scratch_area_info_t
     uint8_t scratch_area_size_v1; // Since version 1
     uint32_t scratch_area_size;   // Since version 3
   };
+  uint8_t scratch_slot; // Since version 6. Scratch slot GTPin's area is
+                        // located in: 0 or 1.
 } igc_token_scratch_area_info_t;
 
 /*!

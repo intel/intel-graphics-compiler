@@ -827,6 +827,8 @@ DEF_VISA_OPTION(VISA_AsmFileName, ET_CSTR, "-asmOutput",
                 "USAGE: -asmOutput <FILE>\n", NULL)
 DEF_VISA_OPTION(vISA_DecodeDbg, ET_CSTR, "-decodedbg",
                 "USAGE: -decodedbg <dbg filename>\n", NULL)
+DEF_VISA_OPTION(vISA_DecodeGTPin, ET_CSTR, "-decodegtpin",
+                "USAGE: -decodegtpin <gtpin_igc_info filename>\n", NULL)
 DEF_VISA_OPTION(vISA_DecodeRAMetadata, ET_BOOL_TRUE, "-decodeRAMetadata",
                 "USAGE: decodes a file containing RA metadata and "
                 "outputs it to console in human-readable format", false)

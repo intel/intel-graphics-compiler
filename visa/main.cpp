@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "Common_ISA.h"
 #include "Common_ISA_framework.h"
 #include "DebugInfo.h"
+#include "G4_Kernel.hpp"
 #include "Option.h"
 #include "PlatformInfo.h"
 #include "Timer.h"
@@ -208,6 +209,10 @@ int main(int argc, const char *argv[]) {
     return EXIT_SUCCESS;
   }
 
+  if (const char *gtpinName = opt.getOptionCstr(vISA_DecodeGTPin)) {
+    return decodeAndDumpGTPinInfo(gtpinName);
+  }
+
   // TODO: Will need to adjust the platform from option for parseBinary() and
   // parseText() if not specifying platform is allowed at this point.
 
@@ -304,6 +309,15 @@ int parseText(llvm::StringRef fileName, int argc, const char *argv[],
     }
   }
 
+  const bool gtpinEnabled = opt.getOption(vISA_GetFreeGRFInfo) ||
+                            opt.getuInt32Option(vISA_GTPinScratchAreaSize) > 0;
+  if (gtpinEnabled) {
+    for (auto it = cisa_builder->kernel_begin(),
+              ie = cisa_builder->kernel_end();
+         it != ie; ++it)
+      (*it)->SetGTPinInit(nullptr);
+  }
+
   llvm::SmallString<64> isaasmFileName;
   if (auto isaasmName = opt.getOptionCstr(vISA_OutputIsaasmName)) {
     isaasmFileName = isaasmName;
@@ -314,6 +328,21 @@ int parseText(llvm::StringRef fileName, int argc, const char *argv[],
   }
 
   auto compErr = cisa_builder->Compile(isaasmFileName.c_str());
+
+  if (gtpinEnabled) {
+    for (auto it = cisa_builder->kernel_begin(),
+              ie = cisa_builder->kernel_end();
+         it != ie; ++it) {
+      void *gtpinBuffer = nullptr;
+      unsigned int gtpinBufferSize = 0;
+      vISA::FINALIZER_INFO *jitInfo = nullptr;
+      (*it)->GetJitInfo(jitInfo);
+      (*it)->GetGTPinBuffer(gtpinBuffer, gtpinBufferSize,
+                            jitInfo ? jitInfo->stats.spillMemUsed : 0);
+      free(gtpinBuffer);
+    }
+  }
+
   if (compErr) {
     std::cerr << cisa_builder->GetCriticalMsg() << "\n";
     CISA_IR_Builder::DestroyBuilder(cisa_builder);

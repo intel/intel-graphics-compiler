@@ -986,4 +986,8 @@ public:
 
 } // namespace vISA
 
+#ifndef DLL_MODE
+int decodeAndDumpGTPinInfo(const char *filename);
+#endif
+
 #endif // G4_KERNEL_HPP
