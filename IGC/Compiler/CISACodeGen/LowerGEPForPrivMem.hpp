@@ -92,6 +92,9 @@ public:
 
   // for new algo
   bool useNewAlgo(llvm::Type *baseTy) const {
+    if (allocaRef.getMetadata("uniform") != nullptr) {
+      return false;
+    }
     if (newAlgoControl > 1)
       return true;
     if (newAlgoControl == 1) {
