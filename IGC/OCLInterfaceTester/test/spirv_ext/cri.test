@@ -97,6 +97,12 @@
 # CHECK-NEXT:     - id: 6089
 # CHECK-NEXT:       name: LongCompositesINTEL
 #
+# CHECK-NEXT: - name: SPV_INTEL_maximum_registers
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_maximum_registers.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6460
+# CHECK-NEXT:       name: RegisterLimitsINTEL
+#
 # CHECK-NEXT: - name: SPV_INTEL_predicated_io
 # CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_predicated_io.html'
 # CHECK-NEXT:   supported_capabilities:
