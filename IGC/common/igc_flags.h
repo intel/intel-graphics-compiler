@@ -2103,6 +2103,8 @@ DECLARE_IGC_REGKEY(
     ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableProgrammableOffsetsMessageBitInHeader, false,
                    "Use pre-delta feature (legacy) method of passing MSB of PO messages opcode. ", DEBUG_ONLY)
+
+
 DECLARE_IGC_REGKEY(bool, EnableEfficient64b, false,
                    "Enable efficient64b feature such as new inline data and new send messages and descriptor formats, "
                    "valid for xe3p+.",

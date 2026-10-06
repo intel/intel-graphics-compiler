@@ -64,6 +64,7 @@ SPDX-License-Identifier: MIT
 #define INJECT_PRINTF_OPTION(Name, Val) #Name "=" IGC_REGKEY_STRINGIFY(Val) ","
 
 
+
 #include "igc_regkeys_enums_defs.h"
 
 
