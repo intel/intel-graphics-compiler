@@ -1093,6 +1093,8 @@ bool SpecialCasesDisableLICM::runOnFunction(llvm::Function &F) {
     LI = getLoopInfo();
 
     for (auto *L : LI->getLoopsInPreorder()) {
+      if (!L->getLoopLatch())
+        continue;
       if ((LoopHasLoadFromLocalAddressSpace(*L) && LoopDependsOnSIMDLaneId(*L)) || LoopHasInvariantSwitchDispatch(*L)) {
         Changed |= AddLICMDisableMedatadaToSpecificLoop(*L);
       }
@@ -1113,9 +1115,6 @@ bool SpecialCasesDisableLICM::LoopHasInvariantSwitchDispatch(const Loop &L) {
   llvm::DenseMap<Value *, size_t> InvariantBranchCounts;
   llvm::SmallVector<ICmpInst *, 16> SeenICMP;
   for (BasicBlock *BB : L.blocks()) {
-    if (BB->size() != 2) {
-      continue;
-    }
     auto *BI = dyn_cast<BranchInst>(BB->getTerminator());
     if (!BI || !BI->isConditional()) {
       continue;
@@ -1138,12 +1137,11 @@ bool SpecialCasesDisableLICM::LoopHasInvariantSwitchDispatch(const Loop &L) {
     SeenICMP.push_back(Cmp);
     ++InvariantBranchCounts[LHS];
   }
-  if (!llvm::any_of(InvariantBranchCounts, [](const auto &Entry) { return Entry.second >= MIN_DISPATCH_BRANCHES; }) ||
-      !L.getLoopLatch()) {
+  if (!llvm::any_of(InvariantBranchCounts, [](const auto &Entry) { return Entry.second >= MIN_DISPATCH_BRANCHES; })) {
     return false;
   }
 
-  constexpr unsigned MIN_HOISTABLE_INSTRUCTIONS = 32;
+  constexpr unsigned MIN_HOISTABLE_INSTRUCTIONS = 16;
 
   SmallPtrSet<Value *, 32> SeenInvariantInstr;
   auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();

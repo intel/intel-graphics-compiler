@@ -13,7 +13,7 @@
 ; CHECK: br i1 %exit_cond, label %exit, label %header{{$}}
 
 ; Debug intrinsics, lifetime markers and llvm.assume generate no code and must
-; not count as hoistable work. The arm has 31 real hoistable instructions.
+; not count as hoistable work. The arm has 15 real hoistable instructions
 define spir_kernel void @test_invariant_switch_dispatch_debug_calls(i32 %dispatch_val, float %input, ptr addrspace(1) %output) {
 preheader:
   %tmp = alloca float, align 4
@@ -114,43 +114,11 @@ arm:
   call void @llvm.dbg.value(metadata float %v13, metadata !{}, metadata !DIExpression())
   %v14 = fmul float %v13, 2.000000e+00
   call void @llvm.dbg.value(metadata float %v14, metadata !{}, metadata !DIExpression())
-  %v15 = fmul float %v14, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v15, metadata !{}, metadata !DIExpression())
-  %v16 = fmul float %v15, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v16, metadata !{}, metadata !DIExpression())
-  %v17 = fmul float %v16, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v17, metadata !{}, metadata !DIExpression())
-  %v18 = fmul float %v17, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v18, metadata !{}, metadata !DIExpression())
-  %v19 = fmul float %v18, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v19, metadata !{}, metadata !DIExpression())
-  %v20 = fmul float %v19, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v20, metadata !{}, metadata !DIExpression())
-  %v21 = fmul float %v20, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v21, metadata !{}, metadata !DIExpression())
-  %v22 = fmul float %v21, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v22, metadata !{}, metadata !DIExpression())
-  %v23 = fmul float %v22, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v23, metadata !{}, metadata !DIExpression())
-  %v24 = fmul float %v23, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v24, metadata !{}, metadata !DIExpression())
-  %v25 = fmul float %v24, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v25, metadata !{}, metadata !DIExpression())
-  %v26 = fmul float %v25, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v26, metadata !{}, metadata !DIExpression())
-  %v27 = fmul float %v26, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v27, metadata !{}, metadata !DIExpression())
-  %v28 = fmul float %v27, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v28, metadata !{}, metadata !DIExpression())
-  %v29 = fmul float %v28, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v29, metadata !{}, metadata !DIExpression())
-  %v30 = fmul float %v29, 2.000000e+00
-  call void @llvm.dbg.value(metadata float %v30, metadata !{}, metadata !DIExpression())
   call void @llvm.lifetime.start.p0(i64 4, ptr %tmp)
   call void @llvm.lifetime.end.p0(i64 4, ptr %tmp)
   %cond = fcmp oge float %input, 0.000000e+00
   call void @llvm.assume(i1 %cond)
-  store float %v30, ptr addrspace(1) %output, align 4
+  store float %v14, ptr addrspace(1) %output, align 4
   br label %latch
 
 latch:
