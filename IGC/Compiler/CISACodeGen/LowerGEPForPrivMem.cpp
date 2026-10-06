@@ -387,10 +387,7 @@ SOALayoutChecker::SOALayoutChecker(AllocaInst &allocaToCheck, bool isOCL,
   }
 }
 
-// Reject vector allocas with access not-supported by new SoA algorithm:
-// - access greater than partition size for vectors
-// - accesses that are not aligned to their size or the partition size
-// - accesses that are not power of two but are smaller then partition
+// Reject allocas with access not-supported by new SoA algorithm
 bool SOALayoutChecker::hasAccessUnsupportedByNewAlgo(bool CheckWideVectors) const {
   llvm::SmallPtrSet<llvm::Value *, 32> Seen;
   llvm::SmallVector<llvm::Value *, 32> Worklist;
@@ -433,11 +430,20 @@ bool SOALayoutChecker::hasAccessUnsupportedByNewAlgo(bool CheckWideVectors) cons
         continue;
 
       uint64_t AccBytes = pDL->getTypeStoreSize(AccTy);
+      // Accesses smaller than the partition size must be a power of two due to intra chunk offset calculations.
       if (AccBytes < SOAPartitionBytes && !isPowerOf2_32((uint32_t)AccBytes))
         return true;
+      // Access needs to be aligned to its size or the partition size. Smaller accesses due to chunk offset calculation
+      // and larger due to splitting in partition sized chunks.
       if (!isAlignedChain(Ptr, (AccBytes < SOAPartitionBytes) ? AccBytes : SOAPartitionBytes))
         return true;
+      // For non-struct base types accesses larger than partition can only be handled by legacy SoA promotion.
       if (CheckWideVectors && AccTy->isVectorTy() && AccBytes > SOAPartitionBytes)
+        return true;
+      // Accesses greater than partition size are not supported unless EnableAggressiveSOAPromotion is on and their size
+      // is a multiple of the partition size - refer to getMultiChunkVecTy.
+      if (AccBytes > SOAPartitionBytes &&
+          (IGC_IS_FLAG_DISABLED(EnableAggressiveSOAPromotion) || (AccBytes % SOAPartitionBytes) != 0))
         return true;
     }
   }
