@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "Passes/InstCombine.hpp"
 #include "Passes/LVN.hpp"
 #include "Passes/MergeScalars.hpp"
+#include "Passes/PostRACopyProp.hpp"
 #include "Passes/SRSubstitution.hpp"
 #include "Passes/SendFusion.hpp"
 #include "Passes/StaticProfiling.hpp"
@@ -654,6 +655,16 @@ void Optimizer::removeLifetimeOps() {
   }
 }
 
+void Optimizer::postRACopyPropagation() {
+  // Only kernels with GRF spills have spill cleanup copies.
+  auto *jitInfo = builder.getJitInfo();
+  if (!jitInfo || jitInfo->stats.numGRFSpillFillWeighted == 0 ||
+      builder.getOption(vISA_Debug))
+    return;
+
+  PostRACopyProp(kernel, builder).run();
+}
+
 void Optimizer::runPass(PassIndex Index) {
   const PassInfo &PI = Passes[Index];
 
@@ -750,6 +761,8 @@ void Optimizer::initOptimizations() {
   OPT_INITIALIZE_PASS(preRegAlloc, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(regAlloc, vISA_EnableAlways, TimerID::TOTAL_RA);
   OPT_INITIALIZE_PASS(removeLifetimeOps, vISA_EnableAlways, TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(postRACopyPropagation, vISA_PostRACopyProp,
+                      TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(postRA_HWWorkaround, vISA_EnableAlways,
                       TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(removeRedundMov, vISA_removeRedundMov,
@@ -1103,6 +1116,9 @@ int Optimizer::optimization() {
   runPass(PI_fixSamplerCacheBit);
 
   runPass(PI_removeLifetimeOps);
+
+  // Clean up copies left behind by spill/fill cleanup.
+  runPass(PI_postRACopyPropagation);
 
   // HW workaround after RA
   runPass(PI_postRA_HWWorkaround);
