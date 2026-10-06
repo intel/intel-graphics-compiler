@@ -235,10 +235,11 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
         // mov if needed.
         //
         // Splitting halves the execution size. A sub-instruction that needs
-        // an execution-mask offset must not be halved below SIMD4: the upper
-        // half (e.g. the SIMD2 at mask offset 2) has no legal emask offset.
-        // Halve a mov in place only when the halves stay at least SIMD4, or
-        // when they carry no emask offset anyway. Otherwise fall through and
+        // an execution-mask offset must not be halved to a size with no legal
+        // emask offset: e.g. the SIMD2 at mask offset 2, or any SIMD4 on a
+        // platform without nibble control. Halve a mov in place only when
+        // both halves have a legal emask, or when they carry no emask offset
+        // anyway. Otherwise fall through and
         // legalize by copying the source into a NoMask temp, which can be
         // split to any size, while the masked parent keeps its execution size
         // and is left to fixUnalignedRegions in HWConformity.
@@ -247,9 +248,20 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
         bool halvesNeedMaskOffset =
             inst->getCondMod() || inst->getPredicate() ||
             (!isCMKernel && !inst->isWriteEnableInst());
+        auto halvesHaveLegalMask = [&]() {
+          G4_ExecSize halfSize{execSize / 2};
+          bool nibOk =
+              m_builder->hasNibCtrl() && (inst->getDst()->getTypeSize() == 8 ||
+                                          TypeSize(inst->getExecType()) == 8);
+          int maskOffset = inst->getMaskOffset();
+          return G4_INST::offsetToMask(halfSize, maskOffset, nibOk) !=
+                     InstOpt_NoOpt &&
+                 G4_INST::offsetToMask(halfSize, maskOffset + halfSize,
+                                       nibOk) != InstOpt_NoOpt;
+        };
         bool canHalveMovInPlace =
             inst->opcode() == G4_mov &&
-            (execSize > g4::SIMD4 || !halvesNeedMaskOffset);
+            (!halvesNeedMaskOffset || halvesHaveLegalMask());
         if (canHalveMovInPlace) {
           doSplit = true;
           break;

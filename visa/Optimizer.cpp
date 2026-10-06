@@ -6309,19 +6309,31 @@ G4_SrcRegRegion *IR_Builder::createSubSrcOperand(G4_SrcRegRegion *src,
   }
 
   if (src->getRegAccess() != Direct) {
-    if (isVxHRegion) {
-      // just handle <1,0>
-      if (start > 0) {
-        // Change a0.N to a0.(N+start)
+    if (src->getRegion()->isRegionWH()) {
+      // VxH/Vx1: each row of wd elements has its own address subregister, so
+      // the sub-operand starting at row (start / wd) uses a0.(N + start / wd)
+      // and the column offset goes into the immediate. For example, when
+      // splitting a SIMD16 instruction into two SIMD8 halves:
+      //   VxH (wd = 1):     r[a0.0]<1,0>:d  -> r[a0.0]<1,0>:d, r[a0.8]<1,0>:d
+      //   Vx1 (wd < size):  r[a0.0]<4,1>:d  -> r[a0.0]<4,1>:d, r[a0.2]<4,1>:d
+      //   Vx1 (wd == size): r[a0.0]<8,1>:q  -> r[a0.0,0]<1;1,0>:q,
+      //                                        r[a0.1,0]<1;1,0>:q
+      //   Vx1 (wd > size):  r[a0.0]<16,1>:d -> r[a0.0,0]<1;1,0>:d,
+      //                                        r[a0.0,32]<1;1,0>:d
+      uint16_t subRegOff = src->getSubRegOff() + start / wd;
+      short newOff = (start % wd) * hs * TypeSize(srcType);
+      if (isVxHRegion) {
+        // The sub-operand still spans multiple rows.
         vISA_ASSERT((start % wd == 0),
                     "illegal starting offset and width combination");
-        uint16_t subRegOff = src->getSubRegOff() + start / wd;
         return createIndirectSrc(src->getModifier(), src->getBase(),
                                  src->getRegOff(), subRegOff, src->getRegion(),
                                  src->getType(), src->getAddrImm());
-      } else {
-        return duplicateOperand(src);
       }
+      // The sub-operand fits in one row, so it becomes a 1x1 region.
+      return createIndirectSrc(src->getModifier(), src->getBase(),
+                               src->getRegOff(), subRegOff, rd, src->getType(),
+                               src->getAddrImm() + newOff);
     }
 
     if (start > 0) {
