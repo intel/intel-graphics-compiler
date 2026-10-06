@@ -168,7 +168,7 @@ bool PropagateCmpUniformity::canReplaceUse(Use &U, BasicBlock *trueBranchBB, Bas
   // falseBranchBB can also reach trueBranchBB, either directly or via intermediate
   // blocks (e.g. created by JumpThreading). In that case a later CFGSimplification
   // would collapse the intermediate blocks back and corrupt the PHI.
-  if (incomingBB == cmpBB && useBB == trueBranchBB) {
+  if (isa<PHINode>(user) && incomingBB == cmpBB && useBB == trueBranchBB) {
     // Sub-case: cmpBB's two successors are the same block (both edges to trueBranchBB).
     if (falseBranchBB == trueBranchBB)
       return false;
