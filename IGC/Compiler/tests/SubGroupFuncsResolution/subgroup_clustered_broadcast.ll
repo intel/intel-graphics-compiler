@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; RUN: igc_opt -debugify --igc-sub-group-func-resolution -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --igc-sub-group-func-resolution -S < %s 2>&1 | FileCheck %s --check-prefix=NO-I1
 ; ------------------------------------------------
 ; SubGroupFuncsResolution
 ; ------------------------------------------------
@@ -15,10 +16,15 @@
 ; CHECK-NOT: WARNING
 ; CHECK: CheckModuleDebugify: PASS
 
+; GenISA_WaveClusteredBroadcast does not support i1; no i1 variant may be created anywhere in the module.
+; NO-I1-NOT: @llvm.genx.GenISA.WaveClusteredBroadcast.i1(
+
 define i1 @test_clustered_broadcast_i1(i1 %src) {
 ; CHECK-LABEL: @test_clustered_broadcast_i1(
-; CHECK:    [[TMP1:%.*]] = call i1 @llvm.genx.GenISA.WaveClusteredBroadcast.i1(i1 %src, i32 8, i32 5, i32 0)
-; CHECK:    ret i1 [[TMP1]]
+; CHECK:    [[ZEXT:%.*]] = zext i1 %src to i8
+; CHECK:    [[TMP1:%.*]] = call i8 @llvm.genx.GenISA.WaveClusteredBroadcast.i8(i8 [[ZEXT]], i32 8, i32 5, i32 0)
+; CHECK:    [[TRUNC:%.*]] = trunc i8 [[TMP1]] to i1
+; CHECK:    ret i1 [[TRUNC]]
 ;
   %1 = call spir_func i1 @__builtin_IB_simd_clustered_broadcast_b(i1 %src, i32 8, i32 5)
   ret i1 %1

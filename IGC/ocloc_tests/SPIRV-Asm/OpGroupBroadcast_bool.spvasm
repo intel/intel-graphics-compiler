@@ -1,0 +1,141 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; OpGroupBroadcast with Boolean Result Type at Subgroup scope.
+; The bool value is broadcast through the i8 variant of GenISA_WaveBroadcast, since
+; the shuffle/broadcast emitter cannot move or lane-index predicate (i1) variables.
+
+; REQUIRES: regkeys, spirv-as, pvc-supported
+; RUN: spirv-as --target-env spv1.1 -o %t.spv %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s
+
+               OpCapability Addresses
+               OpCapability Kernel
+               OpCapability Int64
+               OpCapability Groups
+               OpCapability SubgroupDispatch
+               OpMemoryModel Physical64 OpenCL
+               OpEntryPoint Kernel %uniform_value "broadcast_bool_uniform_value"
+               OpEntryPoint Kernel %immediate_lane_simd16 "broadcast_bool_immediate_lane_simd16" %gid
+               OpEntryPoint Kernel %immediate_lane_simd32 "broadcast_bool_immediate_lane_simd32" %gid
+               OpEntryPoint Kernel %non_immediate_lane "broadcast_bool_non_immediate_lane" %gid
+               OpExecutionMode %uniform_value SubgroupSize 16
+               OpExecutionMode %immediate_lane_simd16 SubgroupSize 16
+               OpExecutionMode %immediate_lane_simd32 SubgroupSize 32
+               OpExecutionMode %non_immediate_lane SubgroupSize 16
+               OpName %gid "__spirv_BuiltInGlobalInvocationId"
+               OpName %in "in"
+               OpName %out "out"
+               OpName %v "v"
+               OpName %lane "lane"
+               OpDecorate %gid BuiltIn GlobalInvocationId
+               OpDecorate %gid Constant
+       %void = OpTypeVoid
+       %bool = OpTypeBool
+       %uint = OpTypeInt 32 0
+      %ulong = OpTypeInt 64 0
+    %v3ulong = OpTypeVector %ulong 3
+   %ptr_uint = OpTypePointer CrossWorkgroup %uint
+ %ptr_v3ulong = OpTypePointer Input %v3ulong
+     %uint_0 = OpConstant %uint 0
+     %uint_1 = OpConstant %uint 1
+     %uint_3 = OpConstant %uint 3
+     %uint_5 = OpConstant %uint 5
+    %uint_20 = OpConstant %uint 20
+    %ulong_0 = OpConstant %ulong 0
+%fn_out_uint = OpTypeFunction %void %ptr_uint %uint
+ %fn_in_out = OpTypeFunction %void %ptr_uint %ptr_uint
+%fn_in_out_uint = OpTypeFunction %void %ptr_uint %ptr_uint %uint
+        %gid = OpVariable %ptr_v3ulong Input
+
+; Uniform value: previously crashed in emitSimdShuffle (predicate to predicate copy).
+; CHECK-LABEL: .kernel "broadcast_bool_uniform_value"
+; CHECK:       cmp.gt (M1_NM, 1) P{{[0-9]+}} {{[A-Za-z0-9_]+}}(0,0)<0;1,0> 0x3:d
+; CHECK:       mov (M1_NM, 1) [[I8:[A-Za-z0-9_]+]](0,0)<1> {{.+}}(0,0)<0;1,0>
+; CHECK:       mov (M1_NM, 1) {{[A-Za-z0-9_]+}}(0,0)<1> [[I8]](0,0)<0;1,0>
+; CHECK:       lsc_store.ugm
+%uniform_value = OpFunction %void None %fn_out_uint
+      %out_a = OpFunctionParameter %ptr_uint
+          %v = OpFunctionParameter %uint
+    %entry_a = OpLabel
+      %cmp_a = OpSGreaterThan %bool %v %uint_3
+    %bcast_a = OpGroupBroadcast %bool %uint_3 %cmp_a %uint_0
+      %sel_a = OpSelect %uint %bcast_a %uint_1 %uint_0
+               OpStore %out_a %sel_a Aligned 4
+               OpReturn
+               OpFunctionEnd
+
+; Non-uniform value, immediate lane: previously the lane offset was silently dropped and lane 0 was read.
+; CHECK-LABEL: .kernel "broadcast_bool_immediate_lane_simd16"
+; CHECK:       cmp.gt (M1, 16) P{{[0-9]+}}
+; CHECK:       mov (M1, 16) [[I8:[A-Za-z0-9_]+]](0,0)<1> {{.+}}(0,0)<1;1,0>
+; CHECK:       mov (M1_NM, 1) {{[A-Za-z0-9_]+}}(0,0)<1> [[I8]](0,5)<0;1,0>
+; CHECK:       lsc_store.ugm (M1, 16)
+%immediate_lane_simd16 = OpFunction %void None %fn_in_out
+         %in = OpFunctionParameter %ptr_uint
+        %out = OpFunctionParameter %ptr_uint
+    %entry_b = OpLabel
+     %gidv_b = OpLoad %v3ulong %gid Aligned 32
+      %gid_b = OpCompositeExtract %ulong %gidv_b 0
+     %inp_b = OpInBoundsPtrAccessChain %ptr_uint %in %gid_b
+      %val_b = OpLoad %uint %inp_b Aligned 4
+      %cmp_b = OpSGreaterThan %bool %val_b %uint_3
+    %bcast_b = OpGroupBroadcast %bool %uint_3 %cmp_b %uint_5
+      %sel_b = OpSelect %uint %bcast_b %uint_1 %uint_0
+     %outp_b = OpInBoundsPtrAccessChain %ptr_uint %out %gid_b
+               OpStore %outp_b %sel_b Aligned 4
+               OpReturn
+               OpFunctionEnd
+
+; Lane 20 lives in the second SIMD16 half.
+; CHECK-LABEL: .kernel "broadcast_bool_immediate_lane_simd32"
+; CHECK:       cmp.gt (M1, 32) P{{[0-9]+}}
+; CHECK:       mov (M1, 32) [[I8:[A-Za-z0-9_]+]](0,0)<1> {{.+}}(0,0)<1;1,0>
+; CHECK:       mov (M5_NM, 1) {{[A-Za-z0-9_]+}}(0,0)<1> [[I8]](0,20)<0;1,0>
+; CHECK:       lsc_store.ugm (M1, 32)
+%immediate_lane_simd32 = OpFunction %void None %fn_in_out
+       %in_c = OpFunctionParameter %ptr_uint
+      %out_c = OpFunctionParameter %ptr_uint
+    %entry_c = OpLabel
+     %gidv_c = OpLoad %v3ulong %gid Aligned 32
+      %gid_c = OpCompositeExtract %ulong %gidv_c 0
+      %inp_c = OpInBoundsPtrAccessChain %ptr_uint %in_c %gid_c
+      %val_c = OpLoad %uint %inp_c Aligned 4
+      %cmp_c = OpSGreaterThan %bool %val_c %uint_3
+    %bcast_c = OpGroupBroadcast %bool %uint_3 %cmp_c %uint_20
+      %sel_c = OpSelect %uint %bcast_c %uint_1 %uint_0
+     %outp_c = OpInBoundsPtrAccessChain %ptr_uint %out_c %gid_c
+               OpStore %outp_c %sel_c Aligned 4
+               OpReturn
+               OpFunctionEnd
+
+; Non-uniform value, non-immediate lane: previously asserted in CEncoder::AddrAdd on a predicate variable.
+; CHECK-LABEL: .kernel "broadcast_bool_non_immediate_lane"
+; CHECK:       cmp.gt (M1, 16) P{{[0-9]+}}
+; CHECK:       mov (M1, 16) [[I8:[A-Za-z0-9_]+]](0,0)<1> {{.+}}(0,0)<1;1,0>
+; CHECK:       mov (M1, 16) [[DATA:[A-Za-z0-9_]+]](0,0)<1> [[I8]](0,0)<1;1,0>
+; CHECK:       shl (M1_NM, 1) [[SHUFFLETMP:[A-Za-z0-9_]+]](0,0)<1> {{[A-Za-z0-9_]+}}(0,0)<0;1,0> 0x1:uw
+; CHECK:       addr_add (M1_NM, 1) A0(0)<1> &[[DATA]] [[SHUFFLETMP]](0,0)<0;1,0>
+; CHECK:       mov (M1_NM, 1) {{[A-Za-z0-9_]+}}(0,0)<1> r[A0(0),0]<0;1,0>:w
+; CHECK:       lsc_store.ugm (M1, 16)
+%non_immediate_lane = OpFunction %void None %fn_in_out_uint
+       %in_d = OpFunctionParameter %ptr_uint
+      %out_d = OpFunctionParameter %ptr_uint
+       %lane = OpFunctionParameter %uint
+    %entry_d = OpLabel
+     %gidv_d = OpLoad %v3ulong %gid Aligned 32
+      %gid_d = OpCompositeExtract %ulong %gidv_d 0
+      %inp_d = OpInBoundsPtrAccessChain %ptr_uint %in_d %gid_d
+      %val_d = OpLoad %uint %inp_d Aligned 4
+      %cmp_d = OpSGreaterThan %bool %val_d %uint_3
+    %bcast_d = OpGroupBroadcast %bool %uint_3 %cmp_d %lane
+      %sel_d = OpSelect %uint %bcast_d %uint_1 %uint_0
+     %outp_d = OpInBoundsPtrAccessChain %ptr_uint %out_d %gid_d
+               OpStore %outp_d %sel_d Aligned 4
+               OpReturn
+               OpFunctionEnd

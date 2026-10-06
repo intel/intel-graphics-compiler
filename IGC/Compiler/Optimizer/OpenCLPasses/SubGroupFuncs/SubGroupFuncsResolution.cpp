@@ -559,6 +559,28 @@ void SubGroupFuncsResolution::subGroupArithmetic(CallInst &CI, WaveOps op, Group
   CI.eraseFromParent();
 }
 
+// Replaces CI with a call to the lane data-movement intrinsic WaveID, whose first NumDataArgs
+// arguments are data of the overloaded type.
+static void replaceWithWaveDataMovement(CallInst &CI, GenISAIntrinsic::ID WaveID, SmallVectorImpl<Value *> &Args,
+                                        const Twine &Name, unsigned NumDataArgs = 1) {
+  IRBuilder<> IRB(&CI);
+  IRB.SetCurrentDebugLocation(CI.getDebugLoc());
+
+  bool IsBoolean = Args[0]->getType()->isIntegerTy(1);
+  if (IsBoolean) {
+    for (unsigned I = 0; I < NumDataArgs; ++I) {
+      Args[I] = IRB.CreateZExt(Args[I], IRB.getInt8Ty());
+    }
+  }
+  Function *WaveFunc = GenISAIntrinsic::getDeclaration(CI.getModule(), WaveID, Args[0]->getType());
+  Value *WaveCall = IRB.CreateCall(WaveFunc, Args, Name);
+  if (IsBoolean) {
+    WaveCall = IRB.CreateTrunc(WaveCall, IRB.getInt1Ty());
+  }
+  CI.replaceAllUsesWith(WaveCall);
+  CI.eraseFromParent();
+}
+
 void SubGroupFuncsResolution::visitCallInst(CallInst &CI) {
   Function *func = CI.getCalledFunction();
   if (!func)
@@ -601,18 +623,8 @@ void SubGroupFuncsResolution::visitCallInst(CallInst &CI) {
              funcName == SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B ||
              funcName == SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DF) {
     // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group_shuffle function
-    IRBuilder<> IRB(&CI);
-    Value *args[3];
-    args[0] = CI.getArgOperand(0);
-    args[1] = CI.getArgOperand(1);
-    args[2] = IRB.getInt32(0);
-
-    Function *simdShuffleFunc = GenISAIntrinsic::getDeclaration(
-        CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_WaveShuffleIndex, args[0]->getType());
-    Instruction *simdShuffle = CallInst::Create(simdShuffleFunc, args, "simdShuffle", IGCLLVM::insertPosition(&CI));
-    updateDebugLoc(&CI, simdShuffle);
-    CI.replaceAllUsesWith(simdShuffle);
-    CI.eraseFromParent();
+    SmallVector<Value *, 3> Args{CI.getArgOperand(0), CI.getArgOperand(1), ConstantInt::get(Type::getInt32Ty(Ctx), 0)};
+    replaceWithWaveDataMovement(CI, GenISAIntrinsic::GenISA_WaveShuffleIndex, Args, "simdShuffle");
   } else if (funcName == SubGroupFuncsResolution::SUB_GROUP_BROADCAST ||
              funcName == SubGroupFuncsResolution::SUB_GROUP_BROADCAST_US ||
              funcName == SubGroupFuncsResolution::SUB_GROUP_BROADCAST_F ||
@@ -621,19 +633,8 @@ void SubGroupFuncsResolution::visitCallInst(CallInst &CI) {
              funcName == SubGroupFuncsResolution::SUB_GROUP_BROADCAST_B ||
              funcName == SubGroupFuncsResolution::SUB_GROUP_BROADCAST_DF) {
     // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group_broadcast function
-    IRBuilder<> IRB(&CI);
-    Value *args[3];
-    args[0] = CI.getArgOperand(0);
-    args[1] = CI.getArgOperand(1);
-    args[2] = IRB.getInt32(0);
-
-    Function *simdBroadcastFunc = GenISAIntrinsic::getDeclaration(
-        CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_WaveBroadcast, args[0]->getType());
-    Instruction *simdBroadcast =
-        CallInst::Create(simdBroadcastFunc, args, "simdBroadcast", IGCLLVM::insertPosition(&CI));
-    updateDebugLoc(&CI, simdBroadcast);
-    CI.replaceAllUsesWith(simdBroadcast);
-    CI.eraseFromParent();
+    SmallVector<Value *, 3> Args{CI.getArgOperand(0), CI.getArgOperand(1), ConstantInt::get(Type::getInt32Ty(Ctx), 0)};
+    replaceWithWaveDataMovement(CI, GenISAIntrinsic::GenISA_WaveBroadcast, Args, "simdBroadcast");
   } else if (funcName == SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST ||
              funcName == SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_US ||
              funcName == SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_F ||
@@ -642,45 +643,26 @@ void SubGroupFuncsResolution::visitCallInst(CallInst &CI) {
              funcName == SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_B ||
              funcName == SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_DF) {
     // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group_clustered_broadcast function
-    IRBuilder<> IRB(&CI);
-    Value *args[4];
-    args[0] = CI.getArgOperand(0);
-    args[1] = CI.getArgOperand(1);
-    args[2] = CI.getArgOperand(2);
-    args[3] = IRB.getInt32(0);
+    SmallVector<Value *, 4> Args{CI.getArgOperand(0), CI.getArgOperand(1), CI.getArgOperand(2),
+                                 ConstantInt::get(Type::getInt32Ty(Ctx), 0)};
 
-    if (!isa<ConstantInt>(args[1])) {
+    if (!isa<ConstantInt>(Args[1])) {
       m_pCtx->EmitError("cluster_size argument in clustered_broadcast must be constant.", &CI);
       return;
     }
-    if (!isa<ConstantInt>(args[2])) {
+    if (!isa<ConstantInt>(Args[2])) {
       m_pCtx->EmitError("in_cluster_lane argument in clustered_broadcast must be constant.", &CI);
       return;
     }
 
-    Function *simdClusteredBroadcastFunc = GenISAIntrinsic::getDeclaration(
-        CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_WaveClusteredBroadcast, args[0]->getType());
-    Instruction *simdClusteredBroadcast =
-        CallInst::Create(simdClusteredBroadcastFunc, args, "simdClusteredBroadcast", IGCLLVM::insertPosition(&CI));
-    updateDebugLoc(&CI, simdClusteredBroadcast);
-    CI.replaceAllUsesWith(simdClusteredBroadcast);
-    CI.eraseFromParent();
+    replaceWithWaveDataMovement(CI, GenISAIntrinsic::GenISA_WaveClusteredBroadcast, Args, "simdClusteredBroadcast");
   } else if (funcName == SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN ||
              funcName == SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_US ||
              funcName == SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_UC) {
     // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group_shuffle_down function
-    Value *args[3];
-    args[0] = CI.getArgOperand(0);
-    args[1] = CI.getArgOperand(1);
-    args[2] = CI.getArgOperand(2);
-
-    Function *simdShuffleDownFunc = GenISAIntrinsic::getDeclaration(
-        CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_simdShuffleDown, args[0]->getType());
-    Instruction *simdShuffleDown =
-        CallInst::Create(simdShuffleDownFunc, args, "simdShuffleDown", IGCLLVM::insertPosition(&CI));
-    updateDebugLoc(&CI, simdShuffleDown);
-    CI.replaceAllUsesWith(simdShuffleDown);
-    CI.eraseFromParent();
+    SmallVector<Value *, 3> Args{CI.getArgOperand(0), CI.getArgOperand(1), CI.getArgOperand(2)};
+    replaceWithWaveDataMovement(CI, GenISAIntrinsic::GenISA_simdShuffleDown, Args, "simdShuffleDown",
+                                /*NumDataArgs=*/2);
   } else if (funcName == (SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL) ||
              funcName == (SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL) ||
              funcName == (SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL) ||
