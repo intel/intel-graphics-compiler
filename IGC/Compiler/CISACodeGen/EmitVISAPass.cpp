@@ -1252,6 +1252,11 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
   }
 
   if (m_currShader->GetDebugInfoData().m_pDebugEmitter) {
+    // Add FP to VISA module.
+    // Debug emitter will decide whether it needs to use it.
+    if (m_currShader->hasFP()) {
+      static_cast<ScalarVisaModule *>(m_pDebugEmitter->getCurrentVISA())->setFramePtr(m_currShader->GetFP());
+    }
     DebugInfoData::extractAddressClass(F);
     m_currShader->GetDebugInfoData().addVISAModule(&F, m_pDebugEmitter->getCurrentVISA());
     m_currShader->GetDebugInfoData().transferMappings(F);

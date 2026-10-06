@@ -318,8 +318,13 @@ void GASRetValuePropagator::updateDwarfAddressSpace(Function *F) {
   DIDerivedType *newType = getDIDerivedTypeWithDwarfAddrspace(returnType, DwarfLocalAddressSpaceTag);
 
   if (prevType) {
-    IGC_ASSERT(prevType->getOperand(3).get() && isa<DIDerivedType>(prevType->getOperand(3).get()));
-    prevType->replaceOperandWith(3, newType);
+#if LLVM_VERSION_MAJOR >= 21
+    constexpr unsigned BaseTypeOpIdx = 5;
+#else
+    constexpr unsigned BaseTypeOpIdx = 3;
+#endif
+    IGC_ASSERT(prevType->getOperand(BaseTypeOpIdx).get() == prevType->getRawBaseType());
+    prevType->replaceOperandWith(BaseTypeOpIdx, newType);
   } else {
     IGC_ASSERT(functionTypes.get()->getOperand(0).get() &&
                isa<DIDerivedType>(functionTypes.get()->getOperand(0).get()));

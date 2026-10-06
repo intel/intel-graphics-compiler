@@ -3846,10 +3846,9 @@ uint64_t DwarfDebug::getBaseTypeSize(const llvm::DIType *Ty) {
 
   DIType *BaseType = DDTy->getBaseType();
 
-  if (!BaseType) {
-    IGC_ASSERT_MESSAGE(false, "Empty base type!");
+  // Void type is represented as null
+  if (!BaseType)
     return 0;
-  }
 
   // If this is a derived type, go ahead and get the base type, unless it's a
   // reference then it's just the size of the field. Pointer types have no need

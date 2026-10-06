@@ -352,12 +352,6 @@ void DebugInfoData::saveAndMarkPrivateMemoryVars(llvm::Function &F, CShader *pSh
     IGC_ASSERT_MESSAGE(mVISAModule, "Missing VISA module.");
   }
 
-  // Add FP to VISA module.
-  // Debug emitter will decide whether it needs to use it.
-  if (mVISAModule && pShader->hasFP()) {
-    mVISAModule->setFramePtr(pShader->GetFP());
-  }
-
   for (auto &bb : F) {
     for (auto &pInst : bb) {
       // If function has "perThreadOffset" variable - add it to VISA module
