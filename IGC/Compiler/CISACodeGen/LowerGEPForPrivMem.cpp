@@ -74,6 +74,7 @@ private:
 
   StatusPrivArr2Reg CheckIfAllocaPromotable(llvm::AllocaInst *pAlloca);
   bool IsNativeType(Type *type);
+  static bool IsZeroCostAlloca(llvm::AllocaInst *pAlloca);
 
   void MarkNotPromtedAllocas(llvm::AllocaInst &I, IGC::StatusPrivArr2Reg status);
 
@@ -100,6 +101,10 @@ private:
   llvm::DenseMap<llvm::BasicBlock *, unsigned> m_pBBPressure;
 
   std::vector<PromotedLiverange> m_promotedLiveranges;
+
+  /// Only promote allocas for which IsZeroCostAlloca holds. Set per function
+  /// when the pass is disabled for that function (e.g. by the retry manager).
+  bool IsRestricted = false;
 };
 
 FunctionPass *createPromotePrivateArrayToReg() { return new LowerGEPForPrivMem(); }
@@ -147,8 +152,12 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function &F) {
   m_ctx = pCtxWrapper->getCodeGenContext();
   m_DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
-  if (isOptDisabledForFunction(m_ctx->getModuleMetaData(), getPassName(), &F))
-    return false;
+  IsRestricted = false;
+  if (isOptDisabledForFunction(m_ctx->getModuleMetaData(), getPassName(), &F)) {
+    if (IGC_IS_FLAG_ENABLED(DisablePrivMemZeroCostPromotion))
+      return false;
+    IsRestricted = true;
+  }
 
   pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   IGC_ASSERT(nullptr != pMdUtils);
@@ -159,11 +168,14 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function &F) {
   m_pDL = &F.getParent()->getDataLayout();
   m_pRegisterPressureEstimate = &getAnalysis<RegisterPressureEstimate>();
   IGC_ASSERT(nullptr != m_pRegisterPressureEstimate);
-  // if no live range info
-  if (!m_pRegisterPressureEstimate->isAvailable()) {
-    return false;
+  // Zero-cost promotion does not consult the pressure estimate.
+  if (!IsRestricted) {
+    // if no live range info
+    if (!m_pRegisterPressureEstimate->isAvailable()) {
+      return false;
+    }
+    m_pRegisterPressureEstimate->buildRPMapPerInstruction();
   }
-  m_pRegisterPressureEstimate->buildRPMapPerInstruction();
 
   m_allocasToPrivMem.clear();
   m_promotedLiveranges.clear();
@@ -265,6 +277,90 @@ bool LowerGEPForPrivMem::IsNativeType(Type *type) {
   return true;
 }
 
+// Arrays larger than this would build a wide temporary vector.
+static constexpr unsigned MaxZeroCostAllocaElements = 8;
+// Limit on how far before a load its initializing stores may be, so that the
+// stored values do not stay live much longer than they did as store operands.
+static constexpr unsigned MaxZeroCostScanDistance = 64;
+
+// Returns the GEP if V is "gep [N x T], [N x T]* AI, 0, idx".
+static GetElementPtrInst *getZeroCostElementGEP(Value *V, AllocaInst *AI) {
+  auto *GEP = dyn_cast<GetElementPtrInst>(V);
+  if (!GEP || GEP->getPointerOperand() != AI || GEP->getNumIndices() != 2 ||
+      GEP->getSourceElementType() != AI->getAllocatedType())
+    return nullptr;
+  auto *Zero = dyn_cast<ConstantInt>(GEP->getOperand(1));
+  if (!Zero || !Zero->isZero())
+    return nullptr;
+  return GEP;
+}
+
+// A small, non-escaping scalar array is zero cost to promote if every load from
+// it is preceded in its own basic block by constant-index stores to all of its
+// elements, e.g. an array filled from a constant buffer and then read with a
+// dynamic index. The stored values are live at the load anyway, so the
+// promoted vector does not extend any live range across blocks.
+bool LowerGEPForPrivMem::IsZeroCostAlloca(AllocaInst *pAlloca) {
+  auto *AT = dyn_cast<ArrayType>(pAlloca->getAllocatedType());
+  if (!AT || pAlloca->isArrayAllocation())
+    return false;
+  Type *EltTy = AT->getElementType();
+  uint64_t NumElts = AT->getNumElements();
+  if (!(EltTy->isIntegerTy() || EltTy->isFloatingPointTy()) || NumElts < 2 || NumElts > MaxZeroCostAllocaElements)
+    return false;
+
+  SmallVector<LoadInst *, 4> Loads;
+  for (User *U : pAlloca->users()) {
+    GetElementPtrInst *GEP = getZeroCostElementGEP(U, pAlloca);
+    if (!GEP)
+      return false;
+    for (User *GU : GEP->users()) {
+      if (auto *LI = dyn_cast<LoadInst>(GU)) {
+        if (!LI->isSimple() || LI->getType() != EltTy)
+          return false;
+        Loads.push_back(LI);
+      } else if (auto *SI = dyn_cast<StoreInst>(GU)) {
+        if (!SI->isSimple() || SI->getPointerOperand() != GEP || SI->getValueOperand()->getType() != EltTy)
+          return false;
+        // A dynamic-index store becomes an indirect write after promotion.
+        if (!isa<ConstantInt>(GEP->getOperand(2)))
+          return false;
+      } else {
+        return false;
+      }
+    }
+  }
+
+  for (LoadInst *LI : Loads) {
+    // Scan backwards until stores to all elements are found. Dynamic-index
+    // stores were rejected above, so !CI below is only a guard; an
+    // out-of-range constant index still fails.
+    SmallVector<bool, MaxZeroCostAllocaElements> Covered(NumElts, false);
+    unsigned NumCovered = 0;
+    unsigned Distance = 0;
+    for (Instruction *I = LI->getPrevNode(); I && NumCovered < NumElts; I = I->getPrevNode()) {
+      if (++Distance > MaxZeroCostScanDistance)
+        return false;
+      auto *SI = dyn_cast<StoreInst>(I);
+      if (!SI)
+        continue;
+      GetElementPtrInst *GEP = getZeroCostElementGEP(SI->getPointerOperand(), pAlloca);
+      if (!GEP)
+        continue;
+      auto *CI = dyn_cast<ConstantInt>(GEP->getOperand(2));
+      if (!CI || CI->getValue().uge(NumElts))
+        return false;
+      if (!Covered[CI->getZExtValue()]) {
+        Covered[CI->getZExtValue()] = true;
+        ++NumCovered;
+      }
+    }
+    if (NumCovered < NumElts)
+      return false;
+  }
+  return true;
+}
+
 StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *pAlloca) {
   // vla is not promotable
   IGC_ASSERT(pAlloca != nullptr);
@@ -308,6 +404,17 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *
   if (!IsNativeType(SOAInfo.baseType)) {
     return StatusPrivArr2Reg::IsNotNativeType;
   }
+  // Promotion adds no register pressure when the stored values are already live
+  // at every load, so the size and pressure limits below do not apply. The
+  // promoted vector is still recorded below, so that later allocas in the
+  // function account for it.
+  const bool IsZeroCost = IGC_IS_FLAG_DISABLED(DisablePrivMemZeroCostPromotion) && IsZeroCostAlloca(pAlloca);
+  if (IsRestricted) {
+    // The pressure estimate is not built in restricted mode, and only
+    // zero-cost allocas are promoted, so there is nothing to record.
+    return IsZeroCost ? StatusPrivArr2Reg::OK : StatusPrivArr2Reg::NotZeroCost;
+  }
+
   if (isUniformAlloca) {
     // Heuristic: for uniform alloca we divide the size by SIMDSize to adjust the pressure
     // as they will be allocated as uniform array
@@ -319,7 +426,7 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *
   }
 
   // if alloca size exceeds alloc size threshold, return false
-  if (allocaSize > allowedAllocaSizeInBytes) {
+  if (!IsZeroCost && allocaSize > allowedAllocaSizeInBytes) {
     return StatusPrivArr2Reg::OutOfAllocSizeLimit;
   }
 
@@ -363,7 +470,7 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *
     }
   }
 
-  if (allocaSize + pressure > maxGRFPressure) {
+  if (!IsZeroCost && allocaSize + pressure > maxGRFPressure) {
     return StatusPrivArr2Reg::OutOfMaxGRFPressure;
   }
   PromotedLiverange liverange;
@@ -1369,6 +1476,9 @@ void LowerGEPForPrivMem::MarkNotPromtedAllocas(llvm::AllocaInst &I, IGC::StatusP
     break;
   case StatusPrivArr2Reg::OutOfMaxGRFPressure:
     reason = "OutOfMaxGRFPressure";
+    break;
+  case StatusPrivArr2Reg::NotZeroCost:
+    reason = "NotZeroCost";
     break;
   default:
     reason = "NotDefine";

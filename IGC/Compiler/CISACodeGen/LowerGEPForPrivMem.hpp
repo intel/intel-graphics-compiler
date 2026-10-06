@@ -28,7 +28,8 @@ enum StatusPrivArr2Reg {
   CannotUseSOALayout,
   IsNotNativeType,
   OutOfAllocSizeLimit,
-  OutOfMaxGRFPressure
+  OutOfMaxGRFPressure,
+  NotZeroCost
 };
 
 enum MismatchDetectionStrategy {
