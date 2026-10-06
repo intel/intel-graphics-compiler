@@ -153,16 +153,20 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
     return tmpSrc;
   };
 
-  // Exception to allow to span 2 GRFs:
-  // When ExecSize = 32 and Datatype = DF or *Q, then dst/src operands cannot
-  // span more than 4 adjacent GRF registers. This requires that the operand must
-  // be GRF-aligned and have contiguous regions.
+  // Exception to allow to span more than 2 GRFs:
+  // When ExecSize = 32 and Datatype = DF or *Q, then dst/src operands can
+  // span 4 adjacent GRF registers. This requires that the operand must
+  // be direct addressing, GRF-aligned and have contiguous regions.
   auto AllowCross2GRF = [&](G4_Operand *opnd) {
     if (!m_builder->supportNativeSIMD32())
       return false;
 
     // Must be SIMD32 with 64b datatypes
     if (inst->getExecSize() != g4::SIMD32 || opnd->getTypeSize() != 8)
+      return false;
+
+    // Must be direct addressing
+    if (opnd->isIndirect())
       return false;
 
     // Must be GRF-aligned
@@ -193,37 +197,53 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
       continue;
     G4_SrcRegRegion *src = inst->getSrc(i)->asSrcRegRegion();
 
-    // If dst spans 4 GRFs(dst must be 64b datatype and execSize == 32), src
-    // operand must be broadcast regioning or flat regioning (dst/src is
-    // aligned). In other words if src is not 64b datatype, we must fix src
-    // with >1 stride. In this way src also spans 4 GRFs after fixing.
-    // Although this is allowed by HW but it's not allowed by vISA as vISA
-    // requires contiguous regioning for 4 GRFs operand. So, we have to split
-    // for such case. For example:
-    //   mov (32|M0)   r48.0<1>:q    r12.0<1;1,0>:d
-    //   =>
-    //   mov (16|M0)   r48.0<1>:q    r12.0<1;1,0>:d
-    //   mov (16|M16)  r50.0<1>:q    r13.0<1;1,0>:d
-    // If dst is :df datatype, wouldn't split here as it's in long pipeline and
-    // will be fixed in HWConformity.
-    if (isDstCross2GRF && !IS_DFTYPE(inst->getDst()->getType()) &&
-        !src->isScalarSrc()) {
-      if (src->getTypeSize() != 8) {
-        doSplit = true;
-        break;
-      }
-      // Check alignment requirements of src when dst crosses 2 grf
-      if (src->asSrcRegRegion()->getRegAccess() == Direct &&
-          !src->asSrcRegRegion()->getRegion()->isContiguous(
-              inst->getExecSize())) {
-        doSplit = true;
-        break;
-      }
-    }
-    if (cross2GRF(src) && !AllowCross2GRF(src)) {
+    bool isSrcCross2GRF = cross2GRF(src);
+
+    // Src is not allowed to span more than 2 GRFs
+    if (isSrcCross2GRF && !AllowCross2GRF(src)) {
       doSplit = true;
       break;
     }
+
+    // If src does not span more than 2 GRFs but dst spans more than 2 GRFs,
+    // more restrictions are needed for src.
+    if (!isSrcCross2GRF && isDstCross2GRF) {
+      // If dst is :df datatype, a non-scalar src wouldn't be fixed here as
+      // it's in long pipeline and will be fixed in HWConformity.
+      bool isDstDF = IS_DFTYPE(inst->getDst()->getType());
+
+      // Src can not be indirect, including broadcast regioning. For example:
+      //   mov (32|M0)   r8.0<1>:uq    r[a0.6]<1;4,0>:uq
+      //   =>
+      //   mov (16|M0)   r8.0<1>:uq    r[a0.6]<1;4,0>:uq
+      //   mov (16|M16)  r10.0<1>:uq   r[a0.6, 32]<1;4,0>:uq
+      // Skip indirect VxH/Vx1 cases as HWConformityPro::fixVxHVx1Indirect can
+      // handle them which may save extra copies.
+      if (src->isIndirect() && !src->getRegion()->isRegionWH() &&
+          (src->isScalarSrc() || !isDstDF)) {
+        doSplit = true;
+        break;
+      }
+
+      // For direct addressing, src operand must be broadcast regioning or flat
+      // regioning (dst/src is aligned). In other words if src is not 64b
+      // datatype, we must fix src with >1 stride. In this way src also spans 4
+      // GRFs after fixing. Although this is allowed by HW but it's not allowed
+      // by vISA as vISA requires contiguous regioning for 4 GRFs operand. So,
+      // we have to split for such case. For example:
+      //   mov (32|M0)   r48.0<1>:q    r12.0<1;1,0>:d
+      //   =>
+      //   mov (16|M0)   r48.0<1>:q    r12.0<1;1,0>:d
+      //   mov (16|M16)  r50.0<1>:q    r13.0<1;1,0>:d
+      if (!isDstDF && !src->isScalarSrc() &&
+          (src->getTypeSize() != 8 ||
+           (src->getRegAccess() == Direct &&
+            !src->getRegion()->isContiguous(inst->getExecSize())))) {
+        doSplit = true;
+        break;
+      }
+    }
+
     if (m_builder->getPlatform() >= Xe_XeHPSDV &&
         m_builder->getPlatform() <= Xe3) {
       // Instructions whose operands are 64b and have 2D regioning need to be
