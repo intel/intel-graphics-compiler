@@ -519,29 +519,29 @@ char4  __builtin_IB_hftobf8_4_sat (half4  a) __attribute__((const));
 char8  __builtin_IB_hftobf8_8_sat (half8  a) __attribute__((const));
 char16 __builtin_IB_hftobf8_16_sat(half16 a) __attribute__((const));
 
-// hf -> hf8 conversion builtins (rte rounding mode)
-char   __builtin_IB_hftohf8_1 (half   a) __attribute__((const));
-char2  __builtin_IB_hftohf8_2 (half2  a) __attribute__((const));
-char3  __builtin_IB_hftohf8_3 (half3  a) __attribute__((const));
-char4  __builtin_IB_hftohf8_4 (half4  a) __attribute__((const));
-char8  __builtin_IB_hftohf8_8 (half8  a) __attribute__((const));
-char16 __builtin_IB_hftohf8_16(half16 a) __attribute__((const));
+// hf -> e4m3 (HF8) conversion builtins (rte rounding mode)
+char   __builtin_IB_hftoe4m3_1(half a) __attribute__((const));
+char2  __builtin_IB_hftoe4m3_2(half2 a) __attribute__((const));
+char3  __builtin_IB_hftoe4m3_3(half3 a) __attribute__((const));
+char4  __builtin_IB_hftoe4m3_4(half4 a) __attribute__((const));
+char8  __builtin_IB_hftoe4m3_8(half8 a) __attribute__((const));
+char16 __builtin_IB_hftoe4m3_16(half16 a) __attribute__((const));
 
-// hf -> hf8 conversion with saturation
-char   __builtin_IB_hftohf8_1_sat (half   a) __attribute__((const));
-char2  __builtin_IB_hftohf8_2_sat (half2  a) __attribute__((const));
-char3  __builtin_IB_hftohf8_3_sat (half3  a) __attribute__((const));
-char4  __builtin_IB_hftohf8_4_sat (half4  a) __attribute__((const));
-char8  __builtin_IB_hftohf8_8_sat (half8  a) __attribute__((const));
-char16 __builtin_IB_hftohf8_16_sat(half16 a) __attribute__((const));
+// hf -> e4m3 (HF8) conversion with saturation
+char   __builtin_IB_hftoe4m3_1_sat(half a) __attribute__((const));
+char2  __builtin_IB_hftoe4m3_2_sat(half2 a) __attribute__((const));
+char3  __builtin_IB_hftoe4m3_3_sat(half3 a) __attribute__((const));
+char4  __builtin_IB_hftoe4m3_4_sat(half4 a) __attribute__((const));
+char8  __builtin_IB_hftoe4m3_8_sat(half8 a) __attribute__((const));
+char16 __builtin_IB_hftoe4m3_16_sat(half16 a) __attribute__((const));
 
-// hf8 -> hf conversion builtins (precise conversion)
-half   __builtin_IB_hf8tohf_1 (char   a) __attribute__((const));
-half2  __builtin_IB_hf8tohf_2 (char2  a) __attribute__((const));
-half3  __builtin_IB_hf8tohf_3 (char3  a) __attribute__((const));
-half4  __builtin_IB_hf8tohf_4 (char4  a) __attribute__((const));
-half8  __builtin_IB_hf8tohf_8 (char8  a) __attribute__((const));
-half16 __builtin_IB_hf8tohf_16(char16 a) __attribute__((const));
+// e4m3 (HF8) -> hf conversion builtins (precise conversion)
+half   __builtin_IB_e4m3tohf_1(char a) __attribute__((const));
+half2  __builtin_IB_e4m3tohf_2(char2 a) __attribute__((const));
+half3  __builtin_IB_e4m3tohf_3(char3 a) __attribute__((const));
+half4  __builtin_IB_e4m3tohf_4(char4 a) __attribute__((const));
+half8  __builtin_IB_e4m3tohf_8(char8 a) __attribute__((const));
+half16 __builtin_IB_e4m3tohf_16(char16 a) __attribute__((const));
 
 // tf32 <--> float conversion
 //    tf32 : no igc type for tf32. Use float as *opaque* type for it.

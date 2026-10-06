@@ -637,8 +637,8 @@ bool DpasFuncsResolution::processCvt(CallInst &CI) {
     iid = GenISAIntrinsic::GenISA_bf8tohf;
     args[0] = CI.getArgOperand(0);
     argslen = 1;
-  } else if (IGCLLVM::starts_with(funcName, "__builtin_IB_hftohf8_")) {
-    int sz = (int)sizeof("__builtin_IB_hftohf8_");
+  } else if (IGCLLVM::starts_with(funcName, "__builtin_IB_hftoe4m3_")) {
+    int sz = (int)sizeof("__builtin_IB_hftoe4m3_");
     if (!demangleFCvtSuffix(funcName, sz - 1, nullptr, &VecLen, &isSat))
       return false;
 
@@ -647,8 +647,8 @@ bool DpasFuncsResolution::processCvt(CallInst &CI) {
     args[1] = ConstantInt::get(intTy, FP_RM);  // rounding mode
     args[2] = ConstantInt::get(boolTy, isSat); // saturation
     argslen = 3;
-  } else if (IGCLLVM::starts_with(funcName, "__builtin_IB_hf8tohf_")) {
-    int sz = (int)sizeof("__builtin_IB_hf8tohf_");
+  } else if (IGCLLVM::starts_with(funcName, "__builtin_IB_e4m3tohf_")) {
+    int sz = (int)sizeof("__builtin_IB_e4m3tohf_");
     // It is a precise conversion, no RM needed!
     // Note that sizeof() includes the ending '\0', so need to do -1!
     if (!demangleFCvtSuffix(funcName, sz - 1, nullptr, &VecLen, nullptr))

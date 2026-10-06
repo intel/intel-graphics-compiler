@@ -15,12 +15,30 @@ half8 __attribute__((overloadable)) __builtin_spirv_ConvertE5M2ToFP16EXT(char8 a
 half16 __attribute__((overloadable)) __builtin_spirv_ConvertE5M2ToFP16EXT(char16 a) { return __builtin_IB_bf8tohf_16(a); }
 
 // ConvertE4M3ToFP16EXT
-half __attribute__((overloadable)) __builtin_spirv_ConvertE4M3ToFP16EXT(char a) { return __builtin_IB_hf8tohf_1(a); }
-half2 __attribute__((overloadable)) __builtin_spirv_ConvertE4M3ToFP16EXT(char2 a) { return __builtin_IB_hf8tohf_2(a); }
-half3 __attribute__((overloadable)) __builtin_spirv_ConvertE4M3ToFP16EXT(char3 a) { return __builtin_IB_hf8tohf_3(a); }
-half4 __attribute__((overloadable)) __builtin_spirv_ConvertE4M3ToFP16EXT(char4 a) { return __builtin_IB_hf8tohf_4(a); }
-half8 __attribute__((overloadable)) __builtin_spirv_ConvertE4M3ToFP16EXT(char8 a) { return __builtin_IB_hf8tohf_8(a); }
-half16 __attribute__((overloadable)) __builtin_spirv_ConvertE4M3ToFP16EXT(char16 a) { return __builtin_IB_hf8tohf_16(a); }
+half __attribute__((overloadable)) __builtin_spirv_ConvertE4M3ToFP16EXT(char a)
+{
+    return __builtin_IB_e4m3tohf_1(a);
+}
+half2 __attribute__((overloadable)) __builtin_spirv_ConvertE4M3ToFP16EXT(char2 a)
+{
+    return __builtin_IB_e4m3tohf_2(a);
+}
+half3 __attribute__((overloadable)) __builtin_spirv_ConvertE4M3ToFP16EXT(char3 a)
+{
+    return __builtin_IB_e4m3tohf_3(a);
+}
+half4 __attribute__((overloadable)) __builtin_spirv_ConvertE4M3ToFP16EXT(char4 a)
+{
+    return __builtin_IB_e4m3tohf_4(a);
+}
+half8 __attribute__((overloadable)) __builtin_spirv_ConvertE4M3ToFP16EXT(char8 a)
+{
+    return __builtin_IB_e4m3tohf_8(a);
+}
+half16 __attribute__((overloadable)) __builtin_spirv_ConvertE4M3ToFP16EXT(char16 a)
+{
+    return __builtin_IB_e4m3tohf_16(a);
+}
 
 // ConvertFP16ToE5M2EXT
 char __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE5M2EXT(half a) { return __builtin_IB_hftobf8_1(a); }
@@ -31,12 +49,30 @@ char8 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE5M2EXT(half8 a
 char16 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE5M2EXT(half16 a) { return __builtin_IB_hftobf8_16(a); }
 
 // ConvertFP16ToE4M3EXT
-char __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE4M3EXT(half a) { return __builtin_IB_hftohf8_1(a); }
-char2 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE4M3EXT(half2 a) { return __builtin_IB_hftohf8_2(a); }
-char3 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE4M3EXT(half3 a) { return __builtin_IB_hftohf8_3(a); }
-char4 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE4M3EXT(half4 a) { return __builtin_IB_hftohf8_4(a); }
-char8 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE4M3EXT(half8 a) { return __builtin_IB_hftohf8_8(a); }
-char16 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE4M3EXT(half16 a) { return __builtin_IB_hftohf8_16(a); }
+char __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE4M3EXT(half a)
+{
+    return __builtin_IB_hftoe4m3_1(a);
+}
+char2 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE4M3EXT(half2 a)
+{
+    return __builtin_IB_hftoe4m3_2(a);
+}
+char3 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE4M3EXT(half3 a)
+{
+    return __builtin_IB_hftoe4m3_3(a);
+}
+char4 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE4M3EXT(half4 a)
+{
+    return __builtin_IB_hftoe4m3_4(a);
+}
+char8 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE4M3EXT(half8 a)
+{
+    return __builtin_IB_hftoe4m3_8(a);
+}
+char16 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE4M3EXT(half16 a)
+{
+    return __builtin_IB_hftoe4m3_16(a);
+}
 
 // ClampConvertFP16ToE5M2INTEL (emulation)
 // If _sat converts ±inf to E5M2 inf encoding (0x7C/0xFC),
@@ -91,44 +127,44 @@ __builtin_spirv_ClampConvertFP16ToE5M2INTEL(half16 a) {
 // Check the input for inf (not the output) to preserve NaN pass-through.
 char __attribute__((overloadable))
 __builtin_spirv_ClampConvertFP16ToE4M3INTEL(half a) {
-  char result = __builtin_IB_hftohf8_1_sat(a);
-  char isInf  = -__spirv_IsInf(a);
-  return select(result, (char)(result - 1), isInf);
+    char result = __builtin_IB_hftoe4m3_1_sat(a);
+    char isInf  = -__spirv_IsInf(a);
+    return select(result, (char)(result - 1), isInf);
 }
 
 char2 __attribute__((overloadable))
 __builtin_spirv_ClampConvertFP16ToE4M3INTEL(half2 a) {
-  char2 result = __builtin_IB_hftohf8_2_sat(a);
-  char2 isInf  = -__spirv_IsInf(a);
-  return select(result, result - (char2)(1), isInf);
+    char2 result = __builtin_IB_hftoe4m3_2_sat(a);
+    char2 isInf  = -__spirv_IsInf(a);
+    return select(result, result - (char2)(1), isInf);
 }
 
 char3 __attribute__((overloadable))
 __builtin_spirv_ClampConvertFP16ToE4M3INTEL(half3 a) {
-  char3 result = __builtin_IB_hftohf8_3_sat(a);
-  char3 isInf  = -__spirv_IsInf(a);
-  return select(result, result - (char3)(1), isInf);
+    char3 result = __builtin_IB_hftoe4m3_3_sat(a);
+    char3 isInf  = -__spirv_IsInf(a);
+    return select(result, result - (char3)(1), isInf);
 }
 
 char4 __attribute__((overloadable))
 __builtin_spirv_ClampConvertFP16ToE4M3INTEL(half4 a) {
-  char4 result = __builtin_IB_hftohf8_4_sat(a);
-  char4 isInf  = -__spirv_IsInf(a);
-  return select(result, result - (char4)(1), isInf);
+    char4 result = __builtin_IB_hftoe4m3_4_sat(a);
+    char4 isInf  = -__spirv_IsInf(a);
+    return select(result, result - (char4)(1), isInf);
 }
 
 char8 __attribute__((overloadable))
 __builtin_spirv_ClampConvertFP16ToE4M3INTEL(half8 a) {
-  char8 result = __builtin_IB_hftohf8_8_sat(a);
-  char8 isInf  = -__spirv_IsInf(a);
-  return select(result, result - (char8)(1), isInf);
+    char8 result = __builtin_IB_hftoe4m3_8_sat(a);
+    char8 isInf  = -__spirv_IsInf(a);
+    return select(result, result - (char8)(1), isInf);
 }
 
 char16 __attribute__((overloadable))
 __builtin_spirv_ClampConvertFP16ToE4M3INTEL(half16 a) {
-  char16 result = __builtin_IB_hftohf8_16_sat(a);
-  char16 isInf  = -__spirv_IsInf(a);
-  return select(result, result - (char16)(1), isInf);
+    char16 result = __builtin_IB_hftoe4m3_16_sat(a);
+    char16 isInf  = -__spirv_IsInf(a);
+    return select(result, result - (char16)(1), isInf);
 }
 
 // ConvertE4M3ToBF16EXT (emulation)
