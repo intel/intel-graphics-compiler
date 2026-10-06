@@ -62,8 +62,8 @@ endif()
 set_target_properties(check-interfaces
   PROPERTIES
   EXCLUDE_FROM_DEFAULT_BUILD OFF
-  EXCLUDE_FROM_ALL OFF
 )
+igc_lit_target_in_default_build(check-interfaces)
 
 # Group this target in a directory with other LIT targets in IDE
 set_target_properties(check-interfaces PROPERTIES FOLDER "Tests/LIT Tests")

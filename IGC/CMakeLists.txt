@@ -310,6 +310,7 @@ option(IGC_OPTION__ENABLE_BF16_BIF "Enables BF16 support in BiF (requires patche
 # https://github.com/intel/opencl-clang/tree/ocl-open-160/patches/clang
 
 option(IGC_OPTION__ENABLE_LIT_TESTS "Enable lit testing for IGC compiler. May require additional tools like llvm lit and opt" OFF)
+option(IGC_OPTION__LIT_TESTS_BUILD_ONLY "Build what lit suites need in the default build, without running them" OFF)
 option(IGC_OPTION__ENABLE_ADDRESS_SANITIZER "Enable AddressSanitizer instrumentation for IGC binaries and their linked static libraries." OFF)
 option(IGC_OPTION__ENABLE_DIAGNOSTIC_FLAGS_IN_RELEASE "Make diagnostic IGC flags available in Release build, e.g. ShaderOverride" OFF)
 
@@ -2474,7 +2475,11 @@ endif()
 
 # If VC LITs are enabled, we need main target depend from it
 if(IGC_BUILD__CMLIT_ENABLE)
-  add_dependencies("${IGC_BUILD__PROJ__igc_dll}" "check-vc")
+  if(IGC_OPTION__LIT_TESTS_BUILD_ONLY)
+    igc_lit_target_in_default_build(check-vc)
+  else()
+    add_dependencies("${IGC_BUILD__PROJ__igc_dll}" "check-vc")
+  endif()
 endif()
 
 

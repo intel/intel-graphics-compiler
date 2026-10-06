@@ -79,8 +79,8 @@ endif()
 set_target_properties(check-igc
   PROPERTIES
     EXCLUDE_FROM_DEFAULT_BUILD OFF
-    EXCLUDE_FROM_ALL OFF
   )
+igc_lit_target_in_default_build(check-igc)
 
 # Line below is just used to group LIT-related targets in single directory
 # in IDE. This is completely optional.

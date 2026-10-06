@@ -162,10 +162,10 @@ if(TARGET igc-clang-lib AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
   set_target_properties(check-ocloc-igc-clang
     PROPERTIES
       EXCLUDE_FROM_DEFAULT_BUILD OFF
-      EXCLUDE_FROM_ALL OFF
       EXCLUDE_FROM_DEFAULT_BUILD_RELEASE TRUE
       FOLDER "Tests/LIT Tests"
     )
+  igc_lit_target_in_default_build(check-ocloc-igc-clang)
 
   if(WIN32)
     add_dependencies(check-ocloc-igc-clang check-ocloc)

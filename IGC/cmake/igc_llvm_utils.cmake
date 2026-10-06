@@ -157,6 +157,20 @@ function(igc_add_lit_target target binary_dir comment)
     )
 endfunction()
 
+# With IGC_OPTION__LIT_TESTS_BUILD_ONLY, the default build only builds what
+# <target> needs, and marks <target> for running separately.
+function(igc_lit_target_in_default_build target)
+  if(IGC_OPTION__LIT_TESTS_BUILD_ONLY AND TARGET dry-${target})
+    set_target_properties(dry-${target} PROPERTIES EXCLUDE_FROM_ALL OFF)
+    file(GENERATE
+      OUTPUT "${CMAKE_BINARY_DIR}/igc-default-lit-suites/$<CONFIG>/${target}"
+      CONTENT ""
+      )
+  else()
+    set_target_properties(${target} PROPERTIES EXCLUDE_FROM_ALL OFF)
+  endif()
+endfunction()
+
 # Helper macro to set LLVM_EXTERNAL_LIT variable for LLVM lit tests.
 # Variable can be overridden from command line to set custom lit tool.
 macro(igc_find_external_lit)

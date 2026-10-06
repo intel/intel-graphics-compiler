@@ -49,7 +49,7 @@ endif()
 set_target_properties(check-spirv-tblgen
   PROPERTIES
     EXCLUDE_FROM_DEFAULT_BUILD OFF
-    EXCLUDE_FROM_ALL OFF
   )
+igc_lit_target_in_default_build(check-spirv-tblgen)
 
 set_target_properties(check-spirv-tblgen PROPERTIES FOLDER "Tests/LIT Tests")
