@@ -443,8 +443,6 @@ bool TranslateSPIRVToLLVM(const STB_TranslateInputArgs &InputArgs, llvm::LLVMCon
 
   // Set SPIRV-LLVM-Translator translation options
   SPIRV::TranslatorOpts Opts;
-  // Report invalid input through readSpirv instead of exiting the process.
-  Opts.setErrorHandlingKind(SPIRV::SPIRVDbgErrorHandlingKinds::Ignore);
   Opts.enableGenArgNameMD();
   if (IGC_IS_FLAG_ENABLED(ValidateSPIRVExtensionSupport)) {
     std::vector<IGC::SPIRVExtensionsSupport::SPIRVExtension> SupportedExtensions =
