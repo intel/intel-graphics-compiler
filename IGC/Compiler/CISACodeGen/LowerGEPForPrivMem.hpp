@@ -32,7 +32,7 @@ enum StatusPrivArr2Reg {
 };
 
 enum MismatchDetectionStrategy {
-  UseScratchSpacePrivateMemoryOrUseStatelessStrategy, // TransposeHelperPrivateMem algorithm
+  UseScratchSpacePrivateMemoryOrUseStatelessStrategy, // TransposeHelperPrivateMem/TransposePrivMem algorithm
   OpenCLShaderStrategy,                               // TransposePrivMem algorithm
   DefaultLowerGEPStrategy                             // LowerGEP
 };

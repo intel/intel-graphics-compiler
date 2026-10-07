@@ -1060,20 +1060,19 @@ bool SOALayoutChecker::visitIntrinsicInst(IntrinsicInst &II) {
 bool SOALayoutChecker::visitCallInst(CallInst &CI) {
   // GenISA intrinsics have getIntrinsicID()==not_intrinsic, so InstVisitor routes them here, not to
   // visitIntrinsicInst.
-  // A GenISA_PredicatedLoad (produced by the no-scratch SELECT-of-alloca-pointer
-  // pre-pass) can be SoA-promoted like the plain load it replaced: the transpose
-  // only rewrites the pointer operand, preserving the predicate so the masked,
-  // non-faulting access semantics are kept.
+  // A GenISA_PredicatedLoad can be SoA-promoted like the plain
+  // load it replaced: the transpose only rewrites the pointer operand, preserving
+  // the predicate so the masked, non-faulting access semantics are kept.
   if (auto *PLI = dyn_cast<PredicatedLoadIntrinsic>(&CI)) {
     if (!PLI->isSimple()) {
       return false;
     }
+    // Only TransposePrivMem supports predicated loads.
+    if (MismatchDetectionStrategy == DefaultLowerGEPStrategy || !pInfo->useNewAlgoTranspose) {
+      return false;
+    }
     const bool isVectorLoad = PLI->getType()->isVectorTy();
-    // A vector predicated load has to be split into one predicated load per
-    // partition, which only TransposePrivMem implements; the legacy and GRF
-    // helpers have no such path, so keep vetoing the alloca for them.
-    if (isVectorLoad && !(IGC_IS_FLAG_ENABLED(EnableAggressiveSOAPromotion) && pInfo->useNewAlgoTranspose &&
-                          isChunkSpanningType(PLI->getType()))) {
+    if (isVectorLoad && !(IGC_IS_FLAG_ENABLED(EnableAggressiveSOAPromotion) && isChunkSpanningType(PLI->getType()))) {
       return false;
     }
     isVectorSOA &= isVectorLoad;
