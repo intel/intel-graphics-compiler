@@ -1645,7 +1645,7 @@ DECLARE_IGC_REGKEY(bool, VerboseDropTargetBBs, false, "Enables verbose logging f
 DECLARE_IGC_REGKEY(debugString, DropTargetBBListPath, 0, "Path to folder with lists of BBs to drop", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, PrintFunctionSizeAnalysis, 0, "Print analysis data of function sizes", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, SubroutineThreshold, 110000, "Minimal kernel size to enable subroutines", DEBUG_ONLY)
-DECLARE_IGC_REGKEY(DWORD, SubroutineInlinerThreshold, 3000, "Subroutine inliner threshold", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(DWORD, SubroutineInlinerThreshold, 2700, "Subroutine inliner threshold", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableLargeFunctionCallMerging, true,
                    "Merge mutually exclusive calls to large functions to enable inlining", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, ControlKernelTotalSize, true, "Control kernel total size", ALWAYS)
@@ -1664,7 +1664,7 @@ DECLARE_IGC_REGKEY(bool, LoopCountAwareTrimming, false,
 DECLARE_IGC_REGKEY(DWORD, MaxUnrollCountForFunctionSizeAnalysis, 16,
                    "The maximum number of loop unrolling assumed in function size analaysis", ALWAYS)
 DECLARE_IGC_REGKEY(bool, ControlInlineImplicitArgs, true, "Avoid trimming functions with implicit args", ALWAYS)
-DECLARE_IGC_REGKEY(DWORD, ControlInlineTinySize, 200, "Tiny function size for controlling kernel total size", ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, ControlInlineTinySize, 190, "Tiny function size for controlling kernel total size", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, ControlInlineTinySizeForSPGT, 300, "Tiny function size for controlling kernel total size",
                    ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, SizeWeightForSPGT, 3, "Size weight for a trimming threshold", ALWAYS)
