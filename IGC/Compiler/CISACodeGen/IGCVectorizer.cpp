@@ -339,17 +339,8 @@ bool IGCVectorizer::handlePHI(VecArr &Slice) {
     return false;
 
   Value *PrevVectorization = nullptr;
-  if (ScalarToVector.count(ScalarPhi)) {
-
-    auto Vectorized = ScalarToVector[ScalarPhi];
-    if (llvm::isa<InsertElementInst>(Vectorized)) {
-      PRINT_LOG_NL("Was sourced by other vector instruction, but wasn't vectorized");
-      PrevVectorization = Vectorized;
-    } else {
-      PRINT_LOG_NL(" PHI was vectorized before, no bother ");
-      return true;
-    }
-  }
+  if (checkPrevVectorization(Slice, PrevVectorization))
+    return true;
 
   VecVal Operands;
   for (auto &BB : ScalarPhi->blocks()) {
