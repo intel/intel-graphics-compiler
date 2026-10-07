@@ -69,7 +69,13 @@ public:
   /// @brief  Provides name of pass
   virtual llvm::StringRef getPassName() const override { return BIFFlagCtrlResolution::getPassName(); }
 
-  virtual bool runOnModule(llvm::Module &M) override { return m_impl.run(M, m_ctorCtx); }
+  virtual bool runOnModule(llvm::Module &M) override {
+    CodeGenContext *ctx = m_ctorCtx;
+    if (!ctx)
+      if (auto *CGW = getAnalysisIfAvailable<CodeGenContextWrapper>())
+        ctx = CGW->getCodeGenContext();
+    return m_impl.run(M, ctx);
+  }
 
 private:
   BIFFlagCtrlResolution m_impl;

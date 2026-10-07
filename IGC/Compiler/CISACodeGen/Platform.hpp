@@ -613,7 +613,8 @@ public:
 
   // True if the platform has native HW float<->bfloat16 conversion.
   bool hasBF16Conversion() const {
-    return isCoreChildOf(IGFX_XE_HPG_CORE) && m_platformInfo.eProductFamily != IGFX_METEORLAKE;
+    return isCoreChildOf(IGFX_XE_HPG_CORE) && m_platformInfo.eProductFamily != IGFX_METEORLAKE &&
+           !GFX_IS_ARL_S(m_platformInfo.usDeviceID) && !GFX_IS_ARL_U(m_platformInfo.usDeviceID);
   }
   bool hasWideMulMad() const {
     return isCoreChildOf(IGFX_XE3P_CORE) &&

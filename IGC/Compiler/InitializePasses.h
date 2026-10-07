@@ -264,6 +264,7 @@ void initializeSpecialCasesDisableLICMPass(llvm::PassRegistry &);
 void initializeMemOptPass(llvm::PassRegistry &);
 void initializeLdStCombinePass(llvm::PassRegistry &);
 void initializeBIFTransformsLPMPass(llvm::PassRegistry &);
+void initializeBIFFlagCtrlResolutionLPMPass(llvm::PassRegistry &);
 void initializeThreadCombiningPass(llvm::PassRegistry &);
 void initializeRegisterPressureEstimatePass(llvm::PassRegistry &);
 void initializeLivenessAnalysisPass(llvm::PassRegistry &);

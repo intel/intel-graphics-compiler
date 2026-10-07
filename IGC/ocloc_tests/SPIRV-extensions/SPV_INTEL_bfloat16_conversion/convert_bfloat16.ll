@@ -8,10 +8,10 @@
 
 ; SPV_INTEL_bfloat16_conversion end to end. The same module is:
 ;   1) translated back from SPIR-V to the bfloat16 conversion builtins, and
-;   2) compiled to vISA for a platform WITH native HW bfloat16 conversion (CRI)
+;   2) compiled to vISA for platforms WITH native HW bfloat16 conversion (CRI, ARL-H)
 ;      and ones WITHOUT (METEORLAKE and TIGERLAKE, where the extension is exposed
 ;      as experimental - see SPIRVExtensions.td).
-; On CRI the native conversion is emitted (via a bfloat-typed variable, type=bf).
+; On CRI and ARL-H the native conversion is emitted (via a bfloat-typed variable, type=bf).
 ; The platforms without such HW emulate the conversions in the BiF: no type=bf
 ; variable is used and the RNE rounding bias constant (0x7fff) is visible.
 
@@ -25,6 +25,9 @@
 
 ; Native codegen (CRI): HW conversion declares a bfloat (type=bf) variable, no emulation constant.
 ; RUN: %if cri-supported %{ ocloc compile -spirv_input -file %t.spv -device cri -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-NATIVE %}
+
+; Native codegen (ARL-H): Xe-LPG+ keeps the HW conversion, unlike the Xe-LPG ARL-S and ARL-U.
+; RUN: %if arl-h-supported %{ ocloc compile -spirv_input -file %t.spv -device arl-h -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-NATIVE %}
 
 ; Emulated codegen (METEORLAKE): no native type=bf variable, RNE rounding bias is present.
 ; RUN: %if mtl-supported %{ ocloc compile -spirv_input -file %t.spv -device mtl -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-EMU %}

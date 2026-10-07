@@ -758,6 +758,7 @@ typedef enum __NATIVEGTTYPE
 #define DEV_ID_56BE                             0x56BE
 
 // ARL
+#define DEV_ID_7D41                             0x7D41
 #define DEV_ID_7D67                             0x7D67
 
 // PVC
@@ -853,6 +854,7 @@ typedef enum __NATIVEGTTYPE
                                       ( d == DEV_ID_56B3 ))
 
 #define GFX_IS_ARL_S(d)  ( ( d == DEV_ID_7D67 ) )
+#define GFX_IS_ARL_U(d)  ( ( d == DEV_ID_7D41 ) )
 
 #define GFX_IS_XT_CONFIG(d) ((d == DEV_ID_0BD5) || \
                              (d == DEV_ID_0BD6) || \

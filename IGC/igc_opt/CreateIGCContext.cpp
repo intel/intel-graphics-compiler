@@ -21,9 +21,11 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
-static cl::opt<uint16_t> DeviceIdOption("device-id",
-                                        cl::desc("Use to select specific configuration of a destination platform"),
-                                        cl::values(clEnumValN(0x0BD4, "0x0BD4", "PVC-VG")), cl::init(0), cl::Hidden);
+static cl::opt<uint16_t>
+    DeviceIdOption("device-id", cl::desc("Use to select specific configuration of a destination platform"),
+                   cl::values(clEnumValN(0x0BD4, "0x0BD4", "PVC-VG"), clEnumValN(0x7D67, "0x7D67", "ARL-S"),
+                              clEnumValN(0x7D41, "0x7D41", "ARL-U"), clEnumValN(0x7D51, "0x7D51", "ARL-H")),
+                   cl::init(0), cl::Hidden);
 
 static cl::opt<uint16_t> RevIdOption("rev-id", cl::desc("Use to select specific platform revision id"),
                                      cl::values(clEnumValN(REVID::REVISION_A0, "A", "Revision A"),

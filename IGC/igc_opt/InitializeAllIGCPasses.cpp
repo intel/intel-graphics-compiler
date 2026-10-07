@@ -192,6 +192,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeHandleFRemInstructionsLPMPass(Registry);
   initializeRewriteLocalSizeLPMPass(Registry);
   initializeBIFTransformsLPMPass(Registry);
+  initializeBIFFlagCtrlResolutionLPMPass(Registry);
   IGC::initializeKernelFunctionCloningLPMPass(Registry);
   initializeMoveStaticAllocasLPMPass(Registry);
   initializeCodeAssumptionLPMPass(Registry);
