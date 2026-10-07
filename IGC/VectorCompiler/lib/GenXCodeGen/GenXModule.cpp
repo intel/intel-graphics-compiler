@@ -112,7 +112,7 @@ void GenXModule::updateVisaMapping(const Function *K, const Instruction *Inst,
   // for the currently generated vISA object
   IGC_ASSERT(K);
 
-  auto PrevCounter = VisaCounter[K];
+  [[maybe_unused]] auto PrevCounter = VisaCounter[K];
   VisaCounter[K] = VisaIndex;
   if (!Inst) {
     LLVM_DEBUG(dbgs() << "visaCounter update <" << K->getName() << ">:{"

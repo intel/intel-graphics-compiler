@@ -303,7 +303,7 @@ GlobalArgInfo vc::GlobalArgsInfo::getGlobalInfoForArgNo(int ArgIdx) const {
   IGC_ASSERT_MESSAGE(Idx >= 0, "out of bound access");
   IGC_ASSERT_MESSAGE(Idx < static_cast<int>(Globals.size()),
                      "out of bound access");
-  return Globals[ArgIdx - FirstGlobalArgIdx];
+  return Globals[Idx];
 }
 
 bool vc::RetToArgLink::isRealIdx(int Idx) {
@@ -651,7 +651,7 @@ static void handleRetValuePortion(int RetIdx, RetToArgLink ArgInfo,
     IGC_ASSERT_MESSAGE(NewIdx >=
                            NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx,
                        "Corrupted global arg position!");
-    auto Kind =
+    [[maybe_unused]] auto Kind =
         NewFuncInfo.getGlobalArgsInfo().getGlobalInfoForArgNo(NewIdx).Kind;
     IGC_ASSERT_MESSAGE(
         Kind == GlobalArgKind::ByValueInOut,
@@ -663,7 +663,8 @@ static void handleRetValuePortion(int RetIdx, RetToArgLink ArgInfo,
   } else {
     // Use orig index: working with orig call's argument
     int OrigArgIdx = ArgInfo.getOrigIdx();
-    auto Kind = NewFuncInfo.getOrigArgInfo()[OrigArgIdx].getKind();
+    [[maybe_unused]] auto Kind =
+        NewFuncInfo.getOrigArgInfo()[OrigArgIdx].getKind();
     IGC_ASSERT_MESSAGE(Kind == ArgKind::CopyInOut || Kind == ArgKind::CopyOut,
                        "only copy (in-)out args are expected");
     auto *Arg = OrigCall.getArgOperand(OrigArgIdx);
@@ -690,9 +691,11 @@ static std::vector<Value *> handleGlobalArgs(Function &NewFunc,
                   [InsertPt](Argument &GVArg) -> Value * {
                     if (GVArg.getType()->isPointerTy())
                       return &GVArg;
-                    AllocaInst *Alloca = new AllocaInst(
-                        GVArg.getType(), vc::AddrSpace::Private, "", InsertPt);
-                    new StoreInst(&GVArg, Alloca, InsertPt);
+                    AllocaInst *Alloca =
+                        new AllocaInst(GVArg.getType(), vc::AddrSpace::Private,
+                                       "", IGCLLVM::insertPosition(InsertPt));
+                    new StoreInst(&GVArg, Alloca,
+                                  IGCLLVM::insertPosition(InsertPt));
                     return Alloca;
                   });
   // Fancy naming and debug info.
@@ -754,7 +757,7 @@ static Value *appendTransformedFuncRetPortion(
     IGC_ASSERT_MESSAGE(NewIdx >=
                            NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx,
                        "Corrupted global arg position!");
-    auto Kind =
+    [[maybe_unused]] auto Kind =
         NewFuncInfo.getGlobalArgsInfo().getGlobalInfoForArgNo(NewIdx).Kind;
     IGC_ASSERT_MESSAGE(
         Kind == GlobalArgKind::ByValueInOut,
@@ -772,7 +775,7 @@ static Value *appendTransformedFuncRetPortion(
   }
   // Use orig index: working with orig call's argument replacement.
   int OrigIdx = ArgInfo.getOrigIdx();
-  auto Kind = NewFuncInfo.getOrigArgInfo()[OrigIdx].getKind();
+  [[maybe_unused]] auto Kind = NewFuncInfo.getOrigArgInfo()[OrigIdx].getKind();
   IGC_ASSERT_MESSAGE(Kind == ArgKind::CopyInOut || Kind == ArgKind::CopyOut,
                      "Only copy (in-)out values are expected");
   Value *CurRetByPtr = OrigArgReplacements[OrigIdx];
@@ -795,9 +798,9 @@ static Value *passGlobalAsCallArg(GlobalArgInfo GAI, CallInst &OrigCall) {
   // We should should load the global first to pass it by value.
   if (GAI.Kind == GlobalArgKind::ByValueIn ||
       GAI.Kind == GlobalArgKind::ByValueInOut)
-    return new LoadInst(GAI.GV->getValueType(), GAI.GV,
-                        GAI.GV->getName() + ".val",
-                        /* isVolatile */ false, &OrigCall);
+    return new LoadInst(
+        GAI.GV->getValueType(), GAI.GV, GAI.GV->getName() + ".val",
+        /* isVolatile */ false, IGCLLVM::insertPosition(&OrigCall));
   IGC_ASSERT_MESSAGE(
       GAI.Kind == GlobalArgKind::ByPointer,
       "localized global can be passed only by value or by pointer");
@@ -809,7 +812,7 @@ static Value *passGlobalAsCallArg(GlobalArgInfo GAI, CallInst &OrigCall) {
   // When this switch to the caller, it'll remove this cast.
   return new AddrSpaceCastInst{
       GAI.GV, vc::changeAddrSpace(GVTy, vc::AddrSpace::Private),
-      GAI.GV->getName() + ".tmp", &OrigCall};
+      GAI.GV->getName() + ".tmp", IGCLLVM::insertPosition(&OrigCall)};
 }
 
 void vc::FuncUsersUpdater::run() {
@@ -855,7 +858,8 @@ CallInst *vc::FuncUsersUpdater::updateFuncDirectUser(CallInst &OrigCall) {
   IGC_ASSERT_EXIT_MESSAGE(!isa<InvokeInst>(OrigCall),
                           "InvokeInst not supported");
 
-  CallInst *NewCall = CallInst::Create(&NewFunc, NewCallOps, "", &OrigCall);
+  CallInst *NewCall = CallInst::Create(&NewFunc, NewCallOps, "",
+                                       IGCLLVM::insertPosition(&OrigCall));
   IGC_ASSERT(nullptr != NewCall);
   NewCall->setCallingConv(OrigCall.getCallingConv());
   NewCall->setAttributes(NewCallAttrs);
@@ -919,7 +923,8 @@ CallInst *vc::FuncUsersUpdaterNewPM::updateFuncDirectUser(CallInst &OrigCall) {
   IGC_ASSERT_EXIT_MESSAGE(!isa<InvokeInst>(OrigCall),
                           "InvokeInst not supported");
 
-  CallInst *NewCall = CallInst::Create(&NewFunc, NewCallOps, "", &OrigCall);
+  CallInst *NewCall = CallInst::Create(&NewFunc, NewCallOps, "",
+                                       IGCLLVM::insertPosition(&OrigCall));
   IGC_ASSERT(nullptr != NewCall);
   NewCall->setCallingConv(OrigCall.getCallingConv());
   NewCall->setAttributes(NewCallAttrs);
@@ -959,16 +964,18 @@ std::vector<Value *> vc::FuncBodyTransfer::handleTransformedFuncArgs() {
         case ArgKind::CopyIn:
         case ArgKind::CopyInOut: {
           auto *NewArg = IGCLLVM::getArg(NewFunc, OrigArgData.getNewIdx());
-          auto *Alloca = new AllocaInst(NewArg->getType(),
-                                        vc::AddrSpace::Private, "", InsertPt);
-          new StoreInst{NewArg, Alloca, InsertPt};
+          auto *Alloca =
+              new AllocaInst(NewArg->getType(), vc::AddrSpace::Private, "",
+                             IGCLLVM::insertPosition(InsertPt));
+          new StoreInst{NewArg, Alloca, IGCLLVM::insertPosition(InsertPt)};
           return Alloca;
         }
         case ArgKind::CopyOut: {
           IGC_ASSERT_MESSAGE(OrigArgData.isOmittedArg(),
                              "Unexpected existing arg");
           return new AllocaInst(OrigArgData.getTransformedOrigType(),
-                                AddrSpace::Private, "", InsertPt);
+                                AddrSpace::Private, "",
+                                IGCLLVM::insertPosition(InsertPt));
         }
         default:
           IGC_ASSERT_MESSAGE(OrigArgData.getKind() == ArgKind::General,
@@ -992,7 +999,7 @@ std::vector<Value *> vc::FuncBodyTransfer::handleTransformedFuncArgs() {
                 OrigArg.getType()->getPointerAddressSpace(),
             "pointers should have different addr spaces when they mismatch");
         return new AddrSpaceCastInst(Replacement, OrigArg.getType(), "",
-                                     InsertPt);
+                                     IGCLLVM::insertPosition(InsertPt));
       });
   for (auto &&[OrigArg, OrigArgReplacement] :
        zip(OrigFunc.args(), OrigArgReplacements)) {

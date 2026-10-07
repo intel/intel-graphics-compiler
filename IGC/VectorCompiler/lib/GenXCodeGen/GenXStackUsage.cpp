@@ -165,7 +165,7 @@ void StackAnalysis::visitCallInst(CallInst &CI) {
 
 // Add function to map
 void StackAnalysis::visitFunction(Function &F) {
-  bool isInserted = m_ProcessedFs.insert({&F, {}}).second;
+  [[maybe_unused]] bool isInserted = m_ProcessedFs.insert({&F, {}}).second;
   IGC_ASSERT_MESSAGE(isInserted, "Error in insertion function in map");
 }
 

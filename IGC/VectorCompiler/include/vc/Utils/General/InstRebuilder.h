@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -272,7 +272,7 @@ private:
                          "no such operand");
       NewOperands[OperandNo] = NewOperand;
     }
-    return std::move(NewOperands);
+    return NewOperands;
   }
 
   // covers cases when \p OrigInst cannot be cloned by cloneInstWithNewOps
@@ -284,10 +284,10 @@ private:
                        "only addr space cast case is yet considered");
     IGC_ASSERT_MESSAGE(NewOps.size() == 1, "cast has only one operand");
     llvm::Value *NewOp = NewOps.front();
-    auto *NewOpTy = llvm::cast<llvm::PointerType>(NewOp->getType());
-    auto *CastTy = llvm::cast<llvm::PointerType>(OrigInst.getType());
     IGC_ASSERT_MESSAGE(
-        NewOpTy->getAddressSpace() == CastTy->getAddressSpace(),
+        llvm::cast<llvm::PointerType>(NewOp->getType())->getAddressSpace() ==
+            llvm::cast<llvm::PointerType>(OrigInst.getType())
+                ->getAddressSpace(),
         "when addrspaces different clonnig helps and it should've "
         "been covered before");
     return NewOp;

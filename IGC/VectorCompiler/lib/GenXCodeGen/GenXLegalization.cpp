@@ -908,11 +908,13 @@ bool GenXLegalization::processAllAny(Instruction *Inst,
     auto NewWr = R.createWrRegion(
         Constant::getNullValue(V1I16Ty), ConstantInt::get(I16Ty, 1),
         Inst->getName() + ".allany_lowered", InsertBefore, DL);
-    auto NewBC = CastInst::Create(Instruction::BitCast, NewWr, I16Ty,
-                                  NewWr->getName(), InsertBefore);
-    auto NewPred = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, NewBC,
-                                   Constant::getNullValue(I16Ty),
-                                   NewBC->getName(), InsertBefore);
+    auto NewBC =
+        CastInst::Create(Instruction::BitCast, NewWr, I16Ty, NewWr->getName(),
+                         IGCLLVM::insertPosition(InsertBefore));
+    auto NewPred =
+        CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, NewBC,
+                        Constant::getNullValue(I16Ty), NewBC->getName(),
+                        IGCLLVM::insertPosition(InsertBefore));
     NewPred->setDebugLoc(DL);
     NewBC->setDebugLoc(DL);
     NewWr->setOperand(GenXIntrinsic::GenXRegion::PredicateOperandNum,
@@ -941,31 +943,33 @@ bool GenXLegalization::processAllAny(Instruction *Inst,
     if (PP.Size != 1)
       NewAllAny = CallInst::Create(Decl, Part,
                                    Inst->getName() + ".split" + Twine(StartIdx),
-                                   InsertBefore);
+                                   IGCLLVM::insertPosition(InsertBefore));
     else {
       // Part is v1i1. All we need to do is bitcast it to i1, which does not
       // generate any code.
-      NewAllAny = CastInst::Create(
-          Instruction::BitCast, Part, Part->getType()->getScalarType(),
-          Inst->getName() + ".split" + Twine(StartIdx), InsertBefore);
+      NewAllAny = CastInst::Create(Instruction::BitCast, Part,
+                                   Part->getType()->getScalarType(),
+                                   Inst->getName() + ".split" + Twine(StartIdx),
+                                   IGCLLVM::insertPosition(InsertBefore));
     }
     NewAllAny->setDebugLoc(DL);
     SelectInst *Sel = nullptr;
     if (IID == GenXIntrinsic::genx_all)
       Sel = SelectInst::Create(NewAllAny, Result, Zero,
                                Inst->getName() + ".join" + Twine(StartIdx),
-                               InsertBefore);
+                               IGCLLVM::insertPosition(InsertBefore));
     else
       Sel = SelectInst::Create(NewAllAny, One, Result,
                                Inst->getName() + ".join" + Twine(StartIdx),
-                               InsertBefore);
+                               IGCLLVM::insertPosition(InsertBefore));
     Sel->setDebugLoc(DL);
     Result = Sel;
     StartIdx += PP.Size;
   }
   // Add a scalar comparison to get the final scalar bool result.
   auto Cmp = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, Result, Zero,
-                             Inst->getName() + ".joincmp", InsertBefore);
+                             Inst->getName() + ".joincmp",
+                             IGCLLVM::insertPosition(InsertBefore));
   // Replace and erase the old all/any.
   Cmp->setDebugLoc(DL);
   Inst->replaceAllUsesWith(Cmp);
@@ -1013,7 +1017,8 @@ bool GenXLegalization::processBitCastFromPredicate(Instruction *Inst,
         CastInst::Create(Instruction::BitCast,
                          getSplitOperand(Inst, /*OperandNum=*/0, i * SplitWidth,
                                          SplitWidth, InsertBefore, DL),
-                         IntTy, Inst->getName() + ".split", InsertBefore);
+                         IntTy, Inst->getName() + ".split",
+                         IGCLLVM::insertPosition(InsertBefore));
     NewBitCast->setDebugLoc(DL);
     // Write it into the element of the vector.
     Region R(Result);
@@ -1023,9 +1028,9 @@ bool GenXLegalization::processBitCastFromPredicate(Instruction *Inst,
                               InsertBefore, DL);
   }
   // Bitcast the vector to the original type.
-  auto *NewBitCast =
-      CastInst::Create(Instruction::BitCast, Result, Inst->getType(),
-                       Inst->getName() + ".cast", InsertBefore);
+  auto *NewBitCast = CastInst::Create(
+      Instruction::BitCast, Result, Inst->getType(), Inst->getName() + ".cast",
+      IGCLLVM::insertPosition(InsertBefore));
   NewBitCast->setDebugLoc(DL);
   // Change uses and erase original.
   Inst->replaceAllUsesWith(NewBitCast);
@@ -1054,7 +1059,8 @@ bool GenXLegalization::processBitCastToPredicate(Instruction *Inst,
   auto IVTy = IGCLLVM::FixedVectorType::get(
       Type::getIntNTy(Inst->getContext(), SplitWidth), WholeWidth / SplitWidth);
   auto IntVec = CastInst::Create(Instruction::BitCast, Inst->getOperand(0),
-                                 IVTy, Inst->getName() + ".cast", InsertBefore);
+                                 IVTy, Inst->getName() + ".cast",
+                                 IGCLLVM::insertPosition(InsertBefore));
   IntVec->setDebugLoc(DL);
   Value *Result = UndefValue::get(Inst->getType());
   Type *SplitPredTy = IGCLLVM::FixedVectorType::get(
@@ -1067,9 +1073,9 @@ bool GenXLegalization::processBitCastToPredicate(Instruction *Inst,
     auto NewRd = R.createRdRegion(
         IntVec, Inst->getName() + ".rdsplit" + Twine(i), InsertBefore, DL);
     // Bitcast that element of the int vector to a predicate.
-    auto NewPred =
-        CastInst::Create(Instruction::BitCast, NewRd, SplitPredTy,
-                         Inst->getName() + ".split" + Twine(i), InsertBefore);
+    auto NewPred = CastInst::Create(Instruction::BitCast, NewRd, SplitPredTy,
+                                    Inst->getName() + ".split" + Twine(i),
+                                    IGCLLVM::insertPosition(InsertBefore));
     NewPred->setDebugLoc(DL);
     // Join into the overall result using wrpredregion.
     auto NewWr = Region::createWrPredRegion(
@@ -1859,7 +1865,7 @@ Value *GenXLegalization::joinGStore(Value *PrevSliceRes, BaleInst GStore,
   Value *Op =
       joinAnyWrRegion(PrevSliceRes, WrRegion, StartIdx, Width, InsertBefore);
   auto *Inst = new StoreInst(Op, GStore.Inst->getOperand(1), /*volatile*/ true,
-                             InsertBefore);
+                             IGCLLVM::insertPosition(InsertBefore));
   Inst->setDebugLoc(GStore.Inst->getDebugLoc());
   return Inst;
 }
@@ -1877,9 +1883,9 @@ Value *GenXLegalization::joinWrRegion(Value *PrevSliceRes, BaleInst BInst,
   Value *In = !StartIdx ? BInst.Inst->getOperand(0) : PrevSliceRes;
   if (CurSplitKind == SplitKind::SplitKind_GStore && StartIdx != 0) {
     auto *SI = cast<StoreInst>(B.getHead()->Inst);
-    auto *Load = new LoadInst(SI->getValueOperand()->getType(),
-                              SI->getPointerOperand(), ".gload",
-                              /*volatile*/ true, InsertBefore);
+    auto *Load = new LoadInst(
+        SI->getValueOperand()->getType(), SI->getPointerOperand(), ".gload",
+        /*volatile*/ true, IGCLLVM::insertPosition(InsertBefore));
     Load->setDebugLoc(BInst.Inst->getDebugLoc());
     In = Load;
   }
@@ -2073,16 +2079,18 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
     Instruction *NewInst = CastInst::Create(
         CI->getOpcode(),
         getSplitOperand(CI, 0, StartIdx, Width, InsertBefore, DL), CastToTy,
-        CI->getName() + ".split" + Twine(StartIdx), InsertBefore);
+        CI->getName() + ".split" + Twine(StartIdx),
+        IGCLLVM::insertPosition(InsertBefore));
     NewInst->setDebugLoc(DL);
     return NewInst;
   }
   if (BinaryOperator *BO = dyn_cast<BinaryOperator>(BInst.Inst)) {
     auto Split1 = getSplitOperand(BO, 0, StartIdx, Width, InsertBefore, DL),
          Split2 = getSplitOperand(BO, 1, StartIdx, Width, InsertBefore, DL);
-    Instruction *NewInst = BinaryOperator::Create(
-        BO->getOpcode(), Split1, Split2,
-        BO->getName() + ".split" + Twine(StartIdx), InsertBefore);
+    Instruction *NewInst =
+        BinaryOperator::Create(BO->getOpcode(), Split1, Split2,
+                               BO->getName() + ".split" + Twine(StartIdx),
+                               IGCLLVM::insertPosition(InsertBefore));
     NewInst->setDebugLoc(DL);
     return NewInst;
   }
@@ -2090,16 +2098,18 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
     Instruction *NewInst = UnaryOperator::Create(
         UO->getOpcode(),
         getSplitOperand(UO, 0, StartIdx, Width, InsertBefore, DL),
-        UO->getName() + ".split" + Twine(StartIdx), InsertBefore);
+        UO->getName() + ".split" + Twine(StartIdx),
+        IGCLLVM::insertPosition(InsertBefore));
     NewInst->setDebugLoc(DL);
     return NewInst;
   }
   if (CmpInst *CI = dyn_cast<CmpInst>(BInst.Inst)) {
     auto Split1 = getSplitOperand(CI, 0, StartIdx, Width, InsertBefore, DL),
          Split2 = getSplitOperand(CI, 1, StartIdx, Width, InsertBefore, DL);
-    Instruction *NewInst = CmpInst::Create(
-        CI->getOpcode(), CI->getPredicate(), Split1, Split2,
-        CI->getName() + ".split" + Twine(StartIdx), InsertBefore);
+    Instruction *NewInst =
+        CmpInst::Create(CI->getOpcode(), CI->getPredicate(), Split1, Split2,
+                        CI->getName() + ".split" + Twine(StartIdx),
+                        IGCLLVM::insertPosition(InsertBefore));
     NewInst->setDebugLoc(DL);
     return NewInst;
   }
@@ -2110,7 +2120,7 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
     auto Split2 = getSplitOperand(SI, 2, StartIdx, Width, InsertBefore, DL);
     auto NewInst = SelectInst::Create(
         Selector, Split1, Split2, SI->getName() + ".split" + Twine(StartIdx),
-        InsertBefore);
+        IGCLLVM::insertPosition(InsertBefore));
     NewInst->setDebugLoc(DL);
     return NewInst;
   }
@@ -2151,7 +2161,8 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
   Module *M = InsertBefore->getModule();
   Function *Decl = vc::getAnyDeclaration(M, IntrinID, OverloadedTypes);
   auto Name = ".split" + Twine(StartIdx);
-  Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
+  Instruction *NewInst =
+      CallInst::Create(Decl, Args, Name, IGCLLVM::insertPosition(InsertBefore));
   NewInst->setDebugLoc(DL);
   return NewInst;
 }
@@ -2230,7 +2241,8 @@ GenXLegalization::convertToMultiIndirect(Instruction *Inst, Value *LastJoinVal,
   Instruction *SplattedIndirect =
       CastInst::Create(Instruction::BitCast, Indirect,
                        IGCLLVM::FixedVectorType::get(Indirect->getType(), 1),
-                       Twine(Indirect->getName()) + ".splat", InsertBefore);
+                       Twine(Indirect->getName()) + ".splat",
+                       IGCLLVM::insertPosition(InsertBefore));
   SplattedIndirect->setDebugLoc(DL);
   Region AddrR(SplattedIndirect);
   AddrR.Stride = 0;
@@ -2245,9 +2257,9 @@ GenXLegalization::convertToMultiIndirect(Instruction *Inst, Value *LastJoinVal,
   Constant *Offsets = ConstantDataVector::get(
       InsertBefore->getContext(),
       ArrayRef<uint16_t>(OffsetValues).slice(0, R->NumElements));
-  SplattedIndirect =
-      BinaryOperator::Create(Instruction::Add, SplattedIndirect, Offsets,
-                             SplattedIndirect->getName(), InsertBefore);
+  SplattedIndirect = BinaryOperator::Create(
+      Instruction::Add, SplattedIndirect, Offsets, SplattedIndirect->getName(),
+      IGCLLVM::insertPosition(InsertBefore));
   SplattedIndirect->setDebugLoc(DL);
   // 3. Create the multi indirect subregion.
   R->Indirect = SplattedIndirect;
@@ -2273,8 +2285,9 @@ static Value *createBitCastIfNeeded(Value *V, Type *NewTy,
     Function *RegReadIntr = GenXIntrinsic::getGenXDeclaration(
         InsertBefore->getModule(), llvm::GenXIntrinsic::genx_read_predef_reg,
         {NewTy, CI->getOperand(1)->getType()});
-    auto *Inst = CallInst::Create(
-        RegReadIntr, {CI->getOperand(0), CI->getOperand(1)}, "", InsertBefore);
+    auto *Inst =
+        CallInst::Create(RegReadIntr, {CI->getOperand(0), CI->getOperand(1)},
+                         "", IGCLLVM::insertPosition(InsertBefore));
     Inst->setDebugLoc(DbgLoc);
     return Inst;
   }
@@ -2282,8 +2295,9 @@ static Value *createBitCastIfNeeded(Value *V, Type *NewTy,
     if (BCI->getSrcTy() == NewTy)
       return BCI->getOperand(0);
   }
-  auto *Inst = CastInst::Create(Instruction::BitCast, V, NewTy,
-                                V->getName() + ".cast", InsertBefore);
+  auto *Inst =
+      CastInst::Create(Instruction::BitCast, V, NewTy, V->getName() + ".cast",
+                       IGCLLVM::insertPosition(InsertBefore));
   Inst->setDebugLoc(DbgLoc);
   return Inst;
 }
@@ -2381,7 +2395,8 @@ Instruction *GenXLegalization::transformMoveType(Bale *B, IntegerType *FromTy,
 
   // Create bitcast to OldTy of NewDst
   auto *Bitcast = CastInst::Create(Instruction::BitCast, NewDst, Dst->getType(),
-                                   Dst->getName() + ".cast", HeadInst);
+                                   Dst->getName() + ".cast",
+                                   IGCLLVM::insertPosition(HeadInst));
   Bitcast->setDebugLoc(WrDbgLoc);
   Dst->replaceAllUsesWith(Bitcast);
 
@@ -2434,9 +2449,10 @@ Value *GenXLegalization::splatPredicateIfNecessary(Value *V, unsigned Width,
   unsigned RoundedWidth = Width > 16 ? 32 : 16;
   // Use a select to turn the predicate into 0 or -1.
   auto ITy = Type::getIntNTy(InsertBefore->getContext(), RoundedWidth);
-  auto Sel = SelectInst::Create(
-      V, Constant::getAllOnesValue(ITy), Constant::getNullValue(ITy),
-      InsertBefore->getName() + ".splatpredicate", InsertBefore);
+  auto Sel = SelectInst::Create(V, Constant::getAllOnesValue(ITy),
+                                Constant::getNullValue(ITy),
+                                InsertBefore->getName() + ".splatpredicate",
+                                IGCLLVM::insertPosition(InsertBefore));
   Sel->setDebugLoc(DL);
   // Bitcast that to v16i1 or v32i1 predicate (which becomes a setp
   // instruction).
@@ -2444,7 +2460,8 @@ Value *GenXLegalization::splatPredicateIfNecessary(Value *V, unsigned Width,
       Instruction::BitCast, Sel,
       IGCLLVM::FixedVectorType::get(Type::getInt1Ty(InsertBefore->getContext()),
                                     RoundedWidth),
-      InsertBefore->getName() + ".splatpredicate", InsertBefore);
+      InsertBefore->getName() + ".splatpredicate",
+      IGCLLVM::insertPosition(InsertBefore));
   Res->setDebugLoc(DL);
   // If the required size is smaller, do an rdpredregion.
   if (Width == RoundedWidth)
@@ -2513,7 +2530,8 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
         auto *NewPhi = PHINode::Create(
             IGCLLVM::FixedVectorType::get(Phi->getType()->getScalarType(),
                                           PP.Size),
-            NumIncoming, Phi->getName() + ".split" + Twine(StartIdx), Phi);
+            NumIncoming, Phi->getName() + ".split" + Twine(StartIdx),
+            IGCLLVM::insertPosition(Phi));
         NewPhi->setDebugLoc(Phi->getDebugLoc());
         // Do a rdpredregion for each incoming.
         for (unsigned ii = 0; ii != NumIncoming; ++ii) {

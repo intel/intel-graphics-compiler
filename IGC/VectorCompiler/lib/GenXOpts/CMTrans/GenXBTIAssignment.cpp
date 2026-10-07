@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2025 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -267,7 +267,6 @@ std::vector<int> BTIAssignment::computeBTIndices(
 
   std::vector<int> Indices(KM.getArgKinds().size(), -1);
 
-  ArrayRef<unsigned> ArgKinds = KM.getArgKinds();
   auto Zippy = llvm::zip(Indices, KM.getArgKinds(), ExtendedArgDescs);
   std::tie(SurfaceID, SamplerID) = assignSRV(SurfaceID, SamplerID, Zippy);
   SurfaceID = assignUAV(SurfaceID, Zippy);

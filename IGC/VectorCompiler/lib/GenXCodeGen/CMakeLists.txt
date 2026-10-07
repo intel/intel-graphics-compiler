@@ -110,6 +110,9 @@ set(CODEGEN_SOURCES
 )
 
 add_library(VCCodeGen STATIC ${CODEGEN_SOURCES})
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 14)
+  target_compile_options(VCCodeGen PRIVATE -Wno-error=unused-function)
+endif()
 add_dependencies(VCCodeGen
   GenXUtilBuild
   GenXCommonTableGen_target

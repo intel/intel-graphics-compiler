@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -207,13 +207,6 @@ CMKernelArgOffsetPass::run(llvm::Module &M,
   return PreservedAnalyses::all();
 }
 #endif
-
-// Check whether there is an input/output argument attribute.
-static bool canReorderArguments(const vc::KernelMetadata &KM) {
-  using ArgIOKind = vc::KernelMetadata::ArgIOKind;
-  return llvm::all_of(KM.getArgIOKinds(),
-                      [](ArgIOKind K) { return K == ArgIOKind::Normal; });
-}
 
 /***********************************************************************
  * runOnModule : run the CM kernel arg offset pass

@@ -84,7 +84,7 @@ Alignment AlignmentInfo::get(Value *V) {
           if (InstMap.find(IncomingInst) == InstMap.end() &&
               InstWebSet.insert(IncomingInst).second)
             InstWeb.push_back(IncomingInst);
-    } else if (CastInst *CI = dyn_cast<CastInst>(WorkInst)) {
+    } else if (isa<CastInst>(WorkInst)) {
       if (auto IncomingInst = dyn_cast<Instruction>(WorkInst->getOperand(0)))
         if (InstMap.find(IncomingInst) == InstMap.end() &&
             InstWebSet.insert(IncomingInst).second)
@@ -319,7 +319,7 @@ Alignment Alignment::getAlignmentForConstant(Constant *C) {
  */
 Alignment::Alignment(Constant *C) {
   setUncomputed();
-  if (auto *VT = dyn_cast<VectorType>(C->getType())) {
+  if (isa<VectorType>(C->getType())) {
     // Take splat if exists
     if (auto *SplatVal = C->getSplatValue())
       C = SplatVal;
@@ -443,7 +443,7 @@ Alignment Alignment::logicalOr(ConstantInt *CI) const {
 Alignment AlignmentInfo::getFromInstMap(Value *V) {
   if (auto C = dyn_cast<Constant>(V))
     return Alignment(C);
-  if (auto Inst = dyn_cast<Instruction>(V)) {
+  if (isa<Instruction>(V)) {
     return InstMap[V];
   }
   return Alignment::getUnknown();

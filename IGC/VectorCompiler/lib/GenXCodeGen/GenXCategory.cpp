@@ -925,7 +925,8 @@ vc::RegCategory
 GenXCategory::getCategoryForInlasmConstraintedOp(CallInst *CI, unsigned ArgNo,
                                                  bool IsOutput) const {
   IGC_ASSERT_MESSAGE(CI->isInlineAsm(), "Inline asm expected");
-  InlineAsm *IA = dyn_cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
+  [[maybe_unused]] InlineAsm *IA =
+      dyn_cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
   IGC_ASSERT_MESSAGE(!IA->getConstraintString().empty(),
                      "Here should be constraints");
 

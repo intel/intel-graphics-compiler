@@ -72,22 +72,22 @@ SPDX-License-Identifier: MIT
 // options descriptions below in this file:
 //
 // {code}
-//         opt \
-//         -load <PATH_TO_libVCBackendPlugin.so> \
-//         -enable-new-pm=0 \
-//         -check-gv-clobbering=1 \
-//         -check-gv-clobbering-try-fixup=0 \
-//         -check-gv-clobbering-chk-with-bales=0 \
-//         -check-gv-clobbering-standalone-mode=1 \
-//         -check-gv-clobbering-abort-on-detection=0 \
-//         -check-gv-clobbering-collect-kill-call-sites=0 \
-//         -GenXGVClobberChecker \
-//         -march=genx64 \
-//         -mtriple=spir64-unknown-unknown \
-//         -mcpu=XeHPG \
-//         -disable-output \
-//         -S \
-//         <YOUR_LLVM_IR_DUMP.ll>
+/*         opt \
+           -load <PATH_TO_libVCBackendPlugin.so> \
+           -enable-new-pm=0 \
+           -check-gv-clobbering=1 \
+           -check-gv-clobbering-try-fixup=0 \
+           -check-gv-clobbering-chk-with-bales=0 \
+           -check-gv-clobbering-standalone-mode=1 \
+           -check-gv-clobbering-abort-on-detection=0 \
+           -check-gv-clobbering-collect-kill-call-sites=0 \
+           -GenXGVClobberChecker \
+           -march=genx64 \
+           -mtriple=spir64-unknown-unknown \
+           -mcpu=XeHPG \
+           -disable-output \
+           -S \
+           <YOUR_LLVM_IR_DUMP.ll> */
 // {code}
 //
 #include "GenXBaling.h"

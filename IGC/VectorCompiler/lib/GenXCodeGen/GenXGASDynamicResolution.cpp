@@ -374,7 +374,7 @@ void GenXGASDynamicResolution::visitAddrSpaceCastInst(
   // except the first ptrtoint inst. To workaround the use replacement in
   // the ptrtoint inst a bitcast is used.
   auto Dummy = CastInst::Create(Instruction::BitCast, &CI, CI.getType(), "",
-                                CI.getNextNode());
+                                IGCLLVM::insertPosition(CI.getNextNode()));
   auto TaggedPtr = cast<Instruction>(
       writeHigh32BitsOfPtr(Builder, Dummy, ShiftedTag, CI.getModule()));
   TaggedPtr->setName(CI.getName() + ".tagged");

@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Debug.h>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "GENX_ExtractVectorizer"
 
@@ -341,14 +342,16 @@ void GenXExtractVectorizer::processBucket(BucketInfo &BI) {
     auto CV = ConstantVector::get(RhsConsts);
     NewInst = BinaryOperator::Create(
         (Instruction::BinaryOps)FirstExtractUser->getOpcode(), NewRdRegion, CV,
-        FirstExtractUser->getName() + ".histogrammed", BI.InsertPt);
+        FirstExtractUser->getName() + ".histogrammed",
+        IGCLLVM::insertPosition(BI.InsertPt));
   } else {
     // Create the vectorized trunc/zext/sext.
     auto VT =
         IGCLLVM::FixedVectorType::get(FirstExtractUser->getType(), B.size());
     NewInst = CastInst::Create(
         (Instruction::CastOps)FirstExtractUser->getOpcode(), NewRdRegion, VT,
-        FirstExtractUser->getName() + ".histogrammed", BI.InsertPt);
+        FirstExtractUser->getName() + ".histogrammed",
+        IGCLLVM::insertPosition(BI.InsertPt));
   }
   NewInst->setDebugLoc(FirstExtractUser->getDebugLoc());
   // For each original scalar binary operator or cast, create a rdregion to

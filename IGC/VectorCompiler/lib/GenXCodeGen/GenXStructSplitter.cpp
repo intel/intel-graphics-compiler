@@ -691,15 +691,15 @@ DependencyGraph::getUniqueSplitTypes(StructType &STy) const {
   return UniqueSplitTypesInOrder;
 }
 
-//
-//  * By AllStructs info generates dependency graph of structs.
-//  * eg. generates smth like this:
-//    C -----> A
-//     \     /
-//      \-> D
-//       \   \
-//        \-> B
-//
+/*
+  * By AllStructs info generates dependency graph of structs.
+  * eg. generates smth like this:
+    C -----> A
+     \     /
+      \-> D
+       \   \
+        \-> B
+*/
 void DependencyGraph::generateGraph() {
   LLVM_DEBUG(dbgs() << "Graph generating begin.\n");
   NodeTracker Inserted;
@@ -735,7 +735,7 @@ DependencyGraph::Node *DependencyGraph::createNode(StructType &STy,
   }
 
   Node *ThisNode = NodeMM.create(STy);
-  auto [It, IsInserted] = Inserted.emplace(&STy, ThisNode);
+  [[maybe_unused]] auto [It, IsInserted] = Inserted.emplace(&STy, ThisNode);
   IGC_ASSERT_MESSAGE(IsInserted,
                      "Processing Node which already has been processed.");
 
@@ -956,7 +956,8 @@ void DependencyGraph::setInfoAboutStructure(StructType &STy) {
     FindIt->second.emplace_back(*Elem, Index);
   }
 
-  auto [_, IsInserted] = AllStructs.emplace(&STy, std::move(BaseTypes));
+  [[maybe_unused]] auto [_, IsInserted] =
+      AllStructs.emplace(&STy, std::move(BaseTypes));
   IGC_ASSERT_MESSAGE(IsInserted,
                      "Processing Struct which already has been processed.");
 }
@@ -970,17 +971,16 @@ void DependencyGraph::mergeStructGenerationInfo() {
   LLVM_DEBUG(dbgs() << "Merging structs.\n");
   for (auto It = SplitStructs.rbegin(), End = SplitStructs.rend(); It != End;
        ++It) {
-    StructType &SToMerge = *It->first;
     ElemMapping &InfoAboutS = It->second;
 
     if (StructType *SToMergeWith = checkAbilityToMerge(InfoAboutS)) {
-      LLVM_DEBUG(dbgs() << "Able to merge: " << SToMerge << "\n\tWith "
+      LLVM_DEBUG(dbgs() << "Able to merge: " << *It->first << "\n\tWith "
                         << *SToMergeWith << "\n");
 
       const ElemMapping &InfoAboutTemporaryS = getElemMappingFor(*SToMergeWith);
-      // Every element of the structure SToMerge will be substituted with
-      // element from the structure SToMergeWith and/or new elements from
-      // SToMergeWith will be placed in SToMerge.
+      // Replace each element in the current struct's mapping with its
+      // counterpart from SToMergeWith, inserting any additional elements
+      // from SToMergeWith into the mapping.
       for (ListOfSplitElements &ElementsList : InfoAboutS) {
         for (SElement &Element : ElementsList) {
           IGC_ASSERT_MESSAGE(!Element.isUnwrapped(),
@@ -1123,7 +1123,7 @@ Substituter::generateNewAllocas(AllocaInst &OldInst) {
       if (IsTypeInserted) {
         // Generating one alloca to each unique type.
         AllocaInst *NewAlloca = generateAlloca(OldInst, BaseTy);
-        auto [_, IsAllocaInserted] =
+        [[maybe_unused]] auto [_, IsAllocaInserted] =
             NewInstructions.emplace(getBaseTy(NewTy), NewAlloca);
         IGC_ASSERT_MESSAGE(IsAllocaInserted,
                            "Alloca instruction responsible for structure(type) "
@@ -1599,7 +1599,7 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
                              const TypeToInstrMap &NewInstr,
                              InstsToSubstitute /*OUT*/ &InstToInst) {
   LLVM_DEBUG(dbgs() << "Processing uses of instruction: " << GEPI << "\n");
-  auto [IdxPath, GottenTypeArr] = std::move(getIndicesPath(GEPI));
+  auto [IdxPath, GottenTypeArr] = getIndicesPath(GEPI);
   const unsigned Size = GottenTypeArr.size();
   IGC_ASSERT_MESSAGE(
       IdxPath.size() == Size,
@@ -1675,10 +1675,11 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
     Type *PlainType = getBaseTy(GottenTypeArr[PlainTyIdx]);
     // In case of opaque pointers, GEP's leading zero indices can be omitted and
     // in this case previous type is not a structure type
-    if (auto *STyToBeSplit = dyn_cast<StructType>(PrevType)) {
-      unsigned Idx = IdxPath.getIdxAt(PlainTyIdx);
+    if (isa<StructType>(PrevType)) {
       IGC_ASSERT_MESSAGE(
-          Graph.getElementsListOfSTyAtIdx(*STyToBeSplit, Idx).size() == 1,
+          Graph.getElementsListOfSTyAtIdx(*cast<StructType>(PrevType),
+                                          IdxPath.getIdxAt(PlainTyIdx))
+                  .size() == 1,
           "Access to element of Struct does not get unsplit type.");
       PlainTyIdx += 1;
     }
@@ -2052,12 +2053,12 @@ bool operator!=(const DependencyGraph::SElementsOfType::const_iterator &LHS,
 //          Block of Node definition.
 //__________________________________________________________________
 void DependencyGraph::Node::insertParent(Node &ParentNode) {
-  auto &&[It, IsInserted] = ParentSTys.emplace(&ParentNode);
+  ParentSTys.emplace(&ParentNode);
   // Insertion may not occur in similar case like insertChild.
 }
 
 void DependencyGraph::Node::insertChild(Node &ChildNode) {
-  auto &&[It, IsInserted] = ChildSTys.emplace(&ChildNode);
+  ChildSTys.emplace(&ChildNode);
   // Insertion may not occur if there is a dependency like : G {C, C};
 }
 
@@ -2074,7 +2075,7 @@ void DependencyGraph::Node::substitute(StructType &InSTy) {
 }
 
 void DependencyGraph::Node::eraseChild(Node &ChildNode) {
-  size_t ElCount = ChildSTys.erase(&ChildNode);
+  [[maybe_unused]] size_t ElCount = ChildSTys.erase(&ChildNode);
   IGC_ASSERT(ElCount);
 }
 

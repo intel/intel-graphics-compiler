@@ -50,33 +50,31 @@ SPDX-License-Identifier: MIT
 /// SimdCFLoopRegions. First one corresponds to SIMD CF if-else and second one
 /// to SIMD CF do-while.
 ///
-/// Control flow scheme for SIMD CF if-else is following:
-///
-///                          +-------------------+
-///                          |       entry       |
-///                          +-------------------+
-///                             /             \
-///                            /               |<[if any cond is true]
-///                           /                V
-///                          /             +----------------+
-/// [if all cond are false]>/              |   region for   |
-///                        /               |   simd cf if   |
-///                  +----+                |      cond      |
-///                 /                      +----------------+
-///                /                          /      /
-///                |  [if any cond is false]>/      /
-///                V                        /      /
-///         +----------------+             /      /
-///         |   region for   |            /      /
-///         |  simd cf else  |<----------+      /<[if all cond are true]
-///         |      cond      |                 /
-///         +----------------+                /
-///                            \             /
-///                             |            |
-///                             V            V
-///                          +-------------------+
-///                          |        end        |
-///                          +-------------------+
+/** Control flow scheme for SIMD CF if-else is following:
+
+                          +-------------------+
+                          |       entry       |
+                          +---------+---------+
+                                    |
+                 +------------------+------------------+
+                 |                                     |
+            [all false]                           [any true]
+                 |                                     |
+                 V                                     V
+        +----------------+                    +----------------+
+        |  simd cf else  |<-------------------|   simd cf if   |
+        |     region     |    [any false]     |     region     |
+        +----------------+                    +----------------+
+                 |                                     |
+                 |                                [all true]
+                 |                                     |
+                 +------------------+------------------+
+                                    |
+                                    V
+                          +-------------------+
+                          |        end        |
+                          +-------------------+
+*/
 ///
 /// Control flow scheme for SIMD CF do-while is following:
 ///
@@ -613,10 +611,11 @@ AllocaInst *GenXPredToSimdCF::getEMAddr(Function *F) {
   auto *EMTy = IGCLLVM::FixedVectorType::get(Type::getInt1Ty(M->getContext()),
                                              MAX_SIMD_CF_WIDTH);
   auto *InsertBefore = &JP->getParent()->front().front();
-  auto *EMAddr = new AllocaInst(EMTy, 0 /*AddrSpace*/,
-                                Twine("EM.") + JP->getName(), InsertBefore);
+  auto *EMAddr =
+      new AllocaInst(EMTy, 0 /*AddrSpace*/, Twine("EM.") + JP->getName(),
+                     IGCLLVM::insertPosition(InsertBefore));
   new StoreInst(Constant::getAllOnesValue(EMTy), EMAddr, false /* isVolatile */,
-                InsertBefore);
+                IGCLLVM::insertPosition(InsertBefore));
   EMAddrs[F] = EMAddr;
   return EMAddr;
 }
@@ -642,10 +641,11 @@ AllocaInst *GenXPredToSimdCF::getRMAddr(unsigned Width) {
     auto *RMTy =
         IGCLLVM::FixedVectorType::get(Type::getInt1Ty(JP->getContext()), Width);
     auto *InsertBefore = &JP->getParent()->front().front();
-    auto *RMAddr = new AllocaInst(RMTy, 0 /*AddrSpace*/,
-                                  Twine("RM.") + JP->getName(), InsertBefore);
+    auto *RMAddr =
+        new AllocaInst(RMTy, 0 /*AddrSpace*/, Twine("RM.") + JP->getName(),
+                       IGCLLVM::insertPosition(InsertBefore));
     new StoreInst(Constant::getNullValue(RMTy), RMAddr, false /* isVolatile */,
-                  InsertBefore);
+                  IGCLLVM::insertPosition(InsertBefore));
     RMAddrs[JP] = RMAddr;
   }
   return RMAddrs[JP];

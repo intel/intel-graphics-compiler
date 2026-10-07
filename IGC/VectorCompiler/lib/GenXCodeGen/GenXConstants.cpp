@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -136,8 +136,8 @@ static Value *loadConstantStruct(
       LoadedEl = ConstantLoader(El, Subtarget, DL, nullptr, AddedInstructions)
                      .loadBig(InsertPt);
     }
-    auto *InsertInst =
-        InsertValueInst::Create(Agg, LoadedEl, i, "loadstruct", InsertPt);
+    auto *InsertInst = InsertValueInst::Create(
+        Agg, LoadedEl, i, "loadstruct", IGCLLVM::insertPosition(InsertPt));
     Agg = InsertInst;
     if (AddedInstructions)
       AddedInstructions->push_back(InsertInst);
@@ -1075,9 +1075,9 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
             return V;
           // Assume bitcastable for now
           if (!CastMap.count(Ty))
-            CastMap[Ty] =
-                CastInst::Create(Instruction::BitCast, V, Ty,
-                                 V->getName() + ".cast", InsertBefore);
+            CastMap[Ty] = CastInst::Create(
+                Instruction::BitCast, V, Ty, V->getName() + ".cast",
+                IGCLLVM::insertPosition(InsertBefore));
           return CastMap[Ty];
         };
 
@@ -1271,7 +1271,7 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst) {
     else
       NewInst = CCL.loadNonSimple(Inst);
     NewInst = CastInst::Create(Instruction::BitCast, NewInst, C->getType(),
-                               "constant", Inst);
+                               "constant", IGCLLVM::insertPosition(Inst));
     if (AddedInstructions)
       AddedInstructions->push_back(NewInst);
     return NewInst;
@@ -1590,8 +1590,9 @@ Instruction *ConstantLoader::loadPackedInt(Instruction *Inst) {
     auto *CVTy = cast<IGCLLVM::FixedVectorType>(C->getType());
     auto ElemCount = IGCLLVM::getElementCount(CVTy->getNumElements());
     auto *Op1 = ConstantVector::getSplat(ElemCount, SplatVal);
-    LoadPacked = BinaryOperator::Create(Instruction::Mul, LoadPacked, Op1,
-                                        "constantscale", Inst);
+    LoadPacked =
+        BinaryOperator::Create(Instruction::Mul, LoadPacked, Op1,
+                               "constantscale", IGCLLVM::insertPosition(Inst));
   }
   if (PackedIntAdjust) {
     auto *SplatVal =
@@ -1599,13 +1600,15 @@ Instruction *ConstantLoader::loadPackedInt(Instruction *Inst) {
     auto *CVTy = cast<IGCLLVM::FixedVectorType>(C->getType());
     auto ElemCount = IGCLLVM::getElementCount(CVTy->getNumElements());
     auto *Op1 = ConstantVector::getSplat(ElemCount, SplatVal);
-    LoadPacked = BinaryOperator::Create(Instruction::Add, LoadPacked, Op1,
-                                        "constantadjust", Inst);
+    LoadPacked =
+        BinaryOperator::Create(Instruction::Add, LoadPacked, Op1,
+                               "constantadjust", IGCLLVM::insertPosition(Inst));
   }
   if (DL.getTypeSizeInBits(PackTy) <
       DL.getTypeSizeInBits(C->getType()->getScalarType())) {
-    LoadPacked = CastInst::CreateSExtOrBitCast(LoadPacked, C->getType(),
-                                               "constantsext", Inst);
+    LoadPacked =
+        CastInst::CreateSExtOrBitCast(LoadPacked, C->getType(), "constantsext",
+                                      IGCLLVM::insertPosition(Inst));
 
     bool IsI64 =
         C->getType()->getScalarType() == Type::getInt64Ty(Inst->getContext());
@@ -1769,7 +1772,8 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore) {
             .loadBig(InsertBefore);
     IGC_ASSERT(Load);
     Load = CastInst::Create(Instruction::BitCast, Load, C->getType(),
-                            Load->getName() + ".cast", InsertBefore);
+                            Load->getName() + ".cast",
+                            IGCLLVM::insertPosition(InsertBefore));
     if (AddedInstructions)
       AddedInstructions->push_back(Load);
     return Load;

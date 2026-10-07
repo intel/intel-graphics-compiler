@@ -386,7 +386,7 @@ void GenXLoadStoreLowering::visitLoadInst(LoadInst &LdI) const {
 
 void GenXLoadStoreLowering::visitStoreInst(StoreInst &StI) const {
   LLVM_DEBUG(dbgs() << "Replacing store " << StI << " ===>\n");
-  auto *Replacement = createMemoryInstReplacement(StI);
+  [[maybe_unused]] auto *Replacement = createMemoryInstReplacement(StI);
   LLVM_DEBUG(dbgs() << *Replacement << "\n");
   StI.eraseFromParent();
 }
@@ -596,7 +596,7 @@ Value *GenXLoadStoreLowering::createTruncateImpl(IRBuilder<> &Builder,
                                                  IGCLLVM::FixedVectorType *Ty,
                                                  Value *Data) const {
   auto *DataVTy = cast<IGCLLVM::FixedVectorType>(Data->getType());
-  auto *DataETy = DataVTy->getElementType();
+  [[maybe_unused]] auto *DataETy = DataVTy->getElementType();
 
   if (DataVTy == Ty)
     return Data;
@@ -1166,7 +1166,7 @@ void GenXLoadStoreLowering::createLSCAtomicFenceImpl(Instruction &AtomicI,
 
   auto *Func = GenXIntrinsic::getAnyDeclaration(
       M, GenXIntrinsic::genx_lsc_fence, {Builder.getInt1Ty()});
-  auto *Fence = Builder.CreateCall(
+  [[maybe_unused]] auto *Fence = Builder.CreateCall(
       Func, {Builder.getTrue(), Builder.getInt8(SubFuncID),
              Builder.getInt8(FenceOp), Builder.getInt8(Scope)});
   LLVM_DEBUG(dbgs() << "Created: " << *Fence << "\n");
@@ -1472,7 +1472,8 @@ void GenXLoadStoreLowering::createLegacyAtomicFenceImpl(
 
   auto *M = AtomicI.getModule();
   auto *Func = GenXIntrinsic::getAnyDeclaration(M, GenXIntrinsic::genx_fence);
-  auto *Fence = Builder.CreateCall(Func, {Builder.getInt8(FenceOp)});
+  [[maybe_unused]] auto *Fence =
+      Builder.CreateCall(Func, {Builder.getInt8(FenceOp)});
   LLVM_DEBUG(dbgs() << "Created: " << *Fence << "\n");
 }
 

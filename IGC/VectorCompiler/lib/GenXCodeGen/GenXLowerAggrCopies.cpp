@@ -108,7 +108,7 @@ static std::vector<SliceInfo> getLegalLengths(int TotalLength, int Align) {
       Align = std::min(Width, Align);
     }
   }
-  return std::move(Slices);
+  return Slices;
 }
 
 // Original memset intrinsic fills memory with 8-bit values.

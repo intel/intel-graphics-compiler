@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -295,7 +295,7 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB) {
     Inst = Next;
   }
   // Change the predecessor to have an unconditional branch to the successor.
-  auto NewBr = BranchInst::Create(Succ, PredBr);
+  auto NewBr = BranchInst::Create(Succ, IGCLLVM::insertPosition(PredBr));
   NewBr->takeName(PredBr);
   auto CondInst = dyn_cast<Instruction>(PredBr->getCondition());
   PredBr->eraseFromParent();

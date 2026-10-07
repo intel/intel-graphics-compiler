@@ -160,7 +160,8 @@ bool GenXTypeLegalization::runOnFunction(Function &F) {
         continue;
       auto *NewTy = getLegalizedType(PN->getType());
       auto *NewPN = PHINode::Create(NewTy, PN->getNumIncomingValues(),
-                                    getLegalizedName(PN->getName()), &I);
+                                    getLegalizedName(PN->getName()),
+                                    IGCLLVM::insertPosition(&I));
       ValueMap[&I] = NewPN;
       Changed = true;
     }
@@ -269,11 +270,6 @@ Value *GenXTypeLegalization::visitCastInst(CastInst &I) {
   }
   auto *NewDstTy = getLegalizedType(DstTy);
 
-  auto DstBitWidth =
-      cast<IntegerType>(NewDstTy->getScalarType())->getBitWidth();
-  auto SrcBitWidth =
-      cast<IntegerType>(Val->getType()->getScalarType())->getBitWidth();
-
   IGCLLVM::IRBuilder<> Builder{&I};
   switch (I.getOpcode()) {
   default:
@@ -281,10 +277,14 @@ Value *GenXTypeLegalization::visitCastInst(CastInst &I) {
                  "Unhandled cast opcode.", &I);
     return nullptr;
   case Instruction::ZExt:
-    IGC_ASSERT(SrcBitWidth <= DstBitWidth);
+    IGC_ASSERT(
+        cast<IntegerType>(Val->getType()->getScalarType())->getBitWidth() <=
+        cast<IntegerType>(NewDstTy->getScalarType())->getBitWidth());
     return Builder.CreateZExt(Val, NewDstTy, getLegalizedName(I.getName()));
   case Instruction::Trunc: {
-    IGC_ASSERT(DstBitWidth <= SrcBitWidth);
+    IGC_ASSERT(
+        cast<IntegerType>(NewDstTy->getScalarType())->getBitWidth() <=
+        cast<IntegerType>(Val->getType()->getScalarType())->getBitWidth());
     auto *NewTrunc = Builder.CreateTrunc(Val, NewDstTy);
     uint64_t Mask =
         (1ULL << I.getType()->getScalarType()->getIntegerBitWidth()) - 1;

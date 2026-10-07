@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/Utils/General/DebugInfo.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/TypeSize.h"
 
@@ -181,7 +182,8 @@ vc::DIBuilder::createDbgDeclare(Value &Address, DILocalVariable &LocalVar,
   // creating an @llvm.dbg.declare intrinsic call corrupts a record-mode module
   // (dangling references at print time), so emit it via the DIBuilder API.
   llvm::DIBuilder DIB(M);
-  DIB.insertDeclare(&Address, &LocalVar, &Expr, &Loc, &InsertPt);
+  DIB.insertDeclare(&Address, &LocalVar, &Expr, &Loc,
+                    IGCLLVM::insertPosition(&InsertPt));
   return nullptr;
 #else
   auto &Ctx = M.getContext();

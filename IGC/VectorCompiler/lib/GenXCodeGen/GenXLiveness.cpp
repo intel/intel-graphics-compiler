@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1216,22 +1216,23 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
       // There is no way in vISA of copying from one
       // predicate to another, so we copy all 0s into the destination
       // then "or" the source into it.
-      Instruction *NewInst = CastInst::Create(Instruction::BitCast,
-                                              Constant::getNullValue(InputTy),
-                                              InputTy, Name, InsertBefore);
+      Instruction *NewInst = CastInst::Create(
+          Instruction::BitCast, Constant::getNullValue(InputTy), InputTy, Name,
+          IGCLLVM::insertPosition(InsertBefore));
       Numbering->setNumber(NewInst, Number);
       if (AdjustLRs)
         setLiveRange(SimpleValue(NewInst), LR);
       NewInst = BinaryOperator::Create(Instruction::Or, NewInst, InputVal, Name,
-                                       InsertBefore);
+                                       IGCLLVM::insertPosition(InsertBefore));
       Numbering->setNumber(NewInst, Number);
       if (AdjustLRs)
         setLiveRange(SimpleValue(NewInst), LR);
       return NewInst;
     }
     // Predicate input is constant.
-    auto NewInst = CastInst::Create(Instruction::BitCast, InputVal, InputTy,
-                                    Name, InsertBefore);
+    auto NewInst =
+        CastInst::Create(Instruction::BitCast, InputVal, InputTy, Name,
+                         IGCLLVM::insertPosition(InsertBefore));
     Numbering->setNumber(NewInst, Number);
     if (AdjustLRs)
       setLiveRange(SimpleValue(NewInst), LR);
@@ -1240,8 +1241,9 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
   Instruction *NewInst = nullptr;
   if (InputTy->isPointerTy()) {
     // BitCast used to represent a normal copy.
-    NewInst = CastInst::Create(Instruction::BitCast, InputVal,
-                               InputVal->getType(), Name, InsertBefore);
+    NewInst =
+        CastInst::Create(Instruction::BitCast, InputVal, InputVal->getType(),
+                         Name, IGCLLVM::insertPosition(InsertBefore));
     if (Number)
       Numbering->setNumber(NewInst, Number);
     if (AdjustLRs)
@@ -1265,8 +1267,9 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
       NewInst = createConvert(InputVal, Name, InsertBefore);
     } else {
       // BitCast used to represent a normal copy.
-      NewInst = CastInst::Create(Instruction::BitCast, InputVal,
-                                 InputVal->getType(), Name, InsertBefore);
+      NewInst =
+          CastInst::Create(Instruction::BitCast, InputVal, InputVal->getType(),
+                           Name, IGCLLVM::insertPosition(InsertBefore));
     }
     if (Number)
       Numbering->setNumber(NewInst, Number);

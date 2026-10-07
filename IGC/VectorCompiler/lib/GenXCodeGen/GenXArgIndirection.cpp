@@ -1163,7 +1163,7 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
         return false;
       }
     } else if (auto *CI = dyn_cast<CallInst>(MainInst->Inst)) {
-      auto *Callee = CI->getCalledFunction();
+      [[maybe_unused]] auto *Callee = CI->getCalledFunction();
       IGC_ASSERT_MESSAGE(vc::requiresStackCall(Callee),
                          "Expect a stack call to stop indirection. See "
                          "SubroutineArg::gatherBalesToModify");
@@ -1318,7 +1318,8 @@ void SubroutineArg::fixCallSites() {
       Args.push_back(CS->CI->getArgOperand(oi));
     Args.push_back(UndefValue::get(Type::getInt16Ty(CS->CI->getContext())));
     CallInst *OldCI = CS->CI;
-    CS->CI = CallInst::Create(NewFunc, Args, "", OldCI);
+    CS->CI =
+        CallInst::Create(NewFunc, Args, "", IGCLLVM::insertPosition(OldCI));
     CS->CI->takeName(OldCI);
     CS->CI->setDebugLoc(OldCI->getDebugLoc());
     Pass->Numbering->setNumber(CS->CI, Pass->Numbering->getNumber(OldCI));
@@ -1393,7 +1394,7 @@ Value *NoOptCallSite::process(GenXArgIndirection *Pass,
   if (!InputLR->contains(CINumber)) {
     auto BC = CastInst::Create(Instruction::BitCast, Input, Input->getType(),
                                Input->getName() + ".dummy_use_for_indirection",
-                               CI->getNextNode());
+                               IGCLLVM::insertPosition(CI->getNextNode()));
     Pass->Liveness->setLiveRange(BC, InputLR);
     Pass->Numbering->setNumber(BC, CINumber + 1);
     Pass->LRsToCalculate.push_back(InputLR);
@@ -1440,7 +1441,8 @@ Value *ConstArgRetCallSite::process(GenXArgIndirection *Pass,
   if (LoadedConst->getType() != RetEndWr->getType()) {
     LoadedConst =
         CastInst::Create(Instruction::BitCast, LoadedConst, RetEndWr->getType(),
-                         LoadedConst->getName() + ".bitcast", InsertBefore);
+                         LoadedConst->getName() + ".bitcast",
+                         IGCLLVM::insertPosition(InsertBefore));
     AddedInsts.push_back(LoadedConst);
   }
   // An added instruction (from the constant load) is allocated a live range as
@@ -1542,9 +1544,10 @@ Value *IndirectArgCallSite::process(GenXArgIndirection *Pass,
   // 2. later on, another arg indirection removes a use, meaning that the live
   //    range no longer reaches over the call (in which case we don't need to
   //    recalculate the live range yet).
-  auto BC = CastInst::Create(
-      Instruction::BitCast, *InputUse, (*InputUse)->getType(),
-      (*InputUse)->getName() + ".dummy_use_for_indirection", CI->getNextNode());
+  auto BC =
+      CastInst::Create(Instruction::BitCast, *InputUse, (*InputUse)->getType(),
+                       (*InputUse)->getName() + ".dummy_use_for_indirection",
+                       IGCLLVM::insertPosition(CI->getNextNode()));
   Pass->Liveness->setLiveRange(BC, InputLR);
   Pass->Liveness->setArgAddressBase(AddressArg, BC);
   unsigned CINumber = Pass->Numbering->getNumber(CI);
@@ -1599,7 +1602,8 @@ void GenXArgIndirection::replaceAndEraseSequence(Instruction *RetEndWr,
   // Then handle other different type cases by inserting our own bitcast.
   if (V->getType() != RetEndWr->getType()) {
     auto BC = CastInst::Create(Instruction::BitCast, V, RetEndWr->getType(),
-                               V->getName() + ".bitcast", RetEndWr);
+                               V->getName() + ".bitcast",
+                               IGCLLVM::insertPosition(RetEndWr));
     Numbering->setNumber(BC, Numbering->getNumber(RetEndWr));
     Liveness->setLiveRange(BC, Liveness->getLiveRange(V));
     V = BC;

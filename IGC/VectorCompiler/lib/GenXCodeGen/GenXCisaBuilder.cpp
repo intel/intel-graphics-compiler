@@ -1988,7 +1988,7 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
 
   // Destination is address register.
   int ExecSize = 1;
-  if (VectorType *VT = dyn_cast<VectorType>(CI->getType())) {
+  if (isa<VectorType>(CI->getType())) {
     vc::diagnose(getContext(), "GenXCisaBuilder",
                  "vector of addresses not implemented", CI);
     return;
@@ -2604,7 +2604,6 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
                                          unsigned Mod,
                                          const DstOpndDesc &DstDesc) {
   Instruction *WrRegion = DstDesc.WrRegion;
-  BaleInfo WrRegionBI = DstDesc.WrRegionBI;
 
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
   if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Inst->getType()))
@@ -2713,9 +2712,9 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       IGC_ASSERT(!BI.isOperandBaled(1));
       buildBoolBinaryOperator(BO);
     }
-  } else if (auto EVI = dyn_cast<ExtractValueInst>(Inst)) {
+  } else if (isa<ExtractValueInst>(Inst)) {
     // no code generated
-  } else if (auto IVI = dyn_cast<InsertValueInst>(Inst)) {
+  } else if (isa<InsertValueInst>(Inst)) {
     // no code generated
   } else if (CastInst *CI = dyn_cast<CastInst>(Inst)) {
     if (genx::isNoopCast(CI))
@@ -2726,7 +2725,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
     buildSelectInst(SI, BI, Mod, DstDesc);
   } else if (auto LI = dyn_cast<LoadInst>(Inst)) {
     (void)LI; // no code generated
-  } else if (auto GEPI = dyn_cast<GetElementPtrInst>(Inst)) {
+  } else if ([[maybe_unused]] auto GEPI = dyn_cast<GetElementPtrInst>(Inst)) {
     // Skip vc.internal.print.format.index GEP here.
     IGC_ASSERT_MESSAGE(
         vc::isLegalPrintFormatIndexGEP(*GEPI),
@@ -3760,7 +3759,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     return (uint8_t)((DataSize + (GrfByteSize - 1)) / GrfByteSize);
   };
 
-  auto GetSampleChMask = [&](II::ArgInfo AI) {
+  [[maybe_unused]] auto GetSampleChMask = [&](II::ArgInfo AI) {
     LLVM_DEBUG(dbgs() << "GetSampleChMask\n");
     ConstantInt *Const =
         dyn_cast<ConstantInt>(CI->getArgOperand(AI.getArgIdx()));
@@ -3864,8 +3863,6 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     LLVM_DEBUG(dbgs() << "MakeAdd30Destination\n");
     IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(CI) ==
                llvm::GenXIntrinsic::genx_add3c);
-    auto MemberIdx = (GenXIntrinsic::GenXResult::ResultIndexes)Idx;
-    auto SV = SimpleValue(CI, MemberIdx);
     VISA_PredVar *PredVar = getPredicateVar(CI);
     VISA_PREDICATE_STATE State = PredState_NO_INVERSE;
     VISA_PREDICATE_CONTROL Control = PRED_CTRL_NON;
@@ -4001,7 +3998,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     auto *AddrTy = AddrV->getType();
     if (auto *AddrVTy = dyn_cast<IGCLLVM::FixedVectorType>(AddrTy))
       AddrTy = AddrVTy->getElementType();
-    auto AddrBits = AddrTy->getIntegerBitWidth();
+    [[maybe_unused]] auto AddrBits = AddrTy->getIntegerBitWidth();
 
     IGC_ASSERT((AddrBits == 64 && AddressSize == LSC_ADDR_SIZE_64b) ||
                AddrBits == 32);
@@ -4294,7 +4291,7 @@ void GenXKernelBuilder::buildIndirectBr(IndirectBrInst *Br) {
   IGC_ASSERT(Subtarget->hasSwitchjmp());
   Value *Addr = Br->getAddress();
   auto JumpTable = cast<IntrinsicInst>(Addr);
-  unsigned IID = vc::getAnyIntrinsicID(JumpTable);
+  [[maybe_unused]] unsigned IID = vc::getAnyIntrinsicID(JumpTable);
   IGC_ASSERT(IID == vc::InternalIntrinsic::jump_table);
   Value *Idx = JumpTable->getArgOperand(0);
 
@@ -4674,8 +4671,7 @@ GenXKernelBuilder::getPredefinedSurfaceVar(GlobalVariable &GV) {
  */
 VISA_SamplerVar *
 GenXKernelBuilder::getPredefinedSamplerVar(GlobalVariable &GV) {
-  StringRef SamplerName = GV.getName();
-  IGC_ASSERT_MESSAGE(SamplerName == vc::PredefVar::BindlessSamplerName,
+  IGC_ASSERT_MESSAGE(GV.getName() == vc::PredefVar::BindlessSamplerName,
                      "Unexpected predefined sampler");
   VISA_SamplerVar *SamplerVar = nullptr;
   CISA_CALL(Kernel->GetBindlessSampler(SamplerVar));
@@ -5870,8 +5866,7 @@ static void dumpGlobalAnnotations(Module &M) {
     auto *Func = dyn_cast<Function>(FuncPtr);
     if (!Func)
       continue;
-    auto FuncName = Func->getName();
-    assert(!FuncName.empty() && "Annotated function must have a name");
+    assert(!Func->getName().empty() && "Annotated function must have a name");
     auto *GlobalStr =
         dyn_cast<GlobalVariable>(Struct->getOperand(1)->getOperand(0));
     if (!GlobalStr)

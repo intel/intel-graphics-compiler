@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/Status.h"
 
 #include <llvm/ADT/ArrayRef.h>
-#include <llvm/ADT/ScopeExit.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Error.h>
@@ -26,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/raw_ostream.h>
 
 #include <llvmWrapper/ADT/Optional.h>
+#include <llvmWrapper/ADT/ScopeExit.h>
 
 #include <AdaptorOCL/OCL/BuiltinResource.h>
 #include <AdaptorOCL/OCL/LoadBuffer.h>
@@ -469,7 +469,7 @@ static bool tryAddAuxiliaryOptions(llvm::StringRef AuxOpt,
 static llvm::Expected<vc::CompileOptions>
 parseOptions(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
              llvm::StringRef InternalOptions, llvm::ArrayRef<char> &Input) {
-  auto RawInputDumper = llvm::make_scope_exit([=, &Dumper]() {
+  auto RawInputDumper = IGCLLVM::make_scope_exit([=, &Dumper]() {
     dumpInputData(Dumper, ApiOptions, InternalOptions, Input, /*IsRaw=*/true);
   });
 
@@ -499,7 +499,7 @@ parseOptions(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
                              InternalOptions, AuxInternalOptions))
     InternalOptions = {AuxInternalOptions.data(), AuxInternalOptions.size()};
 
-  auto InputDumper = llvm::make_scope_exit([=, &Dumper]() {
+  auto InputDumper = IGCLLVM::make_scope_exit([=, &Dumper]() {
     dumpInputData(Dumper, ApiOptions, InternalOptions, Input, /*IsRaw=*/false);
   });
 
@@ -512,7 +512,7 @@ parseOptions(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
   }
   if (ExpOptions)
     ExpOptions->ApiOptions = ApiOptions.str();
-  return std::move(ExpOptions);
+  return ExpOptions;
 }
 
 // Returns whether the modules were successfully obtained.

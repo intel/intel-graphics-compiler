@@ -580,7 +580,7 @@ void GenXCoalescing::visitCallInst(CallInst &CI) {
  * the same register as the result.
  */
 void GenXCoalescing::processTwoAddrIntrinsic(CallInst &CI) {
-  auto IID = vc::getAnyIntrinsicID(&CI);
+  [[maybe_unused]] auto IID = vc::getAnyIntrinsicID(&CI);
   IGC_ASSERT(vc::isAnyNonTrivialIntrinsic(IID));
 
   auto OperandNum = getTwoAddressOperandNum(&CI);
@@ -1141,7 +1141,7 @@ void GenXCoalescing::analysePhiCopies(PHINode *Phi,
     if (Liveness->getLiveRange(Incoming) == DestLR)
       continue; // coalesced, no copy needed
     // A phi copy is needed
-    auto IncomingBlock = Phi->getIncomingBlock(i);
+    [[maybe_unused]] auto IncomingBlock = Phi->getIncomingBlock(i);
     LLVM_DEBUG(dbgs() << "Need phi copy " << Incoming->getName() << " -> "
                       << Phi->getName() << " in " << IncomingBlock->getName()
                       << "\n");
@@ -1184,7 +1184,7 @@ void GenXCoalescing::processPhiCopy(PHINode *Phi, unsigned Inc,
   Instruction *InsertPoint = IncomingBlock->getTerminator();
   InsertPoint = GotoJoin::getLegalInsertionPoint(InsertPoint, DomTree);
 
-  if (auto *I = dyn_cast<Instruction>(Incoming)) {
+  if ([[maybe_unused]] auto *I = dyn_cast<Instruction>(Incoming)) {
     // This should not happen for good BBs (not join blocks)
     // if DFG is correct.
     IGC_ASSERT_MESSAGE(
@@ -1204,7 +1204,7 @@ void GenXCoalescing::processPhiCopy(PHINode *Phi, unsigned Inc,
  */
 void GenXCoalescing::processPhiBranchingJoinLabelCopy(
     PHINode *Phi, unsigned Inc, std::vector<PHINode *> &Phis) {
-  LiveRange *DestLR = Liveness->getLiveRange(Phi);
+  [[maybe_unused]] LiveRange *DestLR = Liveness->getLiveRange(Phi);
   Value *Incoming = Phi->getIncomingValue(Inc);
   auto *IncomingBlock = Phi->getIncomingBlock(Inc);
   // Should be checked in analysePhiCopies
@@ -1241,7 +1241,7 @@ void GenXCoalescing::processPhiBranchingJoinLabelCopy(
     }
   }
 
-  if (auto *I = dyn_cast<Instruction>(Incoming)) {
+  if ([[maybe_unused]] auto *I = dyn_cast<Instruction>(Incoming)) {
     // This should not happen for good BBs (not join blocks)
     // if DFG is correct.
     //
@@ -1775,8 +1775,9 @@ Instruction *GenXCoalescing::insertCopy(SimpleValue Input, LiveRange *LR,
     // range of the struct element. An extractvalue is always
     // coalesced and never generates code.
     auto Indices = IndexFlattener::unflatten(ST, Input.getIndex());
-    Instruction *Extract = ExtractValueInst::Create(
-        Input.getValue(), Indices, "twoaddr.extract", InsertBefore);
+    Instruction *Extract =
+        ExtractValueInst::Create(Input.getValue(), Indices, "twoaddr.extract",
+                                 IGCLLVM::insertPosition(InsertBefore));
     auto SourceLR = Liveness->getLiveRange(Input);
     IGC_ASSERT(SourceLR);
     Liveness->setLiveRange(SimpleValue(Extract), SourceLR);
@@ -1811,7 +1812,8 @@ Instruction *GenXCoalescing::insertIntoStruct(Type *Ty, unsigned FlattenedIndex,
   // We're copying into struct element. We need to add an insertvalue.
   auto Indices = IndexFlattener::unflatten(ST, FlattenedIndex);
   return InsertValueInst::Create(OldStruct, NewVal, Indices,
-                                 "coalescefail.insert", InsertBefore);
+                                 "coalescefail.insert",
+                                 IGCLLVM::insertPosition(InsertBefore));
 }
 
 /***********************************************************************
@@ -1926,7 +1928,7 @@ void GenXCoalescing::applyCopiesForValue(const std::set<CopyData> &CDSet) {
   while (It != EndIt) {
     // Create initial copy.
     SimpleValue DestSV = It->Dest;
-    SimpleValue SourceSV = It->Source;
+    [[maybe_unused]] SimpleValue SourceSV = It->Source;
     Instruction *CurrCopy = createCopy(*It);
     unsigned Idx = It->Source.getIndex();
 
@@ -2063,7 +2065,7 @@ SortedCopies GenXCoalescing::getSortedCopyData() {
  */
 Instruction *GenXCoalescing::createCopy(const CopyData &CD) {
   LiveRange *DestLR = Liveness->getLiveRange(CD.Dest);
-  LiveRange *SourceLR = Liveness->getLiveRange(CD.Source);
+  [[maybe_unused]] LiveRange *SourceLR = Liveness->getLiveRange(CD.Source);
   SimpleValue Source = CD.Source;
   if (auto It = CallToRetVal.find(Source); It != CallToRetVal.end())
     Source = SimpleValue{It->second};

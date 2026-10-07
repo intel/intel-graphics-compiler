@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2022 Intel Corporation
+Copyright (C) 2018-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -305,7 +305,8 @@ Instruction *CMRegion::createRdRegion(Value *Input, const Twine &Name,
   auto IID = ElementTy->isFloatingPointTy() ? GenXIntrinsic::genx_rdregionf
                                             : GenXIntrinsic::genx_rdregioni;
   Function *Decl = getGenXRegionDeclaration(M, IID, RegionTy, Args);
-  Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
+  Instruction *NewInst =
+      CallInst::Create(Decl, Args, Name, IGCLLVM::insertPosition(InsertBefore));
   NewInst->setDebugLoc(DL);
   return NewInst;
 }
@@ -388,7 +389,8 @@ Instruction *CMRegion::createWrCommonRegion(GenXIntrinsic::ID IID,
   };
   Module *M = InsertBefore->getModule();
   Function *Decl = getGenXRegionDeclaration(M, IID, nullptr, Args);
-  Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
+  Instruction *NewInst =
+      CallInst::Create(Decl, Args, Name, IGCLLVM::insertPosition(InsertBefore));
   NewInst->setDebugLoc(DL);
   return NewInst;
 }
@@ -425,7 +427,8 @@ Instruction *CMRegion::createRdPredRegion(Value *Input, unsigned Index,
   Module *M = InsertBefore->getModule();
   Function *Decl = getGenXRegionDeclaration(M, GenXIntrinsic::genx_rdpredregion,
                                             RetTy, Args);
-  Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
+  Instruction *NewInst =
+      CallInst::Create(Decl, Args, Name, IGCLLVM::insertPosition(InsertBefore));
   NewInst->setDebugLoc(DL);
   return NewInst;
 }
@@ -448,7 +451,7 @@ Value *CMRegion::createRdVectorSplat(const DataLayout &DL, unsigned NumElements,
   auto *V1Cast = CastInst::Create(
       Instruction::BitCast, SplattedValue,
       IGCLLVM::FixedVectorType::get(SplattedValue->getType(), 1),
-      SplattedValue->getName() + ".v1cast", InsertPt);
+      SplattedValue->getName() + ".v1cast", IGCLLVM::insertPosition(InsertPt));
   V1Cast->setDebugLoc(DbgLoc);
 
   CMRegion R(V1Cast->getType(), &DL);
@@ -518,7 +521,8 @@ Instruction *CMRegion::createWrPredRegion(Value *OldVal, Value *Input,
   Module *M = InsertBefore->getModule();
   Function *Decl = getGenXRegionDeclaration(M, GenXIntrinsic::genx_wrpredregion,
                                             nullptr, Args);
-  Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
+  Instruction *NewInst =
+      CallInst::Create(Decl, Args, Name, IGCLLVM::insertPosition(InsertBefore));
   NewInst->setDebugLoc(DL);
   return NewInst;
 }
@@ -551,7 +555,8 @@ Instruction *CMRegion::createWrPredPredRegion(Value *OldVal, Value *Input,
       OldVal, Input,
       ConstantInt::get(Type::getInt32Ty(InsertBefore->getContext()), Index),
       Pred};
-  auto NewInst = CallInst::Create(CalledFunc, Args, "", InsertBefore);
+  auto NewInst = CallInst::Create(CalledFunc, Args, "",
+                                  IGCLLVM::insertPosition(InsertBefore));
   NewInst->setDebugLoc(DL);
   return NewInst;
 }
@@ -643,7 +648,8 @@ Value *CMRegion::getStartIdx(const Twine &Name, Instruction *InsertBefore,
       OffsetVal = ConstantVector::getSplat(
           IGCLLVM::getElementCount(VT->getNumElements()), OffsetVal);
     auto BO = BinaryOperator::Create(Instruction::Add, Index, OffsetVal,
-                                     Name + ".indirect_idx_add", InsertBefore);
+                                     Name + ".indirect_idx_add",
+                                     IGCLLVM::insertPosition(InsertBefore));
     BO->setDebugLoc(DL);
     Index = BO;
   }

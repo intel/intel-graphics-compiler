@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2024-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -136,7 +136,6 @@ void GenXPrintfPhiClonning::fillPhiCandidates(BasicBlock *BB,
   // Exit-block
   if (!SuccBB)
     return;
-  auto SuccPredsCount = std::distance(pred_begin(SuccBB), pred_end(SuccBB));
   IRBuilder<> IB(&SuccBB->front());
 
   std::set<Instruction *> RAUWDone;
@@ -153,7 +152,7 @@ void GenXPrintfPhiClonning::fillPhiCandidates(BasicBlock *BB,
           continue;
         }
 
-        IGC_ASSERT(SuccPredsCount == 1);
+        IGC_ASSERT(std::distance(pred_begin(SuccBB), pred_end(SuccBB)) == 1);
         auto Ty = It.getType();
         auto *PHI = IB.CreatePHI(Ty, CloneCount);
         PhiCandidates[&It] = PHI;

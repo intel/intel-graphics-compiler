@@ -91,8 +91,6 @@ void CMKernel::createSamplerAnnotation(const KernelArgInfo &ArgInfo,
   const auto SamplerType = SAMPLER_OBJECT_TEXTURE;
 
   const auto Index = ArgInfo.getIndex();
-  const auto Kind = ArgInfo.getKind();
-  const auto Access = ArgInfo.getAccessKind();
   const auto AddrMode = ArgInfo.getAddressMode();
   auto BTI = ArgInfo.getBTI();
   auto Size = ArgInfo.getSizeInBytes();
@@ -206,7 +204,6 @@ void CMKernel::createPointerGlobalAnnotation(const KernelArgInfo &ArgInfo,
   using namespace iOpenCL;
 
   const auto Index = ArgInfo.getIndex();
-  const auto Kind = ArgInfo.getKind();
   const auto Access = ArgInfo.getAccessKind();
   const auto AddrMode = ArgInfo.getAddressMode();
   const auto BTI = ArgInfo.getBTI();
@@ -379,7 +376,7 @@ static void setFuncSectionInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
   KernelProgram.m_relocs = Info.Func.Relocations;
 
   // Validate function symbols
-  auto IsKernel = [](const vISA::ZESymEntry &Entry) {
+  [[maybe_unused]] auto IsKernel = [](const vISA::ZESymEntry &Entry) {
     return Entry.s_type == vISA::GenSymType::S_KERNEL;
   };
   IGC_ASSERT_MESSAGE(std::count_if(Info.Func.Symbols.begin(),

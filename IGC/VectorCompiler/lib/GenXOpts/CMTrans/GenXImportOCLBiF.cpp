@@ -217,7 +217,8 @@ void BIConvert::runOnModule(Module &M) {
               getOneMapIntrinsicDeclaration(*InstCall, IID, M);
           const SmallVector<llvm::Value *, 3> Args{InstCall->args()};
           Instruction *const IntrinCall =
-              CallInst::Create(IntrinFunc, Args, InstCall->getName(), InstCall);
+              CallInst::Create(IntrinFunc, Args, InstCall->getName(),
+                               IGCLLVM::insertPosition(InstCall));
           if (!GenXIntrinsic::isGenXIntrinsic(IID)) {
             switch (IID) {
             default:
@@ -247,8 +248,9 @@ void BIConvert::runOnModule(Module &M) {
                            IGCLLVM::getNumArgOperands(InstCall));
           Function *IntrinFunc0 =
               GenXIntrinsic::getAnyDeclaration(&M, pair.first, tys0);
-          Instruction *IntrinCall0 = CallInst::Create(
-              IntrinFunc0, args0, InstCall->getName(), InstCall);
+          Instruction *IntrinCall0 =
+              CallInst::Create(IntrinFunc0, args0, InstCall->getName(),
+                               IGCLLVM::insertPosition(InstCall));
           IntrinCall0->setDebugLoc(InstCall->getDebugLoc());
           // create the 2nd intrinsic
           Type *tys1[2];
@@ -260,8 +262,9 @@ void BIConvert::runOnModule(Module &M) {
           args1.push_back(IntrinCall0);
           Function *IntrinFunc1 =
               GenXIntrinsic::getAnyDeclaration(&M, pair.second, tys1);
-          Instruction *IntrinCall1 = CallInst::Create(
-              IntrinFunc1, args1, InstCall->getName(), InstCall);
+          Instruction *IntrinCall1 =
+              CallInst::Create(IntrinFunc1, args1, InstCall->getName(),
+                               IGCLLVM::insertPosition(InstCall));
           IntrinCall1->setDebugLoc(InstCall->getDebugLoc());
           InstCall->replaceAllUsesWith(IntrinCall1);
           ListDelete.push_back(InstCall);
@@ -270,21 +273,24 @@ void BIConvert::runOnModule(Module &M) {
         else if (IGCLLVM::starts_with(CalleeName, "__builtin_IB_itof")) {
           Instruction *Replace = SIToFPInst::Create(
               Instruction::SIToFP, InstCall->getArgOperand(0),
-              callee->getReturnType(), InstCall->getName(), InstCall);
+              callee->getReturnType(), InstCall->getName(),
+              IGCLLVM::insertPosition(InstCall));
           Replace->setDebugLoc(InstCall->getDebugLoc());
           InstCall->replaceAllUsesWith(Replace);
           ListDelete.push_back(InstCall);
         } else if (IGCLLVM::starts_with(CalleeName, "__builtin_IB_uitof")) {
           Instruction *Replace = UIToFPInst::Create(
               Instruction::UIToFP, InstCall->getArgOperand(0),
-              callee->getReturnType(), InstCall->getName(), InstCall);
+              callee->getReturnType(), InstCall->getName(),
+              IGCLLVM::insertPosition(InstCall));
           Replace->setDebugLoc(InstCall->getDebugLoc());
           InstCall->replaceAllUsesWith(Replace);
           ListDelete.push_back(InstCall);
         } else if (IGCLLVM::starts_with(CalleeName, "__builtin_IB_mul_rtz")) {
           Instruction *Mul = BinaryOperator::Create(
               Instruction::FMul, InstCall->getArgOperand(0),
-              InstCall->getArgOperand(1), InstCall->getName(), InstCall);
+              InstCall->getArgOperand(1), InstCall->getName(),
+              IGCLLVM::insertPosition(InstCall));
           Mul->setDebugLoc(InstCall->getDebugLoc());
           Type *tys[1];
           SmallVector<llvm::Value *, 3> args;
@@ -295,14 +301,16 @@ void BIConvert::runOnModule(Module &M) {
           Function *IntrinFunc = GenXIntrinsic::getAnyDeclaration(
               &M, GenXIntrinsic::genx_rndz, tys);
           Instruction *IntrinCall =
-              CallInst::Create(IntrinFunc, args, InstCall->getName(), InstCall);
+              CallInst::Create(IntrinFunc, args, InstCall->getName(),
+                               IGCLLVM::insertPosition(InstCall));
           IntrinCall->setDebugLoc(InstCall->getDebugLoc());
           InstCall->replaceAllUsesWith(IntrinCall);
           ListDelete.push_back(InstCall);
         } else if (IGCLLVM::starts_with(CalleeName, "__builtin_IB_add_rtz")) {
           Instruction *Add = BinaryOperator::Create(
               Instruction::FAdd, InstCall->getArgOperand(0),
-              InstCall->getArgOperand(1), InstCall->getName(), InstCall);
+              InstCall->getArgOperand(1), InstCall->getName(),
+              IGCLLVM::insertPosition(InstCall));
           Add->setDebugLoc(InstCall->getDebugLoc());
           Type *tys[1];
           SmallVector<llvm::Value *, 3> args;
@@ -313,7 +321,8 @@ void BIConvert::runOnModule(Module &M) {
           Function *IntrinFunc = GenXIntrinsic::getAnyDeclaration(
               &M, GenXIntrinsic::genx_rndz, tys);
           Instruction *IntrinCall =
-              CallInst::Create(IntrinFunc, args, InstCall->getName(), InstCall);
+              CallInst::Create(IntrinFunc, args, InstCall->getName(),
+                               IGCLLVM::insertPosition(InstCall));
           IntrinCall->setDebugLoc(InstCall->getDebugLoc());
           InstCall->replaceAllUsesWith(IntrinCall);
           ListDelete.push_back(InstCall);
@@ -414,8 +423,9 @@ static void removeFunctionBitcasts(Module &M) {
 
           if (oldRetTy != newRetTy)
             llvm::for_each(Returns, [castOp, newRetTy](ReturnInst *RI) {
-              auto *CI = CastInst::Create(castOp, RI->getReturnValue(),
-                                          newRetTy, ".rvc", RI);
+              auto *CI =
+                  CastInst::Create(castOp, RI->getReturnValue(), newRetTy,
+                                   ".rvc", IGCLLVM::insertPosition(RI));
               RI->setOperand(0, CI);
             });
 
@@ -428,7 +438,8 @@ static void removeFunctionBitcasts(Module &M) {
              ++I) {
           Args.push_back(pInstCall->getArgOperand(I));
         }
-        auto newCI = CallInst::Create(pDstFunc, Args, "", pInstCall);
+        auto newCI = CallInst::Create(pDstFunc, Args, "",
+                                      IGCLLVM::insertPosition(pInstCall));
         newCI->takeName(pInstCall);
         newCI->setCallingConv(pInstCall->getCallingConv());
         pInstCall->replaceAllUsesWith(newCI);
@@ -493,12 +504,6 @@ GenXImportOCLBiFPass::run(llvm::Module &M,
 
 void GenXImportOCLBiF::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXBackendConfig>();
-}
-
-// Whether module has uresolved calls to OpenCL builtins.
-static bool OCLBuiltinsRequired(const Module &M) {
-  return std::any_of(M.begin(), M.end(),
-                     [](const Function &F) { return isOCLBuiltinDecl(F); });
 }
 
 static void forceInlining(Module &M, const StringSet<> &GVS) {

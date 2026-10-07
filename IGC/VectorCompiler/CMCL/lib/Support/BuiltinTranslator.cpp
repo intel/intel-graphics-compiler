@@ -179,7 +179,7 @@ static BuiltinSeq collectBuiltins(Module &M) {
   assert(std::all_of(Builtins.begin(), Builtins.end(),
                      [](Function &F) { return F.isDeclaration(); }) &&
          "CM-CL builtins are just function declarations");
-  return std::move(Builtins);
+  return Builtins;
 }
 
 static void cleanUpBuiltin(Function &F) {
@@ -259,12 +259,6 @@ Type &getTypeFromBuiltinOperand(CallInst &BiCall, int OpIdx) {
   default:
     llvm_unreachable("Unexpected operand kind");
   }
-}
-
-// A helper function to get vector type width.
-// \p Ty must be a fixed vector type.
-static int getVectorWidth(Type &Ty) {
-  return cast<IGCLLVM::FixedVectorType>(Ty).getNumElements();
 }
 
 // A helper function to get structure type from its element types.

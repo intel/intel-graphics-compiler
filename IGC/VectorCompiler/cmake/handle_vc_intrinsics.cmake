@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2020-2021 Intel Corporation
+# Copyright (C) 2020-2026 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -45,10 +45,8 @@ else()
   set(BUILD_EXTERNAL YES)
   # We are building intrinsics.
   set(INTRBUILD "${CMAKE_CURRENT_BINARY_DIR}/intrbuild")
-  # Add -Wno-error to avoid build errors from llvm's header deprecation warnings and
-  # unused variables/functions coming from vc-intrinsics.
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    string(APPEND CMAKE_CXX_FLAGS " -Wno-error")
-  endif()
   add_subdirectory(${INTRSRC} ${INTRBUILD} EXCLUDE_FROM_ALL)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 14)
+    target_compile_options(LLVMGenXIntrinsics PRIVATE -Wno-error=array-bounds)
+  endif()
 endif() #VC_INTRINSICS_MODE

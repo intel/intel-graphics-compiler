@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023-2024 Intel Corporation
+Copyright (C) 2023-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -39,6 +39,7 @@ SPDX-License-Identifier: MIT
 ///
 
 #include "GenX.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "GenXRegionUtils.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
@@ -294,9 +295,9 @@ Value *GenXLoadStoreLegalization::extendMemoryOperation(Value *InsertTo,
             Cmp->isTrueWhenEqual() ? Constant::getAllOnesValue(NewOpTy)
                                    : Constant::getNullValue(NewOpTy),
             Cmp->getOperand(1), IsSOA ? VectorSize : 1, 0, RestSize);
-        auto *NewCmp =
-            CmpInst::Create(Cmp->getOpcode(), Cmp->getPredicate(), NewOp0,
-                            NewOp1, Cmp->getName() + ".extended", &CI);
+        auto *NewCmp = CmpInst::Create(
+            Cmp->getOpcode(), Cmp->getPredicate(), NewOp0, NewOp1,
+            Cmp->getName() + ".extended", IGCLLVM::insertPosition(&CI));
         NewCmp->setDebugLoc(Cmp->getDebugLoc());
         return NewCmp;
       });

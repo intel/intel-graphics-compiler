@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -218,10 +218,11 @@ static GlobalVariable &cloneString(GlobalVariable &OrigGV) {
 
 static void handleGEP(const FormatIndexGEPInfo &GEPInfo,
                       GlobalVariable &IndexedString) {
-  auto &GEP = *GEPInfo.GEP;
-  IGC_ASSERT_MESSAGE(GEP.getNumIndices() == 2 && GEP.hasAllZeroIndices(),
+  IGC_ASSERT_MESSAGE(GEPInfo.GEP->getNumIndices() == 2 &&
+                         GEPInfo.GEP->hasAllZeroIndices(),
                      "format index GEP should just reach zero string element");
-  IGC_ASSERT_MESSAGE(GEP.isInBounds(), "format index GEP should be in bounds");
+  IGC_ASSERT_MESSAGE(GEPInfo.GEP->isInBounds(),
+                     "format index GEP should be in bounds");
   auto *NewGEP = &castArrayToFirstElemPtr(IndexedString);
   for (CallInst &FormatIndex : GEPInfo.FormatIndices)
     FormatIndex.setArgOperand(0, NewGEP);

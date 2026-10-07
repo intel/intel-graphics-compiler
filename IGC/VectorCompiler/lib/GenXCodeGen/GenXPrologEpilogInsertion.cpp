@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -755,8 +755,9 @@ void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
           PreDefined_Vars::PREDEFINED_FE_SP, IRB, Instruction::Add,
           AllocaSize + AllocaPadding, true);
     }
-    CastInst *AllocaAddr = CastInst::Create(Instruction::IntToPtr, OrigSP,
-                                            AI->getType(), AI->getName(), AI);
+    CastInst *AllocaAddr =
+        CastInst::Create(Instruction::IntToPtr, OrigSP, AI->getType(),
+                         AI->getName(), IGCLLVM::insertPosition(AI));
     AllocaAddr->setDebugLoc(AI->getDebugLoc());
     AI->replaceAllUsesWith(AllocaAddr);
   }
@@ -930,7 +931,7 @@ void GenXPrologEpilogInsertion::passArgsOnStack(CallInst &CI,
 Value *GenXPrologEpilogInsertion::pop(Type &ArgTy, IRBuilder<> &IRB,
                                       Value &InitSP) const {
   // FIXME: There must be a correct addrspace.
-  Type *SPPtrTy = PointerType::getUnqual(&ArgTy);
+  Type *SPPtrTy = IGCLLVM::PointerType::get(&ArgTy, 0);
   Value *SPPtr = IRB.CreateIntToPtr(&InitSP, SPPtrTy);
 
   return IRB.CreateLoad(&ArgTy, SPPtr);
@@ -949,7 +950,7 @@ Value *GenXPrologEpilogInsertion::getNextSP(Type &Ty, IRBuilder<> &IRB,
 void GenXPrologEpilogInsertion::push(Value &V, IRBuilder<> &IRB,
                                      Value &SP) const {
   // FIXME: There must be a correct addrspace.
-  Type *SPPtrTy = PointerType::getUnqual(V.getType());
+  Type *SPPtrTy = IGCLLVM::PointerType::get(V.getType(), 0);
   Value *SPPtr = IRB.CreateIntToPtr(&SP, SPPtrTy);
 
   IRB.CreateStore(&V, SPPtr);

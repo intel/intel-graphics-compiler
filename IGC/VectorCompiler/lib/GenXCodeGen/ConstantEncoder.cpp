@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -25,7 +25,7 @@ encodeConstExprImpl(const llvm::GEPOperator &GEP, const DataLayout &DL) {
   auto [Data, Relocs] = vc::encodeGlobalValueOrConstantExpression(
       *cast<Constant>(GEP.getPointerOperand()), DL);
   APInt Offset{Data.getBitWidth(), 0};
-  bool Success = GEP.accumulateConstantOffset(DL, Offset);
+  [[maybe_unused]] bool Success = GEP.accumulateConstantOffset(DL, Offset);
   IGC_ASSERT_MESSAGE(Success,
                      "Offset must be constant for GEP constant expression");
   Data += Offset;
@@ -91,8 +91,9 @@ encodeConstExprImpl(const IGCLLVM::AddrSpaceCastOperator &ASC,
   //        like a less efficient solution. Fix it once p3 design is settled.
   if (ASC.getSrcAddressSpace() == vc::AddrSpace::Global &&
       ASC.getDestAddressSpace() == vc::AddrSpace::Generic) {
-    auto DstSize = vc::getTypeSize(ASC.getType(), &DL);
-    auto SrcSize = vc::getTypeSize(ASC.getPointerOperand()->getType(), &DL);
+    [[maybe_unused]] auto DstSize = vc::getTypeSize(ASC.getType(), &DL);
+    [[maybe_unused]] auto SrcSize =
+        vc::getTypeSize(ASC.getPointerOperand()->getType(), &DL);
     // Though not sure how generic pointer works for spir[32].
     IGC_ASSERT_MESSAGE(DstSize == SrcSize,
                        "Global and generic pointer sizes should match");

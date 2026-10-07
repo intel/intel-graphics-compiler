@@ -226,8 +226,8 @@ createSplitOperand(Use &Op, Instruction &Inst,
   auto *InsertionPt = getInsertionPtForSplitOp(Op, Inst);
   std::vector<Instruction *> SplitOperand;
   for (const auto &IdxList : IdxLists) {
-    SplitOperand.push_back(
-        ExtractValueInst::Create(&OpVal, IdxList, "", InsertionPt));
+    SplitOperand.push_back(ExtractValueInst::Create(
+        &OpVal, IdxList, "", IGCLLVM::insertPosition(InsertionPt)));
   }
   return SplitOperand;
 }
@@ -310,9 +310,9 @@ public:
 
   Instruction *visitSelectInst(SelectInst &Inst) const {
     IGC_ASSERT_MESSAGE(NewOps.size() == 3, "select must have 3 operands");
-    auto *NewSelect =
-        SelectInst::Create(NewOps[0], NewOps[1], NewOps[2],
-                           Inst.getName() + ".split.aggr", &Inst, &Inst);
+    auto *NewSelect = SelectInst::Create(NewOps[0], NewOps[1], NewOps[2],
+                                         Inst.getName() + ".split.aggr",
+                                         IGCLLVM::insertPosition(&Inst), &Inst);
     NewSelect->setDebugLoc(Inst.getDebugLoc());
     return NewSelect;
   }
@@ -320,7 +320,8 @@ public:
   Instruction *visitPHINode(PHINode &OldPHI) const {
     IGC_ASSERT(OldPHI.getNumOperands() == NewOps.size());
     auto *NewPHI = PHINode::Create(NewOps[0]->getType(), NewOps.size(),
-                                   OldPHI.getName() + ".split.aggr", &OldPHI);
+                                   OldPHI.getName() + ".split.aggr",
+                                   IGCLLVM::insertPosition(&OldPHI));
 
     for (auto &&Incoming : zip(NewOps, OldPHI.blocks())) {
       Value *OpVal = std::get<0>(Incoming);
@@ -425,8 +426,8 @@ static Instruction *joinSplitInsts(const std::vector<Instruction *> &SplitInsts,
                      "number of index lists");
   Value *JoinInst = UndefValue::get(JoinTy);
   for (auto &&[SplitInst, IdxList] : zip(SplitInsts, IdxLists)) {
-    JoinInst =
-        InsertValueInst::Create(JoinInst, SplitInst, IdxList, "", InsertBefore);
+    JoinInst = InsertValueInst::Create(JoinInst, SplitInst, IdxList, "",
+                                       IGCLLVM::insertPosition(InsertBefore));
   }
   return cast<Instruction>(JoinInst);
 }

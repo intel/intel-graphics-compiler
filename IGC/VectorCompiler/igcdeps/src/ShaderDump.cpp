@@ -74,11 +74,6 @@ private:
 VC_IGCFileDumper::VC_IGCFileDumper(const ShaderHash &Hash)
     : DumpPrefix{IGC::Debug::DumpName("VC").Hash(Hash)} {}
 
-static IGC::Debug::DumpName addDumpPostfix(const IGC::Debug::DumpName &Name,
-                                           llvm::StringRef Postfix) {
-  return Name.PostFix(Postfix.str());
-}
-
 IGC::Debug::DumpName
 VC_IGCFileDumper::getName(llvm::StringRef DumpName,
                           llvm::StringRef DumpExtension) const {

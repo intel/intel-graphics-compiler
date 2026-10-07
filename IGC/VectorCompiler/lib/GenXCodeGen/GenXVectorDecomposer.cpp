@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -454,9 +454,9 @@ void VectorDecomposer::decompose() {
     unsigned NumIncomings = Phi->getNumIncomingValues();
     for (unsigned PartIndex = 0; PartIndex != Offsets.size(); ++PartIndex) {
       auto PartTy = getPartType(Phi->getType(), PartIndex);
-      auto NewPhi =
-          PHINode::Create(PartTy, NumIncomings,
-                          Phi->getName() + ".decomp." + Twine(PartIndex), Phi);
+      auto NewPhi = PHINode::Create(
+          PartTy, NumIncomings, Phi->getName() + ".decomp." + Twine(PartIndex),
+          IGCLLVM::insertPosition(Phi));
       for (unsigned ii = 0; ii != NumIncomings; ++ii) {
         auto Incoming = dyn_cast<Constant>(Phi->getIncomingValue(ii));
         if (!Incoming)
@@ -696,9 +696,10 @@ void VectorDecomposer::decomposeBitCast(Instruction *Inst,
     if (isa<UndefValue>((*Parts)[PartIndex]))
       (*Parts)[PartIndex] = UndefValue::get(NewTy);
     else {
-      auto NewInst = CastInst::Create(
-          Instruction::BitCast, (*Parts)[PartIndex], NewTy,
-          Inst->getName() + ".decomp." + Twine(PartIndex), Inst);
+      auto NewInst =
+          CastInst::Create(Instruction::BitCast, (*Parts)[PartIndex], NewTy,
+                           Inst->getName() + ".decomp." + Twine(PartIndex),
+                           IGCLLVM::insertPosition(Inst));
       NewInst->setDebugLoc(Inst->getDebugLoc());
       NewInsts.push_back(NewInst);
       (*Parts)[PartIndex] = NewInst;

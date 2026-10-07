@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -105,6 +105,7 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "vc/GenXOpts/GenXOpts.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 
 #include "vc/InternalIntrinsics/InternalIntrinsics.h"
@@ -831,9 +832,10 @@ void CMImpParam::replaceWithGlobal(CallInst *CI) {
                      "genx or vc internal intrinsic is expected");
   auto IID = vc::getAnyIntrinsicID(CI->getCalledFunction());
   GlobalVariable *GV = getOrCreateGlobalForIID(CI->getFunction(), IID);
-  LoadInst *Load = new LoadInst(
-      GV->getValueType(), GV, "",
-      /* isVolatile */ false, IGCLLVM::getCorrectAlign(GV->getAlignment()), CI);
+  LoadInst *Load = new LoadInst(GV->getValueType(), GV, "",
+                                /* isVolatile */ false,
+                                IGCLLVM::getCorrectAlign(GV->getAlignment()),
+                                IGCLLVM::insertPosition(CI));
   Load->takeName(CI);
   Load->setDebugLoc(CI->getDebugLoc());
   CI->replaceAllUsesWith(Load);
@@ -846,9 +848,9 @@ static bool isSupportedAggregateArgument(Argument &Arg) {
   if (!Arg.hasByValAttr())
     return false;
 
-  auto *Ty = Arg.getParent()->getParamByValType(Arg.getArgNo());
-  auto *STy = cast<StructType>(Ty);
-  IGC_ASSERT(!STy->isOpaque());
+  IGC_ASSERT(
+      !cast<StructType>(Arg.getParent()->getParamByValType(Arg.getArgNo()))
+           ->isOpaque());
   return true;
 }
 
@@ -1226,7 +1228,8 @@ CMImpParam::processKernelParameters(Function *F,
       // present. There are no global for pseudo intrinsics and sometimes for
       // local ID when it is used only for kernel prologue.
       new StoreInst(I2, GV, /*isVolatile=*/false,
-                    IGCLLVM::getCorrectAlign(GV->getAlignment()), &FirstI);
+                    IGCLLVM::getCorrectAlign(GV->getAlignment()),
+                    IGCLLVM::insertPosition(&FirstI));
     }
 
     // Prepare the kinds that will go into the metadata
@@ -1310,7 +1313,7 @@ Pass *createCMImpParamPass(bool HasPayloadInMemory, bool HasEfficient64b) {
 }
 } // namespace llvm
 
-#else // LLVM_VERSION_MAJOR < 16
+#else  // LLVM_VERSION_MAJOR < 16
 PreservedAnalyses CMImpParamPass::run(llvm::Module &M,
                                       llvm::AnalysisManager<llvm::Module> &AM) {
   auto &CG = AM.getResult<CallGraphAnalysis>(M);

@@ -63,7 +63,8 @@ CGen8CMProgram::extractRawDebugInfo(llvm::raw_ostream &ErrStream) {
     Out->os() << DebugInfo.DebugData;
     Out->os().flush();
 
-    auto Emplaced = Result.emplace(TmpPath.str(), std::move(Out));
+    [[maybe_unused]] auto Emplaced =
+        Result.emplace(TmpPath.str(), std::move(Out));
     IGC_ASSERT_MESSAGE(Emplaced.second,
                        "could not create unique temporary storage");
   }

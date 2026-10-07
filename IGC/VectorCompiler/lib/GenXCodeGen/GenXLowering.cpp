@@ -501,10 +501,12 @@ static Value *generatePredicateForLoadWrregion(
     Function *Decl = GenXIntrinsic::getGenXDeclaration(
         InsertBefore->getModule(), GenXIntrinsic::genx_constantpred,
         {Pred->getType()});
-    Pred = CallInst::Create(Decl, {Pred}, Name, InsertBefore);
+    Pred = CallInst::Create(Decl, {Pred}, Name,
+                            IGCLLVM::insertPosition(InsertBefore));
   }
 
-  auto *Res = new ShuffleVectorInst(Pred, Undef, NewMask, Name, InsertBefore);
+  auto *Res = new ShuffleVectorInst(Pred, Undef, NewMask, Name,
+                                    IGCLLVM::insertPosition(InsertBefore));
   Res->setDebugLoc(DL);
   return Res;
 }
@@ -1110,7 +1112,8 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
         Tys.push_back(Args[IdxMax]->getType());
 
       auto Decl = GenXIntrinsic::getAnyDeclaration(CI->getModule(), IID, Tys);
-      auto *Gather = CallInst::Create(Decl, Args, CI->getName() + ".split", CI);
+      auto *Gather = CallInst::Create(Decl, Args, CI->getName() + ".split",
+                                      IGCLLVM::insertPosition(CI));
       Gather->setDebugLoc(DL);
       Gather->copyMetadata(*CI);
       if (IsNewLoad) {
@@ -1155,7 +1158,8 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
       Type *Tys[] = {Args[PredIdx]->getType(), Args[AddrIdx]->getType(),
                      Args[DataIdx]->getType()};
       auto Decl = GenXIntrinsic::getAnyDeclaration(CI->getModule(), IID, Tys);
-      auto NewInst = CallInst::Create(Decl, Args, "", CI);
+      auto NewInst =
+          CallInst::Create(Decl, Args, "", IGCLLVM::insertPosition(CI));
       NewInst->setDebugLoc(DL);
       NewInst->copyMetadata(*CI);
     }
@@ -1360,7 +1364,8 @@ static bool widenNewSIMD8Load(CallInst *CI, unsigned IID,
 
     Function *Decl = GenXIntrinsic::getGenXDeclaration(
         CI->getModule(), static_cast<GenXIntrinsic::ID>(IID), Tys);
-    auto *NewCI = CallInst::Create(Decl, Args, CI->getName() + "wide", CI);
+    auto *NewCI = CallInst::Create(Decl, Args, CI->getName() + "wide",
+                                   IGCLLVM::insertPosition(CI));
     NewCI->setDebugLoc(DL);
     NewLoad = NewCI;
   }
@@ -1570,7 +1575,7 @@ bool GenXLowering::widenSIMD8GatherScatter(CallInst *CI, unsigned IID) {
                    Args[DataIdx]->getType()};
     auto Decl = GenXIntrinsic::getGenXDeclaration(CI->getModule(),
                                                   (GenXIntrinsic::ID)IID, Tys);
-    NewInst = CallInst::Create(Decl, Args, "", CI);
+    NewInst = CallInst::Create(Decl, Args, "", IGCLLVM::insertPosition(CI));
     NewInst->setDebugLoc(DL);
     ToErase.push_back(CI);
   } break;
@@ -1584,7 +1589,8 @@ bool GenXLowering::widenSIMD8GatherScatter(CallInst *CI, unsigned IID) {
     Type *Tys[] = {DataV16Ty, Args[PredIdx]->getType(),
                    Args[AddrIdx]->getType()};
     auto Decl = GenXIntrinsic::getAnyDeclaration(CI->getModule(), IID, Tys);
-    NewInst = CallInst::Create(Decl, Args, CI->getName() + ".expand", CI);
+    NewInst = CallInst::Create(Decl, Args, CI->getName() + ".expand",
+                               IGCLLVM::insertPosition(CI));
     NewInst->setDebugLoc(DL);
     // for gather, need to generate read-region
     Region R(CI->getType());
@@ -1680,8 +1686,9 @@ bool GenXLowering::lowerLSCTyped2DBlock(CallInst *CI, unsigned IID) {
 
   switch (IID) {
   case vc::InternalIntrinsic::lsc_load_2d_tgm_bti: {
-    auto *NewLoad = CallInst::Create(
-        Decl, Args, CI->getName() + VALUE_NAME(".padding"), CI);
+    auto *NewLoad =
+        CallInst::Create(Decl, Args, CI->getName() + VALUE_NAME(".padding"),
+                         IGCLLVM::insertPosition(CI));
     NewLoad->setDebugLoc(CI->getDebugLoc());
     auto *RdRgn =
         R.createRdRegion(NewLoad, CI->getName() + VALUE_NAME(".rdregion"), CI,
@@ -1694,7 +1701,8 @@ bool GenXLowering::lowerLSCTyped2DBlock(CallInst *CI, unsigned IID) {
                                    StoreDataV->getName() + ".wrregion", CI,
                                    CI->getDebugLoc());
     Args.push_back(WrRgn);
-    auto *NewStore = CallInst::Create(Decl, Args, "", CI);
+    auto *NewStore =
+        CallInst::Create(Decl, Args, "", IGCLLVM::insertPosition(CI));
     NewStore->setDebugLoc(CI->getDebugLoc());
   } break;
   }
@@ -1863,8 +1871,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case GenXIntrinsic::genx_vload: {
       if (!Inst->use_empty()) {
         Value *Ptr = Inst->getOperand(0);
-        LoadInst *LI = new LoadInst(Inst->getType(), Ptr, "",
-                                    /*volatile*/ true, Inst);
+        LoadInst *LI =
+            new LoadInst(Inst->getType(), Ptr, "",
+                         /*volatile*/ true, IGCLLVM::insertPosition(Inst));
         LI->takeName(Inst);
         LI->setDebugLoc(Inst->getDebugLoc());
         Inst->replaceAllUsesWith(LI);
@@ -1875,7 +1884,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case GenXIntrinsic::genx_vstore: {
       Value *Val = Inst->getOperand(0);
       Value *Ptr = Inst->getOperand(1);
-      auto ST = new StoreInst(Val, Ptr, /*volatile*/ true, Inst);
+      auto ST = new StoreInst(Val, Ptr, /*volatile*/ true,
+                              IGCLLVM::insertPosition(Inst));
       ST->setDebugLoc(Inst->getDebugLoc());
       ToErase.push_back(Inst);
       return true;
@@ -2207,14 +2217,16 @@ bool GenXLowering::lowerWrPredRegion(Instruction *Inst) {
       I16Ty,
       cast<IGCLLVM::FixedVectorType>(OldVal->getType())->getNumElements());
   auto OldValI16 = CastInst::Create(Instruction::ZExt, OldVal, OldValI16Ty,
-                                    Inst->getName() + ".lower1", Inst);
+                                    Inst->getName() + ".lower1",
+                                    IGCLLVM::insertPosition(Inst));
   OldValI16->setDebugLoc(DL);
   // Convert "new value" input to vector of short.
   Type *NewValI16Ty = IGCLLVM::FixedVectorType::get(
       I16Ty,
       cast<IGCLLVM::FixedVectorType>(NewVal->getType())->getNumElements());
   auto NewValI16 = CastInst::Create(Instruction::ZExt, NewVal, NewValI16Ty,
-                                    Inst->getName() + ".lower2", Inst);
+                                    Inst->getName() + ".lower2",
+                                    IGCLLVM::insertPosition(Inst));
   NewValI16->setDebugLoc(DL);
   // Use wrregion to write the new value into the old value.
   Region R(OldValI16);
@@ -2225,7 +2237,8 @@ bool GenXLowering::lowerWrPredRegion(Instruction *Inst) {
   // Convert back to predicate.
   auto Res = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, Wr,
                              Constant::getNullValue(Wr->getType()),
-                             Inst->getName() + ".lower4", Inst);
+                             Inst->getName() + ".lower4",
+                             IGCLLVM::insertPosition(Inst));
   Res->setDebugLoc(DL);
   // Replace uses and erase.
   Inst->replaceAllUsesWith(Res);
@@ -2255,7 +2268,7 @@ bool GenXLowering::lowerInsertElement(Instruction *Inst) {
   if (NumElements == 1) {
     Value *ToInsert = Inst->getOperand(1);
     NewInst = CastInst::Create(Instruction::BitCast, ToInsert, VT,
-                               Inst->getName(), Inst);
+                               Inst->getName(), IGCLLVM::insertPosition(Inst));
     NewInst->setDebugLoc(DL);
   } else if (!Inst->getType()->getScalarType()->isIntegerTy(1)) {
     // Cast and scale the index.
@@ -2279,19 +2292,23 @@ bool GenXLowering::lowerInsertElement(Instruction *Inst) {
         cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements());
     auto CastVec =
         CastInst::Create(Instruction::ZExt, Inst->getOperand(0), VecTy,
-                         Inst->getOperand(0)->getName() + ".casti16", Inst);
+                         Inst->getOperand(0)->getName() + ".casti16",
+                         IGCLLVM::insertPosition(Inst));
     CastVec->setDebugLoc(DL);
     auto CastEl =
         CastInst::Create(Instruction::ZExt, Inst->getOperand(1), I16Ty,
-                         Inst->getOperand(1)->getName() + ".casti16", Inst);
+                         Inst->getOperand(1)->getName() + ".casti16",
+                         IGCLLVM::insertPosition(Inst));
     CastEl->setDebugLoc(DL);
-    auto NewInsert = InsertElementInst::Create(CastVec, CastEl,
-                                               Inst->getOperand(2), "", Inst);
+    auto NewInsert =
+        InsertElementInst::Create(CastVec, CastEl, Inst->getOperand(2), "",
+                                  IGCLLVM::insertPosition(Inst));
     NewInsert->takeName(Inst);
     NewInsert->setDebugLoc(DL);
     NewInst = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, NewInsert,
                               Constant::getNullValue(VecTy),
-                              NewInsert->getName() + ".casti1", Inst);
+                              NewInsert->getName() + ".casti1",
+                              IGCLLVM::insertPosition(Inst));
     NewInst->setDebugLoc(DL);
   }
   // Change uses and mark the old inst for erasing.
@@ -2332,16 +2349,18 @@ bool GenXLowering::lowerExtractElement(Instruction *Inst) {
                    ->getNumElements());
     auto CastVec =
         CastInst::Create(Instruction::ZExt, Inst->getOperand(0), VecTy,
-                         Inst->getOperand(0)->getName() + ".casti16", Inst);
+                         Inst->getOperand(0)->getName() + ".casti16",
+                         IGCLLVM::insertPosition(Inst));
     const DebugLoc &DL = Inst->getDebugLoc();
     CastVec->setDebugLoc(DL);
-    auto NewExtract =
-        ExtractElementInst::Create(CastVec, Inst->getOperand(1), "", Inst);
+    auto NewExtract = ExtractElementInst::Create(
+        CastVec, Inst->getOperand(1), "", IGCLLVM::insertPosition(Inst));
     NewExtract->takeName(Inst);
     NewExtract->setDebugLoc(DL);
     NewInst = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, NewExtract,
                               Constant::getNullValue(I16Ty),
-                              NewExtract->getName() + ".casti1", Inst);
+                              NewExtract->getName() + ".casti1",
+                              IGCLLVM::insertPosition(Inst));
     NewInst->setDebugLoc(DL);
   }
   // Change uses and mark the old inst for erasing.
@@ -2363,15 +2382,16 @@ Value *GenXLowering::scaleInsertExtractElementIndex(Value *IdxVal, Type *ElTy,
   if (ConstantInt *CI = dyn_cast<ConstantInt>(IdxVal))
     return ConstantInt::get(I16Ty, CI->getSExtValue() * ElementBytes);
   // Ensure the variable offset is i16.
-  Instruction *IdxInst = CastInst::CreateIntegerCast(
-      IdxVal, I16Ty, false /*isSigned*/, "cast", InsertBefore);
+  Instruction *IdxInst =
+      CastInst::CreateIntegerCast(IdxVal, I16Ty, false /*isSigned*/, "cast",
+                                  IGCLLVM::insertPosition(InsertBefore));
   IdxInst->setDebugLoc(InsertBefore->getDebugLoc());
   // Multiply it by the element size in bytes.
   if (ElementBytes > 1) {
     IdxInst = BinaryOperator::Create(
         Instruction::Shl, IdxInst,
         ConstantInt::get(I16Ty, genx::log2(ElementBytes)), "scale",
-        InsertBefore);
+        IGCLLVM::insertPosition(InsertBefore));
     IdxInst->setDebugLoc(InsertBefore->getDebugLoc());
   }
   return IdxInst;
@@ -2461,7 +2481,7 @@ bool GenXLowering::lowerTrunc(Instruction *Inst) {
   Instruction *BC = CastInst::Create(
       Instruction::BitCast, InValue,
       IGCLLVM::FixedVectorType::get(OutElementTy, Stride * NumElements),
-      Inst->getName(), Inst /*InsertBefore*/);
+      Inst->getName(), IGCLLVM::insertPosition(Inst) /*InsertBefore*/);
   BC->setDebugLoc(Inst->getDebugLoc());
   // Create the new rdregion.
   Region R(BC);
@@ -2563,7 +2583,8 @@ bool GenXLowering::lowerCast(Instruction *Inst) {
     if (Inst->getType()->isFPOrFPVectorTy())
       NewInst = SelectInst::Create(
           Inst->getOperand(0), ConstantFP::get(Inst->getType(), OneVal),
-          ConstantFP::get(Inst->getType(), 0), Inst->getName(), Inst);
+          ConstantFP::get(Inst->getType(), 0), Inst->getName(),
+          IGCLLVM::insertPosition(Inst));
     else
       // Signed, since OneVal may be -1 (SExt case): unsigned -1 would not fit
       // narrow destination types and trip ConstantInt::get's
@@ -2571,7 +2592,8 @@ bool GenXLowering::lowerCast(Instruction *Inst) {
       NewInst = SelectInst::Create(
           Inst->getOperand(0),
           ConstantInt::get(Inst->getType(), OneVal, /*IsSigned=*/true),
-          ConstantInt::get(Inst->getType(), 0), Inst->getName(), Inst);
+          ConstantInt::get(Inst->getType(), 0), Inst->getName(),
+          IGCLLVM::insertPosition(Inst));
     NewInst->setDebugLoc(Inst->getDebugLoc());
     Inst->replaceAllUsesWith(NewInst);
     ToErase.push_back(Inst);
@@ -2619,7 +2641,7 @@ bool GenXLowering::lowerBoolScalarSelect(SelectInst *SI) {
 
   // Replace 'select' with 'phi'
   auto Phi = PHINode::Create(SI->getType(), /*NumReservedValues=*/2, "",
-                             &BB4->front());
+                             IGCLLVM::insertPosition(&BB4->front()));
   Phi->takeName(SI);
   Phi->addIncoming(SI->getTrueValue(), BB1);
   Phi->addIncoming(SI->getFalseValue(), BB2);
@@ -2686,22 +2708,25 @@ bool GenXLowering::lowerBoolVectorSelect(SelectInst *Inst) {
     auto *GetEMDecl = GenXIntrinsic::getGenXDeclaration(
         Inst->getModule(), GenXIntrinsic::genx_simdcf_get_em,
         {Cond->getType()});
-    Cond = CallInst::Create(GetEMDecl, {Cond}, "getEM", Inst);
+    Cond = CallInst::Create(GetEMDecl, {Cond}, "getEM",
+                            IGCLLVM::insertPosition(Inst));
     cast<Instruction>(Cond)->setDebugLoc(Inst->getDebugLoc());
   }
-  Instruction *NewInst1 = BinaryOperator::Create(
-      BinaryOperator::And, Cond, Inst->getOperand(1), Inst->getName(), Inst);
+  Instruction *NewInst1 =
+      BinaryOperator::Create(BinaryOperator::And, Cond, Inst->getOperand(1),
+                             Inst->getName(), IGCLLVM::insertPosition(Inst));
   NewInst1->setDebugLoc(Inst->getDebugLoc());
   Instruction *NewInst2 = BinaryOperator::Create(
       BinaryOperator::Xor, Cond, Constant::getAllOnesValue(Inst->getType()),
-      Inst->getName(), Inst);
+      Inst->getName(), IGCLLVM::insertPosition(Inst));
   NewInst2->setDebugLoc(Inst->getDebugLoc());
   Instruction *NewInst3 =
       BinaryOperator::Create(BinaryOperator::And, Inst->getOperand(2), NewInst2,
-                             Inst->getName(), Inst);
+                             Inst->getName(), IGCLLVM::insertPosition(Inst));
   NewInst3->setDebugLoc(Inst->getDebugLoc());
-  Instruction *NewInst4 = BinaryOperator::Create(
-      BinaryOperator::Or, NewInst1, NewInst3, Inst->getName(), Inst);
+  Instruction *NewInst4 =
+      BinaryOperator::Create(BinaryOperator::Or, NewInst1, NewInst3,
+                             Inst->getName(), IGCLLVM::insertPosition(Inst));
   NewInst4->setDebugLoc(Inst->getDebugLoc());
   Inst->replaceAllUsesWith(NewInst4);
   ToErase.push_back(Inst);
@@ -2903,10 +2928,10 @@ bool GenXLowering::lowerBoolSplat(ShuffleVectorInst *SI, Value *In,
         continue;
       }
       if (!isa<VectorType>(Opnd->getType())) {
-        auto NewBC =
-            CastInst::Create(Instruction::BitCast, Opnd,
-                             IGCLLVM::FixedVectorType::get(Opnd->getType(), 1),
-                             Opnd->getName() + ".bc", Cmp);
+        auto NewBC = CastInst::Create(
+            Instruction::BitCast, Opnd,
+            IGCLLVM::FixedVectorType::get(Opnd->getType(), 1),
+            Opnd->getName() + ".bc", IGCLLVM::insertPosition(Cmp));
         NewBC->setDebugLoc(Cmp->getDebugLoc());
         Opnd = NewBC;
       }
@@ -2914,9 +2939,10 @@ bool GenXLowering::lowerBoolSplat(ShuffleVectorInst *SI, Value *In,
           R.createRdRegion(Opnd, Cmp->getOperand(i)->getName() + ".splat",
                            Cmp /*InsertBefore*/, Cmp->getDebugLoc());
     }
-    auto NewCmp = CmpInst::Create(
-        Cmp->getOpcode(), Cmp->getPredicate(), CmpOpnds[0], CmpOpnds[1],
-        Cmp->getName() + ".splat", Cmp /*InsertBefore*/);
+    auto NewCmp =
+        CmpInst::Create(Cmp->getOpcode(), Cmp->getPredicate(), CmpOpnds[0],
+                        CmpOpnds[1], Cmp->getName() + ".splat",
+                        IGCLLVM::insertPosition(Cmp) /*InsertBefore*/);
     NewCmp->setDebugLoc(Cmp->getDebugLoc());
     SI->replaceAllUsesWith(NewCmp);
     ToErase.push_back(SI);
@@ -2925,26 +2951,26 @@ bool GenXLowering::lowerBoolSplat(ShuffleVectorInst *SI, Value *In,
   // Default code. Select int and bitcast to vector of i1.
   if (IsFixedVectorOfWidth(In->getType(), 1)) {
     // First convert v1i1 to i1.
-    auto NewBC = CastInst::Create(Instruction::BitCast, In,
-                                  In->getType()->getScalarType(),
-                                  In->getName() + ".scalar", SI);
+    auto NewBC = CastInst::Create(
+        Instruction::BitCast, In, In->getType()->getScalarType(),
+        In->getName() + ".scalar", IGCLLVM::insertPosition(SI));
     NewBC->setDebugLoc(SI->getDebugLoc());
     In = NewBC;
   } else if (isa<VectorType>(In->getType())) {
     auto Index = ConstantInt::get(Type::getInt32Ty(SI->getContext()), Idx);
-    auto Extract =
-        ExtractElementInst::Create(In, Index, SI->getName() + ".scalar", SI);
+    auto Extract = ExtractElementInst::Create(
+        In, Index, SI->getName() + ".scalar", IGCLLVM::insertPosition(SI));
     Extract->setDebugLoc(SI->getDebugLoc());
     In = Extract;
   }
   if (Width == 8 || Width == 16 || Width == 32) {
     auto IntTy = Type::getIntNTy(SI->getContext(), Width);
-    auto Sel = SelectInst::Create(In, Constant::getAllOnesValue(IntTy),
-                                  Constant::getNullValue(IntTy),
-                                  SI->getName() + ".sel", SI);
+    auto Sel = SelectInst::Create(
+        In, Constant::getAllOnesValue(IntTy), Constant::getNullValue(IntTy),
+        SI->getName() + ".sel", IGCLLVM::insertPosition(SI));
     Sel->setDebugLoc(SI->getDebugLoc());
-    auto NewBC =
-        CastInst::Create(Instruction::BitCast, Sel, SI->getType(), "", SI);
+    auto NewBC = CastInst::Create(Instruction::BitCast, Sel, SI->getType(), "",
+                                  IGCLLVM::insertPosition(SI));
     NewBC->takeName(SI);
     NewBC->setDebugLoc(SI->getDebugLoc());
     SI->replaceAllUsesWith(NewBC);
@@ -2989,7 +3015,7 @@ void GenXLowering::lowerShuffleSplat(ShuffleVectorInst *SI,
     auto *BC = CastInst::Create(
         Instruction::BitCast, Splat.Input,
         IGCLLVM::FixedVectorType::get(Splat.Input->getType(), 1), SI->getName(),
-        SI);
+        IGCLLVM::insertPosition(SI));
     BC->setDebugLoc(SI->getDebugLoc());
     Splat.Input = BC;
   }
@@ -3058,8 +3084,8 @@ bool GenXLowering::lowerShuffleToSelect(ShuffleVectorInst *SI) {
       MaskVec.push_back(ConstantInt::get(Int1Ty, 0));
   }
   Value *Mask = ConstantVector::get(MaskVec);
-  auto NewSel =
-      SelectInst::Create(Mask, SI->getOperand(0), SI->getOperand(1), "", SI);
+  auto NewSel = SelectInst::Create(Mask, SI->getOperand(0), SI->getOperand(1),
+                                   "", IGCLLVM::insertPosition(SI));
   NewSel->takeName(SI);
   NewSel->setDebugLoc(SI->getDebugLoc());
   SI->replaceAllUsesWith(NewSel);
@@ -3198,13 +3224,13 @@ Instruction *llvm::genx::convertShlShr(Instruction *Inst) {
   if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Inst->getType()))
     ConvTy = IGCLLVM::FixedVectorType::get(ConvTy, VT->getNumElements());
   auto Trunc = CastInst::Create(Instruction::Trunc, Shl->getOperand(0), ConvTy,
-                                "", Inst);
+                                "", IGCLLVM::insertPosition(Inst));
   Trunc->takeName(Shl);
   Trunc->setDebugLoc(Inst->getDebugLoc());
-  auto Ext = CastInst::Create(Inst->getOpcode() == Instruction::AShr
-                                  ? Instruction::SExt
-                                  : Instruction::ZExt,
-                              Trunc, Inst->getType(), "", Inst);
+  auto Ext = CastInst::Create(
+      Inst->getOpcode() == Instruction::AShr ? Instruction::SExt
+                                             : Instruction::ZExt,
+      Trunc, Inst->getType(), "", IGCLLVM::insertPosition(Inst));
   Ext->takeName(Inst);
   Ext->setDebugLoc(Inst->getDebugLoc());
   Inst->replaceAllUsesWith(Ext);
@@ -3237,7 +3263,8 @@ bool GenXLowering::lowerExtractValue(ExtractValueInst *Inst) {
       // remaining ones.
       if (Indices.size() != EVIndices.size()) {
         Instruction *NewIV = ExtractValueInst::Create(
-            Inst->getAggregateOperand(), Indices, Inst->getName(), Inst);
+            Inst->getAggregateOperand(), Indices, Inst->getName(),
+            IGCLLVM::insertPosition(Inst));
         NewIV->setDebugLoc(Inst->getDebugLoc());
         Inst->replaceAllUsesWith(NewIV);
         ToErase.push_back(Inst);
@@ -3775,12 +3802,14 @@ bool GenXLowering::lowerUnorderedFCmpInst(FCmpInst *Inst) {
   IGC_ASSERT(Pred != CmpInst::FCMP_UNO);
   IGC_ASSERT(Pred != CmpInst::FCMP_UEQ);
 
-  CmpInst *InverseFCmp = CmpInst::Create(
-      Inst->getOpcode(), CmpInst::getInversePredicate(Pred),
-      Inst->getOperand(0), Inst->getOperand(1),
-      Inst->getName() + ".ordered.inversed", Inst->getNextNode());
+  CmpInst *InverseFCmp =
+      CmpInst::Create(Inst->getOpcode(), CmpInst::getInversePredicate(Pred),
+                      Inst->getOperand(0), Inst->getOperand(1),
+                      Inst->getName() + ".ordered.inversed",
+                      IGCLLVM::insertPosition(Inst->getNextNode()));
   Instruction *Result = BinaryOperator::CreateNot(
-      InverseFCmp, InverseFCmp->getName() + ".not", InverseFCmp->getNextNode());
+      InverseFCmp, InverseFCmp->getName() + ".not",
+      IGCLLVM::insertPosition(InverseFCmp->getNextNode()));
   InverseFCmp->setDebugLoc(Inst->getDebugLoc());
   Result->setDebugLoc(Inst->getDebugLoc());
   Inst->replaceAllUsesWith(Result);
@@ -4069,7 +4098,7 @@ CallInst *buildLegalMadw(ArrayRef<Value *> Args, bool Signed, const Twine &Name,
   IGC_ASSERT(std::all_of(Args.begin(), Args.end(), [VecTy](auto Arg) {
     return Arg->getType() == VecTy;
   }));
-  unsigned OpWidth = VecTy->getNumElements();
+  [[maybe_unused]] unsigned OpWidth = VecTy->getNumElements();
   IGC_ASSERT_MESSAGE(OpWidth <= TargetWidth && isPowerOf2_32(OpWidth),
                      "attempt to build madw with incorrect argument width");
 
@@ -4198,9 +4227,10 @@ static LoHiRes buildIMadWithMulDDQ(ArrayRef<Value *> Args, bool Signed,
   // If last argument of imad isn't zeroinitiliazer we should produce add
   auto *C = dyn_cast<Constant>(Args[2]);
   if (!(C && IGCLLVM::Constant::isNullValue(C))) {
-    auto *Ext = CastInst::Create(
-        Signed ? Instruction::SExt : Instruction::ZExt, Args[2], VInt64Ty,
-        Args[2]->getName() + ".cast", &*IRB.GetInsertPoint());
+    auto *Ext =
+        CastInst::Create(Signed ? Instruction::SExt : Instruction::ZExt,
+                         Args[2], VInt64Ty, Args[2]->getName() + ".cast",
+                         IGCLLVM::insertPosition(&*IRB.GetInsertPoint()));
     Ext->setDebugLoc(IRB.getCurrentDebugLocation());
     Res = IRB.CreateAdd(Res, Ext, Name + ".add64");
   }
@@ -4624,7 +4654,8 @@ bool GenXLowering::lowerFMulAdd(CallInst *CI) {
   auto *Decl = IGCLLVM::getOrInsertDeclaration(
       CI->getModule(), Intrinsic::fma, llvm::ArrayRef<Type *>{CI->getType()});
   SmallVector<Value *, 3> Args{CI->args()};
-  auto *FMA = CallInst::Create(Decl, Args, CI->getName(), CI);
+  auto *FMA =
+      CallInst::Create(Decl, Args, CI->getName(), IGCLLVM::insertPosition(CI));
   FMA->setDebugLoc(CI->getDebugLoc());
   CI->replaceAllUsesWith(FMA);
 
@@ -4791,7 +4822,9 @@ auto *GenerateAdd3Sequence(CallInst *CI, unsigned IntrinsicID) {
                                                  {ConvertTy, ConvertTy});
   // {x1, c1} = [addc|subb].32 a1 b1
   auto AddcLo = GenExtractFromStruct(
-      IRB, CallInst::Create(Decl, {ASplit.Lo, BSplit.Lo}, CI->getName(), CI),
+      IRB,
+      CallInst::Create(Decl, {ASplit.Lo, BSplit.Lo}, CI->getName(),
+                       IGCLLVM::insertPosition(CI)),
       getXId(Opc), getCId(Opc));
 
   auto *MaskTy = IGCLLVM::FixedVectorType::get(IRB.getInt1Ty(), Size);
@@ -5156,7 +5189,7 @@ bool GenXLowering::lowerBDpas(CallInst *CI) {
   constexpr unsigned DataTypeShift = 8;
   constexpr unsigned BlockScaleMask = 0xff;
 
-  const auto IID = vc::getAnyIntrinsicID(CI);
+  [[maybe_unused]] const auto IID = vc::getAnyIntrinsicID(CI);
   IGC_ASSERT(IID == GenXIntrinsic::genx_bdpas);
 
   auto *Src1PrecV = cast<ConstantInt>(CI->getArgOperand(Src1PrecIdx));
@@ -5200,7 +5233,7 @@ bool GenXLowering::lowerBDpas(CallInst *CI) {
 }
 
 bool GenXLowering::lower4BitDownConvert(CallInst *CI) {
-  const auto IID = vc::getAnyIntrinsicID(CI);
+  [[maybe_unused]] const auto IID = vc::getAnyIntrinsicID(CI);
   IGC_ASSERT(IID == GenXIntrinsic::genx_4bit_downconvert);
 
   auto *RndModeV = cast<ConstantInt>(CI->getArgOperand(5));
@@ -5516,8 +5549,8 @@ bool GenXLowering::widenByteOp(Instruction *Inst) {
     auto NewRd =
         R.createRdRegion(Inst->getOperand(0), Inst->getName() + ".byteselrdr",
                          Inst, Inst->getDebugLoc());
-    auto NewSel =
-        SelectInst::Create(R.Mask, Inst->getOperand(1), NewRd, "", Inst);
+    auto NewSel = SelectInst::Create(R.Mask, Inst->getOperand(1), NewRd, "",
+                                     IGCLLVM::insertPosition(Inst));
     NewSel->takeName(Inst);
     NewSel->setDebugLoc(Inst->getDebugLoc());
     // Modify the existing wrregion.
@@ -5587,7 +5620,8 @@ bool GenXLowering::widenByteOp(Instruction *Inst) {
                    : IGCLLVM::ConstantExpr::getZExt(C, ExtTy);
       else {
         auto NewExt = CastInst::Create(ExtOpcode, Opnd, ExtTy,
-                                       Inst->getName() + ".byteext", Inst);
+                                       Inst->getName() + ".byteext",
+                                       IGCLLVM::insertPosition(Inst));
         NewExt->setDebugLoc(Inst->getDebugLoc());
         Opnd = NewExt;
       }
@@ -5598,12 +5632,14 @@ bool GenXLowering::widenByteOp(Instruction *Inst) {
   Instruction *NewInst = nullptr;
   if (isa<BinaryOperator>(Inst))
     NewInst = BinaryOperator::Create((Instruction::BinaryOps)Inst->getOpcode(),
-                                     Opnds[0], Opnds[1], "", Inst);
+                                     Opnds[0], Opnds[1], "",
+                                     IGCLLVM::insertPosition(Inst));
   else if (auto CI = dyn_cast<CmpInst>(Inst))
     NewInst = CmpInst::Create(CI->getOpcode(), CI->getPredicate(), Opnds[0],
-                              Opnds[1], "", CI);
+                              Opnds[1], "", IGCLLVM::insertPosition(CI));
   else if (isa<SelectInst>(Inst))
-    NewInst = SelectInst::Create(Opnds[0], Opnds[1], Opnds[2], "", Inst);
+    NewInst = SelectInst::Create(Opnds[0], Opnds[1], Opnds[2], "",
+                                 IGCLLVM::insertPosition(Inst));
   else
     IGC_ASSERT_EXIT_MESSAGE(0, "unhandled instruction in widenByteOp");
   NewInst->takeName(Inst);
@@ -5633,7 +5669,8 @@ bool GenXLowering::widenByteOp(Instruction *Inst) {
     // Truncate the result.
     if (!isa<CmpInst>(Inst)) {
       NewInst = CastInst::Create(Instruction::Trunc, NewInst, Inst->getType(),
-                                 Inst->getName() + ".bytetrunc", Inst);
+                                 Inst->getName() + ".bytetrunc",
+                                 IGCLLVM::insertPosition(Inst));
       NewInst->setDebugLoc(Inst->getDebugLoc());
     }
     // Replace uses.
@@ -5728,13 +5765,13 @@ bool GenXLowering::lowerIsFpClass(CallInst *CI) {
   }
 
   // --- Inf ---
-  if (unsigned PartialCheck = Mask & fcInf) {
+  if (Mask & fcInf) {
     Value *IsInf = Builder.CreateICmpEQ(Abs, InfC);
     HandleSignedTest(IsInf, fcNegInf, fcPosInf);
   }
 
   // --- Normal ---
-  if (unsigned PartialCheck = Mask & fcNormal) {
+  if (Mask & fcNormal) {
     // isnormal(V) ==> (0 < exp < max_exp) ==> (unsigned(exp-1) < (max_exp-1))
     APInt ExpLSB = Inf & ~(Inf.shl(1));
     APInt MaxExpMinusOne = Inf - ExpLSB;
@@ -5746,7 +5783,7 @@ bool GenXLowering::lowerIsFpClass(CallInst *CI) {
   }
 
   // --- Subnormal ---
-  if (unsigned PartialCheck = Mask & fcSubnormal) {
+  if (Mask & fcSubnormal) {
     // issubnormal(V) ==> unsigned(abs(V) - 1) < (all mantissa bits set)
     Value *AbsMinusOne =
         Builder.CreateSub(Abs, ConstantInt::get(IntTy, APInt(BitWidth, 1)));
@@ -5756,7 +5793,7 @@ bool GenXLowering::lowerIsFpClass(CallInst *CI) {
   }
 
   // --- Zero ---
-  if (unsigned PartialCheck = Mask & fcZero) {
+  if (Mask & fcZero) {
     Value *IsZero = Builder.CreateICmpEQ(Abs, ZeroC);
     HandleSignedTest(IsZero, fcNegZero, fcPosZero);
   }

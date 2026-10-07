@@ -1049,7 +1049,7 @@ void GenXBaling::processInlineAsm(Instruction *Inst) {
 }
 
 void GenXBaling::processRdWrPredefReg(Instruction *Inst) {
-  auto *CI = dyn_cast<CallInst>(Inst);
+  [[maybe_unused]] auto *CI = dyn_cast<CallInst>(Inst);
   IGC_ASSERT_MESSAGE((CI && GenXIntrinsic::isReadWritePredefReg(Inst)),
                      "genx.read/write.reg expected");
   BaleInfo BI(BaleInfo::REGINTR);
@@ -2266,7 +2266,7 @@ static bool skipTransform(Instruction *DefI, Instruction *UseI) {
 static void normalizeGStore(StoreInst &SI) {
   Value *PointerOp = SI.getPointerOperand();
   auto LI = new LoadInst(SI.getValueOperand()->getType(), PointerOp, ".gload",
-                         true /*volatile*/, &SI);
+                         true /*volatile*/, IGCLLVM::insertPosition(&SI));
   Value *StoreOp = SI.getValueOperand();
   Region R(StoreOp);
   auto WrR =
@@ -2426,7 +2426,8 @@ bool GenXBaling::preBalingCleanAndOptimize(Function &F) {
             !Inst->getType()->getScalarType()->isIntegerTy(1))
           continue;
 
-        BitCastInst *NewCI = new BitCastInst(X, Inst->getType(), "", Inst);
+        BitCastInst *NewCI = new BitCastInst(X, Inst->getType(), "",
+                                             IGCLLVM::insertPosition(Inst));
         NewCI->setDebugLoc(Inst->getDebugLoc());
         NewCI->takeName(Inst);
         Inst->replaceAllUsesWith(NewCI);

@@ -967,7 +967,7 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
         Instruction *BC = CastInst::Create(
             Instruction::BitCast, V0,
             IGCLLVM::FixedVectorType::get(OutEltTy, Stride * NElts), ".bc",
-            &I /*InsertBefore*/);
+            IGCLLVM::insertPosition(&I) /*InsertBefore*/);
         BC->setDebugLoc(I.getDebugLoc());
 
         // Create the new rdregion.
@@ -1346,15 +1346,16 @@ bool GenXPatternMatch::flipBoolNot(Instruction *Inst) {
   // ORD and ONE are not supported.
   if (InversedPred == CmpInst::FCMP_ORD || InversedPred == CmpInst::FCMP_ONE)
     return false;
-  auto NewCmp = CmpInst::Create(Input->getOpcode(), InversedPred,
-                                Input->getOperand(0), Input->getOperand(1),
-                                Input->getName() + ".inversed", Input);
+  auto NewCmp =
+      CmpInst::Create(Input->getOpcode(), InversedPred, Input->getOperand(0),
+                      Input->getOperand(1), Input->getName() + ".inversed",
+                      IGCLLVM::insertPosition(Input));
   NewCmp->setDebugLoc(Input->getDebugLoc());
   Inst->replaceAllUsesWith(NewCmp);
   if (!Input->use_empty()) {
     auto NewNot = BinaryOperator::Create(
         Instruction::Xor, NewCmp, Constant::getAllOnesValue(NewCmp->getType()),
-        "", Input);
+        "", IGCLLVM::insertPosition(Input));
     NewNot->setDebugLoc(Input->getDebugLoc());
     NewNot->takeName(Inst);
     Input->replaceAllUsesWith(NewNot);
@@ -1508,12 +1509,13 @@ bool GenXPatternMatch::foldBoolAnd(Instruction *Inst) {
 
   if (auto Sel = dyn_cast<SelectInst>(user)) {
     // Fold and into sel.
-    auto NewSel1 = SelectInst::Create(Inst->getOperand(0), Sel->getOperand(1),
-                                      Sel->getOperand(2),
-                                      Sel->getName() + ".foldand", Sel);
+    auto NewSel1 = SelectInst::Create(
+        Inst->getOperand(0), Sel->getOperand(1), Sel->getOperand(2),
+        Sel->getName() + ".foldand", IGCLLVM::insertPosition(Sel));
     NewSel1->setDebugLoc(Sel->getDebugLoc());
-    auto NewSel2 = SelectInst::Create(Inst->getOperand(1), NewSel1,
-                                      Sel->getOperand(2), "", Sel);
+    auto NewSel2 =
+        SelectInst::Create(Inst->getOperand(1), NewSel1, Sel->getOperand(2), "",
+                           IGCLLVM::insertPosition(Sel));
     NewSel2->takeName(Sel);
     NewSel2->setDebugLoc(Sel->getDebugLoc());
     Sel->replaceAllUsesWith(NewSel2);
@@ -1529,9 +1531,9 @@ bool GenXPatternMatch::foldBoolAnd(Instruction *Inst) {
   auto NewRdRegion =
       R.createRdRegion(user->getOperand(0), user->getName() + ".foldand1", user,
                        user->getDebugLoc(), false);
-  auto NewSel =
-      SelectInst::Create(Inst->getOperand(0), user->getOperand(1), NewRdRegion,
-                         user->getName() + ".foldand2", user);
+  auto NewSel = SelectInst::Create(Inst->getOperand(0), user->getOperand(1),
+                                   NewRdRegion, user->getName() + ".foldand2",
+                                   IGCLLVM::insertPosition(user));
   NewSel->setDebugLoc(user->getDebugLoc());
   R.Mask = Inst->getOperand(1);
   auto NewWrRegion = R.createWrRegion(user->getOperand(0), NewSel, "", user,
@@ -1834,7 +1836,7 @@ public:
 std::tuple<Value *, bool>
 MadMatcher::getNarrowI16Vector(IRBuilder<> &Builder, Instruction *AInst,
                                Value *V, unsigned NumElts) const {
-  Type *ScalarType = V->getType()->getScalarType();
+  [[maybe_unused]] Type *ScalarType = V->getType()->getScalarType();
   IGC_ASSERT_MESSAGE(ScalarType->isIntegerTy(32), "I32 is expected!");
   if (auto Ext = dyn_cast<ExtOperator>(V)) {
     V = Ext->getOperand(0);
@@ -3054,8 +3056,8 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
         cast<IGCLLVM::FixedVectorType>(OldVTy)->getNumElements() ==
             cast<IGCLLVM::FixedVectorType>(MaskVTy)->getNumElements()) {
       Instruction *InsertBefore = Inst->getNextNode();
-      auto SelectInstruction =
-          SelectInst::Create(MaskV, NewV, OldV, "", InsertBefore, Inst);
+      auto SelectInstruction = SelectInst::Create(
+          MaskV, NewV, OldV, "", IGCLLVM::insertPosition(InsertBefore), Inst);
       SelectInstruction->setDebugLoc(Inst->getDebugLoc());
       SelectInstruction->takeName(Inst);
       Inst->replaceAllUsesWith(SelectInstruction);
@@ -3299,9 +3301,9 @@ static bool canonizeSelect(SelectInst *SI) {
     BI->setOperand(U.getOperandNo(), SI->getOperand(3 - i));
     Value *OldVal = BI->getOperand(1 - U.getOperandNo());
     UndefValue *UndefVal = UndefValue::get(SI->getType());
-    SelectInst *NewSI =
-        SelectInst::Create(SI->getCondition(), UndefVal, UndefVal,
-                           SI->getName(), BI->getNextNode(), SI);
+    SelectInst *NewSI = SelectInst::Create(
+        SI->getCondition(), UndefVal, UndefVal, SI->getName(),
+        IGCLLVM::insertPosition(BI->getNextNode()), SI);
     BI->replaceAllUsesWith(NewSI);
     NewSI->setTrueValue(i == 1 ? OldVal : BI);
     NewSI->setFalseValue(i == 1 ? BI : OldVal);
@@ -3617,7 +3619,7 @@ static void decomposeUDivNotPow2(BinaryOperator &UDivOp) {
 
   IGCLLVM::UnsignedDivisionByConstantInfo MagicStruct =
       IGCLLVM::getAPIntMagicUnsigned(DivisorVal);
-  const int ElementBitWidth =
+  [[maybe_unused]] const int ElementBitWidth =
       Divisor->getType()->getScalarType()->getIntegerBitWidth();
   // Even divisors, can pre-shift the dividend to avoid
   // extra work at the end.
@@ -4093,7 +4095,7 @@ static bool analyzeForShiftPattern(Constant *C,
   if (ET->isPointerTy() || ET->isIntegerTy(1))
     return false;
 
-  if (auto *ConstExpt = dyn_cast<ConstantExpr>(C))
+  if (isa<ConstantExpr>(C))
     return false;
 
   unsigned ElmSz = ET->getScalarSizeInBits() / genx::ByteBits;
@@ -4208,7 +4210,8 @@ bool GenXPatternMatch::vectorizeConstants(Function *F) {
                           : GenXIntrinsic::genx_constanti;
             Module *M = F->getParent();
             Function *Decl = GenXIntrinsic::getGenXDeclaration(M, ID, Tys);
-            auto NewInst = CallInst::Create(Decl, Args, "constant", Inst);
+            auto NewInst = CallInst::Create(Decl, Args, "constant",
+                                            IGCLLVM::insertPosition(Inst));
             NewInst->setDebugLoc(Inst->getDebugLoc());
             Base = NewInst;
           }
@@ -4256,7 +4259,8 @@ static Instruction *insertConstantLoad(Constant *C, Instruction *InsertBefore) {
     IntrinsicID = GenXIntrinsic::genx_constantf;
   Module *M = InsertBefore->getModule();
   Function *F = GenXIntrinsic::getGenXDeclaration(M, IntrinsicID, Ty);
-  Instruction *Inst = CallInst::Create(F, Args, "constant", InsertBefore);
+  Instruction *Inst = CallInst::Create(F, Args, "constant",
+                                       IGCLLVM::insertPosition(InsertBefore));
   Inst->setDebugLoc(InsertBefore->getDebugLoc());
   return Inst;
 }

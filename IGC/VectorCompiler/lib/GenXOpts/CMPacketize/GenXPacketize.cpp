@@ -702,7 +702,7 @@ void GenXPacketize::findUniformInsts(Function &F) {
             UVSet.push(UseI);
             UniformInsts.insert(UseI);
           }
-        } else if (auto *Cast = dyn_cast<BitCastInst>(UseI)) {
+        } else if (isa<BitCastInst>(UseI)) {
           UVSet.push(UseI);
           UniformInsts.insert(UseI);
         }
@@ -813,7 +813,7 @@ static void vectorizeRangeMetadata(Instruction *OldCI, Instruction *NewCI) {
   //     -> "Range types must match instruction type!"
   // Link2: ValueTracking.cpp llvm::computeKnownBitsFromRangeMetadata
   //     -> ConstantInt *Lower = ... Ranges.getOperand(2 * i + 0)
-  if (auto *VecTy = dyn_cast<VectorType>(Ty))
+  if (isa<VectorType>(Ty))
     NewCI->setMetadata(LLVMContext::MD_range, nullptr);
   return;
 }
@@ -863,7 +863,8 @@ Value *GenXPacketize::packetizeLLVMIntrinsic(Instruction *Inst) {
     NewArgs.push_back(NewFTy->getParamType(Idx) == VectorArgTys[Idx]
                           ? PacketizedArgs[Idx]
                           : Args[Idx]);
-  auto *NewCI = CallInst::Create(NewF, NewArgs, "", CI);
+  auto *NewCI =
+      CallInst::Create(NewF, NewArgs, "", IGCLLVM::insertPosition(CI));
   return NewCI;
 }
 
@@ -884,7 +885,8 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
         else
           ArgOps.push_back(getPacketizeValue(CI->getArgOperand(Idx)));
       }
-      ReplacedInst = CallInst::Create(VF, ArgOps, CI->getName(), CI);
+      ReplacedInst = CallInst::Create(VF, ArgOps, CI->getName(),
+                                      IGCLLVM::insertPosition(CI));
       return ReplacedInst;
     } else
       IGC_ASSERT(0);
@@ -1085,7 +1087,8 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
       auto *Condition = getPacketizeValue(Branch->getCondition());
       auto *NewFn = GenXIntrinsic::getGenXDeclaration(
           B->M, GenXIntrinsic::genx_simdcf_any, Condition->getType());
-      auto *NewTest = CallInst::Create(NewFn, Condition, "", Inst);
+      auto *NewTest =
+          CallInst::Create(NewFn, Condition, "", IGCLLVM::insertPosition(Inst));
       NewTest->setName("exit.cond.mask.test");
       Branch->setCondition(NewTest);
       ReplacedInst = Branch;
@@ -1298,7 +1301,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Src0->getType(), Src2->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1312,7 +1316,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Src0->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1327,7 +1332,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Src0->getType(), Src2->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1342,7 +1348,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Src0->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1355,7 +1362,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Src0->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1369,7 +1377,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Predicate->getType(), Addr->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1383,7 +1392,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         // store, no return type
         auto Tys = {Predicate->getType(), Addr->getType(), Src3->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1400,7 +1410,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Predicate->getType(), Src4->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1418,7 +1429,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto Tys = {Predicate->getType(), Addr->getType(), Src4->getType(),
                     Src5->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1435,7 +1447,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Predicate->getType(), Src3->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1452,7 +1465,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         // store no return type
         auto Tys = {Predicate->getType(), Src3->getType(), Src6->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1472,7 +1486,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto Tys = {Predicate->getType(), ElemOffsets->getType(),
                     InData->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1491,7 +1506,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Predicate->getType(), ElemOffsets->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1517,7 +1533,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
           Tys.push_back(Args.back()->getType());
         }
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       }
@@ -1594,7 +1611,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Src0->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1609,7 +1627,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Src0->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1625,7 +1644,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Src0->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1655,7 +1675,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Src0->getType(), Src3->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1671,7 +1692,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Src0->getType(), Src2->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;
@@ -1689,7 +1711,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
         auto *RetTy = B->getVectorType(CI->getType());
         auto Tys = {RetTy, Src0->getType(), Src4->getType()};
         auto *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
-        Replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        Replacement = CallInst::Create(Decl, Args, CI->getName(),
+                                       IGCLLVM::insertPosition(CI));
         cast<CallInst>(Replacement)->setDebugLoc(CI->getDebugLoc());
         return Replacement;
       } break;

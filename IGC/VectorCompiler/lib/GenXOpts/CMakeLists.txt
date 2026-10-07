@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2019-2024 Intel Corporation
+# Copyright (C) 2019-2026 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -34,6 +34,10 @@ set(OPT_SOURCES
 )
 
 add_library(VCTransforms OBJECT ${OPT_SOURCES})
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 14)
+  target_compile_options(VCTransforms PRIVATE -Wno-error=array-bounds)
+endif()
 
 add_dependencies(VCTransforms
   GenXUtilBuild

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023-2025 Intel Corporation
+Copyright (C) 2023-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -671,7 +671,7 @@ GenXTranslateIntrinsics::translateLscLoadStoreBlock2D(CallInst &I) const {
   auto *PredTy = Pred->getType();
 
   IGC_ASSERT_EXIT(PredTy->isIntOrIntVectorTy(1));
-  if (auto *PredVTy = dyn_cast<IGCLLVM::FixedVectorType>(PredTy)) {
+  if (isa<IGCLLVM::FixedVectorType>(PredTy)) {
     constexpr uint64_t Index = 0;
     Pred = Builder.CreateExtractElement(Pred, Index);
   }

@@ -25,8 +25,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/GenXIntrinsics/GenXSPIRVReaderAdaptor.h"
 
 #include "llvmWrapper/ADT/None.h"
+#include "llvmWrapper/ADT/ScopeExit.h"
 #include "common/igc_llvm_option_defaults.hpp"
-#include <llvm/ADT/ScopeExit.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/Statistic.h>
@@ -83,7 +83,7 @@ using namespace llvm;
 
 // Custom destructor for cleaning up all LLVM ManagedStatic allocated instances
 static const auto StaticLLVMObjectsDestructor =
-    llvm::make_scope_exit([]() { llvm::llvm_shutdown(); });
+    IGCLLVM::make_scope_exit([]() { llvm::llvm_shutdown(); });
 
 static Expected<std::unique_ptr<llvm::Module>>
 getModuleFromLLVMText(ArrayRef<char> Input, LLVMContext &C) {
@@ -171,7 +171,7 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
       auto Feature = F.trim();
       bool Enabled = Feature.consume_front("+");
       if (!Enabled) {
-        bool Disabled = Feature.consume_front("-");
+        [[maybe_unused]] bool Disabled = Feature.consume_front("-");
         IGC_ASSERT_MESSAGE(Disabled, "unexpected feature format");
       }
       Features.AddFeature(Feature.str(), Enabled);
@@ -346,7 +346,7 @@ static GenXBackendData createBackendData(const vc::ExternalData &Data,
   for (auto &FName : Data.DirectCallFunctions) {
     BackendData.DirectCallFunctions.insert(FName);
   }
-  return std::move(BackendData);
+  return BackendData;
 }
 
 static Expected<std::unique_ptr<TargetMachine>>
@@ -606,7 +606,7 @@ vc::Compile(ArrayRef<char> Input, const vc::CompileOptions &Opts,
   // Reset options when everything is done here. This is needed to not
   // interfere with subsequent translations (including scalar part).
   const auto ClOptGuard =
-      llvm::make_scope_exit([]() { cl::ResetAllOptionOccurrences(); });
+      IGCLLVM::make_scope_exit([]() { cl::ResetAllOptionOccurrences(); });
 
   LLVMContext Context;
   LLVMInitializeGenXTarget();
@@ -656,7 +656,7 @@ vc::Compile(ArrayRef<char> Input, const vc::CompileOptions &Opts,
   // Save the old value (to restore it once compilation process is finished)
   const bool TimePassesIsEnabledOld = llvm::TimePassesIsEnabled;
   const auto TimePassesReenableGuard =
-      llvm::make_scope_exit([TimePassesIsEnabledOld]() {
+      IGCLLVM::make_scope_exit([TimePassesIsEnabledOld]() {
         // WARNING (FIXME): we modify global variable here
         llvm::TimePassesIsEnabled = TimePassesIsEnabledOld;
       });

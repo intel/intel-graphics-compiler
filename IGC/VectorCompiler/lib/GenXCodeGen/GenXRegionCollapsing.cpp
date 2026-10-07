@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 #include "GenX.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "GenXBaling.h"
 #include "GenXUtil.h"
 #include "GenXTargetMachine.h"
@@ -199,7 +200,7 @@ static bool lowerTrunc(TruncInst *Inst) {
   Instruction *BC = CastInst::Create(
       Instruction::BitCast, InValue,
       IGCLLVM::FixedVectorType::get(OutElementTy, Stride * NumElements),
-      Inst->getName(), Inst /*InsertBefore*/);
+      Inst->getName(), IGCLLVM::insertPosition(Inst) /*InsertBefore*/);
   BC->setDebugLoc(Inst->getDebugLoc());
 
   // Create the new rdregion.
@@ -350,8 +351,8 @@ static Value *createBitCast(Value *Input, Type *Ty, const Twine &Name,
     Input = BC->getOperand(0);
   if (Input->getType() == Ty)
     return Input;
-  auto NewBC =
-      CastInst::Create(Instruction::BitCast, Input, Ty, Name, InsertBefore);
+  auto NewBC = CastInst::Create(Instruction::BitCast, Input, Ty, Name,
+                                IGCLLVM::insertPosition(InsertBefore));
   NewBC->setDebugLoc(DL);
   return NewBC;
 }
@@ -491,7 +492,8 @@ void GenXRegionCollapsing::processBitCast(BitCastInst *BC) {
   auto NewBCTy =
       IGCLLVM::FixedVectorType::get(ElTy, InputSizeBits / ElSizeBits);
 
-  auto NewBC = CastInst::Create(Instruction::BitCast, Input, NewBCTy, "", Rd);
+  auto NewBC = CastInst::Create(Instruction::BitCast, Input, NewBCTy, "",
+                                IGCLLVM::insertPosition(Rd));
   NewBC->takeName(BC);
   NewBC->setDebugLoc(BC->getDebugLoc());
   // Create the new rdregion.
@@ -698,9 +700,9 @@ void GenXRegionCollapsing::processRdRegion(Instruction *InnerRd) {
     // If we went through sext/zext, re-instate it here.
     Value *NewVal = CombinedRd;
     if (Extend) {
-      auto NewCI =
-          CastInst::Create((Instruction::CastOps)Extend->getOpcode(), NewVal,
-                           InnerRd->getType(), Extend->getName(), InnerRd);
+      auto NewCI = CastInst::Create(
+          (Instruction::CastOps)Extend->getOpcode(), NewVal, InnerRd->getType(),
+          Extend->getName(), IGCLLVM::insertPosition(InnerRd));
       NewCI->setDebugLoc(Extend->getDebugLoc());
       NewVal = NewCI;
     }
@@ -1509,7 +1511,8 @@ Value *GenXRegionCollapsing::insertOp(Instruction::BinaryOps Opcode, Value *Lhs,
       }
     }
   }
-  auto Inst = BinaryOperator::Create(Opcode, Lhs, Rhs, Name, InsertBefore);
+  auto Inst = BinaryOperator::Create(Opcode, Lhs, Rhs, Name,
+                                     IGCLLVM::insertPosition(InsertBefore));
   Inst->setDebugLoc(DL);
   return Inst;
 }

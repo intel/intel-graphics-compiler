@@ -688,7 +688,7 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
       createReg(LR->Category, Ty, DONTCARESIGNED, LR->getLogAlignment());
   // Assign to the values. If any value is an input arg, ensure the register
   // gets its type, to avoid needing an alias for an input arg.
-  const Function *FGHead = FG->getHead();
+  [[maybe_unused]] const Function *FGHead = FG->getHead();
   for (auto &&Val : LR->getValues()) {
     LLVM_DEBUG(dbgs() << "Allocating reg " << NewReg->Num << " for "
                       << *Val.getValue() << " in FG for " << FGHead->getName()

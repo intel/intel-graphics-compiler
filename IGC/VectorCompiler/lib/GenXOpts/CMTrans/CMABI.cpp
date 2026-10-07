@@ -441,7 +441,7 @@ static inline bool isReadOnlyArg(Argument &Arg) {
       continue; // sutable usage
     }
 
-    if (auto *LI = dyn_cast<LoadInst>(U->getUser()))
+    if (isa<LoadInst>(U->getUser()))
       continue; // sutable usage
 
     if (auto *GEP = dyn_cast<GetElementPtrInst>(U->getUser())) {
@@ -546,20 +546,24 @@ bool CMABIBase<CallGraphImpl>::runOnCallGraphImpl(CallGraphImpl &SCC) {
       auto *Int64Ty = Type::getInt64Ty(M->getContext());
       auto *Int8Ty = Type::getInt8Ty(M->getContext());
       auto *Int1Ty = Type::getInt1Ty(M->getContext());
-      auto *Alloca = new AllocaInst(Ty, vc::AddrSpace::Private,
-                                    Arg.getName() + ".byval", InsertBefore);
+      auto *Alloca =
+          new AllocaInst(Ty, vc::AddrSpace::Private, Arg.getName() + ".byval",
+                         IGCLLVM::insertPosition(InsertBefore));
       Arg.replaceAllUsesWith(Alloca);
       auto *DstTy = IGCLLVM::PointerType::get(Int8Ty, vc::AddrSpace::Private);
       auto *SrcTy =
           IGCLLVM::PointerType::get(Int8Ty, PtrTy->getPointerAddressSpace());
       auto *Decl = IGCLLVM::getOrInsertDeclaration(
           M, Intrinsic::memcpy, llvm::ArrayRef<Type *>{DstTy, SrcTy, Int64Ty});
-      auto *Dst = new BitCastInst(Alloca, DstTy, "", InsertBefore);
-      auto *Src = new BitCastInst(&Arg, SrcTy, "", InsertBefore);
+      auto *Dst = new BitCastInst(Alloca, DstTy, "",
+                                  IGCLLVM::insertPosition(InsertBefore));
+      auto *Src = new BitCastInst(&Arg, SrcTy, "",
+                                  IGCLLVM::insertPosition(InsertBefore));
       auto *Size = ConstantInt::get(
           Int64Ty, vc::getTypeSize(Ty, &M->getDataLayout()).inBytes());
       auto *IsVolatile = ConstantInt::get(Int1Ty, 0);
-      CallInst::Create(Decl, {Dst, Src, Size, IsVolatile}, "", InsertBefore);
+      CallInst::Create(Decl, {Dst, Src, Size, IsVolatile}, "",
+                       IGCLLVM::insertPosition(InsertBefore));
     }
   }
 
@@ -585,13 +589,14 @@ void CMABIBase<CallGraphImpl>::LocalizeGlobals(LocalizationInfo &LI) {
 
     Instruction &FirstI = *Fn->getEntryBlock().begin();
     llvm::Align GVAlign = IGCLLVM::getCorrectAlign(GV->getAlignment());
-    AllocaInst *Alloca = new AllocaInst(
-        GV->getValueType(), vc::AddrSpace::Private,
-        /*ArraySize=*/nullptr, GVAlign, GV->getName() + ".local", &FirstI);
+    AllocaInst *Alloca =
+        new AllocaInst(GV->getValueType(), vc::AddrSpace::Private,
+                       /*ArraySize=*/nullptr, GVAlign, GV->getName() + ".local",
+                       IGCLLVM::insertPosition(&FirstI));
 
     if (!isa<UndefValue>(GV->getInitializer()))
       new StoreInst(GV->getInitializer(), Alloca, /*isVolatile=*/false, GVAlign,
-                    &FirstI);
+                    IGCLLVM::insertPosition(&FirstI));
 
     vc::DIBuilder::createDbgDeclareForLocalizedGlobal(*Alloca, *GV, FirstI);
 
@@ -716,7 +721,8 @@ NodeType *CMABIBase<CallGraphImpl>::TransformKernel(Function *F) {
       I2->takeName(I);
     } else {
       Instruction *InsertPt = &*(NF->begin()->begin());
-      Instruction *Conv = new TruncInst(I2, I->getType(), "tobool", InsertPt);
+      Instruction *Conv = new TruncInst(I2, I->getType(), "tobool",
+                                        IGCLLVM::insertPosition(InsertPt));
       I->replaceAllUsesWith(Conv);
       I2->takeName(I);
     }

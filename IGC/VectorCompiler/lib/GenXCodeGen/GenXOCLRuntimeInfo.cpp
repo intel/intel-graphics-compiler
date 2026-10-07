@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2025 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -813,7 +813,7 @@ static GenXOCLRuntimeInfo::ModuleInfoT getModuleInfo(const Module &M) {
   ModuleInfo.ConstString.Data.Alignment = 0;
   ModuleInfo.ConstString.Data.AdditionalZeroedSpace = 0;
 
-  return std::move(ModuleInfo);
+  return ModuleInfo;
 }
 
 namespace {
@@ -1014,7 +1014,7 @@ RuntimeInfoCollector::collectFunctionSubgroupsInfo(
   RawSectionInfo TextSection;
   if (!BC.emitVisaOnly()) {
     for (auto *FG : Subgroups) {
-      auto *Func = FG->getHead();
+      [[maybe_unused]] auto *Func = FG->getHead();
       IGC_ASSERT(genx::fg::isSubGroupHead(*Func));
       loadBinary(TextSection, VB, *FG, BC);
     }

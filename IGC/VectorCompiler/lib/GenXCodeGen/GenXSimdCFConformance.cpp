@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1003,7 +1003,7 @@ Value *GenXSimdCFConformance::findGotoJoinVal(
 
   std::string Name = (Cat == vc::RegCategory::EM) ? "ExecMaskEV" : "CondEV";
   auto PHI = PHINode::Create(GotoJoinEV->getType(), pred_size(PhiLoc), Name,
-                             &PhiLoc->front());
+                             IGCLLVM::insertPosition(&PhiLoc->front()));
   foundVals[PhiLoc] = PHI;
   if (PhiLoc != Loc)
     foundVals[Loc] = PHI;
@@ -1160,8 +1160,9 @@ void GenXSimdCFConformance::handleNoCondEVCase(
   }
 
   Value *GotoJoin = GotoJoinData.getGotoJoin();
-  ExtractValueInst *CondEV = ExtractValueInst::Create(
-      GotoJoin, {2}, "missing_extractcond", SplitPoint);
+  ExtractValueInst *CondEV =
+      ExtractValueInst::Create(GotoJoin, {2}, "missing_extractcond",
+                               IGCLLVM::insertPosition(SplitPoint));
   GotoJoinData.setCondEV(CondEV);
 
   if (auto *Br = dyn_cast<BranchInst>(SplitPoint)) {
@@ -1175,7 +1176,8 @@ void GenXSimdCFConformance::handleNoCondEVCase(
         BasicBlock::Create(CondEV->getContext(), "goto_split",
                            CondEV->getFunction(), Br->getSuccessor(0));
     BranchInst::Create(Br->getSuccessor(0), Split);
-    BranchInst::Create(Br->getSuccessor(0), Split, CondEV, Br);
+    BranchInst::Create(Br->getSuccessor(0), Split, CondEV,
+                       IGCLLVM::insertPosition(Br));
 
     // Update phis in TrueSucc
     addNewPhisIncomings(CondEV->getParent(), Br->getSuccessor(0), Split);
@@ -2561,7 +2563,8 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V) {
           Ops[1] = AllOne;
           Ops[2] = BI->getOperand(1 - OpNum);
         }
-        auto SI = SelectInst::Create(Ops[0], Ops[1], Ops[2], ".revsel", BI, BI);
+        auto SI = SelectInst::Create(Ops[0], Ops[1], Ops[2], ".revsel",
+                                     IGCLLVM::insertPosition(BI), BI);
         BI->replaceAllUsesWith(SI);
         BI->eraseFromParent();
         continue;
@@ -2575,7 +2578,8 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V) {
         Instruction *OrInst = BI->user_back();
         Value *Op = OrInst->getOperand(0) != BI ? OrInst->getOperand(0)
                                                 : OrInst->getOperand(1);
-        auto SI = SelectInst::Create(V, Op, AllOne, ".revsel", OrInst, OrInst);
+        auto SI = SelectInst::Create(V, Op, AllOne, ".revsel",
+                                     IGCLLVM::insertPosition(OrInst), OrInst);
         OrInst->replaceAllUsesWith(SI);
         OrInst->eraseFromParent();
         BI->eraseFromParent();
@@ -2590,8 +2594,8 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V) {
         Instruction *AndInst = BI->user_back();
         Value *Op = AndInst->getOperand(0) != BI ? AndInst->getOperand(0)
                                                  : AndInst->getOperand(1);
-        auto SI =
-            SelectInst::Create(V, AllNul, Op, ".revsel", AndInst, AndInst);
+        auto SI = SelectInst::Create(V, AllNul, Op, ".revsel",
+                                     IGCLLVM::insertPosition(AndInst), AndInst);
         AndInst->replaceAllUsesWith(SI);
         AndInst->eraseFromParent();
         BI->eraseFromParent();
@@ -2612,7 +2616,8 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V) {
             IGCLLVM::getElementCount(NElts),
             ConstantInt::get(CI->getType()->getScalarType(), One));
         Constant *AllNul = Constant::getNullValue(CI->getType());
-        auto SI = SelectInst::Create(V, LHS, AllNul, ".revsel", CI, CI);
+        auto SI = SelectInst::Create(V, LHS, AllNul, ".revsel",
+                                     IGCLLVM::insertPosition(CI), CI);
         CI->replaceAllUsesWith(SI);
         CI->eraseFromParent();
         continue;
@@ -3250,7 +3255,8 @@ Value *GenXSimdCFConformance::eliminateBitCastPreds(
       // became bitcast.
       LLVM_DEBUG(dbgs() << "eliminateBitCastPreds: Creating new PHI for:\n"
                         << *PN << "\n");
-      NewPN = PHINode::Create(EMType, PN->getNumIncomingValues(), "EMTerm", PN);
+      NewPN = PHINode::Create(EMType, PN->getNumIncomingValues(), "EMTerm",
+                              IGCLLVM::insertPosition(PN));
       EMProducers[NewPN] = NewPN;
       // In case of cycle, we will return newly created phi
       EMProducers[PN] = NewPN;
@@ -3270,7 +3276,7 @@ Value *GenXSimdCFConformance::eliminateBitCastPreds(
     }
 
     return NewPN ? NewPN : PN;
-  } else if (auto *C = dyn_cast<Constant>(Val)) {
+  } else if ([[maybe_unused]] auto *C = dyn_cast<Constant>(Val)) {
     IGC_ASSERT_MESSAGE(C->isAllOnesValue(), "Should be checked before!");
     IGC_ASSERT_MESSAGE(EMProducers[C] == C, "Bad EM producer was saved!");
 
@@ -3303,9 +3309,10 @@ void GenXSimdCFConformance::resolveBitCastChains() {
 
   std::set<Value *> DeadInst;
   for (auto &Val : EMVals) {
-    if (auto *PN = dyn_cast<PHINode>(Val.getValue())) {
+    if ([[maybe_unused]] auto *PN = dyn_cast<PHINode>(Val.getValue())) {
       LLVM_DEBUG(dbgs() << "resolveBitCastChains: Found phi:\n" << *PN << "\n");
-    } else if (auto *BCI = dyn_cast<BitCastInst>(Val.getValue())) {
+    } else if ([[maybe_unused]] auto *BCI =
+                   dyn_cast<BitCastInst>(Val.getValue())) {
       LLVM_DEBUG(dbgs() << "resolveBitCastChains: Found bitcast:\n"
                         << *BCI << "\n");
     } else
@@ -3388,7 +3395,8 @@ Value *GenXSimdCFConformance::buildLoweringViaGetEM(Value *Val,
                                                     Instruction *InsertBefore) {
   Function *GetEMDecl = vc::getAnyDeclaration(
       M, GenXIntrinsic::genx_simdcf_get_em, {Val->getType()});
-  Value *GetEM = CallInst::Create(GetEMDecl, {Val}, "getEM", InsertBefore);
+  Value *GetEM = CallInst::Create(GetEMDecl, {Val}, "getEM",
+                                  IGCLLVM::insertPosition(InsertBefore));
   LoweredEMValsMap[Val] = GetEM;
 
   LLVM_DEBUG(dbgs() << "buildLoweringViaGetEM: Built getEM:\n"
@@ -3615,7 +3623,7 @@ bool GenXSimdCFConformance::canUseLoweredEM(Instruction *Val) {
  * optimization.
  */
 bool GenXSimdCFConformance::canUseRealEM(Instruction *Inst, unsigned opNo) {
-  if (auto *Select = dyn_cast<SelectInst>(Inst)) {
+  if (isa<SelectInst>(Inst)) {
     // Real EM can be condition only
     return opNo == 0;
   }
@@ -3837,9 +3845,9 @@ Value *GenXSimdCFConformance::insertCond(Value *OldVal, Value *NewVal,
   auto UndefIndex = UndefValue::get(I32Ty);
   for (; i != OldWidth; ++i)
     Indices.push_back(UndefIndex);
-  auto SV1 = new ShuffleVectorInst(NewVal, UndefValue::get(NewVal->getType()),
-                                   ConstantVector::get(Indices),
-                                   NewVal->getName() + ".extend", InsertBefore);
+  auto SV1 = new ShuffleVectorInst(
+      NewVal, UndefValue::get(NewVal->getType()), ConstantVector::get(Indices),
+      NewVal->getName() + ".extend", IGCLLVM::insertPosition(InsertBefore));
   SV1->setDebugLoc(DL);
   if (isa<UndefValue>(OldVal))
     return SV1;
@@ -3849,7 +3857,7 @@ Value *GenXSimdCFConformance::insertCond(Value *OldVal, Value *NewVal,
   for (; i != OldWidth; ++i)
     Indices.push_back(ConstantInt::get(I32Ty, i));
   auto SV2 = new ShuffleVectorInst(OldVal, SV1, ConstantVector::get(Indices),
-                                   Name, InsertBefore);
+                                   Name, IGCLLVM::insertPosition(InsertBefore));
   SV2->setDebugLoc(DL);
   return SV2;
 }
@@ -3880,9 +3888,9 @@ Value *GenXSimdCFConformance::truncateCond(Value *In, Type *Ty,
   unsigned i;
   for (i = 0; i != TruncWidth; ++i)
     Indices.push_back(ConstantInt::get(I32Ty, i));
-  auto SV =
-      new ShuffleVectorInst(In, UndefValue::get(In->getType()),
-                            ConstantVector::get(Indices), Name, InsertBefore);
+  auto SV = new ShuffleVectorInst(In, UndefValue::get(In->getType()),
+                                  ConstantVector::get(Indices), Name,
+                                  IGCLLVM::insertPosition(InsertBefore));
   SV->setDebugLoc(DL);
   return SV;
 }
@@ -3910,31 +3918,34 @@ void GenXSimdCFConformance::lowerGoto(CallInst *Goto) {
   // Result 1: NewRM = OldRM | (SubEM & ~Cond)
   auto NotCond = BinaryOperator::Create(
       Instruction::Xor, Cond, Constant::getAllOnesValue(Cond->getType()),
-      Goto->getName() + ".notcond", Goto);
+      Goto->getName() + ".notcond", IGCLLVM::insertPosition(Goto));
   NotCond->setDebugLoc(DL);
-  auto NotCondAndSubEM =
-      BinaryOperator::Create(Instruction::And, NotCond, OldSubEM,
-                             Goto->getName() + ".disabling", Goto);
+  auto NotCondAndSubEM = BinaryOperator::Create(
+      Instruction::And, NotCond, OldSubEM, Goto->getName() + ".disabling",
+      IGCLLVM::insertPosition(Goto));
   NotCondAndSubEM->setDebugLoc(DL);
   Value *OldRM = Goto->getArgOperand(1);
   auto NewRM = BinaryOperator::Create(Instruction::Or, OldRM, NotCondAndSubEM,
-                                      Goto->getName() + ".newRM", Goto);
+                                      Goto->getName() + ".newRM",
+                                      IGCLLVM::insertPosition(Goto));
   NewRM->setDebugLoc(DL);
   Results[1] = NewRM;
   // And SubEM with Cond.
   auto SubEM = BinaryOperator::Create(Instruction::And, OldSubEM, Cond,
-                                      Goto->getName() + ".subEM", Goto);
+                                      Goto->getName() + ".subEM",
+                                      IGCLLVM::insertPosition(Goto));
   SubEM->setDebugLoc(DL);
   // Insert that back into EM. That is result 0.
   Results[0] = EM = insertCond(EM, SubEM, Goto->getName() + ".EM", Goto, DL);
   // Result 2: BranchCond = !any(SubEM)
   Function *AnyFunc =
       vc::getAnyDeclaration(M, GenXIntrinsic::genx_any, SubEM->getType());
-  auto Any = CallInst::Create(AnyFunc, SubEM, SubEM->getName() + ".any", Goto);
+  auto Any = CallInst::Create(AnyFunc, SubEM, SubEM->getName() + ".any",
+                              IGCLLVM::insertPosition(Goto));
   Any->setDebugLoc(DL);
-  auto Not = BinaryOperator::Create(Instruction::Xor, Any,
-                                    Constant::getAllOnesValue(Any->getType()),
-                                    Any->getName() + ".not", Goto);
+  auto Not = BinaryOperator::Create(
+      Instruction::Xor, Any, Constant::getAllOnesValue(Any->getType()),
+      Any->getName() + ".not", IGCLLVM::insertPosition(Goto));
   Not->setDebugLoc(DL);
   Results[2] = Not;
   // Replace uses.
@@ -3957,18 +3968,20 @@ void GenXSimdCFConformance::lowerJoin(CallInst *Join) {
       truncateCond(EM, RM->getType(), EM->getName() + ".sub", Join, DL);
   // Or it with RM.
   auto SubEM = BinaryOperator::Create(Instruction::Or, OldSubEM, RM,
-                                      Join->getName() + ".subEM", Join);
+                                      Join->getName() + ".subEM",
+                                      IGCLLVM::insertPosition(Join));
   SubEM->setDebugLoc(DL);
   // Insert that back into EM. That is result 0.
   Results[0] = EM = insertCond(EM, SubEM, Join->getName() + ".EM", Join, DL);
   // Result 1: BranchCond = !any(SubEM)
   Function *AnyFunc =
       vc::getAnyDeclaration(M, GenXIntrinsic::genx_any, SubEM->getType());
-  auto Any = CallInst::Create(AnyFunc, SubEM, SubEM->getName() + ".any", Join);
+  auto Any = CallInst::Create(AnyFunc, SubEM, SubEM->getName() + ".any",
+                              IGCLLVM::insertPosition(Join));
   Any->setDebugLoc(DL);
-  auto Not = BinaryOperator::Create(Instruction::Xor, Any,
-                                    Constant::getAllOnesValue(Any->getType()),
-                                    Any->getName() + ".not", Join);
+  auto Not = BinaryOperator::Create(
+      Instruction::Xor, Any, Constant::getAllOnesValue(Any->getType()),
+      Any->getName() + ".not", IGCLLVM::insertPosition(Join));
   Not->setDebugLoc(DL);
   Results[1] = Not;
   // Replace uses.
@@ -4009,8 +4022,9 @@ void GenXSimdCFConformance::replaceGotoJoinUses(CallInst *GotoJoin,
     for (unsigned Index = 0,
                   End = cast<StructType>(GotoJoin->getType())->getNumElements();
          Index != End; ++Index)
-      StructVal = InsertValueInst::Create(StructVal, Vals[Index], Index, "",
-                                          InsertBefore);
+      StructVal =
+          InsertValueInst::Create(StructVal, Vals[Index], Index, "",
+                                  IGCLLVM::insertPosition(InsertBefore));
     GotoJoin->replaceAllUsesWith(StructVal);
   } else {
     // Remove code for unused value. This is particularly useful at an outer
@@ -4601,7 +4615,7 @@ void GenXSimdCFConformance::optimizeLinearization(BasicBlock *BB,
   // Handle selects
   for (auto *Select : SelectsToOptimize) {
     PHINode *PN = PHINode::Create(Select->getType(), 2, "optimized_sel",
-                                  IGCLLVM::getFirstNonPHI(BB));
+                                  IGCLLVM::insertPositionAtFirstNonPHI(BB));
     PN->addIncoming(Select->getTrueValue(), JPData.getTruePred());
     PN->addIncoming(Select->getFalseValue(), JPData.getFalsePred());
     Select->replaceAllUsesWith(PN);

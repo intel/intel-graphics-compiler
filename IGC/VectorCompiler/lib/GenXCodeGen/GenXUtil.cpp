@@ -83,7 +83,10 @@ CallInst *genx::createConvert(Value *In, const Twine &Name,
     M = InsertBefore->getModule();
   Function *Decl = GenXIntrinsic::getGenXDeclaration(
       M, GenXIntrinsic::genx_convert, In->getType());
-  return CallInst::Create(Decl, In, Name, InsertBefore);
+  if (!InsertBefore)
+    return CallInst::Create(Decl, In, Name);
+  return CallInst::Create(Decl, In, Name,
+                          IGCLLVM::insertPosition(InsertBefore));
 }
 
 /***********************************************************************
@@ -103,7 +106,10 @@ CallInst *genx::createConvertAddr(Value *In, int Offset, const Twine &Name,
   Function *Decl = GenXIntrinsic::getGenXDeclaration(
       M, GenXIntrinsic::genx_convert_addr, In->getType());
   Value *Args[] = {In, OffsetVal};
-  return CallInst::Create(Decl, Args, Name, InsertBefore);
+  if (!InsertBefore)
+    return CallInst::Create(Decl, Args, Name);
+  return CallInst::Create(Decl, Args, Name,
+                          IGCLLVM::insertPosition(InsertBefore));
 }
 
 /***********************************************************************
@@ -120,7 +126,10 @@ CallInst *genx::createAddAddr(Value *Lhs, Value *Rhs, const Twine &Name,
   Type *Tys[] = {Rhs->getType(), Lhs->getType()};
   Function *Decl =
       GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_add_addr, Tys);
-  return CallInst::Create(Decl, Args, Name, InsertBefore);
+  if (!InsertBefore)
+    return CallInst::Create(Decl, Args, Name);
+  return CallInst::Create(Decl, Args, Name,
+                          IGCLLVM::insertPosition(InsertBefore));
 }
 
 /***********************************************************************
@@ -133,8 +142,7 @@ CallInst *genx::createUnifiedRet(Type *Ty, const Twine &Name, Module *M) {
   IGC_ASSERT_MESSAGE(Ty, "wrong argument");
   IGC_ASSERT_MESSAGE(M, "wrong argument");
   auto G = IGCLLVM::getOrInsertDeclaration(M, Intrinsic::ssa_copy, Ty);
-  return CallInst::Create(G, UndefValue::get(Ty), Name + ".unifiedret",
-                          static_cast<Instruction *>(nullptr));
+  return CallInst::Create(G, UndefValue::get(Ty), Name + ".unifiedret");
 }
 
 /***********************************************************************
@@ -524,7 +532,7 @@ static Value *getOperandByMaskValue(const ShuffleVectorInst &SI,
   if (MaskValue < FirstOpSize)
     return SI.getOperand(0);
   else {
-    int SecondOpSize =
+    [[maybe_unused]] int SecondOpSize =
         cast<IGCLLVM::FixedVectorType>(SI.getOperand(1)->getType())
             ->getNumElements();
     IGC_ASSERT_MESSAGE(MaskValue < FirstOpSize + SecondOpSize, "invalid index");
@@ -1234,8 +1242,8 @@ IVSplitter::splitValue(Value &Val, RegionType RT1, const Twine &Name1,
     }
     // Constant could not be split into constants; emit instructions below.
   }
-  auto *ShreddedVal =
-      new BitCastInst(&Val, VI32Ty, BaseName + ".iv32cast", &Inst);
+  auto *ShreddedVal = new BitCastInst(&Val, VI32Ty, BaseName + ".iv32cast",
+                                      IGCLLVM::insertPosition(&Inst));
   ShreddedVal->setDebugLoc(DL);
 
   auto R1 = createSplitRegion(VI32Ty, RT1);
@@ -1290,7 +1298,8 @@ Value *IVSplitter::combineSplit(Value &V1, Value &V2, RegionType RT1,
 
   auto *V64Ty =
       IGCLLVM::FixedVectorType::get(ETy->getInt64Ty(Inst.getContext()), Len);
-  auto *Result = new BitCastInst(W2, V64Ty, Name, &Inst);
+  auto *Result =
+      new BitCastInst(W2, V64Ty, Name, IGCLLVM::insertPosition(&Inst));
   Result->setDebugLoc(DL);
 
   if (Scalarize) {
@@ -1298,7 +1307,7 @@ Value *IVSplitter::combineSplit(Value &V1, Value &V2, RegionType RT1,
         cast<IGCLLVM::FixedVectorType>(Result->getType())->getNumElements() ==
         1);
     Result = new BitCastInst(Result, ETy->getInt64Ty(Inst.getContext()),
-                             Name + "recast", &Inst);
+                             Name + "recast", IGCLLVM::insertPosition(&Inst));
     Result->setDebugLoc(DL);
   }
   return Result;
@@ -1430,7 +1439,7 @@ Value *genx::sinkAdd(Value *V) {
   Inst = BinaryOperator::Create(
       Instruction::Add, Inst,
       ConstantInt::get(Inst->getType(), (int64_t)Offset, true /*isSigned*/),
-      Twine("addr_add"), IdxVal);
+      Twine("addr_add"), IGCLLVM::insertPosition(IdxVal));
   Inst->setDebugLoc(IdxVal->getDebugLoc());
   return Inst;
 }
@@ -1701,7 +1710,8 @@ bool genx::normalizeGloads(Instruction *Inst) {
       LInst = LI->clone();
       LInst->insertAfter(LI);
     }
-    Instruction *NewCI = new BitCastInst(LInst, Ty, ".clone", LInst);
+    Instruction *NewCI =
+        new BitCastInst(LInst, Ty, ".clone", IGCLLVM::insertPosition(LInst));
     NewCI->moveAfter(LInst);
     auto &BInsts = I->second;
     for (auto BI : BInsts)
@@ -1733,7 +1743,8 @@ Instruction *genx::foldBitCastInst(Instruction *Inst) {
           IGCLLVM::PointerType::get(SrcTy, SI->getPointerAddressSpace());
       auto NewPtr = ConstantExpr::getBitCast(GV, NewPtrTy);
       StoreInst *NewSI = new StoreInst(CI->getOperand(0), NewPtr,
-                                       /*volatile*/ SI->isVolatile(), Inst);
+                                       /*volatile*/ SI->isVolatile(),
+                                       IGCLLVM::insertPosition(Inst));
       NewSI->takeName(SI);
       NewSI->setDebugLoc(Inst->getDebugLoc());
       Inst->eraseFromParent();
@@ -1745,7 +1756,8 @@ Instruction *genx::foldBitCastInst(Instruction *Inst) {
                                                 LI->getPointerAddressSpace());
       auto NewPtr = ConstantExpr::getBitCast(GV, NewPtrTy);
       auto NewLI = new LoadInst(CI->getType(), NewPtr, "",
-                                /*volatile*/ LI->isVolatile(), Inst);
+                                /*volatile*/ LI->isVolatile(),
+                                IGCLLVM::insertPosition(Inst));
       NewLI->takeName(LI);
       NewLI->setDebugLoc(LI->getDebugLoc());
       CI->replaceAllUsesWith(NewLI);
@@ -2440,13 +2452,14 @@ bool genx::splitStructPhi(PHINode *Phi) {
   for (unsigned Idx = 0, e = Ty->getNumElements(); Idx != e; ++Idx) {
     Type *ElTy = Ty->getTypeAtIndex(Idx);
     // Create the new phi node.
-    PHINode *NewPhi =
-        PHINode::Create(ElTy, Phi->getNumIncomingValues(),
-                        Phi->getName() + ".element" + Twine(Idx), Phi);
+    PHINode *NewPhi = PHINode::Create(ElTy, Phi->getNumIncomingValues(),
+                                      Phi->getName() + ".element" + Twine(Idx),
+                                      IGCLLVM::insertPosition(Phi));
     NewPhi->setDebugLoc(Phi->getDebugLoc());
     // Combine the new phi.
-    Instruction *Combine = InsertValueInst::Create(
-        Combined, NewPhi, Idx, NewPhi->getName(), CombineInsertBefore);
+    Instruction *Combine =
+        InsertValueInst::Create(Combined, NewPhi, Idx, NewPhi->getName(),
+                                IGCLLVM::insertPosition(CombineInsertBefore));
     Combine->setDebugLoc(Phi->getDebugLoc());
     Combined = Combine;
     // For each incoming...
@@ -2458,7 +2471,7 @@ bool genx::splitStructPhi(PHINode *Phi) {
       Value *Incoming = Phi->getIncomingValue(In);
       Instruction *Extract = ExtractValueInst::Create(
           Incoming, Idx, Phi->getName() + ".element" + Twine(Idx),
-          IncomingBB->getTerminator());
+          IGCLLVM::insertPosition(IncomingBB->getTerminator()));
       Extract->setDebugLoc(Phi->getDebugLoc());
       // Add as an incoming of the new phi node.
       NewPhi->addIncoming(Extract, IncomingBB);

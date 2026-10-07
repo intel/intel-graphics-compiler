@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -306,7 +306,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst) {
               (Instruction::BinaryOps)Inst->getOpcode(),
               truncValue(Inst->getOperand(0), TruncBits, InsertBefore, DL),
               truncValue(Inst->getOperand(1), TruncBits, InsertBefore, DL), "",
-              InsertBefore);
+              IGCLLVM::insertPosition(InsertBefore));
           break;
         }
       }
@@ -335,8 +335,9 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst) {
     // These binary operators can just truncate.
     Value *Fst = truncValue(Inst->getOperand(0), TruncBits, InsertBefore, DL),
           *Snd = truncValue(Inst->getOperand(1), TruncBits, InsertBefore, DL);
-    NewInst = BinaryOperator::Create((Instruction::BinaryOps)Inst->getOpcode(),
-                                     Fst, Snd, "", InsertBefore);
+    NewInst =
+        BinaryOperator::Create((Instruction::BinaryOps)Inst->getOpcode(), Fst,
+                               Snd, "", IGCLLVM::insertPosition(InsertBefore));
   } break;
   case Instruction::ZExt:
   case Instruction::SExt: {
@@ -354,7 +355,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst) {
       auto ElTy = Type::getIntNTy(InsertBefore->getContext(), TruncBits);
       auto Ty = IGCLLVM::FixedVectorType::get(ElTy, NumElements);
       NewInst = CastInst::Create((Instruction::CastOps)Opcode, NewVal, Ty, "",
-                                 InsertBefore);
+                                 IGCLLVM::insertPosition(InsertBefore));
     }
   } break;
   case Instruction::ShuffleVector: {
@@ -368,7 +369,8 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst) {
           truncValue(Shuffle->getOperand(0), TruncBits, InsertBefore, DL);
       NewInst = new ShuffleVectorInst(
           TruncatedInput, UndefValue::get(TruncatedInput->getType()),
-          IGCLLVM::getShuffleMaskForBitcode(Shuffle), "", InsertBefore);
+          IGCLLVM::getShuffleMaskForBitcode(Shuffle), "",
+          IGCLLVM::insertPosition(InsertBefore));
       break;
     }
     // Detect when the shufflevector is the second half of an
@@ -391,16 +393,18 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst) {
             auto Ty = IGCLLVM::FixedVectorType::get(ElTy, NumElements);
             auto NewScalar = CastInst::Create(
                 Instruction::Trunc, IE->getOperand(1), ElTy,
-                IE->getOperand(1)->getName() + ".reduceintsize", InsertBefore);
+                IE->getOperand(1)->getName() + ".reduceintsize",
+                IGCLLVM::insertPosition(InsertBefore));
             NewScalar->setDebugLoc(IE->getDebugLoc());
-            auto NewIE =
-                InsertElementInst::Create(UndefValue::get(Ty), NewScalar,
-                                          IE->getOperand(2), "", InsertBefore);
+            auto NewIE = InsertElementInst::Create(
+                UndefValue::get(Ty), NewScalar, IE->getOperand(2), "",
+                IGCLLVM::insertPosition(InsertBefore));
             NewIE->setDebugLoc(IE->getDebugLoc());
             NewIE->takeName(IE);
             NewInst = new ShuffleVectorInst(
                 NewIE, UndefValue::get(Ty),
-                IGCLLVM::getShuffleMaskForBitcode(Shuffle), "", InsertBefore);
+                IGCLLVM::getShuffleMaskForBitcode(Shuffle), "",
+                IGCLLVM::insertPosition(InsertBefore));
             break;
           }
         }
@@ -431,8 +435,9 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst) {
       auto ThisNewVal = NewVal;
       if (ThisTruncBits != TruncBits) {
         // We need a new trunc.
-        auto NewTI = CastInst::Create(Instruction::Trunc, NewVal,
-                                      user->getType(), "", user);
+        auto NewTI =
+            CastInst::Create(Instruction::Trunc, NewVal, user->getType(), "",
+                             IGCLLVM::insertPosition(user));
         NewTI->takeName(user);
         NewTI->setDebugLoc(user->getDebugLoc());
         LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: NewTI: " << *NewTI
@@ -450,7 +455,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst) {
             BinaryOperator::Create(Instruction::And, NewVal,
                                    truncValue(user->getOperand(1), TruncBits,
                                               user, user->getDebugLoc()),
-                                   "", user);
+                                   "", IGCLLVM::insertPosition(user));
         NewAnd->takeName(user);
         NewAnd->setDebugLoc(user->getDebugLoc());
         LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: NewAnd: " << *NewAnd
@@ -462,7 +467,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst) {
         IGC_ASSERT(ThisNewVal);
         auto NewCast = CastInst::Create(
             ThisTruncBits > TruncBits ? Instruction::ZExt : Instruction::Trunc,
-            ThisNewVal, user->getType(), "", user);
+            ThisNewVal, user->getType(), "", IGCLLVM::insertPosition(user));
         if (NewVal == ThisNewVal)
           NewCast->takeName(user);
         else
@@ -557,7 +562,8 @@ Value *GenXReduceIntSize::truncValue(Value *V, unsigned NumBits,
           Input->getType()->getScalarType()->getPrimitiveSizeInBits() < NumBits
               ? (Instruction::CastOps)Inst->getOpcode()
               : Instruction::Trunc,
-          Input, Ty, Inst->getName() + ".reduceintsize", InsertBefore);
+          Input, Ty, Inst->getName() + ".reduceintsize",
+          IGCLLVM::insertPosition(InsertBefore));
       NewInst->setDebugLoc(DL);
       LLVM_DEBUG(dbgs() << "GenXReduceIntSize::truncVal: " << *NewInst << "\n");
       return NewInst;
@@ -582,8 +588,9 @@ Value *GenXReduceIntSize::truncValue(Value *V, unsigned NumBits,
     }
   }
   // Create a new trunc instruction.
-  auto NewInst = CastInst::Create(
-      Instruction::Trunc, V, Ty, V->getName() + ".reduceintsize", InsertBefore);
+  auto NewInst = CastInst::Create(Instruction::Trunc, V, Ty,
+                                  V->getName() + ".reduceintsize",
+                                  IGCLLVM::insertPosition(InsertBefore));
   NewInst->setDebugLoc(DL);
   LLVM_DEBUG(dbgs() << "GenXReduceIntSize::truncVal: " << *NewInst << "\n");
   return NewInst;
@@ -667,16 +674,19 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
         if (!isa<VectorType>(Src->getType())) {
           VectorType *VTy =
               IGCLLVM::FixedVectorType::get(Src->getType(), NumElts);
-          Src = InsertElementInst::Create(UndefValue::get(VTy), Src,
-                                          Constant::getNullValue(I32Ty), "",
-                                          InsertBefore);
+          Src = InsertElementInst::Create(
+              UndefValue::get(VTy), Src, Constant::getNullValue(I32Ty), "",
+              IGCLLVM::insertPosition(InsertBefore));
         }
-        NewInst = new ShuffleVectorInst(Src, UndefValue::get(Src->getType()),
-                                        Mask, "", InsertBefore);
+        NewInst =
+            new ShuffleVectorInst(Src, UndefValue::get(Src->getType()), Mask,
+                                  "", IGCLLVM::insertPosition(InsertBefore));
         if (Ext->getOpcode() == Instruction::ZExt)
-          NewInst = new ZExtInst(NewInst, Inst->getType(), "", InsertBefore);
+          NewInst = new ZExtInst(NewInst, Inst->getType(), "",
+                                 IGCLLVM::insertPosition(InsertBefore));
         else
-          NewInst = new SExtInst(NewInst, Inst->getType(), "", InsertBefore);
+          NewInst = new SExtInst(NewInst, Inst->getType(), "",
+                                 IGCLLVM::insertPosition(InsertBefore));
       }
     }
     break;
@@ -878,7 +888,7 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
             TargetNumBits > TruncBits
                 ? (NeedSignExtend ? Instruction::SExt : Instruction::ZExt)
                 : Instruction::Trunc,
-            NewVal, user->getType(), "", user);
+            NewVal, user->getType(), "", IGCLLVM::insertPosition(user));
         NewCast->takeName(user);
         NewCast->setDebugLoc(user->getDebugLoc());
         LLVM_DEBUG(dbgs() << "GenXReduceIntSize::forward: NewCast: " << *NewCast
@@ -899,7 +909,7 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
       Extended = CastInst::Create(
           NeedSignExtend ? Instruction::SExt : Instruction::ZExt, NewVal,
           Inst->getType(), NewVal->getName() + ".reduceintsize_extend",
-          Inst->getNextNode());
+          IGCLLVM::insertPosition(Inst->getNextNode()));
       Extended->setDebugLoc(Inst->getDebugLoc());
       LLVM_DEBUG(dbgs() << "GenXReduceIntSize::forward: Extended: " << *Extended
                         << "\n");

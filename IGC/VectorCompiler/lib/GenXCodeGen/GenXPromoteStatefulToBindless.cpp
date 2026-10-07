@@ -659,7 +659,7 @@ CallInst *PromoteToBindless::createBindlessLscIntrinsic(CallInst &CI) {
       auto *OV = RdRegion->getArgOperand(
           GenXIntrinsic::GenXRegion::OldValueOperandNum);
       auto *Ty = OV->getType();
-      auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+      [[maybe_unused]] auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
       IGC_ASSERT_MESSAGE(
           VTy && VTy->isIntOrIntVectorTy(32) && VTy->getNumElements() % 2 == 0,
           "RdRegion OldValueOperand is expected to be <2N x i32>");

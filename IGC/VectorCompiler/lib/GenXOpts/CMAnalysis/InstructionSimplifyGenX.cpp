@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -181,22 +181,6 @@ static Value *simplifyMulDDQ(BinaryOperator &Mul) {
       GenXIntrinsic::getGenXDeclaration(Mul.getModule(), IID, {Ty64, OpType});
   auto *Result = Builder.CreateCall(FIMul, {LH, RH}, Mul.getName() + ".imul");
   return Result;
-}
-
-static bool usesBothOperands(const ArrayRef<int> &Mask, int InputLen) {
-  int OperandIdx = -1;
-  for (int Index : Mask) {
-    if (Index < 0)
-      continue; // skip undef
-
-    int CurrentIdx = (Index >= InputLen) ? 1 : 0;
-    if (OperandIdx == -1) {
-      OperandIdx = CurrentIdx;
-    } else if (OperandIdx != CurrentIdx) {
-      return true; // Both operands are used
-    }
-  }
-  return false;
 }
 
 static void checkInputsForMask(ArrayRef<int> &Mask1, ArrayRef<int> &Mask2,
