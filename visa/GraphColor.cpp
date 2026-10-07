@@ -49,14 +49,6 @@ const char GlobalRA::StackCallStr[] = "StackCall";
 
 static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 
-enum {
-  RelaxedDegreeOff = 0,
-  RelaxedDegreeHeuristic = 1,
-  RelaxedDegreeForced = 2,
-};
-
-static const unsigned RelaxedDegreeCandidatePercent = 50;
-
 #define BANK_CONFLICT_HEURISTIC_INST 0.04
 #define BANK_CONFLICT_HEURISTIC_REF_COUNT 0.25
 #define BANK_CONFLICT_HEURISTIC_LOOP_ITERATION 5
@@ -3067,43 +3059,6 @@ void GlobalRA::augAlign() {
       }
     }
   }
-}
-
-bool GlobalRA::useRelaxedDegree() {
-  if (relaxedDegreeDecided)
-    return relaxedDegree;
-  relaxedDegreeDecided = true;
-
-  auto mode = builder.getuint32Option(vISA_UseRelaxedDegree);
-  if (mode == RelaxedDegreeOff)
-    return relaxedDegree;
-  if (mode >= RelaxedDegreeForced) {
-    relaxedDegree = true;
-    RA_TRACE(std::cout << "\t--relaxed degree enabled: forced\n");
-    return relaxedDegree;
-  }
-
-  unsigned numCandidates = 0;
-  unsigned numEvenAligned2GRF = 0;
-  for (auto dcl : kernel.Declares) {
-    if (dcl->getAliasDeclare() || !(dcl->getRegFile() & G4_GRF) ||
-        dcl->getIsPartialDcl() || kernel.fg.isPseudoDcl(dcl) ||
-        !dcl->getRegVar()->isRegAllocPartaker())
-      continue;
-    ++numCandidates;
-    if (dcl->getNumRows() == 2 && getAugAlign(dcl) == 2)
-      ++numEvenAligned2GRF;
-  }
-
-  relaxedDegree = numCandidates > 0 &&
-                  numEvenAligned2GRF * 100 >
-                      numCandidates * RelaxedDegreeCandidatePercent;
-  if (relaxedDegree) {
-    RA_TRACE(std::cout << "\t--relaxed degree enabled: " << numEvenAligned2GRF
-                       << "/" << numCandidates
-                       << " Even aligned 2 GRF candidates\n");
-  }
-  return relaxedDegree;
 }
 
 void GlobalRA::getBankAlignment(LiveRange *lr, BankAlign &align) {
@@ -6693,6 +6648,7 @@ GraphColor::GraphColor(LivenessAnalysis &live, bool hybrid, bool forceSpill_)
 {
   spAddrRegSig.resize(builder.getNumAddrRegisters(), 0);
   m_options = builder.getOptions();
+  UseRelaxedDegree = m_options->getOption(vISA_UseRelaxedDegree);
 }
 
 //
@@ -8338,9 +8294,6 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
   //
   intf.init();
   intf.computeInterference();
-
-  if (liveAnalysis.livenessClass(G4_GRF))
-    UseRelaxedDegree = gra.useRelaxedDegree();
 
   if (reserveSpillGRFCount) {
     preAssignSpillHeader();
