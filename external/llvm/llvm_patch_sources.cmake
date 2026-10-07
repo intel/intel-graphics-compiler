@@ -13,11 +13,60 @@ include_guard(DIRECTORY)
 set(IGC_LLVM_SOURCE_DIR ${IGC_LLVM_WORKSPACE_SRC}/llvm)
 set(PATCH_DISABLE "None")
 
-# Already copied and patched. Probably...
-# TODO: handle dependencies on patches changes.
-if(EXISTS "${IGC_LLVM_SOURCE_DIR}")
-  return()
+# For Interim mode, dir with patches set to /trunk
+if(IGC_OPTION__LLVM_INTERIM OR IGC_BUILD_LLVM_INTERIM)
+    set(IGC_LLVM_PATCHES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/trunk)
+    set(IGC_LLVM_INTERIM_PATCHES ON)
+    message(STATUS "[LLVM] : IGC_LLVM_INTERIM mode is enabled, apply patches from /trunk dir")
+else()
+    set(IGC_LLVM_PATCHES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/releases)
+    set(IGC_LLVM_INTERIM_PATCHES OFF)
 endif()
+
+set(APPLY_PATCHES_COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/apply_patches.py
+  --llvm-version ${IGC_OPTION__LLVM_PREFERRED_VERSION}
+  --patch-interim ${IGC_LLVM_INTERIM_PATCHES}
+  --llvm-project-dir ${IGC_LLVM_WORKSPACE_SRC}
+  --patches-dir ${IGC_LLVM_PATCHES_DIR}
+  --patch-executable ${Patch_EXECUTABLE}
+  --patch-disable ${PATCH_DISABLE}
+  )
+
+file(GLOB_RECURSE PATCH_FILES CONFIGURE_DEPENDS "${IGC_LLVM_PATCHES_DIR}/*")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PATCH_FILES})
+
+# Get hash of current patch set
+execute_process(COMMAND ${APPLY_PATCHES_COMMAND} --print-stamp
+  OUTPUT_VARIABLE PATCHES_STAMP
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  RESULT_VARIABLE PATCHES_STAMP_RESULT
+  )
+
+if(NOT PATCHES_STAMP_RESULT EQUAL 0)
+  message(FATAL_ERROR "[LLVM] : Could not compute the LLVM patch set stamp.")
+endif()
+
+set(PATCHES_STAMP_FILE ${IGC_LLVM_WORKSPACE}/llvm_patches.stamp)
+
+if(EXISTS "${IGC_LLVM_SOURCE_DIR}")
+  set(APPLIED_PATCHES_STAMP "")
+  if(EXISTS "${PATCHES_STAMP_FILE}")
+    file(READ "${PATCHES_STAMP_FILE}" APPLIED_PATCHES_STAMP)
+  endif()
+  # Already copied and patched with the same patch set.
+  if("${APPLIED_PATCHES_STAMP}" STREQUAL "${PATCHES_STAMP}")
+    return()
+  endif()
+  # Patch set differs, re-applying already applied patches will result in an error
+  # So we're removing the existing source directory to start fresh.
+  message(STATUS "[LLVM] : Copied LLVM sources do not match the current patch set,"
+    " removing ${IGC_LLVM_SOURCE_DIR}. This rebuilds LLVM from scratch")
+  file(REMOVE_RECURSE "${IGC_LLVM_SOURCE_DIR}")
+endif()
+
+# Remove the stamp so in case of failure, next configuration will not rely on partially patched sources.
+file(REMOVE ${PATCHES_STAMP_FILE})
 
 # Copy stock LLVM sources to IGC_LLVM_SOURCE_DIR to apply patches.
 message(STATUS "[LLVM] : Copying stock LLVM sources ${IGC_OPTION__LLVM_SOURCES_DIR} to ${IGC_LLVM_SOURCE_DIR}")
@@ -43,24 +92,7 @@ set(IGC_OPTION__APPLY_LLVM_PATCHES ON CACHE BOOL "Apply patches to LLVM sources 
 if(IGC_OPTION__APPLY_LLVM_PATCHES)
   message(STATUS "[LLVM] : Applying patches for LLVM from version ${DIR_WITH_PATCHES}")
 
-  # For Interim mode, dir with patches set to /trunk
-  if(IGC_OPTION__LLVM_INTERIM OR IGC_BUILD_LLVM_INTERIM)
-      set(IGC_LLVM_PATCHES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/trunk)
-      set(IGC_LLVM_INTERIM_PATCHES ON)
-      message(STATUS "[LLVM] : IGC_LLVM_INTERIM mode is enabled, apply patches from /trunk dir")
-  else()
-      set(IGC_LLVM_PATCHES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/releases)
-      set(IGC_LLVM_INTERIM_PATCHES OFF)
-  endif()
-
-  execute_process(COMMAND
-    ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/apply_patches.py
-    --llvm-version ${IGC_OPTION__LLVM_PREFERRED_VERSION}
-    --patch-interim ${IGC_LLVM_INTERIM_PATCHES}
-    --llvm-project-dir ${IGC_LLVM_WORKSPACE_SRC}
-    --patches-dir ${IGC_LLVM_PATCHES_DIR}
-    --patch-executable ${Patch_EXECUTABLE}
-    --patch-disable ${PATCH_DISABLE}
+  execute_process(COMMAND ${APPLY_PATCHES_COMMAND}
     RESULT_VARIABLE PATCH_SCRIPT_RESULT
   )
 
@@ -70,3 +102,5 @@ if(IGC_OPTION__APPLY_LLVM_PATCHES)
 else()
   message(STATUS "[LLVM] : Skipping internal LLVM patches (IGC_OPTION__APPLY_LLVM_PATCHES=OFF)")
 endif()
+
+file(WRITE ${PATCHES_STAMP_FILE} "${PATCHES_STAMP}")

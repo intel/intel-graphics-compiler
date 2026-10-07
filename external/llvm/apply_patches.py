@@ -7,6 +7,7 @@
 # =========================== end_copyright_notice =============================
 
 import argparse
+import hashlib
 import os
 from functools import total_ordering
 from subprocess import check_call
@@ -26,6 +27,9 @@ parser.add_argument('--patch-interim', required=True,
                     help='Interim mode [ON/OFF]')
 parser.add_argument('--dry-run', action='store_true',
                     help='Only print list of patches that will be applied')
+parser.add_argument('--print-stamp', action='store_true',
+                    help='Only print a hash identifying the patches that will '
+                         'be applied, instead of applying them')
 
 args = parser.parse_args()
 
@@ -41,6 +45,22 @@ def get_dir_patches(ver_dir):
     if os.path.exists(ext_patches):
         patches.extend(os.scandir(ext_patches))
     return patches
+
+def get_patches_stamp(patches):
+    """Return a hash identifying the given list of patches.
+
+    Covers the order, names and contents of the patches, so that a build
+    directory can tell whether the copy of LLVM sources it holds was patched
+    with the same patch set.
+    """
+    stamp = hashlib.sha256()
+    for patch_path in patches:
+        rel_path = os.path.relpath(patch_path.path, args.patches_dir)
+        stamp.update(rel_path.encode())
+        stamp.update(b'\0')
+        with open(patch_path.path, 'rb') as patch_file:
+            stamp.update(patch_file.read())
+    return stamp.hexdigest()
 
 def apply_patch(patch_path):
     """Apply patch to llvm project."""
@@ -111,7 +131,8 @@ patches_dir = os.listdir(args.patches_dir)
 patches = {}
 
 if args.patch_interim == "ON":
-    print(f'Merge patches for IGC_LLVM_INTERIM mode, IGC_LLVM_INTERIM = {args.patch_interim}')
+    if not args.print_stamp:
+        print(f'Merge patches for IGC_LLVM_INTERIM mode, IGC_LLVM_INTERIM = {args.patch_interim}')
     # Merge patches from trunk/ directory. Directory based on LLVM version doesn't exist for Interim mode
     dir_patches = get_dir_patches('')
     dir_patches = {d.name : d for d in dir_patches}
@@ -135,12 +156,11 @@ else:
 patches = list(patches.values())
 patches.sort(key=lambda p: p.name)
 
-checkDisabledPatch = False
 if args.patch_disable != "None":
-    checkDisabledPatch = True
+    patches = [p for p in patches if args.patch_disable not in p.name]
 
-for patch in patches:
-    if checkDisabledPatch:
-        if args.patch_disable in patch.name:
-            continue
-    apply_patch(patch)
+if args.print_stamp:
+    print(get_patches_stamp(patches))
+else:
+    for patch in patches:
+        apply_patch(patch)
