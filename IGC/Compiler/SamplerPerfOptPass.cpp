@@ -275,6 +275,7 @@ bool SamplerPerfOptPass::runOnFunction(Function &F) {
   CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
   bool changed = false;
+  bool combineLegacyParameters = ctx->platform.supportAIParameterCombiningWithLODBiasEnabled();
 
   if (ctx->platform.isProductChildOf(IGFX_DG2)) {
     for (auto BI = F.begin(), BE = F.end(); BI != BE; BI++) {
@@ -284,7 +285,7 @@ bool SamplerPerfOptPass::runOnFunction(Function &F) {
             if (ctx->platform.WaCubeHFPrecisionBug()) {
               changed = (FixCubeHFPrecisionBug(sampleInst)) ? true : changed;
             }
-            if (ctx->platform.supportAIParameterCombiningWithLODBiasEnabled()) {
+            if (combineLegacyParameters) {
               changed = DoAIParameterCombiningWithLODBias(sampleInst) ? true : changed;
             }
           }
@@ -292,8 +293,7 @@ bool SamplerPerfOptPass::runOnFunction(Function &F) {
        // sample_b_c_mlod    ref     bias    u    v    r     ai    mlod
        // For sample_b* the mlod parameter must be shifted left as
        // 32bit versions of messages no longer have the AI param:
-          if (!sampleInst->getOperand(0)->getType()->isHalfTy() &&
-              ctx->platform.supportAIParameterCombiningWithLODBiasEnabled() &&
+          if (!sampleInst->getOperand(0)->getType()->isHalfTy() && combineLegacyParameters &&
               (sampleInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleBptr ||
                sampleInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleBCMlodptr)) {
             uint mlodOffset = sampleInst->hasRef() ? 6 : 5;
@@ -318,7 +318,7 @@ bool SamplerPerfOptPass::runOnFunction(Function &F) {
         if (SamplerGatherIntrinsic *gatherInst = dyn_cast<SamplerGatherIntrinsic>(II)) {
           if (ctx->platform.isCoreChildOf(IGFX_XE2_HPG_CORE) && isSamplingFromCubeSurface(gatherInst)) {
             IGC_ASSERT_MESSAGE(!ctx->platform.WaCubeHFPrecisionBug(), "This WA should be absent on this platform.");
-            if (ctx->platform.supportAIParameterCombiningWithLODBiasEnabled()) {
+            if (combineLegacyParameters) {
               changed = DoAIParameterCombiningWithLODBias(gatherInst) ? true : changed;
             }
           }
