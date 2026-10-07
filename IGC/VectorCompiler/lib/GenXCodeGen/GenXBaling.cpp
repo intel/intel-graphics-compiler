@@ -279,12 +279,12 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits,
     Log2Align = Log2_32(genx::getDpasSrc2AlignmentBytes(CI, ST));
   } else if (Restriction) {
     const auto Align = AI.getAlignment();
-    Log2Align = getLogAlignment(Align, GRFWidth * ByteBits);
+    Log2Align = getLogAlignment(Align, GRFWidth);
   }
 
   if (Log2Align > 0) {
     IGC_ASSERT_EXIT(Log2Align < 32);
-    const auto ElementsPerAlign = (1U << Log2Align) / R.ElementBytes;
+    const unsigned AlignMask = (1U << Log2Align) - 1;
 
     if (R.Indirect) {
       // Instructions that cannot be splitted also cannot allow indirect
@@ -293,10 +293,10 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits,
       Alignment AL = AlignInfo.get(R.Indirect);
       if (AL.getLogAlign() < Log2Align || AL.getExtraBits() != 0)
         return false;
-    } else if ((R.Offset & (ElementsPerAlign - 1)) != 0)
+    } else if ((R.Offset & AlignMask) != 0)
       return false;
 
-    if (R.is2D() && (R.VStride & (ElementsPerAlign - 1)) != 0)
+    if (R.is2D() && ((R.VStride * R.ElementBytes) & AlignMask) != 0)
       return false;
   }
 
