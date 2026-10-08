@@ -389,7 +389,7 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     if (IGC_IS_FLAG_DISABLED(DisableMergeAllocasPrivateMemory) && ctx.type == ShaderType::OPENCL_SHADER) {
       mpm.add(createMergeAllocasOCL());
     }
-    if (ctx.type == ShaderType::OPENCL_SHADER && !isOptDisabled && IGC_IS_FLAG_ENABLED(EnableExplicitCopyForByVal)) {
+    if (ctx.type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(EnableExplicitCopyForByVal)) {
       mpm.add(new LowerByValAttribute());
       mpm.add(createReplaceUnsupportedIntrinsicsPass());
     }
@@ -792,7 +792,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     if (IGC_IS_FLAG_DISABLED(DisableMergeAllocasPrivateMemory) && ctx.type == ShaderType::OPENCL_SHADER) {
       mpm.add(createMergeAllocasOCL());
     }
-    if (ctx.type == ShaderType::OPENCL_SHADER && !isOptDisabled && IGC_IS_FLAG_ENABLED(EnableExplicitCopyForByVal)) {
+    if (ctx.type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(EnableExplicitCopyForByVal)) {
       mpm.add(new LowerByValAttribute());
       mpm.add(createReplaceUnsupportedIntrinsicsPass());
     }

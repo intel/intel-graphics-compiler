@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 // REQUIRES: regkeys, dg2-supported
 
 // RUN: ocloc compile -file %s -options " -igc_opts 'ShaderDisplayAllPassesNames=1 EnableExplicitCopyForByVal=1'"  -device dg2 2>&1 | FileCheck %s
+// RUN: ocloc compile -file %s -options "-cl-opt-disable -igc_opts 'ShaderDisplayAllPassesNames=1 EnableExplicitCopyForByVal=1'"  -device dg2 2>&1 | FileCheck %s
 
 // Verify if LowerByValAttribute pass is run right before PrivateMemoryResolution pass.
 // (ReplaceUnsupportedIntrinsics is run between them just to lower memcpy instructions inserted by LowerByValAttribute)
