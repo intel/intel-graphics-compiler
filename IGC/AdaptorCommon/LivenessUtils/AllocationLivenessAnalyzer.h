@@ -64,7 +64,7 @@ public:
     LivenessData(llvm::Instruction *allocationInstruction, llvm::SetVector<llvm::Instruction *> &&usersOfAllocation,
                  const llvm::LoopInfo &LI, const llvm::DominatorTree &DT, const BBToIndexMapT &bbToIndexMap,
                  size_t numBBs, llvm::BasicBlock *userDominatorBlock = nullptr,
-                 llvm::SetVector<llvm::Instruction *> &&lifetimeLeakingUsers = {});
+                 llvm::SetVector<llvm::Instruction *> &&lifetimeLeakingUsers = {}, bool isStoredToMemory = false);
 
     bool OverlapsWith(const LivenessData &LD) const;
     bool ContainsInstruction(const LivenessInstruction &LI) const;

@@ -43,6 +43,7 @@ AllocationLivenessAnalyzer::LivenessData AllocationLivenessAnalyzer::ProcessInst
   SetVector<Instruction *> allUsers;
   SetVector<Instruction *> lifetimeLeakingUsers;
   SmallVector<Use *> worklist;
+  bool isStoredToMemory = false;
 
   for (auto &use : I->uses()) {
     auto *UasI = cast<Instruction>(use.getUser());
@@ -91,6 +92,7 @@ AllocationLivenessAnalyzer::LivenessData AllocationLivenessAnalyzer::ProcessInst
     case Instruction::Store: {
       auto *storeI = cast<StoreInst>(II);
       if (storeI->getValueOperand() == use->get()) {
+        isStoredToMemory = true;
         SmallVector<Instruction *> origins;
         if (Provenance::tryFindPointerOrigin(storeI->getPointerOperand(), origins)) {
           for (auto *origin : origins)
@@ -127,7 +129,8 @@ AllocationLivenessAnalyzer::LivenessData AllocationLivenessAnalyzer::ProcessInst
           PerFunctionBBToIndexMap[F],
           numBBs.has_value() ? numBBs.value() : F->size(),
           commonDominator,
-          std::move(lifetimeLeakingUsers)};
+          std::move(lifetimeLeakingUsers),
+          isStoredToMemory};
 }
 
 void AllocationLivenessAnalyzer::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
@@ -183,7 +186,8 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
                                                        SetVector<Instruction *> &&usersOfAllocation, const LoopInfo &LI,
                                                        const DominatorTree &DT, const BBToIndexMapT &bbToIndexMap,
                                                        size_t numBBs, llvm::BasicBlock *userDominatorBlock,
-                                                       SetVector<Instruction *> &&lifetimeLeakingUsers) {
+                                                       SetVector<Instruction *> &&lifetimeLeakingUsers,
+                                                       bool isStoredToMemory) {
   llvm::SmallSetVector<llvm::BasicBlock *, 16> bbInSet;
   llvm::SmallSetVector<llvm::BasicBlock *, 16> bbOutSet;
 
@@ -199,24 +203,39 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
     return;
   }
 
-  bbOutSet.insert(userDominatorBlock);
-
   SmallVector<BasicBlock *> worklist;
 
   for (auto *I : usersOfAllocation) {
     worklist.push_back(I->getParent());
   }
 
-  // Keep track of loop header of blocks that contain allocation instruction
+  // Collect loop headers where the backward lifetime walk must stop
   auto *allocationParent = allocationInstruction->getParent();
   llvm::SmallPtrSet<llvm::BasicBlock *, 4> containedLoopHeaders;
   if (const auto *parentLoop = LI.getLoopFor(allocationParent)) {
-    containedLoopHeaders.insert(parentLoop->getHeader());
-    while (parentLoop->getParentLoop()) {
-      parentLoop = parentLoop->getParentLoop();
-      containedLoopHeaders.insert(parentLoop->getHeader());
+    // A pointer is carried over a loop if a PHI in its header uses it. Memory flow is not tracked per loop,
+    // so a pointer stored to memory is treated as carried over all loops.
+    auto HasCarryingPHI = [&](const Loop *L) {
+      return llvm::any_of(L->getHeader()->phis(), [&](PHINode &PN) { return usersOfAllocation.contains(&PN); });
+    };
+
+    const Loop *CarriedLoop = nullptr;
+    for (const auto *L = parentLoop; L; L = L->getParentLoop())
+      if (isStoredToMemory || HasCarryingPHI(L))
+        CarriedLoop = L;
+
+    // Extend the lifetime over the outermost carried loop.
+    if (CarriedLoop) {
+      auto *HeaderIDom = DT.getNode(CarriedLoop->getHeader())->getIDom()->getBlock();
+      userDominatorBlock = DT.findNearestCommonDominator(userDominatorBlock, HeaderIDom);
     }
+
+    const Loop *BoundingLoop = CarriedLoop ? CarriedLoop->getParentLoop() : parentLoop;
+    for (const auto *L = BoundingLoop; L; L = L->getParentLoop())
+      containedLoopHeaders.insert(L->getHeader());
   }
+
+  bbOutSet.insert(userDominatorBlock);
 
   // perform data flow analysis
   doWorkLoop<llvm::pred_range>(
