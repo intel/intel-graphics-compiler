@@ -13796,6 +13796,89 @@ void markSendWindows(G4_BB *bb, unsigned bwd, unsigned fwd,
   }
 }
 
+// The GRF byte range an operand covers, under the colors this pass can see.
+//
+// G4_Operand::getLinearizedStart answers exactly this, but it reads the
+// register off the RegVar, and confirmRegisterAssignments only copies the
+// colors from the live ranges onto the RegVars once assignColors has returned
+// -- mid-scan it would report r0 for every candidate. Same arithmetic as
+// G4_Declare::getGRFOffsetFromR0, taking the register from the live range
+// instead.
+bool linearizedRange(BlockScanCtx &ctx, G4_Operand *opnd, unsigned &start,
+                     unsigned &end) {
+  G4_VarBase *base = opnd->getBase();
+  if (!base || !base->isRegVar())
+    return false;
+  G4_RegVar *rv = base->asRegVar();
+
+  G4_VarBase *preg = nullptr;
+  unsigned pregOff = 0;
+  if (rv->isRegAllocPartaker()) {
+    LiveRange *lr = ctx.lrs[rv->getId()];
+    if (!lr)
+      return false;
+    preg = lr->getPhyReg();
+    pregOff = lr->getPhyRegOff();
+  } else {
+    // Local RA pre-assigned it, so the RegVar already carries the answer.
+    preg = rv->getPhyReg();
+    pregOff = rv->getPhyRegOff();
+  }
+  if (!preg || !preg->isGreg())
+    return false;
+
+  G4_Declare *dcl = rv->getDeclare();
+  const unsigned grfOffset =
+      preg->asGreg()->getRegNum() * dcl->getGRFByteSize() +
+      pregOff * dcl->getElemSize();
+  start = opnd->getLeftBound() + grfOffset - dcl->getOffsetFromBase();
+  end = start + opnd->getRightBound() - opnd->getLeftBound();
+  return true;
+}
+
+// Whether FlowGraph::removeRedundMov will delete this instruction: a raw mov
+// with both sides on identical GRF bytes. That pass is the one that decides;
+// this only has to predict it, so the conditions are kept in step with it.
+bool isRemovableRawMov(BlockScanCtx &ctx, G4_INST *inst) {
+  if (inst->isDoNotDelete() || !inst->isRawMov())
+    return false;
+
+  G4_DstRegRegion *dst = inst->getDst();
+  G4_Operand *src = inst->getSrc(0);
+  if (!dst || !src || !src->isSrcRegRegion())
+    return false;
+  G4_SrcRegRegion *srcRgn = src->asSrcRegRegion();
+  if (dst->isIndirect() || srcRgn->isIndirect())
+    return false;
+  // removeRedundMov screens both sides with isGreg() here. That reads the
+  // register off the RegVar, which is still unassigned mid-scan, so it would
+  // reject everything; linearizedRange makes the same check against the
+  // register the live range holds and fails for anything that is not a GRF.
+
+  unsigned dstStart = 0, dstEnd = 0, srcStart = 0, srcEnd = 0;
+  if (!linearizedRange(ctx, dst, dstStart, dstEnd) ||
+      !linearizedRange(ctx, srcRgn, srcStart, srcEnd))
+    return false;
+  if (dstStart != srcStart || dstEnd != srcEnd)
+    return false;
+
+  uint16_t stride = 0;
+  const RegionDesc *rd = srcRgn->getRegion();
+  const unsigned exSize = inst->getExecSize();
+  return exSize == 1 ||
+         (rd->isSingleStride(exSize, stride) && dst->getHorzStride() == stride);
+}
+
+// The live range an operand's value belongs to, or null when it has none --
+// local RA pre-assigned variables never appear in lrs.
+LiveRange *liveRangeOf(BlockScanCtx &ctx, G4_Operand *opnd) {
+  G4_VarBase *base = opnd ? opnd->getBase() : nullptr;
+  if (!base || !base->isRegVar())
+    return nullptr;
+  G4_RegVar *rv = base->asRegVar();
+  return rv->isRegAllocPartaker() ? ctx.lrs[rv->getId()] : nullptr;
+}
+
 // Whether this pass may move lr out of bb.
 bool isRelocatableLocal(BlockScanCtx &ctx, G4_BB *bb, LiveRange *lr) {
   if (!lr)
@@ -14024,6 +14107,8 @@ void relocateBlockLocals(BlockScanCtx &ctx) {
   // several instructions in the window.
   std::vector<unsigned> nearby(ctx.maxGRFCanBeUsed, 0);
   std::unordered_set<LiveRange *> seen;
+  // Values coloring already placed so that a mov on them disappears.
+  std::unordered_set<LiveRange *> coalesced;
   std::vector<bool> inWindow;
 
   auto recordFootprint = [&](G4_INST *inst, std::vector<unsigned> &out) {
@@ -14042,6 +14127,22 @@ void relocateBlockLocals(BlockScanCtx &ctx) {
     markSendWindows(bb, ctx.bwd, ctx.fwd, inWindow);
     seen.clear();
     RA_TRACE(++ctx.statBlocks);
+
+    // Coloring has already given both ends of these movs the same register, so
+    // removeRedundMov will delete them. Moving either end turns a mov that was
+    // about to vanish into a real copy, which pays for the separation with an
+    // instruction -- so leave those values where coloring put them. Read once
+    // per block, from the colors as coloring left them: a value rejected here
+    // is never moved, so no later placement can invalidate the answer.
+    coalesced.clear();
+    for (G4_INST *inst : *bb) {
+      if (!isRemovableRawMov(ctx, inst))
+        continue;
+      if (LiveRange *dstLR = liveRangeOf(ctx, inst->getDst()))
+        coalesced.insert(dstLR);
+      if (LiveRange *srcLR = liveRangeOf(ctx, inst->getSrc(0)))
+        coalesced.insert(srcLR);
+    }
 
     const unsigned n = (unsigned)bb->size();
     footprint.assign(n, {});
@@ -14069,6 +14170,10 @@ void relocateBlockLocals(BlockScanCtx &ctx) {
                           if (indirect || !lr)
                             return;
                           if (!isRelocatableLocal(ctx, bb, lr))
+                            return;
+                          // Reached by a mov that coloring already made
+                          // removable; see where `coalesced` is built.
+                          if (coalesced.count(lr))
                             return;
                           // Decided at the first reference, and once only:
                           // marked seen whether or not it is placed, so a value
