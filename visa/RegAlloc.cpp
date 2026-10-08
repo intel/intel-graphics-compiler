@@ -1918,17 +1918,10 @@ void GlobalRA::markBlockLocalVar(G4_RegVar *var, unsigned bbId) {
 }
 
 void GlobalRA::markBlockLocalVars() {
-  bool eotFound = false;
-  hasMultipleEOTs = false;
   for (auto bb : kernel.fg) {
     for (std::list<G4_INST *>::iterator it = bb->begin(); it != bb->end();
          it++) {
       G4_INST *inst = *it;
-
-      if (inst->isEOT()) {
-        hasMultipleEOTs |= eotFound;
-        eotFound = true;
-      }
 
       // Chjeck if there is undefine variable used in CMP instruction, which is
       // used to detect the execution mask.

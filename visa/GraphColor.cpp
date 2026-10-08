@@ -12438,12 +12438,10 @@ int GlobalRA::coloringRegAlloc() {
 
   bool hybridWithSpill = useHybridRAwithSpill &&
     (!hasStackCall || builder.getOption(vISA_PartitionWithFastHybridRA));
-  // Restricted EOT payloads need global liveness to reuse the final 16 GRFs.
-  useLocalRA = builder.getOption(vISA_LocalRA) &&
-               !(builder.hasEOTGRFBinding() && hasMultipleEOTs) &&
-               (kernel.fg.funcInfoTable.size() == 0 ||
-                kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D ||
-                hybridWithSpill);
+  useLocalRA = builder.getOption(vISA_LocalRA)
+    && (kernel.fg.funcInfoTable.size() == 0
+        || kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D
+        || hybridWithSpill);
 
   // this needs to be called before addr/flag RA since it changes their
   // alignment as well
