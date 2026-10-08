@@ -23,10 +23,9 @@ source_filename = "InsertElement.ll"
 define spir_kernel void @test_insert(i32 %src1, <3 x i1> %src2) !dbg !7 {
 ; Testcase 1
 ; insertelement with const vector to several insertelements
-; CHECK: [[INS1_V:%[0-9]*]] = insertelement <3 x i32> undef, i32 0, i32 0
-; CHECK-NEXT: [[INS2_V:%[0-9]*]] = insertelement <3 x i32> [[INS1_V]], i32 1, i32 1
-; CHECK-NEXT: [[INS3_V:%[0-9]*]] = insertelement <3 x i32> [[INS2_V]], i32 2, i32 2
-; CHECK-NEXT: [[INS_EL_V:%[0-9]*]] = insertelement <3 x i32> [[INS3_V]], i32 %src1, i32 0, !dbg [[INS_EL_LOC:![0-9]*]]
+; CHECK: [[INS1_V:%[0-9]*]] = insertelement <3 x i32> undef, i32 1, i32 1
+; CHECK-NEXT: [[INS2_V:%[0-9]*]] = insertelement <3 x i32> [[INS1_V]], i32 2, i32 2
+; CHECK-NEXT: [[INS_EL_V:%[0-9]*]] = insertelement <3 x i32> [[INS2_V]], i32 %src1, i32 0, !dbg [[INS_EL_LOC:![0-9]*]]
 ; CHECK-DBG-INTRINSIC: [[DBG_VALUE_CALL:dbg.value\(metadata]] <3 x i32> [[INS_EL_V]],  metadata [[INS_EL_MD:![0-9]*]], {{.*}}, !dbg [[INS_EL_LOC]]
 ; CHECK-DBG-RECORDS: #dbg_value(<3 x i32> [[INS_EL_V]], [[INS_EL_MD:![0-9]*]], {{.*}}, [[INS_EL_LOC]])
 
@@ -52,12 +51,29 @@ define spir_kernel void @test_insert(i32 %src1, <3 x i1> %src2) !dbg !7 {
   call void @llvm.dbg.value(metadata i1 %4, metadata !16, metadata !DIExpression()), !dbg !21
   %5 = select i1 %4, i32 13, i32 14, !dbg !22
   call void @llvm.dbg.value(metadata i32 %5, metadata !17, metadata !DIExpression()), !dbg !22
+
+; Testcase 3
+; constant lanes read by a debug value of an intermediate vector stay
+; CHECK: [[INS_C9_V:%[0-9]*]] = insertelement <2 x i32> undef, i32 9, i32 1
+; CHECK-NEXT: [[INS_MID_V:%[0-9]*]] = insertelement <2 x i32> [[INS_C9_V]], i32 %src1, i32 0, !dbg [[INS_MID_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: [[DBG_VALUE_CALL]] <2 x i32> [[INS_MID_V]], metadata [[INS_MID_MD:![0-9]*]], {{.*}}, !dbg [[INS_MID_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(<2 x i32> [[INS_MID_V]], [[INS_MID_MD:![0-9]*]], {{.*}}, [[INS_MID_LOC]])
+; CHECK: insertelement <2 x i32> [[INS_MID_V]], i32 %src1, i32 1
+
+  %6 = insertelement <2 x i32> <i32 7, i32 9>, i32 %src1, i32 0, !dbg !24
+  call void @llvm.dbg.value(metadata <2 x i32> %6, metadata !25, metadata !DIExpression()), !dbg !24
+  %7 = insertelement <2 x i32> %6, i32 %src1, i32 1, !dbg !27
+  call void @llvm.dbg.value(metadata <2 x i32> %7, metadata !28, metadata !DIExpression()), !dbg !27
   ret void, !dbg !23
 }
 
 ; Testcase 1 MD:
 ; CHECK-DAG: [[INS_EL_LOC]] = !DILocation(line: 1
 ; CHECK-DAG: [[INS_EL_MD]] = !DILocalVariable(name: "1"
+
+; Testcase 3 MD:
+; CHECK-DAG: [[INS_MID_LOC]] = !DILocation(line: 7
+; CHECK-DAG: [[INS_MID_MD]] = !DILocalVariable(name: "6"
 
 ; Testcase 2 MD:
 ; CHECK-DAG: [[EXTR_LOC]] = !DILocation(line: 2
@@ -78,12 +94,12 @@ attributes #0 = { nounwind readnone speculatable }
 !1 = !{}
 !2 = distinct !DICompileUnit(language: DW_LANG_C, file: !3, producer: "debugify", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug, enums: !1)
 !3 = !DIFile(filename: "InsertElement.ll", directory: "/")
-!4 = !{i32 6}
-!5 = !{i32 5}
+!4 = !{i32 8}
+!5 = !{i32 7}
 !6 = !{i32 2, !"Debug Info Version", i32 3}
 !7 = distinct !DISubprogram(name: "test_insert", linkageName: "test_insert", scope: null, file: !3, line: 1, type: !8, scopeLine: 1, unit: !2, retainedNodes: !9)
 !8 = !DISubroutineType(types: !1)
-!9 = !{!10, !12, !14, !16, !17}
+!9 = !{!10, !12, !14, !16, !17, !25, !28}
 !10 = !DILocalVariable(name: "1", scope: !7, file: !3, line: 1, type: !11)
 !11 = !DIBasicType(name: "ty128", size: 128, encoding: DW_ATE_unsigned)
 !12 = !DILocalVariable(name: "2", scope: !7, file: !3, line: 2, type: !13)
@@ -98,3 +114,8 @@ attributes #0 = { nounwind readnone speculatable }
 !21 = !DILocation(line: 4, column: 1, scope: !7)
 !22 = !DILocation(line: 5, column: 1, scope: !7)
 !23 = !DILocation(line: 6, column: 1, scope: !7)
+!24 = !DILocation(line: 7, column: 1, scope: !7)
+!25 = !DILocalVariable(name: "6", scope: !7, file: !3, line: 7, type: !26)
+!26 = !DIBasicType(name: "ty64", size: 64, encoding: DW_ATE_unsigned)
+!27 = !DILocation(line: 8, column: 1, scope: !7)
+!28 = !DILocalVariable(name: "7", scope: !7, file: !3, line: 8, type: !26)
