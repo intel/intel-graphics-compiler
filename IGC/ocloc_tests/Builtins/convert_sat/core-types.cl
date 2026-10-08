@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 // RUN: ocloc compile -file %s -device dg2 \
 // RUN: -options "-I %S -cl-std=CL3.0 -igc_opts 'EnableOpaquePointersBackend=1 PrintToConsole=1 PrintBefore=EmitPass'" \
+// RUN: -internal_options "-cl-intel-greater-than-4GB-buffer-required" \
 // RUN: -out_dir /dev/null 2>&1 | FileCheck --enable-var-scope %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE-LLVM22%}
 
 // LLVM17 clamps NaN first (select before the min/max clamp); LLVM22 canonicalizes

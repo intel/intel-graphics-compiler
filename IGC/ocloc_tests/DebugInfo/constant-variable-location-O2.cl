@@ -17,7 +17,7 @@ __kernel void foo(__global int* result) {
     result[0] = sum;
 }
 
-// RUN: %if dg2-supported %{ ocloc compile -file %s -options " -g -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_dg2_'" -device dg2 %}
+// RUN: %if dg2-supported %{ ocloc compile -file %s -options " -g -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_dg2_'" -internal_options "-cl-intel-greater-than-4GB-buffer-required" -device dg2 %}
 // RUN: %if dg2-supported %{ oneapi-readelf --debug-dump %t_dg2_OCL_simd32_foo.elf | \
 // RUN: FileCheck %s --check-prefixes=CHECK,%if lib-igc-clang && !llvm-22-plus %{CHECK-IGC-CLANG%} %else %{CHECK-DIRECT%} %}
 

@@ -25,6 +25,7 @@ entry:
   ; CHECK-NOT: %{{.*}} = load i32, i32 addrspace(131073)* %2, align 4
   ; CHECK: %{{.*}} = load i32, i32 addrspace(1)* %0, align 4
   %1 = load i32, i32 addrspace(1)* %0, align 4
+  ; CHECK: store i32 %{{.*}}, i32 addrspace(131072)* %{{.*}}, align 4
   store i32 %1, i32 addrspace(1)* %out, align 4
   ret void
 }
@@ -47,7 +48,18 @@ attributes #0 = { nounwind }
 !317 = !{!"implicitArgInfoListVec[3]", !315, !316}
 !318 = !{!"implicitArgInfoList", !310, !312, !314, !317}
 !319 = !{!"FuncMDMap[0]", void (i32 addrspace(1)*, i32, <8 x i32>, <8 x i32>, i8 addrspace(1)*, i32)* @test_implicit_dg}
-!320 = !{!"FuncMDValue[0]", !318}
+!320 = !{!"FuncMDValue[0]", !318, !330}
 !321 = !{!"FuncMD", !319, !320}
 !322 = !{!"ModuleMD", !321}
 !IGCMetadata = !{!322}
+!330 = !{!"resAllocMD", !331}
+!331 = !{!"argAllocMDList", !332, !336, !337, !338, !339, !340}
+!332 = !{!"argAllocMDListVec[0]", !333, !334, !335}
+!333 = !{!"type", i32 0}
+!334 = !{!"extensionType", i32 -1}
+!335 = !{!"indexType", i32 -1}
+!336 = !{!"argAllocMDListVec[1]", !333, !334, !335}
+!337 = !{!"argAllocMDListVec[2]", !333, !334, !335}
+!338 = !{!"argAllocMDListVec[3]", !333, !334, !335}
+!339 = !{!"argAllocMDListVec[4]", !333, !334, !335}
+!340 = !{!"argAllocMDListVec[5]", !333, !334, !335}

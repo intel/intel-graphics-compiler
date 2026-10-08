@@ -21,7 +21,7 @@
 ; REQUIRES: regkeys, oneapi-readelf, dg2-supported, llvm-16-plus
 
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t
-; RUN: ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'EnableOpaquePointersBackend=1, ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'"
+; RUN: ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'EnableOpaquePointersBackend=1, ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'" -internal_options "-cl-intel-greater-than-4GB-buffer-required"
 ; RUN: oneapi-readelf --debug-dump %t_OCL_simd32_test_fragmented_struct.elf | FileCheck %s
 
 ; CHECK:      DW_AT_name        : mixed

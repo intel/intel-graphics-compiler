@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 // is version-split too: LLVM17 keeps CHECK-FULL-EMU; LLVM22 uses CHECK-F22 below.
 // RUN: %if dg2-supported %{ ocloc compile -file %s -device dg2 \
 // RUN: -options "-I %S -cl-std=CL3.0 -igc_opts 'EnableOpaquePointersBackend=1 PrintToConsole=1 PrintBefore=EmitPass' -DCHECK_HALF_ONLY" \
+// RUN: -internal_options "-cl-intel-greater-than-4GB-buffer-required" \
 // RUN: -out_dir /dev/null 2>&1 | FileCheck --enable-var-scope %s --check-prefixes=%if llvm-22-plus %{CHECK-F22%} %else %{CHECK,CHECK-FULL-EMU%} %}
 
 #include "test_convert_sat_helper.h"

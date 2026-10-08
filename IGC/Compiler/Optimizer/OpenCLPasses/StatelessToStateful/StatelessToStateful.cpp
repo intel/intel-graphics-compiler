@@ -508,17 +508,9 @@ const KernelArg *StatelessToStateful::getKernelArgFromPtr(const PointerType &ptr
 }
 
 bool StatelessToStateful::pointerIsFromKernelArgument(Value &ptr) {
-  // find the last gep
   Value *base = ptr.stripPointerCasts();
-  // gep : the last gep of pointer address, null if no GEP at all.
-  GetElementPtrInst *gep = nullptr;
-  while (isa<GetElementPtrInst>(base)) {
-    gep = static_cast<GetElementPtrInst *>(base);
+  while (auto *gep = dyn_cast<GetElementPtrInst>(base))
     base = gep->getPointerOperand()->stripPointerCasts();
-  }
-
-  if (!m_supportNonGEPPtr && gep == nullptr)
-    return false;
 
   if (getKernelArgFromPtr(*dyn_cast<PointerType>(ptr.getType()), base) != nullptr)
     return true;
@@ -621,16 +613,9 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
 
   SmallVector<GetElementPtrInst *, 4> GEPs;
   Value *base = V->stripPointerCasts();
-  // gep : the last gep of pointer address, null if no GEP at all.
-  GetElementPtrInst *gep = nullptr;
-  while (isa<GetElementPtrInst>(base)) {
-    gep = static_cast<GetElementPtrInst *>(base);
+  while (auto *gep = dyn_cast<GetElementPtrInst>(base)) {
     GEPs.push_back(gep);
     base = gep->getPointerOperand()->stripPointerCasts();
-  }
-
-  if (!m_supportNonGEPPtr && gep == nullptr) {
-    return false;
   }
 
   // if the base is from kerenl argument
