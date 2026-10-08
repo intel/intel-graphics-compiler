@@ -388,7 +388,7 @@ SOALayoutChecker::SOALayoutChecker(AllocaInst &allocaToCheck, bool isOCL,
 }
 
 // Reject allocas with access not-supported by new SoA algorithm
-bool SOALayoutChecker::hasAccessUnsupportedByNewAlgo(bool CheckWideVectors) const {
+bool SOALayoutChecker::hasAccessUnsupportedByNewAlgo() const {
   llvm::SmallPtrSet<llvm::Value *, 32> Seen;
   llvm::SmallVector<llvm::Value *, 32> Worklist;
   Worklist.push_back(&allocaRef);
@@ -436,9 +436,6 @@ bool SOALayoutChecker::hasAccessUnsupportedByNewAlgo(bool CheckWideVectors) cons
       // Access needs to be aligned to its size or the partition size. Smaller accesses due to chunk offset calculation
       // and larger due to splitting in partition sized chunks.
       if (!isAlignedChain(Ptr, (AccBytes < SOAPartitionBytes) ? AccBytes : SOAPartitionBytes))
-        return true;
-      // For non-struct base types accesses larger than partition can only be handled by legacy SoA promotion.
-      if (CheckWideVectors && AccTy->isVectorTy() && AccBytes > SOAPartitionBytes)
         return true;
       // Accesses greater than partition size are not supported unless EnableAggressiveSOAPromotion is on and their size
       // is a multiple of the partition size - refer to getMultiChunkVecTy.
@@ -505,8 +502,7 @@ SOALayoutInfo SOALayoutChecker::getOrGatherInfo() {
       }
     }
 
-    // Wide vector accesses are only a problem for non-struct base types.
-    bool HasUnsupportedAccess = hasAccessUnsupportedByNewAlgo(/*CheckWideVectors=*/STy == nullptr);
+    bool HasUnsupportedAccess = hasAccessUnsupportedByNewAlgo();
 
     uint64_t AllocatedBytes = pDL->getTypeAllocSize(allocaRef.getAllocatedType());
     bool PartialTailChunk = (AllocatedBytes % SOAPartitionBytes) != 0;

@@ -158,7 +158,7 @@ private:
   // Gating those rules individually, rather than useNewAlgo(), leaves the pre-existing
   // array-of-struct support (EnablePrivMemNewSOATranspose on its own) with its original rules.
   bool useAggressiveStructSOA() const;
-  bool hasAccessUnsupportedByNewAlgo(bool CheckWideVectors) const;
+  bool hasAccessUnsupportedByNewAlgo() const;
   // Return true if every byte offset \p Ptr can carry relative to the alloca is provably a
   // multiple of given alignment.
   bool isAlignedChain(const llvm::Value *Ptr, uint64_t TargetAlignment) const;
