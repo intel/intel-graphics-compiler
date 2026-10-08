@@ -1373,6 +1373,27 @@ void Legalization::PromoteInsertElement(Value *I, Value *newVec) {
   }
 }
 
+// Returns the lanes of I's result that I and its chain of constant-index
+// insertelements overwrite, so the base vector's values in these lanes are
+// never read. The walk stops at a vector with more than one use or with a
+// debug value, which also reads the lanes not yet overwritten.
+static SmallVector<bool, 16> getOverwrittenLanes(InsertElementInst &I, unsigned NumElts) {
+  SmallVector<bool, 16> Lanes(NumElts, false);
+  for (InsertElementInst *IEI = &I; IEI;) {
+    auto *Idx = dyn_cast<ConstantInt>(IEI->getOperand(2));
+    // getLimitedValue also handles indices wider than 64 bits.
+    uint64_t Lane = Idx ? Idx->getLimitedValue(NumElts) : NumElts;
+    if (Lane >= NumElts)
+      break;
+    Lanes[Lane] = true;
+    if (!IEI->hasOneUse() || IEI->isUsedByMetadata())
+      break;
+    auto *Next = dyn_cast<InsertElementInst>(IEI->user_back());
+    IEI = (Next && Next->getOperand(0) == IEI) ? Next : nullptr;
+  }
+  return Lanes;
+}
+
 void Legalization::visitInsertElementInst(InsertElementInst &I) {
   m_ctx->m_instrTypes.numInsts++;
   Constant *vec = dyn_cast<Constant>(I.getOperand(0));
@@ -1380,9 +1401,13 @@ void Legalization::visitInsertElementInst(InsertElementInst &I) {
       (isa<ConstantDataVector, ConstantVector, ConstantAggregateZero>(vec) || vec->getSplatValue() != nullptr)) {
     Value *newVec = UndefValue::get(vec->getType());
     unsigned int nbElement = (unsigned)cast<IGCLLVM::FixedVectorType>(vec->getType())->getNumElements();
+    // Skip constant lanes that the insertelement chain overwrites anyway.
+    // Materializing them makes the chain start from a constant instead of
+    // undef, which prevents the chain from being aliased to its source vector.
+    SmallVector<bool, 16> Overwritten = getOverwrittenLanes(I, nbElement);
     for (unsigned int i = 0; i < nbElement; i++) {
       Constant *cst = vec->getAggregateElement(i);
-      if (cst && !isa<UndefValue>(cst)) {
+      if (cst && !isa<UndefValue>(cst) && !Overwritten[i]) {
         newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "",
                                            IGCLLVM::insertPosition(&I));
         Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
