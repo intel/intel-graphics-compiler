@@ -119,7 +119,6 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   // NOTE: No need to check for UseLegacyBindlessMode,
   //       as it's unrelated to images.
   BIF_FLAG_CTRL_SET(UseBindlessImage, PtrCGC->getModuleMetaData()->UseBindlessImage);
-  BIF_FLAG_CTRL_SET(SPVINTELBindlessImages, PtrCGC->getModuleMetaData()->extensions.spvINTELBindlessImages);
 }
 
 #undef BIF_FLAG_CTRL_SET

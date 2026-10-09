@@ -51,5 +51,4 @@ BIF_FLAG_CONTROL(bool, SupportsRayTracingExtendedCacheControl)
 BIF_FLAG_CONTROL(bool, IsRayQueryReturnOptimizationPackedStatusEnabled)
 BIF_FLAG_CONTROL(bool, IsRayQueryReturnOptimizationEnabled)
 BIF_FLAG_CONTROL(bool, UseBindlessImage)
-BIF_FLAG_CONTROL(bool, SPVINTELBindlessImages)
 #endif // __BIF_FLAG_CONTROL_H__
