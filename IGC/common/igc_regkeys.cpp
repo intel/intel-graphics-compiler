@@ -212,6 +212,7 @@ const UmdRegkeyMap *GetCurrentUmdRegkeys() { return CurrentUmdRegkeys; }
 #endif
 
 #include <algorithm>
+#include <bitset>
 #include <chrono>
 #include <fstream>
 #include <iomanip>
@@ -724,7 +725,7 @@ static void setRegkeyFromOption(const std::string &optionValue, const char *data
   }
 }
 
-static const std::string GetOptionFilePath() {
+static std::string ResolveOptionFilePath() {
 
 #if defined(_WIN64) || defined(_WIN32)
   char path[256] = "c:\\Intel\\IGC\\debugFlags\\";
@@ -744,6 +745,11 @@ static const std::string GetOptionFilePath() {
 #else
   return "/tmp/IntelIGC/debugFlags/";
 #endif
+}
+
+static const std::string &GetOptionFilePath() {
+  static const std::string Path = ResolveOptionFilePath();
+  return Path;
 }
 
 static const std::string GetOptionFile() {
@@ -1040,6 +1046,8 @@ static void LoadDebugFlagsFromString(const char *input) {
 }
 
 void appendToOptionsLogFile(std::string const &message) {
+  static std::mutex LogMutex;
+  std::lock_guard<std::mutex> Lock(LogMutex);
   std::string logPath = GetOptionFilePath();
   logPath.append("Options_log.txt");
   std::ofstream os(logPath.c_str(), std::ios::app);
@@ -1068,6 +1076,41 @@ void ClearCurrentEntryPoints() {
 }
 
 
+// Log each flag once per (pipeline hash, asm hash) per thread; trivially destructible to avoid TLS leaks.
+namespace {
+constexpr size_t NumIGCFlags = static_cast<size_t>(IGCFlagIndex::IGCFlagIndexCount);
+struct HashLogState {
+  unsigned long long AsmHash = 0;
+  unsigned long long PipelineHash = 0;
+  std::bitset<NumIGCFlags> Applied;
+  std::bitset<NumIGCFlags> Warned;
+};
+} // namespace
+static thread_local HashLogState g_HashLogState;
+
+static HashLogState &getHashLogState() {
+  HashLogState &State = g_HashLogState;
+  const unsigned long long AsmHash = g_CurrentShaderHash.getAsmHash();
+  const unsigned long long PipelineHash = g_CurrentShaderHash.getPipelineHash();
+  if (State.AsmHash != AsmHash || State.PipelineHash != PipelineHash) {
+    State.AsmHash = AsmHash;
+    State.PipelineHash = PipelineHash;
+    State.Applied.reset();
+    State.Warned.reset();
+  }
+  return State;
+}
+
+static bool markFirstUse(std::bitset<NumIGCFlags> &Set, const IGCFlag &Flag) {
+  const size_t Idx = static_cast<size_t>(&Flag - g_IGCFlagsArray.data());
+  if (Idx >= NumIGCFlags)
+    return true;
+  if (Set[Idx])
+    return false;
+  Set[Idx] = true;
+  return true;
+}
+
 bool CheckHashRange(IGCFlag &varname) {
   if (varname.hashes.empty()) {
     if (varname.entry_points.empty()) {
@@ -1076,7 +1119,8 @@ bool CheckHashRange(IGCFlag &varname) {
       return false;
     }
   }
-  if (!g_CurrentShaderHash.is_set()) {
+  HashLogState &LogState = getHashLogState();
+  if (!g_CurrentShaderHash.is_set() && markFirstUse(LogState.Warned, varname)) {
     std::string msg = "Warning: hash not calculated yet; IGC_GET_FLAG_VALUE(" + std::string(varname.name) +
                       ") returned default value";
     appendToOptionsLogFile(msg);
@@ -1086,7 +1130,7 @@ bool CheckHashRange(IGCFlag &varname) {
     unsigned long long CurrHash = it.getHashVal(g_CurrentShaderHash);
     if (CurrHash >= it.start && CurrHash <= it.end) {
       memcpy_s(varname.m_string, sizeof(debugString), it.m_string, sizeof(debugString));
-      if (!it.implied) {
+      if (!it.implied && markFirstUse(LogState.Applied, varname)) {
         std::ostringstream oss;
         oss << "[apply] pHash=0x" << std::hex << std::setfill('0') << std::setw(16)
             << g_CurrentShaderHash.getPipelineHash() << ", aHash=0x" << std::setw(16)
