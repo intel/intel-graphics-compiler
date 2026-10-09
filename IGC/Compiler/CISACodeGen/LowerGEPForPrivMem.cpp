@@ -494,8 +494,8 @@ SOALayoutChecker::SOALayoutChecker(AllocaInst &allocaToCheck, bool isOCL,
   }
 }
 
-// Reject allocas with access not-supported by new SoA algorithm
-bool SOALayoutChecker::hasAccessUnsupportedByNewAlgo() const {
+// Return true if the alloca has any non supported access
+bool SOALayoutChecker::hasUnsupportedAccess(bool IsNewAlgo) const {
   llvm::SmallPtrSet<llvm::Value *, 32> Seen;
   llvm::SmallVector<llvm::Value *, 32> Worklist;
   Worklist.push_back(&allocaRef);
@@ -519,6 +519,7 @@ bool SOALayoutChecker::hasAccessUnsupportedByNewAlgo() const {
 
       llvm::Type *AccTy = nullptr;
       llvm::Value *Ptr = nullptr;
+      bool IsStore = false;
       if (auto *PLI = llvm::dyn_cast<llvm::PredicatedLoadIntrinsic>(U)) {
         AccTy = PLI->getType();
         Ptr = PLI->getPointerOperand();
@@ -531,24 +532,44 @@ bool SOALayoutChecker::hasAccessUnsupportedByNewAlgo() const {
         if (SI->getPointerOperand() == V) {
           AccTy = SI->getValueOperand()->getType();
           Ptr = V;
+          IsStore = true;
         }
       }
       if (!AccTy)
         continue;
 
       uint64_t AccBytes = pDL->getTypeStoreSize(AccTy);
-      // Accesses smaller than the partition size must be a power of two due to intra chunk offset calculations.
-      if (AccBytes < SOAPartitionBytes && !isPowerOf2_32((uint32_t)AccBytes))
-        return true;
-      // Access needs to be aligned to its size or the partition size. Smaller accesses due to chunk offset calculation
-      // and larger due to splitting in partition sized chunks.
-      if (!isAlignedChain(Ptr, (AccBytes < SOAPartitionBytes) ? AccBytes : SOAPartitionBytes))
-        return true;
-      // Accesses greater than partition size are not supported unless EnableAggressiveSOAPromotion is on and their size
-      // is a multiple of the partition size - refer to getMultiChunkVecTy.
-      if (AccBytes > SOAPartitionBytes &&
-          (IGC_IS_FLAG_DISABLED(EnableAggressiveSOAPromotion) || (AccBytes % SOAPartitionBytes) != 0))
-        return true;
+      if (IsNewAlgo) {
+        // New SoA algorithm - TransposePrivMem
+        // Accesses smaller than the partition size must be a power of two due to intra chunk offset calculations.
+        if (AccBytes < SOAPartitionBytes && !isPowerOf2_32((uint32_t)AccBytes))
+          return true;
+        // Access needs to be aligned to its size or the partition size. Smaller accesses due to chunk offset
+        // calculation and larger due to splitting in partition sized chunks.
+        if (!isAlignedChain(Ptr, (AccBytes < SOAPartitionBytes) ? AccBytes : SOAPartitionBytes))
+          return true;
+        // Accesses greater than partition size are not supported unless EnableAggressiveSOAPromotion is on and their
+        // size is a multiple of the partition size - refer to getMultiChunkVecTy.
+        if (AccBytes > SOAPartitionBytes &&
+            (IGC_IS_FLAG_DISABLED(EnableAggressiveSOAPromotion) || (AccBytes % SOAPartitionBytes) != 0))
+          return true;
+      } else if (MismatchDetectionStrategy == DefaultLowerGEPStrategy) {
+        // DefaultLowerGEPStrategy uses its own transpose helper - TransposeHelperPromote
+        auto LaneSize = pDL->getTypeAllocSize(pInfo->baseType->getScalarType());
+        if (!isAlignedChain(Ptr, LaneSize))
+          return true;
+        // To avoid 0 extending and overwriting of unintended data, require access to be multiple of lane size.
+        if (IsStore && AccBytes % LaneSize != 0)
+          return true;
+      } else {
+        // Legacy SoA algorithm - TransposeHelperPrivateMem
+        auto LaneSize = pDL->getTypeAllocSize(pInfo->baseType);
+        if (!isAlignedChain(Ptr, LaneSize))
+          return true;
+        // Vector access are emitted as single load/store instructions, so they must fit within a lane.
+        if (pInfo->baseType->isVectorTy() && AccBytes > LaneSize)
+          return true;
+      }
     }
   }
   return false;
@@ -609,7 +630,7 @@ SOALayoutInfo SOALayoutChecker::getOrGatherInfo() {
       }
     }
 
-    bool HasUnsupportedAccess = hasAccessUnsupportedByNewAlgo();
+    bool HasUnsupportedAccess = hasUnsupportedAccess(true);
 
     uint64_t AllocatedBytes = pDL->getTypeAllocSize(allocaRef.getAllocatedType());
     bool PartialTailChunk = (AllocatedBytes % SOAPartitionBytes) != 0;
@@ -638,6 +659,10 @@ SOALayoutInfo SOALayoutChecker::getOrGatherInfo() {
   if (!isVectorSOA) {
     pInfo->baseType = pInfo->baseType->getScalarType();
   }
+
+  if (pInfo->canUseSOALayout && hasUnsupportedAccess(false))
+    pInfo->canUseSOALayout = false;
+
   return *pInfo;
 }
 
