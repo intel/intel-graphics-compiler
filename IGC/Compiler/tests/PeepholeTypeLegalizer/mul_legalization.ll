@@ -111,3 +111,98 @@ define spir_func i128 @test_mul_i128(i128 %src0, i128 %src1) {
   ; CHECK: ret i128 [[TMP67]]
   ret i128 %1
 }
+
+define spir_func i48 @test_mul_i48_const(i48 %src0) {
+; CHECK-LABEL: @test_mul_i48_const(
+; CHECK: [[TMP1:%.*]] = zext i48 [[SRC0:%.*]] to i64
+; CHECK: [[TMP2:%.*]] = bitcast i64 [[TMP1]] to <2 x i32>
+; CHECK: [[TMP3:%.*]] = extractelement <2 x i32> [[TMP2]], i64 0
+; CHECK: [[TMP4:%.*]] = extractelement <2 x i32> [[TMP2]], i64 1
+
+; CHECK: [[TMP5:%.*]] = mul i32 [[TMP3]], 2
+; CHECK: [[TMP6:%.*]] = call i32 @llvm.genx.GenISA.umulH.i32(i32 [[TMP3]], i32 2)
+; CHECK: [[TMP7:%.*]] = mul i32 [[TMP3]], 1
+; CHECK: [[TMP8:%.*]] = add i32 [[TMP6]], [[TMP7]]
+
+; CHECK: [[TMP9:%.*]] = mul i32 [[TMP4]], 2
+; CHECK: [[TMP10:%.*]] = add i32 [[TMP8]], [[TMP9]]
+; CHECK: [[TMP11:%.*]] = and i32 [[TMP10]], 65535
+; CHECK: [[TMP12:%.*]] = insertelement <2 x i32> undef, i32 [[TMP5]], i64 0
+; CHECK: [[TMP13:%.*]] = insertelement <2 x i32> [[TMP12]], i32 [[TMP11]], i64 1
+; CHECK: [[TMP14:%.*]] = bitcast <2 x i32> [[TMP13]] to i64
+; CHECK: [[TMP15:%.*]] = trunc i64 [[TMP14]] to i48
+  %1 = mul i48 %src0, 4294967298 ; = 0x0001'00000002
+; CHECK: ret i48 [[TMP15]]
+  ret i48 %1
+}
+
+define spir_func i128 @test_mul_i128_const(i128 %src0) {
+; CHECK-LABEL: @test_mul_i128_const(
+; CHECK: [[TMP1:%.*]] = bitcast i128 [[SRC0:%.*]] to <4 x i32>
+; CHECK: [[TMP2:%.*]] = extractelement <4 x i32> [[TMP1]], i64 0
+; CHECK: [[TMP3:%.*]] = extractelement <4 x i32> [[TMP1]], i64 1
+; CHECK: [[TMP4:%.*]] = extractelement <4 x i32> [[TMP1]], i64 2
+; CHECK: [[TMP5:%.*]] = extractelement <4 x i32> [[TMP1]], i64 3
+
+; CHECK: [[TMP6:%.*]] = mul i32 [[TMP2]], 4
+; CHECK: [[TMP7:%.*]] = call i32 @llvm.genx.GenISA.umulH.i32(i32 [[TMP2]], i32 4)
+; CHECK: [[TMP8:%.*]] = mul i32 [[TMP2]], 3
+; CHECK: [[TMP9:%.*]] = add i32 [[TMP7]], [[TMP8]]
+; CHECK: [[TMP10:%.*]] = icmp ult i32 [[TMP9]], [[TMP7]]
+; CHECK: [[TMP11:%.*]] = zext i1 [[TMP10]] to i32
+; CHECK: [[TMP12:%.*]] = call i32 @llvm.genx.GenISA.umulH.i32(i32 [[TMP2]], i32 3)
+; CHECK: [[TMP13:%.*]] = add i32 [[TMP11]], [[TMP12]]
+; CHECK: [[TMP14:%.*]] = icmp ult i32 [[TMP13]], [[TMP11]]
+; CHECK: [[TMP15:%.*]] = zext i1 [[TMP14]] to i32
+; CHECK: [[TMP16:%.*]] = mul i32 [[TMP2]], 2
+; CHECK: [[TMP17:%.*]] = add i32 [[TMP13]], [[TMP16]]
+; CHECK: [[TMP18:%.*]] = icmp ult i32 [[TMP17]], [[TMP13]]
+; CHECK: [[TMP19:%.*]] = zext i1 [[TMP18]] to i32
+; CHECK: [[TMP20:%.*]] = add i32 [[TMP15]], [[TMP19]]
+; CHECK: [[TMP21:%.*]] = call i32 @llvm.genx.GenISA.umulH.i32(i32 [[TMP2]], i32 2)
+; CHECK: [[TMP22:%.*]] = add i32 [[TMP20]], [[TMP21]]
+; CHECK: [[TMP23:%.*]] = mul i32 [[TMP2]], 1
+; CHECK: [[TMP24:%.*]] = add i32 [[TMP22]], [[TMP23]]
+; CHECK: [[TMP25:%.*]] = mul i32 [[TMP3]], 4
+; CHECK: [[TMP26:%.*]] = add i32 [[TMP9]], [[TMP25]]
+; CHECK: [[TMP27:%.*]] = icmp ult i32 [[TMP26]], [[TMP9]]
+; CHECK: [[TMP28:%.*]] = zext i1 [[TMP27]] to i32
+; CHECK: [[TMP29:%.*]] = add i32 [[TMP17]], [[TMP28]]
+; CHECK: [[TMP30:%.*]] = icmp ult i32 [[TMP29]], [[TMP17]]
+; CHECK: [[TMP31:%.*]] = zext i1 [[TMP30]] to i32
+; CHECK: [[TMP32:%.*]] = add i32 [[TMP24]], [[TMP31]]
+; CHECK: [[TMP33:%.*]] = call i32 @llvm.genx.GenISA.umulH.i32(i32 [[TMP3]], i32 4)
+; CHECK: [[TMP34:%.*]] = add i32 [[TMP29]], [[TMP33]]
+; CHECK: [[TMP35:%.*]] = icmp ult i32 [[TMP34]], [[TMP29]]
+; CHECK: [[TMP36:%.*]] = zext i1 [[TMP35]] to i32
+; CHECK: [[TMP37:%.*]] = add i32 [[TMP32]], [[TMP36]]
+; CHECK: [[TMP38:%.*]] = mul i32 [[TMP3]], 3
+; CHECK: [[TMP39:%.*]] = add i32 [[TMP34]], [[TMP38]]
+; CHECK: [[TMP40:%.*]] = icmp ult i32 [[TMP39]], [[TMP34]]
+; CHECK: [[TMP41:%.*]] = zext i1 [[TMP40]] to i32
+; CHECK: [[TMP42:%.*]] = add i32 [[TMP37]], [[TMP41]]
+; CHECK: [[TMP43:%.*]] = call i32 @llvm.genx.GenISA.umulH.i32(i32 [[TMP3]], i32 3)
+; CHECK: [[TMP44:%.*]] = add i32 [[TMP42]], [[TMP43]]
+; CHECK: [[TMP45:%.*]] = mul i32 [[TMP3]], 2
+; CHECK: [[TMP46:%.*]] = add i32 [[TMP44]], [[TMP45]]
+; CHECK: [[TMP47:%.*]] = mul i32 [[TMP4]], 4
+; CHECK: [[TMP48:%.*]] = add i32 [[TMP39]], [[TMP47]]
+; CHECK: [[TMP49:%.*]] = icmp ult i32 [[TMP48]], [[TMP39]]
+; CHECK: [[TMP50:%.*]] = zext i1 [[TMP49]] to i32
+; CHECK: [[TMP51:%.*]] = add i32 [[TMP46]], [[TMP50]]
+; CHECK: [[TMP52:%.*]] = call i32 @llvm.genx.GenISA.umulH.i32(i32 [[TMP4]], i32 4)
+; CHECK: [[TMP53:%.*]] = add i32 [[TMP51]], [[TMP52]]
+; CHECK: [[TMP54:%.*]] = mul i32 [[TMP4]], 3
+; CHECK: [[TMP55:%.*]] = add i32 [[TMP53]], [[TMP54]]
+; CHECK: [[TMP56:%.*]] = mul i32 [[TMP5]], 4
+; CHECK: [[TMP57:%.*]] = add i32 [[TMP55]], [[TMP56]]
+
+; CHECK: [[TMP58:%.*]] = insertelement <4 x i32> undef, i32 [[TMP6]], i64 0
+; CHECK: [[TMP59:%.*]] = insertelement <4 x i32> [[TMP58]], i32 [[TMP26]], i64 1
+; CHECK: [[TMP60:%.*]] = insertelement <4 x i32> [[TMP59]], i32 [[TMP48]], i64 2
+; CHECK: [[TMP61:%.*]] = insertelement <4 x i32> [[TMP60]], i32 [[TMP57]], i64 3
+; CHECK: [[TMP62:%.*]] = bitcast <4 x i32> [[TMP61]] to i128
+  %1 = mul i128 %src0, 79228162551157825753847955460  ; = 0x00000001'00000002'00000003'00000004
+  ret i128 %1
+; CHECK: ret i128 [[TMP62]]
+}

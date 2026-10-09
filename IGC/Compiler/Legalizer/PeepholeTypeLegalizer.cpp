@@ -510,16 +510,16 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
       Value *NewInst = NULL;
       switch (I.getOpcode()) {
       case Instruction::And:
-        NewInst = m_builder->CreateAnd(m_builder->CreateExtractElement(NewLargeSrc1VecForm, Idx),
-                                       m_builder->CreateExtractElement(NewLargeSrc2VecForm, Idx));
+        NewInst = m_builder->CreateAnd(getChunk(NewLargeSrc1, NewLargeSrc1VecForm, Idx),
+                                       getChunk(NewLargeSrc2, NewLargeSrc2VecForm, Idx));
         break;
       case Instruction::Or:
-        NewInst = m_builder->CreateOr(m_builder->CreateExtractElement(NewLargeSrc1VecForm, Idx),
-                                      m_builder->CreateExtractElement(NewLargeSrc2VecForm, Idx));
+        NewInst = m_builder->CreateOr(getChunk(NewLargeSrc1, NewLargeSrc1VecForm, Idx),
+                                      getChunk(NewLargeSrc2, NewLargeSrc2VecForm, Idx));
         break;
       case Instruction::Xor:
-        NewInst = m_builder->CreateXor(m_builder->CreateExtractElement(NewLargeSrc1VecForm, Idx),
-                                       m_builder->CreateExtractElement(NewLargeSrc2VecForm, Idx));
+        NewInst = m_builder->CreateXor(getChunk(NewLargeSrc1, NewLargeSrc1VecForm, Idx),
+                                       getChunk(NewLargeSrc2, NewLargeSrc2VecForm, Idx));
         break;
       case Instruction::LShr: {
         if (auto val = dyn_cast<ConstantInt>(Src2)) {
@@ -612,8 +612,8 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
           // Split value into chunks
           SmallVector<Value *, 4> A(quotient), B(quotient);
           for (unsigned i = 0; i < quotient; ++i) {
-            A[i] = m_builder->CreateExtractElement(NewLargeSrc1VecForm, i);
-            B[i] = m_builder->CreateExtractElement(NewLargeSrc2VecForm, i);
+            A[i] = getChunk(NewLargeSrc1, NewLargeSrc1VecForm, i);
+            B[i] = getChunk(NewLargeSrc2, NewLargeSrc2VecForm, i);
           }
 
           // Result vector
