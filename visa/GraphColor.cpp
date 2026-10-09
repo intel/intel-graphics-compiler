@@ -7790,9 +7790,8 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
   // model of the ABI. The same applies when vISA_RABlockLocalScan is off, which
   // is the default.
   if (builder.getOption(vISA_RABlockLocalScan) &&
-      colorHeuristicGRF == FIRST_FIT && spilledLRs.empty() &&
-      liveAnalysis.livenessClass(G4_GRF) && !kernel.fg.getHasStackCalls() &&
-      !kernel.fg.getIsStackCallFunc()) {
+      colorHeuristicGRF == FIRST_FIT && liveAnalysis.livenessClass(G4_GRF) &&
+      !kernel.fg.getHasStackCalls() && !kernel.fg.getIsStackCallFunc()) {
     BlockScanCtx ctx{intf,
                      gra,
                      lrs,
