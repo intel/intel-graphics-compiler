@@ -108,9 +108,6 @@ class G4_Declare {
   // (e.g. builtinS0 used by InsertS0Movs for raw descriptor values) do not
   // participate in points-to analysis.
   uint16_t isIndirectS0 : 1;
-  // A dedicated null-RT payload with no defined color or auxiliary data.
-  // Its register span is required by the message, but its values are ignored.
-  uint16_t undefinedNullRTPayload : 1;
 
   unsigned declId; // global decl id for this builder
 
@@ -140,8 +137,6 @@ public:
   bool isBuiltin() const { return builtin; }
   void setIsIndirectS0() { isIndirectS0 = true; }
   bool isIndirectScalar() const { return regFile == G4_SCALAR && isIndirectS0; }
-  void setUndefinedNullRTPayload() { undefinedNullRTPayload = true; }
-  bool isUndefinedNullRTPayload() const { return undefinedNullRTPayload; }
   void setLiveIn() { liveIn = true; }
   bool isLiveIn() const { return liveIn; }
   void setLiveOut() { liveOut = true; }
