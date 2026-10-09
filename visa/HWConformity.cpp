@@ -8500,6 +8500,10 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
         bool isNoMaskInst =
             !inst->getPredicate() &&
             (inst->isWriteEnableInst() || bb->isAllLaneActive());
+        // Set by tryToAlignOperandRootDcl() below: dst's byte offset from its
+        // root dcl, which it forces to be GRF-aligned, so offset % GRFSize is
+        // dst's subreg.
+        uint32_t dstOffBytes = 0;
         if (execTyWidth < 8) {
           auto intType = TypeSize(dstTy) == 4 ? Type_UD : Type_UW;
           inst->getDst()->setType(builder, intType);
@@ -8511,8 +8515,9 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
           change64bCopyToUD(inst, srcStride / inst->getSrc(0)->getTypeSize());
         } else if (inst->getDst()->getHorzStride() == 4 &&
                    (srcStride != 0 || src0RR->isIndirect()) &&
-                   (isNoMaskInst || builder.tryToAlignOperand(
-                                        inst->getDst(), builder.getGRFSize()))) {
+                   (isNoMaskInst ||
+                    builder.tryToAlignOperandRootDcl(
+                        inst->getDst(), dstOffBytes, builder.getGRFSize()))) {
           // The dst stride of a 64b copy can't exceed 4, so a stride-4 copy
           // can't be split into 2 UD moves; scalarize it into SIMD1 moves.
           //
@@ -8524,24 +8529,30 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
           //   =>
           //   (W) mov (N) TV<4>:q   src<1;1,0>     ; NoMask -> split SIMD1
           //       mov (N) dst<4>:q  TV<4;1,0>:q    ; masked, element-aligned
+          // TV starts at the same subreg as dst so that the masked copy stays
+          // element-aligned even if dst is not GRF-aligned.
           if (!isNoMaskInst) {
             uint16_t dstHStride = inst->getDst()->getHorzStride();
+            short tmpSubRegOff =
+                (dstOffBytes % builder.getGRFSize()) / TypeSize(dstTy);
             G4_Declare* tmpDcl = builder.createTempVar(
-                dstHStride * (inst->getExecSize() - 1) + 1, dstTy,
-                builder.getGRFAlign());
+                tmpSubRegOff + dstHStride * (inst->getExecSize() - 1) + 1,
+                dstTy, builder.getGRFAlign());
             // NoMask mov: repack the source into the stride-4 temp, then
             // scalarize it. Duplicate src0 so an indirect source's address
             // register/immediate is cloned rather than shared with inst.
             G4_INST *tempMov = builder.createMov(
                 inst->getExecSize(),
-                builder.createDstRegRegion(tmpDcl, dstHStride),
+                builder.createDst(tmpDcl->getRegVar(), 0, tmpSubRegOff,
+                                  dstHStride, dstTy),
                 builder.duplicateOperand(src0RR), InstOpt_WriteEnable, false);
             tempMov->inheritDIFrom(inst);
             INST_LIST_ITER movIt = bb->insertBefore(it, tempMov);
             split64bCopyToSIMD1Insts(movIt, bb);
             // Repoint the masked copy at the stride-matched temp.
-            inst->setSrc(builder.createSrcRegRegion(
-                             tmpDcl, builder.createRegionDesc(dstHStride, 1, 0)),
+            inst->setSrc(builder.createSrc(
+                             tmpDcl->getRegVar(), 0, tmpSubRegOff,
+                             builder.createRegionDesc(dstHStride, 1, 0), dstTy),
                          0);
           } else {
             split64bCopyToSIMD1Insts(it, bb);
