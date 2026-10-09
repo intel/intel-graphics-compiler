@@ -2007,6 +2007,32 @@ if(UNIX)
     )
   endif()
 
+  # DT_RELR shrinks the relative relocations of the shared libraries; the loader supports it since glibc 2.36.
+  include(CheckCXXSourceCompiles)
+  check_cxx_source_compiles([=[
+    #include <features.h>
+    #if !defined(__GLIBC__) || __GLIBC__ < 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 36)
+    #error "DT_RELR needs glibc 2.36"
+    #endif
+    int main() { return 0; }
+  ]=] IGC_GLIBC_HAS_DT_RELR)
+  if(IGC_GLIBC_HAS_DT_RELR)
+    set(_igc_relr_link_options "-Wl,-z,pack-relative-relocs")
+    if ((NOT IGC_USE_LINKER STREQUAL "") AND (NOT IGC_USE_LINKER STREQUAL "ld"))
+      list(PREPEND _igc_relr_link_options "-fuse-ld=${IGC_USE_LINKER}")
+    endif()
+    check_linker_flag(CXX "${_igc_relr_link_options}" IGC_LINKER_HAS_PACK_RELATIVE_RELOCS)
+    if(IGC_LINKER_HAS_PACK_RELATIVE_RELOCS)
+      igc_config_flag_apply_settings(
+          LinkerOptions
+          CMAKE_SHARED_LINKER_FLAGS
+          ALL_PATTERN ""
+          SET_RAW
+            -Wl,-z,pack-relative-relocs
+      )
+    endif()
+  endif()
+
 
   configure_file(
       "${IGC_BUILD__PROJ_SYMBOL_SCRIPT_FULL_PATH}"
