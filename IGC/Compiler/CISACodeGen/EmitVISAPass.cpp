@@ -21677,16 +21677,36 @@ void EmitPass::emitMulAdd16(Instruction *I, const SSource Sources[2], const DstM
 }
 
 void EmitPass::emitThreadPause(llvm::GenIntrinsicInst *inst) {
+  constexpr uint64_t MinDuration = 4;
+  constexpr uint64_t MaxDuration = 31;
+
   CVariable *TSC_reg = m_currShader->GetTSC();
   CVariable *TSC_pause = m_currShader->GetNewAlias(TSC_reg, ISA_TYPE_UD, 16, 1);
-  uint64_t var = GetImmediateVal(inst->getOperand(0));
-  if (var >= 32)
-    var = 0x03E0;
-  else if (var <= 4)
-    var = 0x0080;
-  else
+
+  Value *durationOperand = inst->getOperand(0);
+  if (isa<ConstantInt>(durationOperand)) {
+    uint64_t var = GetImmediateVal(durationOperand);
+    var = std::clamp(var, MinDuration, MaxDuration);
     var <<= 5;
-  m_encoder->Copy(TSC_pause, m_currShader->ImmToVariable(var, ISA_TYPE_UD));
+    m_encoder->Copy(TSC_pause, m_currShader->ImmToVariable(var, ISA_TYPE_UD));
+    m_encoder->Push();
+    return;
+  }
+
+  // Clamp in the raw unsigned domain (to [4, 31]) before the <<5 encoding
+  // below. This reproduces the constant-folded mapping above.
+  CVariable *duration = GetSymbol(durationOperand);
+  if (!duration->IsUniform())
+    duration = UniformCopy(duration);
+  duration = m_currShader->BitCast(duration, GetUnsignedType(duration->GetType()));
+
+  CVariable *clamped = m_currShader->GetNewVariable(duration, CName::NONE);
+  m_encoder->Min(clamped, duration, m_currShader->ImmToVariable(MaxDuration, ISA_TYPE_UD));
+  m_encoder->Push();
+  m_encoder->Max(clamped, clamped, m_currShader->ImmToVariable(MinDuration, ISA_TYPE_UD));
+  m_encoder->Push();
+
+  m_encoder->Shl(TSC_pause, clamped, m_currShader->ImmToVariable(5, ISA_TYPE_UD));
   m_encoder->Push();
 }
 
