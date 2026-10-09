@@ -66,18 +66,18 @@ public:
   WIAnalysis *WI = nullptr;
 
   ~CloneAddressArithmetic() { Uses.clear(); }
-  CloneAddressArithmetic() : FunctionPass(ID), m_rematFlags(REMAT_ALL) {
+  CloneAddressArithmetic()
+      : CloneAddressArithmetic(rematFlagsFromRegKeys(), IGC_GET_FLAG_VALUE(RematChainLimit),
+                               IGC_GET_FLAG_VALUE(RematFlowThreshold), IGC_GET_FLAG_VALUE(RematRPELimit)) {}
 
-    if (IGC_IS_FLAG_DISABLED(RematDataAllowCMP))
-      m_rematFlags = static_cast<IGC::REMAT_OPTIONS>(m_rematFlags & ~REMAT_COMPARISONS);
+  CloneAddressArithmetic(unsigned ChainLimit, unsigned FlowThresholdPercent, unsigned RPELimitPercent,
+                         unsigned SIMDSize = 0)
+      : CloneAddressArithmetic(rematFlagsFromRegKeys(), ChainLimit, FlowThresholdPercent, RPELimitPercent, SIMDSize) {}
 
-    if (IGC_IS_FLAG_DISABLED(RematCollectCallArgs))
-      m_rematFlags = static_cast<IGC::REMAT_OPTIONS>(m_rematFlags & ~REMAT_ARGS);
-
-    initializeCloneAddressArithmeticPass(*PassRegistry::getPassRegistry());
-  }
-
-  CloneAddressArithmetic(IGC::REMAT_OPTIONS options) : FunctionPass(ID), m_rematFlags(options) {
+  CloneAddressArithmetic(IGC::REMAT_OPTIONS options, unsigned ChainLimit, unsigned FlowThresholdPercent,
+                         unsigned RPELimitPercent, unsigned SIMDSize = 0)
+      : FunctionPass(ID), m_rematFlags(options), m_chainLimit(ChainLimit), m_flowThresholdPercent(FlowThresholdPercent),
+        m_rpeLimitPercent(RPELimitPercent), m_simdSize(SIMDSize) {
 
     initializeCloneAddressArithmeticPass(*PassRegistry::getPassRegistry());
   }
@@ -117,7 +117,24 @@ public:
   llvm::Function *Func = nullptr;
 
 private:
+  static IGC::REMAT_OPTIONS rematFlagsFromRegKeys() {
+    unsigned Flags = REMAT_ALL;
+
+    if (IGC_IS_FLAG_DISABLED(RematDataAllowCMP))
+      Flags &= ~REMAT_COMPARISONS;
+
+    if (IGC_IS_FLAG_DISABLED(RematCollectCallArgs))
+      Flags &= ~REMAT_ARGS;
+
+    return static_cast<IGC::REMAT_OPTIONS>(Flags);
+  }
+
   IGC::REMAT_OPTIONS m_rematFlags = REMAT_NONE;
+  unsigned m_chainLimit = 0;
+  unsigned m_flowThresholdPercent = 0;
+  unsigned m_rpeLimitPercent = 0;
+  // 0 means nothing selected, in that case bestGuessSIMDSize() picks the lane count.
+  unsigned m_simdSize = 0;
   bool greedyRemat(Function &F);
   bool singleFlowRemat(Function &F);
   bool rematerialize(RematSet &ToProcess, unsigned int FlowThreshold);
@@ -141,9 +158,14 @@ private:
 };
 } // end namespace
 
-FunctionPass *IGC::createCloneAddressArithmeticPass() { return new CloneAddressArithmetic(); }
-FunctionPass *IGC::createCloneAddressArithmeticPassWithFlags(IGC::REMAT_OPTIONS options) {
-  return new CloneAddressArithmetic(options);
+FunctionPass *IGC::createCloneAddressArithmeticPass(unsigned ChainLimit, unsigned FlowThresholdPercent,
+                                                    unsigned RPELimitPercent, unsigned SIMDSize) {
+  return new CloneAddressArithmetic(ChainLimit, FlowThresholdPercent, RPELimitPercent, SIMDSize);
+}
+FunctionPass *IGC::createCloneAddressArithmeticPassWithFlags(IGC::REMAT_OPTIONS options, unsigned ChainLimit,
+                                                             unsigned FlowThresholdPercent, unsigned RPELimitPercent,
+                                                             unsigned SIMDSize) {
+  return new CloneAddressArithmetic(options, ChainLimit, FlowThresholdPercent, RPELimitPercent, SIMDSize);
 }
 
 char CloneAddressArithmetic::ID = 0;
@@ -473,10 +495,9 @@ bool CloneAddressArithmetic::skipChain(RematChain &Chain, Instruction *Root) {
     if (RootFlow != FlowMap[El])
       InstructionToCopy++;
 
-  const unsigned RematChainLimit = IGC_GET_FLAG_VALUE(RematChainLimit);
-  bool Result = InstructionToCopy >= RematChainLimit;
+  bool Result = InstructionToCopy >= m_chainLimit;
 
-  PRINT_LOG_NL("RootFlow: " << RootFlow << "  Limit: " << RematChainLimit << "  Steps: " << InstructionToCopy);
+  PRINT_LOG_NL("RootFlow: " << RootFlow << "  Limit: " << m_chainLimit << "  Steps: " << InstructionToCopy);
   return Result;
 }
 
@@ -640,9 +661,9 @@ static bool shouldRematForVRT(llvm::ArrayRef<VRT::ModeEntry> Table, uint32_t Max
 bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
 
   RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
-  SIMD = numLanes(IGC::bestGuessSIMDSize(CGCtx, &F, FGA));
+  SIMD = m_simdSize ? m_simdSize : numLanes(IGC::bestGuessSIMDSize(CGCtx, &F, FGA));
   unsigned int GRFSize = CGCtx->getNumGRFPerThread(true, &F);
-  unsigned int PressureLimit = 0.01f * (float)IGC_GET_FLAG_VALUE(RematRPELimit) * (float)GRFSize;
+  unsigned int PressureLimit = 0.01f * (float)m_rpeLimitPercent * (float)GRFSize;
   MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
 
   auto VRTTable = CGCtx->platform.getVRTTable();
@@ -752,8 +773,7 @@ unsigned int CloneAddressArithmetic::getFlowThreshold(RematSet &ToProcess, Funct
     FlowBudget += Uses[el];
 
   PRINT_LOG_NL("FlowBudget: " << FlowBudget);
-  unsigned int Base = IGC_GET_FLAG_VALUE(RematFlowThreshold);
-  float Coefficient = 0.01f * (float)Base;
+  float Coefficient = 0.01f * (float)m_flowThresholdPercent;
   unsigned int Result = (unsigned int)((float)FlowBudget * Coefficient);
 
   return Result;

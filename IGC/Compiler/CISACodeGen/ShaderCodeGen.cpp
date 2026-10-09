@@ -1046,7 +1046,9 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
       mpm.add(llvm::createEarlyCSEPass());
     }
 
-    mpm.add(createCloneAddressArithmeticPass());
+    mpm.add(createCloneAddressArithmeticPass(IGC_GET_FLAG_VALUE(RematChainLimit),
+                                             IGC_GET_FLAG_VALUE(RematFlowThreshold),
+                                             IGC_GET_FLAG_VALUE(RematRPELimit)));
     // cloneAddressArithmetic leaves old instructions unnecessary
     // dce pass helps to clean that up
     mpm.add(createDeadCodeEliminationPass());
@@ -1073,7 +1075,9 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
                             ? static_cast<IGC::REMAT_OPTIONS>(IGC_GET_FLAG_VALUE(RematOptionsForRetry))
                             : static_cast<IGC::REMAT_OPTIONS>(IGC_GET_FLAG_VALUE(RematOptionsForVRT));
 
-    mpm.add(createCloneAddressArithmeticPassWithFlags(rematOptions));
+    mpm.add(createCloneAddressArithmeticPassWithFlags(rematOptions, IGC_GET_FLAG_VALUE(RematChainLimit),
+                                                      IGC_GET_FLAG_VALUE(RematFlowThreshold),
+                                                      IGC_GET_FLAG_VALUE(RematRPELimit)));
 
     // cloneAddressArithmetic leaves old instructions unnecessary
     // dce pass helps to clean that up
@@ -1198,7 +1202,9 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     }
 
     if (IGC_IS_FLAG_ENABLED(RematEnableAfterEmu)) {
-      mpm.add(createCloneAddressArithmeticPass());
+      mpm.add(createCloneAddressArithmeticPass(IGC_GET_FLAG_VALUE(RematChainLimit),
+                                               IGC_GET_FLAG_VALUE(RematFlowThreshold),
+                                               IGC_GET_FLAG_VALUE(RematRPELimit)));
       // cloneAddressArithmetic leaves old instructions unnecessary
       // dce pass helps to clean that up
       mpm.add(createDeadCodeEliminationPass());
