@@ -11369,7 +11369,6 @@ intrinsics:
                 type_definition: *p_any_
                 comment: ""
         attributes:
-            - !AttributeID "NoDuplicate"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:
