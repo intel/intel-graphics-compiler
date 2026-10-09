@@ -12018,6 +12018,19 @@ intrinsics:
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
+        name: "GenISA_ReadTraceRaySyncResult"
+        comment: "Raytracing: complete TraceRaySync and copy its return data under the execution mask. Requires RayQuery return optimization."
+        return_definition: !<ReturnDefinition>
+            type_definition: *i32
+            comment: "Per-lane RayQueryReturnData, normalized from packed status when enabled"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *i32
+                comment: "completion token returned by TraceRaySync"
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
         name: "GenISA_TraceRayAsyncHL"
         comment: "Raytracing: equivalent to DXR TraceRay(), lowers to GenISA_TraceRayAsync\
             \ and RTStack IO operations"

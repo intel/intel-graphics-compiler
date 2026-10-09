@@ -264,6 +264,7 @@ public:
                                   LSC_CACHE_CTRL_SIZE ecc_size);
 
   void createReadSyncTraceRay(Value *val);
+  CallInst *createReadSyncTraceRayResult(Value *val);
 
   TraceRaySyncIntrinsic *createSyncTraceRay(Value *bvhLevel, Value *traceRayCtrl, Value *globalBufferPointer = nullptr,
                                             const Twine &PayloadName = "");
@@ -319,6 +320,8 @@ public:
   Value *getWorldToObj(StackPointerVal *perLaneStackPtr, uint32_t dim, Value *ShaderTy, Instruction *I = nullptr,
                        bool checkInstanceLeafPtr = false);
 
+  // TraceRayRet is the normalized ReadTraceRaySyncResult value when return
+  // optimization is enabled; otherwise the field is read from the stack.
   Value *extractReturnField(Value *TraceRayRet, StackPointerVal *perLaneStackPtr,
                             RTStackFormat::RayQueryReturnData::Field Kind);
 

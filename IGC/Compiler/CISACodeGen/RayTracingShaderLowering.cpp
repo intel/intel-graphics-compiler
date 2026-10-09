@@ -64,7 +64,8 @@ static void createTraceRaySyncGlobalPointerLoop(RTBuilder &RTB, TraceRaySyncIntr
   GenIntrinsicInst *postProcessRayQueryReturn = nullptr;
   for (auto *user : traceRay->users()) {
     auto *GII = dyn_cast<GenIntrinsicInst>(user);
-    if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ReadTraceRaySync) {
+    if (GII && (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ReadTraceRaySync ||
+                GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ReadTraceRaySyncResult)) {
       IGC_ASSERT_MESSAGE(!readTraceRaySync, "Expected a single ReadTraceRaySync user");
       readTraceRaySync = GII;
     } else if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_PostProcessRayQueryReturn) {
@@ -85,6 +86,11 @@ static void createTraceRaySyncGlobalPointerLoop(RTBuilder &RTB, TraceRaySyncIntr
       [&](Value *uniformGlobalBufferPtr) {
         auto *clonedTraceRay = cast<TraceRaySyncIntrinsic>(RTB.Insert(traceRay->clone()));
         clonedTraceRay->setArgOperand(0, uniformGlobalBufferPtr);
+        if (readTraceRaySync->getIntrinsicID() == GenISAIntrinsic::GenISA_ReadTraceRaySyncResult) {
+          auto *clonedRead = cast<CallInst>(RTB.Insert(readTraceRaySync->clone()));
+          clonedRead->setArgOperand(0, clonedTraceRay);
+          return static_cast<Value *>(clonedRead);
+        }
         readTraceRaySync->setArgOperand(0, clonedTraceRay);
         readTraceRaySync->moveAfter(clonedTraceRay);
         if (!postProcessRayQueryReturn)
@@ -100,7 +106,10 @@ static void createTraceRaySyncGlobalPointerLoop(RTBuilder &RTB, TraceRaySyncIntr
       },
       VALUE_NAME("RayQueryGlobalPointer"));
 
-  if (postProcessRayQueryReturn) {
+  if (readTraceRaySync->getIntrinsicID() == GenISAIntrinsic::GenISA_ReadTraceRaySyncResult) {
+    readTraceRaySync->replaceAllUsesWith(result);
+    readTraceRaySync->eraseFromParent();
+  } else if (postProcessRayQueryReturn) {
     postProcessRayQueryReturn->replaceAllUsesWith(result);
     postProcessRayQueryReturn->eraseFromParent();
   } else {

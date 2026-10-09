@@ -571,30 +571,23 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       // add this for liveness analysis
       IGCLLVM::setNoCaptureAttributeAtArgIndex(traceRay, 0);
 
-      IRB.createReadSyncTraceRay(traceRay);
-
       if (rqReturnOpt) {
-        if (m_pCGCtx->platform.isRayQueryReturnOptimizationPackedStatusEnabled()) {
-          auto *postProcessRayQueryReturnFn =
-              GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::GenISA_PostProcessRayQueryReturn);
-
-          traceRay = IRB.CreateCall(postProcessRayQueryReturnFn, traceRay);
-        }
+        auto *readResult = IRB.createReadSyncTraceRayResult(traceRay);
 
         // unpack the return value following the
         // RTStackFormat::RayQueryReturnData layout
         auto *proceedFurther = IRB.CreateAnd(
-            traceRay, (1 << static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::proceed_further)) - 1);
+            readResult, (1 << static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::proceed_further)) - 1);
 
         auto *committedStatus =
-            IRB.CreateLShr(traceRay, static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::proceed_further));
+            IRB.CreateLShr(readResult, static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::proceed_further));
         committedStatus =
             IRB.CreateAnd(committedStatus,
                           (1 << static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::committedStatus)) - 1);
 
         auto *candidateType = IRB.CreateLShr(
-            traceRay, static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::proceed_further) +
-                          static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::committedStatus));
+            readResult, static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::proceed_further) +
+                            static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::committedStatus));
         candidateType = IRB.CreateAnd(
             candidateType, (1 << static_cast<uint32_t>(RTStackFormat::RayQueryReturnData::Bits::candidateType)) - 1);
 
@@ -606,6 +599,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
         data.CommittedStatus = committedStatus;
         data.CandidateType = candidateType;
       } else {
+        IRB.createReadSyncTraceRay(traceRay);
         auto *notDone = IRB.isDoneBitNotSet(getStackPtr(IRB, rqObject), false);
         result->addIncoming(notDone, IRB.GetInsertBlock());
 

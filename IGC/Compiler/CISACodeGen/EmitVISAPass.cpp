@@ -10163,6 +10163,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     emitTraceRay(cast<TraceRayIntrinsic>(inst), false);
     break;
   case GenISAIntrinsic::GenISA_ReadTraceRaySync:
+  case GenISAIntrinsic::GenISA_ReadTraceRaySyncResult:
     emitReadTraceRaySync(inst);
     break;
 
@@ -24851,8 +24852,18 @@ void EmitPass::emitReadTraceRaySync(llvm::GenIntrinsicInst *I) {
   m_encoder->Push();
 
   auto Var = GetSymbol(I->getOperand(0));
-  m_encoder->SetUniformSIMDSize(m_currShader->m_SIMDSize);
-  m_encoder->Cast(m_currShader->GetNULL(), Var);
+  if (I->getIntrinsicID() == GenISAIntrinsic::GenISA_ReadTraceRaySyncResult && !I->use_empty()) {
+    IGC_ASSERT(m_currShader->m_Platform->isRayQueryReturnOptimizationEnabled());
+    // RTA writeback clobbers inactive response lanes. A masked copy keeps
+    // completed status separate from the raw response across divergent loops.
+    if (m_currShader->m_Platform->isRayQueryReturnOptimizationPackedStatusEnabled()) {
+      Var = m_currShader->GetNewAlias(Var, ISA_TYPE_UW, 0, numLanes(m_currShader->m_SIMDSize));
+    }
+    m_encoder->Cast(m_destination, Var);
+  } else {
+    m_encoder->SetUniformSIMDSize(m_currShader->m_SIMDSize);
+    m_encoder->Cast(m_currShader->GetNULL(), Var);
+  }
   m_encoder->Push();
 
   m_encoder->Fence(false, false, false, false, false, false, false, true);

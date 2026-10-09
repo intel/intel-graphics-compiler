@@ -377,14 +377,11 @@ Value *TraceRayInlineLoweringPass::emitProceedMainBody(RTBuilder &builder, Value
   Value *retSyncRT = builder.createSyncTraceRay(builder.getBvhLevel(ShadowMemStackPointer, false), traceRayCtrl,
                                                 nullptr, VALUE_NAME("trace_ray_query"));
 
-  // Complete and unpack the response before the already-done path is merged.
-  // The ballot lowering must keep both operations with their TraceRaySync.
+  // Read before merging with the already-done path so the ballot lowering
+  // can preserve each lane group's completed status.
+  if (m_CGCtx->platform.isRayQueryReturnOptimizationEnabled())
+    return builder.createReadSyncTraceRayResult(retSyncRT);
   builder.createReadSyncTraceRay(retSyncRT);
-  if (m_CGCtx->platform.isRayQueryReturnOptimizationPackedStatusEnabled()) {
-    auto *postProcess = GenISAIntrinsic::getDeclaration(builder.GetInsertBlock()->getModule(),
-                                                        GenISAIntrinsic::GenISA_PostProcessRayQueryReturn);
-    retSyncRT = builder.CreateCall(postProcess, retSyncRT);
-  }
 
   return retSyncRT;
 }

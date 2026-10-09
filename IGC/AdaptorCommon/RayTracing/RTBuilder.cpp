@@ -579,6 +579,13 @@ void RTBuilder::createReadSyncTraceRay(Value *val) {
   this->CreateCall(readFunc, val);
 }
 
+CallInst *RTBuilder::createReadSyncTraceRayResult(Value *val) {
+  IGC_ASSERT(Ctx.platform.isRayQueryReturnOptimizationEnabled());
+  Function *readFunc = GenISAIntrinsic::getDeclaration(this->GetInsertBlock()->getModule(),
+                                                       GenISAIntrinsic::GenISA_ReadTraceRaySyncResult);
+  return this->CreateCall(readFunc, val);
+}
+
 TraceRaySyncIntrinsic *RTBuilder::createSyncTraceRay(Value *bvhLevel, Value *traceRayCtrl, Value *globalBufferPointer,
                                                      const Twine &PayloadName) {
   return cast<TraceRaySyncIntrinsic>(createTraceRay(bvhLevel, this->CreateZExt(traceRayCtrl, this->getInt32Ty()),
