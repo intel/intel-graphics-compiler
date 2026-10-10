@@ -44,7 +44,7 @@ static void *GetProcAddress(void *hModule, const char *pProcName) { return dlsym
 #if defined(WIN32)
 #define CDECLATTRIBUTE __cdecl
 #elif __GNUC__
-#if defined(__x86_64__) || defined(__ARM_ARCH)
+#if defined(__x86_64__) || defined(__ARM_ARCH) || defined(__riscv)
 #define CDECLATTRIBUTE
 #else
 #define CDECLATTRIBUTE __attribute__((__cdecl__))
