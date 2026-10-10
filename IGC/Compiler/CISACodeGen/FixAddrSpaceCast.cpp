@@ -130,10 +130,16 @@ static void lowerLoadsfromPHI(PHINode *PHI) {
     auto *LoadSource = cast<Instruction>(Incoming);
     auto *AddrSpaceCast = dyn_cast<AddrSpaceCastInst>(Incoming);
 
+    // Insert the per-edge cast/load at the incoming block's terminator, not at the
+    // incoming pointer's definition: the definition may merely dominate the incoming
+    // block (e.g. a cast hoisted to a loop preheader) or be followed by stores to the
+    // loaded location, so a load anchored there observes the wrong memory state. SSA
+    // guarantees the incoming value dominates the terminator, so this is always legal.
+    IRBuilder<> Builder(PHI->getIncomingBlock(Incoming)->getTerminator());
+
     for (auto *I : InsertChain) {
 
       if (AddrSpaceCast) {
-        IRBuilder<> Builder(LoadSource);
         if (isa<BitCastInst>(I)) {
           auto *NewBitcast =
               Builder.CreateBitCast(AddrSpaceCast->getOperand(0),
@@ -156,7 +162,7 @@ static void lowerLoadsfromPHI(PHINode *PHI) {
 
       Instruction *NewInst = I->clone();
       NewInst->setOperand(0, LoadSource);
-      NewInst->insertAfter(LoadSource);
+      Builder.Insert(NewInst);
       LoadSource = NewInst;
       if (isa<LoadInst>(NewInst)) {
         NewLoads.insert({NewInst, PHI->getIncomingBlock(Incoming)});
