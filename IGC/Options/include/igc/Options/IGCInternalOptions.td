@@ -135,8 +135,11 @@ defm skip_reloc_add : CommonFlag<"skip-reloc-add">;
 // -cl-intel-disableEUFusion -ze-intel-disableEUFusion
 defm disableEUFusion : CommonFlag<"disableEUFusion">;
 
-// -cl-intel-functonControl [<n>] -ze-intel-functionControl [<n>]
+// -cl-intel-functonControl [<n>] -ze-intel-functonControl [<n>]
 defm functonControl : CommonSeparate<"functonControl">;
+// Correctly spelled alias, not a rename: the misspelled form keeps working.
+// -cl-intel-functionControl [<n>] -ze-intel-functionControl [<n>]
+defm : CommonSeparate<"functionControl">, Alias<functonControl_common>;
 
 defm fail_on_spill : CommonFlag<"fail-on-spill">;
 
