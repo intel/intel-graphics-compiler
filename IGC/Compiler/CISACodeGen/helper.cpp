@@ -1272,7 +1272,7 @@ bool subgroupIntrinsicHasHelperLanes(const Instruction &I) {
   return (int_cast<int>(helperLaneMode->getSExtValue()) == 1);
 }
 
-bool hasSubGroupIntrinsicPVC(llvm::Function &F) {
+bool hasSubGroupIntrinsicPVC(const llvm::Function &F) {
   for (auto &BB : F) {
     for (auto &I : BB) {
       if (isSubGroupIntrinsicPVC(&I)) {
@@ -2296,6 +2296,91 @@ SIMDMode bestGuessSIMDSize(const CodeGenContext *CTX, const llvm::Function *F, G
     return SIMDMode::SIMD16;
   }
   return SIMDMode::SIMD32;
+}
+
+// Width fixed by ForceOCLSIMDWidth, the required sub-group size of the function group head, or the
+// module-forced width. SIMDMode::UNKNOWN if the width is not fixed.
+static SIMDMode fixedSIMDSize(const CodeGenContext *CTX, const llvm::Function *F, GenXFunctionGroupAnalysis *FGA) {
+  switch (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) {
+  case 0:
+    break;
+  case 8:
+    return SIMDMode::SIMD8;
+  case 16:
+    return SIMDMode::SIMD16;
+  case 32:
+    return SIMDMode::SIMD32;
+  }
+
+  unsigned SimdSize = IGC::getSIMDSize(CTX->getModuleMetaData(), F);
+  if (FGA) {
+    auto *FG = FGA->getGroup(F);
+    const llvm::Function *Kernel = FG ? FG->getHead() : nullptr;
+    if (Kernel)
+      SimdSize = IGC::getSIMDSize(CTX->getModuleMetaData(), Kernel);
+  }
+  if (SimdSize)
+    return lanesToSIMDMode(SimdSize);
+
+  // COpenCLKernel::getEffectiveRequiredSIMDSize() treats a module-forced width as required.
+  if (unsigned ForcedSimdSize = CTX->getModuleMetaData()->csInfo.forcedSIMDSize)
+    return lanesToSIMDMode(ForcedSimdSize);
+  return SIMDMode::UNKNOWN;
+}
+
+SIMDMode widestAllowedSIMDSize(const CodeGenContext *CTX, const llvm::Function *F, GenXFunctionGroupAnalysis *FGA) {
+  SIMDMode Fixed = fixedSIMDSize(CTX, F, FGA);
+  if (Fixed != SIMDMode::UNKNOWN)
+    return Fixed;
+
+  if (!CTX->platform.isProductChildOf(IGFX_PVC))
+    return SIMDMode::SIMD8;
+
+  // Cases in which COpenCLKernel::checkSIMDCompileCondsForMin16 rejects SIMD32 without a required
+  // sub-group size. Stack overflow detection helpers do not make a kernel a subroutine kernel there.
+  auto FG = FGA ? FGA->getGroup(F) : nullptr;
+  bool hasStackCall = (FG && FG->hasStackCall()) || (F && F->hasFnAttribute("visaStackCall"));
+  bool isIndirectGroup = FG && FGA->isIndirectCallGroup(FG);
+  bool hasSubroutine = FG && !FG->isSingleIgnoringStackOverflowDetection() && !hasStackCall && !isIndirectGroup;
+  bool forceLowestForStackCalls =
+      IGC_IS_FLAG_ENABLED(ForceLowestSIMDForStackCalls) && (hasStackCall || isIndirectGroup);
+  if (hasSubroutine || forceLowestForStackCalls || IGC_IS_FLAG_DISABLED(EnableOCLSIMD32) ||
+      CTX->getModuleMetaData()->compOpt.OptDisable)
+    return SIMDMode::SIMD16;
+
+  // Kernels with ray queries compile only at the preferred ray query width.
+  const llvm::Function *Head = FG ? FG->getHead() : F;
+  const auto &FuncMD = CTX->getModuleMetaData()->FuncMD;
+  auto It = Head ? FuncMD.find(const_cast<llvm::Function *>(Head)) : FuncMD.end();
+  if (It != FuncMD.end() && It->second.hasSyncRTCalls)
+    return CTX->platform.getPreferredRayQuerySIMDSize(ShaderType::OPENCL_SHADER);
+  if (F && hasSubGroupIntrinsicPVC(*F))
+    return SIMDMode::SIMD16;
+  return SIMDMode::SIMD32;
+}
+
+bool hasFixedSIMDSize(const CodeGenContext *CTX, const llvm::Function *F, GenXFunctionGroupAnalysis *FGA) {
+  return fixedSIMDSize(CTX, F, FGA) != SIMDMode::UNKNOWN;
+}
+
+static constexpr uint32_t LargePrivateMemoryKernelThresholdBytes = 5000;
+static constexpr uint32_t LargePrivateMemoryKernelSimd16LowThreshold = 96;
+
+bool hasLargePrivateMemoryKernel(const CodeGenContext *CTX, const llvm::Function *F) {
+  const auto &PrivateMemoryPerFG = CTX->getModuleMetaData()->PrivateMemoryPerFG;
+  auto StackMemIter = PrivateMemoryPerFG.find(const_cast<llvm::Function *>(F));
+  return StackMemIter != PrivateMemoryPerFG.end() && StackMemIter->second > LargePrivateMemoryKernelThresholdBytes;
+}
+
+bool prefersSIMD16OnXE3VRT(const CodeGenContext *CTX, const llvm::Function *F, uint32_t simd16Pressure,
+                           uint32_t simd32Pressure) {
+  if (!CTX->supportsVRT() || CTX->platform.GetPlatformFamily() != IGFX_XE3_CORE)
+    return false;
+  uint32_t simd32High = IGC_GET_FLAG_VALUE(OCLVRTSimd16DropSimd32High);
+  uint32_t simd16Low = IGC_GET_FLAG_VALUE(OCLVRTSimd16DropSimd16Low);
+  if (hasLargePrivateMemoryKernel(CTX, F) && simd16Low > LargePrivateMemoryKernelSimd16LowThreshold)
+    simd16Low = LargePrivateMemoryKernelSimd16LowThreshold;
+  return simd32Pressure > simd32High && simd16Pressure > 0 && simd16Pressure < simd16Low;
 }
 
 #define DEBUG_TYPE "kernel-simd-resolver"

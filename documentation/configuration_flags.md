@@ -919,6 +919,7 @@ $ export IGC_ShaderDumpEnable=1
 | `RematCollectCallArgs` | Allow collection of call arguments for rematerialization | - |
 | `RematDataAllowCMP` | Allow rematerialization of cmp instructions | Available |
 | `RematEnable` | Enable clone address arithmetic pass not only on retry | - |
+| `RematFirstCompile` | Run clone address arithmetic on the first OpenCL compile attempt on XE2/XE3, using the kernel's widest allowed SIMD for RPE. Retry keeps its own settings | Available |
 | `RematFlowThreshold` | Proportion of the whole rematerialization targets to cutoff remat chain | - |
 | `RematInstCombineBefore` | Enable short sequence of passes before clone address arithmetic pass to potentially decrese amount                   of operations that will be rematerialized | - |
 | `RematLog` | Dump Remat Log, useful for analyzing spills as well | - |

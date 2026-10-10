@@ -9,9 +9,10 @@
 ; REQUIRES: regkeys, debug, bmg-supported
 
 ; RUN: llvm-as < %s -o %t.bc %OPAQUE_PTR_FLAG%
-; RUN: ocloc compile -llvm_input -file %t.bc -device bmg -options "-igc_opts 'EnableOpaquePointersBackend=1'" | FileCheck %s
+; RUN: ocloc compile -llvm_input -file %t.bc -device bmg -options "-igc_opts 'EnableOpaquePointersBackend=1,RematFirstCompile=0'" | FileCheck %s
 
 ; Verifies that when recompiling kernel 'entry', we don't try to erase 'erased' function, leading to a crash.
+; RematFirstCompile is off because first-compile remat removes the need to recompile this kernel.
 
 ; CHECK: in kernel 'entry': [RetryManager] Start recompilation of the kernel
 ; CHECK-NOT: Use still stuck around after Def is destroyed: call spir_func void @erased()

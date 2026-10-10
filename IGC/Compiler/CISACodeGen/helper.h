@@ -189,7 +189,7 @@ bool isSubGroupShuffleVariant(const llvm::Instruction *I);
 // (which skips its trunc demotion when movi is enabled) so both stay consistent.
 bool shouldEmitMoreMoviCases(CodeGenContext *ctx);
 bool subgroupIntrinsicHasHelperLanes(const llvm::Instruction &I);
-bool hasSubGroupIntrinsicPVC(llvm::Function &F);
+bool hasSubGroupIntrinsicPVC(const llvm::Function &F);
 
 bool isBarrierIntrinsic(const llvm::Instruction *I);
 
@@ -395,6 +395,26 @@ int getSIMDSize(const IGC::ModuleMetaData *modMD, const llvm::Function *F);
 // estimates before the backend fixes the final width.
 SIMDMode bestGuessSIMDSize(const CodeGenContext *CTX, const llvm::Function *F = nullptr,
                            GenXFunctionGroupAnalysis *FGA = nullptr);
+
+// Widest SIMD width a function may still be compiled for. Honours the same capability
+// constraints as bestGuessSIMDSize(), but not the XE2+ SIMD16 drop, which is a later
+// selection heuristic rather than a capability limit. Also honours the module-forced
+// width and the ray query width, which the OpenCL backend enforces.
+SIMDMode widestAllowedSIMDSize(const CodeGenContext *CTX, const llvm::Function *F = nullptr,
+                               GenXFunctionGroupAnalysis *FGA = nullptr);
+
+// True if the SIMD width of F is fixed by ForceOCLSIMDWidth, the required sub-group size of its
+// function group head, or the module-forced width.
+bool hasFixedSIMDSize(const CodeGenContext *CTX, const llvm::Function *F, GenXFunctionGroupAnalysis *FGA = nullptr);
+
+// True if the private memory of the function group headed by F exceeds the large
+// private memory kernel threshold.
+bool hasLargePrivateMemoryKernel(const CodeGenContext *CTX, const llvm::Function *F);
+
+// SIMD16 preference of the XE3 VRT SIMD16 drop: SIMD32 pressure is high while
+// SIMD16 pressure is low, so SIMD16 is chosen even if SIMD32 would fit.
+bool prefersSIMD16OnXE3VRT(const CodeGenContext *CTX, const llvm::Function *F, uint32_t simd16Pressure,
+                           uint32_t simd32Pressure);
 
 // Resolves (and pins) the kernel sub-group/SIMD size for builtin-resolution passes that
 // lower builtins to intrinsics before the backend fixes the SIMD width. The generic

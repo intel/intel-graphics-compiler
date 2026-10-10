@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/ADT/BreadthFirstIterator.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Instructions.h"
@@ -22,6 +23,10 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 using namespace IGC;
+
+static cl::opt<bool> WidestSIMD("remat-widest-simd", cl::init(false), cl::Hidden,
+                                cl::desc("Estimate register pressure in the default-constructed pass at the "
+                                         "widest allowed SIMD instead of the best-guess SIMD"));
 
 namespace IGC {
 enum REMAT_OPTIONS : uint8_t {
@@ -68,16 +73,18 @@ public:
   ~CloneAddressArithmetic() { Uses.clear(); }
   CloneAddressArithmetic()
       : CloneAddressArithmetic(rematFlagsFromRegKeys(), IGC_GET_FLAG_VALUE(RematChainLimit),
-                               IGC_GET_FLAG_VALUE(RematFlowThreshold), IGC_GET_FLAG_VALUE(RematRPELimit)) {}
+                               IGC_GET_FLAG_VALUE(RematFlowThreshold), IGC_GET_FLAG_VALUE(RematRPELimit),
+                               WidestSIMD ? widestAllowedSIMDSize : bestGuessSIMDSize) {}
 
   CloneAddressArithmetic(unsigned ChainLimit, unsigned FlowThresholdPercent, unsigned RPELimitPercent,
-                         unsigned SIMDSize = 0)
-      : CloneAddressArithmetic(rematFlagsFromRegKeys(), ChainLimit, FlowThresholdPercent, RPELimitPercent, SIMDSize) {}
+                         RematSIMDSizeFn GetSIMDSize = bestGuessSIMDSize)
+      : CloneAddressArithmetic(rematFlagsFromRegKeys(), ChainLimit, FlowThresholdPercent, RPELimitPercent,
+                               GetSIMDSize) {}
 
   CloneAddressArithmetic(IGC::REMAT_OPTIONS options, unsigned ChainLimit, unsigned FlowThresholdPercent,
-                         unsigned RPELimitPercent, unsigned SIMDSize = 0)
+                         unsigned RPELimitPercent, RematSIMDSizeFn GetSIMDSize = bestGuessSIMDSize)
       : FunctionPass(ID), m_rematFlags(options), m_chainLimit(ChainLimit), m_flowThresholdPercent(FlowThresholdPercent),
-        m_rpeLimitPercent(RPELimitPercent), m_simdSize(SIMDSize) {
+        m_rpeLimitPercent(RPELimitPercent), m_getSIMDSize(GetSIMDSize) {
 
     initializeCloneAddressArithmeticPass(*PassRegistry::getPassRegistry());
   }
@@ -133,8 +140,7 @@ private:
   unsigned m_chainLimit = 0;
   unsigned m_flowThresholdPercent = 0;
   unsigned m_rpeLimitPercent = 0;
-  // 0 means nothing selected, in that case bestGuessSIMDSize() picks the lane count.
-  unsigned m_simdSize = 0;
+  RematSIMDSizeFn m_getSIMDSize = bestGuessSIMDSize;
   bool greedyRemat(Function &F);
   bool singleFlowRemat(Function &F);
   bool rematerialize(RematSet &ToProcess, unsigned int FlowThreshold);
@@ -159,13 +165,13 @@ private:
 } // end namespace
 
 FunctionPass *IGC::createCloneAddressArithmeticPass(unsigned ChainLimit, unsigned FlowThresholdPercent,
-                                                    unsigned RPELimitPercent, unsigned SIMDSize) {
-  return new CloneAddressArithmetic(ChainLimit, FlowThresholdPercent, RPELimitPercent, SIMDSize);
+                                                    unsigned RPELimitPercent, RematSIMDSizeFn GetSIMDSize) {
+  return new CloneAddressArithmetic(ChainLimit, FlowThresholdPercent, RPELimitPercent, GetSIMDSize);
 }
 FunctionPass *IGC::createCloneAddressArithmeticPassWithFlags(IGC::REMAT_OPTIONS options, unsigned ChainLimit,
                                                              unsigned FlowThresholdPercent, unsigned RPELimitPercent,
-                                                             unsigned SIMDSize) {
-  return new CloneAddressArithmetic(options, ChainLimit, FlowThresholdPercent, RPELimitPercent, SIMDSize);
+                                                             RematSIMDSizeFn GetSIMDSize) {
+  return new CloneAddressArithmetic(options, ChainLimit, FlowThresholdPercent, RPELimitPercent, GetSIMDSize);
 }
 
 char CloneAddressArithmetic::ID = 0;
@@ -661,7 +667,17 @@ static bool shouldRematForVRT(llvm::ArrayRef<VRT::ModeEntry> Table, uint32_t Max
 bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
 
   RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
-  SIMD = m_simdSize ? m_simdSize : numLanes(IGC::bestGuessSIMDSize(CGCtx, &F, FGA));
+  SIMD = numLanes(m_getSIMDSize(CGCtx, &F, FGA));
+  // The XE3 VRT SIMD16 drop picks SIMD16 when SIMD16 pressure is low, even if SIMD32 would fit.
+  // Rematerializing at SIMD32 would only undo that choice. A fixed SIMD32 width is never dropped.
+  if (SIMD == numLanes(SIMDMode::SIMD32) && CGCtx->supportsVRT() && IGC_IS_FLAG_ENABLED(AllowSIMD16DropForXE2Plus) &&
+      CGCtx->isAutoGRFSelectionEnabled(&F) && CGCtx->getNumGRFPerThread(false, &F) == 0 &&
+      !IGC::hasFixedSIMDSize(CGCtx, &F, FGA)) {
+    unsigned int Simd16Pressure = RPE->getMaxRegCountForFunction(F, numLanes(SIMDMode::SIMD16), &WI->Runner);
+    unsigned int Simd32Pressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
+    if (IGC::prefersSIMD16OnXE3VRT(CGCtx, &F, Simd16Pressure, Simd32Pressure))
+      SIMD = numLanes(SIMDMode::SIMD16);
+  }
   unsigned int GRFSize = CGCtx->getNumGRFPerThread(true, &F);
   unsigned int PressureLimit = 0.01f * (float)m_rpeLimitPercent * (float)GRFSize;
   MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
@@ -670,14 +686,14 @@ bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
   if (!VRTTable.empty()) {
     unsigned int Proximity = IGC_GET_FLAG_VALUE(RematVRTProximityPercent);
     bool ShouldRemat = shouldRematForVRT(VRTTable, MaxPressure, Proximity);
-    PRINT_LOG_NL("VRT remat decision: MaxPressure: " << MaxPressure << " ProximityPercent: " << Proximity
-                                                     << " ShouldRemat: " << ShouldRemat);
+    PRINT_LOG_NL("VRT remat decision: SIMD: " << SIMD << " MaxPressure: " << MaxPressure
+                                              << " ProximityPercent: " << Proximity << " ShouldRemat: " << ShouldRemat);
     writeLog();
     return !ShouldRemat;
   }
 
   bool Result = MaxPressure < PressureLimit;
-  PRINT_LOG_NL("MaxPressure: " << MaxPressure << " PressureLimit: " << PressureLimit);
+  PRINT_LOG_NL("SIMD: " << SIMD << " MaxPressure: " << MaxPressure << " PressureLimit: " << PressureLimit);
   writeLog();
   return Result;
 }

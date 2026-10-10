@@ -1019,7 +1019,14 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     mpm.add(new IGCRegisterPressurePrinter("before_remat"));
   // Run address remat after GVN as it may hoist address calculations and
   // create PHI nodes with addresses.
-  if (IGC_IS_FLAG_ENABLED(RematEnable) ||
+  // On the first compile attempt no SIMD width has been ruled out yet, so register pressure is
+  // estimated at the widest width the kernel may still be compiled for. Retry keeps bestGuessSIMDSize().
+  // Only where the SIMD16 drop can fire: elsewhere the first compile has no SIMD width to win.
+  const bool simd16DropPossible =
+      IGC_IS_FLAG_ENABLED(AllowSIMD16DropForXE2Plus) && (ctx.platform.isCoreXE2() || ctx.platform.isCoreXE3());
+  const bool rematFirstCompile = IGC_IS_FLAG_ENABLED(RematFirstCompile) && ctx.type == ShaderType::OPENCL_SHADER &&
+                                 simd16DropPossible && ctx.m_retryManager->IsFirstTry();
+  if (IGC_IS_FLAG_ENABLED(RematEnable) || rematFirstCompile ||
       (ctx.m_retryManager->AllowCloneAddressArithmetic() && ctx.type == ShaderType::OPENCL_SHADER)) {
 
     if (IGC_GET_FLAG_VALUE(RematInstCombineBefore))
@@ -1051,9 +1058,16 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
       mpm.add(llvm::createEarlyCSEPass());
     }
 
-    mpm.add(createCloneAddressArithmeticPass(IGC_GET_FLAG_VALUE(RematChainLimit),
-                                             IGC_GET_FLAG_VALUE(RematFlowThreshold),
-                                             IGC_GET_FLAG_VALUE(RematRPELimit)));
+    if (rematFirstCompile) {
+      // Shorter chains than on retry keep the instruction cost of the first compile low.
+      constexpr unsigned FirstCompileChainLimit = 3;
+      constexpr unsigned FirstCompileFlowThreshold = 1;
+      mpm.add(createCloneAddressArithmeticPass(FirstCompileChainLimit, FirstCompileFlowThreshold,
+                                               IGC_GET_FLAG_VALUE(RematRPELimit), IGC::widestAllowedSIMDSize));
+    } else
+      mpm.add(createCloneAddressArithmeticPass(IGC_GET_FLAG_VALUE(RematChainLimit),
+                                               IGC_GET_FLAG_VALUE(RematFlowThreshold),
+                                               IGC_GET_FLAG_VALUE(RematRPELimit)));
     // cloneAddressArithmetic leaves old instructions unnecessary
     // dce pass helps to clean that up
     mpm.add(createDeadCodeEliminationPass());

@@ -1964,6 +1964,10 @@ DECLARE_IGC_REGKEY(DWORD, RematVRTProximityPercent, 5,
 DECLARE_IGC_REGKEY(bool, RematSingleFlowRematEnabled, true,
                    "Allow singleFlowRemat stage inside CloneAddressArithmeticPass", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, RematEnable, false, "Enable clone address arithmetic pass not only on retry", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, RematFirstCompile, true,
+                   "Run clone address arithmetic on the first OpenCL compile attempt on XE2/XE3, using the kernel's "
+                   "widest allowed SIMD for RPE. Retry keeps its own settings",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(bool, RematEnableAfterEmu, false, "Run an extra clone address arithmetic pass after Emu64Ops",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, RematLog, false, "Dump Remat Log, useful for analyzing spills as well", DEBUG_ONLY)
