@@ -7755,6 +7755,22 @@ bool G4_INST::canDstBeAcc() const {
     return false;
   }
 
+  // Integer results are kept in acc at more than 16 bits, so an overflowing
+  // word or byte result is not wrapped to the destination type. Readers that
+  // depend on the upper bits, like a signed sel/cmp, then see the wrong value.
+  if (IS_INT(dst->getType()) && dst->getTypeSize() < 4) {
+    switch (opcode()) {
+    case G4_add:
+    case G4_add3:
+    case G4_mul:
+    case G4_mad:
+    case G4_shl:
+      return false;
+    default:
+      break;
+    }
+  }
+
   if (!builder.relaxedACCRestrictions()) {
     if (dst->getType() == builder.getMixModeType() && isMixedMode()) {
       // acc can't be used as packed f16 for mix mode instruction as it doesn't
