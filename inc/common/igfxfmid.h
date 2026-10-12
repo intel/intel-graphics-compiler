@@ -796,6 +796,7 @@ typedef enum __NATIVEGTTYPE
 #define DEV_ID_B08F                             0xB08F
 #define DEV_ID_B090                             0xB090
 #define DEV_ID_B0A0                             0xB0A0
+#define DEV_ID_B0A1                             0xB0A1
 #define DEV_ID_B0B0                             0xB0B0
 
 // WCL
