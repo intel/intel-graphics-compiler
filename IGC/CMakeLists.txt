@@ -1451,11 +1451,11 @@ if(NOT ANDROID)
   add_compile_definitions(CL_KHR_FP64_EXT)
 endif()
 
-if(DEFINED ENV{BUILD_ID})
-  add_compile_definitions(
-   DRIVER_BUILD_ID=$ENV{BUILD_ID}
-  )
-endif()
+# Only the TU that uses DRIVER_BUILD_ID includes this header, as a per-build
+# define on every TU interferes with ccache.
+set(DRIVER_BUILD_ID "$ENV{BUILD_ID}")
+configure_file(AdaptorCommon/DriverBuildId.h.in "${IGC_BUILD__IGC_BIN_DIR}/AdaptorCommon/DriverBuildId.h")
+include_directories("${IGC_BUILD__IGC_BIN_DIR}/AdaptorCommon")
 
 if(DEFINED ENV{TEST_P4_CHANGELIST})
   add_compile_definitions(

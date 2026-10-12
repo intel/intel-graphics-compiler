@@ -1,0 +1,11 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2026 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+#pragma once
+
+#cmakedefine DRIVER_BUILD_ID @DRIVER_BUILD_ID@

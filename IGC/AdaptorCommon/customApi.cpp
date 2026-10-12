@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "AdaptorCommon/customApi.hpp"
+#include "DriverBuildId.h"
 #include <mutex>
 
 #if defined(_WIN32) || defined(_WIN64)
