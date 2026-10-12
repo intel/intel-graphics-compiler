@@ -27,6 +27,8 @@ namespace vISA {
 // Flag to control whether RA trace is on. This should be set to
 // builder.getOption(vISA_RATrace) at RA entry.
 extern bool RATraceFlag;
+// Set to builder.getOption(vISA_VRTFillCostDump) at RA entry.
+extern bool VRTFillCostDumpFlag;
 // Debug macro to dump register allocator traces
 #define RA_TRACE(X)                                                            \
   do {                                                                         \
@@ -35,8 +37,18 @@ extern bool RATraceFlag;
     }                                                                          \
   }                                                                            \
   while (false)
+// Debug macro to dump the VRT fill cost heuristic. Separate from RA_TRACE
+// as it prints per BB.
+#define VRT_FILL_COST_DUMP(X)                                                  \
+  do {                                                                         \
+    if (vISA::VRTFillCostDumpFlag) {                                           \
+      X;                                                                       \
+    }                                                                          \
+  }                                                                            \
+  while (false)
 #else
 #define RA_TRACE(X)
+#define VRT_FILL_COST_DUMP(X)
 #endif
 
 class PointsToAnalysis;
