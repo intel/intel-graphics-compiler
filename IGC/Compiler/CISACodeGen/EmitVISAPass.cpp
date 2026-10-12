@@ -24852,6 +24852,12 @@ void EmitPass::emitReadTraceRaySync(llvm::GenIntrinsicInst *I) {
   m_encoder->Push();
 
   auto Var = GetSymbol(I->getOperand(0));
+  // Complete the full response before reading the RT stack. The null read
+  // also prevents scheduling independent stack loads before completion.
+  m_encoder->SetUniformSIMDSize(m_currShader->m_SIMDSize);
+  m_encoder->Cast(m_currShader->GetNULL(), Var);
+  m_encoder->Push();
+
   if (I->getIntrinsicID() == GenISAIntrinsic::GenISA_ReadTraceRaySyncResult && !I->use_empty()) {
     IGC_ASSERT(m_currShader->m_Platform->isRayQueryReturnOptimizationEnabled());
     // RTA writeback clobbers inactive response lanes. A masked copy keeps
@@ -24860,11 +24866,8 @@ void EmitPass::emitReadTraceRaySync(llvm::GenIntrinsicInst *I) {
       Var = m_currShader->GetNewAlias(Var, ISA_TYPE_UW, 0, numLanes(m_currShader->m_SIMDSize));
     }
     m_encoder->Cast(m_destination, Var);
-  } else {
-    m_encoder->SetUniformSIMDSize(m_currShader->m_SIMDSize);
-    m_encoder->Cast(m_currShader->GetNULL(), Var);
+    m_encoder->Push();
   }
-  m_encoder->Push();
 
   m_encoder->Fence(false, false, false, false, false, false, false, true);
   m_encoder->Push();
