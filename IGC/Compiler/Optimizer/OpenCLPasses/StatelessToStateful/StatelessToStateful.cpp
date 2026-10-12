@@ -464,8 +464,8 @@ bool StatelessToStateful::getOffsetFromGEP(Function *F, const SmallVector<GetEle
         Type *Ty = GTI.getIndexedType();
         if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
           if (!CI->isZero()) {
-            uint64_t Offset = DL->getTypeAllocSize(Ty) * CI->getSExtValue();
-            Value *OffsetValue = ConstantInt::get(int32Ty, Offset);
+            int64_t Offset = DL->getTypeAllocSize(Ty) * CI->getSExtValue();
+            Value *OffsetValue = ConstantInt::getSigned(int32Ty, (int32_t)Offset);
 
             PointerValue = BinaryOperator::CreateAdd(PointerValue, OffsetValue, "", IGCLLVM::insertPosition(GEP));
             cast<llvm::Instruction>(PointerValue)->setDebugLoc(GEP->getDebugLoc());
