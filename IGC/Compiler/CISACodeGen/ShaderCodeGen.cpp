@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PushAnalysis.hpp"
 #include "Compiler/CISACodeGen/ScalarizerCodeGen.hpp"
 #include "Compiler/CISACodeGen/HoistCongruentPhi.hpp"
+#include "Compiler/CISACodeGen/HoistImmutableBufferLoads.hpp"
 #include "Compiler/CISACodeGen/CodeScheduling.hpp"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
 #include "Compiler/CISACodeGen/PromotePhiToSourceWidth.hpp"

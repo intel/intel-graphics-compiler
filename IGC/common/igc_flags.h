@@ -495,6 +495,12 @@ DECLARE_IGC_REGKEY(
     bool, DisableConstantCoalescingOfStatefulNonUniformLoads, false,
     "Disable merging non-uniform loads from stateful buffers. Note: does not affect merging to sampler loads",
     DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, DisableHoistImmutableBufferLoads, false,
+                   "Disable the pass that lifts read-only buffer loads out of loops that LICM leaves them in", ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, HoistImmutableBufferLoadsMaxPerLoop, 1,
+                   "Largest number of distinct read-only buffer loads HoistImmutableBufferLoads lifts out of one "
+                   "loop; a loop with more keeps all of them. 0 means no limit",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableWideLSCConstantCoalescing, false,
                    "Let a non-uniform stateful D32/D64 constant coalescing chunk grow to the full LSC message width, "
                    "32 bytes per lane at SIMD16 on a 64-byte GRF platform, instead of one OWORD.",
