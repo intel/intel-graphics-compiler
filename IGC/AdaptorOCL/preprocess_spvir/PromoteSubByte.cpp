@@ -684,7 +684,9 @@ Constant *PromoteSubByte::promoteConstant(Constant *constant) {
     return nullptr;
   }
 
-  if (isa<UndefValue>(constant)) {
+  if (isa<PoisonValue>(constant)) {
+    return PoisonValue::get(getOrCreatePromotedType(constant->getType()));
+  } else if (isa<UndefValue>(constant)) {
     return UndefValue::get(getOrCreatePromotedType(constant->getType()));
   } else if (isa<ConstantAggregateZero>(constant)) {
     return ConstantAggregateZero::get(getOrCreatePromotedType(constant->getType()));

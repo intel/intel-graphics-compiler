@@ -52,12 +52,12 @@ define spir_func %struct2 @callee2(%struct2 %input_struct) {
 
 ; CHECK:        define spir_func %struct2 @callee2(%struct2 %input_struct) {
 ; CHECK-NEXT:   %1 = extractvalue %struct2 %input_struct, 0
-; CHECK-NEXT:   %2 = insertvalue %struct2 undef, i32 %1, 0
+; CHECK-NEXT:   %2 = insertvalue %struct2 poison, i32 %1, 0
 ; CHECK-NEXT:   %3 = extractvalue %struct2 %input_struct, 1
 ; CHECK-NEXT:   %4 = insertvalue %struct2 %2, i8 %3, 1
 ; CHECK-NEXT:   %5 = extractvalue %struct2 %input_struct, 2
 ; CHECK-NEXT:   %6 = extractvalue %inner %5, 0
-; CHECK-NEXT:   %7 = insertvalue %inner undef, i8 %6, 0
+; CHECK-NEXT:   %7 = insertvalue %inner poison, i8 %6, 0
 ; CHECK-NEXT:   %8 = insertvalue %struct2 %4, %inner %7, 2
 ; CHECK-NEXT:   %9 = extractvalue %struct2 %8, 0
 ; CHECK-NEXT:   %10 = insertvalue %struct2 poison, i32 %9, 0
@@ -80,7 +80,7 @@ define spir_func [ 2 x i1 ] @callee3( [ 2 x i1 ] %input_array) {
 
 ; CHECK:        define spir_func [2 x i8] @callee3([2 x i8] %input_array) {
 ; CHECK-NEXT:   %1 = extractvalue [2 x i8] %input_array, 0
-; CHECK-NEXT:   %2 = insertvalue [2 x i8] undef, i8 %1, 0
+; CHECK-NEXT:   %2 = insertvalue [2 x i8] poison, i8 %1, 0
 ; CHECK-NEXT:   %3 = extractvalue [2 x i8] %input_array, 1
 ; CHECK-NEXT:   %4 = insertvalue [2 x i8] %2, i8 %3, 1
 ; CHECK-NEXT:   %5 = extractvalue [2 x i8] %4, 0
@@ -101,11 +101,11 @@ define spir_func [ 2 x %inner ] @calle4( [ 2 x %inner ] %input_array) {
 ; CHECK:        define spir_func [2 x %inner] @calle4([2 x %inner] %input_array) {
 ; CHECK-NEXT:   %1 = extractvalue [2 x %inner] %input_array, 0
 ; CHECK-NEXT:   %2 = extractvalue %inner %1, 0
-; CHECK-NEXT:   %3 = insertvalue %inner undef, i8 %2, 0
-; CHECK-NEXT:   %4 = insertvalue [2 x %inner] undef, %inner %3, 0
+; CHECK-NEXT:   %3 = insertvalue %inner poison, i8 %2, 0
+; CHECK-NEXT:   %4 = insertvalue [2 x %inner] poison, %inner %3, 0
 ; CHECK-NEXT:   %5 = extractvalue [2 x %inner] %input_array, 1
 ; CHECK-NEXT:   %6 = extractvalue %inner %5, 0
-; CHECK-NEXT:   %7 = insertvalue %inner undef, i8 %6, 0
+; CHECK-NEXT:   %7 = insertvalue %inner poison, i8 %6, 0
 ; CHECK-NEXT:   %8 = insertvalue [2 x %inner] %4, %inner %7, 1
 ; CHECK-NEXT:   %9 = extractvalue [2 x %inner] %8, 0
 ; CHECK-NEXT:   %10 = extractvalue %inner %9, 0
