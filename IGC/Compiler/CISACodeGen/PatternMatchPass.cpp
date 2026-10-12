@@ -3168,14 +3168,15 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
   } else if (auto LI = dyn_cast<LoadInst>(&I)) {
     PointerOperand = LI->getPointerOperand();
     InstAlign = IGCLLVM::getAlign(*LI);
-    DataAlign = IGCLLVM::getABITypeAlign(LI->getModule()->getDataLayout(), LI->getType());
+    DataAlign = IGCLLVM::getABITypeAlign(LI->getModule()->getDataLayout(), LI->getType()->getScalarType());
     IsScalar = !LI->getType()->isVectorTy();
     DataSizeInBytes = LI->getType()->getPrimitiveSizeInBits() / 8;
 
   } else if (auto SI = dyn_cast<StoreInst>(&I)) {
     PointerOperand = SI->getPointerOperand();
     InstAlign = IGCLLVM::getAlign(*SI);
-    DataAlign = IGCLLVM::getABITypeAlign(SI->getModule()->getDataLayout(), SI->getValueOperand()->getType());
+    DataAlign =
+        IGCLLVM::getABITypeAlign(SI->getModule()->getDataLayout(), SI->getValueOperand()->getType()->getScalarType());
     IsScalar = !SI->getValueOperand()->getType()->isVectorTy();
     DataSizeInBytes = SI->getValueOperand()->getType()->getPrimitiveSizeInBits() / 8;
   } else {
