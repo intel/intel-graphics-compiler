@@ -27,6 +27,7 @@ public:
   void visitBinaryOperator(llvm::BinaryOperator &I);
   void visitCastInst(llvm::CastInst &I);
   void visitFNeg(llvm::UnaryOperator &I);
+  void visitIntrinsicInst(llvm::IntrinsicInst &I);
 
 private:
   llvm::IRBuilder<> *m_builder = nullptr;

@@ -164,3 +164,35 @@ void ScalarizerCodeGen::visitFNeg(llvm::UnaryOperator &I) {
     I.eraseFromParent();
   }
 }
+
+void ScalarizerCodeGen::visitIntrinsicInst(llvm::IntrinsicInst &I) {
+  // Scalarizing vector type fabs/abs intrinsics. EmitPass lowers them into a
+  // single mov with a source modifier, which covers only the first element.
+  Intrinsic::ID IID = I.getIntrinsicID();
+  if (IID == Intrinsic::fabs || IID == Intrinsic::abs) {
+    if (I.getType()->isVectorTy()) {
+      IGCLLVM::FixedVectorType *InstType = cast<IGCLLVM::FixedVectorType>(I.getType());
+      unsigned NumElements = int_cast<unsigned>(InstType->getNumElements());
+      Value *Src = I.getArgOperand(0);
+      m_builder->SetInsertPoint(&I);
+
+      Value *LastOp = PoisonValue::get(InstType);
+      for (unsigned Idx = 0; Idx < NumElements; Idx++) {
+        Value *ConstIndex = ConstantInt::get(m_builder->getInt32Ty(), Idx);
+        Value *EESrc0 = m_builder->CreateExtractElement(Src, ConstIndex);
+        Value *NewInst = nullptr;
+        if (IID == Intrinsic::fabs)
+          // Preserve the fast-math flags of the original vector fabs.
+          NewInst = m_builder->CreateUnaryIntrinsic(Intrinsic::fabs, EESrc0, &I);
+        else
+          // Keep the is_int_min_poison flag of the original vector abs.
+          NewInst = m_builder->CreateBinaryIntrinsic(Intrinsic::abs, EESrc0, I.getArgOperand(1));
+        LastOp = m_builder->CreateInsertElement(LastOp, NewInst, ConstIndex);
+      }
+
+      // Now replace all the instruction users with the newly created instruction
+      I.replaceAllUsesWith(LastOp);
+      I.eraseFromParent();
+    }
+  }
+}
