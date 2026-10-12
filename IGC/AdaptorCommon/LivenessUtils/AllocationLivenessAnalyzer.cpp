@@ -266,8 +266,10 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
     bbOutSet.set_union(leakingbbOut);
   }
 
-  // if the lifetime escapes any loop, we should make sure all the loops blocks are included
-  for (const auto &loop : LI) {
+  // if the lifetime escapes any loop, we should make sure all the loops blocks are included - this applies to nested
+  // loops too, and we go innermost first, as extending over an inner loop can make the lifetime escape its parent
+  const auto loopsInPreorder = LI.getLoopsInPreorder();
+  for (const auto *loop : llvm::reverse(loopsInPreorder)) {
     SmallVector<std::pair<BasicBlock *, BasicBlock *>> exitEdges;
     loop->getExitEdges(exitEdges);
 
