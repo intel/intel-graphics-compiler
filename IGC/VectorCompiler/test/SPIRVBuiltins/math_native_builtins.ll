@@ -102,7 +102,7 @@ define spir_func <7 x float> @divide(<7 x float> %l, <7 x float> %r) {
 
 define spir_func <7 x float> @exp(<7 x float> %src) {
   ; CHECK-LABEL: @exp
-  ; CHECK: [[MUL:%[^ ]+]] = fmul <7 x float> %src, {{(splat \(float 0x3FF7154760000000\)|<float 0x3FF7154760000000(, float 0x3FF7154760000000)*>)}}
+  ; CHECK: [[MUL:%[^ ]+]] = fmul <7 x float> %src, {{(splat \(float 0x3FF7154760000000\)|splat \(float f0x3FB8AA3B\)|<float 0x3FF7154760000000(, float 0x3FF7154760000000)*>)}}
   ; CHECK: %res = call afn <7 x float> @llvm.exp2.v7f32(<7 x float> [[MUL]])
   %res = call <7 x float> @_Z22__spirv_ocl_native_expDv7_f(<7 x float> %src)
   ret <7 x float> %res
@@ -117,7 +117,7 @@ define spir_func <7 x float> @exp2(<7 x float> %src) {
 
 define spir_func <7 x float> @exp10(<7 x float> %src) {
   ; CHECK-LABEL: @exp10
-  ; CHECK: [[MUL:%[^ ]+]] = fmul <7 x float> %src, {{(splat \(float 0x400A934F00000000\)|<float 0x400A934F00000000(, float 0x400A934F00000000)*>)}}
+  ; CHECK: [[MUL:%[^ ]+]] = fmul <7 x float> %src, {{(splat \(float 0x400A934F00000000\)|splat \(float f0x40549A78\)|<float 0x400A934F00000000(, float 0x400A934F00000000)*>)}}
   ; CHECK: %res = call afn <7 x float> @llvm.exp2.v7f32(<7 x float> [[MUL]])
   %res = call <7 x float> @_Z24__spirv_ocl_native_exp10Dv7_f(<7 x float> %src)
   ret <7 x float> %res
@@ -126,7 +126,7 @@ define spir_func <7 x float> @exp10(<7 x float> %src) {
 define spir_func <7 x float> @log(<7 x float> %src) {
   ; CHECK-LABEL: @log
   ; CHECK: [[LOG:%[^ ]+]] = call afn <7 x float> @llvm.log2.v7f32(<7 x float> %src)
-  ; CHECK: %res = fmul <7 x float> [[LOG]], {{(splat \(float 0x3FE62E4300000000\)|<float 0x3FE62E4300000000(, float 0x3FE62E4300000000)*>)}}
+  ; CHECK: %res = fmul <7 x float> [[LOG]], {{(splat \(float 0x3FE62E4300000000\)|splat \(float f0x3F317218\)|<float 0x3FE62E4300000000(, float 0x3FE62E4300000000)*>)}}
   %res = call <7 x float> @_Z22__spirv_ocl_native_logDv7_f(<7 x float> %src)
   ret <7 x float> %res
 }
@@ -141,7 +141,7 @@ define spir_func <7 x float> @log2(<7 x float> %src) {
 define spir_func <7 x float> @log10(<7 x float> %src) {
   ; CHECK-LABEL: @log10
   ; CHECK: [[LOG:%[^ ]+]] = call afn <7 x float> @llvm.log2.v7f32(<7 x float> %src)
-  ; CHECK: %res = fmul <7 x float> [[LOG]], {{(splat \(float 0x3FD3441360000000\)|<float 0x3FD3441360000000(, float 0x3FD3441360000000)*>)}}
+  ; CHECK: %res = fmul <7 x float> [[LOG]], {{(splat \(float 0x3FD3441360000000\)|splat \(float 3.010300e-01\)|<float 0x3FD3441360000000(, float 0x3FD3441360000000)*>)}}
   %res = call <7 x float> @_Z24__spirv_ocl_native_log10Dv7_f(<7 x float> %src)
   ret <7 x float> %res
 }

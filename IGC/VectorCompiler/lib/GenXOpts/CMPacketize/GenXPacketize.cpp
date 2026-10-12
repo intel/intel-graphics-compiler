@@ -1076,6 +1076,9 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
     break;
   }
 #if LLVM_VERSION_MAJOR >= 23
+  // LLVM 23 split the old shared Br opcode into unconditional UncondBr and
+  // conditional CondBr; unconditional branches need no packetization.
+  case Instruction::UncondBr:
   case Instruction::CondBr: {
 #else
   case Instruction::Br: {

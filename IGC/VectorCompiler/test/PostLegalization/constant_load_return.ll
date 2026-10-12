@@ -34,8 +34,8 @@ define <3 x i8*> @legalize_return_nullptr_vec() {
 ; CHECK-TYPED-PTRS-NEXT:    [[SPLIT1:%.+]] = call <3 x i8*> @llvm.genx.wrregioni.v3p0i8.v2p0i8.i16.i1(<3 x i8*> undef, <2 x i8*> zeroinitializer, i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
 ; CHECK-TYPED-PTRS-NEXT:    [[SPLIT2:%.+]] = call <3 x i8*> @llvm.genx.wrregioni.v3p0i8.v1p0i8.i16.i1(<3 x i8*> [[SPLIT1]], <1 x i8*> zeroinitializer, i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
 ; CHECK-TYPED-PTRS-NEXT:    ret <3 x i8*> [[SPLIT2]]
-; CHECK-OPAQUE-PTRS-NEXT:    [[SPLIT1:%.+]] = call <3 x ptr> @llvm.genx.wrregioni.v3p0.v2p0.i16.i1(<3 x ptr> undef, <2 x ptr> zeroinitializer, i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
-; CHECK-OPAQUE-PTRS-NEXT:    [[SPLIT2:%.+]] = call <3 x ptr> @llvm.genx.wrregioni.v3p0.v1p0.i16.i1(<3 x ptr> [[SPLIT1]], <1 x ptr> zeroinitializer, i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
+; CHECK-OPAQUE-PTRS-NEXT:    [[SPLIT1:%.+]] = call <3 x ptr> @llvm.genx.wrregioni.v3p0.v2p0.i16.i1(<3 x ptr> undef, <2 x ptr> {{(zeroinitializer|splat \(ptr null\))}}, i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
+; CHECK-OPAQUE-PTRS-NEXT:    [[SPLIT2:%.+]] = call <3 x ptr> @llvm.genx.wrregioni.v3p0.v1p0.i16.i1(<3 x ptr> [[SPLIT1]], <1 x ptr> {{(zeroinitializer|splat \(ptr null\))}}, i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
 ; CHECK-OPAQUE-PTRS-NEXT:    ret <3 x ptr> [[SPLIT2]]
   ret <3 x i8*> zeroinitializer
 }

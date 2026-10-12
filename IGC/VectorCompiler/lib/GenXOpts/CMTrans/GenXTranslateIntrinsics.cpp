@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Instructions.h"
 
 #include "visa_igc_common_header.h"
@@ -227,7 +228,7 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
 
 Value *GenXTranslateIntrinsics::translateMinMax(CallInst &I) const {
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
 
   auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
   auto NewIID = Intrinsic::not_intrinsic;
@@ -271,10 +272,12 @@ Value *GenXTranslateIntrinsics::translateMinMax(CallInst &I) const {
 Value *GenXTranslateIntrinsics::translateMath(CallInst &I, Intrinsic::ID IID,
                                               bool HasApproxFunc) const {
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
 
   SmallVector<Value *, 4> Args(I.args());
-  auto *NewI = Builder.CreateIntrinsic(IID, {I.getType()}, Args);
+  // CreateIntrinsicWithoutFolding (unlike CreateIntrinsic) always returns a
+  // real CallInst across LLVM versions, so the flag can be set afterwards.
+  auto *NewI = Builder.CreateIntrinsicWithoutFolding(IID, {I.getType()}, Args);
   NewI->setHasApproxFunc(HasApproxFunc);
 
   LLVM_DEBUG(dbgs() << "Created: " << *NewI << "\n");
@@ -285,7 +288,7 @@ Value *GenXTranslateIntrinsics::translateBFloat16Convert(CallInst &I) const {
   IGC_ASSERT_EXIT(GenXIntrinsic::getGenXIntrinsicID(&I) ==
                   GenXIntrinsic::genx_bf_cvt);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
   Module *M = I.getModule();
 
   auto *Arg = I.getArgOperand(0);
@@ -320,7 +323,7 @@ Value *GenXTranslateIntrinsics::translateTFloat32Convert(CallInst &I) const {
   IGC_ASSERT_EXIT(GenXIntrinsic::getGenXIntrinsicID(&I) ==
                   GenXIntrinsic::genx_tf32_cvt);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
   Module *M = I.getModule();
 
   auto *Arg = I.getArgOperand(0);
@@ -341,7 +344,7 @@ Value *GenXTranslateIntrinsics::translateStochasticRounding(CallInst &I) const {
                   InputIID == GenXIntrinsic::genx_biased_rounding_bf8 ||
                   InputIID == GenXIntrinsic::genx_biased_rounding_hf8);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
   Module *M = I.getModule();
 
   auto *RetTy = I.getType();
@@ -410,7 +413,7 @@ Value *GenXTranslateIntrinsics::translateUpconvertLut4Bit(CallInst &I) const {
   IGC_ASSERT_EXIT(GenXIntrinsic::getGenXIntrinsicID(&I) ==
                   GenXIntrinsic::genx_packed_4bit_upconvert_lut);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
   Module *M = I.getModule();
 
   auto *Ty = cast<IGCLLVM::FixedVectorType>(I.getType());
@@ -466,7 +469,7 @@ Constant *GenXTranslateIntrinsics::translateCacheControls(Constant *L1,
 Value *GenXTranslateIntrinsics::translateLscLoadStore(CallInst &I) const {
   auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
   Module *M = I.getModule();
 
   auto *Pred = I.getArgOperand(0);
@@ -609,7 +612,7 @@ Value *GenXTranslateIntrinsics::translateLscLoadStore(CallInst &I) const {
 Value *GenXTranslateIntrinsics::translateLscAtomic(CallInst &I) const {
   auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
   Module *M = I.getModule();
 
   auto *Pred = I.getArgOperand(0);
@@ -664,7 +667,7 @@ Value *
 GenXTranslateIntrinsics::translateLscLoadStoreBlock2D(CallInst &I) const {
   auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
   Module *M = I.getModule();
 
   auto *Pred = I.getArgOperand(0);
@@ -762,7 +765,7 @@ GenXTranslateIntrinsics::translateLscLoadStoreBlock2D(CallInst &I) const {
 Value *GenXTranslateIntrinsics::translateLscLoadStore2DDesc(CallInst &I) const {
   auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
   Module *M = I.getModule();
 
   auto NewIID = vc::InternalIntrinsic::not_any_intrinsic;
@@ -797,7 +800,7 @@ Value *GenXTranslateIntrinsics::translateLscLoadStore2DDesc(CallInst &I) const {
 Value *GenXTranslateIntrinsics::translateLscTyped(CallInst &I) const {
   auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
   Module *M = I.getModule();
 
   auto *Pred = I.getArgOperand(0);
@@ -860,7 +863,7 @@ Value *GenXTranslateIntrinsics::translateLscTyped(CallInst &I) const {
 Value *GenXTranslateIntrinsics::translateLscTyped2D(CallInst &I) const {
   auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
   Module *M = I.getModule();
 
   auto *L1Control = cast<Constant>(I.getArgOperand(0));
@@ -942,7 +945,7 @@ Value *GenXTranslateIntrinsics::translateSamplerSimple(CallInst &I) const {
   auto *AddrTy = cast<IGCLLVM::FixedVectorType>(U->getType());
   auto NumElements = AddrTy->getNumElements();
 
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
 
   auto *PredTy =
       IGCLLVM::FixedVectorType::get(Builder.getInt1Ty(), NumElements);
@@ -982,7 +985,7 @@ Value *GenXTranslateIntrinsics::translateSampler(CallInst &I) const {
                   IID == GenXIntrinsic::genx_3d_sample);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
 
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
   auto *ResTy = I.getType();
 
   unsigned Index = 0;
@@ -1034,7 +1037,7 @@ Value *GenXTranslateIntrinsics::translateRawSendG(CallInst &I) const {
   IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(&I) ==
              GenXIntrinsic::genx_raw_sendg);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
-  IRBuilder<> Builder(&I);
+  IGCLLVM::IRBuilder<> Builder(&I);
   Module *M = I.getModule();
 
   constexpr auto NewIID = vc::InternalIntrinsic::raw_sendg;

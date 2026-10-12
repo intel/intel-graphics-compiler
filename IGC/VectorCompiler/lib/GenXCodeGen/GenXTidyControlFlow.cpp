@@ -213,8 +213,9 @@ void GenXTidyControlFlow::removeEmptyBlocks(Function *F) {
     // eliminating.
     if (dyn_cast<PHINode>(&BB->front()))
       continue;
-    BranchInst *BI = dyn_cast<BranchInst>(IGCLLVM::getFirstNonPHIOrDbg(BB));
-    if (!BI || !BI->isUnconditional())
+    auto *BI =
+        dyn_cast<IGCLLVM::UncondBrInst>(IGCLLVM::getFirstNonPHIOrDbg(BB));
+    if (!BI)
       continue;
     // Do not remove BB if it has more than one predecessor.
     if (!BB->hasOneUse())
@@ -223,10 +224,9 @@ void GenXTidyControlFlow::removeEmptyBlocks(Function *F) {
     // the "false" leg of a goto/join. In that case we do not remove the
     // block, as reorderBlocks below may rely on it to ensure that the "false"
     // successor of a goto/join can be made fallthrough.
-    if (BB->hasOneUse() &&
-        BB->use_begin()->getOperandNo() == 1 /*false successor*/
-        && GotoJoin::isBranchingGotoJoinBlock(
-               cast<Instruction>(BB->use_begin()->getUser())->getParent())) {
+    auto *PredBr = dyn_cast<IGCLLVM::CondBrInst>(BB->use_begin()->getUser());
+    if (PredBr && PredBr->getSuccessor(1) == BB &&
+        GotoJoin::isBranchingGotoJoinBlock(PredBr->getParent())) {
       LLVM_DEBUG(dbgs() << "removeEmptyBlocks: not removing " << BB->getName()
                         << "\n");
       continue;

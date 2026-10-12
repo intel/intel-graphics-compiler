@@ -180,7 +180,7 @@ BasicBlock *GotoJoin::getBranchingBlockForBB(BasicBlock *BB,
                                              bool SkipCriticalEdgeSplitter) {
   for (auto ui = BB->use_begin(), ue = BB->use_end(); ui != ue; ++ui) {
     auto PredBr = dyn_cast<BranchInst>(ui->getUser());
-    if (!PredBr || ui->getOperandNo() != PredBr->getNumOperands() - 1)
+    if (!PredBr || PredBr->getSuccessor(0) != BB)
       continue;
     // PredBr is a branch that has BB as its "true" successor. First skip a
     // critical edge splitter.
@@ -189,7 +189,7 @@ BasicBlock *GotoJoin::getBranchingBlockForBB(BasicBlock *BB,
         PredBr == IGCLLVM::getFirstNonPHIOrDbg(PredBB) && PredBB->hasOneUse()) {
       auto ui2 = PredBB->use_begin();
       PredBr = dyn_cast<BranchInst>(ui2->getUser());
-      if (!PredBr || ui2->getOperandNo() != PredBr->getNumOperands() - 1)
+      if (!PredBr || PredBr->getSuccessor(0) != PredBB)
         continue;
       PredBB = PredBr->getParent();
     }

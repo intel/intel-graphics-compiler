@@ -641,12 +641,14 @@ void initializeGenXLivenessWrapperPass(PassRegistry &);
 
 // Specialize DenseMapInfo for SimpleValue.
 template <> struct DenseMapInfo<genx::SimpleValue> {
+#if LLVM_VERSION_MAJOR < 23
   static inline genx::SimpleValue getEmptyKey() {
     return genx::SimpleValue(DenseMapInfo<Value *>::getEmptyKey());
   }
   static inline genx::SimpleValue getTombstoneKey() {
     return genx::SimpleValue(DenseMapInfo<Value *>::getTombstoneKey());
   }
+#endif
   static unsigned getHashValue(const genx::SimpleValue &SV) {
     return DenseMapInfo<Value *>::getHashValue(SV.getValue()) ^
            DenseMapInfo<unsigned>::getHashValue(SV.getIndex());

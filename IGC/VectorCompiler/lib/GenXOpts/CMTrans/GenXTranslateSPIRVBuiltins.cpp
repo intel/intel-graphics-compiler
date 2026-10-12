@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 
 #include <llvm/ADT/SmallString.h>
 #include <llvm/IR/Function.h>
@@ -58,20 +59,23 @@ private:
   Value *visitCallInst(CallInst &CI);
   Value *visitInstruction(Instruction &) { return nullptr; }
 
-  CallInst *emitIntrinsic(IRBuilder<> &Builder, unsigned IID,
+  CallInst *emitIntrinsic(IGCLLVM::IRBuilder<> &Builder, unsigned IID,
                           ArrayRef<Type *> Types, ArrayRef<Value *> Args);
-  CallInst *emitIntrinsic(IRBuilder<> &Builder, unsigned IID, Type *Ty,
+  CallInst *emitIntrinsic(IGCLLVM::IRBuilder<> &Builder, unsigned IID, Type *Ty,
                           ArrayRef<Value *> Args) {
     SmallVector<Type *, 1> Types = {Ty};
     return emitIntrinsic(Builder, IID, Types, Args);
   }
 
-  Value *emitMathIntrinsic(IRBuilder<> &Builder, unsigned IID, Type *Ty,
-                           ArrayRef<Value *> Args, bool AFN = false);
-  Value *emitFDiv(IRBuilder<> &Builder, Value *L, Value *R, bool ARCP = false);
-  Value *emitAddcSubb(IRBuilder<> &Builder, unsigned IID, CallInst &CI);
-  Value *emitMulExtended(IRBuilder<> &Builder, unsigned IID, CallInst &CI);
-  Value *emitDot(IRBuilder<> &Builder, unsigned IID, CallInst &CI);
+  Value *emitMathIntrinsic(IGCLLVM::IRBuilder<> &Builder, unsigned IID,
+                           Type *Ty, ArrayRef<Value *> Args, bool AFN = false);
+  Value *emitFDiv(IGCLLVM::IRBuilder<> &Builder, Value *L, Value *R,
+                  bool ARCP = false);
+  Value *emitAddcSubb(IGCLLVM::IRBuilder<> &Builder, unsigned IID,
+                      CallInst &CI);
+  Value *emitMulExtended(IGCLLVM::IRBuilder<> &Builder, unsigned IID,
+                         CallInst &CI);
+  Value *emitDot(IGCLLVM::IRBuilder<> &Builder, unsigned IID, CallInst &CI);
 
   Module *M;
 };
@@ -87,31 +91,31 @@ Value *SPIRVExpander::tryReplace(Instruction *I) {
   return R;
 }
 
-CallInst *SPIRVExpander::emitIntrinsic(IRBuilder<> &Builder, unsigned IID,
-                                       ArrayRef<Type *> Types,
+CallInst *SPIRVExpander::emitIntrinsic(IGCLLVM::IRBuilder<> &Builder,
+                                       unsigned IID, ArrayRef<Type *> Types,
                                        ArrayRef<Value *> Args) {
   IGC_ASSERT_EXIT(M);
   Function *IntrFunc = vc::getAnyDeclaration(M, IID, Types);
   return Builder.CreateCall(IntrFunc, Args);
 }
 
-Value *SPIRVExpander::emitMathIntrinsic(IRBuilder<> &Builder, unsigned IID,
-                                        Type *Ty, ArrayRef<Value *> Args,
-                                        bool AFN) {
+Value *SPIRVExpander::emitMathIntrinsic(IGCLLVM::IRBuilder<> &Builder,
+                                        unsigned IID, Type *Ty,
+                                        ArrayRef<Value *> Args, bool AFN) {
   auto *NewCI = emitIntrinsic(Builder, IID, Ty, Args);
   NewCI->setHasApproxFunc(AFN);
   return NewCI;
 }
 
-Value *SPIRVExpander::emitFDiv(IRBuilder<> &Builder, Value *L, Value *R,
-                               bool ARCP) {
+Value *SPIRVExpander::emitFDiv(IGCLLVM::IRBuilder<> &Builder, Value *L,
+                               Value *R, bool ARCP) {
   auto *FDiv = Builder.CreateFDiv(L, R);
   if (auto *FDivInst = dyn_cast<Instruction>(FDiv))
     FDivInst->setHasAllowReciprocal(ARCP);
   return FDiv;
 }
 
-Value *SPIRVExpander::emitAddcSubb(IRBuilder<> &Builder, unsigned IID,
+Value *SPIRVExpander::emitAddcSubb(IGCLLVM::IRBuilder<> &Builder, unsigned IID,
                                    CallInst &CI) {
   auto *Res = CI.getArgOperand(0);
 
@@ -148,8 +152,8 @@ Value *SPIRVExpander::emitAddcSubb(IRBuilder<> &Builder, unsigned IID,
   return Builder.CreateStore(Carry, CarryPtr);
 }
 
-Value *SPIRVExpander::emitMulExtended(IRBuilder<> &Builder, unsigned IID,
-                                      CallInst &CI) {
+Value *SPIRVExpander::emitMulExtended(IGCLLVM::IRBuilder<> &Builder,
+                                      unsigned IID, CallInst &CI) {
   auto *Res = CI.getArgOperand(0);
 
   auto *Ty = CI.getArgOperand(1)->getType();
@@ -175,16 +179,20 @@ Value *SPIRVExpander::emitMulExtended(IRBuilder<> &Builder, unsigned IID,
   return Builder.CreateStore(Hi, HiPtr);
 }
 
-Value *SPIRVExpander::emitDot(IRBuilder<> &Builder, unsigned IID,
+Value *SPIRVExpander::emitDot(IGCLLVM::IRBuilder<> &Builder, unsigned IID,
                               CallInst &CI) {
   auto *Ty = CI.getType();
   auto *Src0 = CI.getOperand(0);
   auto *Src1 = CI.getOperand(1);
   IGC_ASSERT_EXIT(Ty->isFloatingPointTy());
   auto *Mul = Builder.CreateFMul(Src0, Src1, CI.getName());
-  auto *Res = Builder.CreateFAddReduce(Constant::getNullValue(Ty), Mul);
-  Res->setHasAllowReassoc(true);
-  return Res;
+  // CreateFAddReduce may constant-fold to a non-Instruction Value, so the
+  // flag must go through the builder's FMF state rather than the result.
+  IGCLLVM::IRBuilder<>::FastMathFlagGuard Guard(Builder);
+  FastMathFlags FMF = Builder.getFastMathFlags();
+  FMF.setAllowReassoc(true);
+  Builder.setFastMathFlags(FMF);
+  return Builder.CreateFAddReduce(Constant::getNullValue(Ty), Mul);
 }
 
 Value *SPIRVExpander::visitCallInst(CallInst &CI) {
@@ -195,7 +203,7 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
   if (!Callee)
     return nullptr;
 
-  IRBuilder<> Builder(&CI);
+  IGCLLVM::IRBuilder<> Builder(&CI);
   auto *Ty = CI.getType();
   auto CalleeName = Callee->getName();
 
@@ -491,7 +499,7 @@ static inline void checkTypesFixPtrs(Function *Func, Function *NewFunc) {
         continue;
 
       CallInstList.push_back(CI);
-      IRBuilder<> Builder(CI);
+      IGCLLVM::IRBuilder<> Builder(CI);
 
       for (auto &U : CI->args()) {
         auto Index = U.getOperandNo();

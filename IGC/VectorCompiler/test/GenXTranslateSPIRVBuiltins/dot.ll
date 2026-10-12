@@ -66,7 +66,7 @@ define spir_func double @dotDoubleVal() {
 ; CHECK-LABEL: spir_func bfloat @dotBFloatVal
 define spir_func bfloat @dotBFloatVal() {
 ; CHECK: [[FMUL:%[^ ]*]] = fmul <7 x bfloat> {{.*}}
-; CHECK: [[RES:%[^ ]*]] = call reassoc bfloat @llvm.vector.reduce.fadd.v7bf16(bfloat 0xR0000, <7 x bfloat> [[FMUL]])
+; CHECK: [[RES:%[^ ]*]] = call reassoc bfloat @llvm.vector.reduce.fadd.v7bf16(bfloat {{(0xR0000|0.000000e\+00)}}, <7 x bfloat> [[FMUL]])
 ; CHECK: ret bfloat [[RES]]
   %alloc = alloca <7 x bfloat>, align 128
   %src1 = load <7 x bfloat>, <7 x bfloat>* %alloc, align 32

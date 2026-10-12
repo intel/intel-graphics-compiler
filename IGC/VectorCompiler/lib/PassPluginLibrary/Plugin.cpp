@@ -57,6 +57,7 @@ void registerPluginPasses(PassBuilder &PB) {
 
   LLVMInitializeGenXTarget();
   LLVMInitializeGenXTargetInfo();
+  LLVMInitializeGenXTargetMC();
 
   PB.registerAnalysisRegistrationCallback([=](ModuleAnalysisManager &MAM) {
     MAM.registerPass([&] { return CMABIAnalysisPass(); });

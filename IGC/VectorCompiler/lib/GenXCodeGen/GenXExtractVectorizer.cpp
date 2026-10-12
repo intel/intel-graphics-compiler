@@ -36,6 +36,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 
+#include <set>
+
 #define DEBUG_TYPE "GENX_ExtractVectorizer"
 
 using namespace llvm;

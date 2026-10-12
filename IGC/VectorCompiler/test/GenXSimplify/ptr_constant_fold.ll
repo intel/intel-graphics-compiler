@@ -21,7 +21,7 @@ target datalayout = "e-p:64:64-i64:64-n8:16:32"
 define <2 x i8*> @test_const_wrr_ptr() {
 ; CHECK-LABEL: @test_const_wrr_ptr(
 ; CHECK-TYPED-PTRS-NEXT:    ret <2 x i8*> zeroinitializer
-; CHECK-OPAQUE-PTRS-NEXT:    ret <2 x ptr> zeroinitializer
+; CHECK-OPAQUE-PTRS-NEXT:    ret <2 x ptr> {{(zeroinitializer|splat \(ptr null\))}}
   %x = call <2 x i8*> @llvm.genx.wrregioni.v2p0i8.p0i8.i16.i1(<2 x i8*> <i8* null, i8* undef>, i8* null, i32 0, i32 1, i32 0, i16 8, i32 0, i1 true)
   ret <2 x i8*> %x
 }
@@ -30,7 +30,7 @@ define <2 x i8*> @test_const_wrr_ptr() {
 define <2 x i8*> @test_const_rdr_ptr_vec_broadcast() {
 ; CHECK-LABEL: @test_const_rdr_ptr_vec_broadcast(
 ; CHECK-TYPED-PTRS-NEXT:    ret <2 x i8*> zeroinitializer
-; CHECK-OPAQUE-PTRS-NEXT:    ret <2 x ptr> zeroinitializer
+; CHECK-OPAQUE-PTRS-NEXT:    ret <2 x ptr> {{(zeroinitializer|splat \(ptr null\))}}
   %x = call <2 x i8*> @llvm.genx.rdregioni.v2p0i8.v2p0i8.i16(<2 x i8*> <i8* undef, i8* null>, i32 0, i32 1, i32 0, i16 8, i32 0)
   ret <2 x i8*> %x
 }

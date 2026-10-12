@@ -438,7 +438,17 @@ GenXTargetMachine::GenXTargetMachine(const Target &T, const Triple &TT,
           RM ? IGCLLVM::getValue(RM) : Reloc::Model::Static,
           CM ? IGCLLVM::getValue(CM) : CodeModel::Model::Small, OL),
       TLOF(createTLOF(getTargetTriple())), BC(std::move(BC)), Is64Bit(Is64Bit),
-      Subtarget(TT, CPU.str(), FS.str()) {}
+      Subtarget(TT, CPU.str(), FS.str()) {
+  // GenX bypasses LLVM's real MC/AsmPrinter layer (it emits vISA directly via
+  // GenXFinalizer), so it never needed a "real" MCAsmInfo/MCRegisterInfo/
+  // MCSubtargetInfo. But TargetMachine's base constructor always leaves
+  // AsmInfo/MRI/STI null until initAsmInfo() populates them from the minimal
+  // stubs registered in GenXTargetInfo.cpp, and generic codegen setup code
+  // (MachineModuleInfoWrapperPass -> MCContext) unconditionally dereferences
+  // them, so this call is required even though GenX's own passes don't use
+  // the result.
+  initAsmInfo();
+}
 
 GenXTargetMachine::~GenXTargetMachine() = default;
 

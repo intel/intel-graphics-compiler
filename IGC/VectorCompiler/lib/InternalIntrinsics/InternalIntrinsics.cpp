@@ -231,6 +231,13 @@ DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
   }
   case IIT_ARG: {
     unsigned ArgInfo = (NextElt == Infos.size() ? 0 : Infos[NextElt++]);
+#if LLVM_VERSION_MAJOR >= 23
+    // ArgInfo packs (overloadIndex << 3 | anyKindTag), see Intrinsics.py's
+    // addAnyTypes(). Pre-23 getArgumentNumber() unshifted this internally,
+    // but LLVM 23's getOverloadIndex() just returns OverloadInfo & 0xf, so
+    // the index must be unpacked before storing it.
+    ArgInfo >>= 3;
+#endif
     OutputTable.push_back(
         IITDescriptor::get(IGCLLVM::IITDescriptorKind::Overloaded, ArgInfo));
     return;

@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
 #include <llvm/Support/MathExtras.h>
+#include <llvm/Support/SwapByteOrder.h>
 
 #include <algorithm>
 #include <iterator>

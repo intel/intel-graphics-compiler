@@ -29,7 +29,7 @@ else:
 config.name = 'vc-opt'
 
 # testFormat: The test format to use to interpret tests.
-config.test_format = VerboseUnsupportedShTest(not llvm_config.use_lit_shell)
+config.test_format = VerboseUnsupportedShTest(False)
 
 # suffixes: A list of file extensions to treat as test files.
 config.suffixes = ['.ll']
@@ -143,6 +143,16 @@ not_opt_tool_legacy_opaque = ToolSubst('%not_opt_legacy_opaque', command=command
 not_opt_tool_new_pm_typed  = ToolSubst('%not_opt_new_pm_typed',  command=command_not_new_pm_typed,  extra_args=['%opt_new_pm_typed'])
 not_opt_tool_new_pm_opaque = ToolSubst('%not_opt_new_pm_opaque', command=command_not_new_pm_opaque, extra_args=['%opt_new_pm_opaque'])
 
+# LLVM 23 made the new-PM pipeline hard-abort (SIGABRT) on some fatal pass
+# errors that used to just report_fatal_error()-exit cleanly (a module
+# verifier re-check after the erroring pass also fails and aborts). Plain
+# `not` treats a crash as an infrastructure failure, so tests relying on
+# report_fatal_error() from within a pass need `not --crash` on LLVM>=23.
+not_crash_extra_args = ['--crash'] if llvm_ver >= 23 else []
+not_opt_tool_new_pm_opaque_maybe_crash = ToolSubst(
+    '%not_opt_new_pm_opaque_maybe_crash', command=command_not_new_pm_opaque,
+    extra_args=not_crash_extra_args + ['%opt_new_pm_opaque'])
+
 llc_tool_typed_ptrs = _make_tool_subst('%llc_typed_ptrs', command_llc_typed, extra_args_typed_legacy)
 llc_tool_opaque_ptrs = _make_tool_subst('%llc_opaque_ptrs', command_llc_opaque, extra_args_opaque_legacy)
 
@@ -154,6 +164,7 @@ tools = [ToolSubst('not'),
          not_opt_tool_legacy_opaque,
          not_opt_tool_legacy_typed,
          not_opt_tool_new_pm_opaque,
+         not_opt_tool_new_pm_opaque_maybe_crash,
          not_opt_tool_new_pm_typed,
          opt_tool_old_pm,
          opt_tool_typed_ptrs,

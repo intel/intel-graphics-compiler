@@ -609,8 +609,9 @@ vc::Compile(ArrayRef<char> Input, const vc::CompileOptions &Opts,
       IGCLLVM::make_scope_exit([]() { cl::ResetAllOptionOccurrences(); });
 
   LLVMContext Context;
-  LLVMInitializeGenXTarget();
-  LLVMInitializeGenXTargetInfo();
+  // Must register the MC factories too: initAsmInfo() dereferences the
+  // registry entries LLVMInitializeGenXTargetMC() installs.
+  llvm::initializeGenX();
 
   DiagnosticContext DiagCtx{Log, false};
   Context.setDiagnosticHandlerCallBack(diagnosticHandlerCallback, &DiagCtx);

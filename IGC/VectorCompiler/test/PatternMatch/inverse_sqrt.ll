@@ -107,7 +107,7 @@ define <16 x float> @test_sqrt_multiple_use(<16 x float> %val) {
 
 ; CHECK-LABEL: @test_sqrt_inv_constant
 define float @test_sqrt_inv_constant() {
-; CHECK: ret float 0x3FB99999A0000000
+; CHECK: ret float {{(0x3FB99999A0000000|1.000000e-01)}}
   %sqrt = call float @llvm.genx.sqrt.f32(float 100.0)
   %inv = call float @llvm.genx.inv.f32(float %sqrt)
   ret float %inv
@@ -115,7 +115,7 @@ define float @test_sqrt_inv_constant() {
 
 ; CHECK-LABEL: @test_sqrt_div_constant
 define float @test_sqrt_div_constant() {
-; CHECK: ret float 0x3FB99999A0000000
+; CHECK: ret float {{(0x3FB99999A0000000|1.000000e-01)}}
   %sqrt = call float @llvm.genx.sqrt.f32(float 100.0)
   %inv = fdiv arcp float 1.0, %sqrt
   ret float %inv
@@ -123,7 +123,7 @@ define float @test_sqrt_div_constant() {
 
 ; CHECK-LABEL: @test_sqrt_fast_inv_constant
 define float @test_sqrt_fast_inv_constant() {
-; CHECK: ret float 0x3FB99999A0000000
+; CHECK: ret float {{(0x3FB99999A0000000|1.000000e-01)}}
   %sqrt = call afn float @llvm.sqrt.f32(float 100.0)
   %inv = call float @llvm.genx.inv.f32(float %sqrt)
   ret float %inv
@@ -131,7 +131,7 @@ define float @test_sqrt_fast_inv_constant() {
 
 ; CHECK-LABEL: @test_sqrt_inv_constant_neg
 define float @test_sqrt_inv_constant_neg() {
-; CHECK: ret float 0x7FF8000000000000
+; CHECK: ret float {{(0x7FF8000000000000|\+qnan)}}
   %sqrt = call float @llvm.genx.sqrt.f32(float -100.0)
   %inv = call float @llvm.genx.inv.f32(float %sqrt)
   ret float %inv
@@ -139,7 +139,7 @@ define float @test_sqrt_inv_constant_neg() {
 
 ; CHECK-LABEL: @test_sqrt_inv_constant_negzero
 define float @test_sqrt_inv_constant_negzero() {
-; CHECK: ret float 0xFFF0000000000000
+; CHECK: ret float {{(0xFFF0000000000000|-inf)}}
   %sqrt = call float @llvm.genx.sqrt.f32(float -0.0)
   %inv = call float @llvm.genx.inv.f32(float %sqrt)
   ret float %inv
@@ -147,7 +147,7 @@ define float @test_sqrt_inv_constant_negzero() {
 
 ; CHECK-LABEL: @test_sqrt_inv_constant_zero
 define float @test_sqrt_inv_constant_zero() {
-; CHECK: ret float 0x7FF0000000000000
+; CHECK: ret float {{(0x7FF0000000000000|\+inf)}}
   %sqrt = call float @llvm.genx.sqrt.f32(float 0.0)
   %inv = call float @llvm.genx.inv.f32(float %sqrt)
   ret float %inv
@@ -163,7 +163,7 @@ define float @test_sqrt_inv_constant_inf() {
 
 ; CHECK-LABEL: @test_sqrt_inv_constant_neginf
 define float @test_sqrt_inv_constant_neginf() {
-; CHECK: ret float 0x7FF8000000000000
+; CHECK: ret float {{(0x7FF8000000000000|\+qnan)}}
   %sqrt = call float @llvm.genx.sqrt.f32(float 0xFFF0000000000000)
   %inv = call float @llvm.genx.inv.f32(float %sqrt)
   ret float %inv
@@ -179,7 +179,7 @@ define float @test_sqrt_inv_constant_undef() {
 
 ; CHECK-LABEL: @test_sqrt_inv_constant_vector
 define <2 x float> @test_sqrt_inv_constant_vector() {
-; CHECK: ret <2 x float> <float 0x3FC99999A0000000, float 5.000000e-01>
+; CHECK: ret <2 x float> <float {{(0x3FC99999A0000000|2.000000e-01)}}, float 5.000000e-01>
   %sqrt = call <2 x float> @llvm.genx.sqrt.v2f32(<2 x float> <float 25.0, float 4.0>)
   %inv = call <2 x float> @llvm.genx.inv.v2f32(<2 x float> %sqrt)
   ret <2 x float> %inv
@@ -187,7 +187,7 @@ define <2 x float> @test_sqrt_inv_constant_vector() {
 
 ; CHECK-LABEL: @test_sqrt_inv_constant_vector_zero
 define <2 x float> @test_sqrt_inv_constant_vector_zero() {
-; CHECK: ret <2 x float> {{(splat \(float 0x7FF0000000000000\)|<float 0x7FF0000000000000(, float 0x7FF0000000000000)*>)}}
+; CHECK: ret <2 x float> {{(splat \(float 0x7FF0000000000000\)|splat \(float \+inf\)|<float 0x7FF0000000000000(, float 0x7FF0000000000000)*>)}}
   %sqrt = call <2 x float> @llvm.genx.sqrt.v2f32(<2 x float> zeroinitializer)
   %inv = call <2 x float> @llvm.genx.inv.v2f32(<2 x float> %sqrt)
   ret <2 x float> %inv
