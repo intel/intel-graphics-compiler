@@ -1124,6 +1124,7 @@ bool G4_INST::isIntegerPipeInstructionXe() const {
     return false;
   }
 
+
   if (builder.enableMovCvt() && isFloatInIntegerPipe()) {
     return true;
   }
@@ -1182,6 +1183,7 @@ bool G4_INST::isFloatPipeInstructionXe() const {
   if (isS0PipeInstructionXe()) {
     return false;
   }
+
 
   if (builder.enableMovCvt() && isFloatInIntegerPipe()) {
     return false;
