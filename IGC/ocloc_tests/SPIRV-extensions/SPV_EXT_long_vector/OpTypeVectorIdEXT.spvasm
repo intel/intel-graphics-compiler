@@ -1,0 +1,78 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; REQUIRES: regkeys, spirv-as, pvc-supported
+; RUN: spirv-as --target-env spv1.0 --preserve-numeric-ids -o %t.spv %s
+; RUN: printf "0: 32" > %t_spec_const.txt
+
+; RUN: %if !release %{ ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM,CHECK-LLVM-DEFAULT %}
+; RUN: %if !release %{ ocloc compile -spirv_input -file %t.spv -device pvc -spec_const %t_spec_const.txt -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM,CHECK-LLVM-OVERRIDE %}
+
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefix=CHECK-VISA
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -spec_const %t_spec_const.txt -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefix=CHECK-VISA
+
+; The SPIRV-Tools version used by IGC doesn't know SPV_EXT_long_vector yet, so
+; LongVectorEXT (5425) and OpTypeVectorIdEXT (5288) are encoded as raw words.
+; A raw instruction must follow one without optional trailing operands,
+; otherwise the assembler appends the words to it.
+
+               OpCapability Addresses
+               OpCapability Kernel
+               OpCapability !5425
+               OpExtension "SPV_EXT_long_vector"
+               OpMemoryModel Physical64 OpenCL
+               OpEntryPoint Kernel %test_const "test_const"
+               OpEntryPoint Kernel %test_spec "test_spec"
+               OpDecorate %12 SpecId 0
+       %uint = OpTypeInt 32 0
+         %10 = OpTypeFloat 32
+         %11 = OpConstant %uint 16
+         %12 = OpSpecConstant %uint 3
+       %void = OpTypeVoid
+; %20 = OpTypeVectorIdEXT %10 %11
+               !0x000414A8 !20 !10 !11
+; %21 = OpTypeVectorIdEXT %10 %12
+               !0x000414A8 !21 !10 !12
+   %ptr_const = OpTypePointer CrossWorkgroup %20
+    %ptr_spec = OpTypePointer CrossWorkgroup %21
+ %fn_const_ty = OpTypeFunction %void %ptr_const
+  %fn_spec_ty = OpTypeFunction %void %ptr_spec
+
+  %test_const = OpFunction %void None %fn_const_ty
+    %io_const = OpFunctionParameter %ptr_const
+ %entry_const = OpLabel
+     %v_const = OpLoad %20 %io_const
+   %sum_const = OpFAdd %20 %v_const %v_const
+               OpStore %io_const %sum_const
+               OpReturn
+               OpFunctionEnd
+
+   %test_spec = OpFunction %void None %fn_spec_ty
+     %io_spec = OpFunctionParameter %ptr_spec
+  %entry_spec = OpLabel
+      %v_spec = OpLoad %21 %io_spec
+    %sum_spec = OpFAdd %21 %v_spec %v_spec
+               OpStore %io_spec %sum_spec
+               OpReturn
+               OpFunctionEnd
+
+; CHECK-LLVM-LABEL: define spir_kernel void @test_const(
+; CHECK-LLVM:         load <16 x float>
+; CHECK-LLVM:         fadd <16 x float>
+; CHECK-LLVM:         store <16 x float>
+
+; CHECK-LLVM-LABEL:          define spir_kernel void @test_spec(
+; CHECK-LLVM-DEFAULT:          load <3 x float>
+; CHECK-LLVM-DEFAULT:          fadd <3 x float>
+; CHECK-LLVM-DEFAULT:          store <3 x float>
+; CHECK-LLVM-OVERRIDE:         load <32 x float>
+; CHECK-LLVM-OVERRIDE:         fadd <32 x float>
+; CHECK-LLVM-OVERRIDE:         store <32 x float>
+
+; CHECK-VISA-DAG: .kernel "test_const"
+; CHECK-VISA-DAG: .kernel "test_spec"
