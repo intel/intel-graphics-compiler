@@ -197,6 +197,9 @@ static CIF::RAII::UPtr_t<CIF::CIFMain> getCIFMain(const char *libName) {
   void *address = nullptr;
 
 #if defined(_WIN32)
+  // Suppress the system "Bad Image" dialog when --lib points at a file that is not
+  // a valid DLL (e.g. lib_option/not_a_library.test) so LoadLibraryA just fails
+  SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX);
   HMODULE handle = LoadLibraryA(libName);
   if (handle == nullptr) {
     std::cerr << "error: failed to load '" << libName << "': error " << GetLastError() << "\n";
