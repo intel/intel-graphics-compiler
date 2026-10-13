@@ -2857,11 +2857,13 @@ int VISAKernelImpl::AppendVISAPredDstArithmeticInst(
 
     CHECK_NUM_OPNDS(inst_desc, num_operands, num_pred_desc_operands);
 
+    PredicateOpnd predId =
+        pred ? pred->convertToPred() : PredicateOpnd::getNullPred();
     unsigned char size = executionSize;
     size += emask << 4;
     CisaFramework::CisaInst *inst = new (m_mem) CisaFramework::CisaInst(m_mem);
-    inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(),
-                                opnd, num_operands, inst_desc);
+    inst->createCisaInstruction(opcode, size, 0, predId, opnd, num_operands,
+                                inst_desc);
     addInstructionToEnd(inst);
   }
 
