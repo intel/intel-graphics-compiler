@@ -1,0 +1,57 @@
+; REQUIRES: regkeys, spirv-as, dg2-supported
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+; RUN: %if !release %{ ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefix=CHECK-TRANSLATE %}
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefix=CHECK-VISA
+
+; OpUMulExtended operands must be mangled as unsigned, otherwise the call
+; doesn't match the BiF definition and linking fails with an undefined
+; reference to _Z20__spirv_UMulExtendedii / _Z20__spirv_UMulExtendedll.
+
+               OpCapability Addresses
+               OpCapability Int64
+               OpCapability Kernel
+               OpMemoryModel Physical64 OpenCL
+               OpEntryPoint Kernel %main "test_UMulExtended"
+               OpName %a32 "a32"
+               OpName %b32 "b32"
+               OpName %a64 "a64"
+               OpName %b64 "b64"
+               OpName %out32 "out32"
+               OpName %out64 "out64"
+       %void = OpTypeVoid
+       %uint = OpTypeInt 32 0
+      %ulong = OpTypeInt 64 0
+ %uint_struct = OpTypeStruct %uint %uint
+%ulong_struct = OpTypeStruct %ulong %ulong
+   %ptr_uint = OpTypePointer CrossWorkgroup %uint
+  %ptr_ulong = OpTypePointer CrossWorkgroup %ulong
+          %9 = OpTypeFunction %void %uint %uint %ulong %ulong %ptr_uint %ptr_ulong
+     %uint_1 = OpConstant %uint 1
+       %main = OpFunction %void None %9
+        %a32 = OpFunctionParameter %uint
+        %b32 = OpFunctionParameter %uint
+        %a64 = OpFunctionParameter %ulong
+        %b64 = OpFunctionParameter %ulong
+      %out32 = OpFunctionParameter %ptr_uint
+      %out64 = OpFunctionParameter %ptr_ulong
+      %entry = OpLabel
+      %res32 = OpUMulExtended %uint_struct %a32 %b32
+       %lo32 = OpCompositeExtract %uint %res32 0
+       %hi32 = OpCompositeExtract %uint %res32 1
+      %res64 = OpUMulExtended %ulong_struct %a64 %b64
+       %lo64 = OpCompositeExtract %ulong %res64 0
+       %hi64 = OpCompositeExtract %ulong %res64 1
+               OpStore %out32 %lo32
+   %out32_1 = OpInBoundsPtrAccessChain %ptr_uint %out32 %uint_1
+               OpStore %out32_1 %hi32
+               OpStore %out64 %lo64
+   %out64_1 = OpInBoundsPtrAccessChain %ptr_ulong %out64 %uint_1
+               OpStore %out64_1 %hi64
+               OpReturn
+               OpFunctionEnd
+
+; CHECK-TRANSLATE: call spir_func void @_Z20__spirv_UMulExtendedjj({{.*}}, i32 %a32, i32 %b32)
+; CHECK-TRANSLATE: call spir_func void @_Z20__spirv_UMulExtendedmm({{.*}}, i64 %a64, i64 %b64)
+
+; CHECK-VISA-NOT: undefined reference
+; CHECK-VISA: .kernel "test_UMulExtended"
