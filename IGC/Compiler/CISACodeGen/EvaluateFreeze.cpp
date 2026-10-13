@@ -90,21 +90,19 @@ void EvaluateFreeze::evaluateFreezeInstUndef(FreezeInst *FI) const {
   // Replace all uses with a fixed value.
   Value *Op = FI->getOperand(0);
   Type *OpTy = Op->getType();
-  if (OpTy->isIntegerTy()) {
-    IntegerType *IT = (IntegerType *)OpTy;
+  if (OpTy->isIntOrIntVectorTy()) {
+    unsigned BitWidth = OpTy->getScalarSizeInBits();
     //
     // Give the folks debugging raw assembly a fighting chance
-    uint64_t MagicVal = IT->getBitWidth() >= 64   ? 0xF4EE7E00F4EE7E00ull
-                        : IT->getBitWidth() >= 32 ? 0xF4EE7E00ull
-                        : IT->getBitWidth() >= 16 ? 0xF47Eull
-                                                  : 0x0; // branches get false
-    ConstantInt *CI = ConstantInt::get(IT, MagicVal, false);
-    FI->replaceAllUsesWith(CI);
-  } else if (OpTy->isFloatingPointTy()) {
-    Constant *C = Constant::getNullValue(OpTy);
+    uint64_t MagicVal = BitWidth >= 64   ? 0xF4EE7E00F4EE7E00ull
+                        : BitWidth >= 32 ? 0xF4EE7E00ull
+                        : BitWidth >= 16 ? 0xF47Eull
+                                         : 0x0; // branches get false
+    // Splats MagicVal for integer vectors.
+    Constant *C = ConstantInt::get(OpTy, MagicVal, false);
     FI->replaceAllUsesWith(C);
   } else {
-    IGC_ASSERT_MESSAGE(0, "unsupported type in freeze");
+    FI->replaceAllUsesWith(Constant::getNullValue(OpTy));
   }
 }
 void EvaluateFreeze::evaluateFreezeInstNotUndef(FreezeInst *FI) const {
