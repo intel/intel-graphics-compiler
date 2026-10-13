@@ -1039,17 +1039,15 @@ Value *RTBuilder::getPrimitiveIndex(RTBuilder::StackPointerVal *perLaneStackPtr,
 }
 
 Value *RTBuilder::getPrimitiveIndex(RTBuilder::StackPointerVal *perLaneStackPtr, Value *leafType, Value *ShaderTy) {
-
-
-    switch (getMemoryStyle()) {
+  switch (getMemoryStyle()) {
 #define STYLE(X)                                                                                                       \
   case RTMemoryStyle::X:                                                                                               \
-    return _getPrimitiveIndex_##X(perLaneStackPtr, leafType, ShaderTy, VALUE_NAME("primitiveIndex"));
+    return _getPrimitiveIndex_##X(perLaneStackPtr, leafType, ShaderTy);
 #include "RayTracingMemoryStyle.h"
 #undef STYLE
-    }
-    IGC_ASSERT(0);
-    return nullptr;
+  }
+  IGC_ASSERT_UNREACHABLE();
+  return {};
 }
 
 
@@ -1069,18 +1067,17 @@ Value *RTBuilder::getGeometryIndex(RTBuilder::StackPointerVal *perLaneStackPtr, 
 }
 
 Value *RTBuilder::getGeometryIndex(RTBuilder::StackPointerVal *perLaneStackPtr, Value *leafType, Value *ShaderTy) {
-
-
-    switch (getMemoryStyle()) {
+  switch (getMemoryStyle()) {
 #define STYLE(X)                                                                                                       \
   case RTMemoryStyle::X:                                                                                               \
-    return _getGeometryIndex_##X(perLaneStackPtr, leafType, ShaderTy, VALUE_NAME("geometryIndex"));
+    return _getGeometryIndex_##X(perLaneStackPtr, leafType, ShaderTy);
 #include "RayTracingMemoryStyle.h"
 #undef STYLE
-    }
-    IGC_ASSERT(0);
-    return nullptr;
+  }
+  IGC_ASSERT_UNREACHABLE();
+  return {};
 }
+
 
 Value *RTBuilder::getInstanceContributionToHitGroupIndex(RTBuilder::StackPointerVal *perLaneStackPtr, Value *ShaderTy) {
   switch (getMemoryStyle()) {
@@ -2035,6 +2032,7 @@ Value *RTBuilder::getHitAddress(StackPointerVal *StackPtr, bool Committed) {
   IGC_ASSERT(0);
   return {};
 }
+
 
 template <typename StackPointerValT, typename RayInfoIntrinsicT>
 Value *RTBuilder::lowerRayInfo(StackPointerValT *perLaneStackPtr, RayInfoIntrinsicT *I, Value *shaderType,
