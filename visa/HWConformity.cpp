@@ -8299,18 +8299,21 @@ bool HWConformity::fixBFMove(INST_LIST_ITER i, G4_BB *bb) {
     vISA_ASSERT(!inst->getPredicate() && !inst->getCondMod(),
            "BF->F move does not support pred/cond mod");
     // don't support BF imm for now
-    vISA_ASSERT(src0->isSrcRegRegion() &&
-           src0->asSrcRegRegion()->getModifier() == Mod_src_undef,
-           "F->BF move does not support source modifier");
+    vISA_ASSERT(src0->isSrcRegRegion(), "BF->F move does not support BF imm");
 
-    if (inst->getSaturate()) {
+    auto src0RR = src0->asSrcRegRegion();
+
+    // A source modifier has float semantics and would be a no-op or corrupt
+    // the bits on the uw source of the shl, so apply it on the F result.
+    G4_SrcModifier srcMod = src0RR->getModifier();
+    if (inst->getSaturate() || srcMod != Mod_src_undef) {
       replaceDst(i, inst->getDst()->getType());
       G4_INST *newMov = *(std::next(i));
       newMov->setSaturate(inst->getSaturate());
+      newMov->getSrc(0)->asSrcRegRegion()->setModifier(srcMod);
       inst->setSaturate(g4::NOSAT);
+      src0RR->setModifier(Mod_src_undef);
     }
-
-    auto src0RR = src0->asSrcRegRegion();
 
     src0RR->setType(builder, Type_UW);
     G4_SrcRegRegion *newSrc0 = src0RR;
