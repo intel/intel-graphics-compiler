@@ -1616,7 +1616,8 @@ store i32 %25, i32 addrspace(1)* %29, align 4
 void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
   using namespace llvm::PatternMatch;
 
-  if (I.getOpcode() != Instruction::Add)
+  // Skip adds left without uses by an earlier dp4a match.
+  if (I.getOpcode() != Instruction::Add || I.use_empty())
     return;
   CodeGenContext *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   if (!Ctx->platform.hasHWDp4AddSupport())
@@ -1649,12 +1650,18 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
   auto PatternAccAtBeginning = getAdd5Pat(m_Value(AccVal), getMulPat(0), getMulPat(1), getMulPat(2), getMulPat(3));
   auto PatternAccAtEnd = getAdd5Pat(getMulPat(0), getMulPat(1), getMulPat(2), getMulPat(3), m_Value(AccVal));
   auto PatternNoAcc = getAdd4Pat(getMulPat(0), getMulPat(1), getMulPat(2), getMulPat(3));
+  auto PatternTreeNoAcc = m_c_Add(m_c_Add(getMulPat(0), getMulPat(1)), m_c_Add(getMulPat(2), getMulPat(3)));
 
+  Instruction *Root = &I;
   if (!match(&I, PatternAccAtEnd) && !match(&I, PatternAccAtBeginning)) {
-    if (match(&I, PatternNoAcc)) {
-      AccVal = Builder.getInt32(0);
-    } else {
+    if (!match(&I, PatternNoAcc) && !match(&I, PatternTreeNoAcc))
       return;
+    AccVal = Builder.getInt32(0);
+    // Fold a single add user into the dp4a as the accumulator.
+    Value *UserAcc = nullptr;
+    if (I.hasOneUse() && match(I.user_back(), m_c_Add(m_Specific(&I), m_Value(UserAcc)))) {
+      AccVal = UserAcc;
+      Root = cast<Instruction>(I.user_back());
     }
   }
 
@@ -1787,7 +1794,7 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
     }
   }
 
-  Builder.SetInsertPoint(I.getNextNode());
+  Builder.SetInsertPoint(Root);
 
   Value *VectorA = UndefValue::get(IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(), NUM_DP4A_COMPONENTS));
   Value *VectorB = UndefValue::get(IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(), NUM_DP4A_COMPONENTS));
@@ -1801,7 +1808,7 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
 
   Function *Dp4aFun = GenISAIntrinsic::getDeclaration(I.getModule(), IntrinsicID, Builder.getInt32Ty());
   Value *Res = Builder.CreateCall(Dp4aFun, {AccVal, ValA, ValB, ValSat});
-  I.replaceAllUsesWith(Res);
+  Root->replaceAllUsesWith(Res);
 }
 
 void CustomSafeOptPass::hoistDp3(BinaryOperator &I) {

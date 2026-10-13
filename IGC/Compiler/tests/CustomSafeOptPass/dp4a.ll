@@ -90,9 +90,9 @@ define i32 @test_dp4a_ss_end(i32 %src1, i32 %src2, i32 %acc) {
 ; CHECK:    [[TMP8:%.*]] = insertelement <4 x i8> [[TMP6]], i8 [[H]], i64 3
 ; CHECK:    [[TMP9:%.*]] = bitcast <4 x i8> [[TMP7]] to i32
 ; CHECK:    [[TMP10:%.*]] = bitcast <4 x i8> [[TMP8]] to i32
-; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 [[TMP9]], i32 [[TMP10]], i1 false)
-; CHECK:    [[TMP12:%.*]] = add i32 [[ACC:%.*]], [[TMP11]]
-; CHECK:    ret i32 [[TMP12]]
+; CHECK:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 [[ACC:%.*]], i32 [[TMP9]], i32 [[TMP10]], i1 false)
+; CHECK-NOT: add
+; CHECK:    ret i32 [[TMP11]]
 ;
   %vec1 = bitcast i32 %src1 to <4 x i8>
   %a = extractelement <4 x i8> %vec1, i32 0
@@ -230,7 +230,6 @@ define i32 @test_dp4a_us_noacc(i32 %src1, i32 %src2) {
   ret i32 %15
 }
 
-
 define i32 @test_dp4a_su_noacc(i32 %src1, i32 %src2) {
 ; CHECK-LABEL: @test_dp4a_su_noacc(
 ; CHECK:    [[VEC1:%.*]] = bitcast i32 [[SRC1:%.*]] to <4 x i8>
@@ -337,37 +336,11 @@ define i32 @test_dp4a_uu_noacc(i32 %src1, i32 %src2) {
   ret i32 %15
 }
 
-; Currently not optimized
-
-define i32 @possible_dp4a_ss(i32 %a, i32 %b, i32 %c) {
-; CHECK-LABEL: @possible_dp4a_ss(
-; CHECK:    [[BV:%.*]] = bitcast i32 [[B:%.*]] to <4 x i8>
-; CHECK:    [[CV:%.*]] = bitcast i32 [[C:%.*]] to <4 x i8>
-; CHECK:    [[B0:%.*]] = extractelement <4 x i8> [[BV]], i32 0
-; CHECK:    [[B0E:%.*]] = sext i8 [[B0]] to i32
-; CHECK:    [[C0:%.*]] = extractelement <4 x i8> [[CV]], i32 0
-; CHECK:    [[C0E:%.*]] = sext i8 [[C0]] to i32
-; CHECK:    [[B1:%.*]] = extractelement <4 x i8> [[BV]], i32 1
-; CHECK:    [[B1E:%.*]] = sext i8 [[B1]] to i32
-; CHECK:    [[C1:%.*]] = extractelement <4 x i8> [[CV]], i32 1
-; CHECK:    [[C1E:%.*]] = sext i8 [[C1]] to i32
-; CHECK:    [[B2:%.*]] = extractelement <4 x i8> [[BV]], i32 2
-; CHECK:    [[B2E:%.*]] = sext i8 [[B2]] to i32
-; CHECK:    [[C2:%.*]] = extractelement <4 x i8> [[CV]], i32 2
-; CHECK:    [[C2E:%.*]] = sext i8 [[C2]] to i32
-; CHECK:    [[B3:%.*]] = extractelement <4 x i8> [[BV]], i32 3
-; CHECK:    [[B3E:%.*]] = sext i8 [[B3]] to i32
-; CHECK:    [[C3:%.*]] = extractelement <4 x i8> [[CV]], i32 3
-; CHECK:    [[C3E:%.*]] = sext i8 [[C3]] to i32
-; CHECK:    [[MUL0:%.*]] = mul nuw nsw i32 [[B0E]], [[C0E]]
-; CHECK:    [[MUL1:%.*]] = mul nuw nsw i32 [[B1E]], [[C1E]]
-; CHECK:    [[MUL2:%.*]] = mul nuw nsw i32 [[B2E]], [[C2E]]
-; CHECK:    [[MUL3:%.*]] = mul nuw nsw i32 [[B3E]], [[C3E]]
-; CHECK:    [[ADD01:%.*]] = add nuw nsw i32 [[MUL0]], [[MUL1]]
-; CHECK:    [[ADD23:%.*]] = add nuw nsw i32 [[MUL2]], [[MUL3]]
-; CHECK:    [[ADDW0:%.*]] = add nuw nsw i32 [[ADD01]], [[ADD23]]
-; CHECK:    [[ADDFI:%.*]] = add nsw i32 [[ADDW0]], [[A:%.*]]
-; CHECK:    ret i32 [[ADDFI]]
+define i32 @test_dp4a_ss_tree(i32 %a, i32 %b, i32 %c) {
+; CHECK-LABEL: @test_dp4a_ss_tree(
+; CHECK:    [[RES:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 [[A:%.*]], i32 {{%.*}}, i32 {{%.*}}, i1 false)
+; CHECK-NOT: add
+; CHECK:    ret i32 [[RES]]
 ;
   %av = bitcast i32 %a to <4 x i8>
   %bv = bitcast i32 %b to <4 x i8>
@@ -399,3 +372,72 @@ define i32 @possible_dp4a_ss(i32 %a, i32 %b, i32 %c) {
   ret i32 %addfi
 }
 
+; The second dot product becomes the accumulator of the first.
+define i32 @test_dp4a_ss_two_chains(i8 %a0, i8 %a1, i8 %a2, i8 %a3, i8 %b0, i8 %b1, i8 %b2, i8 %b3, i8 %c0, i8 %c1, i8 %c2, i8 %c3, i8 %d0, i8 %d1, i8 %d2, i8 %d3) {
+; CHECK-LABEL: @test_dp4a_ss_two_chains(
+; CHECK:    [[INNER:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 {{%.*}}, i32 {{%.*}}, i1 false)
+; CHECK:    [[OUTER:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 [[INNER]], i32 {{%.*}}, i32 {{%.*}}, i1 false)
+; CHECK-NOT: add
+; CHECK:    ret i32 [[OUTER]]
+;
+  %a0e = sext i8 %a0 to i32
+  %b0e = sext i8 %b0 to i32
+  %ab0 = mul i32 %a0e, %b0e
+  %a1e = sext i8 %a1 to i32
+  %b1e = sext i8 %b1 to i32
+  %ab1 = mul i32 %a1e, %b1e
+  %a2e = sext i8 %a2 to i32
+  %b2e = sext i8 %b2 to i32
+  %ab2 = mul i32 %a2e, %b2e
+  %a3e = sext i8 %a3 to i32
+  %b3e = sext i8 %b3 to i32
+  %ab3 = mul i32 %a3e, %b3e
+  %c0e = sext i8 %c0 to i32
+  %d0e = sext i8 %d0 to i32
+  %cd0 = mul i32 %c0e, %d0e
+  %c1e = sext i8 %c1 to i32
+  %d1e = sext i8 %d1 to i32
+  %cd1 = mul i32 %c1e, %d1e
+  %c2e = sext i8 %c2 to i32
+  %d2e = sext i8 %d2 to i32
+  %cd2 = mul i32 %c2e, %d2e
+  %c3e = sext i8 %c3 to i32
+  %d3e = sext i8 %d3 to i32
+  %cd3 = mul i32 %c3e, %d3e
+  %s1 = add i32 %ab0, %ab1
+  %s2 = add i32 %s1, %ab2
+  %s3 = add i32 %s2, %ab3
+  %t1 = add i32 %cd0, %cd1
+  %t2 = add i32 %t1, %cd2
+  %t3 = add i32 %t2, %cd3
+  %res = add i32 %s3, %t3
+  ret i32 %res
+}
+
+; Dot product has two uses, so no accumulator is folded.
+define i32 @test_dp4a_ss_tree_multiuse(i8 %a0, i8 %a1, i8 %a2, i8 %a3, i8 %b0, i8 %b1, i8 %b2, i8 %b3, i32 %acc) {
+; CHECK-LABEL: @test_dp4a_ss_tree_multiuse(
+; CHECK:    [[DOT:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 {{%.*}}, i32 {{%.*}}, i1 false)
+; CHECK:    [[ADD:%.*]] = add i32 [[ACC:%.*]], [[DOT]]
+; CHECK:    [[RES:%.*]] = add i32 [[ADD]], [[DOT]]
+; CHECK:    ret i32 [[RES]]
+;
+  %a0e = sext i8 %a0 to i32
+  %b0e = sext i8 %b0 to i32
+  %ab0 = mul i32 %a0e, %b0e
+  %a1e = sext i8 %a1 to i32
+  %b1e = sext i8 %b1 to i32
+  %ab1 = mul i32 %a1e, %b1e
+  %a2e = sext i8 %a2 to i32
+  %b2e = sext i8 %b2 to i32
+  %ab2 = mul i32 %a2e, %b2e
+  %a3e = sext i8 %a3 to i32
+  %b3e = sext i8 %b3 to i32
+  %ab3 = mul i32 %a3e, %b3e
+  %s01 = add i32 %ab0, %ab1
+  %s23 = add i32 %ab2, %ab3
+  %dot = add i32 %s01, %s23
+  %add = add i32 %acc, %dot
+  %res = add i32 %add, %dot
+  ret i32 %res
+}
