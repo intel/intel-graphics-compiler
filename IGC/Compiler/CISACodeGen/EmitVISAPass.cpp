@@ -18685,7 +18685,7 @@ CVariable *EmitPass::prepareAddressForUniform(CVariable *AddrVar, uint32_t EltBy
   uint32_t allocNElts = (RequiredNElts > 0 ? RequiredNElts : pow2NElts);
   IGC_ASSERT(NElts <= 8 && (EltBytes == 4 || EltBytes == 8));
   IGC_ASSERT(allocNElts >= pow2NElts);
-  if (allocNElts == NElts && NElts == 1 && IsGRFAligned(AddrVar, Align)) {
+  if (allocNElts == NElts && NElts == 1 && !AddrVar->IsImmediate() && IsGRFAligned(AddrVar, Align)) {
     // No need to create a new var.
     return AddrVar;
   }
