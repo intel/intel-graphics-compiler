@@ -1041,6 +1041,14 @@ public:
     return hasEfficient64bEnabled() && IGC_IS_FLAG_ENABLED(EnableStatefulScaleFolding);
   }
 
+  bool needsLSCA32SNegativeOffsetWA() const {
+    return m_WaTable.Wa_22023388425 != 0 || IGC_IS_FLAG_ENABLED(ForceLSCA32SNegativeOffsetWA);
+  }
+
+  bool needsLSCA32SUniformBaseWA() const {
+    return m_WaTable.Wa_14028404650 != 0 || IGC_IS_FLAG_ENABLED(ForceLSCA32SUniformBaseWA);
+  }
+
   bool WaCubeHFPrecisionBug() const { return m_WaTable.Wa_18012201914 != 0; }
 
   // The max size in bytes of the scratch space per thread.

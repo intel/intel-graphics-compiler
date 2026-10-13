@@ -2769,7 +2769,13 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(G4_Predicate *pred,
       // use shifts to compute scaled address
 
       // shift left takes a qword operand and word/dword operand
-      for (int pass = 0; pass < passes; pass++) {
+      // Each pass covers the next passExecSize channels, so the emask must
+      // advance with it (e.g. M1 -> M5 for the upper half of SIMD32).
+      VISA_EMask_Ctrl passEMask = execCtrl;
+      for (int pass = 0; pass < passes;
+           pass++, passEMask = Get_Next_EMask(passEMask, passExecSize)) {
+        vISA_ASSERT(passEMask != vISA_NUM_EMASK,
+                    "invalid emask for split 64-bit address scaling");
         G4_SrcRegRegion *srcShl =
             createSrc(src0->getBase(), 2 * pass, src0->getSubRegOff(),
                       getRegionStride1(), Type_UQ);
@@ -2779,7 +2785,9 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(G4_Predicate *pred,
             createDst(scaledAddrDcl->getRegVar(), 2 * pass, 0, 1, Type_UQ);
 
         createBinOp(duplicateOperand(pred), G4_shl, passExecSize, dst, srcShl,
-                    srcImm16D, Get_Gen4_Emask(execCtrl, passExecSize, hasNibCtrl()), true);
+                    srcImm16D,
+                    Get_Gen4_Emask(passEMask, passExecSize, hasNibCtrl()),
+                    true);
       }
     } else if (hasWideMulMadOpsEnabled()) {
       // wide mul/mad support is enabled on XE3P
