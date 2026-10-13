@@ -622,6 +622,28 @@ void GenXVisaRegAlloc::extraCoalescing() {
             return false;
           }
         };
+        // An rdregion with a variable index is an indirect read through the
+        // address register. If its destination spans two GRFs, the move is
+        // compressed and executed in two parts, so the second part may read
+        // elements already overwritten by the first one. Thus the source must
+        // not share the register with the result unless the result is
+        // guaranteed to fit in a single GRF: it is not larger than a GRF and
+        // its alignment prevents it from crossing a GRF boundary.
+        auto isUnsafeIndirectRdRegionSrc = [this](Instruction *Inst,
+                                                  unsigned OperandNum,
+                                                  const LiveRange &DstLR,
+                                                  const LiveRange &SrcLR) {
+          if (!GenXIntrinsic::isRdRegion(Inst) ||
+              OperandNum != GenXIntrinsic::GenXRegion::OldValueOperandNum ||
+              isa<Constant>(Inst->getOperand(
+                  GenXIntrinsic::GenXRegion::RdIndexOperandNum)))
+            return false;
+          const unsigned Size =
+              DL->getTypeSizeInBits(Inst->getType()) / genx::ByteBits;
+          const unsigned Align =
+              1U << std::max(DstLR.getLogAlignment(), SrcLR.getLogAlignment());
+          return Size > ST->getGRFByteSize() || Size > Align;
+        };
         // See if we can coalesce with any operand.
         for (unsigned oi = 0, oe = Inst->getNumOperands(); oi != oe; ++oi) {
           Value *Operand = Inst->getOperand(oi);
@@ -633,6 +655,8 @@ void GenXVisaRegAlloc::extraCoalescing() {
             continue;
           auto OperandLR = Liveness->getLiveRangeOrNull(Operand);
           if (!OperandLR || OperandLR->Category != vc::RegCategory::General)
+            continue;
+          if (isUnsafeIndirectRdRegionSrc(Inst, oi, *LR, *OperandLR))
             continue;
           // Do not coalesce with kernel arguments as they are input variables
           // (after coalescing alignment requirements can become stricter, and
