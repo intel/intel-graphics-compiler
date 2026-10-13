@@ -7171,8 +7171,15 @@ bool G4_Operand::isPhysicallyAllocatedRegVar(bool includeAccRegSel) const {
       accRegSel != G4_AccRegSel::NOACC)
     return true;
   if (base) {
-    if (base->isRegVar())
-      return base->asRegVar()->isPhyRegAssigned();
+    if (base->isRegVar()) {
+      const G4_RegVar *regVar = base->asRegVar();
+      if (regVar->isPhyRegAssigned())
+        return true;
+      // An alias is physically allocated if its root declare is, e.g.
+      // aliases of the pre-assigned stack call %arg and %retval.
+      const G4_Declare *dcl = regVar->getDeclare();
+      return dcl && dcl->getRootDeclare()->getRegVar()->isPhyRegAssigned();
+    }
     return true; // Greg or Areg
   }
   return false;
