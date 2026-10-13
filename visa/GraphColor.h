@@ -2104,6 +2104,7 @@ public:
   static uint32_t getRefCount(int loopNestLevel);
   bool canIncreaseGRF(unsigned spillSize, bool infCostSpilled,
                       GraphColor &coloring, RPE &rpe, bool fastCompile);
+  bool heldConfigSpillNeedsStepUp(unsigned spillSize) const;
   // True when -vrtFillCost drives the bump instead of the byte threshold.
   bool useFillCostHeuristic(bool fastCompile) const;
   // True when the spill set's loop-weighted fill cost is over budget.

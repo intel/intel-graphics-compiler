@@ -167,9 +167,21 @@ public:
                                 bool forceGRFModedUp = false);
   bool hasLargerGRFSameThreads() const;
   bool hasSmallerGRFSameThreads() const;
+  unsigned getStepUpMode(unsigned mode) const;
+  bool losesThreadsOnStepUp(unsigned mode) const;
+  bool prefersOccupancyOverStepUp(unsigned mode) const;
+  bool prefersOccupancyOverStepUp() const {
+    return prefersOccupancyOverStepUp(currentMode);
+  }
+  bool isHeldForOccupancy() const { return heldForOccupancy; }
+  bool stepUpBeatsSIMDFallback(unsigned mode, unsigned simdSize) const;
+  bool stepUpBeatsSIMDFallback(unsigned simdSize) const {
+    return stepUpBeatsSIMDFallback(currentMode, simdSize);
+  }
 
   unsigned getSpillThreshold(unsigned mode) const;
   unsigned getSpillThreshold() const { return getSpillThreshold(currentMode); }
+  unsigned getStepUpSpillThresholdInRegs(unsigned mode) const;
   void setDynamicSpillThreshold(unsigned val) { dynamicSpillThreshold = val; }
   unsigned getDynamicSpillThreshold() const { return dynamicSpillThreshold; }
 
@@ -260,8 +272,13 @@ public:
   unsigned moveToLargerGRF() {
     for (auto i = currentMode + 1; i < configs.size(); ++i) {
       if (configs[i].VRTEnable && configs[i].numGRF <= upperBoundGRF) {
+        // Leaving the config the occupancy hold kept the kernel at does not
+        // use up a retry step: without the hold, GRF selection would have
+        // started from this step-up config.
+        if (!heldForOccupancy)
+          currentStepInMode++;
+        heldForOccupancy = false;
         currentMode = i;
-        currentStepInMode++;
         break;
       }
     }
@@ -315,6 +332,9 @@ private:
   // setDynamicSpillThreshold(). Used by getSpillThreshold() as the base when
   // no explicit vISA_SpillAllowed option is set.
   unsigned dynamicSpillThreshold = 0;
+  // Set by setModeByRegPressure() when only the widened occupancy-hold budget
+  // kept the kernel at the current config. Cleared on the first step up.
+  bool heldForOccupancy = false;
 };
 
 // NoMask WA Information

@@ -2386,6 +2386,7 @@ GRFMode::GRFMode(const TARGET_PLATFORM plat, unsigned regSize, Options *op)
 unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
                                        bool forceGRFModeUp) {
   unsigned size = configs.size(), i = 0;
+  heldForOccupancy = false;
   // find appropiate GRF based on reg pressure
   for (; i < size; i++) {
     if (configs[i].VRTEnable && configs[i].numGRF >= lowerBoundGRF &&
@@ -2393,6 +2394,11 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
       currentMode = i;
       unsigned spillThresholdInRegs = getSpillThreshold() / grfSize;
       bool spillAllowed = spillThresholdInRegs > 0;
+      // The widened occupancy budget applies only to the final selection, so
+      // the first selection and latency scheduling see the base budget.
+      unsigned stepUpThresholdInRegs =
+          forceGRFModeUp ? getStepUpSpillThresholdInRegs(i)
+                         : spillThresholdInRegs;
       if (maxRP <= configs[i].numGRF &&
           // Check that we've at least 8 GRFs over and above
           // those blocked for kernel input. This helps cases
@@ -2424,8 +2430,21 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
         }
         return configs[currentMode].numGRF;
       } else if (spillAllowed &&
-                 maxRP <= configs[i].numGRF + spillThresholdInRegs &&
+                 maxRP <= configs[i].numGRF + stepUpThresholdInRegs &&
                  (largestInputReg + 8) <= configs[i].numGRF) {
+        // Only the widened occupancy budget kept the kernel here; without it
+        // selection would have started from the step-up config. Pressure
+        // within 4% of this config is not a hold: selection without the hold
+        // comes back here from the step-up config through the lower-GRF
+        // check above.
+        heldForOccupancy = maxRP > configs[i].numGRF + spillThresholdInRegs &&
+                           maxRP > configs[i].numGRF * 1.04;
+#if defined(_DEBUG) || defined(_INTERNAL)
+        if (options->getOption(vISA_RATrace))
+          std::cout << "\t--GRF selection: maxRP=" << maxRP
+                    << " numGRF=" << configs[i].numGRF
+                    << " heldForOccupancy=" << heldForOccupancy << "\n";
+#endif
         return configs[currentMode].numGRF;
       }
     }
@@ -2433,6 +2452,60 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
   // RP is greater than the maximum GRF available, so set the largest GRF
   // available
   return configs[currentMode].numGRF;
+}
+
+unsigned GRFMode::getStepUpMode(unsigned mode) const {
+  for (auto i = mode + 1; i < configs.size(); ++i) {
+    if (configs[i].numGRF > upperBoundGRF)
+      break;
+    if (configs[i].VRTEnable)
+      return i;
+  }
+  return configs.size();
+}
+
+bool GRFMode::losesThreadsOnStepUp(unsigned mode) const {
+  unsigned stepUp = getStepUpMode(mode);
+  if (stepUp == configs.size())
+    return false;
+  return configs[stepUp].numThreads < configs[mode].numThreads;
+}
+
+bool GRFMode::prefersOccupancyOverStepUp(unsigned mode) const {
+  if (platform < Xe3 || mode != defaultMode)
+    return false;
+  if (options->getuInt32Option(vISA_OccupancyGRFHoldFactor) <= 1)
+    return false;
+  return losesThreadsOnStepUp(mode);
+}
+
+// Compare work-items in flight per EU (SIMD width x threads per EU) after
+// stepping up from the given mode against the best a half-width SIMD fallback
+// can reach in any config. E.g. on Xe3 SIMD32 at 160 GRFs keeps 32x6 = 192
+// work-items, more than SIMD16 at its best (16x10 = 160).
+bool GRFMode::stepUpBeatsSIMDFallback(unsigned mode, unsigned simdSize) const {
+  unsigned stepUp = getStepUpMode(mode);
+  if (stepUp == configs.size() || simdSize <= 8)
+    return false;
+  unsigned stepUpWorkItems = simdSize * configs[stepUp].numThreads;
+  unsigned fallbackWorkItems = (simdSize / 2) * getMaxNumThreads();
+  return stepUpWorkItems > fallbackWorkItems;
+}
+
+unsigned GRFMode::getStepUpSpillThresholdInRegs(unsigned mode) const {
+  unsigned thresholdInRegs = getSpillThreshold(mode) / grfSize;
+  if (thresholdInRegs == 0)
+    return 0;
+
+  if (allowedStepsInMode == 0 || !prefersOccupancyOverStepUp(mode))
+    return thresholdInRegs;
+
+  unsigned widened =
+      thresholdInRegs * options->getuInt32Option(vISA_OccupancyGRFHoldFactor);
+  unsigned stepUp = getStepUpMode(mode);
+  vISA_ASSERT(stepUp < configs.size(), "expected a config to step up into");
+  unsigned gapInRegs = configs[stepUp].numGRF - configs[mode].numGRF;
+  return std::min(widened, gapInRegs);
 }
 
 // Check if next larger GRF has the same number of threads per EU

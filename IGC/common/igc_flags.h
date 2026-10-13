@@ -67,6 +67,12 @@ DECLARE_IGC_REGKEY(bool, VISABlockLevelSpillAllowed, false,
                    "and retain more HW threads per EU.",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, VISASpillAllowed256GRF, 0, "Spill size allowed specifically for 256 GRF case", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(DWORD, VISAOccupancyGRFHoldFactor, 4,
+                   "Multiplier applied to the spill budget only at the default Xe3 VRT boundary whose next "
+                   "step up costs HW threads per EU. Lets a kernel with slightly over-estimated pressure keep "
+                   "the default GRF mode; RA still steps up if it spills past the base budget. 0 and 1 disable "
+                   "the occupancy-aware hold.",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, VISAGRFBumpUpNumber, 1,
                    "Sets the number of steps/configs which the RA will try to use (during retry) to compile the kernel",
                    ALWAYS)

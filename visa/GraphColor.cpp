@@ -2304,6 +2304,28 @@ void Interference::buildInterferenceForFcall(
   }
 }
 
+// A spill that survives remat and splitting at the default Xe3 config steps
+// the config up even when it is under the byte budget used below, if:
+// - the occupancy hold kept the kernel there: the hold only pays off when RA
+//   ends up spill-free. With -abortonspill the spill could also abort this
+//   SIMD width (abortOnSpill() weighs spill/fill counts, not bytes), so step
+//   up only if that keeps more work-items per EU than the narrower SIMD
+//   fallback would;
+// - or this is a SIMD16 compile with -abortonspill: a SIMD16 spill keeps the
+//   caller from trying SIMD32 at all.
+// Other kernels keep the byte budget: a small spill there is cheaper in cycles
+// per thread than stepping up and giving up threads per EU.
+bool GlobalRA::heldConfigSpillNeedsStepUp(unsigned spillSize) const {
+  if (spillSize == 0 || !kernel.grfMode.prefersOccupancyOverStepUp())
+    return false;
+  bool abortOnSpill = builder.getOption(vISA_AbortOnSpill);
+  unsigned simdSize = kernel.getSimdSize();
+  if (kernel.grfMode.isHeldForOccupancy())
+    return !abortOnSpill || kernel.grfMode.stepUpBeatsSIMDFallback(simdSize);
+  return abortOnSpill && simdSize == 16 &&
+         kernel.grfMode.stepUpBeatsSIMDFallback(simdSize);
+}
+
 bool GlobalRA::canIncreaseGRF(unsigned spillSize, bool infCostSpilled,
                               GraphColor &coloring, RPE &rpe,
                               bool fastCompile) {
@@ -2321,9 +2343,21 @@ bool GlobalRA::canIncreaseGRF(unsigned spillSize, bool infCostSpilled,
   // Conditions to increase #GRFs assuming first RA iteration did not succeed:
   //  - Variable with inf spill cost, or
   //  - #GRFs selected and next larger one has same number of threads, or
-  //  - Spill is too expensive to keep at this GRF number
+  //  - Spill is too expensive to keep at this GRF number, or
+  //  - Any spill at the default Xe3 config that heldConfigSpillNeedsStepUp()
+  //    accepts (see above); the fill cost heuristic does not veto it
+  bool heldConfigSpills = heldConfigSpillNeedsStepUp(spillSize);
+  RA_TRACE(std::cout << "\t--canIncreaseGRF: numGRF=" << kernel.getNumRegTotal()
+                     << " spillSize=" << spillSize
+                     << " threshold=" << kernel.grfMode.getSpillThreshold()
+                     << " tooExpensive=" << spillTooExpensive
+                     << " infCost=" << infCostSpilled << " largerSameThreads="
+                     << kernel.grfMode.hasLargerGRFSameThreads()
+                     << " heldConfigSpills=" << heldConfigSpills
+                     << " canUpdateMode=" << kernel.grfMode.canUpdateMode()
+                     << "\n");
   if ((infCostSpilled || kernel.grfMode.hasLargerGRFSameThreads() ||
-       spillTooExpensive) &&
+       spillTooExpensive || heldConfigSpills) &&
       kernel.grfMode.canUpdateMode()) {
     if (kernel.updateKernelToLargerGRF()) {
       // GRF successfully increased
@@ -12060,9 +12094,10 @@ bool GlobalRA::canVRTIncreasedGRF(GraphColor &coloring) {
                      [](const LiveRange *spilledLR) {
                        return spilledLR->getSpillCost() == MAXSPILLCOST;
                      });
+    unsigned spillSize = computeSpillSize(coloring.getSpilledLiveRanges());
     if ((infCostSpilled || kernel.grfMode.hasLargerGRFSameThreads() ||
-         computeSpillSize(coloring.getSpilledLiveRanges()) >
-             kernel.grfMode.getSpillThreshold())) {
+         spillSize > kernel.grfMode.getSpillThreshold() ||
+         heldConfigSpillNeedsStepUp(spillSize))) {
       if (kernel.canUpdateKernelToLargerGRF()) {
         return true;
       }
@@ -12826,6 +12861,25 @@ int GlobalRA::coloringRegAlloc() {
     bool isColoringGood =
         coloring.regAlloc(doBankConflictReduction, highInternalConflict, &rpe);
     if (!isColoringGood) {
+      // The occupancy hold was granted on a pressure estimate within the
+      // widened step-up budget. If the first coloring spills past that budget,
+      // the estimate was off by more than remat can recover, so give the hold
+      // up before local splitting and remat rewrite the code, and the step-up
+      // config does not start from code rewritten for the held one.
+      if (!rematDone && !loadSplitTryDone &&
+          kernel.grfMode.isHeldForOccupancy() &&
+          computeSpillSize(coloring.getSpilledLiveRanges()) >
+              kernel.grfMode.getStepUpSpillThresholdInRegs(
+                  kernel.grfMode.getCurrentMode()) *
+                  kernel.numEltPerGRF<Type_UB>()) {
+        if (VRTIncreasedGRF(coloring, rpe, fastCompile)) {
+          RA_TRACE(std::cout << "\t--held config spills past its budget, GRF "
+                             << "bump to " << kernel.getNumRegTotal()
+                             << ". Re-run RA\n");
+          continue;
+        }
+      }
+
       // Retry with local variable splitting if there is potential chance for
       // VRT bump up.
       if (builder.onlyDoLocalVariableSplitWhenSpill()) {
@@ -12839,16 +12893,17 @@ int GlobalRA::coloringRegAlloc() {
         }
       }
 
-      // IGC sets vISA_GRFBumpUpNumber to 2 for OpenCL (default 1),
-      // declaring that registers per thread matter more than threads there and
-      // that stepping the GRF number up is cheap. Holding such kernels at a
-      // smaller GRF via remat regresses them, so keep the original eager bump.
-      if (builder.getuint32Option(vISA_GRFBumpUpNumber) > 1) {
+      // OpenCL kernels still request eager GRF bumps through
+      // vISA_GRFBumpUpNumber > 1. Keep that behavior except at the default
+      // Xe3 occupancy boundary, where remat/splitting should get the first
+      // chance to recover the registers before we give up threads per EU.
+      if (builder.getuint32Option(vISA_GRFBumpUpNumber) > 1 &&
+          !kernel.grfMode.prefersOccupancyOverStepUp()) {
         if (VRTIncreasedGRF(coloring, rpe, fastCompile)) {
-              RA_TRACE(std::cout << "\t--VRT GRF bump to " << kernel.getNumRegTotal()
-                  << ". Re-run RA\n");
-              continue;
-          }
+          RA_TRACE(std::cout << "\t--VRT GRF bump to "
+                             << kernel.getNumRegTotal() << ". Re-run RA\n");
+          continue;
+        }
       }
 
       if (auto bump = forceGRFBumpOnInfCostAddrTaken(coloring, liveAnalysis)) {
