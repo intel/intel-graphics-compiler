@@ -23214,18 +23214,8 @@ void EmitPass::emitDnscl(llvm::GenIntrinsicInst *GII) {
   IGC_ASSERT(cs0->GetType() == ISA_TYPE_UD);
   IGC_ASSERT(cs1->GetType() == ISA_TYPE_UD);
 
-  if (cs0->IsImmediate()) {
-    CVariable *cs0imm = cs0;
-    cs0 = m_currShader->GetNewVariable(dst);
-    m_encoder->Copy(cs0, cs0imm);
-    m_encoder->Push();
-  }
-  if (cs1->IsImmediate()) {
-    CVariable *cs1imm = cs1;
-    cs1 = m_currShader->GetNewVariable(dst);
-    m_encoder->Copy(cs1, cs1imm);
-    m_encoder->Push();
-  }
+  cs0 = dst->IsUniform() ? MaterializeImmToGRF(cs0, "dnscl_src0") : BroadcastIfUniform(cs0);
+  cs1 = dst->IsUniform() ? MaterializeImmToGRF(cs1, "dnscl_src1") : BroadcastIfUniform(cs1);
 
   CVariable *cbias;
   if (roundMode == DNSCL_RND_MODE::STOCHASTIC_ROUND) {
@@ -23233,6 +23223,7 @@ void EmitPass::emitDnscl(llvm::GenIntrinsicInst *GII) {
     if (cbias->GetType() == ISA_TYPE_D)
       cbias = m_currShader->BitCast(cbias, ISA_TYPE_UD);
     IGC_ASSERT(cbias->GetType() == ISA_TYPE_UD);
+    cbias = dst->IsUniform() ? MaterializeImmToGRF(cbias, "dnscl_bias") : BroadcastIfUniform(cbias);
   } else {
     // if round mode is rne then cbias should be set to V0/null variable
     cbias = m_currShader->GetNULL();
