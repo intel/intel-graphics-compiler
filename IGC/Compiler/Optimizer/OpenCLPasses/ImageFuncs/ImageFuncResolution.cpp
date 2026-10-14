@@ -185,7 +185,7 @@ template <ImplicitArg::ArgType ArgTy> Value *ImageFuncResolution::getSamplerProp
     } else {
       llvm::Function *pFunc = CI.getFunction();
 
-      uint64_t samplerVal = 0;
+      int64_t samplerVal = 0;
       if (modMD->FuncMD.find(pFunc) != modMD->FuncMD.end()) {
         FunctionMetaData funcMD = modMD->FuncMD[pFunc];
         ResourceAllocMD resAllocMD = funcMD.resAllocMD;
@@ -220,7 +220,7 @@ template <ImplicitArg::ArgType ArgTy> Value *ImageFuncResolution::getSamplerProp
           }
         }
       }
-      return ConstantInt::get(CI.getType(), samplerVal);
+      return ConstantInt::getSigned(CI.getType(), samplerVal);
     }
   }
 

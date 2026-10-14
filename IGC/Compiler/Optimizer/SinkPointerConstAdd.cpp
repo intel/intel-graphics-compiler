@@ -196,10 +196,10 @@ bool SinkPointerConstAddPass::runOnFunction(llvm::Function &F) {
     // If we found any constant offset, create new pointer calculation
     if (offset != 0) {
       llvm::IRBuilder<> builder(intrinsic);
-      llvm::Value *newPtr =
-          builder.CreateIntToPtr(builder.CreateAdd(intrinsic->getOperand(0),
-                                                   llvm::ConstantInt::get(intrinsic->getOperand(0)->getType(), offset)),
-                                 intrinsic->getType());
+      llvm::Value *newPtr = builder.CreateIntToPtr(
+          builder.CreateAdd(intrinsic->getOperand(0),
+                            llvm::ConstantInt::getSigned(intrinsic->getOperand(0)->getType(), offset)),
+          intrinsic->getType());
       intrinsic->replaceAllUsesWith(newPtr);
       intrinsic->eraseFromParent();
     }

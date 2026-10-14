@@ -188,8 +188,8 @@ Value *FixResourcePtr::GetByteOffset(Instruction *eltPtr) {
   Value *offsetValue = eltIdx;
   if (eltSize != 1) {
     if (const ConstantInt *CI = dyn_cast<ConstantInt>(eltIdx)) {
-      uint32_t byteOffset = int_cast<uint32_t>(eltBytes * CI->getSExtValue());
-      offsetValue = ConstantInt::get(eltIdx->getType(), byteOffset);
+      int32_t byteOffset = eltBytes * CI->getSExtValue();
+      offsetValue = ConstantInt::getSigned(eltIdx->getType(), byteOffset);
     } else if (eltSize.isPowerOf2()) {
       APInt shift = APInt(eltIdx->getType()->getScalarSizeInBits(), eltSize.logBase2());
       offsetValue = builder->CreateShl(eltIdx, shift);

@@ -2666,7 +2666,7 @@ bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I) {
                 // negating will invalidate status
                 oprdInfo[2].isConstant16BitEq = false;
               }
-              oprdInfo[2].src = ConstantInt::get(CI->getType(), -val, true);
+              oprdInfo[2].src = ConstantInt::getSigned(CI->getType(), -val);
               oprdInfo[2].isSigned = true;
             }
           } else {
@@ -2706,13 +2706,13 @@ bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I) {
                 } else {
                   // cannot put modifier on src1 or will need to reset src1, just negate src0
                   // this will likely result in mad no longer getting matched, but there is no other way
-                  oprdInfo[0].src = ConstantInt::get(CI->getType(), -val, true);
+                  oprdInfo[0].src = ConstantInt::getSigned(CI->getType(), -val);
                   oprdInfo[0].isSigned = true;
                   oprdInfo[0].isConstant16BitEq = false;
                 }
               } else {
                 // negative constant fits in 16 bits
-                oprdInfo[0].src = ConstantInt::get(CI->getType(), -val, true);
+                oprdInfo[0].src = ConstantInt::getSigned(CI->getType(), -val);
                 oprdInfo[0].isSigned = true;
               }
             }

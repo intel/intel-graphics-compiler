@@ -6260,7 +6260,7 @@ void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst &I) 
       continue;
 
     // Those 2 might be different, when cmp will get altered by it's operands, but EE index stays the same
-    ConstantInt *cmpIndexCI = llvm::ConstantInt::get(dyn_cast<IntegerType>(index->getType()), (uint64_t)cmpIndex);
+    ConstantInt *cmpIndexCI = llvm::ConstantInt::getSigned(cast<IntegerType>(index->getType()), cmpIndex);
     ConstantInt *eeiIndexCI = llvm::ConstantInt::get(builder.getInt32Ty(), (uint64_t)elemIndex);
 
     Value *cmp = builder.CreateICmp(CmpInst::Predicate::ICMP_EQ, index, cmpIndexCI);
