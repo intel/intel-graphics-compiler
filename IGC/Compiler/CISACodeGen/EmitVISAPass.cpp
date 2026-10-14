@@ -17065,7 +17065,8 @@ void EmitPass::ResetRoundingMode(Instruction *inst) {
   bool nextImplicitFP = false;
   for (auto nextInst = IGCLLVM::getNextNonDebugInstruction(inst); nextInst != nullptr;
        nextInst = IGCLLVM::getNextNonDebugInstruction(nextInst)) {
-    if (ignoresRoundingMode(nextInst)) {
+    // Instructions that are not emitted neither use nor change the rounding mode.
+    if (ignoresRoundingMode(nextInst) || !m_pattern->NeedInstruction(*nextInst)) {
       continue;
     }
     if (setsRMExplicitly(nextInst)) {
