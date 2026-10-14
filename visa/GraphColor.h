@@ -1103,12 +1103,12 @@ class GraphColor {
   // Reserved GRF count for fail-safe RA
   unsigned reserveSpillGRFCount = 0;
 
-  bool useRelaxedDegree = false;
+  bool UseRelaxedDegree = false;
 
-  template <bool Support4GRFAlign, bool UseRelaxedDegree>
+  template <bool Support4GRFAlign, bool UseRelaxedDegreeV>
   unsigned edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2);
   unsigned edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2);
-  template <bool UseRelaxedDegree>
+  template <bool UseRelaxedDegreeV>
   static unsigned edgeWeightGRF(bool lr1EvenAlign, bool lr2EvenAlign,
                                 unsigned lr1_nreg, unsigned lr2_nreg) {
     unsigned sum = lr1_nreg + lr2_nreg;
@@ -1119,7 +1119,7 @@ class GraphColor {
     if (!lr2EvenAlign)
       return sum + 1 - ((sum) % 2);
 
-    if constexpr (UseRelaxedDegree) {
+    if constexpr (UseRelaxedDegreeV) {
       if (lr1_nreg == 2 && lr2_nreg == 2)
         return 2;
     }
@@ -1127,11 +1127,11 @@ class GraphColor {
     return sum - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
   }
 
-  template <bool UseRelaxedDegree>
+  template <bool UseRelaxedDegreeV>
   static unsigned edgeWeightWith4GRF(int lr1Align, int lr2Align,
                                      unsigned lr1_nreg, unsigned lr2_nreg) {
     if (lr1Align < 4 && lr2Align < 4)
-      return edgeWeightGRF<UseRelaxedDegree>(lr1Align == 2, lr2Align == 2,
+      return edgeWeightGRF<UseRelaxedDegreeV>(lr1Align == 2, lr2Align == 2,
                                              lr1_nreg, lr2_nreg);
 
     auto roundUpToMultipleOf4 = [](unsigned int N) {
@@ -1632,8 +1632,6 @@ public:
   bool useLocalRA = false;
   bool forceBCR = false;
   bool twoSrcBundleBCR = false;
-  bool relaxedDegreeDecided = false;
-  bool relaxedDegree = false;
   uint32_t nextSpillOffset = 0;
   uint32_t scratchOffset = 0;
 
@@ -2115,7 +2113,6 @@ public:
   // Used by LRA/GRA/hybrid RA
   void augAlign();
   int getAlignFromAugBucket(G4_Declare *);
-  bool useRelaxedDegree();
   void getBankAlignment(LiveRange *lr, BankAlign &align);
   void printLiveIntervals();
   void reportUndefinedUses(LivenessAnalysis &liveAnalysis, G4_BB *bb,

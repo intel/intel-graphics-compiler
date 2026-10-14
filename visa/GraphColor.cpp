@@ -49,14 +49,6 @@ const char GlobalRA::StackCallStr[] = "StackCall";
 
 static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 
-enum {
-  RelaxedDegreeOff = 0,
-  RelaxedDegreeHeuristic = 1,
-  RelaxedDegreeForced = 2,
-};
-
-static const unsigned RelaxedDegreeCandidatePercent = 75;
-
 #define BANK_CONFLICT_HEURISTIC_INST 0.04
 #define BANK_CONFLICT_HEURISTIC_REF_COUNT 0.25
 #define BANK_CONFLICT_HEURISTIC_LOOP_ITERATION 5
@@ -3075,44 +3067,6 @@ void GlobalRA::augAlign() {
       }
     }
   }
-}
-
-bool GlobalRA::useRelaxedDegree() {
-  if (relaxedDegreeDecided)
-    return relaxedDegree;
-  relaxedDegreeDecided = true;
-
-  auto mode = builder.getuint32Option(vISA_UseRelaxedDegree);
-  if (mode == RelaxedDegreeOff)
-    return relaxedDegree;
-  if (mode >= RelaxedDegreeForced) {
-    relaxedDegree = true;
-    RA_TRACE(std::cout << "\t--relaxed degree enabled: forced\n");
-    return relaxedDegree;
-  }
-
-  unsigned numCandidates = 0;
-  unsigned numEvenAligned2GRF = 0;
-  for (auto dcl : kernel.Declares) {
-    if (dcl->getAliasDeclare() || !(dcl->getRegFile() & G4_GRF) ||
-        dcl->getIsPartialDcl() || kernel.fg.isPseudoDcl(dcl) ||
-        !dcl->getRegVar()->isRegAllocPartaker() ||
-        dcl->getRegVar()->getPhyReg())
-      continue;
-    ++numCandidates;
-    if (dcl->getNumRows() == 2 && getAugAlign(dcl) == 2)
-      ++numEvenAligned2GRF;
-  }
-
-  relaxedDegree = numCandidates > 0 &&
-                  numEvenAligned2GRF * 100 >
-                      numCandidates * RelaxedDegreeCandidatePercent;
-  if (relaxedDegree) {
-    RA_TRACE(std::cout << "\t--relaxed degree enabled: " << numEvenAligned2GRF
-                       << "/" << numCandidates
-                       << " Even aligned 2 GRF candidates\n");
-  }
-  return relaxedDegree;
 }
 
 void GlobalRA::getBankAlignment(LiveRange *lr, BankAlign &align) {
@@ -6697,6 +6651,7 @@ GraphColor::GraphColor(LivenessAnalysis &live, bool hybrid, bool forceSpill_)
 {
   spAddrRegSig.resize(builder.getNumAddrRegisters(), 0);
   m_options = builder.getOptions();
+  UseRelaxedDegree = m_options->getOption(vISA_UseRelaxedDegree);
 }
 
 //
@@ -6730,7 +6685,7 @@ void GraphColor::computeDegreeForGRF() {
       auto computeDegree = [&](LiveRange *lr1) {
         if (!lr1->getIsPartialDcl()) {
           unsigned edgeDegree = 0;
-          if (useRelaxedDegree)
+          if (UseRelaxedDegree)
             edgeDegree = edgeWeightGRF<Support4GRFAlign, true>(lrs[i], lr1);
           else
             edgeDegree = edgeWeightGRF<Support4GRFAlign, false>(lrs[i], lr1);
@@ -7085,7 +7040,7 @@ void GraphColor::relaxNeighborDegreeGRF(LiveRange *lr) {
         unsigned lr1_nreg = lr1->getNumRegNeeded();
         unsigned int lr1AugAlign = gra.getAugAlign(lr1->getDcl());
         unsigned int w = 0;
-        if (useRelaxedDegree)
+        if (UseRelaxedDegree)
           w = edgeWeightWith4GRF<true>(lr1AugAlign, lr2AugAlign, lr1_nreg,
                                        lr2_nreg);
         else
@@ -7106,7 +7061,7 @@ void GraphColor::relaxNeighborDegreeGRF(LiveRange *lr) {
       unsigned lr1_nreg = lr1->getNumRegNeeded();
       unsigned w = 0;
       bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
-      if (useRelaxedDegree)
+      if (UseRelaxedDegree)
         w = edgeWeightGRF<true>(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
       else
         w = edgeWeightGRF<false>(lr1EvenAlign, lr2EvenAlign, lr1_nreg,
@@ -7127,7 +7082,7 @@ void GraphColor::relaxNeighborDegreeGRF(LiveRange *lr) {
         unsigned lr1_nreg = lr1->getNumRegNeeded();
         bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
         unsigned int w = 0;
-        if (useRelaxedDegree)
+        if (UseRelaxedDegree)
           w = edgeWeightGRF<true>(lr1EvenAlign, lr2EvenAlign, lr1_nreg,
                                   lr2_nreg);
         else
@@ -8341,9 +8296,6 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
   //
   intf.init();
   intf.computeInterference();
-
-  if (!isHybrid && liveAnalysis.livenessClass(G4_GRF))
-    useRelaxedDegree = gra.useRelaxedDegree();
 
   if (reserveSpillGRFCount) {
     preAssignSpillHeader();
@@ -13744,7 +13696,7 @@ void GlobalRA::insertRestoreAddr(G4_BB *bb) {
 // weight computation and later during simplification is necessary for
 // correctness.
 //
-template <bool Support4GRFAlign, bool UseRelaxedDegree>
+template <bool Support4GRFAlign, bool UseRelaxedDegreeV>
 unsigned GraphColor::edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2) {
   unsigned lr1_nreg = lr1->getNumRegNeeded();
   unsigned lr2_nreg = lr2->getNumRegNeeded();
@@ -13752,14 +13704,14 @@ unsigned GraphColor::edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2) {
     auto lr1Align = gra.getAugAlign(lr1->getDcl());
     auto lr2Align = gra.getAugAlign(lr2->getDcl());
 
-    return edgeWeightWith4GRF<UseRelaxedDegree>(lr1Align, lr2Align, lr1_nreg,
-                                                lr2_nreg);
+    return edgeWeightWith4GRF<UseRelaxedDegreeV>(lr1Align, lr2Align, lr1_nreg,
+                                                 lr2_nreg);
   } else {
     bool lr1EvenAlign = gra.isEvenAligned<false>(lr1->getDcl());
     bool lr2EvenAlign = gra.isEvenAligned<false>(lr2->getDcl());
 
-    return edgeWeightGRF<UseRelaxedDegree>(lr1EvenAlign, lr2EvenAlign,
-                                           lr1_nreg, lr2_nreg);
+    return edgeWeightGRF<UseRelaxedDegreeV>(lr1EvenAlign, lr2EvenAlign,
+                                            lr1_nreg, lr2_nreg);
   }
 }
 
