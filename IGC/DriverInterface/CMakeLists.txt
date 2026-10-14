@@ -37,6 +37,7 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/TraceRayInlineLoweringPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/NewTraceRayInlineLoweringPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/DynamicRayManagementPass.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayQuerySinkingPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/SplitAsyncUtils.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/CrossingAnalysis.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/TraceRayInlinePrepPass.cpp"

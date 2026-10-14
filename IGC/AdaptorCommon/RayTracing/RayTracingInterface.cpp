@@ -147,6 +147,10 @@ void RayTracingInlineLowering(CodeGenContext *pContext) {
   if (IGC_IS_FLAG_ENABLED(OverrideTMax))
     mpm.add(createOverrideTMaxPass(IGC_GET_FLAG_VALUE(OverrideTMax)));
 
+  // Sink queries before placing RayQueryCheck/Release and lowering query state.
+  if (IGC_IS_FLAG_DISABLED(DisableRayQuerySinking))
+    mpm.add(createRayQuerySinkingPass());
+
   if (pContext->platform.enableRayQueryThrottling(pContext->getModuleMetaData()->compOpt.EnableDynamicRQManagement)) {
     if (!pContext->m_DriverInfo.UseNewTraceRayInlineLoweringInNonRaytracingShaders())
       mpm.add(CreateDynamicRayManagementPass());

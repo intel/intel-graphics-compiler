@@ -2453,6 +2453,8 @@ DECLARE_IGC_REGKEY(DWORD, ForceCSSimdSize4RQ, 0, "Force RayQuery compute shader 
                                                       ignored if produces invalid cofiguration, e.g. simd size too small for workgroup size",
                    ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableRQHideLatency, false, "Hide RayQuery Proceed latency.", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, DisableRayQuerySinking, false, "Disable sinking RayQuery work into the branch that uses it.",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableShaderFusion, false, "Don't check for duplicate, renamed shaders", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableRTAliasAnalysis, false, "Disable Raytracing Alias Analysis", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableExamineRayFlag, false,

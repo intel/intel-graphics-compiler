@@ -238,6 +238,7 @@ void initializeRayTracingIntrinsicResolutionLPMPass(llvm::PassRegistry &);
 void initializeTraceRayInlinePrepPassPass(llvm::PassRegistry &);
 void initializeTraceRayInlineLatencySchedulerPassPass(llvm::PassRegistry &);
 void initializeTraceRayInlineLoweringPassPass(llvm::PassRegistry &);
+void initializeRayQuerySinkingPassPass(llvm::PassRegistry &);
 void initializeRayTracingAddressSpaceAAWrapperPassPass(llvm::PassRegistry &);
 void initializeRayTracingMemDSEPassPass(llvm::PassRegistry &);
 void initializeOverrideTMaxPassPass(llvm::PassRegistry &);
