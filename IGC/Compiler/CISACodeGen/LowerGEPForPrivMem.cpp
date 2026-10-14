@@ -2153,10 +2153,13 @@ static void storeEltsToVecAlloca(Value *StoreVal, AllocaInst *pVecAlloca, Value 
   // back.
   Value *Whole = IRB.CreateLoad(PromotedVecTy, pVecAlloca);
   for (unsigned i = 0; i < K; ++i) {
-    Value *LaneInt = IRB.CreateExtractElement(PackVecInt, IRB.getInt32(i));
-    Value *LaneVal = intToSrcScalar(LaneInt);
     Value *Off = ConstantInt::get(pScalarizedIdx->getType(), i);
     Value *Idx = IRB.CreateAdd(pScalarizedIdx, Off);
+    // Store at constant out-of-range lane outside alloca is UB - drop it
+    if (auto *CIdx = dyn_cast<ConstantInt>(Idx); CIdx && CIdx->uge(PromotedVecTy->getNumElements()))
+      continue;
+    Value *LaneInt = IRB.CreateExtractElement(PackVecInt, IRB.getInt32(i));
+    Value *LaneVal = intToSrcScalar(LaneInt);
     Whole = IRB.CreateInsertElement(Whole, LaneVal, Idx);
   }
   IRB.CreateStore(Whole, pVecAlloca);
