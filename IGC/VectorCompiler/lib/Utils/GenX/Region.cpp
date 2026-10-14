@@ -289,11 +289,11 @@ Instruction *CMRegion::createRdRegion(Value *Input, const Twine &Name,
     ParentWidthArg = ConstantInt::get(I32Ty, ParentWidth);
   Value *Args[] = {
       // Args to new rdregion:
-      Input,                            // input to original rdregion
-      ConstantInt::get(I32Ty, VStride), // vstride
-      ConstantInt::get(I32Ty, Width),   // width
-      ConstantInt::get(I32Ty, Stride),  // stride
-      StartIdx,                         // start index (in bytes)
+      Input,                                  // input to original rdregion
+      ConstantInt::getSigned(I32Ty, VStride), // vstride
+      ConstantInt::get(I32Ty, Width),         // width
+      ConstantInt::getSigned(I32Ty, Stride),  // stride
+      StartIdx,                               // start index (in bytes)
       ParentWidthArg // parent width (if variable start index)
   };
   IGC_ASSERT_MESSAGE(
@@ -378,12 +378,12 @@ Instruction *CMRegion::createWrCommonRegion(GenXIntrinsic::ID IID,
   // Build the wrregion.
   Value *Args[] = {
       // Args to new wrregion:
-      OldVal,                           // original vector
-      Input,                            // value to write into subregion
-      ConstantInt::get(I32Ty, VStride), // vstride
-      ConstantInt::get(I32Ty, Width),   // width
-      ConstantInt::get(I32Ty, Stride),  // stride
-      StartIdx,                         // start index (in bytes)
+      OldVal,                                 // original vector
+      Input,                                  // value to write into subregion
+      ConstantInt::getSigned(I32Ty, VStride), // vstride
+      ConstantInt::get(I32Ty, Width),         // width
+      ConstantInt::getSigned(I32Ty, Stride),  // stride
+      StartIdx,                               // start index (in bytes)
       ParentWidthArg, // parent width (if variable start index)
       MaskArg         // mask
   };

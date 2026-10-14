@@ -524,7 +524,7 @@ bool GenXAddressCommoning::processCommonAddrs(ArrayRef<Instruction *> Addrs) {
     Modified = true;
     // Modify the address conversions to use the common offset, and adjust the
     // address adds accordingly.
-    auto CommonOffsetVal = ConstantInt::get(
+    auto CommonOffsetVal = ConstantInt::getSigned(
         InRangeAddrs[0]->getType()->getScalarType(), CommonOffset);
     for (unsigned i = 0, e = InRangeAddrs.size(); i != e; ++i) {
       Instruction *Addr = InRangeAddrs[i];
@@ -541,7 +541,7 @@ bool GenXAddressCommoning::processCommonAddrs(ArrayRef<Instruction *> Addrs) {
       } else if (AdjustedOffset) {
         // We don't have an add_addr. We need to insert one.
         Constant *C =
-            ConstantInt::get(CommonOffsetVal->getType(), AdjustedOffset);
+            ConstantInt::getSigned(CommonOffsetVal->getType(), AdjustedOffset);
         if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Addr->getType()))
           C = ConstantVector::getSplat(
               IGCLLVM::getElementCount(VT->getNumElements()), C);
@@ -555,7 +555,7 @@ bool GenXAddressCommoning::processCommonAddrs(ArrayRef<Instruction *> Addrs) {
         // add_addr, and it is either a constant int or a splat of a constant
         // int.
         Constant *C =
-            ConstantInt::get(CommonOffsetVal->getType(), AdjustedOffset);
+            ConstantInt::getSigned(CommonOffsetVal->getType(), AdjustedOffset);
         if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(
                 AddAddr->getOperand(1)->getType()))
           C = ConstantVector::getSplat(

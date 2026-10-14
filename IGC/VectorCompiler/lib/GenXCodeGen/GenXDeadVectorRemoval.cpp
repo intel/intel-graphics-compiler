@@ -152,7 +152,7 @@ bool GenXDeadVectorRemoval::runOnFunction(Function &F) {
 Value *GenXDeadVectorRemoval::trySimplify(Value *V,
                                           const LiveElements &LiveElems) {
   if (LiveElems.isAllDead())
-    return UndefValue::get(V->getType());
+    return PoisonValue::get(V->getType());
 
   if (auto *C = dyn_cast<Constant>(V))
     return trySimplify(C, LiveElems);
@@ -186,7 +186,7 @@ Constant *GenXDeadVectorRemoval::trySimplify(ConstantAggregate *CA,
     for (auto &U : CA->operands())
       Elems.push_back(LiveElems[0][U.getOperandNo()]
                           ? cast<Constant>(U.get())
-                          : UndefValue::get(U->getType()));
+                          : PoisonValue::get(U->getType()));
     return ConstantVector::get(Elems);
   }
 
@@ -197,7 +197,7 @@ Constant *GenXDeadVectorRemoval::trySimplify(ConstantAggregate *CA,
       auto LE = LiveElems[U.getOperandNo()];
       auto OpLiveElems = LiveElements(std::move(LE));
       Elems.push_back(OpLiveElems.isAllDead()
-                          ? UndefValue::get(U->getType())
+                          ? PoisonValue::get(U->getType())
                           : trySimplify(cast<Constant>(U.get()), OpLiveElems));
     }
     return ConstantStruct::get(cast<StructType>(CA->getType()), Elems);
@@ -215,8 +215,20 @@ Constant *GenXDeadVectorRemoval::trySimplify(ConstantData *CD,
   if (auto CDS = dyn_cast<ConstantDataSequential>(CD))
     return trySimplify(CDS, LiveElems);
 
+  // LLVM 23+ represents FP vector splats as vector-typed ConstantFP.
+  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(CD->getType())) {
+    IGC_ASSERT(LiveElems[0].size() == VTy->getNumElements());
+    SmallVector<Constant *, 8> Elems;
+    for (unsigned Idx = 0; Idx < VTy->getNumElements(); Idx++) {
+      auto *Elem = CD->getAggregateElement(Idx);
+      Elems.push_back(LiveElems[0][Idx] ? Elem
+                                        : PoisonValue::get(Elem->getType()));
+    }
+    return ConstantVector::get(Elems);
+  }
+
   IGC_ASSERT(LiveElems[0].size() == 1);
-  return LiveElems[0][0] ? CD : UndefValue::get(CD->getType());
+  return LiveElems[0][0] ? CD : PoisonValue::get(CD->getType());
 }
 
 Constant *GenXDeadVectorRemoval::trySimplify(ConstantDataSequential *CDS,
@@ -226,7 +238,7 @@ Constant *GenXDeadVectorRemoval::trySimplify(ConstantDataSequential *CDS,
     for (unsigned Idx = 0; Idx < CDV->getNumElements(); Idx++) {
       auto Elem = CDV->getElementAsConstant(Idx);
       Elems.push_back(LiveElems[0][Idx] ? Elem
-                                        : UndefValue::get(Elem->getType()));
+                                        : PoisonValue::get(Elem->getType()));
     }
     return ConstantVector::get(Elems);
   }

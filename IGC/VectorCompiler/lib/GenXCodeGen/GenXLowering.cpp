@@ -4977,7 +4977,7 @@ bool GenXLowering::lowerHardwareThreadID(CallInst *CI) {
       // res = (src & mask) | ((src >> width) & ~mask)
       auto *Shift = IRB.CreateLShr(Res, ConstantInt::get(Ty, Width));
       auto *And = IRB.CreateAnd(Res, ConstantInt::get(Ty, Mask));
-      auto *AndNot = IRB.CreateAnd(Shift, ConstantInt::get(Ty, ~Mask));
+      auto *AndNot = IRB.CreateAnd(Shift, ConstantInt::getSigned(Ty, ~Mask));
       Res = IRB.CreateOr(AndNot, And);
     }
 

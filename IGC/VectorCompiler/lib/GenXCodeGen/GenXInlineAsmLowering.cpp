@@ -189,7 +189,8 @@ MDNode *GenXInlineAsmLowering::createInlineAsmMetadata(
     Metadata *EntryMD[3] = {
         ConstantAsMetadata::get(
             ConstantInt::get(Int32Ty, static_cast<uint32_t>(CTy))),
-        ConstantAsMetadata::get(ConstantInt::get(Int32Ty, Info.MatchingInput)),
+        ConstantAsMetadata::get(
+            ConstantInt::getSigned(Int32Ty, Info.MatchingInput)),
         ConstantAsMetadata::get(ConstantInt::get(
             Int1Ty, (Info.Type == InlineAsm::ConstraintPrefix::isOutput)))};
     Entries.push_back(MDNode::get(*Context, EntryMD));

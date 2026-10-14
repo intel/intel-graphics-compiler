@@ -1585,8 +1585,10 @@ Instruction *ConstantLoader::loadPackedInt(Instruction *Inst) {
   ConstantLoader Packed(ConstantVector::get(PackedVals), Subtarget, DL);
   auto *LoadPacked = Packed.loadNonPackedIntConst(Inst);
   if (PackedIntScale != 1) {
+    // The scale may not fit PackTy; the mul wraps, so truncation is intended.
     auto *SplatVal =
-        ConstantInt::get(PackTy, PackedIntScale, /*isSigned=*/true);
+        ConstantInt::get(PackTy, APInt(64, PackedIntScale, /*isSigned=*/true)
+                                     .trunc(PackTy->getIntegerBitWidth()));
     auto *CVTy = cast<IGCLLVM::FixedVectorType>(C->getType());
     auto ElemCount = IGCLLVM::getElementCount(CVTy->getNumElements());
     auto *Op1 = ConstantVector::getSplat(ElemCount, SplatVal);
