@@ -1578,6 +1578,10 @@ void Optimizer::fixSamplerCacheBitInHeader() {
 }
 void Optimizer::InsertS0Movs() {
   bool optimizeS0Movs = kernel.getOption(vISA_OptimizeRedundantS0Movs);
+  // Def-use and global operands, used to remove the movs of an immediate
+  // that got propagated into s0 movs.
+  kernel.fg.resetLocalDataFlowData();
+  kernel.fg.localDataFlowAnalysis();
   for (auto bb : kernel.fg) {
     ::InsertS0Movs s0MovPass(fg, bb, optimizeS0Movs);
     s0MovPass.doInsertS0Movs();

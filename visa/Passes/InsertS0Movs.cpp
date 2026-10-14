@@ -9,6 +9,9 @@ SPDX-License-Identifier: MIT
 #include "InsertS0Movs.hpp"
 #include "Assertions.h"
 
+#include <algorithm>
+#include <unordered_set>
+
 using namespace vISA;
 
 int64_t InsertS0Movs::computeHash(G4_Operand* operand) {
@@ -95,7 +98,70 @@ bool InsertS0Movs::eraseEntryByS0Operand(int s0QW) {
   return false;
 }
 
-G4_SrcRegRegion* InsertS0Movs::allocateS0(G4_Operand* ind, INST_LIST_ITER ii) {
+// If the register staged into s0 is defined in this BB by a mov of an
+// immediate with the same type, return that immediate so it could be moved
+// into s0 directly. E.g.,
+//
+//  (W) mov (1|M0)  r5.0<1>:uq    0x12345678:uq
+//      ...
+//  (W) mov (1|M0)  s0.2<1>:uq    r5.0<0;1,0>:uq
+//
+// becomes
+//
+//  (W) mov (1|M0)  s0.2<1>:uq    0x12345678:uq
+//
+// The mov to r5 is returned in 'def'; doInsertS0Movs() removes it once
+// the BB is done if r5 is BB local and has no other use.
+// Return nullptr if no such immediate is found.
+G4_Imm* InsertS0Movs::getPropagatableImm(G4_Operand* ind, INST_LIST_ITER ii,
+                                         G4_INST*& def) {
+  if (!ind->isSrcRegRegion() || !ind->isGreg())
+    return nullptr;
+  G4_SrcRegRegion* src = ind->asSrcRegRegion();
+  if (src->isIndirect() || src->getModifier() != Mod_src_undef)
+    return nullptr;
+
+  unsigned srcLB = src->getLinearizedStart();
+  unsigned srcRB = src->getLinearizedEnd();
+
+  // Find the closest def of ind in this BB.
+  for (auto ri = std::make_reverse_iterator(ii); ri != bb->rend(); ++ri) {
+    def = *ri;
+    G4_DstRegRegion* dst = def->getDst();
+    if (!dst || dst->isNullReg() || !dst->isGreg())
+      continue;
+    // The footprint of an indirect write is unknown.
+    if (dst->isIndirect())
+      return nullptr;
+    unsigned dstLB = dst->getLinearizedStart();
+    unsigned dstRB = dst->getLinearizedEnd();
+    if (dstRB < srcLB || dstLB > srcRB)
+      continue;
+
+    // The def must be an unconditional mov of an immediate starting at ind,
+    // so that the value in ind is exactly the immediate.
+    if (def->opcode() != G4_mov || def->getPredicate() || def->getCondMod() ||
+        def->getSaturate())
+      return nullptr;
+    // Only (W) mov (1): the write happens regardless of the channel enables,
+    // and it writes nothing but ind.
+    if (!def->isWriteEnableInst() || def->getExecSize() != g4::SIMD1)
+      return nullptr;
+    G4_Operand* defSrc = def->getSrc(0);
+    if (!defSrc->isImm() || defSrc->isRelocImm())
+      return nullptr;
+    if (dstLB != srcLB || dstRB < srcRB)
+      return nullptr;
+    // The only condition on types: all the same, so there's no conversion.
+    if (dst->getType() != ind->getType() || defSrc->getType() != ind->getType())
+      return nullptr;
+    return defSrc->asImm();
+  }
+  return nullptr;
+}
+
+G4_SrcRegRegion* InsertS0Movs::allocateS0(G4_Operand* ind, INST_LIST_ITER ii,
+                                          Gen4_Operand_Number opndNum) {
   // no ind or 0 value ind, return nullptr
   if (!ind) return nullptr;
   if ((ind->isImm() && ind->asImm()->getImm() == 0) ||
@@ -119,6 +185,26 @@ G4_SrcRegRegion* InsertS0Movs::allocateS0(G4_Operand* ind, INST_LIST_ITER ii) {
     vISA_ASSERT(ind->getTopDcl() == builder.getSpillSurfaceEfficient64b(),
                 "unexpected ind0 on scratch msg");
     return nullptr;
+  }
+
+  // Constant propagation: stage the immediate defining ind instead of ind.
+  // A zero immediate is left alone, as an immediate zero ind means no s0 at
+  // all (see above), which is not what reading a register holding zero does.
+  G4_INST* immDef = nullptr;
+  if (G4_Imm* imm = getPropagatableImm(ind, ii, immDef)) {
+    if (imm->getImm() != 0) {
+      // The def is found by register footprint, so after RA it may write a
+      // different variable sharing ind's register. Def-use links only connect
+      // the same variable, so keep such a mov.
+      const G4_Declare* indDcl = ind->getTopDcl();
+      const G4_Declare* defDcl = immDef->getDst()->getTopDcl();
+      if (indDcl && defDcl && indDcl == defDcl) {
+        // This operand no longer reads the mov's dst.
+        (*ii)->removeDefUse(opndNum);
+        propagatedMovs.push_back(immDef);
+      }
+      ind = imm;
+    }
   }
 
   // before assigning nextSurfaceS0QW, check if it is within bounds
@@ -190,11 +276,11 @@ void InsertS0Movs::doInsertS0Movs() {
     // compute the value of ind0
     if (inst->isSendg()) {
       auto sendgInst = inst->asSendInst();
-      auto ind0 = allocateS0(sendgInst->getIND0(), ii);
+      auto ind0 = allocateS0(sendgInst->getIND0(), ii, Opnd_src2);
       if (ind0) {
         sendgInst->setIND0(ind0);
       }
-      auto ind1 = allocateS0(sendgInst->getIND1(), ii);
+      auto ind1 = allocateS0(sendgInst->getIND1(), ii, Opnd_src3);
       if (ind1) {
         sendgInst->setIND1(ind1);
       }
@@ -209,4 +295,34 @@ void InsertS0Movs::doInsertS0Movs() {
       (void)eraseEntryByRegOperand(computeHash(inst->getDst()));
     }
   }
+
+  // The movs of an immediate propagated into s0 movs may be dead now.
+  removePropagatedMovs();
+}
+
+// Remove the movs in propagatedMovs whose dst is BB local and no longer read.
+// Uses the def-use links and globalOpndHT from localDataFlowAnalysis():
+//  - no use left: every read in this BB was propagated (allocateS0() drops
+//    the link of each propagated operand);
+//  - not global: no BB reads the dst without defining it first, so the value
+//    does not reach any other BB.
+void InsertS0Movs::removePropagatedMovs() {
+  std::unordered_set<G4_INST*> removed;
+  for (G4_INST* mov : propagatedMovs) {
+    if (removed.count(mov))
+      continue;
+    G4_DstRegRegion* dst = mov->getDst();
+    if (mov->use_size() != 0 || fg.globalOpndHT.isOpndGlobal(dst))
+      continue;
+    // Keep the mov if its dst may be read in a way the analysis does not
+    // see: live out of the kernel/function or a pre-defined variable.
+    const G4_Declare* dcl = dst->getTopDcl();
+    if (dcl->isOutput() || dcl->isPreDefinedVar() || dcl->isBuiltin())
+      continue;
+    auto it = std::find(bb->begin(), bb->end(), mov);
+    vISA_ASSERT(it != bb->end(), "propagated mov not found in its BB");
+    bb->erase(it);
+    removed.insert(mov);
+  }
+  propagatedMovs.clear();
 }

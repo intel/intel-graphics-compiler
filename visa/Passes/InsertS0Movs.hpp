@@ -36,6 +36,12 @@ class InsertS0Movs {
     };
     std::vector<ImmS0Entry> immS0Vec;
 
+    // movs of an immediate whose value got propagated into s0 movs. They are
+    // removed by removePropagatedMovs() if nothing else reads them. Relies on
+    // the local def-use and globalOpndHT computed by localDataFlowAnalysis()
+    // before this pass.
+    std::vector<G4_INST*> propagatedMovs;
+
     FlowGraph &fg;
     G4_BB *bb;
     IR_Builder &builder;
@@ -61,7 +67,11 @@ class InsertS0Movs {
     // If there are no sendi, then we can use all s0 qwords
     static const unsigned FIRST_SURFACE_S0_QW = 2;
 
-    G4_SrcRegRegion* allocateS0(G4_Operand* ind, INST_LIST_ITER ii);
+    G4_SrcRegRegion* allocateS0(G4_Operand* ind, INST_LIST_ITER ii,
+                                Gen4_Operand_Number opndNum);
+    G4_Imm* getPropagatableImm(G4_Operand* ind, INST_LIST_ITER ii,
+                               G4_INST*& def);
+    void removePropagatedMovs();
     int64_t computeHash(G4_Operand* operand);
     int returnS0QWSubReg(int64_t hash);
     int returnS0QWSubRegForImm(G4_Imm* imm);
