@@ -2377,8 +2377,16 @@ int IR_Builder::translateVISAInvmRsqtmInst(
     src1RR = operandToDirectSrcRegRegion(
         *this, src1Opnd, G4_ExecSize(elementSize), instExecSize);
 
-  bool needsSrc0Move = (src0RR->getModifier() != Mod_src_undef ||
-                        !tryToAlignOperand(src0RR, getGRFSize()));
+  // The math below rebuilds each non-scalar source as a stride-1 region, so a
+  // non-contiguous source must be copied first. Otherwise e.g. a broadcast
+  // V(3,0)<8;16,0> would be read as V(3,0)<1;1,0>, i.e. 16 consecutive DF.
+  auto needsSrcMove = [&](G4_SrcRegRegion *srcRR) {
+    return srcRR->getModifier() != Mod_src_undef ||
+           !tryToAlignOperand(srcRR, getGRFSize()) ||
+           (!srcRR->isScalar() &&
+            !srcRR->getRegion()->isContiguous(instExecSize));
+  };
+  bool needsSrc0Move = needsSrcMove(src0RR);
   if (needsSrc0Move) {
     G4_Declare *tsrc0 =
         createTempVarWithNoSpill(elementSize, Ty, getGRFAlign());
@@ -2389,8 +2397,7 @@ int IR_Builder::translateVISAInvmRsqtmInst(
     src0RR = createSrcRegRegion(tsrc0, elementSize == 1 ? getRegionScalar()
                                                         : getRegionStride1());
   }
-  bool needsSrc1Move = (src1RR && (src1RR->getModifier() != Mod_src_undef ||
-                                   !tryToAlignOperand(src1RR, getGRFSize())));
+  bool needsSrc1Move = src1RR && needsSrcMove(src1RR);
   if (needsSrc1Move) {
     G4_Declare *tsrc1 =
         createTempVarWithNoSpill(elementSize, Ty, getGRFAlign());
