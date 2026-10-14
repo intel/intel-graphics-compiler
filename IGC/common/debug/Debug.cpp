@@ -231,11 +231,8 @@ void ComputeFatalErrorHandler(const DiagnosticInfo &DI, void * /*Context*/) {
 } // namespace
 
 void RegisterErrHandlers() {
-  static bool executed = false;
-  if (!executed) {
-    install_fatal_error_handler(FatalErrorHandler, nullptr);
-    executed = true;
-  }
+  static std::once_flag Installed;
+  std::call_once(Installed, [] { install_fatal_error_handler(FatalErrorHandler, nullptr); });
 }
 
 void RegisterComputeErrHandlers(LLVMContext &C) { C.setDiagnosticHandlerCallBack(ComputeFatalErrorHandler); }
