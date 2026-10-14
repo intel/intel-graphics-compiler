@@ -683,9 +683,9 @@ public:
     if (!I)
       return V;
 
-    bool IsAddrSpaceCast = isa<AddrSpaceCastInst>(I);
+    bool IsAddrSpaceCastAndNotConstOp = isa<AddrSpaceCastInst>(I) && !isa<Constant>(I->getOperand(0));
 
-    if (isNoOpInst(I, CTX) || IsAddrSpaceCast) {
+    if (isNoOpInst(I, CTX) || IsAddrSpaceCastAndNotConstOp) {
       return getRealOp(I->getOperand(0));
     }
     return V;
