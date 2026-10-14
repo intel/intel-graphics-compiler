@@ -6377,6 +6377,21 @@ void HWConformity::fixBFMixedMode() {
     return false;
   };
 
+  auto roundsToBFDst = [](G4_INST *I) {
+    switch (I->opcode()) {
+    case G4_add:
+    case G4_mul:
+    case G4_mac:
+    case G4_mad:
+    case G4_pseudo_mad: {
+      G4_DstRegRegion *dst = I->getDst();
+      return dst && !dst->isNullReg() && dst->getType() == Type_BF;
+    }
+    default:
+      return false;
+    }
+  };
+
   auto skipBFCheck = [&useGivenType](G4_INST *I) {
     // Skip dpas/send
     if (I->isDpas() || I->isSend())
@@ -6520,6 +6535,23 @@ void HWConformity::fixBFMixedMode() {
 
           Inst->transferUse(movI);
           Inst->addDefUse(movI, Opnd_src0);
+        } else if (isBFAllowedInst &&
+                   !builder.getOption(vISA_ignoreBFRounding) &&
+                   roundsToBFDst(tI)) {
+          // A mixed mode instruction with a BF dst always rounds toward zero,
+          // while a F->BF mov honors the rounding mode in cr0.
+          tI->setDest(insertMovAfter(thisII, Dst, Type_F, bb));
+          INST_LIST_ITER movII = std::next(thisII);
+          G4_INST *movI = *movII;
+
+          // F->BF mov supports neither saturation nor predicate. Saturating
+          // before rounding gives the same result, as 0.0 and 1.0 are exact
+          // in BF. A predicated result goes through a BF temp, so that the
+          // predicate is applied by the BF->BF copy instead.
+          tI->setSaturate(movI->getSaturate());
+          movI->setSaturate(g4::NOSAT);
+          if (movI->getPredicate())
+            movI->setDest(insertMovAfter(movII, movI->getDst(), Type_BF, bb));
         }
       }
       instsToCheck.clear();
