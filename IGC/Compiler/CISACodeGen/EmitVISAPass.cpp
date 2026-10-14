@@ -22844,7 +22844,8 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
       }
     } else {
       uint32_t dstOff = 0, srcOff = 0;
-      for (int i = 0; i < nelts; ++i) {
+      int i = 0;
+      for (; i < nelts; ++i) {
         if (isSat) {
           m_encoder->SetDstModifier(EMOD_SAT);
         }
