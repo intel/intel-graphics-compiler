@@ -1762,6 +1762,52 @@ bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB *bb) {
   return false;
 }
 
+// Saturation must not be used when source or destination is a qword, so the
+// add writes a qword temp and a mov saturates it: the sum wraps in 64 bits and
+// the wrapped sum is then saturated to dst, as in HWConformityPro::fixAdd. The
+// temp is UQ if all sources are unsigned and Q otherwise. Saturation with a
+// Q/UQ dst is rejected by the vISA verifier and handled the same way. Returns
+// true if a mov is inserted.
+bool HWConformity::fixAdd(INST_LIST_ITER i, G4_BB *bb) {
+  G4_INST *inst = *i;
+  if (inst->opcode() != G4_add || !inst->getSaturate())
+    return false;
+
+  bool notSupportSat = IS_QTYPE(inst->getDst()->getType());
+  bool allUnsigned = true;
+  for (int srcNum = 0; srcNum < inst->getNumSrc(); ++srcNum) {
+    G4_Type srcTy = inst->getSrc(srcNum)->getType();
+    notSupportSat |= IS_QTYPE(srcTy);
+    allUnsigned &= IS_UNSIGNED_INT(srcTy);
+  }
+  if (!notSupportSat)
+    return false;
+
+  // The cond mod is on the saturated value, so it moves to the mov too. A
+  // null dst gets a temp so that the mov is inserted to compute it, and the
+  // mov then writes null instead.
+  G4_CondMod *condMod = inst->getCondMod();
+  inst->setCondMod(nullptr);
+  G4_DstRegRegion *dst = inst->getDst();
+  bool needsMov = !dst->isNullReg() || condMod;
+  if (dst->isNullReg() && condMod) {
+    G4_Declare *dcl =
+        builder.createTempVar(inst->getExecSize(), dst->getType(), Any);
+    inst->setDest(builder.createDstRegRegion(dcl, 1));
+  }
+  inst->setDest(
+      insertMovAfter(i, inst->getDst(), allUnsigned ? Type_UQ : Type_Q, bb));
+  if (needsMov) {
+    G4_INST *newMov = *std::next(i);
+    newMov->setSaturate(g4::SAT);
+    newMov->setCondMod(condMod);
+    if (dst->isNullReg())
+      newMov->setDest(dst);
+  }
+  inst->setSaturate(g4::NOSAT);
+  return needsMov;
+}
+
 bool HWConformity::fixRotate(INST_LIST_ITER i, G4_BB *bb) {
 
   // rotate requires src0 and dst to have the same datatype precision
@@ -5890,6 +5936,11 @@ void HWConformity::conformBB(G4_BB *bb) {
     if (changed) {
       next_iter = i;
       next_iter++;
+    }
+
+    // The mov that saturates the sum is checked next.
+    if (fixAdd(i, bb)) {
+      next_iter = std::next(i);
     }
 
     fixOpndType(i, bb);

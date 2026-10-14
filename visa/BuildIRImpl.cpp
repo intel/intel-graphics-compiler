@@ -4809,6 +4809,13 @@ void IR_Builder::doSimplification(G4_INST *inst) {
     }
   } else if (inst->opcode() == G4_shl || inst->opcode() == G4_shr ||
              inst->opcode() == G4_asr || inst->opcode() == G4_add) {
+    // Keep a saturating add with a Q/UQ operand. It saturates the sum wrapped
+    // to 64 bits, see HWConformityPro::fixAdd, and a mov of the other source
+    // differs from it with mixed signedness or a source modifier.
+    if (inst->opcode() == G4_add && inst->getSaturate() &&
+        (IS_QTYPE(inst->getDst()->getType()) || IS_QTYPE(src0->getType()) ||
+         IS_QTYPE(src1->getType())))
+      return;
     if (isInteger(src1, 0)) {
       newSrc = src0;
     } else if (inst->opcode() == G4_add && isInteger(src0, 0)) {

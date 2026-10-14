@@ -4021,28 +4021,51 @@ void HWConformityPro::fixAdd(INST_LIST_ITER it, G4_BB* bb) {
   G4_INST *inst = *it;
   assert(inst->opcode() == G4_add && "expect add instruction");
 
-  // Saturation must not be used when source or destination is a qword.
+  // Saturation must not be used when source or destination is a qword, so the
+  // add writes a qword temp and a mov saturates it: the sum wraps in 64 bits
+  // and the wrapped sum is then saturated to dst.
+  // The temp is UQ if all sources are unsigned and Q otherwise, which doesn't
+  // change when an immediate is narrowed to a smaller type of the same
+  // signedness. Saturation with a Q/UQ dst is rejected by the vISA verifier and
+  // handled the same way.
   // For example:
-  // (W) add (1) (sat)v32th(0,64)<1>:q v18th(0,64)<0;1,0>:q v4th(0,64)<0;1,0>:q
+  // add (16) (sat)V48(0,0)<1>:d  V49(0,0)<1;1,0>:q  V50(0,0)<1;1,0>:q
   // =>
-  // (W) add (1)  TV2(0,0)<1>:q  v18th(0,64)<0;1,0>:q  v4th(0,64)<0;1,0>:q
-  // (W) mov (1)  (sat)v32th(0,64)<1>:q  TV2(0,0)<0;1,0>:q
+  // add (16)  TV2(0,0)<1>:q  V49(0,0)<1;1,0>:q  V50(0,0)<1;1,0>:q
+  // mov (16)  (sat)V48(0,0)<1>:d  TV2(0,0)<1;1,0>:q
   if (!inst->getSaturate())
     return;
 
   bool notSupportSat = IS_QTYPE(inst->getDst()->getType());
-  if (!notSupportSat) {
-    for (int i = 0; i < inst->getNumSrc(); ++i) {
-      notSupportSat = IS_QTYPE(inst->getSrc(i)->getType());
-      if (notSupportSat)
-        break;
-    }
+  bool allUnsigned = true;
+  for (int i = 0; i < inst->getNumSrc(); ++i) {
+    G4_Type srcTy = inst->getSrc(i)->getType();
+    notSupportSat |= IS_QTYPE(srcTy);
+    allUnsigned &= IS_UNSIGNED_INT(srcTy);
   }
 
-  if (notSupportSat) {
-    replaceDst(it, bb, inst->getDst()->getType(), /*tmpStride*/ 0, Any);
-    G4_INST *newMov = *(std::next(it));
-    newMov->setSaturate(inst->getSaturate());
-    inst->setSaturate(g4::NOSAT);
+  if (!notSupportSat)
+    return;
+
+  // The cond mod is on the saturated value, so it moves to the mov too. A
+  // null dst gets a temp so that the mov is inserted to compute it, and the
+  // mov then writes null instead.
+  G4_CondMod *condMod = inst->getCondMod();
+  inst->setCondMod(nullptr);
+  G4_DstRegRegion *dst = inst->getDst();
+  if (dst->isNullReg() && condMod) {
+    G4_Declare *dcl =
+        builder.createTempVar(inst->getExecSize(), dst->getType(), Any);
+    inst->setDest(builder.createDstRegRegion(dcl, 1));
   }
+  bool wasMovInserted = replaceDstWasMovInserted(
+      it, bb, allUnsigned ? Type_UQ : Type_Q, /*tmpStride*/ 0, Any);
+  if (wasMovInserted) {
+    G4_INST *newMov = *(std::next(it));
+    newMov->setSaturate(g4::SAT);
+    newMov->setCondMod(condMod);
+    if (dst->isNullReg())
+      newMov->setDest(dst);
+  }
+  inst->setSaturate(g4::NOSAT);
 }

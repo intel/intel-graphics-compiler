@@ -2187,6 +2187,13 @@ void vISAVerifier::verifyInstructionArith(const CISA_INST *inst) {
                          "%s does not support saturation on integer types.",
                          ISA_Inst_Table[opcode].str);
       break;
+    case ISA_ADD:
+      REPORT_INSTRUCTION(options,
+                         dstType != ISA_TYPE_Q && dstType != ISA_TYPE_UQ,
+                         "%s does not support saturation with a Q/UQ "
+                         "destination.",
+                         ISA_Inst_Table[opcode].str);
+      break;
     default:
       break;
     }
