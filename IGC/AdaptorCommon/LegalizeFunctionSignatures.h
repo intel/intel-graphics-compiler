@@ -12,6 +12,9 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/MapVector.h>
+#include <llvm/ADT/STLExtras.h>
+#include <llvm/ADT/SmallVector.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/PassManager.h>
@@ -19,6 +22,52 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/IR/IRBuilder.h>
 
 #include <map>
+
+namespace IGC {
+
+enum class ArgLowering {
+  Keep,
+  // Int or int vector of an illegal width, widened to i8, i16, i32 or i64.
+  WidenInt,
+  // Promotable "byval" struct pointer, passed as the struct value.
+  ByValToValue,
+  // Struct or array value that is not passed in registers, passed as a "byval" pointer.
+  ValueToByVal,
+  // Promotable "sret" struct pointer, removed. See RetLowering::SRetToValue.
+  SRet,
+};
+
+enum class RetLowering {
+  Keep,
+  // Int or int vector of an illegal width, widened to i8, i16, i32 or i64.
+  WidenInt,
+  // Promotable "sret" struct pointer argument, returned as the struct value.
+  SRetToValue,
+  // Value that is not returned in registers, returned through a new "sret" pointer argument.
+  ValueToSRet,
+  // Small struct returned by value. The signature is kept, the returns are rebuilt.
+  StructValue,
+};
+
+// How one signature is lowered to the IGC function call ABI. The lowering computed for a
+// function drives its new declaration, its new body and all direct calls to it.
+struct SignatureLowering {
+  RetLowering Ret = RetLowering::Keep;
+  // One per original argument.
+  llvm::SmallVector<ArgLowering, 8> Args;
+  llvm::FunctionType *LoweredTy = nullptr;
+
+  bool isNeeded() const {
+    return Ret != RetLowering::Keep || llvm::any_of(Args, [](ArgLowering A) { return A != ArgLowering::Keep; });
+  }
+};
+
+struct LoweredFunction {
+  llvm::Function *NewFunc = nullptr;
+  SignatureLowering Lowering;
+};
+
+} // namespace IGC
 
 // Shared implementation. Holds the logic and is used by both the legacy and the
 // new-pass-manager wrappers below; it is not itself an llvm::Pass.
@@ -29,20 +78,19 @@ public:
 
   static llvm::StringRef getPassName() { return "LegalizeFunctionSignatures"; }
 
-  bool run(llvm::Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx);
+  bool run(llvm::Module &M, IGC::IGCMD::MetaDataUtils *MDUtils, IGC::CodeGenContext *Ctx);
 
-  void FixFunctionSignatures(llvm::Module &M);
-  void FixFunctionBody(llvm::Module &M);
-  void FixFunctionUsers(llvm::Module &M);
-  void FixCallInstruction(llvm::Module &M, llvm::CallInst *callInst);
-  void CopyAttributesAndAdjustForSkippedFunctionArgs(llvm::Function *pFunc, llvm::Function *pNewFunc,
-                                                     bool functionHasPromotableSRetArg);
+  void fixFunctionSignatures(llvm::Module &M);
+  void fixFunctionBodies(llvm::Module &M);
+  void fixFunctionUsers(llvm::Module &M);
+  void fixCallInstruction(llvm::Module &M, llvm::CallInst *CI);
+  void copyAttributesAndAdjustForSkippedFunctionArgs(llvm::Function *F, llvm::Function *NewF, bool HasPromotedSRetArg);
 
 private:
-  llvm::MapVector<llvm::Function *, llvm::Function *> oldToNewFuncMap;
+  llvm::MapVector<llvm::Function *, IGC::LoweredFunction> OldToNewFuncMap;
 
-  IGC::IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
-  IGC::CodeGenContext *m_pCtx = nullptr;
+  IGC::IGCMD::MetaDataUtils *MDUtils = nullptr;
+  IGC::CodeGenContext *Ctx = nullptr;
 };
 
 // Legacy Pass Manager wrapper.
@@ -58,14 +106,14 @@ public:
   }
 
   virtual bool runOnModule(llvm::Module &M) {
-    return m_impl.run(M, getAnalysis<IGC::MetaDataUtilsWrapper>().getMetaDataUtils(),
-                      getAnalysis<IGC::CodeGenContextWrapper>().getCodeGenContext());
+    return Impl.run(M, getAnalysis<IGC::MetaDataUtilsWrapper>().getMetaDataUtils(),
+                    getAnalysis<IGC::CodeGenContextWrapper>().getCodeGenContext());
   }
 
   virtual llvm::StringRef getPassName() const { return LegalizeFunctionSignatures::getPassName(); }
 
 private:
-  LegalizeFunctionSignatures m_impl;
+  LegalizeFunctionSignatures Impl;
 };
 
 #if LLVM_VERSION_MAJOR >= 16
@@ -78,6 +126,6 @@ public:
   static bool isRequired() { return true; }
 
 private:
-  LegalizeFunctionSignatures m_impl;
+  LegalizeFunctionSignatures Impl;
 };
 #endif // LLVM_VERSION_MAJOR >= 16

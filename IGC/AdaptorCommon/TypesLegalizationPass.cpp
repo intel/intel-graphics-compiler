@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/SetVector.h>
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/Support/Alignment.h"
@@ -52,6 +53,14 @@ void TypesLegalizationPass::visitPHINode(PHINode &phi) {
   if ((type != NULL) && type->isAggregateType()) {
     m_PhiNodes.push_back(&phi);
   }
+}
+
+// Codegen cannot handle aggregate loads, and unlike stores and extractvalues
+// nothing else splits a loaded aggregate passed by value to a call. The loads
+// are looked up only after PHI nodes are resolved, as that creates new ones.
+void TypesLegalizationPass::visitCallInst(CallInst &call) {
+  if (any_of(call.args(), [](Value *arg) { return arg->getType()->isAggregateType(); }))
+    m_Calls.push_back(&call);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -183,7 +192,49 @@ bool TypesLegalizationPass::LegalizeTypes() {
     TypesLegalizationPass::ResolveStoreInst(st);
     modified = true;
   }
+
+  SmallSetVector<LoadInst *, 4> callArgLoads;
+  for (CallInst *call : m_Calls) {
+    for (Value *arg : call->args()) {
+      auto *ld = dyn_cast<LoadInst>(arg);
+      if (ld && ld->getType()->isAggregateType())
+        callArgLoads.insert(ld);
+    }
+  }
+  for (LoadInst *ld : callArgLoads) {
+    TypesLegalizationPass::ResolveCallArgLoad(ld);
+    modified = true;
+  }
   return modified;
+}
+
+Value *TypesLegalizationPass::LoadByElements(IGCLLVM::IRBuilder<> &builder, LoadInst *ld, Type *type, Value *agg,
+                                             SmallVector<unsigned, 8> &indices) {
+  if (type->isStructTy() || type->isArrayTy()) {
+    unsigned numElements = type->isStructTy() ? type->getStructNumElements() : type->getArrayNumElements();
+    for (unsigned i = 0; i < numElements; ++i) {
+      Type *elementType = type->isStructTy() ? type->getStructElementType(i) : type->getArrayElementType();
+      indices.push_back(i);
+      agg = LoadByElements(builder, ld, elementType, agg, indices);
+      indices.pop_back();
+    }
+    return agg;
+  }
+
+  Value *element = ResolveValue(ld, ld, indices);
+  return builder.CreateInsertValue(agg, element, indices);
+}
+
+///////////////////////////////////////////////////////////////////////
+/// @brief Replaces an aggregate load with loads of its scalar elements
+/// assembled with insertvalue.
+/// @param  ld aggregate load used as a call argument
+void TypesLegalizationPass::ResolveCallArgLoad(LoadInst *ld) {
+  IGCLLVM::IRBuilder<> builder(ld);
+  SmallVector<unsigned, 8> indices;
+  Value *val = LoadByElements(builder, ld, ld->getType(), PoisonValue::get(ld->getType()), indices);
+  ld->replaceAllUsesWith(val);
+  ld->eraseFromParent();
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -214,26 +265,23 @@ Value *TypesLegalizationPass::ResolveValue(Instruction *ip, Value *val, SmallVec
 
   if (InsertValueInst *civ = dyn_cast<InsertValueInst>(val)) {
     ArrayRef<unsigned> civIndices = civ->getIndices();
-    if (indices.size() < civIndices.size()) {
+    unsigned i = 0;
+    for (; i < civIndices.size() && i < indices.size(); ++i) {
+      if (civIndices[i] != indices[i]) {
+        return ResolveValue(civ, civ->getAggregateOperand(), indices);
+      }
+    }
+    if (i < civIndices.size()) {
       // We have less indices collected than it is needed to reference scalar value
       // inserted here. We will skip this instruction and anticipate there is further
       // ExtractValue further that will specify missing indices.
       return nullptr;
     }
-    unsigned i = 0;
-    for (; i < civIndices.size(); ++i) {
-      if (civIndices[i] != indices[i]) {
-        break;
-      }
+    if (i == indices.size()) {
+      return civ->getInsertedValueOperand();
     }
-    if (i == civIndices.size()) {
-      if (i == indices.size()) {
-        return civ->getInsertedValueOperand();
-      }
-      SmallVector<unsigned, 8> ri(&indices[i], indices.end());
-      return ResolveValue(civ, civ->getInsertedValueOperand(), ri);
-    }
-    return ResolveValue(civ, civ->getAggregateOperand(), indices);
+    SmallVector<unsigned, 8> ri(&indices[i], indices.end());
+    return ResolveValue(civ, civ->getInsertedValueOperand(), ri);
   } else if (LoadInst *ld = dyn_cast<LoadInst>(val)) {
     IGCLLVM::IRBuilder<> builder(ld);
     Value *gep = CreateGEP(builder, ld->getType(), ld->getOperand(0), indices);
@@ -387,6 +435,7 @@ bool TypesLegalizationPass::run(Function &function) {
   m_StoreInst.clear();
   m_ExtractValueInst.clear();
   m_PhiNodes.clear();
+  m_Calls.clear();
   if (function.hasOptNone()) {
     // type-legalization may create dead load, clean up those loads
     // when DCE would not. Otherwise IGC cannot handle aggregate loads

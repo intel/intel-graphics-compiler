@@ -42,15 +42,15 @@ IGC_INITIALIZE_PASS_END(ResolveAggregateArgumentsLPM, PASS_FLAG2, PASS_DESCRIPTI
 char AggregateArgumentsAnalysisLPM::ID = 0;
 char ResolveAggregateArgumentsLPM::ID = 0;
 
-bool isSupportedAggregateArgument(Argument *arg) {
-  if (arg->getType()->isPointerTy() && arg->hasByValAttr()) {
-    Type *type = arg->getParamByValType();
+// Producers other than Clang pass structs to kernels as OpTypeStruct values,
+// which is the only valid form of a struct kernel parameter in SPIR-V.
+static StructType *getAggregateArgumentType(const Argument *arg) {
+  return dyn_cast<StructType>(arg->hasByValAttr() ? arg->getParamByValType() : arg->getType());
+}
 
-    if (StructType *structType = dyn_cast<StructType>(type)) {
-      return !structType->isOpaque();
-    }
-  }
-  return false;
+static bool isSupportedAggregateArgument(const Argument *arg) {
+  StructType *structType = getAggregateArgumentType(arg);
+  return structType && !structType->isOpaque();
 }
 
 AggregateArgumentsAnalysisLPM::AggregateArgumentsAnalysisLPM() : ModulePass(ID) {
@@ -100,8 +100,8 @@ bool AggregateArgumentsAnalysis::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, 
       }
       m_argList.clear();
 
-      Type *type = arg->getParamByValType();
-      IGC_ASSERT(m_pDL->getStructLayout(cast<StructType>(type))->getSizeInBytes() < UINT_MAX);
+      StructType *type = getAggregateArgumentType(arg);
+      IGC_ASSERT(m_pDL->getStructLayout(type)->getSizeInBytes() < UINT_MAX);
       addImplictArgs(type, 0);
       ImplicitArgs::addStructArgs(F, arg, m_argList, m_pMdUtils, pCtx->getModuleMetaData());
       changed = true;
@@ -219,6 +219,65 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type *type, uint64_t baseAllocaO
   }
 }
 
+// Codegen cannot handle aggregate loads, so the value is assembled from its
+// scalar members.
+static Value *loadByMembers(IGCLLVM::IRBuilder<> &irBuilder, AllocaInst *base, SmallVectorImpl<Value *> &gepIndices,
+                            Type *type, Value *agg, SmallVectorImpl<unsigned> &aggIndices) {
+  const DataLayout &DL = base->getModule()->getDataLayout();
+  if (type->isStructTy() || type->isArrayTy()) {
+    unsigned numElements = type->isStructTy() ? type->getStructNumElements() : type->getArrayNumElements();
+    for (unsigned i = 0; i < numElements; ++i) {
+      Type *elementType = type->isStructTy() ? type->getStructElementType(i) : type->getArrayElementType();
+      gepIndices.push_back(irBuilder.getInt32(i));
+      aggIndices.push_back(i);
+      agg = loadByMembers(irBuilder, base, gepIndices, elementType, agg, aggIndices);
+      gepIndices.pop_back();
+      aggIndices.pop_back();
+    }
+    return agg;
+  }
+  Value *ptr = irBuilder.CreateInBoundsGEP(base->getAllocatedType(), base, gepIndices);
+  Align align = commonAlignment(base->getAlign(), DL.getIndexedOffsetInType(base->getAllocatedType(), gepIndices));
+  Value *member = irBuilder.CreateAlignedLoad(type, ptr, align);
+  return irBuilder.CreateInsertValue(agg, member, aggIndices);
+}
+
+// Each extractvalue of a scalar member becomes a load of that member. Other
+// uses get the whole value, assembled once in the entry block.
+static void replaceStructValueUses(Value *val, AllocaInst *base, SmallVectorImpl<Value *> &gepIndices,
+                                   IGCLLVM::IRBuilder<> &entryBuilder) {
+  const DataLayout &DL = base->getModule()->getDataLayout();
+  Type *baseType = base->getAllocatedType();
+  Value *wholeVal = nullptr;
+  for (Use &use : make_early_inc_range(val->uses())) {
+    if (auto *EVI = dyn_cast<ExtractValueInst>(use.getUser())) {
+      SmallVector<Value *, 8> memberIndices(gepIndices.begin(), gepIndices.end());
+      for (unsigned i : EVI->getIndices())
+        memberIndices.push_back(entryBuilder.getInt32(i));
+
+      if (EVI->getType()->isAggregateType()) {
+        replaceStructValueUses(EVI, base, memberIndices, entryBuilder);
+      } else {
+        IGCLLVM::IRBuilder<> builder(EVI);
+        Value *ptr = builder.CreateInBoundsGEP(baseType, base, memberIndices);
+        Align align = commonAlignment(base->getAlign(), DL.getIndexedOffsetInType(baseType, memberIndices));
+        LoadInst *member = builder.CreateAlignedLoad(EVI->getType(), ptr, align);
+        member->takeName(EVI);
+        EVI->replaceAllUsesWith(member);
+      }
+      EVI->eraseFromParent();
+      continue;
+    }
+
+    if (!wholeVal) {
+      SmallVector<unsigned, 8> aggIndices;
+      wholeVal =
+          loadByMembers(entryBuilder, base, gepIndices, val->getType(), PoisonValue::get(val->getType()), aggIndices);
+    }
+    use.set(wholeVal);
+  }
+}
+
 ResolveAggregateArgumentsLPM::ResolveAggregateArgumentsLPM() : FunctionPass(ID) {
   initializeResolveAggregateArgumentsLPMPass(*PassRegistry::getPassRegistry());
 }
@@ -244,7 +303,7 @@ bool ResolveAggregateArguments::runOnFunction(Function &F, IGCMD::MetaDataUtils 
       continue;
     }
 
-    StructType *structType = cast<StructType>(arg->getParamByValType());
+    StructType *structType = getAggregateArgumentType(arg);
 
     // LLVM assumes the caller has create an alloca and pushed the contents
     // of the struct on the stack.  Since we dont have a caller, create
@@ -252,13 +311,19 @@ bool ResolveAggregateArguments::runOnFunction(Function &F, IGCMD::MetaDataUtils 
     std::string allocaName = std::string(arg->getName()) + "_alloca";
     llvm::AllocaInst *base = irBuilder.CreateAlloca(structType, 0, allocaName);
 
-    if (llvm::MaybeAlign BA = arg->getParamAlign())
-      base->setAlignment(*BA);
+    if (arg->getType()->isPointerTy())
+      if (llvm::MaybeAlign BA = arg->getParamAlign())
+        base->setAlignment(*BA);
 
     // Now that we have the alloca push the contents of the struct onto the stack
     storeArgument(arg, base, irBuilder);
 
-    arg->replaceAllUsesWith(base);
+    if (arg->getType()->isPointerTy()) {
+      arg->replaceAllUsesWith(base);
+    } else {
+      SmallVector<Value *, 8> gepIndices{irBuilder.getInt32(0)};
+      replaceStructValueUses(arg, base, gepIndices, irBuilder);
+    }
     changed = true;
   }
 

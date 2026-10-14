@@ -483,10 +483,10 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
     IGC_ADD_PASS_AUTO(npm, lpm, LegalizeFunctionSignatures);
 
     // LegalizeFunctionSignatures may introduce aggregate loads and stores after
-    // the initial type legalization. Optimizations normally remove them, but
-    // code generation cannot consume them when optimization is disabled.
-    if (isOptDisabled)
-      IGC_ADD_PASS(npm, lpm, TypesLegalizationPassNPM(), new TypesLegalizationPassLPM());
+    // the initial type legalization. Code generation cannot consume them, and
+    // optimizations don't remove them reliably: they don't run when optimization
+    // is disabled, and InstCombine doesn't split structs with padding.
+    IGC_ADD_PASS(npm, lpm, TypesLegalizationPassNPM(), new TypesLegalizationPassLPM());
 
     IGC_ADD_PASS(npm, lpm, ProcessBuiltinMetaDataNPM(), createProcessBuiltinMetaDataPass());
     IGC_ADD_PASS_AUTO(npm, lpm, PurgeMetaDataUtils);

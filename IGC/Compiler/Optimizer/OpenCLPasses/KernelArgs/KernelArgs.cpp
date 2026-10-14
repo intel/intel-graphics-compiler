@@ -193,6 +193,10 @@ KernelArg::ArgType KernelArg::calcArgType(const Argument *arg, const StringRef t
       return getBufferType(arg, typeStr).type;
     }
   }
+  case Type::StructTyID:
+    // Flattened by AggregateArguments, like a byval struct.
+    return KernelArg::ArgType::STRUCT;
+
   case Type::IntegerTyID:
     // Check if argument is sampler
     if (isSampler(arg, typeStr))

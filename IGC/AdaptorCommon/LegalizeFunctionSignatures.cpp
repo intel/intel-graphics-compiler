@@ -46,655 +46,520 @@ LegalizeFunctionSignaturesLPM::LegalizeFunctionSignaturesLPM() : ModulePass(ID) 
 
 //*********************** PASS DESCRIPTION ***********************//
 
-// This pass transforms functions and their callers to match IGC function call ABI.
+// This pass transforms functions and their callers to match the IGC function call ABI.
 //
-// The following transformations are applied:
+// classifySignature() decides how each argument and the return value are lowered. The decision
+// made for a function drives its new declaration, its new body and all direct calls to it.
 //
-// 1. Return values larger than 64-bits are transformed to pass-by-reference.
-//   Note: This means that the first argument of the function becomes a pointer allocated by the caller,
-//         and the return value is stored to that pointer, and the function return type becomes void.
+// Arguments:
+// 1. Int and int vector arguments of illegal widths are widened to i8, i16, i32 or i64.
+// 2. "byval" struct pointers are passed as struct values, in registers, if the struct is
+//    promotable: only scalar members, and at most 512 bits for subroutines or 128 bits for
+//    stackcalls. Clang-based frontends pass all struct arguments as "byval" pointers.
+// 3. Struct values, which SPIR-V allows, are passed as "byval" pointers if a "byval" pointer to
+//    the same struct would not be promoted, so that both forms are passed the same way. Arrays
+//    are always passed as "byval" pointers.
 //
-// 2. Illegal int and int vector arguments are transformed to legal types that are a power of two (i8, i16, i32, i64).
-//
-// 3. The "byval" struct arguments smaller than 128-bits are transformed to pass-by-value.
-//   Note: The SPIRV calling convention states that structures cannot be passed by
-//         value, thus all structs are transformed by SPIRV FE to be passed by reference.
-//         However we can optimize small struct args by converting them into back into
-//         pass-by-value so that they can be passed on GRF instead of spilling to stack memory.
-//
-// 4. The "sret" struct argument smaller than 64-bits are transformed to return value
-//   Note: Similar to the previous point, MOST SPIRV FE converts struct return values to pass-by-refernce
-//         through the "sret" argument. For small structs that fit into the return GRF, we can undo
-//         this transformation to pass them by value instead. Be aware that returing structs by value
-//         is allowed in SPIR-V calling convention thus most front ends don't do that.
+// Return values:
+// 4. Int and int vector return values of illegal widths are widened the same way.
+// 5. Promotable "sret" struct pointers are returned as struct values.
+// 6. Values codegen can't return in registers are returned through an "sret" pointer: arrays,
+//    structs with aggregate members, and for stackcalls structs that are not promotable.
+// 7. Structs of up to 128 bits with only scalar members returned by value keep the signature,
+//    but returns are replaced by member-wise loads from the first alloca of the returned type in
+//    the entry block, if there is one.
 //
 // See IGC StackCall ABI for details on stackcall calling conventions.
 
 //****************************************************************//
 
-static const unsigned int MAX_RETVAL_SIZE_IN_BITS = 64;
-static const unsigned int MAX_STRUCT_SIZE_IN_BITS = 128;
-static const unsigned int MAX_SUBROUTINE_STRUCT_SIZE_IN_BITS = 512;
+static constexpr unsigned MaxStructSizeInBits = 128;
+static constexpr unsigned MaxSubroutineStructSizeInBits = 512;
 
-enum ReturnOpt { RETURN_DEFAULT = 0, RETURN_BY_REF, RETURN_STRUCT_PROMOTED, RETURN_LEGAL_INT, RETURN_STRUCT };
+bool LegalizeFunctionSignatures::run(Module &M, IGC::IGCMD::MetaDataUtils *MDUtils, IGC::CodeGenContext *Ctx) {
+  this->MDUtils = MDUtils;
+  this->Ctx = Ctx;
 
-bool LegalizeFunctionSignatures::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtilsParam, IGC::CodeGenContext *pCtx) {
-  m_pMdUtils = pMdUtilsParam;
-  m_pCtx = pCtx;
-  auto pMdUtils = m_pMdUtils;
+  fixFunctionSignatures(M);
+  fixFunctionUsers(M);
+  fixFunctionBodies(M);
 
-  // Creates a new function declaration with modified signature
-  FixFunctionSignatures(M);
-  // Transforms all callers of the old function to the new function
-  FixFunctionUsers(M);
-  // Clones the body and fix arguments for the new function
-  FixFunctionBody(M);
-
-  pMdUtils->save(M.getContext());
+  MDUtils->save(M.getContext());
   return true;
 }
 
-// Check if an int or int-vector argument type is a power of two
-inline bool isLegalIntVectorType(const Module &M, Type *ty) {
-  if (ty->isIntOrIntVectorTy()) {
-    unsigned size =
-        (unsigned)M.getDataLayout().getTypeSizeInBits(ty->isIntegerTy() ? ty : cast<VectorType>(ty)->getElementType());
-    switch (size) {
-    case 8:
-    case 16:
-    case 32:
-    case 64:
-      return true;
-    default:
-      return false;
-    }
+// Returns false for ints and int vectors whose element width is not 8, 16, 32 or 64 bits.
+static bool isLegalIntVectorType(const Module &M, Type *Ty) {
+  if (!Ty->isIntOrIntVectorTy())
+    return true;
+  switch (M.getDataLayout().getTypeSizeInBits(Ty->getScalarType())) {
+  case 8:
+  case 16:
+  case 32:
+  case 64:
+    return true;
+  default:
+    return false;
   }
-  return true;
 }
 
-inline Type *LegalizedIntVectorType(const Module &M, Type *ty) {
-  IGC_ASSERT(ty && ty->isIntOrIntVectorTy());
+static Type *getLegalIntVectorType(const Module &M, Type *Ty) {
+  IGC_ASSERT(Ty && Ty->isIntOrIntVectorTy());
 
-  unsigned size =
-      (unsigned)M.getDataLayout().getTypeSizeInBits(ty->isIntegerTy() ? ty : cast<VectorType>(ty)->getElementType());
-  unsigned newSize = 0;
-
-  // Upscale the size to the next supported legal size
-  if (size <= 8)
-    newSize = 8;
-  else if (size <= 16)
-    newSize = 16;
-  else if (size <= 32)
-    newSize = 32;
-  else if (size <= 64)
-    newSize = 64;
+  unsigned Size = (unsigned)M.getDataLayout().getTypeSizeInBits(Ty->getScalarType());
+  unsigned NewSize = 0;
+  if (Size <= 8)
+    NewSize = 8;
+  else if (Size <= 16)
+    NewSize = 16;
+  else if (Size <= 32)
+    NewSize = 32;
+  else if (Size <= 64)
+    NewSize = 64;
   else
     IGC_ASSERT_MESSAGE(0, "Currently don't support upscaling int sizes > 64 bits");
 
-  return ty->isIntegerTy()
-             ? cast<Type>(IntegerType::get(M.getContext(), newSize))
-             : IGCLLVM::FixedVectorType::get(IntegerType::get(M.getContext(), newSize),
-                                             (unsigned)cast<IGCLLVM::FixedVectorType>(ty)->getNumElements());
+  Type *NewIntTy = IntegerType::get(M.getContext(), NewSize);
+  if (Ty->isIntegerTy())
+    return NewIntTy;
+  return IGCLLVM::FixedVectorType::get(NewIntTy, (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements());
 }
 
-// Returns true for structs smaller than 'structSize' and only contains primitive types
-inline bool isLegalStructType(const Module &M, StructType *sTy, unsigned structSize) {
-  const DataLayout &DL = M.getDataLayout();
-  if (sTy && DL.getStructLayout(sTy)->getSizeInBits() <= structSize) {
-    for (const auto *EltTy : sTy->elements()) {
-      // Check if all elements are primitive types
-      if (!EltTy->isSingleValueType() || EltTy->isVectorTy())
-        return false;
-    }
-    return true;
-  }
-  return false;
+// A struct of at most MaxSizeInBits whose members are all scalars, no vectors or aggregates.
+static bool isFlatStruct(const Module &M, Type *Ty, unsigned MaxSizeInBits) {
+  auto *STy = dyn_cast<StructType>(Ty);
+  return STy && M.getDataLayout().getStructLayout(STy)->getSizeInBits() <= MaxSizeInBits &&
+         all_of(STy->elements(), [](Type *EltTy) { return EltTy->isSingleValueType() && !EltTy->isVectorTy(); });
 }
 
-inline bool isLegalSignatureType(const Module &M, Type *ty, bool isStackCall) {
-  if (isStackCall) {
-    if (ty->isStructTy()) {
-      return isLegalStructType(M, cast<StructType>(ty), MAX_STRUCT_SIZE_IN_BITS);
-    } else if (ty->isArrayTy()) {
-      return false;
-    }
-  }
-  // Are all subroutine types legal?
-  return true;
+// A struct passed in registers: as an argument, by value or as a "byval" pointer, or as a promoted
+// "sret" return value.
+static bool isPromotableStructType(const Module &M, Type *Ty, bool IsStackCall) {
+  unsigned MaxSizeInBits = IsStackCall ? MaxStructSizeInBits : MaxSubroutineStructSizeInBits;
+  return IGC_IS_FLAG_ENABLED(EnableByValStructArgPromotion) && isFlatStruct(M, Ty, MaxSizeInBits);
 }
 
-inline bool isPromotableStructType(const Module &M, Type *pointeeType, bool isStackCall) {
-  if (IGC_IS_FLAG_DISABLED(EnableByValStructArgPromotion))
+static bool canReturnInRegisters(const Module &M, Type *Ty, bool IsStackCall) {
+  if (Ty->isArrayTy())
     return false;
-  const unsigned int maxSize = isStackCall ? MAX_STRUCT_SIZE_IN_BITS : MAX_SUBROUTINE_STRUCT_SIZE_IN_BITS;
-  if (isa<StructType>(pointeeType)) {
-    return isLegalStructType(M, cast<StructType>(pointeeType), maxSize);
-  }
-  return false;
-}
-
-// Check if a function's first argument has the "sret" attribute and is a promotable struct type
-inline bool FunctionHasPromotableSRetArg(const Module &M, const Function *F) {
-  if (F->getReturnType()->isVoidTy() && !F->arg_empty() && F->arg_begin()->hasStructRetAttr() &&
-      isPromotableStructType(M, F->arg_begin()->getParamStructRetType(), F->hasFnAttribute("visaStackCall"))) {
+  auto *STy = dyn_cast<StructType>(Ty);
+  if (!STy)
     return true;
-  }
-  return false;
+  if (IsStackCall)
+    return isFlatStruct(M, STy, MaxStructSizeInBits);
+  // Codegen does not support struct values with aggregate members.
+  return none_of(STy->elements(), [](Type *EltTy) { return EltTy->isAggregateType(); });
 }
 
-inline bool FunctionReturnsStructByVal(const Module &M, const Function *F) {
-  if (F) {
-    auto returnType = F->getReturnType();
-    if (returnType->isStructTy()) {
-      return isLegalStructType(M, cast<StructType>(returnType), MAX_STRUCT_SIZE_IN_BITS);
+static ArgLowering classifyArg(const Module &M, Type *Ty, AttributeSet Attrs, bool IsStackCall) {
+  // Structs are passed in registers if they are promotable and in memory otherwise, the same way
+  // whether they are passed as "byval" pointers or by value.
+  if (Type *ByValTy = Ty->isPointerTy() ? Attrs.getByValType() : nullptr)
+    return isPromotableStructType(M, ByValTy, IsStackCall) ? ArgLowering::ByValToValue : ArgLowering::Keep;
+  if (Ty->isAggregateType())
+    return isPromotableStructType(M, Ty, IsStackCall) ? ArgLowering::Keep : ArgLowering::ValueToByVal;
+  if (!isLegalIntVectorType(M, Ty))
+    return ArgLowering::WidenInt;
+  return ArgLowering::Keep;
+}
+
+static RetLowering classifyRet(const Module &M, Type *RetTy, Type *SRetTy, bool IsStackCall,
+                               bool CanReturnStructValue) {
+  if (RetTy->isVoidTy() && SRetTy && isPromotableStructType(M, SRetTy, IsStackCall))
+    return RetLowering::SRetToValue;
+  if (CanReturnStructValue && isFlatStruct(M, RetTy, MaxStructSizeInBits))
+    return RetLowering::StructValue;
+  if (!canReturnInRegisters(M, RetTy, IsStackCall))
+    return RetLowering::ValueToSRet;
+  if (!isLegalIntVectorType(M, RetTy))
+    return RetLowering::WidenInt;
+  return RetLowering::Keep;
+}
+
+// The only place that decides how a signature is lowered. The types and attributes are the callee's,
+// or the call's for indirect calls.
+static SignatureLowering classifySignature(const Module &M, Type *RetTy, ArrayRef<Type *> ParamTys,
+                                           const AttributeList &Attrs, bool IsStackCall, bool CanReturnStructValue) {
+  SignatureLowering L;
+  Type *SRetTy = !ParamTys.empty() && ParamTys[0]->isPointerTy() ? Attrs.getParamStructRetType(0) : nullptr;
+  L.Ret = classifyRet(M, RetTy, SRetTy, IsStackCall, CanReturnStructValue);
+
+  SmallVector<Type *, 8> LoweredParamTys;
+  if (L.Ret == RetLowering::ValueToSRet)
+    LoweredParamTys.push_back(IGCLLVM::PointerType::get(RetTy, 0));
+
+  for (unsigned ArgNo = 0; ArgNo < ParamTys.size(); ++ArgNo) {
+    Type *Ty = ParamTys[ArgNo];
+    ArgLowering A = (ArgNo == 0 && L.Ret == RetLowering::SRetToValue)
+                        ? ArgLowering::SRet
+                        : classifyArg(M, Ty, Attrs.getParamAttrs(ArgNo), IsStackCall);
+    L.Args.push_back(A);
+
+    switch (A) {
+    case ArgLowering::Keep:
+      LoweredParamTys.push_back(Ty);
+      break;
+    case ArgLowering::WidenInt:
+      LoweredParamTys.push_back(getLegalIntVectorType(M, Ty));
+      break;
+    case ArgLowering::ByValToValue:
+      LoweredParamTys.push_back(Attrs.getParamByValType(ArgNo));
+      break;
+    case ArgLowering::ValueToByVal:
+      LoweredParamTys.push_back(IGCLLVM::PointerType::get(Ty, 0));
+      break;
+    case ArgLowering::SRet:
+      break;
     }
   }
-  return false;
+
+  Type *LoweredRetTy = RetTy;
+  if (L.Ret == RetLowering::ValueToSRet)
+    LoweredRetTy = Type::getVoidTy(M.getContext());
+  else if (L.Ret == RetLowering::SRetToValue)
+    LoweredRetTy = SRetTy;
+  else if (L.Ret == RetLowering::WidenInt)
+    LoweredRetTy = getLegalIntVectorType(M, RetTy);
+  L.LoweredTy = FunctionType::get(LoweredRetTy, LoweredParamTys, false);
+  return L;
 }
 
-// Promotes struct pointer to struct type
-inline StructType *PromotedStructValueType(const Module &M, const Argument *arg) {
-  if (arg->getType()->isPointerTy()) {
-    if (arg->hasStructRetAttr() && arg->getParamStructRetType()->isStructTy()) {
-      return cast<StructType>(arg->getParamStructRetType());
-    } else if (arg->hasByValAttr() && arg->getParamByValType()->isStructTy()) {
-      return cast<StructType>(arg->getParamByValType());
-    }
-  }
-  IGC_ASSERT_MESSAGE(0, "Not implemented case");
-  return nullptr;
-}
-
-inline StructType *GetReturnedStructValueType(const Module &M, const Function *F) {
-  if (FunctionReturnsStructByVal(M, F)) {
-    return dyn_cast<StructType>(F->getReturnType());
-  }
-  return PromotedStructValueType(M, F->arg_begin());
-}
-
-inline StructType *StructTypeFromCallInstArg(const CallInst *callInst, unsigned argNo) {
-#if LLVM_VERSION_MAJOR >= 15
-  return dyn_cast_or_null<StructType>(callInst->getParamStructRetType(argNo));
-#else
-  return dyn_cast_or_null<StructType>(callInst->getAttributes().getParamStructRetType(argNo));
-#endif
-}
-
-// BE does not handle struct load/store, so instead store each element of the struct value to the GEP of the struct
-// pointer
-inline void StoreToStruct(IGCLLVM::IRBuilder<> &builder, Value *strVal, Value *strPtr) {
-  IGC_ASSERT(strPtr->getType()->isPointerTy());
-  IGC_ASSERT(strVal->getType()->isStructTy());
-
-  StructType *sTy = cast<StructType>(strVal->getType());
-  for (unsigned i = 0; i < sTy->getNumElements(); i++) {
-    Value *indices[] = {builder.getInt32(0), builder.getInt32(i)};
-    Value *elementPtr = builder.CreateInBoundsGEP(strVal->getType(), strPtr, indices);
-    Value *element = builder.CreateExtractValue(strVal, i);
-    builder.CreateStore(element, elementPtr);
+// Codegen doesn't handle struct loads and stores, so struct values are stored and loaded member by
+// member.
+static void storeToStruct(IGCLLVM::IRBuilder<> &Builder, Value *StructVal, Value *StructPtr) {
+  IGC_ASSERT(StructPtr->getType()->isPointerTy());
+  auto *STy = cast<StructType>(StructVal->getType());
+  for (unsigned I = 0; I < STy->getNumElements(); ++I) {
+    Value *Indices[] = {Builder.getInt32(0), Builder.getInt32(I)};
+    Value *ElementPtr = Builder.CreateInBoundsGEP(STy, StructPtr, Indices);
+    Builder.CreateStore(Builder.CreateExtractValue(StructVal, I), ElementPtr);
   }
 }
 
-// BE does not handle struct load/store, so instead load each element from the GEP struct pointer and insert it into the
-// struct value
-inline Value *LoadFromStruct(IGCLLVM::IRBuilder<> &builder, Value *strPtr, Type *ty) {
-  IGC_ASSERT(strPtr->getType()->isPointerTy());
-  IGC_ASSERT(ty->isStructTy());
-
-  Value *strVal = UndefValue::get(ty);
-  StructType *sTy = cast<StructType>(strVal->getType());
-  for (unsigned i = 0; i < sTy->getNumElements(); i++) {
-    Value *indices[] = {builder.getInt32(0), builder.getInt32(i)};
-    Value *elementPtr = builder.CreateInBoundsGEP(ty, strPtr, indices);
-    Value *element = builder.CreateLoad(sTy->getElementType(i), elementPtr);
-    strVal = builder.CreateInsertValue(strVal, element, i);
+static Value *loadFromStruct(IGCLLVM::IRBuilder<> &Builder, Value *StructPtr, Type *Ty) {
+  IGC_ASSERT(StructPtr->getType()->isPointerTy());
+  auto *STy = cast<StructType>(Ty);
+  Value *StructVal = UndefValue::get(STy);
+  for (unsigned I = 0; I < STy->getNumElements(); ++I) {
+    Value *Indices[] = {Builder.getInt32(0), Builder.getInt32(I)};
+    Value *ElementPtr = Builder.CreateInBoundsGEP(STy, StructPtr, Indices);
+    Value *Element = Builder.CreateLoad(STy->getElementType(I), ElementPtr);
+    StructVal = Builder.CreateInsertValue(StructVal, Element, I);
   }
-  return strVal;
+  return StructVal;
 }
 
-void LegalizeFunctionSignatures::FixFunctionSignatures(Module &M) {
-  auto pContext = m_pCtx;
-  auto pMdUtils = m_pMdUtils;
-
-  for (auto &FI : M) {
-    Function *pFunc = &FI;
-
-    // Ignore the entry function
-    if (isEntryFunc(pMdUtils, pFunc))
+void LegalizeFunctionSignatures::fixFunctionSignatures(Module &M) {
+  for (Function &F : M) {
+    if (isEntryFunc(MDUtils, &F))
       continue;
 
-    // An internally-linked function that eventually gets inlined doesn't need this transformation
-    if (pFunc->hasFnAttribute(llvm::Attribute::AlwaysInline) && pFunc->hasInternalLinkage())
+    // An internally-linked function that eventually gets inlined doesn't need this transformation.
+    if (F.hasFnAttribute(llvm::Attribute::AlwaysInline) && F.hasInternalLinkage())
       continue;
 
-    if (pFunc->getName().empty()) {
-      // Empty function names can cause funny behavior later on
-      // Always give it a name. If duplicates, LLVM will insert a unique tag
-      pFunc->setName("__function__");
-    }
+    // Empty function names can cause funny behavior later on. If duplicates, LLVM will insert a
+    // unique tag.
+    if (F.getName().empty())
+      F.setName("__function__");
 
     // For binary linking, calling a function outside the module is possible, so declaration
-    // signatures has to be fixed as well
-    if (pFunc->isDeclaration() && !pFunc->hasFnAttribute("referenced-indirectly") &&
-        !pFunc->hasFnAttribute("invoke_simd_target")) {
+    // signatures have to be fixed as well.
+    if (F.isDeclaration() && !F.hasFnAttribute("referenced-indirectly") && !F.hasFnAttribute("invoke_simd_target"))
       continue;
-    }
 
-    ReturnOpt retTypeOption = ReturnOpt::RETURN_DEFAULT;
-    bool fixArgType = false;
-    std::vector<Type *> argTypes;
+    FunctionType *FTy = F.getFunctionType();
+    SignatureLowering L = classifySignature(M, FTy->getReturnType(), FTy->params(), F.getAttributes(),
+                                            F.hasFnAttribute("visaStackCall"), !F.isDeclaration());
+    if (!L.isNeeded())
+      continue;
 
-    bool isStackCall = pFunc->hasFnAttribute("visaStackCall");
-
-    auto ai = pFunc->arg_begin();
-    auto ei = pFunc->arg_end();
-
-    bool functionHasPromotableSRetArg = FunctionHasPromotableSRetArg(M, pFunc);
-    bool functionReturnsAggregateByVal = FunctionReturnsStructByVal(M, pFunc);
-    // Create the new function signature by replacing the illegal types
-    if (functionHasPromotableSRetArg) {
-      retTypeOption = ReturnOpt::RETURN_STRUCT_PROMOTED;
-      ai++; // Skip adding the first arg
-    } else if (functionReturnsAggregateByVal && !pFunc->isDeclaration()) {
-      retTypeOption = ReturnOpt::RETURN_STRUCT;
-    } else if (!isLegalSignatureType(M, pFunc->getReturnType(), isStackCall)) {
-      retTypeOption = ReturnOpt::RETURN_BY_REF;
-      argTypes.push_back(IGCLLVM::PointerType::get(pFunc->getReturnType(), 0));
-    } else if (!isLegalIntVectorType(M, pFunc->getReturnType())) {
-      retTypeOption = ReturnOpt::RETURN_LEGAL_INT;
-    }
-
-    for (; ai != ei; ai++) {
-      if (!isLegalIntVectorType(M, ai->getType())) {
-        fixArgType = true;
-        argTypes.push_back(LegalizedIntVectorType(M, ai->getType()));
-      } else if (ai->hasByValAttr() && isPromotableStructType(M, ai->getParamByValType(), isStackCall)) {
-        fixArgType = true;
-        argTypes.push_back(PromotedStructValueType(M, ai));
-
-        if (pFunc->isDeclaration()) {
-          // Since this is declaration only, then FixFunctionBody() will not fix it
-          ai->removeAttr(llvm::Attribute::ByVal);
-
-          // When we're promoting struct pointer to struct,
-          // then we need to remove alignment attribute
-          if (ai->getType()->isPtrOrPtrVectorTy()) {
-            ai->removeAttr(llvm::Attribute::Alignment);
-          }
+    if (F.isDeclaration()) {
+      // fixFunctionBodies() doesn't process declarations, so drop the "byval" attributes of promoted
+      // arguments here.
+      for (Argument &Arg : F.args()) {
+        if (L.Args[Arg.getArgNo()] == ArgLowering::ByValToValue) {
+          Arg.removeAttr(llvm::Attribute::ByVal);
+          Arg.removeAttr(llvm::Attribute::Alignment);
         }
-      } else if (!isLegalSignatureType(M, ai->getType(), isStackCall)) {
-        fixArgType = true;
-        argTypes.push_back(IGCLLVM::PointerType::get(ai->getType(), 0));
-      } else {
-        argTypes.push_back(ai->getType());
       }
     }
 
-    if (retTypeOption != ReturnOpt::RETURN_DEFAULT || fixArgType) {
-      // Clone function with new signature
-      Type *returnType = retTypeOption == ReturnOpt::RETURN_BY_REF            ? Type::getVoidTy(M.getContext())
-                         : retTypeOption == ReturnOpt::RETURN_STRUCT_PROMOTED ? GetReturnedStructValueType(M, pFunc)
-                         : retTypeOption == ReturnOpt::RETURN_LEGAL_INT
-                             ? LegalizedIntVectorType(M, pFunc->getReturnType())
-                             : pFunc->getReturnType();
-      FunctionType *signature = FunctionType::get(returnType, argTypes, false);
-      Function *pNewFunc = Function::Create(signature, pFunc->getLinkage(), pFunc->getName(), pFunc->getParent());
-      pNewFunc->takeName(pFunc);
-      pNewFunc->setCallingConv(pFunc->getCallingConv());
+    Function *NewF = Function::Create(L.LoweredTy, F.getLinkage(), F.getName(), F.getParent());
+    NewF->takeName(&F);
+    NewF->setCallingConv(F.getCallingConv());
+    copyAttributesAndAdjustForSkippedFunctionArgs(&F, NewF, L.Ret == RetLowering::SRetToValue);
 
-      // Copy attributes, but adjust their index if needed.
-      CopyAttributesAndAdjustForSkippedFunctionArgs(pFunc, pNewFunc, functionHasPromotableSRetArg);
-
-      // Since we need to pass in pointers to be dereferenced by the new function,
-      // remove the memory attribute restrictions on read access.
-      // Also we need to create allocas for these pointers, so set the flag to true
-      if (retTypeOption == ReturnOpt::RETURN_BY_REF) {
-        IGCLLVM::MemoryEffects ME(IGCLLVM::ModRefInfo::ModRef);
-        IGCLLVM::setMemoryEffects(*pNewFunc, ME);
-        pContext->m_instrTypes.hasNonPrimitiveAlloca = true;
-      }
-
-      // Map the old function to the new
-      oldToNewFuncMap[pFunc] = pNewFunc;
+    if (L.Ret == RetLowering::ValueToSRet) {
+      // The new function writes the return value through the new pointer argument, and its callers
+      // allocate it.
+      IGCLLVM::MemoryEffects ME(IGCLLVM::ModRefInfo::ModRef);
+      IGCLLVM::setMemoryEffects(*NewF, ME);
+      Ctx->m_instrTypes.hasNonPrimitiveAlloca = true;
     }
+
+    OldToNewFuncMap[&F] = {NewF, std::move(L)};
   }
 }
 
-void LegalizeFunctionSignatures::CopyAttributesAndAdjustForSkippedFunctionArgs(llvm::Function *pFunc,
-                                                                               llvm::Function *pNewFunc,
-                                                                               bool functionHasPromotableSRetArg) {
-  auto originalAttrs = pFunc->getAttributes();
-  SmallVector<AttributeSet, 4> NewArgAttrs(pFunc->arg_size());
-
-  bool shouldSkipFirstArg = functionHasPromotableSRetArg && pFunc->hasParamAttribute(0, llvm::Attribute::StructRet);
-
-  if (shouldSkipFirstArg) {
-    for (auto &Arg : pFunc->args()) {
-      if (Arg.getArgNo() == 0)
-        continue;
-
-      NewArgAttrs[Arg.getArgNo() - 1] = originalAttrs.getParamAttrs(Arg.getArgNo());
-    }
-  } else {
-    for (auto &Arg : pFunc->args()) {
-      NewArgAttrs[Arg.getArgNo()] = originalAttrs.getParamAttrs(Arg.getArgNo());
-    }
+void LegalizeFunctionSignatures::copyAttributesAndAdjustForSkippedFunctionArgs(Function *F, Function *NewF,
+                                                                               bool HasPromotedSRetArg) {
+  AttributeList OldAttrs = F->getAttributes();
+  SmallVector<AttributeSet, 4> NewArgAttrs(F->arg_size());
+  bool SkipFirstArg = HasPromotedSRetArg && F->hasParamAttribute(0, llvm::Attribute::StructRet);
+  for (Argument &Arg : F->args()) {
+    unsigned ArgNo = Arg.getArgNo();
+    if (SkipFirstArg && ArgNo == 0)
+      continue;
+    NewArgAttrs[SkipFirstArg ? ArgNo - 1 : ArgNo] = OldAttrs.getParamAttrs(ArgNo);
   }
-
-  auto newAttrs = llvm::AttributeList::get(pFunc->getContext(), originalAttrs.getFnAttrs(), originalAttrs.getRetAttrs(),
-                                           NewArgAttrs);
-  pNewFunc->setAttributes(newAttrs);
+  NewF->setAttributes(AttributeList::get(F->getContext(), OldAttrs.getFnAttrs(), OldAttrs.getRetAttrs(), NewArgAttrs));
 }
 
-void LegalizeFunctionSignatures::FixFunctionBody(Module &M) {
-  for (const auto &iter : oldToNewFuncMap) {
-    Function *pFunc = iter.first;
-    Function *pNewFunc = iter.second;
+void LegalizeFunctionSignatures::fixFunctionBodies(Module &M) {
+  for (const auto &[F, Lowered] : OldToNewFuncMap) {
+    Function *NewF = Lowered.NewFunc;
+    const SignatureLowering &L = Lowered.Lowering;
 
-    if (!pFunc->isDeclaration()) {
-      auto DL = M.getDataLayout();
+    if (!F->isDeclaration()) {
+      const DataLayout &DL = M.getDataLayout();
       ValueToValueMapTy VMap;
-      llvm::SmallVector<llvm::ReturnInst *, 8> Returns;
-      auto OldArgIt = pFunc->arg_begin();
-      auto NewArgIt = pNewFunc->arg_begin();
-      ReturnOpt retTypeOption = ReturnOpt::RETURN_DEFAULT;
-      bool isStackCall = pFunc->hasFnAttribute("visaStackCall");
-      Value *tempAllocaForSRetPointer = nullptr;
-      Type *tempAllocaForSRetPointerTy = nullptr;
-      llvm::SmallVector<llvm::Argument *, 8> ArgByVal;
+      SmallVector<ReturnInst *, 8> Returns;
+      auto NewArgIt = NewF->arg_begin();
+      Value *SRetPtr = nullptr;
+      Type *SRetTy = nullptr;
 
-      if (FunctionHasPromotableSRetArg(M, pFunc)) {
-        retTypeOption = ReturnOpt::RETURN_STRUCT_PROMOTED;
-      } else if (FunctionReturnsStructByVal(M, pFunc)) {
-        retTypeOption = ReturnOpt::RETURN_STRUCT;
-      } else if (!isLegalSignatureType(M, pFunc->getReturnType(), isStackCall)) {
-        retTypeOption = ReturnOpt::RETURN_BY_REF;
-        ++NewArgIt; // Skip first argument that we added.
-      } else if (!isLegalIntVectorType(M, pFunc->getReturnType())) {
-        retTypeOption = ReturnOpt::RETURN_LEGAL_INT;
-      }
+      // Skip the "sret" argument added for the return value.
+      if (L.Ret == RetLowering::ValueToSRet)
+        ++NewArgIt;
 
-      // Fix the usages of arguments that have changed
-      BasicBlock *EntryBB = BasicBlock::Create(M.getContext(), "", pNewFunc);
-      IGCLLVM::IRBuilder<> builder(EntryBB);
-      for (; OldArgIt != pFunc->arg_end(); ++OldArgIt) {
-        if (OldArgIt == pFunc->arg_begin() && retTypeOption == ReturnOpt::RETURN_STRUCT_PROMOTED) {
-          // Create a temp alloca to map the old argument. This will be removed later by SROA.
-          tempAllocaForSRetPointerTy = PromotedStructValueType(M, OldArgIt);
-          tempAllocaForSRetPointer = builder.CreateAlloca(tempAllocaForSRetPointerTy);
-          tempAllocaForSRetPointer = builder.CreateAddrSpaceCast(tempAllocaForSRetPointer, OldArgIt->getType());
-          VMap[&*OldArgIt] = tempAllocaForSRetPointer;
+      BasicBlock *EntryBB = BasicBlock::Create(M.getContext(), "", NewF);
+      IGCLLVM::IRBuilder<> Builder(EntryBB);
+      for (Argument &OldArg : F->args()) {
+        ArgLowering A = L.Args[OldArg.getArgNo()];
+        if (A == ArgLowering::SRet) {
+          // Map the old "sret" pointer to a temporary alloca, removed later by SROA.
+          SRetTy = L.LoweredTy->getReturnType();
+          SRetPtr = Builder.CreateAddrSpaceCast(Builder.CreateAlloca(SRetTy), OldArg.getType());
+          VMap[&OldArg] = SRetPtr;
           continue;
         }
-        NewArgIt->setName(OldArgIt->getName());
-        if (!isLegalIntVectorType(M, OldArgIt->getType())) {
-          // trunc argument back to original type
-          Value *trunc = builder.CreateTrunc(&*NewArgIt, OldArgIt->getType());
-          VMap[&*OldArgIt] = trunc;
-        } else if (OldArgIt->hasByValAttr() && isPromotableStructType(M, OldArgIt->getParamByValType(), isStackCall)) {
-          AllocaInst *newArgPtr = builder.CreateAlloca(OldArgIt->getParamByValType());
-          // remove "byval" attrib since it is now pass-by-value
+        NewArgIt->setName(OldArg.getName());
+        switch (A) {
+        case ArgLowering::WidenInt:
+          VMap[&OldArg] = Builder.CreateTrunc(&*NewArgIt, OldArg.getType());
+          break;
+        case ArgLowering::ByValToValue: {
+          AllocaInst *NewArgPtr = Builder.CreateAlloca(NewArgIt->getType());
           NewArgIt->removeAttr(llvm::Attribute::ByVal);
-          StoreToStruct(builder, &*NewArgIt, newArgPtr);
-          // cast back to original addrspace
-          IGC_ASSERT(OldArgIt->getType()->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC ||
-                     OldArgIt->getType()->getPointerAddressSpace() == ADDRESS_SPACE_PRIVATE);
-          llvm::Value *castedNewArgPtr = builder.CreateAddrSpaceCast(newArgPtr, OldArgIt->getType());
-          VMap[&*OldArgIt] = castedNewArgPtr;
-        } else if (!isLegalSignatureType(M, OldArgIt->getType(), isStackCall)) {
-          // Load from pointer arg
-          Value *load = builder.CreateLoad(OldArgIt->getType(), &*NewArgIt);
-          VMap[&*OldArgIt] = load;
-          llvm::Attribute byValAttr = llvm::Attribute::getWithByValType(M.getContext(), OldArgIt->getType());
-          NewArgIt->addAttr(byValAttr);
-        } else {
-          // No change, map old arg to new arg
-          VMap[&*OldArgIt] = &*NewArgIt;
+          storeToStruct(Builder, &*NewArgIt, NewArgPtr);
+          IGC_ASSERT(OldArg.getType()->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC ||
+                     OldArg.getType()->getPointerAddressSpace() == ADDRESS_SPACE_PRIVATE);
+          VMap[&OldArg] = Builder.CreateAddrSpaceCast(NewArgPtr, OldArg.getType());
+          break;
+        }
+        case ArgLowering::ValueToByVal:
+          VMap[&OldArg] = Builder.CreateLoad(OldArg.getType(), &*NewArgIt);
+          NewArgIt->addAttr(llvm::Attribute::getWithByValType(M.getContext(), OldArg.getType()));
+          break;
+        case ArgLowering::Keep:
+          VMap[&OldArg] = &*NewArgIt;
+          break;
+        case ArgLowering::SRet:
+          IGC_ASSERT_UNREACHABLE();
         }
         ++NewArgIt;
       }
 
-      // Clone the old function body into the new
-      IGCLLVM::CloneFunctionInto(pNewFunc, pFunc, VMap, IGCLLVM::CloneFunctionChangeType::GlobalChanges, Returns);
+      IGCLLVM::CloneFunctionInto(NewF, F, VMap, IGCLLVM::CloneFunctionChangeType::GlobalChanges, Returns);
 
-      // Merge the BB for when extra instructions were created
-      BasicBlock *ClonedEntryBB = cast<BasicBlock>(VMap[&*pFunc->begin()]);
-      builder.CreateBr(ClonedEntryBB);
+      // Merge the block with the argument fixups into the cloned entry block.
+      auto *ClonedEntryBB = cast<BasicBlock>(VMap[&F->getEntryBlock()]);
+      Builder.CreateBr(ClonedEntryBB);
       MergeBlockIntoPredecessor(ClonedEntryBB);
 
-      // Now fix the return values
-      if (retTypeOption == ReturnOpt::RETURN_BY_REF) {
-        // Add the 'noalias' and 'sret' attribute to arg0
-        auto retArg = pNewFunc->arg_begin();
-        retArg->addAttr(llvm::Attribute::NoAlias);
-        retArg->addAttr(llvm::Attribute::getWithStructRetType(M.getContext(), pFunc->getReturnType()));
-
-        // Loop through all return instructions and store the old return value into the arg0 pointer
-        const auto ptrSize = DL.getPointerSize();
-        for (auto RetInst : Returns) {
-          IGCLLVM::IRBuilder<> builder(RetInst);
-          Type *retTy = RetInst->getReturnValue()->getType();
-          Value *returnedValPtr = builder.CreateAlloca(retTy);
-          builder.CreateStore(RetInst->getReturnValue(), returnedValPtr);
-          auto size = DL.getTypeAllocSize(retTy);
-          builder.CreateMemCpy(&*pNewFunc->arg_begin(), returnedValPtr, size, ptrSize);
-          builder.CreateRetVoid();
-          RetInst->eraseFromParent();
+      switch (L.Ret) {
+      case RetLowering::ValueToSRet: {
+        Argument *RetArg = NewF->arg_begin();
+        RetArg->addAttr(llvm::Attribute::NoAlias);
+        RetArg->addAttr(llvm::Attribute::getWithStructRetType(M.getContext(), F->getReturnType()));
+        for (ReturnInst *RI : Returns) {
+          IGCLLVM::IRBuilder<> RetBuilder(RI);
+          Type *RetTy = RI->getReturnValue()->getType();
+          Value *RetValPtr = RetBuilder.CreateAlloca(RetTy);
+          RetBuilder.CreateStore(RI->getReturnValue(), RetValPtr);
+          RetBuilder.CreateMemCpy(RetArg, RetValPtr, DL.getTypeAllocSize(RetTy), DL.getPointerSize());
+          RetBuilder.CreateRetVoid();
+          RI->eraseFromParent();
         }
-      } else if (retTypeOption == ReturnOpt::RETURN_STRUCT_PROMOTED) {
-        // For "sret" returns, we load from the temp alloca created earlier and return the loaded value instead
-        for (auto RetInst : Returns) {
-          IGCLLVM::IRBuilder<> builder(RetInst);
-          Value *retVal = LoadFromStruct(builder, tempAllocaForSRetPointer, tempAllocaForSRetPointerTy);
-          builder.CreateRet(retVal);
-          RetInst->eraseFromParent();
+        break;
+      }
+      case RetLowering::SRetToValue:
+        for (ReturnInst *RI : Returns) {
+          IGCLLVM::IRBuilder<> RetBuilder(RI);
+          RetBuilder.CreateRet(loadFromStruct(RetBuilder, SRetPtr, SRetTy));
+          RI->eraseFromParent();
         }
-      } else if (retTypeOption == ReturnOpt::RETURN_STRUCT) {
-        for (auto &v : pNewFunc->getEntryBlock()) {
-          AllocaInst *alloca = dyn_cast<AllocaInst>(&v);
-          if (alloca && alloca->getAllocatedType() == pNewFunc->getReturnType()) {
-            tempAllocaForSRetPointer = alloca;
-            tempAllocaForSRetPointerTy = pNewFunc->getReturnType();
+        break;
+      case RetLowering::StructValue:
+        for (Instruction &I : NewF->getEntryBlock()) {
+          auto *AI = dyn_cast<AllocaInst>(&I);
+          if (AI && AI->getAllocatedType() == NewF->getReturnType()) {
+            SRetPtr = AI;
+            SRetTy = NewF->getReturnType();
             break;
           }
         }
-        if (tempAllocaForSRetPointer) {
-          for (auto RetInst : Returns) {
-            IGCLLVM::IRBuilder<> builder(RetInst);
-            Value *retVal = LoadFromStruct(builder, tempAllocaForSRetPointer, tempAllocaForSRetPointerTy);
-            builder.CreateRet(retVal);
-            RetInst->eraseFromParent();
+        if (SRetPtr) {
+          for (ReturnInst *RI : Returns) {
+            IGCLLVM::IRBuilder<> RetBuilder(RI);
+            RetBuilder.CreateRet(loadFromStruct(RetBuilder, SRetPtr, SRetTy));
+            RI->eraseFromParent();
           }
         }
-      } else if (retTypeOption == ReturnOpt::RETURN_LEGAL_INT) {
-        // Extend illegal int returns to legal type
-        for (auto RetInst : Returns) {
-          IGCLLVM::IRBuilder<> builder(RetInst);
-          Value *retVal = RetInst->getReturnValue();
-          Type *retTy = retVal->getType();
-          retVal = builder.CreateZExt(retVal, LegalizedIntVectorType(M, retTy));
-          builder.CreateRet(retVal);
-          RetInst->eraseFromParent();
+        break;
+      case RetLowering::WidenInt:
+        for (ReturnInst *RI : Returns) {
+          IGCLLVM::IRBuilder<> RetBuilder(RI);
+          Value *RetVal = RI->getReturnValue();
+          RetBuilder.CreateRet(RetBuilder.CreateZExt(RetVal, getLegalIntVectorType(M, RetVal->getType())));
+          RI->eraseFromParent();
         }
+        break;
+      case RetLowering::Keep:
+        break;
       }
     }
 
-    // Now that all instructions are transferred to the new func, delete the old func
-    pFunc->removeDeadConstantUsers();
-    // There may be cases where the old function was referenced by just metadata.
-    // If we've cleaned up all "real" uses, then we can just update the metadata
-    // with poison so we can delete the function.
-    pFunc->replaceAllUsesWith(PoisonValue::get(pFunc->getType()));
-    pFunc->eraseFromParent();
+    F->removeDeadConstantUsers();
+    // The old function may still be referenced by metadata. All other uses are gone, so replace
+    // them with poison and delete the function.
+    F->replaceAllUsesWith(PoisonValue::get(F->getType()));
+    F->eraseFromParent();
   }
 }
 
-void LegalizeFunctionSignatures::FixFunctionUsers(Module &M) {
-  std::vector<CallInst *> callsToFix;
+void LegalizeFunctionSignatures::fixFunctionUsers(Module &M) {
+  std::vector<CallInst *> CallsToFix;
 
-  // Check for all users of the old function and replace with the new signature
-  for (const auto &it : oldToNewFuncMap) {
-    Function *pFunc = it.first;
-    Function *pNewFunc = it.second;
-
-    std::vector<User *> pFuncUses(pFunc->user_begin(), pFunc->user_end());
-    for (auto ui : pFuncUses) {
-      CallInst *callInst = dyn_cast<CallInst>(ui);
-      if (callInst && callInst->getCalledFunction() == pFunc) {
-        // Find the callers of the transformed functions
-        callsToFix.push_back(callInst);
-      } else if (Instruction *inst = dyn_cast<Instruction>(ui)) {
-        // Any other uses can be replaced with a pointer cast
-        IGCLLVM::IRBuilder<> builder(inst);
-        Value *pCast = builder.CreatePointerCast(pNewFunc, pFunc->getType());
-        inst->replaceUsesOfWith(pFunc, pCast);
+  for (const auto &[F, Lowered] : OldToNewFuncMap) {
+    std::vector<User *> Users(F->user_begin(), F->user_end());
+    for (User *U : Users) {
+      auto *CI = dyn_cast<CallInst>(U);
+      if (CI && CI->getCalledFunction() == F) {
+        CallsToFix.push_back(CI);
+      } else if (auto *I = dyn_cast<Instruction>(U)) {
+        // Other uses, e.g. taking the address, see the old function type.
+        IGCLLVM::IRBuilder<> Builder(I);
+        I->replaceUsesOfWith(F, Builder.CreatePointerCast(Lowered.NewFunc, F->getType()));
       }
     }
   }
 
-  // Find all indirect calls that may require transformations
-  for (auto &FI : M) {
-    for (auto I = inst_begin(FI), E = inst_end(FI); I != E; I++) {
-      if (CallInst *callInst = dyn_cast<CallInst>(&*I)) {
-        if (!callInst->isInlineAsm() && !callInst->getCalledFunction()) {
-          callsToFix.push_back(callInst);
-        }
-      }
+  for (Function &F : M) {
+    for (Instruction &I : instructions(F)) {
+      auto *CI = dyn_cast<CallInst>(&I);
+      if (CI && !CI->isInlineAsm() && !CI->getCalledFunction())
+        CallsToFix.push_back(CI);
     }
   }
 
-  for (auto call : callsToFix) {
-    FixCallInstruction(M, call);
-  }
+  for (CallInst *CI : CallsToFix)
+    fixCallInstruction(M, CI);
 }
 
-void LegalizeFunctionSignatures::FixCallInstruction(Module &M, CallInst *callInst) {
-  Function *calledFunc = callInst->getCalledFunction();
-  SmallVector<Value *, 16> callArgs;
-  ReturnOpt retTypeOption = ReturnOpt::RETURN_DEFAULT;
-  bool fixArgType = false;
-  bool isStackCall = !calledFunc || calledFunc->hasFnAttribute("visaStackCall");
+void LegalizeFunctionSignatures::fixCallInstruction(Module &M, CallInst *CI) {
+  Function *Callee = CI->getCalledFunction();
+  AttributeList Attrs = CI->getAttributes();
 
-  auto DL = M.getDataLayout();
+  // Direct calls follow the lowering of the callee. Indirect calls are always stackcalls, and are
+  // classified by their operands, so that variadic operands are lowered too.
+  SignatureLowering IndirectL;
+  if (!Callee) {
+    SmallVector<Type *, 8> OperandTys;
+    for (Value *Arg : CI->args())
+      OperandTys.push_back(Arg->getType());
+    IndirectL = classifySignature(M, CI->getType(), OperandTys, Attrs, /*IsStackCall=*/true,
+                                  /*CanReturnStructValue=*/false);
+  }
+  IGC_ASSERT(!Callee || OldToNewFuncMap.count(Callee));
+  const SignatureLowering &L = Callee ? OldToNewFuncMap[Callee].Lowering : IndirectL;
+  if (!L.isNeeded())
+    return;
+  IGC_ASSERT(L.Args.size() == IGCLLVM::getNumArgOperands(CI));
 
-  SmallVector<AttributeSet, 8> ArgAttrVec;
-  AttributeList PAL = callInst->getAttributes();
+  SmallVector<Value *, 16> NewArgs;
+  SmallVector<AttributeSet, 8> NewArgAttrs;
+  IGCLLVM::IRBuilder<> Builder(CI);
 
-  unsigned opNum = 0;
-
-  // Check return type
-  Value *returnPtr = nullptr;
-  if (callInst->getType()->isVoidTy() && IGCLLVM::getNumArgOperands(callInst) > 0 &&
-      callInst->paramHasAttr(0, llvm::Attribute::StructRet) &&
-      isPromotableStructType(M, callInst->getParamAttr(0, llvm::Attribute::StructRet).getValueAsType(), isStackCall)) {
-    opNum++; // Skip the first call operand
-    retTypeOption = ReturnOpt::RETURN_STRUCT_PROMOTED;
-  } else if (!isLegalSignatureType(M, callInst->getType(), isStackCall)) {
-    // Create an alloca for the return type
-    IGCLLVM::IRBuilder<> builder(callInst);
-    returnPtr = builder.CreateAlloca(callInst->getType());
-    callArgs.push_back(returnPtr);
-    // Add "noalias" and "sret" to return value operand at callsite
-    AttrBuilder ArgAttrs(M.getContext());
-    ArgAttrs.addAttribute(llvm::Attribute::NoAlias);
-    ArgAttrs.addStructRetAttr(callInst->getType());
-    ArgAttrVec.push_back(AttributeSet::get(M.getContext(), ArgAttrs));
-    retTypeOption = ReturnOpt::RETURN_BY_REF;
-  } else if (!isLegalIntVectorType(M, callInst->getType())) {
-    retTypeOption = ReturnOpt::RETURN_LEGAL_INT;
-  } else if (FunctionReturnsStructByVal(M, callInst->getCalledFunction())) {
-    retTypeOption = ReturnOpt::RETURN_STRUCT;
+  Value *RetPtr = nullptr;
+  if (L.Ret == RetLowering::ValueToSRet) {
+    RetPtr = Builder.CreateAlloca(CI->getType());
+    NewArgs.push_back(RetPtr);
+    AttrBuilder SRetAttrs(M.getContext());
+    SRetAttrs.addAttribute(llvm::Attribute::NoAlias);
+    SRetAttrs.addStructRetAttr(CI->getType());
+    NewArgAttrs.push_back(AttributeSet::get(M.getContext(), SRetAttrs));
   }
 
-  // Check call operands if it needs to be replaced
-  for (; opNum < IGCLLVM::getNumArgOperands(callInst); opNum++) {
-    Value *arg = callInst->getArgOperand(opNum);
-    if (!isLegalIntVectorType(M, arg->getType())) {
-      // extend the illegal int to a legal type
-      IGCLLVM::IRBuilder<> builder(callInst);
-      Value *extend = builder.CreateZExt(callInst->getOperand(opNum), LegalizedIntVectorType(M, arg->getType()));
-      callArgs.push_back(extend);
-      ArgAttrVec.push_back(AttributeSet());
-      fixArgType = true;
-    } else if (callInst->paramHasAttr(opNum, llvm::Attribute::ByVal) &&
-               isPromotableStructType(M, callInst->getParamByValType(opNum), isStackCall)) {
-      // Map the new operand to the loaded value of the struct pointer
-      IGCLLVM::IRBuilder<> builder(callInst);
-      Value *newOp = LoadFromStruct(builder, callInst->getOperand(opNum), callInst->getParamByValType(opNum));
-      callArgs.push_back(newOp);
-      ArgAttrVec.push_back(AttributeSet());
-      fixArgType = true;
-    } else if (!isLegalSignatureType(M, arg->getType(), isStackCall)) {
-      // Create and store operand as an alloca, then pass as argument
-      IGCLLVM::IRBuilder<> builder(callInst);
-      Value *allocaV = builder.CreateAlloca(arg->getType());
-      builder.CreateStore(callInst->getOperand(opNum), allocaV);
-      callArgs.push_back(allocaV);
-      auto byValAttr = llvm::Attribute::getWithByValType(M.getContext(), arg->getType());
-      auto argAttrs = AttributeSet::get(M.getContext(), {byValAttr});
-      ArgAttrVec.push_back(argAttrs);
-      fixArgType = true;
-    } else {
-      // legal argument
-      callArgs.push_back(arg);
-      ArgAttrVec.push_back(PAL.getParamAttrs(opNum));
+  for (unsigned ArgNo = 0; ArgNo < IGCLLVM::getNumArgOperands(CI); ++ArgNo) {
+    Value *Arg = CI->getArgOperand(ArgNo);
+    switch (L.Args[ArgNo]) {
+    case ArgLowering::SRet:
+      break;
+    case ArgLowering::WidenInt:
+      NewArgs.push_back(Builder.CreateZExt(Arg, getLegalIntVectorType(M, Arg->getType())));
+      NewArgAttrs.push_back(AttributeSet());
+      break;
+    case ArgLowering::ByValToValue:
+      NewArgs.push_back(loadFromStruct(Builder, Arg, L.LoweredTy->getParamType(NewArgs.size())));
+      NewArgAttrs.push_back(AttributeSet());
+      break;
+    case ArgLowering::ValueToByVal: {
+      Value *ArgPtr = Builder.CreateAlloca(Arg->getType());
+      Builder.CreateStore(Arg, ArgPtr);
+      NewArgs.push_back(ArgPtr);
+      auto ByValAttr = llvm::Attribute::getWithByValType(M.getContext(), Arg->getType());
+      NewArgAttrs.push_back(AttributeSet::get(M.getContext(), {ByValAttr}));
+      break;
+    }
+    case ArgLowering::Keep:
+      NewArgs.push_back(Arg);
+      NewArgAttrs.push_back(Attrs.getParamAttrs(ArgNo));
+      break;
     }
   }
 
-  if (retTypeOption != ReturnOpt::RETURN_DEFAULT || fixArgType) {
-    IGCLLVM::IRBuilder<> builder(callInst);
-    Value *newCalledValue = nullptr;
-    FunctionType *newFnTy = nullptr;
-    if (!calledFunc) {
-      // Indirect call, cast the pointer type
-      std::vector<Type *> argTypes;
-      for (auto arg : callArgs) {
-        argTypes.push_back(arg->getType());
-      }
-      Type *retType = retTypeOption == ReturnOpt::RETURN_BY_REF            ? Type::getVoidTy(callInst->getContext())
-                      : retTypeOption == ReturnOpt::RETURN_STRUCT_PROMOTED ? StructTypeFromCallInstArg(callInst, 0)
-                      : retTypeOption == ReturnOpt::RETURN_LEGAL_INT ? LegalizedIntVectorType(M, callInst->getType())
-                                                                     : callInst->getType();
-      newFnTy = FunctionType::get(retType, argTypes, false);
-      Value *calledValue = IGCLLVM::getCalledValue(callInst);
-      newCalledValue = builder.CreatePointerCast(calledValue, IGCLLVM::PointerType::get(newFnTy, 0));
-    } else {
-      // Directly call the new function pointer
-      IGC_ASSERT(oldToNewFuncMap.find(calledFunc) != oldToNewFuncMap.end());
-      newCalledValue = oldToNewFuncMap[calledFunc];
-      newFnTy = cast<Function>(newCalledValue)->getFunctionType();
-    }
+  Value *NewCallee =
+      Callee ? static_cast<Value *>(OldToNewFuncMap[Callee].NewFunc)
+             : Builder.CreatePointerCast(IGCLLVM::getCalledValue(CI), IGCLLVM::PointerType::get(L.LoweredTy, 0));
+  CallInst *NewCI = Builder.CreateCall(L.LoweredTy, NewCallee, NewArgs);
+  NewCI->setCallingConv(CI->getCallingConv());
+  NewCI->setAttributes(AttributeList::get(M.getContext(), Attrs.getFnAttrs(), Attrs.getRetAttrs(), NewArgAttrs));
+  NewCI->setDebugLoc(CI->getDebugLoc());
 
-    // Create the new call instruction
-    CallInst *newCallInst = builder.CreateCall(newFnTy, newCalledValue, callArgs);
-    newCallInst->setCallingConv(callInst->getCallingConv());
-    newCallInst->setAttributes(AttributeList::get(M.getContext(), PAL.getFnAttrs(), PAL.getRetAttrs(), ArgAttrVec));
-    newCallInst->setDebugLoc(callInst->getDebugLoc());
-
-    if (retTypeOption == ReturnOpt::RETURN_BY_REF) {
-      // Load the return value from the arg pointer before using it
-      IGC_ASSERT(returnPtr);
-      Value *load = builder.CreateLoad(cast<AllocaInst>(returnPtr)->getAllocatedType(), returnPtr);
-      callInst->replaceAllUsesWith(load);
-    } else if (retTypeOption == ReturnOpt::RETURN_STRUCT_PROMOTED) {
-      // Store the struct value into the orginal pointer operand
-      StoreToStruct(builder, newCallInst, callInst->getArgOperand(0));
-    } else if (retTypeOption == ReturnOpt::RETURN_LEGAL_INT) {
-      // Truncate legal type back into original value
-      Value *trunc = builder.CreateTrunc(newCallInst, callInst->getType());
-      callInst->replaceAllUsesWith(trunc);
-    } else {
-      callInst->replaceAllUsesWith(newCallInst);
-    }
-    // Remove the old call
-    callInst->eraseFromParent();
+  switch (L.Ret) {
+  case RetLowering::ValueToSRet:
+    CI->replaceAllUsesWith(Builder.CreateLoad(CI->getType(), RetPtr));
+    break;
+  case RetLowering::SRetToValue:
+    storeToStruct(Builder, NewCI, CI->getArgOperand(0));
+    break;
+  case RetLowering::WidenInt:
+    CI->replaceAllUsesWith(Builder.CreateTrunc(NewCI, CI->getType()));
+    break;
+  case RetLowering::StructValue:
+  case RetLowering::Keep:
+    CI->replaceAllUsesWith(NewCI);
+    break;
   }
+  CI->eraseFromParent();
 }
 
 #if LLVM_VERSION_MAJOR >= 16
 llvm::PreservedAnalyses LegalizeFunctionSignaturesNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
   auto &MDU = AM.getResult<IGC::MetaDataUtilsAnalysis>(M);
-  bool changed = m_impl.run(M, MDU.MdUtils, AM.getResult<IGC::CodeGenContextAnalysis>(M).Ctx);
-  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+  bool Changed = Impl.run(M, MDU.MdUtils, AM.getResult<IGC::CodeGenContextAnalysis>(M).Ctx);
+  return Changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
 }
 #endif // LLVM_VERSION_MAJOR >= 16

@@ -311,7 +311,12 @@ llvm::PreservedAnalyses ProcessFuncAttributesNPM::run(llvm::Module &M, llvm::Mod
 }
 #endif // LLVM_VERSION_MAJOR >= 16
 
-extern bool isSupportedAggregateArgument(Argument *arg);
+static bool isByValStructPointer(const Argument &arg) {
+  if (!arg.hasByValAttr())
+    return false;
+  auto *structType = dyn_cast<StructType>(arg.getParamByValType());
+  return structType && !structType->isOpaque();
+}
 
 static bool deduceIfUsesImageParams(Function *F, ModuleMetaData *ModMD) {
   auto It = ModMD->FuncMD.find(F);
@@ -877,7 +882,7 @@ bool ProcessFuncAttributes::run(Module &M, CodeGenContext *Ctx, IGCMD::MetaDataU
         if (!shouldAlwaysInline) {
           for (auto &arg : F->args()) {
             // If argument is a pointer to GAS or aggregate type, always inline it for perf reasons
-            if (isSupportedAggregateArgument(&arg) || isGASPointer(&arg)) {
+            if (isByValStructPointer(arg) || isGASPointer(&arg)) {
               shouldAlwaysInline = true;
               break;
             }
