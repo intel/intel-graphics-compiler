@@ -9827,17 +9827,24 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
       !builder.tryToAlignOperand(dst, builder.getGRFSize()) ||
       dstMayAliasSrc2) {
     // add tmp mov instructions
-    int dstLowGRFNum = (int)std::ceil(
+    // The high half of the original dst starts right after the GRFs spanned
+    // by its (possibly strided) low half.
+    int origDstLowGRFNum = (int)std::ceil(
         (float)(execSize * dst->getExecTypeSize()) / builder.getGRFSize());
-    int dstTotalGRFNum = dstLowGRFNum * 2;
+
+    // The new dst's horz stride is always 1, and the expansion below places
+    // its high half based on that.
+    int newDstLowGRFNum = (int)std::ceil(
+        (float)(execSize * dst->getTypeSize()) / builder.getGRFSize());
+    int newDstTotalGRFNum = newDstLowGRFNum * 2;
 
     G4_Declare *newDstDcl = builder.createTempVar(
-        kernel.numEltPerGRF(dst->getType()) * dstTotalGRFNum, dst->getType(),
-        builder.getGRFAlign());
+        kernel.numEltPerGRF(dst->getType()) * newDstTotalGRFNum,
+        dst->getType(), builder.getGRFAlign());
 
     // add a tmp mov for low results in dst
     G4_Declare *lowMovSrcDcl = builder.createTempVar(
-        kernel.numEltPerGRF(dst->getType()) * dstLowGRFNum, dst->getType(),
+        kernel.numEltPerGRF(dst->getType()) * newDstLowGRFNum, dst->getType(),
         builder.getGRFAlign());
     lowMovSrcDcl->setAliasDeclare(newDstDcl, 0);
     G4_SrcRegRegion *lowMovSrc =
@@ -9861,21 +9868,23 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
 
     // add a tmp mov for high results in dst
     G4_Declare *hiMovSrcDcl = builder.createTempVar(
-        kernel.numEltPerGRF(dst->getType()) * dstLowGRFNum, dst->getType(),
+        kernel.numEltPerGRF(dst->getType()) * newDstLowGRFNum, dst->getType(),
         builder.getGRFAlign());
     hiMovSrcDcl->setAliasDeclare(newDstDcl,
-                                 dstLowGRFNum * builder.getGRFSize());
+                                 newDstLowGRFNum * builder.getGRFSize());
     G4_SrcRegRegion *hiMovSrc =
         builder.createSrcRegRegion(hiMovSrcDcl, builder.getRegionStride1());
     G4_DstRegRegion *dstHi = nullptr;
     if (dst->isIndirect()) {
       dstHi = builder.createIndirectDst(
           dst->getBase(), dst->getSubRegOff(), dst->getHorzStride(),
-          dst->getType(), dst->getAddrImm() + builder.numEltPerGRF<Type_UB>());
+          dst->getType(),
+          dst->getAddrImm() +
+              origDstLowGRFNum * builder.numEltPerGRF<Type_UB>());
     } else {
-      dstHi = builder.createDst(dst->getBase(), dst->getRegOff() + dstLowGRFNum,
-                                dst->getSubRegOff(), dst->getHorzStride(),
-                                dst->getType());
+      dstHi = builder.createDst(
+          dst->getBase(), dst->getRegOff() + origDstLowGRFNum,
+          dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
     }
     G4_INST *hiMovInst = builder.createMov(execSize, dstHi, hiMovSrc,
                                            madwInst->getMaskOption(), false);
