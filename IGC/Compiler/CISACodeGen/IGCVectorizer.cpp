@@ -866,6 +866,9 @@ bool IGCVectorizer::handleCastInstruction(VecArr &Slice) {
     return false;
   }
 
+  VecVal Operands;
+  Operands.push_back(Vectorized);
+  auto InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);
   auto VectorSize = getVectorSize((Instruction *)Vectorized);
   auto Type = IGCLLVM::FixedVectorType::get(First->getType(), VectorSize);
   auto CastOpcode = llvm::cast<CastInst>(First)->getOpcode();
@@ -874,7 +877,7 @@ bool IGCVectorizer::handleCastInstruction(VecArr &Slice) {
   CreatedCast->setName("vectorized_cast");
 
   CreatedCast->setDebugLoc(First->getDebugLoc());
-  IGCLLVM::insertBefore(CreatedCast, First);
+  IGCLLVM::insertBefore(CreatedCast, InsertPoint);
   CreatedVectorInstructions.push_back(CreatedCast);
 
   PRINT_LOG("Cast instruction created: ");

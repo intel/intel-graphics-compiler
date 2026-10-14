@@ -11,6 +11,10 @@
 
 ; CHECK-LABEL: @k
 
+; the cast takes its insert point from the vector it consumes (%src), so it
+; lands in entry, right below it, instead of in bb2 above the first slice element
+; CHECK:      %src = call <8 x float> @llvm.genx.GenISA.sub.group.dpas
+
 ; CHECK: %u0 = extractelement <8 x float> %use, i64 0
 ; CHECK: br label %bb2
 
@@ -31,7 +35,7 @@
 ; CHECK-NEXT:  %vector37 = insertelement <8 x float> %vector36, float %u6, i32 6
 ; CHECK-NEXT:  %vector38 = insertelement <8 x float> %vector37, float %u7, i32 7
 ; CHECK-NEXT:  %vectorized_binary = fadd <8 x float> %src, %vector38
-; CHECK-NEXT:  %vectorized_cast = bitcast <8 x float> %src to <8 x i32>
+; CHECK-NEXT:  %vectorized_cast47 = bitcast <8 x float> %vectorized_binary to <8 x i32>
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
