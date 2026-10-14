@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include <tuple>
+#include <unordered_map>
 
 #include "Assertions.h"
 #include "BuildIR.h"
@@ -70,6 +71,185 @@ class IfConverter {
   unsigned PartialConvertibleMaxInsts;
   // -ifcvtSendFirst. Off by default; the merge order is unchanged then.
   bool SendFirst;
+  // -ifcvtNoMaskScalar. Off by default; 'NoMask' insts are not converted then.
+  bool NoMaskScalar;
+  // -ifcvtSampler. Off by default; sampler messages are not predicated then.
+  bool Sampler;
+  // Where a scalar register (G4_SCALAR) or GRF root declare is referenced.
+  struct DclRefs {
+    // The single BB referencing it, or null if more than one BB does.
+    G4_BB *BB;
+    // Whether every read of it is an operand of a send.
+    bool OnlySendReads;
+  };
+  // Rebuilt by analyze() when NoMaskScalar is set.
+  std::unordered_map<const G4_Declare *, DclRefs> DclRefMap;
+
+  // collectDclRefs - Rebuild DclRefMap from the current CFG.
+  void collectDclRefs() {
+    DclRefMap.clear();
+    auto record = [&](G4_Operand *Opnd, G4_BB *BB, G4_INST *Reader) {
+      if (!Opnd)
+        return;
+      const G4_Declare *Dcl = Opnd->getTopDcl();
+      if (!Dcl ||
+          (Dcl->getRegFile() != G4_SCALAR && Dcl->getRegFile() != G4_GRF))
+        return;
+      auto [It, Inserted] = DclRefMap.try_emplace(Dcl, DclRefs{BB, true});
+      if (!Inserted && It->second.BB != BB)
+        It->second.BB = nullptr;
+      if (Reader && !Reader->isSend())
+        It->second.OnlySendReads = false;
+    };
+    for (G4_BB *BB : fg) {
+      for (G4_INST *I : *BB) {
+        record(I->getDst(), BB, nullptr);
+        for (unsigned i = 0, e = I->getNumSrc(); i != e; ++i)
+          record(I->getSrc(i), BB, I);
+      }
+    }
+  }
+
+  // isNoMaskDef - Check whether 'I' is a 'NoMask' instruction writing a
+  // scalar register (G4_SCALAR) or GRF variable. Always false unless
+  // -ifcvtNoMaskScalar is set.
+  bool isNoMaskDef(const G4_INST *I) const {
+    if (!NoMaskScalar || !I->isWriteEnableInst() || I->isFlowControl())
+      return false;
+    G4_DstRegRegion *Dst = I->getDst();
+    if (!Dst || Dst->isIndirect())
+      return false;
+    const G4_Declare *Dcl = Dst->getTopDcl();
+    return Dcl &&
+           (Dcl->getRegFile() == G4_SCALAR || Dcl->getRegFile() == G4_GRF);
+  }
+
+  // isNoMaskLocalDef - Same as isNoMaskDef(), and running 'I' on every path
+  // is harmless:
+  //  - the written variable is only referenced in 'BB', so the value it
+  //    writes is only read within 'BB', whose remaining instructions get
+  //    predicated;
+  //  - for a GRF variable, 'I' is also a (W) mov (1) of an immediate and the
+  //    variable is only read by sends, e.g. a sampler state or a surface
+  //    address that is later moved into s0.
+  // Nothing read later is overwritten either: before the conversion, 'I'
+  // already writes every channel whenever the thread runs 'BB', so RA keeps
+  // its register apart from any value read after 'BB' in the layout, the
+  // other branch included. Merging keeps that order, except when the other
+  // branch is merged first, which noMaskDefsKeepOtherBranch() checks.
+  bool isNoMaskLocalDef(const G4_INST *I, const G4_BB *BB) const {
+    if (!isNoMaskDef(I))
+      return false;
+    const G4_Declare *Dcl = I->getDst()->getTopDcl();
+    if (Dcl->getAddressed() || Dcl->isInput() || Dcl->isOutput() ||
+        Dcl->isPreDefinedVar() || Dcl->isBuiltin())
+      return false;
+    auto It = DclRefMap.find(Dcl);
+    if (It == DclRefMap.end() || It->second.BB != BB)
+      return false;
+    if (Dcl->getRegFile() == G4_SCALAR)
+      return true;
+    if (I->opcode() != G4_mov || I->getExecSize() != g4::SIMD1 ||
+        I->getSaturate())
+      return false;
+    G4_Operand *Src = I->getSrc(0);
+    if (!Src->isImm() || Src->isRelocImm())
+      return false;
+    return It->second.OnlySendReads;
+  }
+
+  // noMaskDefsKeepOtherBranch is used only when -ifcvtSendFirst is used.
+  // Such as in the following case,
+  // 1. r2.5 is defined in BB0 and used in BB1.
+  // 2. r2.5 is redefined with imm in BB2
+  //
+  //  BB0:    (W) mov (1) r2.5:uq r9.0:uq           // Y = ...
+  //          (f0.0) goto BB2
+  //  BB1:        add (32) r10.0<1>:q r2.5<0;1,0>:q ...   // ... = Y
+  //  BB2:    (W) mov (1) r2.5:uq 0xffff8005c00012e0:uq   // X = imm
+  //              sendg.smpl ... r2.5 ...           // ... = X
+  //
+  // When -ifcvtSendFirst is used, the BB2 will be put before BB1 after if
+  // conversion. Since the (W) is used in the BB2, the r2.5 value will be
+  // damaged.
+  //
+  //  BB0:    (W) mov (1) r2.5:uq r9.0:uq           // Y = ...
+  //  BB2:    (W) mov (1) r2.5:uq 0xffff8005c00012e0:uq   // Dammage the value
+  //  of Y
+  //          (f0.0) sendg.smpl ... r2.5 ...           // ... = X
+  //  BB1:    (!f0.0) add (32) r10.0<1>:q r2.5<0;1,0>:q ...   // ... = Y
+  //
+  // noMaskDefsKeepOtherBranch will check the different branch BBs to see if
+  // there is register value may be damaged. If there is, it will reject the
+  // if-conversion
+  bool noMaskDefsKeepOtherBranch(G4_BB *BB, G4_BB *Other) const {
+    if (!NoMaskScalar || !Other)
+      return true;
+    for (G4_INST *I : *BB) {
+      if (!isNoMaskLocalDef(I, BB))
+        continue;
+      G4_DstRegRegion *Dst = I->getDst();
+      // Scalar registers are compared as a whole; GRF by footprint.
+      bool IsScalar = Dst->getTopDcl()->getRegFile() == G4_SCALAR;
+      unsigned LB = IsScalar ? 0 : Dst->getLinearizedStart();
+      unsigned RB = IsScalar ? 0 : Dst->getLinearizedEnd();
+      auto overlaps = [&](G4_Operand *Opnd) {
+        if (!Opnd || !Opnd->isRegRegion())
+          return false;
+        if (Opnd->isIndirect())
+          return true;
+        if (IsScalar)
+          return Opnd->isS0() || (Opnd->getTopDcl() &&
+                                  Opnd->getTopDcl()->getRegFile() == G4_SCALAR);
+        if (!Opnd->isGreg())
+          return false;
+        return !(Opnd->getLinearizedEnd() < LB ||
+                 Opnd->getLinearizedStart() > RB);
+      };
+      for (G4_INST *J : *Other) {
+        for (unsigned i = 0, e = J->getNumSrc(); i != e; ++i)
+          if (overlaps(J->getSrc(i)))
+            return false;
+        G4_DstRegRegion *JDst = J->getDst();
+        if (JDst && JDst->isIndirect())
+          return false;
+        // 'Other' writes the whole register before reading it.
+        if (!IsScalar && JDst && JDst->isGreg() && J->isWriteEnableInst() &&
+            !J->getPredicate() && JDst->getLinearizedStart() <= LB &&
+            JDst->getLinearizedEnd() >= RB)
+          break;
+      }
+    }
+    return true;
+  }
+
+  // predicate - Predicate 'I' with 'pred', reversed if requested. A 'NoMask'
+  // def accepted by isPredictable() keeps its 'NoMask' and is left
+  // unpredicated. E.g., with -ifcvtNoMaskScalar,
+  //
+  //      (f0.0) goto BB2
+  //  BB1:
+  //      (W) mov (1) r2.5:uq 0xffff8005c00012e0:uq
+  //          sendg.smpl (32) r34 r62 r4 r2.0:q r2.5:uq ...
+  //          mov (32) r40.0:ud r34.0:ud
+  //  BB2:
+  //
+  // becomes
+  //
+  //      (W) mov (1) r2.5:uq 0xffff8005c00012e0:uq
+  //      (!f0.0) sendg.smpl (32) r34 r62 r4 r2.0:q r2.5:uq ...
+  //      (!f0.0) mov (32) r40.0:ud r34.0:ud
+  //
+  // The (W) mov now runs whether or not any channel takes BB1, which is
+  // harmless as only BB1's instructions, now predicated, read r2.5.
+  void predicate(G4_INST *I, G4_Predicate &pred, bool reversePred) const {
+    if (isNoMaskDef(I))
+      return;
+    G4_Predicate *newPred = fg.builder->createPredicate(pred);
+    if (reversePred)
+      reversePredicate(newPred);
+    I->setPredicate(newPred);
+  }
 
   // getSinglePredecessor - Get the single predecessor or null
   // otherwise.
@@ -187,7 +367,8 @@ class IfConverter {
       unsigned n0 = getPredictableInsts(s0, last);
       unsigned n1 = getPredictableInsts(s1, last);
       if (n0 > 0 && n0 < FullyConvertibleMaxInsts &&
-          n1 > 0 && n1 < FullyConvertibleMaxInsts) {
+          n1 > 0 && n1 < FullyConvertibleMaxInsts &&
+          (!SendFirst || noMaskDefsKeepOtherBranch(s1, s0))) {
         VISA_DEBUG(std::cout << "Found an innermost if-else-fi block at"
                              << " BB" << BB->getId() << " with branches {"
                              << "BB" << s0->getId() << ", BB" << s1->getId()
@@ -220,9 +401,44 @@ class IfConverter {
     return null;
   }
 
+  // isPerChannelSamplerOp - Check whether the sampler message 'op' computes
+  // each channel from that channel's own payload only, so that a predicate
+  // masking some channels doesn't change the result of the others. That
+  // excludes the messages deriving the LOD from neighboring channels (sample,
+  // sample_b, sample_c, gather4, lod, ...). IGC predicates sampler messages
+  // the same way, e.g. in resource loops (see ResourceLoopUnroll.cpp).
+  static bool isPerChannelSamplerOp(MsgOp op) {
+    switch (op) {
+    // Explicit LOD.
+    case MsgOp::SAMPLE_L:
+    case MsgOp::SAMPLE_L_C:
+    case MsgOp::SAMPLE_LZ:
+    case MsgOp::SAMPLE_C_LZ:
+    case MsgOp::SAMPLE_PO_L:
+    case MsgOp::SAMPLE_PO_L_C:
+    case MsgOp::SAMPLE_PO_LZ:
+    case MsgOp::SAMPLE_PO_C_LZ:
+    // Explicit derivatives.
+    case MsgOp::SAMPLE_D:
+    case MsgOp::SAMPLE_D_C:
+    case MsgOp::SAMPLE_PO_D:
+    case MsgOp::SAMPLE_PO_D_C:
+    // Texel fetches.
+    case MsgOp::LD:
+    case MsgOp::LD_L:
+    case MsgOp::LD_LZ:
+    case MsgOp::LD_2DMS_W:
+    case MsgOp::LD_MCS:
+      return true;
+    default:
+      return false;
+    }
+  }
+
   /// isPredictable - Check whether the given instruction 'I' could be
   /// predicated using the predicate from the specified 'if' instruction.
-  bool isPredictable(G4_INST *I, G4_INST *ifInst) const {
+  /// 'BB' is the block holding 'I'.
+  bool isPredictable(G4_INST *I, G4_INST *ifInst, const G4_BB *BB) const {
     // Already predicated.
     if (I->getPredicate()) {
       // NOTE: It's not the responsibility of this routine to check
@@ -282,11 +498,21 @@ class IfConverter {
       // EOT send: predication would make thread termination conditional.
       if (I->isEOT())
         return false;
-      // Only non-2D LSC loads, stores, and atomics support safe per-lane
-      // predication. Sampler (derivative/LOD uniformity), gateway barriers,
-      // fences, block 2D (whole-group), RTW, BTD, and RTA are excluded.
+      // Only non-2D LSC loads, stores, and atomics, and sampler messages that
+      // don't derive the LOD from neighboring channels support safe per-lane
+      // predication. Other sampler messages (derivative/LOD uniformity),
+      // gateway barriers, fences, block 2D (whole-group), RTW, BTD, and RTA
+      // are excluded.
       {
         G4_SendDesc *desc = I->getMsgDesc();
+        if (desc->isSampler()) {
+          // Sampler predication is gated by -ifcvtSampler.
+          if (!Sampler || !desc->isGeneralized() ||
+              !isPerChannelSamplerOp(
+                  static_cast<const G4_SendgDesc *>(desc)->getOp()))
+            return false;
+          break;
+        }
         if (!desc->isLSC())
           return false;
 
@@ -318,9 +544,19 @@ class IfConverter {
         return false;
     }
 
+    [[maybe_unused]] unsigned ifMaskOpt = ifInst->getMaskOption();
+    vISA_ASSERT((ifMaskOpt & InstOpt_WriteEnable) == 0,
+                "Unexpected 'NoMask' in 'if' emask.");
+
+    // With -ifcvtNoMaskScalar, a 'NoMask' def of a variable local to 'BB'
+    // (see isNoMaskLocalDef()) could be merged as is: it keeps 'NoMask' and
+    // needs no predicate.
+    if (isNoMaskLocalDef(I, BB))
+      return true;
+
     unsigned maskOpt = I->getMaskOption();
 
-    // Skip 'NoMask' so far as it requires further investigation.
+    // Skip other 'NoMask' so far as it requires further investigation.
     // TODO: When 'NoMask' is present, we could convert them to
     // (+P.any) or (-P.all) depending on 'if' or 'else' branch. E.g.,
     //
@@ -335,10 +571,6 @@ class IfConverter {
     //  (-P.all) mov (1) V0 V1 {NoMask}
     if (maskOpt & InstOpt_WriteEnable)
       return false;
-
-    [[maybe_unused]] unsigned ifMaskOpt = ifInst->getMaskOption();
-    vISA_ASSERT((ifMaskOpt & InstOpt_WriteEnable) == 0,
-                "Unexpected 'NoMask' in 'if' emask.");
 
     unsigned maskBits = getEMaskBits(I->getMaskOffset(), I->getExecSize());
     unsigned ifMaskBits =
@@ -440,7 +672,7 @@ class IfConverter {
           continue;
         }
       }
-      if (!isPredictable(I, ifInst)) {
+      if (!isPredictable(I, ifInst, BB)) {
         return 0;
       }
       ++sum;
@@ -487,6 +719,8 @@ public:
     PartialConvertibleMaxInsts =
         fg.builder->getuint32Option(vISA_ifCvtPartialConvertibleMaxInsts);
     SendFirst = fg.builder->getOption(vISA_ifCvtSendFirst);
+    NoMaskScalar = fg.builder->getOption(vISA_ifCvtNoMaskScalar);
+    Sampler = fg.builder->getOption(vISA_ifCvtSampler);
   }
 
   void analyze(std::vector<IfConvertible> &);
@@ -506,6 +740,8 @@ public:
 } // End anonymous namespace
 
 void IfConverter::analyze(std::vector<IfConvertible> &list) {
+  if (NoMaskScalar)
+    collectDclRefs();
   for (auto *BB : fg) {
     G4_INST *ifInst;
     G4_BB *s0, *s1, *t;
@@ -603,13 +839,7 @@ bool IfConverter::fullConvertSendFirst(IfConvertible &IC, INST_LIST_ITER pos,
        * neither goto nor its flag clearing instruction */
       if (!isGoto || !(op == G4_goto || isFlagClearingFollowedByGoto(I, BB))) {
         // Negative predicate instructions if needed.
-        if (reversePred) {
-          G4_Predicate *negPred = fg.builder->createPredicate(pred);
-          reversePredicate(negPred);
-          I->setPredicate(negPred);
-        } else {
-          I->setPredicate(fg.builder->createPredicate(pred));
-        }
+        predicate(I, pred, reversePred);
       }
       head->insertBefore(pos, I);
     }
@@ -694,13 +924,7 @@ void IfConverter::fullConvert(IfConvertible &IC) {
      * neither goto nor its flag clearing instruction */
     if (!isGoto || !(op == G4_goto || isFlagClearingFollowedByGoto(I, s0))) {
       // Negative predicate instructions if needed.
-      if (needReversePredicateForGoto) {
-        G4_Predicate *negPred = fg.builder->createPredicate(pred);
-        reversePredicate(negPred);
-        I->setPredicate(negPred);
-      } else {
-        I->setPredicate(fg.builder->createPredicate(pred));
-      }
+      predicate(I, pred, needReversePredicateForGoto);
     }
     head->insertBefore(pos, I);
   }
@@ -725,13 +949,7 @@ void IfConverter::fullConvert(IfConvertible &IC) {
        * neither goto nor its flag clearing instruction */
       if (!isGoto || !(op == G4_goto || isFlagClearingFollowedByGoto(I, s1))) {
         // Negative predicate instructions if needed.
-        if (needReversePredicateForGoto) {
-          G4_Predicate *negPred = fg.builder->createPredicate(pred);
-          reversePredicate(negPred);
-          I->setPredicate(negPred);
-        } else {
-          I->setPredicate(fg.builder->createPredicate(pred));
-        }
+        predicate(I, pred, needReversePredicateForGoto);
       }
       head->insertBefore(pos, I);
     }
@@ -788,14 +1006,14 @@ void IfConverter::partialConvert(IfConvertible &IC) {
   // before head's conditional goto.  s0's trailing goto (with its
   // processGoto JIP/UIP) becomes the new predicated branch in head.
   // On Xe3+ goto jumps on true (gotoJumpOnTrue() == true unconditionally),
-  // so every hoisted instruction receives the negated predicate (-P).
+  // so every hoisted instruction receives the negated predicate (-P),
+  // except 'NoMask' scalar register defs (-ifcvtNoMaskScalar), which stay
+  // unpredicated.
   for (; !s0->empty(); s0->pop_front()) {
     G4_INST *I = s0->front();
     if (I->opcode() == G4_label)
       continue;
-    G4_Predicate *negPred = fg.builder->createPredicate(pred);
-    reversePredicate(negPred);
-    I->setPredicate(negPred);
+    predicate(I, pred, /*reversePred=*/true);
     head->insertBefore(pos, I);
   }
   // Add empty label to the BB, so that the BB can be handled correctly in

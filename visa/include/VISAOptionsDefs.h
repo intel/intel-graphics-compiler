@@ -204,6 +204,17 @@ DEF_VISA_OPTION(vISA_ifCvtPartialConvertibleMaxInsts, ET_INT32,
 DEF_VISA_OPTION(vISA_ifCvtPartialConvert, ET_BOOL_TRUE, "-ifcvtpartial",
                 UNUSED, true)
 DEF_VISA_OPTION(vISA_ifCvtSendFirst, ET_BOOL, "-ifcvtSendFirst", UNUSED, false)
+DEF_VISA_OPTION(vISA_ifCvtNoMaskScalar, ET_BOOL, "-ifcvtNoMaskScalar",
+                "Allow if-conversion of NoMask defs of block-local scalar "
+                "register variables, and of NoMask movs of an immediate to "
+                "block-local GRF variables only read by sends; they keep "
+                "NoMask and stay unpredicated",
+                false)
+DEF_VISA_OPTION(vISA_ifCvtSampler, ET_BOOL, "-ifcvtSampler",
+                "Allow if-conversion to predicate sampler messages that don't "
+                "derive the LOD from neighboring channels; requires "
+                "-sendPredication",
+                false)
 DEF_VISA_OPTION(vISA_AutoGRFSelection, ET_BOOL_TRUE, "-autoGRFSelection",
                 "Enable compiler heuristics for GRF selection", false)
 DEF_VISA_OPTION(
