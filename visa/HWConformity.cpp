@@ -5670,8 +5670,16 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
 
     if (srcOverlap) {
       G4_AccRegSel accSel = inst->getDst()->getAccRegSel();
+      // Implicit acc dst/explicit acc src channels are aligned with the dst
+      // subreg offset, so the tmp must be GRF-aligned with stride 1 to keep
+      // the alignment fixAddcSubb() established; otherwise the acc read
+      // returns stale data.
       G4_DstRegRegion *newDst =
-          insertMovAfter(it, inst->getDst(), inst->getDst()->getType(), bb);
+          inst->hasACCOpnd()
+              ? insertMovAfter(it, inst->getDst(), inst->getDst()->getType(),
+                               bb, /*stride*/ 1, builder.getGRFAlign())
+              : insertMovAfter(it, inst->getDst(), inst->getDst()->getType(),
+                               bb);
       newDst->setAccRegSel(accSel);
       inst->setDest(newDst);
 

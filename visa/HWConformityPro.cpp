@@ -3374,7 +3374,13 @@ void HWConformityPro::fixDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb) {
       fixDstMadw(it, bb, builder);
     } else {
       G4_AccRegSel accSel = inst->getDst()->getAccRegSel();
-      replaceDstWithRawMov(it, bb, /*tmpStride*/ 0, Any);
+      // The tmp dst must preserve the constraints of fixAccRestrictions():
+      // implicit acc dst/explicit acc src channels are aligned with the dst
+      // subreg offset, so an unaligned tmp would read stale acc data.
+      if (inst->hasACCOpnd())
+        replaceDstWithRawMov(it, bb, /*tmpStride*/ 1, builder.getGRFAlign());
+      else
+        replaceDstWithRawMov(it, bb, /*tmpStride*/ 0, Any);
       inst->getDst()->setAccRegSel(accSel);
     }
   }
