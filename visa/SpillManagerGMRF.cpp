@@ -4751,8 +4751,16 @@ void GlobalRA::saveRestoreA0(G4_BB *bb) {
   if (hasActiveSpillFill && !bb->isLastInstEOT() && !bb->isEndWithFRet()) {
     // restore A0 before BB exit. BB is guaranteed to be non-empty as there's at
     // least one spill/fill If last inst is branch, insert restore before it.
-    // Otherwise insert it as last inst
-    auto endIt = bb->back()->isCFInst() ? std::prev(bb->end()) : bb->end();
+    // Otherwise insert it as last inst.
+    // A switchjmp BB ends with a jmpi table that can be entered at any entry,
+    // so put the restore before the indirect jmpi, not inside the table.
+    auto endIt = bb->end();
+    if (bb->back()->isCFInst()) {
+      endIt = std::prev(bb->end());
+      while (kernel.fg.isIndirectJmpTarget(*endIt) && endIt != bb->begin()) {
+        --endIt;
+      }
+    }
     bb->insertBefore(endIt, a0RestoreMov());
   }
 }
