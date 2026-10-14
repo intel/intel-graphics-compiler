@@ -171,6 +171,9 @@ DECLARE_OPCODE(GenISA_ftof_rtp, GenISAIntrinsic, llvm_fptrunc_rtp, true, false, 
 DECLARE_OPCODE(GenISA_ftof_rtn, GenISAIntrinsic, llvm_fptrunc_rtn, true, false, false, false, false, false, false)
 DECLARE_OPCODE(BitCast, Instruction, llvm_bitcast, false, false, false, false, false, false, false)
 DECLARE_OPCODE(PtrToInt, Instruction, llvm_ptrtoint, false, false, false, false, false, false, false)
+#if LLVM_VERSION_MAJOR >= 22
+DECLARE_OPCODE(PtrToAddr, Instruction, llvm_ptrtoaddr, false, false, false, false, false, false, false)
+#endif
 DECLARE_OPCODE(IntToPtr, Instruction, llvm_inttoptr, false, false, false, false, false, false, false)
 DECLARE_OPCODE(SDiv, Instruction, llvm_sdiv, true, false, false, false, false, false, false)
 DECLARE_OPCODE(UDiv, Instruction, llvm_udiv, true, false, false, false, false, false, false)

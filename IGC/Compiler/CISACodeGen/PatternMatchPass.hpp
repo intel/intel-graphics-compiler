@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/MapVector.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/InstVisitor.h"
@@ -148,6 +149,9 @@ public:
   void visitBitCastInst(llvm::BitCastInst &I);
   void visitIntToPtrInst(llvm::IntToPtrInst &I);
   void visitPtrToIntInst(llvm::PtrToIntInst &I);
+#if LLVM_VERSION_MAJOR >= 22
+  void visitPtrToAddrInst(llvm::PtrToAddrInst &I);
+#endif // LLVM_VERSION_MAJOR >= 22
   void visitAddrSpaceCast(llvm::AddrSpaceCastInst &I);
   void visitInstruction(llvm::Instruction &I);
   void visitExtractElementInst(llvm::ExtractElementInst &I);

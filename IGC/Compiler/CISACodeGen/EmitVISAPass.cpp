@@ -11115,6 +11115,24 @@ void EmitPass::emitPtrToInt(llvm::PtrToIntInst *P2I) {
   m_encoder->Push();
 }
 
+#if LLVM_VERSION_MAJOR >= 22
+void EmitPass::emitPtrToAddr(llvm::PtrToAddrInst *P2A) {
+  CVariable *srcV = GetSymbol(P2A->getPointerOperand());
+
+  bool skipTagging =
+      !m_canGenericPointToLocal && !m_canGenericPointToPrivate && !m_pCtx->mustDistinguishBetweenPrivateAndGlobalPtr();
+
+  if (skipTagging || P2A->getPointerAddressSpace() != ADDRESS_SPACE_GENERIC ||
+      (srcV->IsImmediate() && srcV->GetImmediateValue() == 0x0)) {
+    m_encoder->Cast(m_destination, srcV);
+    m_encoder->Push();
+    return;
+  }
+
+  emitGenericToAddrSpaceCast(srcV, P2A->getType()->getScalarSizeInBits() == 32);
+}
+#endif // LLVM_VERSION_MAJOR >= 22
+
 void EmitPass::emitAddrSpaceToGenericCast(llvm::AddrSpaceCastInst *addrSpaceCast, CVariable *srcV, unsigned tag) {
   if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoFullI64Support()) {
     if (m_currShader->GetContext()->getRegisterPointerSizeInBits(addrSpaceCast->getSrcAddressSpace()) == 32) {
@@ -11188,6 +11206,88 @@ void EmitPass::emitAddrSpaceToGenericCast(llvm::AddrSpaceCastInst *addrSpaceCast
   }
 }
 
+void EmitPass::emitGenericToAddrSpaceCast(CVariable *srcV, bool isDst32Bit) {
+  // Removes the address space tag from a generic pointer and writes the result
+  // to m_destination. If isDst32Bit is set, only the low 32 bits are written.
+
+  // The initial address could be in canonical form, that means bit 47 is
+  // replicated to the upper bits. As bits [60:63] are spoiled already we need
+  // to restore the address to the canonical form. This is done by merging
+  // bits [56:59], which we assume are in canonical form, into bits [60:63].
+
+  if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoFullI64Support()) {
+    if (isDst32Bit) {
+      // Src
+      CVariable *srcAlias = m_currShader->GetNewAlias(srcV, ISA_TYPE_UD, 0, 0);
+      CVariable *srcLow = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF,
+                                                       m_destination->IsUniform(), CName(srcV->getName(), "Lo"));
+
+      // Get low part of srcV
+      m_encoder->SetSrcSubReg(0, 0);
+      m_encoder->SetSrcRegion(0, 2, 1, 0);
+      m_encoder->Copy(srcLow, srcAlias);
+      m_encoder->Push();
+
+      // Copy result to Dst
+      m_encoder->Cast(m_destination, srcLow);
+      m_encoder->Push();
+    } else {
+      // Src
+      CVariable *srcAlias = m_currShader->GetNewAlias(srcV, ISA_TYPE_UD, 0, 0);
+      CVariable *srcLow = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF,
+                                                       m_destination->IsUniform(), CName(srcV->getName(), "Lo"));
+      CVariable *srcHigh = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF,
+                                                        m_destination->IsUniform(), CName(srcV->getName(), "Hi"));
+      CVariable *tempVar = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_D, EALIGN_GRF,
+                                                        m_destination->IsUniform(), CName::NONE);
+
+      // Split Src into {Low, High}
+      // Low:
+      m_encoder->SetSrcSubReg(0, 0);
+      m_encoder->SetSrcRegion(0, 2, 1, 0);
+      m_encoder->Copy(srcLow, srcAlias);
+      m_encoder->Push();
+      // High:
+      m_encoder->SetSrcSubReg(0, 1);
+      m_encoder->SetSrcRegion(0, 2, 1, 0);
+      m_encoder->Copy(srcHigh, srcAlias);
+      m_encoder->Push();
+
+      // Clear tag in the high part and restore address canonical form.
+      // For more details please refer to section "Clearing A Generic Pointer
+      // Tag" in documentation directory under
+      // igc/generic-pointers/generic-pointers.md
+      m_encoder->Shl(tempVar, srcHigh, m_currShader->ImmToVariable(4, ISA_TYPE_D));
+      m_encoder->IShr(srcHigh, tempVar, m_currShader->ImmToVariable(4, ISA_TYPE_D));
+      m_encoder->Push();
+
+      // Copy to Dst
+      CVariable *dstAlias = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
+      // Low:
+      m_encoder->SetDstRegion(2);
+      m_encoder->Copy(dstAlias, srcLow);
+      m_encoder->Push();
+      // High:
+      m_encoder->SetDstSubReg(1);
+      m_encoder->SetDstRegion(2);
+      m_encoder->Copy(dstAlias, srcHigh);
+      m_encoder->Push();
+    }
+  } else {
+    CVariable *pTempVar =
+        m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_Q, m_currShader->getGRFAlignment(),
+                                     m_destination->IsUniform(), CName::NONE);
+    // Clear tag in the high part and restore address canonical form.
+    // For more details please refer to section "Clearing A Generic Pointer
+    // Tag" in documentation directory under
+    // igc/generic-pointers/generic-pointers.md
+    m_encoder->Shl(pTempVar, srcV, m_currShader->ImmToVariable(4, ISA_TYPE_D));
+    m_encoder->IShr(pTempVar, pTempVar, m_currShader->ImmToVariable(4, ISA_TYPE_D));
+    m_encoder->Cast(m_destination, pTempVar);
+    m_encoder->Push();
+  }
+}
+
 void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst *addrSpaceCast) {
   // Tags are used to determine the address space of generic pointers
   // casted from private, local or global pointers.
@@ -11251,82 +11351,7 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst *addrSpaceCast) {
     // Address space cast is in the form of generic -> {private, local, global}
     // Tag is removed according to the address space of the destination
 
-    // The initial address could be in canonical form, that means bit 47 is
-    // replicated to the upper bits. As bits [60:63] are spoiled already we need
-    // to restore the address to the canonical form. This is done by merging
-    // bits [56:59], which we assume are in canonical form, into bits [60:63].
-
-    if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoFullI64Support()) {
-      if (m_currShader->GetContext()->getRegisterPointerSizeInBits(destAddrSpace) == 32) {
-        // Src
-        CVariable *srcAlias = m_currShader->GetNewAlias(srcV, ISA_TYPE_UD, 0, 0);
-        CVariable *srcLow = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF,
-                                                         m_destination->IsUniform(), CName(srcV->getName(), "Lo"));
-
-        // Get low part of srcV
-        m_encoder->SetSrcSubReg(0, 0);
-        m_encoder->SetSrcRegion(0, 2, 1, 0);
-        m_encoder->Copy(srcLow, srcAlias);
-        m_encoder->Push();
-
-        // Copy result to Dst
-        m_encoder->Cast(m_destination, srcLow);
-        m_encoder->Push();
-      } else {
-        // Src
-        CVariable *srcAlias = m_currShader->GetNewAlias(srcV, ISA_TYPE_UD, 0, 0);
-        CVariable *srcLow = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF,
-                                                         m_destination->IsUniform(), CName(srcV->getName(), "Lo"));
-        CVariable *srcHigh = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF,
-                                                          m_destination->IsUniform(), CName(srcV->getName(), "Hi"));
-        CVariable *tempVar = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_D, EALIGN_GRF,
-                                                          m_destination->IsUniform(), CName::NONE);
-
-        // Split Src into {Low, High}
-        // Low:
-        m_encoder->SetSrcSubReg(0, 0);
-        m_encoder->SetSrcRegion(0, 2, 1, 0);
-        m_encoder->Copy(srcLow, srcAlias);
-        m_encoder->Push();
-        // High:
-        m_encoder->SetSrcSubReg(0, 1);
-        m_encoder->SetSrcRegion(0, 2, 1, 0);
-        m_encoder->Copy(srcHigh, srcAlias);
-        m_encoder->Push();
-
-        // Clear tag in the high part and restore address canonical form.
-        // For more details please refer to section "Clearing A Generic Pointer
-        // Tag" in documentation directory under
-        // igc/generic-pointers/generic-pointers.md
-        m_encoder->Shl(tempVar, srcHigh, m_currShader->ImmToVariable(4, ISA_TYPE_D));
-        m_encoder->IShr(srcHigh, tempVar, m_currShader->ImmToVariable(4, ISA_TYPE_D));
-        m_encoder->Push();
-
-        // Copy to Dst
-        CVariable *dstAlias = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
-        // Low:
-        m_encoder->SetDstRegion(2);
-        m_encoder->Copy(dstAlias, srcLow);
-        m_encoder->Push();
-        // High:
-        m_encoder->SetDstSubReg(1);
-        m_encoder->SetDstRegion(2);
-        m_encoder->Copy(dstAlias, srcHigh);
-        m_encoder->Push();
-      }
-    } else {
-      CVariable *pTempVar =
-          m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_Q, m_currShader->getGRFAlignment(),
-                                       m_destination->IsUniform(), CName::NONE);
-      // Clear tag in the high part and restore address canonical form.
-      // For more details please refer to section "Clearing A Generic Pointer
-      // Tag" in documentation directory under
-      // igc/generic-pointers/generic-pointers.md
-      m_encoder->Shl(pTempVar, srcV, m_currShader->ImmToVariable(4, ISA_TYPE_D));
-      m_encoder->IShr(pTempVar, pTempVar, m_currShader->ImmToVariable(4, ISA_TYPE_D));
-      m_encoder->Cast(m_destination, pTempVar);
-      m_encoder->Push();
-    }
+    emitGenericToAddrSpaceCast(srcV, m_currShader->GetContext()->getRegisterPointerSizeInBits(destAddrSpace) == 32);
   } else // ADDRESS_SPACE_GLOBAL
   {
     m_encoder->Cast(m_destination, srcV);
@@ -11862,6 +11887,11 @@ void EmitPass::EmitNoModifier(llvm::Instruction *inst) {
   case Instruction::PtrToInt:
     emitPtrToInt(cast<PtrToIntInst>(inst));
     break;
+#if LLVM_VERSION_MAJOR >= 22
+  case Instruction::PtrToAddr:
+    emitPtrToAddr(cast<PtrToAddrInst>(inst));
+    break;
+#endif // LLVM_VERSION_MAJOR >= 22
   case Instruction::IntToPtr:
     emitIntToPtr(cast<IntToPtrInst>(inst));
     break;

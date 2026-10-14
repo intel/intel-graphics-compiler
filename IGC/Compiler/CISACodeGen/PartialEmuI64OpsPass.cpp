@@ -244,6 +244,9 @@ private:
   bool visitFPTrunc(FPTruncInst &) { return false; }
   bool visitFPExt(FPExtInst &) { return false; }
   bool visitPtrToInt(PtrToIntInst &) { return false; }
+#if LLVM_VERSION_MAJOR >= 22
+  bool visitPtrToAddr(PtrToAddrInst &) { return false; }
+#endif // LLVM_VERSION_MAJOR >= 22
   bool visitIntToPtr(IntToPtrInst &) { return false; }
   bool visitBitCast(BitCastInst &) { return false; }
   bool visitAddrSpaceCast(AddrSpaceCastInst &) { return false; }

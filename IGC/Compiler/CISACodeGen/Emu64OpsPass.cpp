@@ -233,6 +233,9 @@ private:
   bool visitFPTrunc(FPTruncInst &) { return false; }
   bool visitFPExt(FPExtInst &) { return false; }
   bool visitPtrToInt(PtrToIntInst &);
+#if LLVM_VERSION_MAJOR >= 22
+  bool visitPtrToAddr(PtrToAddrInst &);
+#endif // LLVM_VERSION_MAJOR >= 22
   bool visitIntToPtr(IntToPtrInst &);
   bool visitBitCast(BitCastInst &);
   bool visitAddrSpaceCast(AddrSpaceCastInst &) { return false; }
@@ -1736,6 +1739,25 @@ bool InstExpander::visitPtrToInt(PtrToIntInst &P2I) {
   Emu->setExpandedValues(&P2I, Lo, Hi);
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 22
+bool InstExpander::visitPtrToAddr(PtrToAddrInst &P2A) {
+  IGC_ASSERT(nullptr != Emu);
+  if (!Emu->isInt64(&P2A))
+    return false;
+
+  // Clearing the address space tag of a generic pointer is emitted
+  // in EmitPass, so only split the result into Lo and Hi part.
+  IRB->SetInsertPoint(P2A.getNextNode());
+  Value *V = IRB->CreateBitCast(&P2A, Emu->getV2Int32Ty());
+  Value *Lo = IRB->CreateExtractElement(V, IRB->getInt32(0));
+  Value *Hi = IRB->CreateExtractElement(V, IRB->getInt32(1));
+
+  Emu->setExpandedValues(&P2A, Lo, Hi);
+  // Keep the original instruction.
+  return false;
+}
+#endif // LLVM_VERSION_MAJOR >= 22
 
 bool InstExpander::visitIntToPtr(IntToPtrInst &I2P) {
   Value *Src = I2P.getOperand(0);

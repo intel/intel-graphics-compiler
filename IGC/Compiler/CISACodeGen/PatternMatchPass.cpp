@@ -1534,7 +1534,9 @@ void CodeGenPatternMatch::visitBitCastInst(BitCastInst &I) {
 void CodeGenPatternMatch::visitIntToPtrInst(IntToPtrInst &I) { MatchSingleInstruction(I); }
 
 void CodeGenPatternMatch::visitPtrToIntInst(PtrToIntInst &I) { MatchSingleInstruction(I); }
-
+#if LLVM_VERSION_MAJOR >= 22
+void CodeGenPatternMatch::visitPtrToAddrInst(PtrToAddrInst &I) { MatchSingleInstruction(I); }
+#endif // LLVM_VERSION_MAJOR >= 22
 void CodeGenPatternMatch::visitAddrSpaceCast(AddrSpaceCastInst &I) { MatchSingleInstruction(I); }
 
 void CodeGenPatternMatch::visitDbgInfoIntrinsic(DbgInfoIntrinsic &I) { MatchDbgInstruction(I); }

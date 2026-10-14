@@ -388,8 +388,12 @@ public:
   void emitBitcastfromstruct(llvm::GenIntrinsicInst *BCFromStruct);
   void emitBitcasttostruct(llvm::GenIntrinsicInst *BCToStruct);
   void emitPtrToInt(llvm::PtrToIntInst *p2iCst);
+#if LLVM_VERSION_MAJOR >= 22
+  void emitPtrToAddr(llvm::PtrToAddrInst *p2aCst);
+#endif // LLVM_VERSION_MAJOR >= 22
   void emitIntToPtr(llvm::IntToPtrInst *i2pCst);
   void emitAddrSpaceCast(llvm::AddrSpaceCastInst *addrSpaceCast);
+  void emitGenericToAddrSpaceCast(CVariable *srcV, bool isDst32Bit);
   void emitCondBrInst(IGCLLVM::CondBrInst *br, const SSource &cond, e_predMode predMode);
   void emitUncondBrInst(IGCLLVM::UncondBrInst *br);
   void emitAluNoModifier(llvm::GenIntrinsicInst *inst);
