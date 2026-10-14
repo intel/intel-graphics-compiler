@@ -180,7 +180,6 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeVectorPreProcessPass(Registry);
   initializeVectorProcessPass(Registry);
   initializeVerificationPassPass(Registry);
-  initializeWaveAllJointReductionPass(Registry);
   initializeWGFuncResolutionLPMPass(Registry);
   initializeWIAnalysisPass(Registry);
   initializeWIFuncResolutionLPMPass(Registry);

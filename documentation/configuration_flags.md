@@ -316,7 +316,6 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableUnmaskedFunctions` | Enable unmaksed functions SYCL feature. | Available |
 | `EnableVRT` | Enable Variable Register per Thread | Available |
 | `EnableWIPhiStructuralEquivalence` | Keep a phi at a divergent join uniform when all its incomings are                   shape-equivalent expressions (recursive, memory-free). Path-invariance                   per lane; cross-lane uniformity is still decided by calculate_dep.                   Catches GVN-PRE materialization at divergent joins. | - |
-| `EnableWaveAllJointReduction` | Enable Joint Reduction Optimization. | - |
 | `EnableWaveShuffleIndexSinking` | Hoist identical instructions operating on WaveShuffleIndex instructions with the same source and a                   constant lane/channel | - |
 | `EnableWorkGroupUniformGoto` | Setting to 1 enables generating uniform goto for work group uniform [eu fusion only] | - |
 | `ExpandNonUniformInsertElementThreshold` | Convert non-uniform insertelement instructions for fixed arrays of size less than or equal to this threshold | - |

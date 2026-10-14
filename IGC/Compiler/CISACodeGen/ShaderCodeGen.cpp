@@ -117,7 +117,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/RuntimeValueVectorExtractPass.h"
 #include "Compiler/Optimizer/WaveShuffleIndexSinking.hpp"
 #include "Compiler/Optimizer/SinkPointerConstAdd.h"
-#include "Compiler/Optimizer/WaveAllJointReduction.hpp"
 #include "Compiler/Optimizer/InstructionHoistingOptimization.hpp"
 #include "Compiler/Optimizer/SamplerLoopSpeculation.hpp"
 #include "Compiler/Optimizer/WaveBallotCSE.hpp"
@@ -1920,10 +1919,6 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
     mpm.add(llvm::createDeadCodeEliminationPass());
 
-
-    if (IGC_IS_FLAG_ENABLED(EnableWaveAllJointReduction)) {
-      mpm.add(createWaveAllJointReduction());
-    }
 
     if (IGC_IS_FLAG_ENABLED(EnableIntDivRemCombine)) {
       // simplify rem if the quotient is availble

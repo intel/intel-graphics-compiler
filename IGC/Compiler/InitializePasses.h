@@ -246,7 +246,6 @@ void initializeVectorBitCastOptPass(llvm::PassRegistry &);
 void initializeVectorPreProcessPass(llvm::PassRegistry &);
 void initializeVectorProcessPass(llvm::PassRegistry &);
 void initializeVerificationPassPass(llvm::PassRegistry &);
-void initializeWaveAllJointReductionPass(llvm::PassRegistry &);
 void initializeWGFuncResolutionLPMPass(llvm::PassRegistry &);
 void initializeWIAnalysisPass(llvm::PassRegistry &);
 void initializeWIFuncResolutionLPMPass(llvm::PassRegistry &);

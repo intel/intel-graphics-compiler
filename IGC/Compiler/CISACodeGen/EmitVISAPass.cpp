@@ -14475,15 +14475,12 @@ void EmitPass::emitReductionTrees(e_opcode op, VISA_Type type, SIMDMode simdMode
     }
   } else {
     // Overshoot, try lower SIMD for the final reduction op
-    // TODO: Instead of trying lower SIMD, could generate simdLanes wide final
-    // join instruction, and pass in identity/0/don't care values for unused
-    // joins
-    //       However, this will require a change to WaveAllJointReduction to
-    //       generate intrinsic calls with fixed vector width to ensure the
-    //       vector source variable used is generated with the proper bounds or
-    //       logic to copy the vector source variable to a simdLane * simdLane
-    //       sized variable along with logic to generate only the necessary
-    //       operation on that varaible
+    // TODO: Instead of trying lower SIMD, could generate simdLanes wide final join instruction, and pass in
+    // identity/0/don't care values for unused joins
+    // However, this will require a change to IGCVectorizer to generate intrinsic calls with fixed vector width to
+    // ensure the vector source variable used is generated with the proper bounds or logic to copy the vector source
+    // variable to a simdLane * simdLane sized variable along with logic to generate only the necessary operation on
+    // that variable
     switch (simdMode) {
     case SIMDMode::SIMD32:
       return emitReductionTrees(op, type, SIMDMode::SIMD16, src, dst, startIdx, endIdx);
