@@ -129,8 +129,8 @@ bool GenXCFSimplification::isBranchedOverBlock(BasicBlock *BB) {
   if (Term->getNumSuccessors() != 1)
     return false; // not exactly one successor
   Use *U = &*BB->use_begin();
-  auto PredBr = dyn_cast<BranchInst>(U->getUser());
-  if (!PredBr || !PredBr->isConditional())
+  auto PredBr = dyn_cast<IGCLLVM::CondBrInst>(U->getUser());
+  if (!PredBr)
     return false; // predecessor is not conditional branch
   auto Succ = Term->getSuccessor(0);
   if (PredBr->getSuccessor(0) == BB) {
@@ -152,7 +152,7 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB) {
   LLVM_DEBUG(dbgs() << "processBranchedOverBlock: " << BB->getName() << "\n");
   // Check that the condition to enter the branched over block is an any
   // of a predicate.
-  auto PredBr = cast<BranchInst>(BB->use_begin()->getUser());
+  auto PredBr = cast<IGCLLVM::CondBrInst>(BB->use_begin()->getUser());
   auto Cond = PredBr->getCondition();
   bool Inverted = false;
   switch (GenXIntrinsic::getGenXIntrinsicID(Cond)) {
@@ -295,7 +295,8 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB) {
     Inst = Next;
   }
   // Change the predecessor to have an unconditional branch to the successor.
-  auto NewBr = BranchInst::Create(Succ, IGCLLVM::insertPosition(PredBr));
+  auto NewBr =
+      IGCLLVM::UncondBrInst::Create(Succ, IGCLLVM::insertPosition(PredBr));
   NewBr->takeName(PredBr);
   auto CondInst = dyn_cast<Instruction>(PredBr->getCondition());
   PredBr->eraseFromParent();

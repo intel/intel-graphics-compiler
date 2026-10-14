@@ -1652,8 +1652,8 @@ void GenXCoalescing::coalesceCallables() {
     auto Ret = Nxt;
 
     // 1. Possible next node is branch to return
-    auto Br = dyn_cast<BranchInst>(Nxt);
-    if (Br && Br->isUnconditional())
+    auto Br = dyn_cast<IGCLLVM::UncondBrInst>(Nxt);
+    if (Br)
       Ret = &Br->getSuccessor(0)->front();
 
     // 2. Possible several next nodes are GenXIntrinsic::genx_output_1

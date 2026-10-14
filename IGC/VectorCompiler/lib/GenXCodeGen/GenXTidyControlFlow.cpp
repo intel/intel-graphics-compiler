@@ -269,8 +269,8 @@ void GenXTidyControlFlow::fixGotoOverBranch(Function *F) {
     auto Goto = GotoJoin::isGotoBlock(BB);
     if (!Goto)
       continue;
-    auto Br = cast<BranchInst>(BB->getTerminator());
-    if (!Br->isConditional())
+    auto Br = dyn_cast<IGCLLVM::CondBrInst>(BB->getTerminator());
+    if (!Br)
       continue;
     // We have a block ending with a conditional branch that is a goto.
     // Now check whether it branches over an unconditional branch.
@@ -279,8 +279,9 @@ void GenXTidyControlFlow::fixGotoOverBranch(Function *F) {
       continue;
     if (Br->getSuccessor(0)->getPrevNode() != Succ)
       continue;
-    auto SuccBr = dyn_cast<BranchInst>(IGCLLVM::getFirstNonPHIOrDbg(Succ));
-    if (!SuccBr || SuccBr->isConditional())
+    auto SuccBr =
+        dyn_cast<IGCLLVM::UncondBrInst>(IGCLLVM::getFirstNonPHIOrDbg(Succ));
+    if (!SuccBr)
       continue;
     // The goto branches over just an unconditional branch.
     // Check whether its UIP is the same as the branch target.
@@ -353,7 +354,7 @@ void GenXTidyControlFlow::fixReturns(Function *F) {
         PN->addIncoming(BB->getTerminator()->getOperand(0), BB);
 
       IGCLLVM::popBackInstruction(BB); // Remove the return inst.
-      BranchInst::Create(NewRetBlock, BB);
+      IGCLLVM::UncondBrInst::Create(NewRetBlock, BB);
     }
     Modified = true;
   }

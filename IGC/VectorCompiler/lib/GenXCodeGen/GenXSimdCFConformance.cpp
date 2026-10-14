@@ -402,12 +402,12 @@ private:
                                  BasicBlock *&TrueSucc, BasicBlock *&FalseSucc);
   void handleExistingBranchCase(GotoJoinEVs &GotoJoinData,
                                 BasicBlock *&TrueSucc, BasicBlock *&FalseSucc,
-                                BranchInst *ExistingBranch);
+                                IGCLLVM::CondBrInst *ExistingBranch);
   void addNewPhisIncomings(BasicBlock *BranchingBlock, BasicBlock *TrueSucc,
                            BasicBlock *FalseSucc);
   void collectCondEVUsers(ExtractValueInst *CondEV,
                           std::vector<Value *> &BadUsers,
-                          BranchInst *&CorrectUser);
+                          IGCLLVM::CondBrInst *&CorrectUser);
   void updateBadCondEVUsers(GotoJoinEVs &GotoJoinData,
                             std::vector<Value *> &BadUsers,
                             BasicBlock *TrueSucc, BasicBlock *FalseSucc);
@@ -1046,13 +1046,13 @@ Value *GenXSimdCFConformance::findGotoJoinVal(
  * Correct user: conditional branch CondEV's BB. This
  * is the only possible conformant user.
  */
-void GenXSimdCFConformance::collectCondEVUsers(ExtractValueInst *CondEV,
-                                               std::vector<Value *> &BadUsers,
-                                               BranchInst *&CorrectUser) {
+void GenXSimdCFConformance::collectCondEVUsers(
+    ExtractValueInst *CondEV, std::vector<Value *> &BadUsers,
+    IGCLLVM::CondBrInst *&CorrectUser) {
   // Bad users: they should not use cond EV. Make a real value for them
   // Correct user: conditional branch in this BB
   for (auto ui = CondEV->use_begin(), ue = CondEV->use_end(); ui != ue; ++ui) {
-    BranchInst *Br = dyn_cast<BranchInst>(ui->getUser());
+    auto *Br = dyn_cast<IGCLLVM::CondBrInst>(ui->getUser());
 
     // If cond EV is used by wrong branch, we can simply consider
     // it as non-baled conditional branch
@@ -1165,19 +1165,19 @@ void GenXSimdCFConformance::handleNoCondEVCase(
                                IGCLLVM::insertPosition(SplitPoint));
   GotoJoinData.setCondEV(CondEV);
 
-  if (auto *Br = dyn_cast<BranchInst>(SplitPoint)) {
-    if (Br->isConditional()) {
-      // This CF is non-conformant: there should be a join point
-      // before this branch, but it wasn't found. Skip it.
-      return;
-    }
+  if (isa<IGCLLVM::CondBrInst>(SplitPoint)) {
+    // This CF is non-conformant: there should be a join point
+    // before this branch, but it wasn't found. Skip it.
+    return;
+  }
+  if (auto *Br = dyn_cast<IGCLLVM::UncondBrInst>(SplitPoint)) {
     // We are turning unconditional branch into conditional one
     BasicBlock *Split =
         BasicBlock::Create(CondEV->getContext(), "goto_split",
                            CondEV->getFunction(), Br->getSuccessor(0));
-    BranchInst::Create(Br->getSuccessor(0), Split);
-    BranchInst::Create(Br->getSuccessor(0), Split, CondEV,
-                       IGCLLVM::insertPosition(Br));
+    IGCLLVM::UncondBrInst::Create(Br->getSuccessor(0), Split);
+    IGCLLVM::CondBrInst::Create(CondEV, Br->getSuccessor(0), Split,
+                                IGCLLVM::insertPosition(Br));
 
     // Update phis in TrueSucc
     addNewPhisIncomings(CondEV->getParent(), Br->getSuccessor(0), Split);
@@ -1201,8 +1201,9 @@ void GenXSimdCFConformance::handleNoCondEVCase(
                       << " to handle missing conditional branch\n");
 
     // Link blocks
-    BranchInst::Create(TrueSucc, FalseSucc, CondEV, CondEV->getParent());
-    BranchInst::Create(TrueSucc, FalseSucc);
+    IGCLLVM::CondBrInst::Create(CondEV, TrueSucc, FalseSucc,
+                                CondEV->getParent());
+    IGCLLVM::UncondBrInst::Create(TrueSucc, FalseSucc);
   }
 
   // CFG changed: update DomTree.
@@ -1252,8 +1253,8 @@ void GenXSimdCFConformance::handleOptimizedBranchCase(
   LLVM_DEBUG(dbgs() << "Created " << FalseSucc->getName()
                     << " to handle missing conditional branch\n");
   // Link blocks
-  BranchInst::Create(TrueSucc, FalseSucc, CondEV, CondEV->getParent());
-  BranchInst::Create(TrueSucc, FalseSucc);
+  IGCLLVM::CondBrInst::Create(CondEV, TrueSucc, FalseSucc, CondEV->getParent());
+  IGCLLVM::UncondBrInst::Create(TrueSucc, FalseSucc);
 
   // Store info for possible optimization
   BlocksToOptimize[TrueSucc] =
@@ -1274,11 +1275,9 @@ void GenXSimdCFConformance::handleOptimizedBranchCase(
  */
 void GenXSimdCFConformance::handleExistingBranchCase(
     GenXSimdCFConformance::GotoJoinEVs &GotoJoinData, BasicBlock *&TrueSucc,
-    BasicBlock *&FalseSucc, BranchInst *ExistingBranch) {
+    BasicBlock *&FalseSucc, IGCLLVM::CondBrInst *ExistingBranch) {
   ExtractValueInst *CondEV = GotoJoinData.getCondEV();
   IGC_ASSERT_MESSAGE(CondEV, "Expected valid CondEV!");
-  IGC_ASSERT_MESSAGE(ExistingBranch->isConditional(),
-                     "Expected conditional branch!");
 
   TrueSucc = ExistingBranch->getSuccessor(0);
   FalseSucc = ExistingBranch->getSuccessor(1);
@@ -1287,7 +1286,7 @@ void GenXSimdCFConformance::handleExistingBranchCase(
     // We need to simply introduce new BB to get CondEV
     FalseSucc = BasicBlock::Create(CondEV->getContext(), "cond_ev_split",
                                    CondEV->getFunction(), TrueSucc);
-    BranchInst::Create(TrueSucc, FalseSucc);
+    IGCLLVM::UncondBrInst::Create(TrueSucc, FalseSucc);
     ExistingBranch->setSuccessor(1, FalseSucc);
 
     LLVM_DEBUG(dbgs() << "Created " << FalseSucc->getName()
@@ -1325,7 +1324,7 @@ void GenXSimdCFConformance::handleCondValue(Value *GotoJoin) {
 
   // Collect Cond EV users
   std::vector<Value *> BadUsers;
-  BranchInst *CorrectUser = nullptr;
+  IGCLLVM::CondBrInst *CorrectUser = nullptr;
   collectCondEVUsers(CondEV, BadUsers, CorrectUser);
 
   // Nothing needs to be fixed. However, allow this algorithm to fix
@@ -1425,14 +1424,13 @@ bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto,
   ExtractValueInst *CondEV = GotoJoinEVsMap[Goto].getCondEV();
   auto BrIt = std::find_if(
       CondEV->use_begin(), CondEV->use_end(), [&Goto](const Use &u) {
-        auto *Br = dyn_cast<BranchInst>(u.getUser());
-        return (Br && Br->getParent() == Goto->getParent() &&
-                Br->isConditional());
+        auto *Br = dyn_cast<IGCLLVM::CondBrInst>(u.getUser());
+        return (Br && Br->getParent() == Goto->getParent());
       });
   IGC_ASSERT_MESSAGE(BrIt != CondEV->use_end(),
                      "All gotos should become branching earlier!");
 
-  BranchInst *Br = cast<BranchInst>(BrIt->getUser());
+  auto *Br = cast<IGCLLVM::CondBrInst>(BrIt->getUser());
   BasicBlock *TrueSucc = Br->getSuccessor(0);
   BasicBlock *FalseSucc = Br->getSuccessor(1);
 
@@ -1452,7 +1450,7 @@ bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto,
         BasicBlock::Create(FalseSucc->getContext(), "phi_fallthrough_splitter",
                            FalseSucc->getParent());
     Splitter->moveAfter(Goto->getParent());
-    BranchInst::Create(FalseSucc, Splitter);
+    IGCLLVM::UncondBrInst::Create(FalseSucc, Splitter);
     Br->setSuccessor(1, Splitter);
     // Update phis
     for (auto CurrInst = &FalseSucc->front();
@@ -1683,8 +1681,8 @@ void GenXSimdCFConformance::moveCodeInJoinBlocks() {
       BasicBlock *PredBlock = nullptr;
       for (auto ui = JoinBlock->use_begin(), ue = JoinBlock->use_end();
            ui != ue; ++ui) {
-        auto *Br = dyn_cast<BranchInst>(ui->getUser());
-        if (!Br || Br->isConditional())
+        auto *Br = dyn_cast<IGCLLVM::UncondBrInst>(ui->getUser());
+        if (!Br)
           continue;
         auto BB = Br->getParent();
         if (IGCLLVM::getFirstNonPHIOrDbg(BB) != Br)
@@ -2278,7 +2276,7 @@ static bool checkGotoJoinSunk(CallInst *GotoJoin) {
   for (Instruction *Inst = GotoJoin;;) {
     Inst = Inst->getNextNode();
     if (Inst->isTerminator()) {
-      if (!isa<BranchInst>(Inst))
+      if (!isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(Inst))
         return false;
       break;
     }
@@ -2330,14 +2328,14 @@ bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal) {
   // end, check that the join is sunk to the end of the block, other than
   // extracts from its result, and a branch. moveCodeInJoinBlocks ensures that
   // if possible; if that failed, this conformance check fails.
-  if (auto *Br = dyn_cast<BranchInst>(Join->getParent()->getTerminator()))
-    if (Br->isConditional())
-      if (auto *EV = dyn_cast<ExtractValueInst>(Br->getCondition()))
-        if (EV->getOperand(0) == Join)
-          if (!checkGotoJoinSunk(Join)) {
-            LLVM_DEBUG(dbgs() << "checkJoin: not sunk\n");
-            return false;
-          }
+  if (auto *Br =
+          dyn_cast<IGCLLVM::CondBrInst>(Join->getParent()->getTerminator()))
+    if (auto *EV = dyn_cast<ExtractValueInst>(Br->getCondition()))
+      if (EV->getOperand(0) == Join)
+        if (!checkGotoJoinSunk(Join)) {
+          LLVM_DEBUG(dbgs() << "checkJoin: not sunk\n");
+          return false;
+        }
   // Gather the web of RM values.
   auto RMValsEntry = &RMVals[Join];
   RMValsEntry->clear();
@@ -2455,7 +2453,8 @@ bool GenXSimdCFConformance::checkGotoJoin(SimpleValue EMVal) {
                            "have exactly one use\n");
       return false;
     }
-    auto *Br = dyn_cast<BranchInst>(ExtractScalar->use_begin()->getUser());
+    auto *Br =
+        dyn_cast<IGCLLVM::CondBrInst>(ExtractScalar->use_begin()->getUser());
     if (!Br || Br->getParent() != CI->getParent()) {
       LLVM_DEBUG(dbgs() << "checkGotoJoin: goto/join's !any result not used in "
                            "conditional branch in same block\n");
@@ -4192,8 +4191,8 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM) {
       if (auto *DomBB = DomTree->findNearestCommonDominator(
               SelPhiUser->getIncomingBlock(0),
               SelPhiUser->getIncomingBlock(1))) {
-        auto *Term = dyn_cast<BranchInst>(DomBB->getTerminator());
-        if (Term && Term->isConditional()) {
+        auto *Term = dyn_cast<IGCLLVM::CondBrInst>(DomBB->getTerminator());
+        if (Term) {
           auto *ExtrCond = dyn_cast<ExtractValueInst>(Term->getCondition());
           if (ExtrCond && ExtrCond->getAggregateOperand() == Goto) {
             LoadFalseVal = false;

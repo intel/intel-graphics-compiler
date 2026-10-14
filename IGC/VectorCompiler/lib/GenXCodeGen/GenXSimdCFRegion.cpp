@@ -215,7 +215,7 @@ using SimdCFRegionsT = std::vector<SimdCFRegionPtr>;
 class SimdCFIfRegion final : public SimdCFRegionBase {
   SimdCFRegionBase *IfThenRegion = nullptr;
   SimdCFRegionBase *IfElseRegion = nullptr;
-  BranchInst *SimdIfBranch = nullptr;
+  IGCLLVM::CondBrInst *SimdIfBranch = nullptr;
   RegionIterator AllBlocks;
 
 public:
@@ -233,7 +233,7 @@ public:
   bool hasElse() const;
   SimdCFRegionBase *getIfThenRegion() const;
   SimdCFRegionBase *getIfElseRegion() const;
-  BranchInst *getIfSimdBranch() const;
+  IGCLLVM::CondBrInst *getIfSimdBranch() const;
   int getIdThen() const;
   CallInst *getIfSimdCondition() const;
   bool verify() const override;
@@ -250,7 +250,7 @@ public:
 
 class SimdCFLoopRegion final : public SimdCFRegionBase {
   Loop *SimdLoop;
-  BranchInst *SimdLoopBranch = nullptr;
+  IGCLLVM::CondBrInst *SimdLoopBranch = nullptr;
   BasicBlock *LoopHead = nullptr;
 
 public:
@@ -262,7 +262,7 @@ public:
   SimdCFLoopRegion(const SimdCFLoopRegion &) = delete;
   SimdCFLoopRegion &operator=(const SimdCFLoopRegion &) = delete;
 
-  BranchInst *getSimdBranch() const;
+  IGCLLVM::CondBrInst *getSimdBranch() const;
   CallInst *getSimdCondition() const;
   BasicBlock *getLoopHead() const;
   int getIdExit() const;
@@ -327,7 +327,7 @@ SimdCFIfRegion::SimdCFIfRegion(BasicBlock *Entry, SimdCFRegionBase *IfThen,
       IfThenRegion(IfThen), IfElseRegion(IfElse),
       AllBlocks(*SimdCFRegionBase::Blocks()) {
   IGC_ASSERT(IfThenRegion);
-  SimdIfBranch = cast<BranchInst>(Entry->getTerminator());
+  SimdIfBranch = cast<IGCLLVM::CondBrInst>(Entry->getTerminator());
   CallInst *Cond = dyn_cast<CallInst>(SimdIfBranch->getCondition());
   IGC_ASSERT(Cond);
   Mask = Cond->getArgOperand(0);
@@ -348,10 +348,11 @@ SimdCFRegionBase *SimdCFIfRegion::getIfElseRegion() const {
   return IfElseRegion;
 }
 
-BranchInst *SimdCFIfRegion::getIfSimdBranch() const { return SimdIfBranch; }
+IGCLLVM::CondBrInst *SimdCFIfRegion::getIfSimdBranch() const {
+  return SimdIfBranch;
+}
 
 int SimdCFIfRegion::getIdThen() const {
-  IGC_ASSERT(getIfSimdBranch()->isConditional());
   IGC_ASSERT(getIfSimdBranch()->getNumSuccessors() == 2);
   if (getIfSimdBranch()->getSuccessor(0) == IfThenRegion->getEntry())
     return 0;
@@ -379,8 +380,8 @@ bool SimdCFIfRegion::verify() const {
       LLVM_DEBUG(dbgs() << "First Exit\n");
       return false;
     }
-    auto *BI = dyn_cast<BranchInst>(BB->getTerminator());
-    if (BI && BI->getNumSuccessors() > 1) {
+    auto *BI = dyn_cast<IGCLLVM::CondBrInst>(BB->getTerminator());
+    if (BI) {
       LLVM_DEBUG(BI->print(dbgs()));
       LLVM_DEBUG(dbgs() << "Exit for branch with num succ "
                         << BI->getNumSuccessors() << " \n");
@@ -423,13 +424,15 @@ SimdCFLoopRegion::SimdCFLoopRegion(BasicBlock *Entry, Loop *L, BasicBlock *Exit,
                                    SimdCFRegion *Parent)
     : SimdCFRegionBase(Entry, Exit, RI, DT, Parent, RK_LoopReg), SimdLoop(L) {
   SimdLoopBranch =
-      cast<BranchInst>(SimdLoop->getExitingBlock()->getTerminator());
+      cast<IGCLLVM::CondBrInst>(SimdLoop->getExitingBlock()->getTerminator());
   auto *Cond = cast<CallInst>(getSimdBranch()->getCondition());
   Mask = Cond->getArgOperand(0);
   LoopHead = SimdLoopBranch->getSuccessor(getIdExit());
 }
 
-BranchInst *SimdCFLoopRegion::getSimdBranch() const { return SimdLoopBranch; }
+IGCLLVM::CondBrInst *SimdCFLoopRegion::getSimdBranch() const {
+  return SimdLoopBranch;
+}
 
 CallInst *SimdCFLoopRegion::getSimdCondition() const {
   return dyn_cast<CallInst>(getSimdBranch()->getCondition());
@@ -438,7 +441,6 @@ CallInst *SimdCFLoopRegion::getSimdCondition() const {
 BasicBlock *SimdCFLoopRegion::getLoopHead() const { return LoopHead; }
 
 int SimdCFLoopRegion::getIdExit() const {
-  IGC_ASSERT(getSimdBranch()->isConditional());
   IGC_ASSERT(getSimdBranch()->getNumSuccessors() == 2);
   if (getSimdBranch()->getSuccessor(0) == getExit())
     return 0;
@@ -451,8 +453,7 @@ bool SimdCFLoopRegion::verify() const {
     if (BB == getEntry() || BB == SimdLoop->getExitingBlock())
       return false;
 
-    auto *BI = dyn_cast<BranchInst>(BB->getTerminator());
-    if (BI && BI->getNumSuccessors() > 1)
+    if (isa<IGCLLVM::CondBrInst>(BB->getTerminator()))
       return true;
     return false;
   };
@@ -564,9 +565,9 @@ private:
   bool transform(SimdCFIfRegion *R);
   bool transform(SimdCFLoopRegion *R);
 
-  void generateGoto(BranchInst *Br);
+  void generateGoto(IGCLLVM::CondBrInst *Br);
   void generateOppositeMask(Type *RmTy);
-  void generateThenGoto(BranchInst *Br, BasicBlock *Join);
+  void generateThenGoto(Instruction *Br, BasicBlock *Join);
   Value *generateJoin(BasicBlock *JoinBlock);
   AllocaInst *getEMAddr(Function *F);
   //  Get or create EM-Load for basic-block
@@ -576,18 +577,19 @@ private:
 
   AllocaInst *getRMAddr(unsigned Width = 0);
   bool isSimdCFCondition(Value *Cond);
-  std::pair<BranchInst *, Value *> findSimdCFBranchAndCondition(BasicBlock &BB);
+  std::pair<IGCLLVM::CondBrInst *, Value *>
+  findSimdCFBranchAndCondition(BasicBlock &BB);
 
   bool isReduceAnd(const Value *V);
   bool isReduceOr(const Value *V);
   bool areOppositeSimdCFConditions(Value *IfCond, Value *ElseCond);
 
-  BasicBlock *getIfExitFromIfBranch(BranchInst &BrInst);
-  BasicBlock *getIfExitFromElseBranch(BranchInst &BrInst);
-  BasicBlock *getIfThenEntry(BranchInst &BrInst);
-  BasicBlock *getIfThenEnd(BranchInst &BrInst);
-  BasicBlock *getIfElseEntry(BranchInst &BrInst);
-  BasicBlock *getIfElseEnd(BranchInst &BrInst);
+  BasicBlock *getIfExitFromIfBranch(IGCLLVM::CondBrInst &BrInst);
+  BasicBlock *getIfExitFromElseBranch(IGCLLVM::CondBrInst &BrInst);
+  BasicBlock *getIfThenEntry(IGCLLVM::CondBrInst &BrInst);
+  BasicBlock *getIfThenEnd(IGCLLVM::CondBrInst &BrInst);
+  BasicBlock *getIfElseEntry(IGCLLVM::CondBrInst &BrInst);
+  BasicBlock *getIfElseEnd(IGCLLVM::CondBrInst &BrInst);
 
   // TODO: simd-conformance pass expect select, wrregion, shufflevector
   // and gather/scatter need support more complex examples
@@ -595,7 +597,7 @@ private:
   bool analizeInsts(BBContainer *Container, Value *Cond);
 
   SimdCFRegionPtr tryMatchIf(BasicBlock &BB);
-  std::pair<BranchInst *, Value *>
+  std::pair<IGCLLVM::CondBrInst *, Value *>
   findSimdCFLoopBranchAndCondition(const Loop &L);
   SimdCFRegionPtr tryMatchLoop(BasicBlock &BB);
 };
@@ -661,7 +663,7 @@ bool GenXPredToSimdCF::isSimdCFCondition(Value *Cond) {
   }
 }
 
-std::pair<BranchInst *, Value *>
+std::pair<IGCLLVM::CondBrInst *, Value *>
 GenXPredToSimdCF::findSimdCFBranchAndCondition(BasicBlock &BB) {
   LLVM_DEBUG(dbgs() << "Trying to find Simd branch and condition in:\n"
                     << BB.getName() << "\n");
@@ -673,20 +675,14 @@ GenXPredToSimdCF::findSimdCFBranchAndCondition(BasicBlock &BB) {
     return std::make_pair(nullptr, nullptr);
   }
 
-  if (!isa<BranchInst>(Terminator)) {
+  if (!isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(Terminator)) {
     LLVM_DEBUG(dbgs() << "Terminator isn't a branch for BB '" << BB.getName()
                       << "'\n");
     return std::make_pair(nullptr, nullptr);
   }
 
-  auto *BrInst = cast<BranchInst>(Terminator);
+  auto *BrInst = dyn_cast<IGCLLVM::CondBrInst>(Terminator);
   if (!BrInst) {
-    LLVM_DEBUG(dbgs() << "Terminator isn't a branch for BB '" << BB.getName()
-                      << "'\n");
-    return std::make_pair(nullptr, nullptr);
-  }
-
-  if (BrInst->isUnconditional()) {
     LLVM_DEBUG(dbgs() << "Branch is unconditional for BB '" << BB.getName()
                       << "'\n");
     return std::make_pair(nullptr, nullptr);
@@ -760,9 +756,8 @@ bool GenXPredToSimdCF::areOppositeSimdCFConditions(Value *IfCond,
   return IfMask == ElseMask->getOperand(0);
 }
 
-BasicBlock *GenXPredToSimdCF::getIfExitFromIfBranch(BranchInst &BrInst) {
-  if (!BrInst.isConditional())
-    return nullptr;
+BasicBlock *
+GenXPredToSimdCF::getIfExitFromIfBranch(IGCLLVM::CondBrInst &BrInst) {
   enum { N_IF_EXIT_PREDECESSORS = 2 };
   auto *FirstSucc = BrInst.getSuccessor(0);
   if (FirstSucc->hasNPredecessors(N_IF_EXIT_PREDECESSORS))
@@ -773,9 +768,8 @@ BasicBlock *GenXPredToSimdCF::getIfExitFromIfBranch(BranchInst &BrInst) {
   return nullptr;
 }
 
-BasicBlock *GenXPredToSimdCF::getIfExitFromElseBranch(BranchInst &BrInst) {
-  if (!BrInst.isConditional())
-    return nullptr;
+BasicBlock *
+GenXPredToSimdCF::getIfExitFromElseBranch(IGCLLVM::CondBrInst &BrInst) {
   auto *IfElseEntry = getIfElseEntry(BrInst);
   auto IfExit = std::find_if(
       BrInst.successors().begin(), BrInst.successors().end(),
@@ -783,9 +777,7 @@ BasicBlock *GenXPredToSimdCF::getIfExitFromElseBranch(BranchInst &BrInst) {
   return IfExit != BrInst.successors().end() ? *IfExit : nullptr;
 }
 
-BasicBlock *GenXPredToSimdCF::getIfThenEntry(BranchInst &BrInst) {
-  if (!BrInst.isConditional())
-    return nullptr;
+BasicBlock *GenXPredToSimdCF::getIfThenEntry(IGCLLVM::CondBrInst &BrInst) {
   enum { N_IF_THEN_ENTRY_PREDECESSORS = 1 };
   auto *FirstSucc = BrInst.getSuccessor(0);
   if (FirstSucc->hasNPredecessors(N_IF_THEN_ENTRY_PREDECESSORS))
@@ -796,9 +788,7 @@ BasicBlock *GenXPredToSimdCF::getIfThenEntry(BranchInst &BrInst) {
   return nullptr;
 }
 
-BasicBlock *GenXPredToSimdCF::getIfThenEnd(BranchInst &BrInst) {
-  if (!BrInst.isConditional())
-    return nullptr;
+BasicBlock *GenXPredToSimdCF::getIfThenEnd(IGCLLVM::CondBrInst &BrInst) {
   auto *IfExit = getIfExitFromIfBranch(BrInst);
   if (!IfExit)
     return nullptr;
@@ -808,9 +798,7 @@ BasicBlock *GenXPredToSimdCF::getIfThenEnd(BranchInst &BrInst) {
   return IfThenEnd != pred_end(IfExit) ? *IfThenEnd : nullptr;
 }
 
-BasicBlock *GenXPredToSimdCF::getIfElseEntry(BranchInst &BrInst) {
-  if (!BrInst.isConditional())
-    return nullptr;
+BasicBlock *GenXPredToSimdCF::getIfElseEntry(IGCLLVM::CondBrInst &BrInst) {
   enum { N_IF_ELSE_ENTRY_PREDECESSORS = 2 };
   auto *FirstSucc = BrInst.getSuccessor(0);
   if (FirstSucc->hasNPredecessors(N_IF_ELSE_ENTRY_PREDECESSORS))
@@ -821,9 +809,7 @@ BasicBlock *GenXPredToSimdCF::getIfElseEntry(BranchInst &BrInst) {
   return nullptr;
 }
 
-BasicBlock *GenXPredToSimdCF::getIfElseEnd(BranchInst &BrInst) {
-  if (!BrInst.isConditional())
-    return nullptr;
+BasicBlock *GenXPredToSimdCF::getIfElseEnd(IGCLLVM::CondBrInst &BrInst) {
   auto IfExitPos = std::find_if(
       BrInst.successors().begin(), BrInst.successors().end(),
       [&BrInst, this](BasicBlock *BB) { return BB != getIfElseEntry(BrInst); });
@@ -1072,7 +1058,7 @@ SimdCFRegionPtr GenXPredToSimdCF::tryMatchIf(BasicBlock &BB) {
       &getAnalysis<DominatorTreeWrapperPass>().getDomTree());
 }
 
-std::pair<BranchInst *, Value *>
+std::pair<IGCLLVM::CondBrInst *, Value *>
 GenXPredToSimdCF::findSimdCFLoopBranchAndCondition(const Loop &L) {
   LLVM_DEBUG(dbgs() << "Trying to find Simd CF branch and condition in:\n"
                     << L.getName() << "\n");
@@ -1247,7 +1233,7 @@ void GenXPredToSimdCF::generateOppositeMask(Type *RmTy) {
 }
 
 // Called for if-then and also for loop patterns
-void GenXPredToSimdCF::generateGoto(BranchInst *Br) {
+void GenXPredToSimdCF::generateGoto(IGCLLVM::CondBrInst *Br) {
   IRBuilder<> Builder(Br);
 
   auto SimdWidth = getSimdSize(Mask->getType());
@@ -1292,7 +1278,7 @@ void GenXPredToSimdCF::generateGoto(BranchInst *Br) {
 // * NewRM = OldRM | (OldEM & ~(zero & OldEM == zero)) == OldRM | (OldEM &
 // allOne) == OldRM | OldEM == (enable all)
 // * Cond = !any(zero) == !false == true
-void GenXPredToSimdCF::generateThenGoto(BranchInst *Br, BasicBlock *Join) {
+void GenXPredToSimdCF::generateThenGoto(Instruction *Br, BasicBlock *Join) {
   IRBuilder<> Builder(Br);
 
   auto SimdWidth = getSimdSize(Mask->getType());
@@ -1343,17 +1329,18 @@ void GenXPredToSimdCF::insertIfGotoJoin(SimdCFIfRegion *R) {
     Br->swapSuccessors();
 
   auto *IfThenExitBr = IfThenExit->getTerminator();
-  IGC_ASSERT(isa<BranchInst>(IfThenExitBr));
+  IGC_ASSERT((isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(IfThenExitBr)));
   IfThenExitBr->setSuccessor(0, JoinBlock);
 
   // Additional fix for else-branch
   if (R->hasElse()) {
     auto *ElseExit = R->getIfThenRegion()->getExit();
-    Br = cast<BranchInst>(ElseExit->getTerminator());
+    auto *ElseBr = ElseExit->getTerminator();
+    IGC_ASSERT((isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(ElseBr)));
     auto *IfEndBB = IfThenExitBr->getSuccessor(1);
     // 1-th: generate goto(EM, zeroinitializer, zeroinitializer) in the end of
     // then-block
-    generateThenGoto(Br, JoinBlock);
+    generateThenGoto(ElseBr, JoinBlock);
 
     for (auto &PHI : IfEndBB->phis()) {
       PHI.replaceIncomingBlockWith(IfThenExit, JoinBlock);
@@ -1391,7 +1378,6 @@ void GenXPredToSimdCF::insertLoopGotoJoin(SimdCFLoopRegion *R) {
   auto *JoinBlock = BasicBlock::Create(M->getContext(), JoinBlockName, F,
                                        LastBlock->getNextNode());
 
-  IGC_ASSERT(isa<BranchInst>(Br));
   Br->setSuccessor(R->getIdExit(), JoinBlock);
   if (NeedSwap)
     Br->swapSuccessors();

@@ -94,6 +94,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/InstVisitor.h"
+#include "llvmWrapper/IR/InstVisitor.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/ValueMap.h"
 #include "llvm/Support/Casting.h"
@@ -272,7 +273,8 @@ namespace {
 // Helper class to load constants which cannot be immediate values. Should be
 // only used from the genx::loadConstants() function.
 //
-class ConstantLoadHelper : public InstVisitor<ConstantLoadHelper, bool> {
+class ConstantLoadHelper
+    : public IGCLLVM::InstVisitor<ConstantLoadHelper, bool> {
 public:
   ConstantLoadHelper(const GenXSubtarget &ST, const DataLayout &DL,
                      SmallVectorImpl<Instruction *> *AddedInst)
@@ -284,7 +286,7 @@ public:
   bool visitFCmpInst(FCmpInst &I);
   bool visitSelectInst(SelectInst &SI);
   bool visitInsertValueInst(InsertValueInst &IV);
-  bool visitBranchInst(BranchInst &Br);
+  bool visitCondBrInst(IGCLLVM::CondBrInst &Br);
   bool visitReturnInst(ReturnInst &Ret);
   bool visitCallInst(CallInst &CI);
 
@@ -377,13 +379,11 @@ bool ConstantLoadHelper::visitInsertValueInst(InsertValueInst &IV) {
   return Modified;
 }
 
-bool ConstantLoadHelper::visitBranchInst(BranchInst &Br) {
-  // Conditional branch: disallow constant condition.
-  if (Br.isConditional()) {
-    if (auto *C = dyn_cast<Constant>(Br.getCondition())) {
-      Br.setCondition(ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&Br));
-      return true;
-    }
+bool ConstantLoadHelper::visitCondBrInst(IGCLLVM::CondBrInst &Br) {
+  // Disallow constant condition.
+  if (auto *C = dyn_cast<Constant>(Br.getCondition())) {
+    Br.setCondition(ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&Br));
+    return true;
   }
   return false;
 }

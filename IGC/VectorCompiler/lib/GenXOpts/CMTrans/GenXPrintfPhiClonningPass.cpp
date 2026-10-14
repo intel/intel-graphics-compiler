@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Operator.h"
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Support/BackendConfig.h"
@@ -253,7 +254,8 @@ void GenXPrintfPhiClonning::cloneBBs(CallInst *CI, PHINode *Phi) {
                        RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
 
     auto *IncBB = Phi->getIncomingBlock(i);
-    auto *PrevTerm = cast<BranchInst>(IncBB->getTerminator());
+    auto *PrevTerm = IncBB->getTerminator();
+    IGC_ASSERT((isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(PrevTerm)));
 
     int EdgeNum = 0;
     for (;; ++EdgeNum)

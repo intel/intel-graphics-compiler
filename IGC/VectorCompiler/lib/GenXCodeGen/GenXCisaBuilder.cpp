@@ -413,8 +413,9 @@ private:
   bool buildInstruction(Instruction *Inst);
   bool buildMainInst(Instruction *Inst, genx::BaleInfo BI, unsigned Mod,
                      const DstOpndDesc &DstDesc);
-  void buildJoin(CallInst *Join, BranchInst *Branch);
-  bool buildBranch(BranchInst *Branch);
+  void buildJoin(CallInst *Join, IGCLLVM::CondBrInst *Branch);
+  bool buildBranch(IGCLLVM::UncondBrInst *Branch);
+  bool buildBranch(IGCLLVM::CondBrInst *Branch);
   void buildIndirectBr(IndirectBrInst *Br);
   void buildIntrinsic(CallInst *CI, unsigned IntrinID, genx::BaleInfo BI,
                       unsigned Mod, const DstOpndDesc &DstDesc);
@@ -449,7 +450,7 @@ private:
 
   void addLabelInst(const Value *BB);
   void buildPhiNode(PHINode *Phi);
-  void buildGoto(CallInst *Goto, BranchInst *Branch);
+  void buildGoto(CallInst *Goto, IGCLLVM::CondBrInst *Branch);
   void buildCall(CallInst *CI, const DstOpndDesc &DstDesc);
   void buildStackCallLight(CallInst *CI, const DstOpndDesc &DstDesc);
   void buildInlineAsm(CallInst *CI);
@@ -2696,7 +2697,9 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
     buildPhiNode(Phi);
   else if (ReturnInst *RI = dyn_cast<ReturnInst>(Inst)) {
     buildRet(RI);
-  } else if (BranchInst *BR = dyn_cast<BranchInst>(Inst)) {
+  } else if (auto *BR = dyn_cast<IGCLLVM::UncondBrInst>(Inst)) {
+    return buildBranch(BR);
+  } else if (auto *BR = dyn_cast<IGCLLVM::CondBrInst>(Inst)) {
     return buildBranch(BR);
   } else if (IndirectBrInst *IBR = dyn_cast<IndirectBrInst>(Inst)) {
     buildIndirectBr(IBR);
@@ -2849,7 +2852,7 @@ void GenXKernelBuilder::buildPhiNode(PHINode *Phi) {
  *                   and LLVM changes the resulting conditional branch with
  *                   both successors the same into an unconditional branch
  */
-void GenXKernelBuilder::buildGoto(CallInst *Goto, BranchInst *Branch) {
+void GenXKernelBuilder::buildGoto(CallInst *Goto, IGCLLVM::CondBrInst *Branch) {
   // GenXSimdCFConformance and GenXTidyControlFlow ensure that we have either
   // 1. a forward goto, where the false successor is fallthrough; or
   // 2. a backward goto, where the UIP (the join whose RM the goto updates)
@@ -4221,21 +4224,26 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 }
 
 /***********************************************************************
- * buildBranch : build a conditional or unconditional branch
+ * buildBranch : build an unconditional branch
  *
  * Return:  true if fell through to successor
  */
-bool GenXKernelBuilder::buildBranch(BranchInst *Branch) {
+bool GenXKernelBuilder::buildBranch(IGCLLVM::UncondBrInst *Branch) {
   BasicBlock *Next = Branch->getParent()->getNextNode();
-  if (Branch->isUnconditional()) {
-    // Unconditional branch
-    if (Branch->getOperand(0) == Next)
-      return true; // fall through to successor
-    auto labelId = getOrCreateLabel(Branch->getSuccessor(0), LABEL_BLOCK);
-    CISA_CALL(Kernel->AppendVISACFJmpInst(nullptr, Labels[labelId]));
-    return false;
-  }
-  // Conditional branch.
+  if (Branch->getSuccessor(0) == Next)
+    return true; // fall through to successor
+  auto labelId = getOrCreateLabel(Branch->getSuccessor(0), LABEL_BLOCK);
+  CISA_CALL(Kernel->AppendVISACFJmpInst(nullptr, Labels[labelId]));
+  return false;
+}
+
+/***********************************************************************
+ * buildBranch : build a conditional branch
+ *
+ * Return:  true if fell through to successor
+ */
+bool GenXKernelBuilder::buildBranch(IGCLLVM::CondBrInst *Branch) {
+  BasicBlock *Next = Branch->getParent()->getNextNode();
   // First check if it is a baled in goto/join, via an extractvalue.
   auto BI = Baling->getBaleInfo(Branch);
   if (BI.isOperandBaled(0 /*condition*/)) {
@@ -4316,7 +4324,7 @@ void GenXKernelBuilder::buildIndirectBr(IndirectBrInst *Br) {
  *                   in to a branch because it always ends up with at least
  *                   one channel enabled
  */
-void GenXKernelBuilder::buildJoin(CallInst *Join, BranchInst *Branch) {
+void GenXKernelBuilder::buildJoin(CallInst *Join, IGCLLVM::CondBrInst *Branch) {
   IGC_ASSERT(HasSimdCF);
   // A join needs a label. (If the join is at the start of its block, then
   // this gets merged into the block label.)

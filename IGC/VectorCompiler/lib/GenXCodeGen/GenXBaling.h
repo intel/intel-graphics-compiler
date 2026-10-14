@@ -236,6 +236,7 @@ SPDX-License-Identifier: MIT
 
 #include "IgnoreRAUWValueMap.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #include "llvm/ADT/Hashing.h"
 #include "llvm/IR/Dominators.h"
@@ -245,7 +246,6 @@ SPDX-License-Identifier: MIT
 #include <string>
 
 namespace llvm {
-class BranchInst;
 class CallInst;
 class DebugLoc;
 class GenXLiveness;
@@ -539,7 +539,7 @@ private:
   bool processSelectToPredicate(SelectInst *SI);
   // Helper func for buildBale
   void buildBaleSub(Instruction *Inst, genx::Bale *B, bool IncludeAddr) const;
-  void processBranch(BranchInst *Branch);
+  void processBranch(IGCLLVM::CondBrInst *Branch);
   void processTwoAddrSend(CallInst *CI);
   void setOperandBaled(Instruction *Inst, unsigned OperandNum,
                        genx::BaleInfo *BI);

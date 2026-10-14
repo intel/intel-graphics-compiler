@@ -2633,7 +2633,7 @@ bool GenXLowering::lowerBoolScalarSelect(SelectInst *SI) {
 
   auto *TermThen =
       SplitBlockAndInsertIfThen(SI->getCondition(), SI, false, nullptr, &DTU);
-  (cast<BranchInst>(BB1->getTerminator()))->swapSuccessors();
+  (cast<IGCLLVM::CondBrInst>(BB1->getTerminator()))->swapSuccessors();
   auto *BB2 = TermThen->getParent();
   auto *BB4 = BB2->getSingleSuccessor();
   BB2->setName("select.false");

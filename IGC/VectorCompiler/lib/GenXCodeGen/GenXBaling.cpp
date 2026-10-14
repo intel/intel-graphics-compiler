@@ -222,8 +222,10 @@ void GenXBaling::processInst(Instruction *Inst) {
     processRdRegion(Inst);
   else if (IntrinID == GenXIntrinsic::genx_rdpredregion)
     processRdPredRegion(Inst);
-  else if (BranchInst *Branch = dyn_cast<BranchInst>(Inst))
+  else if (auto *Branch = dyn_cast<IGCLLVM::CondBrInst>(Inst))
     processBranch(Branch);
+  else if (isa<IGCLLVM::UncondBrInst>(Inst))
+    ;
   else if (auto SI = dyn_cast<StoreInst>(Inst))
     processStore(SI);
   else if (isa<CallInst>(Inst) && cast<CallInst>(Inst)->isInlineAsm())
@@ -1628,17 +1630,15 @@ bool GenXBaling::processSelectToPredicate(SelectInst *SI) {
 /***********************************************************************
  * processBranch : process a branch instruction
  *
- * If the branch is conditional, bale in all/any/not
+ * Bale in all/any/not into a conditional branch
  */
-void GenXBaling::processBranch(BranchInst *Branch) {
-  if (Branch->isConditional()) {
-    BaleInfo BI(BaleInfo::MAININST);
-    if (processPredicate(Branch, 0 /*OperandNum of predicate*/)) {
-      LLVM_DEBUG(llvm::dbgs() << __FUNCTION__ << " setting operand #" << 0
-                              << " to bale in instruction " << *Branch << "\n");
-      setOperandBaled(Branch, 0 /*OperandNum*/, &BI);
-      setBaleInfo(Branch, BI);
-    }
+void GenXBaling::processBranch(IGCLLVM::CondBrInst *Branch) {
+  BaleInfo BI(BaleInfo::MAININST);
+  if (processPredicate(Branch, 0 /*OperandNum of predicate*/)) {
+    LLVM_DEBUG(llvm::dbgs() << __FUNCTION__ << " setting operand #" << 0
+                            << " to bale in instruction " << *Branch << "\n");
+    setOperandBaled(Branch, 0 /*OperandNum*/, &BI);
+    setBaleInfo(Branch, BI);
   }
 }
 

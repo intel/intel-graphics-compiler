@@ -896,7 +896,8 @@ bool GenXLegalization::processAllAny(Instruction *Inst,
         else
           User = cast<Instruction>(User->use_begin()->getUser());
       }
-      if (User && (isa<SelectInst>(User) || isa<BranchInst>(User)))
+      if (User &&
+          isa<SelectInst, IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(User))
         return false;
     }
     // Do that conversion.

@@ -198,7 +198,7 @@ static bool GenXUnifyReturnBlocks(Function &F) {
 
     IGCLLVM::popBackInstruction(BB); // Remove the return insn
 
-    BranchInst::Create(NewRetBlock, BB);
+    IGCLLVM::UncondBrInst::Create(NewRetBlock, BB);
   }
   return true;
 }

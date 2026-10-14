@@ -179,17 +179,19 @@ bool GotoJoin::isBranchingJoinLabelBlock(BasicBlock *BB) {
 BasicBlock *GotoJoin::getBranchingBlockForBB(BasicBlock *BB,
                                              bool SkipCriticalEdgeSplitter) {
   for (auto ui = BB->use_begin(), ue = BB->use_end(); ui != ue; ++ui) {
-    auto PredBr = dyn_cast<BranchInst>(ui->getUser());
-    if (!PredBr || PredBr->getSuccessor(0) != BB)
+    auto PredBr = dyn_cast<Instruction>(ui->getUser());
+    if (!PredBr || !isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(PredBr) ||
+        PredBr->getSuccessor(0) != BB)
       continue;
     // PredBr is a branch that has BB as its "true" successor. First skip a
     // critical edge splitter.
     auto PredBB = PredBr->getParent();
-    if (SkipCriticalEdgeSplitter && PredBr->getNumSuccessors() == 1 &&
+    if (SkipCriticalEdgeSplitter && isa<IGCLLVM::UncondBrInst>(PredBr) &&
         PredBr == IGCLLVM::getFirstNonPHIOrDbg(PredBB) && PredBB->hasOneUse()) {
       auto ui2 = PredBB->use_begin();
-      PredBr = dyn_cast<BranchInst>(ui2->getUser());
-      if (!PredBr || PredBr->getSuccessor(0) != PredBB)
+      PredBr = dyn_cast<Instruction>(ui2->getUser());
+      if (!PredBr || !isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(PredBr) ||
+          PredBr->getSuccessor(0) != PredBB)
         continue;
       PredBB = PredBr->getParent();
     }
@@ -249,15 +251,13 @@ CallInst *GotoJoin::isBranchingJoinBlock(BasicBlock *BB) {
  * block.
  */
 CallInst *GotoJoin::isBranchingGotoJoinBlock(BasicBlock *BB) {
-  auto Br = dyn_cast<BranchInst>(BB->getTerminator());
-  if (!Br)
-    return nullptr;
-  if (!Br->isConditional()) {
+  auto *Term = BB->getTerminator();
+  if (isa<IGCLLVM::UncondBrInst>(Term)) {
     // Unconditional branch. Check for the block ending with a goto or an
     // extract from a goto.
-    if (Br == &BB->front())
+    if (Term == &BB->front())
       return nullptr;
-    Value *LastInst = Br->getPrevNode();
+    Value *LastInst = Term->getPrevNode();
     if (auto EV = dyn_cast<ExtractValueInst>(LastInst))
       LastInst = EV->getOperand(0);
     if (GenXIntrinsic::getGenXIntrinsicID(LastInst) ==
@@ -265,6 +265,9 @@ CallInst *GotoJoin::isBranchingGotoJoinBlock(BasicBlock *BB) {
       return cast<CallInst>(LastInst);
     return nullptr;
   }
+  auto Br = dyn_cast<IGCLLVM::CondBrInst>(Term);
+  if (!Br)
+    return nullptr;
   // Conditional branch. Check for the condition being an extractvalue from a
   // goto/join.
   auto EV = dyn_cast<ExtractValueInst>(Br->getCondition());
