@@ -23258,10 +23258,12 @@ void EmitPass::emitInt4VectorUnpack(llvm::GenIntrinsicInst *GII) {
 
   CVariable *immFour = m_currShader->ImmToVariable(4, ISA_TYPE_UB);
   CVariable *immMask4Bit = m_currShader->ImmToVariable(0b1111, ISA_TYPE_UB);
+  // asr replicates the sign bit only on signed operand types.
+  VISA_Type elemType = signExtend ? ISA_TYPE_B : ISA_TYPE_UB;
 
   for (int rowOffset = 0; rowOffset < inputNum; rowOffset += execSize) {
-    CVariable *row = m_currShader->GetNewAlias(cinput, ISA_TYPE_UB, rowOffset, execSize);
-    CVariable *dst0 = m_currShader->GetNewAlias(m_destination, ISA_TYPE_UB, rowOffset * 2, execSize);
+    CVariable *row = m_currShader->GetNewAlias(cinput, elemType, rowOffset, execSize);
+    CVariable *dst0 = m_currShader->GetNewAlias(m_destination, elemType, rowOffset * 2, execSize);
     if (signExtend) {
       m_encoder->Shl(dst0, row, immFour);
       m_encoder->IShr(dst0, dst0, immFour);
@@ -23269,7 +23271,7 @@ void EmitPass::emitInt4VectorUnpack(llvm::GenIntrinsicInst *GII) {
       m_encoder->And(dst0, row, immMask4Bit);
 
     if (rowOffset * 2 + execSize < dstNum) {
-      CVariable *dst1 = m_currShader->GetNewAlias(m_destination, ISA_TYPE_UB, rowOffset * 2 + execSize, execSize);
+      CVariable *dst1 = m_currShader->GetNewAlias(m_destination, elemType, rowOffset * 2 + execSize, execSize);
       if (signExtend)
         m_encoder->IShr(dst1, row, immFour);
       else

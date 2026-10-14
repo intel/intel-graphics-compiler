@@ -8,7 +8,7 @@
 ; FIXME: make this test work without shader type
 ; REQUIRES: regkeys, shader-types
 ;
-; RUN: igc_opt -platformbmg -igc-emit-visa -simd-mode 16 -inputrt -regkey DumpVISAASMToConsole -S %s | FileCheck %s
+; RUN: igc_opt -platformbmg -igc-emit-visa -simd-mode 16 -inputrt -regkey DumpVISAASMToConsole,AddVISADumpDeclarationsToEnd -S %s | FileCheck %s
 ; ------------------------------------------------
 ; EmitVISAPass
 ; ------------------------------------------------
@@ -33,13 +33,18 @@ entry:
   %loaded = load i16, i16 addrspace(1)* %srcOffsetted, align 2
   %loadedCast = bitcast i16 %loaded to <2 x i8>
 
-  ; CHECK: shl (M1, 16) [[UNPACKED:[A-z0-9]*]](0,0)<1> [[LOADED:[A-z0-9]*]](0,0)<1;1,0> 0x4:ub
+  ; CHECK: shl (M1, 16) [[UNPACKED:[A-z0-9_]*]](0,0)<1> [[LOADED:[A-z0-9_]*]](0,0)<1;1,0> 0x4:ub
   ; CHECK: asr (M1, 16) [[UNPACKED]](0,0)<1> [[UNPACKED]](0,0)<1;1,0> 0x4:ub
 
   ; CHECK: asr (M1, 16) [[UNPACKED]](0,16)<1> [[LOADED]](0,0)<1;1,0> 0x4:ub
 
   ; CHECK: shl (M1, 16) [[UNPACKED]](0,32)<1> [[LOADED]](0,16)<1;1,0> 0x4:ub
   ; CHECK: asr (M1, 16) [[UNPACKED]](0,32)<1> [[UNPACKED]](0,32)<1;1,0> 0x4:ub
+
+  ; asr replicates the sign bit only on signed types, so the operands must be
+  ; :b, not :ub.
+  ; CHECK-DAG: // .decl [[UNPACKED]] v_type=G type=b num_elts=48
+  ; CHECK-DAG: // .decl [[LOADED]] v_type=G type=b num_elts=32
   %unpacked = call <3 x i8> @llvm.genx.GenISA.Int4VectorUnpack.v3i8.v2i8(<2 x i8> %loadedCast, i8 1)
 
   ; Extract the first 3 bytes from the unpacked result
