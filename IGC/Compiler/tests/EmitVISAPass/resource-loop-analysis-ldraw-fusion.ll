@@ -29,7 +29,7 @@ entry:
 ; CHECK-FRL0:      _test_ldraw_fusion_004__opt_resource_loop:
 ; CHECK-FRL0:      _test_ldraw_fusion_005__opt_resource_loop:
 ; CHECK-FRL0:      _test_ldraw_fusion_006__opt_resource_loop:
-; CHECK-FRL0:      (P6) lsc_load.ugm (M1, 16)  V0083:d32  bss(V0088)[V0080]:a32
+; CHECK-FRL0:      (P6) lsc_load.ugm (M1, 16)  {{V[0-9]+}}:d32  bss({{V[0-9]+}})[{{V[0-9]+}}]:a32
 ; CHECK-FRL0-NEXT: (!P6) goto (M1, 16) _test_ldraw_fusion_006__opt_resource_loop
 ; CHECK-FRL0:      _test_ldraw_fusion_007__opt_resource_loop:
 ; CHECK-FRL0:      _test_ldraw_fusion_008__opt_resource_loop:
@@ -43,13 +43,13 @@ entry:
 ; CHECK-FRL1:      _test_ldraw_fusion_002:
 ; CHECK-FRL1:      _test_ldraw_fusion_004__opt_resource_loop:
 ; CHECK-FRL1:      _test_ldraw_fusion_005__opt_resource_loop:
-; CHECK-FRL1:      lifetime.start V0083
-; CHECK-FRL1-NEXT: lifetime.start V0084
+; CHECK-FRL1:      lifetime.start [[DST0:V[0-9]+]]
+; CHECK-FRL1-NEXT: lifetime.start [[DST1:V[0-9]+]]
 ; CHECK-FRL1:      _test_ldraw_fusion_006__opt_resource_loop:
-; CHECK-FRL1:      (P6) lsc_load.ugm (M1, 16)  V0083:d32  bss(V0089)[V0080]:a32                 /// $72
-; CHECK-FRL1-NEXT: or (M1, 16) V0090(0,0)<1> V0080(0,0)<1;1,0> 0x4:d                            /// $73
-; CHECK-FRL1-NEXT: (P6) lsc_load.ugm (M1, 16)  V0084:d32  bss(V0089)[V0090]:a32                 /// $74
-; CHECK-FRL1-NEXT: (!P6) goto (M1, 16) _test_ldraw_fusion_006__opt_resource_loop                /// $75
+; COM: both loads use one surface; the offset 4 of the second is an LSC immediate offset
+; CHECK-FRL1:      (P6) lsc_load.ugm (M1, 16)  [[DST0]]:d32  bss([[SURF:V[0-9]+]]){{\[}}[[OFF:V[0-9]+]]]:a32
+; CHECK-FRL1-NEXT: (P6) lsc_load.ugm (M1, 16)  [[DST1]]:d32  bss([[SURF]]){{\[}}[[OFF]]+0x4]:a32
+; CHECK-FRL1-NEXT: (!P6) goto (M1, 16) _test_ldraw_fusion_006__opt_resource_loop
 ; CHECK-FRL1:      _test_ldraw_fusion_007__opt_resource_loop:
 ; CHECK-FRL1:      _test_ldraw_fusion_008__opt_resource_loop:
 ; CHECK-FRL1-NOT:  _test_ldraw_fusion_009__opt_resource_loop:
