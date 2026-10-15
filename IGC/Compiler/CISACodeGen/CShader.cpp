@@ -3265,6 +3265,13 @@ bool CShader::CanTreatAsAlias(llvm::ExtractElementInst *inst) {
     return false;
   }
 
+  // A constant vector has no variable of its own to alias: GetSymbol() would
+  // materialize it on the spot, outside the extract's emission, and
+  // emitExtract() reads it from the constant pool instead.
+  if (isa<llvm::Constant>(vecSrc)) {
+    return false;
+  }
+
   if (IsCoalesced(inst) || IsCoalesced(vecSrc)) {
     return false;
   }
