@@ -588,7 +588,16 @@ DEF_VISA_OPTION(vISA_NewAugmentation, ET_BOOL_TRUE, "-newaugmentation",
                 "USAGE: -newaugmentation "
                 "enable using augmentation with holes",
                 true)
-DEF_VISA_OPTION(vISA_UseRelaxedDegree, ET_BOOL_TRUE, "-relaxedDegree", UNUSED, false)
+DEF_VISA_OPTION(vISA_UseRelaxedDegree, ET_INT32, "-relaxedDegree",
+                "USAGE: -relaxedDegree <0|1|2>: 0 disable, 1 let vISA decide, "
+                "2 force enable",
+                1)
+DEF_VISA_OPTION(vISA_RelaxedDegreeCandidatePercent, ET_INT32,
+                "-relaxedDegreeCandidatePercent",
+                "USAGE: -relaxedDegreeCandidatePercent <0..100>: minimum "
+                "percentage of even aligned 2 GRF candidates required to "
+                "enable relaxed degree when -relaxedDegree is 1",
+                80)
 
 
 // clang-format off
