@@ -113,44 +113,6 @@ void RPE::runBB(G4_BB *bb) {
   }
 }
 
-// Flag/address/scalar variables live in the ARF, not the GRF. The pre-RA
-// scheduler's liveness covers those files too, so they must be filtered out
-// here. Inside RA liveness is GRF | INPUT, making this a no-op.
-bool RPE::contributesToGRFPressure(const G4_Declare *dcl) const {
-  return (dcl->getRegFile() & (G4_GRF | G4_INPUT)) != 0;
-}
-
-// Pressure contributed by dcl, in GRF units: the value added when dcl becomes
-// live and refunded when it dies. peekOnly leaves the sub-GRF packing counters
-// untouched so computing maxRPSel cannot perturb maxRP.
-double RPE::getPressureContribution(G4_Declare *dcl, bool peekOnly) {
-  const unsigned grfSize = gra.builder.getGRFSize();
-  unsigned dclSize = dcl->getByteSize();
-  if (dclSize >= grfSize)
-    return (double)dcl->getNumRows();
-
-  // For < 1 GRF variable we have to take alignment into consideration as well
-  // when computing register pressure. For now we double each < 1 GRF
-  // variable's size if its alignment also exceeds its size. Alternative is to
-  // simply take the alignment as the size, but it might cause performance
-  // regressions due to being too conservative (i.e., a GRF-aligned variable
-  // may share physical GRF with several other
-  auto alignBytes = static_cast<uint32_t>(dcl->getSubRegAlign()) * 2;
-  if (dclSize < alignBytes)
-    dclSize = peekOnly ? peekSubGRFPressure(dclSize, alignBytes)
-                       : handleSubGRFPressure(dclSize, alignBytes);
-  return (double)dclSize / grfSize;
-}
-
-// Decision used by handleSubGRFPressure(), without updating its counters.
-unsigned int RPE::peekSubGRFPressure(unsigned int dclSize,
-                                     unsigned int alignBytes) const {
-  if (TotalSubGRF > MinNumSubGRFVars &&
-      (float)TotalGRFAligned / (float)TotalSubGRF > LowerThreshold)
-    return gra.builder.getGRFSize();
-  return std::min(dclSize * 2, alignBytes);
-}
-
 void RPE::regPressureBBExit(G4_BB *bb) {
   live.clear();
   live = liveAnalysis->use_out[bb->getId()];
@@ -159,7 +121,6 @@ void RPE::regPressureBBExit(G4_BB *bb) {
   // Iterate over all live variables and add up numRows required
   // for each. For scalar variables, add them up separately.
   regPressure = 0;
-  regPressureSel = 0;
   unsigned int numScalarBytes = 0;
   for (auto LI = live.begin(), LE = live.end(); LI != LE; ++LI) {
     unsigned i = *LI;
@@ -170,10 +131,6 @@ void RPE::regPressureBBExit(G4_BB *bb) {
         continue;
       if (isStackPseudoVar(rootDcl))
         continue;
-      // Seed with the same value updateRegisterPressure() refunds at the def.
-      if (contributesToGRFPressure(rootDcl))
-        regPressureSel += getPressureContribution(rootDcl, /*peekOnly=*/true);
-
       if (rootDcl->getNumElems() > 1) {
         regPressure += rootDcl->getNumRows();
       } else {
@@ -215,19 +172,32 @@ void RPE::updateRegisterPressure(bool change, bool clean, unsigned int id) {
       return;
     if (isStackPseudoVar(dcl))
       return;
+    // For < 1 GRF variable we have to take alignment into consideration as well
+    // when computing register pressure. For now we double each < 1 GRF
+    // variable's size if its alignment also exceeds its size. Alternative is to
+    // simply take the alignment as the size, but it might cause performance
+    // regressions due to being too conservative (i.e., a GRF-aligned variable
+    // may share physical GRF with several other
+    auto dclSize = dcl->getByteSize();
+    auto alignBytes = static_cast<uint32_t>(dcl->getSubRegAlign()) * 2;
+    if (dclSize < gra.builder.getGRFSize() && dclSize < alignBytes) {
+      dclSize = handleSubGRFPressure(dclSize, alignBytes);
+    }
 
-    double delta = getPressureContribution(dcl);
-    double deltaSel = contributesToGRFPressure(dcl) ? delta : 0;
+    double delta = dclSize < gra.builder.getGRFSize()
+                       ? dclSize / (double)gra.builder.getGRFSize()
+                       : (double)dcl->getNumRows();
     if (clean) {
-      regPressure = regPressure < delta ? 0 : regPressure - delta;
-      regPressureSel = regPressureSel < deltaSel ? 0 : regPressureSel - deltaSel;
+      if (regPressure < delta) {
+        regPressure = 0;
+      } else {
+        regPressure -= delta;
+      }
     } else {
       regPressure += delta;
-      regPressureSel += deltaSel;
     }
   }
   maxRP = std::max(maxRP, (uint32_t)regPressure);
-  maxRPSel = std::max(maxRPSel, (uint32_t)regPressureSel);
 }
 
 unsigned int RPE::handleSubGRFPressure(unsigned int dclSize,
@@ -242,7 +212,10 @@ unsigned int RPE::handleSubGRFPressure(unsigned int dclSize,
   if (alignBytes == gra.builder.getGRFSize()) {
     TotalGRFAligned++;
   }
-  return peekSubGRFPressure(dclSize, alignBytes);
+  if (TotalSubGRF > MinNumSubGRFVars &&
+      (float)TotalGRFAligned / (float)TotalSubGRF > LowerThreshold)
+    return gra.builder.getGRFSize();
+  return std::min(dclSize * 2, alignBytes);
 }
 
 void RPE::recomputeMaxRP() {
