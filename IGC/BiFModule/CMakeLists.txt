@@ -129,7 +129,7 @@ set(IGC_BUILD__BIF_OCL_INCLUDES ${IGC_BUILD__BIF_OCL_INCLUDES} ${IGC_BUILD__BIF_
 set(IGC_BUILD__PROJ__BiFModule_OCL       "${IGC_BUILD__PROJ_NAME_PREFIX}BiFModuleOcl")
 set(IGC_BUILD__PROJ__BiFModule_OCL       "${IGC_BUILD__PROJ__BiFModule_OCL}" PARENT_SCOPE)
 set(IGC_BUILD__PROJ_LABEL__BiFModule_OCL "BiFModule-OCL")
-set(IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL clang-tool ${IGC_BIF_OUTPUTS})
+set(IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL ${IGC_BIF_OUTPUTS})
 set(IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL "${IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL}" PARENT_SCOPE)
 
 
@@ -141,9 +141,9 @@ set_property(TARGET "${IGC_BUILD__PROJ__BiFModule_OCL}" PROPERTY PROJECT_LABEL "
 
 set_target_properties("${IGC_BUILD__PROJ__BiFModule_OCL}" PROPERTIES FOLDER "Misc/BiF")
 
-generate_bif_src_checksum(${IGC_BUILD__PROJ__BiFModule_OCL})
-
 build_bif_bitcode()
+
+generate_bif_src_checksum(${IGC_BUILD__PROJ__BiFModule_OCL})
 
 generate_bif_prebuild_pack(${IGC_BUILD__PROJ__BiFModuleCache_OCL})
 

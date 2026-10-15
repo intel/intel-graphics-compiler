@@ -17,11 +17,14 @@ include(${CMAKE_CURRENT_LIST_DIR}/BiFMCGetListFiles.cmake)
 file(REMOVE ${BiFModule_SRC_SHA_PATH})
 
 get_bif_src_list("${opencl-header}" "${BiFModule_SRC}" BiFModule_SRC_LIST)
+list(APPEND BiFModule_SRC_LIST ${IGC_BIF_TOOLS} ${IGC_BIF_TOOL_SOURCES})
+list(REMOVE_DUPLICATES BiFModule_SRC_LIST)
 
 # Collect all checksum of all source files into one file
 set(allFilesChecksum "")
-# There is a need to have separate BiFs for llvm16 opaque/typed drivers
-set(allFilesChecksum "${allFilesChecksum}${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG}")
+foreach(option IN LISTS IGC_BIF_HASHED_OPTIONS)
+  set(allFilesChecksum "${allFilesChecksum}${option}=${${option}};")
+endforeach()
 
 foreach(_file ${BiFModule_SRC_LIST})
   file(SHA1 ${_file} fileChecksum)
