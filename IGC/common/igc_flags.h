@@ -654,6 +654,10 @@ DECLARE_IGC_REGKEY(bool, DisablePromotePrivMem, false,
 DECLARE_IGC_REGKEY(bool, EnableSimplifyGEP, true, "Enable IGC to simplify indices expr of GEP.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableCustomUnsafeOpt, false, "Disable IGC to run custom unsafe optimizations", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableReducePow, false, "Disable IGC to reduce pow instructions", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(DWORD, PowiExpandMaxMuls, 5,
+                   "Expand llvm.powi with a constant exponent into a multiplication chain if it needs at most this "
+                   "many fmuls. Calls above the limit are emitted as log2/mul/exp2",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableSqrtOpt, false, "Prevent IGC from doing the optimization y*y = x if y = sqrt(x)",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableFastMath, false, "Enable fast math optimizations in IGC", DEBUG_ONLY)

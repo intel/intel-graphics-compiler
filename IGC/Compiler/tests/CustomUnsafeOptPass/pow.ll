@@ -74,6 +74,48 @@ entry:
 ; CHECK: %1 = fmul float %0, %0
 ; CHECK: ret float %1
 
+; x^5 = (x*x) * (x*x) * x
+define float @test6(float %x) #0 {
+entry:
+  %0 = call float @llvm.pow.f32(float %x, float 5.000000e+00)
+  ret float %0
+}
+
+; CHECK-LABEL: define float @test6
+; CHECK-NOT: llvm.pow.f32
+; CHECK: %0 = fmul float %x, %x
+; CHECK: %1 = fmul float %0, %0
+; CHECK: %2 = fmul float %1, %x
+; CHECK: ret float %2
+
+; x^6 = (x*x) * (x*x) * (x*x)
+define float @test7(float %x) #0 {
+entry:
+  %0 = call float @llvm.pow.f32(float %x, float 6.000000e+00)
+  ret float %0
+}
+
+; CHECK-LABEL: define float @test7
+; CHECK-NOT: llvm.pow.f32
+; CHECK: %0 = fmul float %x, %x
+; CHECK: %1 = fmul float %0, %0
+; CHECK: %2 = fmul float %1, %0
+; CHECK: ret float %2
+
+; x^8 = ((x*x) * (x*x)) * ((x*x) * (x*x))
+define float @test8(float %x) #0 {
+entry:
+  %0 = call float @llvm.pow.f32(float %x, float 8.000000e+00)
+  ret float %0
+}
+
+; CHECK-LABEL: define float @test8
+; CHECK-NOT: llvm.pow.f32
+; CHECK: %0 = fmul float %x, %x
+; CHECK: %1 = fmul float %0, %0
+; CHECK: %2 = fmul float %1, %1
+; CHECK: ret float %2
+
 !IGCMetadata = !{!0}
 
 !0 = !{!"ModuleMD", !1}

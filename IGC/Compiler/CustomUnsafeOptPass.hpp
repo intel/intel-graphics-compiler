@@ -107,6 +107,7 @@ private:
   void reassociateMulAdd(llvm::Function &F);
 
   void strengthReducePowOrExpLog(llvm::IntrinsicInst *intrin, llvm::Value *base, llvm::Value *exponent, bool isPow);
+  void expandPowi(llvm::IntrinsicInst *Powi);
 
   void collectForErase(llvm::Instruction &I, unsigned int operandsDepth = 0);
   void eraseCollectedInst();

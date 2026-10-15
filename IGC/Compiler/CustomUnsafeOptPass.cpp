@@ -65,6 +65,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Constants.h"
+#include "llvmWrapper/Support/MathExtras.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -2102,6 +2103,22 @@ void CustomUnsafeOptPass::visitSelectInst(SelectInst &I) {
   }
 }
 
+// Builds Base^N for N >= 1 by repeated squaring, as SelectionDAG ExpandPowI does.
+static Value *createPowMulChain(IRBuilder<> &Builder, Value *Base, uint64_t N) {
+  IGC_ASSERT(N > 0);
+  Value *Result = nullptr;
+  Value *Square = Base;
+  while (true) {
+    if (N & 1)
+      Result = Result ? Builder.CreateFMul(Square, Result) : Square;
+    N >>= 1;
+    if (N == 0)
+      break;
+    Square = Builder.CreateFMul(Square, Square);
+  }
+  return Result;
+}
+
 void CustomUnsafeOptPass::strengthReducePowOrExpLog(IntrinsicInst *intrin, Value *base, Value *exponent, bool isPow) {
   IRBuilder<> irb(intrin);
   irb.setFastMathFlags(intrin->getFastMathFlags());
@@ -2111,48 +2128,19 @@ void CustomUnsafeOptPass::strengthReducePowOrExpLog(IntrinsicInst *intrin, Value
     llvm::CallInst *sqrt = irb.CreateCall(sqrtIntr, base);
     intrin->replaceAllUsesWith(sqrt);
     collectForErase(*intrin);
-  } else if (exponent == ConstantFP::get(exponent->getType(), 1.0)) {
-    intrin->replaceAllUsesWith(base);
-    collectForErase(*intrin);
-  } else if (exponent == ConstantFP::get(exponent->getType(), 2.0)) {
-    // pow(x, 2.0) -> x * x
-    Value *x2 = irb.CreateFMul(base, base);
-    intrin->replaceAllUsesWith(x2);
-    collectForErase(*intrin);
-  } else if (exponent == ConstantFP::get(exponent->getType(), 3.0)) {
-    // pow(x, 3.0) -> x * x * x
-    Value *x2 = irb.CreateFMul(base, base);
-    Value *x3 = irb.CreateFMul(x2, base);
-    intrin->replaceAllUsesWith(x3);
-    collectForErase(*intrin);
-  } else if (exponent == ConstantFP::get(exponent->getType(), 4.0)) {
-    // pow(x, 4.0) -> (x*x) * (x*x)
-    Value *x2 = irb.CreateFMul(base, base);
-    Value *x4 = irb.CreateFMul(x2, x2);
-    intrin->replaceAllUsesWith(x4);
-    collectForErase(*intrin);
-  } else if (exponent == ConstantFP::get(exponent->getType(), 5.0)) {
-    // pow(x, 5.0) -> (x*x) * (x*x) * x
-    Value *x2 = irb.CreateFMul(base, base);
-    Value *x4 = irb.CreateFMul(x2, x2);
-    Value *x5 = irb.CreateFMul(x4, base);
-    intrin->replaceAllUsesWith(x5);
-    collectForErase(*intrin);
-  } else if (exponent == ConstantFP::get(exponent->getType(), 6.0)) {
-    // pow(x, 6.0) -> (x*x) * (x*x) * (x*x)
-    Value *x2 = irb.CreateFMul(base, base);
-    Value *x4 = irb.CreateFMul(x2, x2);
-    Value *x6 = irb.CreateFMul(x4, x2);
-    intrin->replaceAllUsesWith(x6);
-    collectForErase(*intrin);
-  } else if (exponent == ConstantFP::get(exponent->getType(), 8.0)) {
-    // pow(x, 8.0) -> ((x*x) * (x*x)) * ((x*x) * (x*x))
-    Value *x2 = irb.CreateFMul(base, base);
-    Value *x4 = irb.CreateFMul(x2, x2);
-    Value *x8 = irb.CreateFMul(x4, x4);
-    intrin->replaceAllUsesWith(x8);
-    collectForErase(*intrin);
-  } else if (isPow && IGC_IS_FLAG_ENABLED(EnablePowToLogMulExp)) {
+    return;
+  }
+
+  // pow(x, n) -> x * ... * x, e.g. pow(x, 8.0) -> ((x*x) * (x*x)) * ((x*x) * (x*x))
+  for (unsigned n : {1, 2, 3, 4, 5, 6, 8}) {
+    if (exponent == ConstantFP::get(exponent->getType(), double(n))) {
+      intrin->replaceAllUsesWith(createPowMulChain(irb, base, n));
+      collectForErase(*intrin);
+      return;
+    }
+  }
+
+  if (isPow && IGC_IS_FLAG_ENABLED(EnablePowToLogMulExp)) {
     // pow(x, y) -> exp2(log2(x) * y)
     Function *logf = IGCLLVM::getOrInsertDeclaration(m_ctx->getModule(), Intrinsic::log2, base->getType());
     Function *expf = IGCLLVM::getOrInsertDeclaration(m_ctx->getModule(), Intrinsic::exp2, base->getType());
@@ -2164,13 +2152,45 @@ void CustomUnsafeOptPass::strengthReducePowOrExpLog(IntrinsicInst *intrin, Value
   }
 }
 
+// powi(x, n) -> x * ... * x, and 1.0 / (x * ... * x) for n < 0. LLVM leaves the
+// multiplication order of powi unspecified, so no fast-math flags are required.
+// Exponents above PowiExpandMaxMuls stay powi and EmitPass lowers them to log2/exp2.
+void CustomUnsafeOptPass::expandPowi(IntrinsicInst *Powi) {
+  auto *Exponent = dyn_cast<ConstantInt>(Powi->getArgOperand(1));
+  if (!Exponent)
+    return;
+
+  int64_t N = Exponent->getSExtValue();
+  uint64_t AbsN = N < 0 ? 0 - uint64_t(N) : uint64_t(N);
+  unsigned NumMuls = AbsN == 0 ? 0 : Log2_64(AbsN) + IGCLLVM::popcount(AbsN) - 1;
+  if (NumMuls > IGC_GET_FLAG_VALUE(PowiExpandMaxMuls))
+    return;
+
+  IRBuilder<> Builder(Powi);
+  Builder.setFastMathFlags(Powi->getFastMathFlags());
+  Constant *One = ConstantFP::get(Powi->getType(), 1.0);
+  Value *Result = AbsN == 0 ? One : createPowMulChain(Builder, Powi->getArgOperand(0), AbsN);
+  if (N < 0)
+    Result = Builder.CreateFDiv(One, Result);
+  Powi->replaceAllUsesWith(Result);
+  collectForErase(*Powi);
+}
+
 void CustomUnsafeOptPass::visitIntrinsicInst(IntrinsicInst &I) {
+  // Already replaced in an earlier iteration of the visit loop.
+  if (m_instToErase.count(&I))
+    return;
+
   const Intrinsic::ID ID = I.getIntrinsicID();
   auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
   if (ID == Intrinsic::pow) {
     if (!modMD->compOpt.disableReducePow && IGC_IS_FLAG_DISABLED(DisableReducePow)) {
       strengthReducePowOrExpLog(&I, I.getOperand(0), I.getOperand(1), true /* isPow */);
+    }
+  } else if (ID == Intrinsic::powi) {
+    if (!modMD->compOpt.disableReducePow && IGC_IS_FLAG_DISABLED(DisableReducePow)) {
+      expandPowi(&I);
     }
   } else if (ID == Intrinsic::exp2) {
     BinaryOperator *mul = dyn_cast<BinaryOperator>(I.getOperand((0)));
