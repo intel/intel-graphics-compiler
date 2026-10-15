@@ -35,7 +35,6 @@ class PromoteConstantNPM : public llvm::PassInfoMixin<PromoteConstantNPM> {
 public:
   llvm::PreservedAnalyses run(llvm::Function &F, llvm::FunctionAnalysisManager &AM);
   static llvm::StringRef name() { return "PromoteConstant"; }
-  static bool isRequired() { return true; }
 };
 #endif // LLVM_VERSION_MAJOR >= 16
 
