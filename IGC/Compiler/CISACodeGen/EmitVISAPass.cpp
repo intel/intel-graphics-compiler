@@ -342,6 +342,12 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock &blk, SDAG &sdag, b
       if (isUniformStoreOCL(ST))
         numInstance = 1;
       slicing = false;
+    } else if (auto *SRI = dyn_cast<StoreRawIntrinsic>(sdag.m_root);
+               SRI && shouldGenerateLSC(SRI) && isUniformStoreOCL(SRI->getOffsetValue(), SRI->getStoreValue())) {
+      // emitLSCVectorStore emits a uniform store as a single NoMask message,
+      // so every additional SIMD instance would repeat the store.
+      numInstance = 1;
+      slicing = false;
     } else if (sdag.m_root->isTerminator()) {
       numInstance = 1;
       slicing = false;
