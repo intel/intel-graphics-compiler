@@ -541,7 +541,7 @@ $ export IGC_ShaderDumpEnable=1
 | `AdvCodeMotionControl` | Control bits to fine-tune advanced code motion | - |
 | `AdvRuntimeUnrollCount` | Advanced runtime unroll count | - |
 | `AllowImmOff2DBlockFuncsAddrHoisting` | Allow compiler to decide to use immediate offsets in 2D block intrinsics in                   Decompose2DBlockFuncsWithHoisting pass. | - |
-| `AllowPrefetchDecomposeWithHoisting` | Allow compiler to decide to use prefetch in 2D block intrinsics in Decompose2DBlockFuncsWithHoisting pass. | Available |
+| `AllowPrefetchDecomposeWithHoisting` | Decompose and hoist 2D block prefetch address payloads in Decompose2DBlockFuncsWithHoisting                   pass. 0 - disabled, 1 - always, -1 - register pressure aware: skip prefetch-only payloads                   that would push their loop above the GRF budget | Available |
 | `AllowedSpillRegCount` | Max allowed spill size without recompile | - |
 | `CSSpillThreshold2xGRFRetry` | Spill Threshold for CS to trigger 2xGRFRetry | - |
 | `CheckCSSLMLimit` | Check SLM or threads limit on compute shader to turn on Enable2xGRF on DG2+    0 - off, 1 - SLM limit heuristic, 2 - platform based heuristic (XE2 - threads limit, others - SLM limit) | - |

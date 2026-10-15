@@ -1326,10 +1326,11 @@ DECLARE_IGC_REGKEY(bool, AllowImmOff2DBlockFuncsAddrHoisting, true,
                    "Allow compiler to decide to use immediate offsets in 2D block intrinsics in "
                    "Decompose2DBlockFuncsWithHoisting pass.",
                    DEBUG_ONLY)
-DECLARE_IGC_REGKEY(
-    bool, AllowPrefetchDecomposeWithHoisting, false,
-    "Allow compiler to decide to use prefetch in 2D block intrinsics in Decompose2DBlockFuncsWithHoisting pass.",
-    ALWAYS)
+DECLARE_IGC_REGKEY_ENUM(AllowPrefetchDecomposeWithHoisting, 0,
+                        "Decompose and hoist 2D block prefetch address payloads in Decompose2DBlockFuncsWithHoisting "
+                        "pass. 0 - disabled, 1 - always, -1 - register pressure aware: skip prefetch-only payloads "
+                        "that would push their loop above the GRF budget",
+                        TRIBOOL_OPTIONS, ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, AllowedSpillRegCount, 0, "Max allowed spill size without recompile", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, CSSpillThreshold2xGRFRetry, 3500, "Spill Threshold for CS to trigger 2xGRFRetry", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, LICMStatThreshold, 70, "LICM stat threshold to avoid retry SIMD16 for CS", DEBUG_ONLY)

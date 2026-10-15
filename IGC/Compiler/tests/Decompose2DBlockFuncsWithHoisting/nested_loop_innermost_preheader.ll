@@ -14,6 +14,7 @@
 ; outer loop's preheader would create a use-before-def (dominance violation).
 ;
 ; RUN: igc_opt --opaque-pointers -decompose-2d-block-funcs-with-hoisting -dce -platformbmg -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers -decompose-2d-block-funcs-with-hoisting --regkey=AllowPrefetchDecomposeWithHoisting=-1 -dce -platformbmg -S < %s 2>&1 | FileCheck %s
 
 declare <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)
 

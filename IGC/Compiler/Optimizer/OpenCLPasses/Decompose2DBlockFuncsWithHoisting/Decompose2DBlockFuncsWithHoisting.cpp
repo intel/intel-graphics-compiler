@@ -7,8 +7,13 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/Optimizer/OpenCLPasses/Decompose2DBlockFuncsWithHoisting/Decompose2DBlockFuncsWithHoisting.hpp"
+#include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
+#include "Compiler/CISACodeGen/TranslationTable.hpp"
+#include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Compiler/CISACodeGen/helper.h"
 
 #include <cstddef>
+#include <llvm/Analysis/PostDominators.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/Support/raw_ostream.h>
@@ -59,6 +64,12 @@ public:
   using BFArray = std::array<PayloadParamType, static_cast<int>(BlockField::END)>;
 
 private:
+  // AllowPrefetchDecomposeWithHoisting: Disabled - off, Enabled - always,
+  // Default - register pressure aware.
+  static TriboolFlag getPrefetchDecomposeMode() {
+    return static_cast<TriboolFlag>(IGC_GET_FLAG_VALUE(AllowPrefetchDecomposeWithHoisting));
+  }
+
   ///////////////////////////////////////////////////////////////////////
   /// Helpers
   ///////////////////////////////////////////////////////////////////////
@@ -174,6 +185,10 @@ private:
   void decompose();
   const SmallVector<Loop *, 4> innerToOuterLoops(const BasicBlock &BB) const;
 
+  /// Drops prefetch-only payload groups whose hoisted payload would not fit
+  /// the register budget of the loop it is hoisted out of.
+  void dropPayloadsAbovePressureThreshold(Function &F);
+
   // Collect LSC2DBlock Read, Write, and Prefetch intrinsics, grouping them by:
   // 1) the insertion point for LSC2DBlockCreateAddrPayload intrinsic,
   // 2) the arguments for LSC2DBlockCreateAddrPayload,
@@ -263,6 +278,9 @@ bool Decompose2DBlockFuncsWithHoisting::runOnFunction(Function &F) {
   }
 
   visit(F);
+
+  if (getPrefetchDecomposeMode() == TriboolFlag::Default)
+    dropPayloadsAbovePressureThreshold(F);
 
   decompose();
 
@@ -889,7 +907,7 @@ GenIntrinsicInst *Decompose2DBlockFuncsWithHoisting::checkLSCIntrinsic(CallInst 
 
   // Prefetch decomposition is gated behind AllowPrefetchDecomposeWithHoisting flag
   // since there were performance drops associated with it.
-  bool AllowPrefetch = IGC_GET_FLAG_VALUE(AllowPrefetchDecomposeWithHoisting);
+  bool AllowPrefetch = getPrefetchDecomposeMode() != TriboolFlag::Disabled;
   if (ID != GenISAIntrinsic::GenISA_LSC2DBlockRead && ID != GenISAIntrinsic::GenISA_LSC2DBlockWrite &&
       !(AllowPrefetch && ID == GenISAIntrinsic::GenISA_LSC2DBlockPrefetch)) {
     // Not a read, write, or prefetch command so there is nothing to do with
@@ -920,6 +938,90 @@ GenIntrinsicInst *Decompose2DBlockFuncsWithHoisting::checkLSCIntrinsic(CallInst 
   }
 
   return GII;
+}
+
+void Decompose2DBlockFuncsWithHoisting::dropPayloadsAbovePressureThreshold(Function &F) {
+  struct Candidate {
+    Loop *L;
+    const PayloadGroupKey *Key;
+    bool PrefetchOnly;
+  };
+  SmallVector<Candidate, 8> Candidates;
+  bool HasPrefetchOnly = false;
+  for (auto &[Key, LSCs] : CreatedPayloads) {
+    IGC_ASSERT(!LSCs.empty());
+    const bool PrefetchOnly = llvm::all_of(LSCs, [](const OldLSCAndRequiredSetFields *Entry) {
+      return Entry->LSC->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockPrefetch;
+    });
+    HasPrefetchOnly |= PrefetchOnly;
+    Candidates.push_back({LI->getLoopFor(LSCs.front()->LSC->getParent()), &Key, PrefetchOnly});
+  }
+  // Skip the expensive WIAnalysis and liveness analysis if there are no prefetch candidates that could be dropped.
+  if (!HasPrefetchOnly)
+    return;
+
+  // Account reads/writes first, then prefetches from inner to outer loops.
+  llvm::stable_sort(Candidates, [](const Candidate &L, const Candidate &R) {
+    if (L.PrefetchOnly != R.PrefetchOnly)
+      return !L.PrefetchOnly;
+    return L.L->getLoopDepth() > R.L->getLoopDepth();
+  });
+
+  auto &MDUW = getAnalysis<MetaDataUtilsWrapper>();
+  auto *MDUtils = MDUW.getMetaDataUtils();
+  auto *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  PostDominatorTree PDT(F);
+  TranslationTable TT;
+  TT.run(F);
+  WIAnalysisRunner WIRunner(&F, LI, DT, &PDT, MDUtils, CGC, MDUW.getModuleMetaData(), &TT);
+  WIRunner.run();
+
+  auto *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
+  IGCLivenessAnalysisRunner RPE(CGC, MDUtils, FGA);
+  RPE.livenessAnalysis(F);
+  const unsigned SIMD = numLanes(IGC::bestGuessSIMDSize(CGC, &F, FGA));
+  const unsigned MaxAllowedPressure = CGC->getNumGRFPerThread(true, &F);
+  // By keeping the adress payload of the prefetch alive by hoisting it out of the loop, register pressure increases by
+  // 1 GRF
+  constexpr unsigned AddrPayloadSizeInGRFs = 1;
+
+  // Block pressure with accepted payloads.
+  DenseMap<const BasicBlock *, unsigned> BBPressure;
+  auto getBBPressure = [&](BasicBlock *BB) -> unsigned & {
+    auto [It, Inserted] = BBPressure.try_emplace(BB, 0);
+    if (Inserted)
+      It->second = RPE.getMaxRegCountForBB(*BB, SIMD, &WIRunner);
+    return It->second;
+  };
+
+  SmallPtrSet<const PayloadGroupKey *, 8> KeysToDrop;
+  for (const Candidate &C : Candidates) {
+    unsigned MaxLoopPressure = 0;
+    for (BasicBlock *BB : C.L->blocks())
+      MaxLoopPressure = std::max(MaxLoopPressure, getBBPressure(BB));
+
+    const unsigned EstimatedPressure = MaxLoopPressure + AddrPayloadSizeInGRFs;
+    // Groups with a read or write are hoisted regardless of the pressure, as
+    // without prefetch decomposition, so only prefetch-only groups are gated.
+    const bool Fits = !C.PrefetchOnly || EstimatedPressure <= MaxAllowedPressure;
+    LLVM_DEBUG({
+      dbgs() << (Fits ? "Decomposing" : "Not decomposing") << (C.PrefetchOnly ? " prefetches" : " 2D block messages")
+             << " hoisted out of loop ";
+      C.L->getHeader()->printAsOperand(dbgs(), false);
+      dbgs() << ": estimated register pressure " << EstimatedPressure
+             << (EstimatedPressure <= MaxAllowedPressure ? " within" : " above") << " threshold " << MaxAllowedPressure
+             << ".\n";
+    });
+    if (!Fits) {
+      KeysToDrop.insert(C.Key);
+      continue;
+    }
+
+    for (BasicBlock *BB : C.L->blocks())
+      getBBPressure(BB) += AddrPayloadSizeInGRFs;
+  }
+
+  CreatedPayloads.remove_if([&](const auto &Entry) { return KeysToDrop.count(&Entry.first); });
 }
 
 void Decompose2DBlockFuncsWithHoisting::decompose() {
