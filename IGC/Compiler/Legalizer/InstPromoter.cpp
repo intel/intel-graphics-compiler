@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "TypeLegalizer.h"
 #include "InstPromoter.h"
-#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Constants.h"
@@ -396,7 +395,8 @@ bool InstPromoter::visitZExtInst(ZExtInst &I) {
   // Check if ZExt operand was legalized before
   if (Value *LegalizedSingleValue = getSinglePromotedValueIfExist(Val)) {
     if (LegalizedSingleValue->getType() == I.getDestTy()) {
-      Promoted = LegalizedSingleValue;
+      // Bits above the source width of a promoted value are undefined, clear them.
+      Promoted = TL->zext(LegalizedSingleValue, I.getSrcTy());
       return true;
     }
   }
@@ -500,6 +500,23 @@ bool InstPromoter::visitBitCastInst(BitCastInst &I) {
 
   // Unsupported legalization action.
   return false;
+}
+
+bool InstPromoter::visitPtrToIntInst(PtrToIntInst &I) {
+  // Promote ptrtoint ptr %p to i3
+  // -->
+  // %1 = ptrtoint ptr %p to i8
+  // %2 = and i8 %1, 7
+  auto [TySeq, Act] = TL->getLegalizedTypes(I.getDestTy());
+  IGC_ASSERT(Act == Promote);
+  IGC_ASSERT(TySeq->size() == 1);
+
+  Type *PromotedTy = TySeq->front();
+
+  Value *PromVal = IRB->CreatePtrToInt(I.getOperand(0), PromotedTy, Twine(I.getName(), getSuffix()));
+  Promoted = TL->zext(PromVal, I.getType());
+
+  return true;
 }
 
 bool InstPromoter::visitExtractElementInst(ExtractElementInst &I) {
@@ -622,14 +639,25 @@ bool InstPromoter::visitGenIntrinsicInst(GenIntrinsicInst &I) {
   return false;
 }
 
-std::pair<Value *, Type *> InstPromoter::preparePromotedIntrinsicInst(IntrinsicInst &I) {
+std::pair<Value *, Type *> InstPromoter::preparePromotedIntrinsicInst(IntrinsicInst &I,
+                                                                      std::optional<Instruction::CastOps> ArgExt) {
   SmallVector<Value *, 2> PromotedArgs;
-  // -1 because we want to avoid the last operand which is intrinsic declaration
-  for (unsigned i = 0; i < I.getNumOperands() - 1; i++) {
-    auto [ValSeq, ValAct] = TL->getLegalizedValues(I.getOperand(i));
-    Value *Val = I.getOperand(i);
-    if (ValAct != Legal)
+  for (Value *Arg : I.args()) {
+    auto [ValSeq, ValAct] = TL->getLegalizedValues(Arg);
+    Value *Val = Arg;
+    if (ValAct != Legal) {
       Val = ValSeq->front();
+      // Bits above the original width of a promoted value are undefined, so
+      // extend it if the intrinsic depends on them.
+      if (ArgExt) {
+        if (*ArgExt == Instruction::SExt) {
+          Val = TL->sext(Val, Arg->getType());
+        } else {
+          IGC_ASSERT(*ArgExt == Instruction::ZExt);
+          Val = TL->zext(Val, Arg->getType());
+        }
+      }
+    }
     PromotedArgs.push_back(Val);
   }
 
@@ -644,8 +672,7 @@ std::pair<Value *, Type *> InstPromoter::preparePromotedIntrinsicInst(IntrinsicI
     IGC_ASSERT(PromotedBitWidth == ValBitWidth);
   }
 
-  Function *Func = IGCLLVM::getOrInsertDeclaration(I.getModule(), I.getIntrinsicID(), PromotedTy);
-  return {IRB->CreateCall(Func, PromotedArgs), PromotedTy};
+  return {IRB->CreateIntrinsicWithoutFolding(I.getIntrinsicID(), {PromotedTy}, PromotedArgs), PromotedTy};
 }
 
 bool InstPromoter::visitLLVMIntrinsicInst(IntrinsicInst &I) {
@@ -660,9 +687,11 @@ bool InstPromoter::visitLLVMIntrinsicInst(IntrinsicInst &I) {
   }
   case Intrinsic::smin:
   case Intrinsic::smax:
+    Promoted = preparePromotedIntrinsicInst(I, Instruction::SExt).first;
+    break;
   case Intrinsic::umin:
   case Intrinsic::umax:
-    Promoted = preparePromotedIntrinsicInst(I).first;
+    Promoted = preparePromotedIntrinsicInst(I, Instruction::ZExt).first;
     break;
   default:
     IGC_ASSERT_EXIT_MESSAGE(0, "UNKNOWN INSTRINSIC INSTRUCTION IS BEING PROMOTED!");

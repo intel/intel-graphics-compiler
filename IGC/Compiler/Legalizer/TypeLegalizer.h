@@ -432,43 +432,33 @@ private:
 
   /// zext() - Zero-extend illegal integer values holding in promoted types.
   Value *zext(Value *V, Type *OrigTy) const {
-    IGC_ASSERT(V->getType()->getIntegerBitWidth() > OrigTy->getIntegerBitWidth());
+    unsigned PromotedBitWidth = V->getType()->getScalarSizeInBits();
+    unsigned OrigBitWidth = OrigTy->getScalarSizeInBits();
+    IGC_ASSERT(PromotedBitWidth > OrigBitWidth);
 
-    APInt Mask = APInt::getAllOnes(OrigTy->getIntegerBitWidth());
-    Constant *C = getIntN(V->getType()->getIntegerBitWidth(), Mask.getZExtValue());
-    return IRB->CreateAnd(V, C, Twine(V->getName(), ".zext"));
+    APInt Mask = APInt::getLowBitsSet(PromotedBitWidth, OrigBitWidth);
+    return IRB->CreateAnd(V, Mask, Twine(V->getName(), ".zext"));
   }
   // Variant accepts/returns a pair of values of the same type.
   std::pair<Value *, Value *> zext(Value *LHS, Value *RHS, Type *OrigTy) const {
     IGC_ASSERT(LHS->getType() == RHS->getType());
-    IGC_ASSERT(LHS->getType()->getIntegerBitWidth() > OrigTy->getIntegerBitWidth());
-
-    APInt Mask = APInt::getAllOnes(OrigTy->getIntegerBitWidth());
-    Constant *C = getIntN(LHS->getType()->getIntegerBitWidth(), Mask.getZExtValue());
-    return std::make_pair(IRB->CreateAnd(LHS, C, Twine(LHS->getName(), ".zext")),
-                          IRB->CreateAnd(RHS, C, Twine(RHS->getName(), ".zext")));
+    return std::make_pair(zext(LHS, OrigTy), zext(RHS, OrigTy));
   }
 
-  /// sext() - Sign-extend illegal integer values holding in promoted types.
+  /// sext() - Sign-extend promoted scalar or vector integers from their original width.
   Value *sext(Value *V, Type *OrigTy) const {
-    IGC_ASSERT(V->getType()->getIntegerBitWidth() > OrigTy->getIntegerBitWidth());
+    unsigned PromotedBitWidth = V->getType()->getScalarSizeInBits();
+    unsigned OrigBitWidth = OrigTy->getScalarSizeInBits();
+    IGC_ASSERT(PromotedBitWidth > OrigBitWidth);
 
-    Constant *ShAmt =
-        getIntN(V->getType()->getIntegerBitWidth(), V->getType()->getIntegerBitWidth() - OrigTy->getIntegerBitWidth());
+    unsigned ShAmt = PromotedBitWidth - OrigBitWidth;
     return IRB->CreateAShr(IRB->CreateShl(V, ShAmt, Twine(V->getName(), ".lsext")), ShAmt,
                            Twine(V->getName(), ".rsext"));
   }
   // Variant accepts/returns a pair of values of the same type.
   std::pair<Value *, Value *> sext(Value *LHS, Value *RHS, Type *OrigTy) const {
     IGC_ASSERT(LHS->getType() == RHS->getType());
-    IGC_ASSERT(LHS->getType()->getIntegerBitWidth() > OrigTy->getIntegerBitWidth());
-
-    Constant *ShAmt = getIntN(LHS->getType()->getIntegerBitWidth(),
-                              LHS->getType()->getIntegerBitWidth() - OrigTy->getIntegerBitWidth());
-    return std::make_pair(IRB->CreateAShr(IRB->CreateShl(LHS, ShAmt, Twine(LHS->getName(), ".lsext")), ShAmt,
-                                          Twine(LHS->getName(), ".rsext")),
-                          IRB->CreateAShr(IRB->CreateShl(RHS, ShAmt, Twine(RHS->getName(), ".lsext")), ShAmt,
-                                          Twine(RHS->getName(), ".rsext")));
+    return std::make_pair(sext(LHS, OrigTy), sext(RHS, OrigTy));
   }
   /*
   /// Expander helper

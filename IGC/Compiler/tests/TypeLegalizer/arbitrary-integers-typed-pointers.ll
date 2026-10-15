@@ -37,7 +37,8 @@ define void @test_udiv(i8 %src1, i8 %src2) {
 ; CHECK-DAG:    [[DOTZEXT:%.*]] = and i8 [[TMP2]], 63
 ; CHECK-DAG:    [[DOTZEXT1:%.*]] = and i8 [[TMP1]], 63
 ; CHECK:        [[DOTPROMOTE:%.*]] = udiv i8 [[DOTZEXT1]], [[DOTZEXT]]
-; CHECK:        call void @use.i8(i8 [[DOTPROMOTE]])
+; CHECK:        [[DOTPROMOTE_ZEXT:%.*]] = and i8 [[DOTPROMOTE]], 63
+; CHECK:        call void @use.i8(i8 [[DOTPROMOTE_ZEXT]])
 ; CHECK:        ret void
 
   %1 = trunc i8 %src1 to i6
@@ -57,7 +58,8 @@ define void @test_sdiv(i8 %src1, i8 %src2) {
 ; CHECK-DAG:    [[DOTLSEXT1:%.*]] = shl i8 [[TMP1]], 2
 ; CHECK-DAG:    [[DOTRSEXT2:%.*]] = ashr i8 [[DOTLSEXT1]], 2
 ; CHECK:        [[DOTPROMOTE:%.*]] = sdiv i8 [[DOTRSEXT2]], [[DOTRSEXT]]
-; CHECK:        call void @use.i8(i8 [[DOTPROMOTE]])
+; CHECK:        [[DOTPROMOTE_ZEXT:%.*]] = and i8 [[DOTPROMOTE]], 63
+; CHECK:        call void @use.i8(i8 [[DOTPROMOTE_ZEXT]])
 ; CHECK:        ret void
 
   %1 = trunc i8 %src1 to i6
@@ -74,7 +76,8 @@ define void @test_shl(i8 %src1, i8 %src2) {
 ; CHECK:    [[TMP2:%.*]] = and i8 [[SRC2:%.*]], 63
 ; CHECK:    [[DOTZEXT:%.*]] = and i8 [[TMP2]], 63
 ; CHECK:    [[DOTPROMOTE:%.*]] = shl i8 [[TMP1]], [[DOTZEXT]]
-; CHECK:    call void @use.i8(i8 [[DOTPROMOTE]])
+; CHECK:    [[DOTPROMOTE_ZEXT:%.*]] = and i8 [[DOTPROMOTE]], 63
+; CHECK:    call void @use.i8(i8 [[DOTPROMOTE_ZEXT]])
 ; CHECK:    ret void
 
   %1 = trunc i8 %src1 to i6
@@ -92,7 +95,8 @@ define void @test_lshr(i8 %src1, i8 %src2) {
 ; CHECK-DAG:    [[DOTZEXT:%.*]] = and i8 [[TMP2]], 63
 ; CHECK-DAG:    [[DOTZEXT1:%.*]] = and i8 [[TMP1]], 63
 ; CHECK:        [[DOTPROMOTE:%.*]] = lshr i8 [[DOTZEXT1]], [[DOTZEXT]]
-; CHECK:        call void @use.i8(i8 [[DOTPROMOTE]])
+; CHECK:        [[DOTPROMOTE_ZEXT:%.*]] = and i8 [[DOTPROMOTE]], 63
+; CHECK:        call void @use.i8(i8 [[DOTPROMOTE_ZEXT]])
 ; CHECK:        ret void
 
   %1 = trunc i8 %src1 to i6
@@ -110,7 +114,8 @@ define void @test_ashr(i8 %src1, i8 %src2) {
 ; CHECK-DAG:    [[DOTZEXT:%.*]] = and i8 [[TMP2]], 63
 ; CHECK-DAG:    [[DOTZEXT1:%.*]] = and i8 [[TMP1]], 63
 ; CHECK:        [[DOTPROMOTE:%.*]] = lshr i8 [[DOTZEXT1]], [[DOTZEXT]]
-; CHECK:        call void @use.i8(i8 [[DOTPROMOTE]])
+; CHECK:        [[DOTPROMOTE_ZEXT:%.*]] = and i8 [[DOTPROMOTE]], 63
+; CHECK:        call void @use.i8(i8 [[DOTPROMOTE_ZEXT]])
 ; CHECK:        ret void
 
   %1 = trunc i8 %src1 to i6
@@ -170,7 +175,8 @@ define void @test_insertelement_undef(i8 %src) {
 ; CHECK:    [[TMP6:%.*]] = zext i8 [[TMP1]] to i16
 ; CHECK:    [[TMP7:%.*]] = shl i16 [[TMP6]], 4
 ; CHECK:    [[TMP8:%.*]] = and i16 [[TMP5]], [[TMP7]]
-; CHECK:    call void @use.i16(i16 [[TMP8]])
+; CHECK:    [[DOTZEXT:%.*]] = and i16 [[TMP8]], 4095
+; CHECK:    call void @use.i16(i16 [[DOTZEXT]])
 ; CHECK:    ret void
 
   %1 = trunc i8 %src to i4
@@ -187,7 +193,8 @@ define void @test_insertelement_zero(i8 %src) {
 ; CHECK-LABEL: @test_insertelement_zero(
 ; CHECK:    [[TMP1:%.*]] = and i8 [[SRC:%.*]], 15
 ; CHECK:    [[TMP2:%.*]] = zext i8 [[TMP1]] to i16
-; CHECK:    call void @use.i16(i16 [[TMP2]])
+; CHECK:    [[DOTZEXT:%.*]] = and i16 [[TMP2]], 4095
+; CHECK:    call void @use.i16(i16 [[DOTZEXT]])
 ; CHECK:    ret void
 
   %1 = trunc i8 %src to i4

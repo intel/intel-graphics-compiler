@@ -21,7 +21,8 @@ define i8 @f1(i8 %a) #0 {
 ; CHECK: %1 = and i8 %a, 7
 ; CHECK: %2 = call i8 @llvm.bitreverse.i8(i8 %1)
 ; CHECK: %3 = lshr i8 %2, 5
-; CHECK: ret i8 %3
+; CHECK: %.zext = and i8 %3, 7
+; CHECK: ret i8 %.zext
 
 define i8 @f2(i8 %a) #0 {
   %b = trunc i8 %a to i4
@@ -34,7 +35,8 @@ define i8 @f2(i8 %a) #0 {
 ; CHECK: %1 = and i8 %a, 15
 ; CHECK: %2 = call i8 @llvm.bitreverse.i8(i8 %1)
 ; CHECK: %3 = lshr i8 %2, 4
-; CHECK: ret i8 %3
+; CHECK: %.zext = and i8 %3, 15
+; CHECK: ret i8 %.zext
 
 define i32 @f3(i32 %a) #0 {
   %b = zext i32 %a to i33
@@ -63,7 +65,9 @@ define <4 x i8> @f4(<4 x i8> %a) #0 {
 ; CHECK: %2 = call <4 x i8> @llvm.bitreverse.v4i8(<4 x i8> %1)
 ; CHECK-PRE22: %3 = lshr <4 x i8> %2, <i8 3, i8 3, i8 3, i8 3>
 ; CHECK-LLVM22: %3 = lshr <4 x i8> %2, splat (i8 3)
-; CHECK: ret <4 x i8> %3
+; CHECK-PRE22: %.zext = and <4 x i8> %3, <i8 31, i8 31, i8 31, i8 31>
+; CHECK-LLVM22: %.zext = and <4 x i8> %3, splat (i8 31)
+; CHECK: ret <4 x i8> %.zext
 
 define i32 @f5(i64 %a) #0 {
   %b = trunc i64 %a to i4

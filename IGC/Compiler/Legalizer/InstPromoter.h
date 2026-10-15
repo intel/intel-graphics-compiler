@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/InstVisitor.h"
 #include "common/LLVMWarningsPop.hpp"
+#include <optional>
 
 namespace IGC {
 
@@ -36,7 +37,8 @@ private:
   const char *getSuffix() const { return TL->getSuffix(Promote); }
   Value *getSinglePromotedValueIfExist(Value *OriginalValue);
   Type *getSinglePromotedTypeIfExist(Type *OriginalType);
-  std::pair<Value *, Type *> preparePromotedIntrinsicInst(IntrinsicInst &I);
+  std::pair<Value *, Type *> preparePromotedIntrinsicInst(IntrinsicInst &I,
+                                                          std::optional<Instruction::CastOps> ArgExt = std::nullopt);
 
 private:
   // By default, capture all missing instructions!
@@ -68,6 +70,7 @@ private:
   bool visitSExtInst(SExtInst &I);
   bool visitZExtInst(ZExtInst &I);
   bool visitBitCastInst(BitCastInst &I);
+  bool visitPtrToIntInst(PtrToIntInst &I);
 
   /// Other operators
 
