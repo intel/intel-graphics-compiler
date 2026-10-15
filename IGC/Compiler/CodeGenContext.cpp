@@ -204,6 +204,7 @@ unsigned int RetryManager::GetLastSpillSize() const { return lastSpillSize; }
 
 void RetryManager::ClearSpillParams() {
   lastSpillSize = 0;
+  lastGRFSize = 0;
   numInstructions = 0;
 }
 

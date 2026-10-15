@@ -5991,6 +5991,7 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
 
   if (jitInfo->stats.numGRFSpillFillWeighted) {
     context->m_retryManager->SetSpillSize(jitInfo->stats.numGRFSpillFillWeighted);
+    context->m_retryManager->SetGRFSize(jitInfo->stats.numGRFTotal);
     m_program->m_spillSize = jitInfo->stats.numGRFSpillFillWeighted;
     m_program->m_spillThreshold = jitInfo->stats.dynamicSpillThreshold / getGRFSize();
     m_program->m_spillCost = float(jitInfo->stats.numGRFSpillFillWeighted) / jitInfo->stats.numAsmCountUnweighted;

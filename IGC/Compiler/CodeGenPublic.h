@@ -731,6 +731,7 @@ public:
   void SetSpillSize(unsigned int spillSize);
   unsigned int GetLastSpillSize() const;
   void SetGRFSize(unsigned int grfTotal) { lastGRFSize = grfTotal; }
+  unsigned int GetLastGRFSize() const { return lastGRFSize; }
   void ClearSpillParams();
 
   // === Optimization flags for all retry managers===

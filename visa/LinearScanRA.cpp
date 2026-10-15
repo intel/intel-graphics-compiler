@@ -895,6 +895,7 @@ int LinearScanRA::linearScanRA() {
         jitInfo->stats.spillMemUsed = 0;
         jitInfo->stats.numAsmCountUnweighted = instNum;
         jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
+        jitInfo->stats.numGRFTotal = kernel.getNumRegTotal();
       }
 
       // Early exit when -abortonspill is passed, instead of

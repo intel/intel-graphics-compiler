@@ -12289,6 +12289,7 @@ GlobalRA::abortOnSpill(unsigned int GRFSpillFillCount, unsigned int spillSize,
       jitInfo->stats.spillMemUsed = 0;
       jitInfo->stats.numAsmCountUnweighted = instNum;
       jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
+      jitInfo->stats.numGRFTotal = kernel.getNumRegTotal();
     }
 
     return std::make_tuple(true, GRFSpillFillCount, spillSize);
