@@ -10,19 +10,22 @@
 
 ; COM: The cost-model loop analysis diverges on LLVM 22+: the loops are collapsed
 ; COM: so only one arg symbol and one loop-count expression remain (NEW), whereas
-; COM: earlier LLVM keeps all six loops (OLD).
+; COM: earlier LLVM keeps all six loops (OLD). LLVM 23+ also folds the last
+; COM: loop (its body stores the same value), leaving no loops at all (L23).
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc -device pvc -llvm_input -options "-vc-codegen -ze-collect-cost-info -igc_opts 'EnableOpaquePointersBackend=1, ShaderDumpEnable=1, DumpToCustomDir=%t'" -output_no_suffix -file %t.bc
-; RUN: %if !(llvm-22-plus) %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,OLD %}
-; RUN: %if llvm-22-plus %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,NEW %}
+; RUN: %if !(llvm-22-plus) %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,ARGS,OLD %}
+; RUN: %if llvm-22-plus && !llvm-23-plus %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,ARGS,NEW %}
+; RUN: %if llvm-23-plus %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,L23 %}
 
 ; LLVM with typed pointers:
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc -device pvc -llvm_input -options "-vc-codegen -ze-collect-cost-info -igc_opts 'ShaderDumpEnable=1, DumpToCustomDir=%t'" -output_no_suffix -file %t.bc
-; RUN: %if !(llvm-22-plus) %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,OLD %}
-; RUN: %if llvm-22-plus %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,NEW %}
+; RUN: %if !(llvm-22-plus) %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,ARGS,OLD %}
+; RUN: %if llvm-22-plus && !llvm-23-plus %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,ARGS,NEW %}
+; RUN: %if llvm-23-plus %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,L23 %}
 
 target datalayout = "e-p:64:64-p3:32:32-p6:32:32-i64:64-n8:16:32:64"
 target triple = "genx64-unknown-unknown"
@@ -30,7 +33,8 @@ target triple = "genx64-unknown-unknown"
 ; CHECK:      kernels_cost_info:
 ; CHECK-NEXT:     - name:            kernel
 
-; CHECK:          kcm_args_sym:
+; ARGS:           kcm_args_sym:
+; L23-NOT:        kcm_args_sym:
 ; OLD-NEXT:      - argNo:           3
 ; OLD-NEXT:        byteOffset:      0
 ; OLD-NEXT:        sizeInBytes:     4
@@ -49,6 +53,7 @@ target triple = "genx64-unknown-unknown"
 ; NEW-NEXT:        isInDirect:      true
 
 ; CHECK:          kcm_loop_count_exps:
+; L23-SAME:       []
 ; OLD-NEXT:      - factor:          1
 ; OLD-NEXT:        argsym_index:    0
 ; OLD-NEXT:        C:               0
@@ -80,6 +85,7 @@ target triple = "genx64-unknown-unknown"
 ; CHECK-NEXT:        num_loops:       {{.*}}
 ; OLD-COUNT-6:   - cycle:           {{.*}}
 ; NEW-COUNT-1:   - cycle:           {{.*}}
+; L23-NOT:       - cycle:
 
 ; COM: IR represents the following kernel:
 ; COM:  kernel(__global int *A, __global int *B, int C, int D) {
