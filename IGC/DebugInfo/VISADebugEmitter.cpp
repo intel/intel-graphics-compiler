@@ -205,9 +205,7 @@ void DebugEmitter::processCurrentFunction(bool finalize, const IGC::VISAObjectDe
       Flags |= DWARF2_FLAG_IS_STMT;
     }
 
-    // Add prologue_end flag only once per function. Inlined functions have no
-    // prologue, so they count as part of the function they are inlined into.
-    if (!m_pDwarfDebug->prologueEndExists(loc->getInlinedAtScope()->getSubprogram(), nullptr, true)) {
+    if (!m_pDwarfDebug->prologueEndExists(loc.get()->getScope()->getSubprogram(), loc.getInlinedAt(), true)) {
       Flags |= DWARF2_FLAG_PROLOGUE_END;
     }
     m_pStreamEmitter->EmitDwarfLocDirective(src, loc.getLine(), loc.getCol(), Flags, 0, 0, scope->getFilename());

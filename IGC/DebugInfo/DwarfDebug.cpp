@@ -2066,22 +2066,14 @@ DIVariable *DwarfDebug::processVariableHistory(const llvm::MDNode *Var,
     }
 
     if (Start == End) {
-      // Set end to the last instruction of the function instance (same IAT).
-      // By default, take the instance from the anchor.
-      llvm::DebugLoc InstanceDL = Start->getDebugLoc();
-      // A declare names its instance. On LLVM >= 22 its anchor is the host
-      // instruction, which can belong to another inlined function.
-      if (dbgVarIsDecl(dbgEntry))
-        InstanceDL = dbgVarScopeLoc(dbgEntry);
-
-      // Treat a missing location as the top-level (nullptr) IAT.
-      llvm::MDNode *InstanceIAT = nullptr;
-      if (InstanceDL)
-        InstanceIAT = InstanceDL.getInlinedAt();
-
-      auto It = SameIATInsts.find(InstanceIAT);
-      if (It != SameIATInsts.end())
-        End = It->second.back();
+      // Set end to loc of last instruction in current function (same IAT).
+      // On LLVM >= 22 the anchor is the host instruction, whose DebugLoc may be empty,
+      // so treat an empty loc as the top-level (nullptr) IAT.
+      const llvm::DebugLoc &StartDL = Start->getDebugLoc();
+      llvm::MDNode *StartIAT = StartDL ? StartDL.getInlinedAt() : nullptr;
+      if (auto lastIATit = SameIATInsts.find(StartIAT); lastIATit != SameIATInsts.end()) {
+        End = (*lastIATit).second.back();
+      }
     }
 
 #if LLVM_VERSION_MAJOR >= 22
