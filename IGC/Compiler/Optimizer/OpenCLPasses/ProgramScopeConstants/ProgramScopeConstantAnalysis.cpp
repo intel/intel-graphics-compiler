@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Constants.h"
 #include "Probe/Assertion.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -459,7 +458,10 @@ void ProgramScopeConstantAnalysis::addData(Constant *initializer,
   // order of ifs is meaningful.
   else if (initializer->getType()->isArrayTy() || initializer->getType()->isStructTy() ||
            initializer->getType()->isVectorTy()) {
-    for (int i = 0; Constant *C = initializer->getAggregateElement(i); ++i) {
+    const int numElts = initializer->getNumOperands();
+    for (int i = 0; i < numElts; ++i) {
+      Constant *C = initializer->getAggregateElement(i);
+      IGC_ASSERT_MESSAGE(C, "getAggregateElement returned null, unsupported constant");
       // Since the type may not be primitive, extra alignment is required.
       addData(C, inlineProgramScopeBufferType, inlineProgramScopeOffsets, addressSpace, forceAlignmentOne);
     }
