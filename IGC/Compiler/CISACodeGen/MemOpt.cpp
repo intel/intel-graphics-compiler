@@ -1312,6 +1312,10 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
       break;
 
     unsigned effLdScalarSize = pendingPromotion ? promotedScalarSize : LdScalarSize;
+    // Each load must start on an element boundary for reconstruction by extraction.
+    if (Off % effLdScalarSize != 0)
+      continue;
+
     int64_t newHighestOffset = std::max(Off + NextLoadSize, HighestOffset);
     int64_t newLowestOffset = std::min(Off, LowestOffset);
     uint64_t newNumElts = uint64_t((newHighestOffset - newLowestOffset) / effLdScalarSize);
@@ -1330,8 +1334,6 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
 
     HighestOffset = newHighestOffset;
     LowestOffset = newLowestOffset;
-
-    NumElts = static_cast<unsigned>(newNumElts);
 
     // This load is to be merged. Remove it from check list.
     CheckList.pop_back();
@@ -1357,12 +1359,27 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
 
   IGCIRBuilder<> Builder(LeadingLoad.inst());
 
-  // Start to merge loads.
-  IGC_ASSERT_MESSAGE(1 < NumElts, "It's expected to merge into at least 2-element vector!");
-
   // Sort loads based on their offsets (to the leading load) from the smallest to the largest.
   // And then try to find the profitable vector length first.
   std::sort(LoadsToMerge.begin(), LoadsToMerge.end(), less_tuple<1>());
+
+  // Gaps and overlapping loads make the span differ from the sum of load sizes.
+  SmallVector<int64_t, 8> PrefixEndOffsets;
+  int64_t FirstOffset = std::get<1>(LoadsToMerge.front());
+  int64_t EndOffset = FirstOffset;
+  for (const auto &Load : LoadsToMerge) {
+    int64_t LoadEnd = std::get<1>(Load) + int64_t(DL->getTypeStoreSize(std::get<0>(Load)->getType()));
+    EndOffset = std::max(EndOffset, LoadEnd);
+    PrefixEndOffsets.push_back(EndOffset);
+  }
+
+  // A rejected candidate may have widened the scan's span without joining the group.
+  uint64_t Span = uint64_t(EndOffset - FirstOffset);
+  if (Span % LdScalarSize != 0)
+    return false;
+  NumElts = unsigned(Span / LdScalarSize);
+  IGC_ASSERT_MESSAGE(1 < NumElts, "It's expected to merge into at least 2-element vector!");
+
   unsigned MaxElts = profitVec[0];
   for (unsigned k = 1, e = profitVec.size(); NumElts != MaxElts && k != e && s != 1;) {
     // Try next legal vector length.
@@ -1380,8 +1397,11 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
 
     // Try remove loads to be merged.
     while (NumElts > MaxElts && s != 1) {
-      Type *Ty = std::get<0>(LoadsToMerge[--s])->getType();
-      NumElts -= getMergedNumElements(Ty, LdScalarSize);
+      --s;
+      Span = uint64_t(PrefixEndOffsets[s - 1] - FirstOffset);
+      if (Span % LdScalarSize != 0)
+        return false;
+      NumElts = unsigned(Span / LdScalarSize);
     }
   }
 
@@ -1393,12 +1413,19 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
   // pointer from the first load (with the minimal offset) will be used as the
   // new pointer.
   ALoadInst FirstLoad = ALoadInst::get(std::get<0>(LoadsToMerge.front())).value();
-  int64_t FirstOffset = std::get<1>(LoadsToMerge.front());
   IGC_ASSERT_MESSAGE(FirstOffset <= 0, "The 1st load should be either the leading load or load with smaller offset!");
 
   // Next we need to check alignment
   if (!checkAlignmentBeforeMerge(FirstLoad, LoadsToMerge, NumElts, LdScalarSize))
     return false;
+
+  // Overlapping predicated loads can require different fallback values for the same element.
+  if (LeadingLoad.isPredicated()) {
+    for (unsigned i = 1, e = LoadsToMerge.size(); i != e; ++i) {
+      if (std::get<1>(LoadsToMerge[i]) < PrefixEndOffsets[i - 1])
+        return false;
+    }
+  }
 
   if (!DebugCounter::shouldExecute(MergeLoadCounter))
     return false;
