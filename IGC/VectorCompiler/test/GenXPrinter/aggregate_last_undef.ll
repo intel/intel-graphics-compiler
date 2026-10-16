@@ -18,7 +18,7 @@ target triple = "genx64-unknown-unknown"
 %str = type { i32, i32 }
 
 ; CHECK-LABEL: @test(
-; CHECK: [v{{[0-9]+}},-] {{%.*}} = insertvalue %str poison, i32 {{%.*}}, 0
+; CHECK: [v{{[0-9]+}},-] {{%.*}} = insertvalue %str undef, i32 {{%.*}}, 0
 define spir_func i32 @test(i32 %a0, i32 %a1) #1 !FuncArgSize !1 !FuncRetSize !2 {
   %s0 = insertvalue %str undef, i32 %a0, 0
   %s1 = insertvalue %str %s0, i32 %a1, 1

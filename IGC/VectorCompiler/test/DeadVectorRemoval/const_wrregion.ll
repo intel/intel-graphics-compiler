@@ -11,7 +11,7 @@
 declare <4 x i64> @llvm.genx.wrregioni.v4i64.i64.i16.i1(<4 x i64>, i64, i32, i32, i32, i16, i32, i1) readnone nounwind willreturn
 
 define <4 x i64> @test1(i64 %val) {
-; CHECK: %1 = call <4 x i64> @llvm.genx.wrregioni.v4i64.i64.i16.i1(<4 x i64> <i64 poison, i64 31, i64 31, i64 7726646165504>, i64 %val, i32 0, i32 1, i32 0, i16 0, i32 poison, i1 true)
+; CHECK: %1 = call <4 x i64> @llvm.genx.wrregioni.v4i64.i64.i16.i1(<4 x i64> <i64 undef, i64 31, i64 31, i64 7726646165504>, i64 %val, i32 0, i32 1, i32 0, i16 0, i32 poison, i1 true)
   %1 = call <4 x i64> @llvm.genx.wrregioni.v4i64.i64.i16.i1(<4 x i64> <i64 0, i64 31, i64 31, i64 7726646165504>, i64 %val, i32 0, i32 1, i32 0, i16 0, i32 poison, i1 true)
   ret <4 x i64> %1
 }
@@ -32,7 +32,7 @@ declare <4 x i32> @llvm.genx.wrregioni.v4i32.v4i32.i16.v4i1(<4 x i32>, <4 x i32>
 declare i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32>, i32, i32, i32, i16, i32) readnone nounwind willreturn
 
 define i32 @test3(<4 x i32> %val) {
-; CHECK: %1 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v4i32.i16.v4i1(<4 x i32> <i32 poison, i32 1, i32 poison, i32 poison>, <4 x i32> %val, i32 0, i32 4, i32 1, i16 0, i32 poison, <4 x i1> <i1 true, i1 false, i1 true, i1 false>)
+; CHECK: %1 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v4i32.i16.v4i1(<4 x i32> <i32 undef, i32 1, i32 undef, i32 undef>, <4 x i32> %val, i32 0, i32 4, i32 1, i16 0, i32 poison, <4 x i1> <i1 true, i1 false, i1 true, i1 false>)
   %1 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v4i32.i16.v4i1(<4 x i32> <i32 0, i32 1, i32 2, i32 3>, <4 x i32> %val, i32 0, i32 4, i32 1, i16 0, i32 poison, <4 x i1> <i1 true, i1 false, i1 true, i1 false>)
   %.region = tail call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> %1, i32 0, i32 1, i32 0, i16 4, i32 undef)
   ret i32 %.region
@@ -43,7 +43,7 @@ declare float @llvm.genx.rdregionf.f32.v4f32.i16(<4 x float>, i32, i32, i32, i16
 
 ; FP splat constant (vector-typed ConstantFP on LLVM 23+).
 define float @test4(<4 x float> %val) {
-; CHECK: %1 = call <4 x float> @llvm.genx.wrregionf.v4f32.v4f32.i16.v4i1(<4 x float> <float poison, float 2.000000e+00, float poison, float poison>, <4 x float> %val, i32 0, i32 4, i32 1, i16 0, i32 poison, <4 x i1> <i1 true, i1 false, i1 true, i1 false>)
+; CHECK: %1 = call <4 x float> @llvm.genx.wrregionf.v4f32.v4f32.i16.v4i1(<4 x float> <float undef, float 2.000000e+00, float undef, float undef>, <4 x float> %val, i32 0, i32 4, i32 1, i16 0, i32 poison, <4 x i1> <i1 true, i1 false, i1 true, i1 false>)
   %1 = call <4 x float> @llvm.genx.wrregionf.v4f32.v4f32.i16.v4i1(<4 x float> <float 2.0, float 2.0, float 2.0, float 2.0>, <4 x float> %val, i32 0, i32 4, i32 1, i16 0, i32 poison, <4 x i1> <i1 true, i1 false, i1 true, i1 false>)
   %.region = tail call float @llvm.genx.rdregionf.f32.v4f32.i16(<4 x float> %1, i32 0, i32 1, i32 0, i16 4, i32 poison)
   ret float %.region

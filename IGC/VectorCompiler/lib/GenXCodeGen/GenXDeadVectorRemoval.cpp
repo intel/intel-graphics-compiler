@@ -151,8 +151,10 @@ bool GenXDeadVectorRemoval::runOnFunction(Function &F) {
 
 Value *GenXDeadVectorRemoval::trySimplify(Value *V,
                                           const LiveElements &LiveElems) {
+  // Must be undef, not poison: dead also covers values that are still used
+  // but cannot affect the result, e.g. X in (and X, 0).
   if (LiveElems.isAllDead())
-    return PoisonValue::get(V->getType());
+    return UndefValue::get(V->getType());
 
   if (auto *C = dyn_cast<Constant>(V))
     return trySimplify(C, LiveElems);
@@ -186,7 +188,7 @@ Constant *GenXDeadVectorRemoval::trySimplify(ConstantAggregate *CA,
     for (auto &U : CA->operands())
       Elems.push_back(LiveElems[0][U.getOperandNo()]
                           ? cast<Constant>(U.get())
-                          : PoisonValue::get(U->getType()));
+                          : UndefValue::get(U->getType()));
     return ConstantVector::get(Elems);
   }
 
@@ -197,7 +199,7 @@ Constant *GenXDeadVectorRemoval::trySimplify(ConstantAggregate *CA,
       auto LE = LiveElems[U.getOperandNo()];
       auto OpLiveElems = LiveElements(std::move(LE));
       Elems.push_back(OpLiveElems.isAllDead()
-                          ? PoisonValue::get(U->getType())
+                          ? UndefValue::get(U->getType())
                           : trySimplify(cast<Constant>(U.get()), OpLiveElems));
     }
     return ConstantStruct::get(cast<StructType>(CA->getType()), Elems);
@@ -222,13 +224,13 @@ Constant *GenXDeadVectorRemoval::trySimplify(ConstantData *CD,
     for (unsigned Idx = 0; Idx < VTy->getNumElements(); Idx++) {
       auto *Elem = CD->getAggregateElement(Idx);
       Elems.push_back(LiveElems[0][Idx] ? Elem
-                                        : PoisonValue::get(Elem->getType()));
+                                        : UndefValue::get(Elem->getType()));
     }
     return ConstantVector::get(Elems);
   }
 
   IGC_ASSERT(LiveElems[0].size() == 1);
-  return LiveElems[0][0] ? CD : PoisonValue::get(CD->getType());
+  return LiveElems[0][0] ? CD : UndefValue::get(CD->getType());
 }
 
 Constant *GenXDeadVectorRemoval::trySimplify(ConstantDataSequential *CDS,
@@ -238,7 +240,7 @@ Constant *GenXDeadVectorRemoval::trySimplify(ConstantDataSequential *CDS,
     for (unsigned Idx = 0; Idx < CDV->getNumElements(); Idx++) {
       auto Elem = CDV->getElementAsConstant(Idx);
       Elems.push_back(LiveElems[0][Idx] ? Elem
-                                        : PoisonValue::get(Elem->getType()));
+                                        : UndefValue::get(Elem->getType()));
     }
     return ConstantVector::get(Elems);
   }
