@@ -1489,6 +1489,9 @@ public:
 
   bool requiresA64SurfaceStateRead() const { return hasEfficient64bEnabled(); }
 
+  bool supportsDpasForward() const {
+    return m_platformInfo.eProductFamily == IGFX_CRI;
+  }
   bool supportsSimd32ForAllShaders() const {
     return isCoreChildOf(IGFX_XE3P_CORE);
   }

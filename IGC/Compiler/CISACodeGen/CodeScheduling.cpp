@@ -91,6 +91,35 @@ static bool holdsFlagRegister(const Instruction *I) {
   return llvm::any_of(I->users(), [&](const User *U) { return !isFoldedCompareUse(I, U); });
 }
 
+// vISA forwards the result of a dpas.8x8 ({Fwd}) to the next DPAS when that
+// DPAS accumulates onto it with the same precisions and the accumulator is
+// 32-bit. This checks the part of the rule that the IR decides.
+static bool canForwardDPASResult(const Instruction *Def, const Instruction *User) {
+  // Operands 3 to 7 of GenISA_sub_group_dpas: src1 precision, src2 precision,
+  // systolic depth, repeat count, isDpasw.
+  constexpr unsigned FirstControlOperand = 3;
+  constexpr unsigned SystolicDepthOperand = 5;
+  constexpr unsigned RepeatCountOperand = 6;
+  constexpr uint64_t ForwardableSystolicDepth = 8;
+  constexpr uint64_t ForwardableRepeatCount = 8;
+
+  auto *DefDPAS = dyn_cast<GenIntrinsicInst>(Def);
+  auto *UserDPAS = dyn_cast<GenIntrinsicInst>(User);
+  if (!DefDPAS || !UserDPAS || DefDPAS->getIntrinsicID() != GenISAIntrinsic::GenISA_sub_group_dpas ||
+      UserDPAS->getIntrinsicID() != GenISAIntrinsic::GenISA_sub_group_dpas || Def->getType() != User->getType())
+    return false;
+  Type *AccumulatorTy = Def->getType()->getScalarType();
+  if (!AccumulatorTy->isFloatTy() && !AccumulatorTy->isIntegerTy(32))
+    return false;
+  for (unsigned Operand = FirstControlOperand; Operand < DefDPAS->arg_size(); ++Operand)
+    if (DefDPAS->getArgOperand(Operand) != UserDPAS->getArgOperand(Operand))
+      return false;
+  auto *SystolicDepth = dyn_cast<ConstantInt>(DefDPAS->getArgOperand(SystolicDepthOperand));
+  auto *RepeatCount = dyn_cast<ConstantInt>(DefDPAS->getArgOperand(RepeatCountOperand));
+  return SystolicDepth && RepeatCount && SystolicDepth->getZExtValue() == ForwardableSystolicDepth &&
+         RepeatCount->getZExtValue() == ForwardableRepeatCount;
+}
+
 struct SchedulingGRFTarget {
   unsigned NumGRF = 0;
   unsigned ThreadsPerEU = 0;
@@ -1425,7 +1454,11 @@ public:
                            << "): result=" << attemptResultName(AttemptOutcome)
                            << ", complete=" << Candidate.isComplete() << ", maxRP=" << Candidate.getMaxRegpressure()
                            << ", MW=" << Candidate.getMWDecisions() << ", RP=" << Candidate.getRPDecisions()
-                           << ", ImO=" << Candidate.getImmediateOverrideDecisions() << "\n");
+                           << ", ImO=" << Candidate.getImmediateOverrideDecisions());
+      if (unsigned Pairs = Candidate.getDPASForwardPairs()) {
+        PrintDump(", fwd=" << Candidate.getAdjacentDPASForwardPairs() << "/" << Pairs);
+      }
+      PrintDump("\n");
     };
 
     std::vector<std::unique_ptr<Schedule>> Schedules;
@@ -1766,6 +1799,18 @@ private:
     // mask or the mask heuristics are off. Shared by the copies of the graph.
     std::shared_ptr<const DenseMap<Instruction *, SmallVector<SelectInst *, 4>>> MaskSelects;
 
+    // First DPAS of a forward pair -> the DPAS that accumulates its result
+    // (findDPASForwardPairs). Null when the block has no pair or the pairing
+    // is off. Shared by the copies of the graph.
+    std::shared_ptr<const DenseMap<Instruction *, Instruction *>> DPASForwardPartner;
+
+    Instruction *getDPASForwardPartner(Instruction *I) const {
+      if (!DPASForwardPartner)
+        return nullptr;
+      auto It = DPASForwardPartner->find(I);
+      return It == DPASForwardPartner->end() ? nullptr : It->second;
+    }
+
     DepGraph() {}
 
     DepGraph(const DepGraph &) = delete;
@@ -1939,6 +1984,42 @@ private:
         return false;
       };
 
+      // Maps the 1st, 3rd, ... DPAS of each forwardable accumulation chain of BB
+      // to the next DPAS of the chain, which accumulates its result.
+      //
+      // vISA forms the pairs after register allocation. To pair two DPAS, it
+      // must move above the first DPAS every instruction between them that the
+      // second DPAS depends on. Register allocation can give such an
+      // instruction a source register of the first DPAS, and then the pair is
+      // lost. So the scheduler places the second DPAS of a pair directly after
+      // the first one.
+      auto findDPASForwardPairs = [&]() {
+        // Position of each DPAS in its chain. A chain continues only through a
+        // DPAS whose result has no other use, so pairs never overlap. Defs
+        // precede uses.
+        DenseMap<Instruction *, unsigned> ChainPosition;
+        DenseMap<Instruction *, Instruction *> Partner;
+        for (Instruction &I : *BB) {
+          if (!isDPAS(&I))
+            continue;
+          auto *Accumulator = dyn_cast<Instruction>(I.getOperand(0));
+          auto It = Accumulator ? ChainPosition.find(Accumulator) : ChainPosition.end();
+          bool Continues =
+              It != ChainPosition.end() && Accumulator->hasOneUse() && canForwardDPASResult(Accumulator, &I);
+          unsigned Position = Continues ? It->second + 1 : 0;
+          ChainPosition[&I] = Position;
+          if (Position % 2 == 1)
+            Partner[Accumulator] = &I;
+        }
+        return Partner;
+      };
+
+      if (C[Option::PairDPASForFwd] && CTX->platform.supportsDpasForward()) {
+        auto Pairs = findDPASForwardPairs();
+        if (!Pairs.empty())
+          DPASForwardPartner = std::make_shared<const DenseMap<Instruction *, Instruction *>>(std::move(Pairs));
+      }
+
       std::vector<Instruction *> UnknownStores;
       std::vector<Instruction *> AllMemoryAccesses;
 
@@ -2074,6 +2155,13 @@ private:
                 (DstDV && !DstDV->isVectorShuffle()) || V2SP || isNoOpSingleElementVectorEE(Dst)) {
               Weight = 0;
               WeightHighRP = 0;
+              ForceSubsequent = true;
+            }
+
+            // The second DPAS of a forward pair follows the first one when the
+            // first one is its last operand to be scheduled. The second DPAS
+            // replaces the accumulator, so this adds no register pressure.
+            if (getDPASForwardPartner(Src) == Dst) {
               ForceSubsequent = true;
             }
 
@@ -2366,6 +2454,7 @@ private:
       G.DPASChainGroups = S.G.DPASChainGroups;
       G.DPASToChainIdx = S.G.DPASToChainIdx;
       G.MaskSelects = S.G.MaskSelects;
+      G.DPASForwardPartner = S.G.DPASForwardPartner;
 
       IGC_ASSERT(VSA->getDestVector(BB->getTerminator()) == nullptr);
     }
@@ -2454,6 +2543,18 @@ private:
     uint64_t getRPDecisions() const { return RPDecisions; }
 
     uint64_t getImmediateOverrideDecisions() const { return ImmediateOverrideDecisions; }
+
+    unsigned getDPASForwardPairs() const {
+      return G.DPASForwardPartner ? static_cast<unsigned>(G.DPASForwardPartner->size()) : 0;
+    }
+
+    // The forward pairs whose second DPAS is scheduled directly after the first one.
+    unsigned getAdjacentDPASForwardPairs() const {
+      unsigned Adjacent = 0;
+      for (size_t Idx = 1; Idx < ScheduledList.size(); ++Idx)
+        Adjacent += G.getDPASForwardPartner(ScheduledList[Idx - 1]->I) == ScheduledList[Idx]->I;
+      return Adjacent;
+    }
 
     llvm::SmallVector<Instruction *, 32> getInstructionOrder() const {
       IGC_ASSERT_MESSAGE(isComplete(), "Cannot export an incomplete schedule");
@@ -3184,6 +3285,24 @@ private:
         return Nodes;
       };
 
+      // Defer the first DPAS of a forward pair while the second DPAS waits for
+      // another operand. For x2 = dpas(x1, a2, b2), x1 waits until a2 and b2
+      // are scheduled, and then x2 directly follows x1.
+      auto deferDPASUntilForwardPartnerReady = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
+        InstNodePtrList NonFilteredNodes;
+        for (InstructionNode *Node : Nodes) {
+          Instruction *Partner = G.getDPASForwardPartner(Node->I);
+          if (Partner &&
+              llvm::any_of(G.InstToNode.lookup(Partner)->Preds, [&](const DepEdge *Edge) { return Edge->Src != Node; }))
+            continue;
+          NonFilteredNodes.push_back(Node);
+        }
+        if (NonFilteredNodes.size() > 0) {
+          Nodes = std::move(NonFilteredNodes);
+        }
+        return Nodes;
+      };
+
       // Defer loads whose DPAS consumer is far (by OriginalPosition) from
       // the nearest DPAS consumer among all currently-ready loads.
       // This prevents issuing loads for a distant phase when loads for the current phase are also ready.
@@ -3442,6 +3561,16 @@ private:
         InstructionNode *Node = getFirstNode(ImmediateReadyList);
         bool UsedImmediateOverride = false;
 
+        // The second DPAS of a forward pair goes first, so that no other
+        // immediate instruction separates it from the first DPAS
+        if (!ScheduledList.empty()) {
+          if (Instruction *Partner = G.getDPASForwardPartner(ScheduledList.back()->I)) {
+            auto It = llvm::find_if(ImmediateReadyList, [&](InstructionNode *N) { return N->I == Partner; });
+            if (It != ImmediateReadyList.end())
+              Node = *It;
+          }
+        }
+
         auto *DT = VSA->getDestVector(Node->I);
 
         // PrioritizeDPASOverImmediateVS heuristic: if we have an immediate ready instruction that is a DPAS,
@@ -3565,6 +3694,9 @@ private:
           // Choose the Node with the highest MaxWeight, if several, choose the one with the lowest
           // regpressure, if several, choose the one with the least OriginalPosition
 
+          if (G.DPASForwardPartner) {
+            FilteredReadyList = deferDPASUntilForwardPartnerReady(FilteredReadyList);
+          }
           if (C[Option::DeferDistantLoads]) {
             FilteredReadyList = deferDistantLoads(FilteredReadyList);
           }
