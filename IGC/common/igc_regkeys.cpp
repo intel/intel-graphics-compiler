@@ -1327,13 +1327,13 @@ void InitializeRegKeys() {
       std::vector<char *> args;
       args.push_back((char *)("IGC"));
 
-      IGC::applyLLVMOptionDefaults();
-
       if (IGC_IS_FLAG_ENABLED(LLVMCommandLine))
         ParseCStringVector(args, IGC_GET_REGKEYSTRING(LLVMCommandLine));
 
       if (args.size() > 1)
         llvm::cl::ParseCommandLineOptions(args.size(), &args[0]);
+
+      IGC::applyLLVMOptionDefaults();
     }
 
     setImpliedIGCKeys();

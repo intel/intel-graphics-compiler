@@ -21,6 +21,7 @@ See LICENSE.TXT for details.
 // Load an .ll/.bc file, perform LLVM/IGC passes on it and print the result.
 
 #include "common/LLVMUtils.h"
+#include "common/igc_llvm_option_defaults.hpp"
 #include "CreateIGCContext.h"
 #include "InitializeAllIGCPasses.h"
 #include "RestoreGenISAIntrinsicDeclarations.h"
@@ -225,11 +226,8 @@ int main(int argc, char **argv) {
 
   cl::ParseCommandLineOptions(argc, argv, "llvm .bc -> .bc modular optimizer and analysis printer\n");
 
-  // IGC specific: code sinking off, as igc_regkeys.cpp does for the driver.
-  // Assigned, not a flag: LLVM 14 rejects the regkey parse's second occurrence.
-  if (auto *Sinking = static_cast<cl::opt<bool> *>(cl::getRegisteredOptions().lookup("instcombine-code-sinking")))
-    if (Sinking->getNumOccurrences() == 0)
-      *Sinking = false;
+  // IGC specific: same LLVM option defaults as the driver.
+  IGC::applyLLVMOptionDefaults();
 
   // IGC specific: regkeys expose the same debug/compiler toggles used by the
   // full IGC compiler driver.

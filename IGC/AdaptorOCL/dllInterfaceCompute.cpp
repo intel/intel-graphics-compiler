@@ -1045,78 +1045,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
   // Setting mutex to ensure that single thread will enter and setup this flag.
   {
     const std::lock_guard<std::mutex> lock(llvm_mutex);
-    std::vector<const char *> args;
-    args.push_back("igc");
-    auto optionsMap = llvm::cl::getRegisteredOptions();
-
-    // The default value (8) for max of trip count upper bound that is considered
-    // in unrolling is not enough for some important compute workloads, so we set it to 16.
-    // When UnrollMaxUpperBound parameter will be available to set in UnrollingPreferences
-    // this code will be removed.
-    llvm::StringRef unrollMaxUpperBoundFlag = "-unroll-max-upperbound=16";
-    auto unrollMaxUpperBoundSwitch = optionsMap.find(unrollMaxUpperBoundFlag.trim("-=16"));
-    if (unrollMaxUpperBoundSwitch != optionsMap.end()) {
-      if (unrollMaxUpperBoundSwitch->second->getNumOccurrences() == 0) {
-        args.push_back(unrollMaxUpperBoundFlag.data());
-      }
-    }
-
-    // Disable instcombine code sinking (see applyLLVMOptionDefaults).
-    IGC::applyLLVMOptionDefaults();
-
-    // With the default (250) maximum number of accesses allowed for memory
-    // promotion when using MemorySSA we lack the performance for some
-    // applications. Setting the number of accesses for memory promotion
-    // cap to 500 solves this issue.
-    llvm::StringRef licmMSSAPromotionFlag = "-licm-mssa-max-acc-promotion=500";
-    auto licmMSSAPromotionSwitch = optionsMap.find(licmMSSAPromotionFlag.trim("-=500"));
-    if (licmMSSAPromotionSwitch != optionsMap.end()) {
-      if (licmMSSAPromotionSwitch->second->getNumOccurrences() == 0) {
-        args.push_back(licmMSSAPromotionFlag.data());
-      }
-    }
-
-    // Avoid stack overflow in AliasAnalysis for expansive loop unrolling cases.
-    llvm::StringRef aaQueryDepthFlag = "-basic-aa-max-query-depth=192";
-    auto aaQueryDepthSwitch = optionsMap.find(aaQueryDepthFlag.trim("-=192"));
-    if (aaQueryDepthSwitch != optionsMap.end()) {
-      if (aaQueryDepthSwitch->second->getNumOccurrences() == 0) {
-        args.push_back(aaQueryDepthFlag.data());
-      }
-    }
-
-    llvm::StringRef dsePartialOverwriteTrackingFlag = "-enable-dse-partial-overwrite-tracking=1";
-    auto dsePartialOverwriteTrackingSwitch = optionsMap.find(dsePartialOverwriteTrackingFlag.trim("-=1"));
-    if (dsePartialOverwriteTrackingSwitch != optionsMap.end()) {
-      if (dsePartialOverwriteTrackingSwitch->second->getNumOccurrences() == 0) {
-        args.push_back(dsePartialOverwriteTrackingFlag.data());
-      }
-    }
-
-    llvm::StringRef dseMSSAStepLimitFlag = "-dse-memoryssa-walklimit=150";
-    auto dseMSSAStepLimitSwitch = optionsMap.find(dseMSSAStepLimitFlag.trim("-=150"));
-    if (dseMSSAStepLimitSwitch != optionsMap.end()) {
-      if (dseMSSAStepLimitSwitch->second->getNumOccurrences() == 0) {
-        args.push_back(dseMSSAStepLimitFlag.data());
-      }
-    }
-
-    // From pass IndVarSimplify we are only interested in optimization done by -replexitval.
-    // Disable other features that can have a negative impact on performance.
-    std::array<llvm::StringRef, 4> indVarSimplifyFlags = {"-indvars-post-increment-ranges=0", "-disable-lftr=1",
-                                                          "-indvars-widen-indvars=0", "-verify-indvars=0"};
-    for (const auto indVarSimplifyFlag : indVarSimplifyFlags) {
-      auto indVarSimplifySwitch = optionsMap.find(indVarSimplifyFlag.drop_front(1).split("=").first);
-      if (indVarSimplifySwitch != optionsMap.end()) {
-        if (indVarSimplifySwitch->second->getNumOccurrences() == 0) {
-          args.push_back(indVarSimplifyFlag.data());
-        }
-      }
-    }
-
-    if (std::size(args) > 1) {
-      llvm::cl::ParseCommandLineOptions(std::size(args), &args[0]);
-    }
+    IGC::applyLLVMOptionDefaults(IGC::LLVMOptionScope::OCL);
   }
 
   if (IGC_IS_FLAG_ENABLED(QualityMetricsEnable)) {
