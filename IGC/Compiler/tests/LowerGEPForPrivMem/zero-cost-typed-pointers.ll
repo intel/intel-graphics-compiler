@@ -13,22 +13,22 @@
 ; block, by constant-index stores to all elements. Every function is marked as
 ; having the pass disabled (m_OptsToDisablePerFunc), as the retry manager does,
 ; so the pass runs in restricted mode and promotes only zero-cost arrays.
-; Zero-cost promotion is off by default (DisablePrivMemZeroCostPromotion=1).
+; Zero-cost promotion is on by default (DisablePrivMemZeroCostPromotion=0).
 ;
-; RUN: igc_opt --typed-pointers -igc-priv-mem-to-reg -S < %s 2>&1 | FileCheck %s --check-prefix=OFF
-; RUN: igc_opt --typed-pointers -igc-priv-mem-to-reg --regkey DisablePrivMemZeroCostPromotion=0 -S < %s 2>&1 \
-; RUN:   | FileCheck %s --check-prefix=RESTRICTED
+; RUN: igc_opt --typed-pointers -igc-priv-mem-to-reg -S < %s 2>&1 | FileCheck %s --check-prefix=RESTRICTED
+; RUN: igc_opt --typed-pointers -igc-priv-mem-to-reg --regkey DisablePrivMemZeroCostPromotion=1 -S < %s 2>&1 \
+; RUN:   | FileCheck %s --check-prefix=OFF
 
-; Fully initialized in the block of the dynamic-index load: promoted only when
-; zero-cost promotion is enabled.
+; Fully initialized in the block of the dynamic-index load: promoted by default,
+; not promoted when zero-cost promotion is disabled.
 define float @zero_cost(float %a, float %b, float %c, float %d, i32 %i) {
 ; RESTRICTED-LABEL: @zero_cost(
 ; RESTRICTED-NOT:     alloca [4 x float]
 ; RESTRICTED:         alloca <4 x float>
 ; RESTRICTED:         extractelement <4 x float> {{%.*}}, i32 {{%.*}}
 ; OFF-LABEL:        @zero_cost(
-; OFF:                alloca [4 x float]
 ; OFF-NOT:            alloca <4 x float>
+; OFF:                alloca [4 x float]
 entry:
   %arr = alloca [4 x float], align 4
   %p0 = getelementptr inbounds [4 x float], [4 x float]* %arr, i64 0, i64 0

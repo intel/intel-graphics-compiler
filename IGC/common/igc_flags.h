@@ -652,10 +652,9 @@ DECLARE_IGC_REGKEY(
     "Setting this to 2 makes it always use the selected channels, without heuristic.",
     DEBUG_ONLY)
 DECLARE_IGC_REGKEY(
-    bool, DisablePrivMemZeroCostPromotion, true,
+    bool, DisablePrivMemZeroCostPromotion, false,
     "Setting this to 1/true disables promotion of private arrays whose stored values are already live "
-    "at every load (bypassing the pressure heuristic, and also done when promotion is disabled on retry). "
-    "Disabled by default; set to 0 to enable",
+    "at every load (bypassing the pressure heuristic, and also done when promotion is disabled on retry). ",
     DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisablePromotePrivMem, false,
                    "Setting this to 1/true adds a compiler switch to disable IGC private array promotion", DEBUG_ONLY)
