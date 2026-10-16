@@ -390,6 +390,10 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     if (IGC_IS_FLAG_DISABLED(DisableMergeAllocasPrivateMemory) && ctx.type == ShaderType::OPENCL_SHADER) {
       mpm.add(createMergeAllocasOCL());
     }
+    if (ctx.type == ShaderType::OPENCL_SHADER && !isOptDisabled && IGC_IS_FLAG_ENABLED(EnableExplicitCopyForByVal)) {
+      mpm.add(new LowerByValAttribute());
+      mpm.add(createReplaceUnsupportedIntrinsicsPass());
+    }
     // Resolving private memory allocas
     if (ctx.type == ShaderType::OPENCL_SHADER) {
       mpm.add(createSplitPHIsOfAllocaPointers(true));
@@ -691,13 +695,6 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     mpm.add(createGenRotatePass());
   }
 
-  // The explicit copy for byval arguments is made after OptimizeIR, whose passes (e.g. MemCpyOpt) may rely on
-  // the copy being hidden, and before memcpy lowering, while byval temporaries emitted by frontends are still
-  // recognizable. No pass between here and PrivateMemoryResolution may remove a copy that escapes into a call.
-  if (ctx.type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(EnableExplicitCopyForByVal)) {
-    mpm.add(new LowerByValAttribute());
-  }
-
   mpm.add(createReplaceUnsupportedIntrinsicsPass());
 
   if (IGC_IS_FLAG_DISABLED(DisablePromoteToDirectAS) && !ctx.getModuleMetaData()->compOpt.IsLibraryCompilation) {
@@ -795,6 +792,10 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   if (!(IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) && IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc))) {
     if (IGC_IS_FLAG_DISABLED(DisableMergeAllocasPrivateMemory) && ctx.type == ShaderType::OPENCL_SHADER) {
       mpm.add(createMergeAllocasOCL());
+    }
+    if (ctx.type == ShaderType::OPENCL_SHADER && !isOptDisabled && IGC_IS_FLAG_ENABLED(EnableExplicitCopyForByVal)) {
+      mpm.add(new LowerByValAttribute());
+      mpm.add(createReplaceUnsupportedIntrinsicsPass());
     }
     if (ctx.type == ShaderType::OPENCL_SHADER) {
       mpm.add(createSplitPHIsOfAllocaPointers(true));
