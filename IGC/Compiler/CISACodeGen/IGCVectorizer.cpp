@@ -107,7 +107,11 @@ IGC_INITIALIZE_PASS_END(IGCVectorizer, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_O
   }
 #define PRINT_INST(I)                                                                                                  \
   if (DEBUG) {                                                                                                         \
-    I->print(OutputLogStream, false);                                                                                  \
+    if (I) {                                                                                                           \
+      I->print(OutputLogStream, false);                                                                                \
+    } else {                                                                                                           \
+      PRINT_LOG("NULL");                                                                                               \
+    }                                                                                                                  \
   }
 #define PRINT_INST_NL(I)                                                                                               \
   if (DEBUG) {                                                                                                         \
@@ -118,6 +122,9 @@ IGC_INITIALIZE_PASS_END(IGCVectorizer, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_O
     }                                                                                                                  \
     OutputLogStream << "\n";                                                                                           \
   }
+#define PRINT_LOG_INST_NL(Str, I)                                                                                      \
+  PRINT_LOG(Str);                                                                                                      \
+  PRINT_INST_NL(I);
 #define PRINT_DECL_NL(I)                                                                                               \
   if (DEBUG) {                                                                                                         \
     if (I) {                                                                                                           \
@@ -775,13 +782,13 @@ bool IGCVectorizer::checkPrevVectorization(VecArr &Slice, Value *&OutPrevVectori
     return false;
 
   auto Vectorized = ScalarToVector[First];
-  auto VecSize = getVectorSize(Vectorized);
-  if (llvm::isa<InsertElementInst>(Vectorized) && VecSize == Slice.size()) {
+  if (llvm::isa<InsertElementInst>(Vectorized) && checkVectorMatchesSlice({Slice.begin(), Slice.end()}, Vectorized)) {
     PRINT_LOG_NL("Was sourced by other vector instruction, but wasn't vectorized");
     OutPrevVectorization = Vectorized;
   } else if (llvm::isa<InsertElementInst>(Vectorized)) {
     PRINT_LOG_NL("Was sourced as part of wider vector, vectorize do not remap");
   } else {
+    PRINT_LOG_INST_NL("Vectorized version: ", Vectorized);
     PRINT_LOG_NL("Already was vectorized by other slice");
     return true;
   }
@@ -1112,19 +1119,34 @@ bool IGCVectorizer::handleExtractElement(VecArr &Slice) {
   if (!checkExtractElement(Slice))
     return false;
 
-  if (!checkNaiveSwizzle(Slice))
-    return false;
+  Value *PrevVectorization = nullptr;
+  if (checkPrevVectorization(Slice, PrevVectorization) && checkNaiveSwizzle(Slice))
+    return true;
+
+  // another chain built vector-interface for exactly this non-naive extract slice, reuse
+  if (PrevVectorization)
+    return true;
 
   unsigned int Base = getConstantValueAsInt(First->getOperand(1));
-  if (Base != 0 || getVectorSize(First->getOperand(0)) != Slice.size()) {
-    Instruction *InsertPoint = getInsertPointForVector(Slice, Slice);
-    createVector(Slice, IGCLLVM::getNextNonDebugInstruction(InsertPoint));
+  bool VecSizeEqualSlice = getVectorSize(First->getOperand(0)) == Slice.size();
+  bool CanSimplySubstitute = checkNaiveSwizzle(Slice) && Base == 0 && VecSizeEqualSlice;
+
+  if (CanSimplySubstitute) {
+    PRINT_LOG_NL("Simply substitute vec operand");
+    Value *Source = First->getOperand(0);
+    for (auto &el : Slice)
+      ScalarToVector[el] = Source;
     return true;
   }
 
-  Value *Source = First->getOperand(0);
-  for (auto &el : Slice)
-    ScalarToVector[el] = Source;
+  VecArr EmptySet;
+  Instruction *InsertPoint = getInsertPointForVector(Slice, EmptySet);
+  if (!InsertPoint) {
+    PRINT_LOG_NL("Couldn't find insert point");
+    return false;
+  }
+  auto ExtractInterface = createVector(Slice, IGCLLVM::getNextNonDebugInstruction(InsertPoint));
+  PRINT_LOG_INST_NL("extract interface is used: ", ExtractInterface);
   return true;
 }
 
@@ -1363,7 +1385,7 @@ Value *IGCVectorizer::vectorizeSlice(VecArr &Slice, unsigned int OperNum) {
   return NewVector;
 }
 
-bool IGCVectorizer::checkIsSameOrder(VecVal &Slice, InsertElementInst *Vectorized) {
+bool IGCVectorizer::checkIsSameOrder(const VecVal &Slice, InsertElementInst *Vectorized) {
 
   VecVal Vector;
   while (true) {
@@ -1392,7 +1414,7 @@ bool IGCVectorizer::checkIsSameOrder(VecVal &Slice, InsertElementInst *Vectorize
 /// An already created vector is reusable as a whole operand only if it holds
 /// exactly this slice, in this order. A wider vector makes the operand type
 /// disagree with the type derived from Slice.size().
-bool IGCVectorizer::checkVectorMatchesSlice(VecVal &Slice, Value *Vectorized) {
+bool IGCVectorizer::checkVectorMatchesSlice(const VecVal &Slice, Value *Vectorized) {
 
   if (auto *InsElInst = llvm::dyn_cast<InsertElementInst>(Vectorized))
     return checkIsSameOrder(Slice, InsElInst);

@@ -104,8 +104,8 @@ private:
   Instruction *getInsertPointForVector(VecArr &Arr, VecArr &Slice);
   Instruction *getInsertPointForCreatedInstruction(VecVal &Arr, VecArr &Slice);
 
-  bool checkIsSameOrder(VecVal &Slice, InsertElementInst *Vectorized);
-  bool checkVectorMatchesSlice(VecVal &Slice, Value *Vectorized);
+  bool checkIsSameOrder(const VecVal &Slice, InsertElementInst *Vectorized);
+  bool checkVectorMatchesSlice(const VecVal &Slice, Value *Vectorized);
   bool checkPHI(Instruction *Compare, VecArr &Slice);
   bool handleStub(VecArr &Slice);
   bool handlePHI(VecArr &Slice);
