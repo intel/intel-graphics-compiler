@@ -491,6 +491,18 @@ DECLARE_IGC_REGKEY(
     bool, DisableConstantCoalescingOfStatefulNonUniformLoads, false,
     "Disable merging non-uniform loads from stateful buffers. Note: does not affect merging to sampler loads",
     DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, DisableHoistImmutableLoadsAboveBarriers, false,
+                   "Keep loads from read-only buffers after the barriers and fences that precede them instead of "
+                   "issuing them early so their latency overlaps the wait",
+                   ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, HoistImmutableLoadsAboveBarriersMaxDistance, 64,
+                   "Largest number of instructions between a barrier or fence and a following read-only buffer load "
+                   "for HoistImmutableLoadsAboveBarriers to move the load above it. 0 means no limit",
+                   ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, HoistImmutableLoadsAboveBarriersMaxUseDistance, 8,
+                   "Largest number of instructions between a read-only buffer load and the first use of its value "
+                   "for HoistImmutableLoadsAboveBarriers to move the load above a wait. 0 means no limit",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableWideLSCConstantCoalescing, false,
                    "Let a non-uniform stateful D32/D64 constant coalescing chunk grow to the full LSC message width, "
                    "32 bytes per lane at SIMD16 on a 64-byte GRF platform, instead of one OWORD.",

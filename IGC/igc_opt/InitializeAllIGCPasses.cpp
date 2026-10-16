@@ -221,6 +221,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializePromoteToPredicatedMemoryAccessPass(Registry);
   initializeBranchToSelectPass(Registry);
   initializeHoistConvOpToDomPass(Registry);
+  initializeHoistImmutableLoadsAboveBarriersPass(Registry);
   initializeFixResourcePtrLPMPass(Registry);
   IGC::initializePushAnalysisPass(Registry);
   initializeTransformUnmaskedFunctionsPassLPMPass(Registry);

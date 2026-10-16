@@ -51,6 +51,7 @@ void initializeCustomSafeOptPassPass(llvm::PassRegistry &);
 void initializeCustomUnsafeOptPassPass(llvm::PassRegistry &);
 void initializeHoistConvOpToDomPass(llvm::PassRegistry &);
 void initializeHoistFMulInLoopPassPass(llvm::PassRegistry &);
+void initializeHoistImmutableLoadsAboveBarriersPass(llvm::PassRegistry &);
 void initializeHandleFRemInstructionsLPMPass(llvm::PassRegistry &);
 void initializeDeSSAPass(llvm::PassRegistry &);
 void initializeDetectCSWalkOrderPass(llvm::PassRegistry &);
