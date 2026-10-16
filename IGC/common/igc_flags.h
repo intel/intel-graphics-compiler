@@ -1374,6 +1374,10 @@ DECLARE_IGC_REGKEY(DWORD, LICMStatThreshold, 70, "LICM stat threshold to avoid r
 DECLARE_IGC_REGKEY(bool, EnableTypeDemotion, true, "Enable Type Demotion", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnablePreRARematFlag, true, "Enable PreRA Rematerialization of Flag", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableGASResolver, true, "Enable GAS Resolver", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, EnablePredicatedGASDynamicResolution, true,
+                   "Resolve generic loads/stores that may point to private or local memory with per-address-space "
+                   "predicated loads/stores instead of branches. LSC platforms only.",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableGASKernelByValArgPtrInference, true,
                    "Infer the global address space for pointers contained by-value kernel args.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableLowerGPCallArg, true, "Enable pass to lower generic pointers in function arguments",
