@@ -52,7 +52,6 @@ $ export IGC_ShaderDumpEnable=1
 | `DisableIfCvt` | Disable ifcvt | - |
 | `DisableMixMode` | Disables mix mode in vISA BE. | - |
 | `DisableRegDistDep` | distable regDist dependence | Available |
-| `DisableSendS` | Setting this to 1/true adds a compiler switch to not generate sends commands, default is to enable sends | - |
 | `DisableThreeALUPipes` | Disable three ALU Pipelines. XeHP only | Available |
 | `DisableVISASBIDCounter` | Disable VISA SBID Counter feature | Available |
 | `DisableWriteCombine` | Disable write combine. PVC+ only | - |
@@ -749,7 +748,6 @@ $ export IGC_ShaderDumpEnable=1
 | `ControlUnitSize` | Control compilation unit size by unit trimming | Available |
 | `CrashOnDroppedFnAccess` | Enables crash on access to dropped functions | Available |
 | `DelayEmuInt64AddLimit` | Delay emulating Int64 Add operations in vISA | - |
-| `DetectCastToGAS` | Check if the module contains local/private to GAS (Gerneric Address Space) cast, it also check internal flags | Available |
 | `DiableWaSamplerNoMask` | Disable WA DiableWaSamplerNoMask | - |
 | `DisableAddingAlwaysAttribute` | Disable adding always attribute | Available |
 | `DisableDynamicPolyPackingPolicies` | Disable dynamic poly packing policies for Xe3+ platforms | - |
@@ -796,7 +794,6 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableGPUFenceScopeOnSingleTileGPUs` | Allow the use of `GPU` fence scope on single-tile GPUs. By default the `TILE` scope is used                   instead of `GPU` scope on single-tile GPUs. | Available |
 | `EnableGather4cpoWA` | Enable WA transforming gather4cpo/gather4po into gather4c/gather4 | - |
 | `EnableGreedyTrimming` | Find the optimal set of functions to trim | Available |
-| `EnableHalfPromotion` | Enable pass that replaces instructions using halfs with corresponding float counterparts for pre-SKL | - |
 | `EnableInsertElementScalarCoalescing` | Enable coalescing on the scalar operand of insertelement | - |
 | `EnableIntelFast` | Enable intel fast, experimental flag. | - |
 | `EnableLargeFunctionCallMerging` | Merge mutually exclusive calls to large functions to enable inlining | - |

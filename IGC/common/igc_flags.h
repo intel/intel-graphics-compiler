@@ -19,10 +19,6 @@ SPDX-License-Identifier: MIT
 
 DECLARE_IGC_GROUP("VISA optimization")
 DECLARE_IGC_REGKEY(DWORD, VISALTO, 0, "vISA LTO optimization flags. check LINKER_TYPE for more details", DEBUG_ONLY)
-DECLARE_IGC_REGKEY(
-    bool, DisableSendS, false,
-    "Setting this to 1/true adds a compiler switch to not generate sends commands, default is to enable sends ",
-    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, ForcePreserveR0, false, "Setting this to true makes VISA preserve r0 in r0", ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnablePreemption, true, "Enable generating preeemptable code (SKL+)", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, ForcePreemptionWA, false, "Force generating preemptable code across platforms", ALWAYS)
@@ -1928,9 +1924,6 @@ DECLARE_IGC_REGKEY(bool, DownConvertI32Sampler, false, "Convert i32 sampler mess
     or if it is known that the upper 16bits of data is always 0.",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, FuseTypedWrite, false, "Enable fusing of simd8 typed write", DEBUG_ONLY)
-DECLARE_IGC_REGKEY(
-    bool, EnableHalfPromotion, true,
-    "Enable pass that replaces instructions using halfs with corresponding float counterparts for pre-SKL", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, ForceHalfPromotion, false,
                    "Force enable pass that replaces instructions using halfs with corresponding float counterparts",
                    DEBUG_ONLY)
@@ -2129,10 +2122,6 @@ DECLARE_IGC_REGKEY(debugString, ForcePrivateMemoryToSLMOnBuffers, 0,
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, ForcePrivateMemoryToGlobalOnGeneric, true,
                    "Force moving private memory allocations to global buffer when generic pointer is present", ALWAYS)
-DECLARE_IGC_REGKEY(
-    bool, DetectCastToGAS, true,
-    "Check if the module contains local/private to GAS (Gerneric Address Space) cast, it also check internal flags",
-    ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableProgrammableOffsetsMessageBitInHeader, false,
                    "Use pre-delta feature (legacy) method of passing MSB of PO messages opcode. ", DEBUG_ONLY)
 
