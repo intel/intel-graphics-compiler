@@ -71,10 +71,10 @@ for.cond.i:                                       ; preds = %_ZZ4testIN4sycl3_V1
   %cmp.i36 = icmp ugt i64 %call.i, %conv.i34
   br i1 %cmp.i36, label %for.body.i, label %_ZN4sycl3_V13ext6oneapi12experimental6matrix18joint_matrix_applyINS0_9sub_groupENS0_6detail9half_impl4halfELNS4_3useE0ELm8ELm16ELNS4_6layoutE0ERKZ4testIS9_fLm8ELm16EEvvEUlRS9_E_EEvT_RNS4_12joint_matrixISH_T0_XT1_EXT2_EXT3_EXT4_EEEOT5_.exit
 
-; CHECK: [[LOAD_1:%.*]] = load <8 x i16>, <8 x i16> addrspace(4)* [[ASCAST_1]]
-; CHECK: [[EXTRACT:%.*]] = extractelement <8 x i16> [[LOAD_1]], i64 %{{.*}}
-; CHECK: [[BITCAST_1:%.*]] = bitcast i16 [[EXTRACT]] to half, !joint_matrix_apply !{{.*}}
-; CHECK: fcmp une half [[BITCAST_1]], 0xH0000
+; CHECK: [[BASE_1:%.*]] = bitcast <8 x i16> addrspace(4)* [[ASCAST_1]] to i16 addrspace(4)*
+; CHECK: [[EXTRACT_PTR:%.*]] = getelementptr inbounds i16, i16 addrspace(4)* [[BASE_1]], i64 %{{.*}}, !joint_matrix_apply
+; CHECK: [[EXTRACT:%.*]] = load half, half addrspace(4)* %{{.*}}, align 2
+; CHECK: fcmp une half [[EXTRACT]], 0xH0000
 
 for.body.i:                                       ; preds = %for.cond.i
   %call.i62 = call spir_func %structtype addrspace(4)* @_Z19__spirv_AccessChainPU3AS4PU3AS143__spirv_CooperativeMatrixKHR__half_3_8_16_0l(%spirv.CooperativeMatrixKHR._half_3_8_16_0 addrspace(1)* addrspace(4)* %11, i64 %conv.i34)
@@ -98,10 +98,9 @@ if.then14.i:                                      ; preds = %if.then.i
   %19 = select i1 %cmp.i75.i, half %div.i.i, half %add.i.i
   br label %_ZZ4testIN4sycl3_V16detail9half_impl4halfEfLm8ELm16EEvvENKUlRS4_E_clES5_.exit
 
-; CHECK: [[LOAD_2:%.*]] = load <8 x i16>, <8 x i16> addrspace(4)* [[ASCAST_2]]
-; CHECK: [[BITCAST_2:%.*]] = bitcast half %{{.*}} to i16
-; CHECK: [[INSERT:%.*]] = insertelement <8 x i16> [[LOAD_2]], i16 [[BITCAST_2]], i64 %{{.*}}
-; CHECK: store <8 x i16> [[INSERT]], <8 x i16> addrspace(4)* %{{.*}}
+; CHECK: [[BASE_2:%.*]] = bitcast <8 x i16> addrspace(4)* [[ASCAST_2]] to i16 addrspace(4)*
+; CHECK: [[INSERT_PTR:%.*]] = getelementptr inbounds i16, i16 addrspace(4)* [[BASE_2]], i64 %{{.*}}, !joint_matrix_apply
+; CHECK: store half %{{.*}}, half addrspace(4)* %{{.*}}, align 2
 
 _ZZ4testIN4sycl3_V16detail9half_impl4halfEfLm8ELm16EEvvENKUlRS4_E_clES5_.exit: ; preds = %if.then14.i, %if.then.i, %for.body.i
   %element.i.sroa.0.0 = phi half [ %19, %if.then14.i ], [ %17, %if.then.i ], [ %17, %for.body.i ]

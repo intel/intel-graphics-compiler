@@ -55,7 +55,6 @@ IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(JointMatrixFuncsResolutionPassLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-static const char *SPIRVPrefix = "__spirv_";
 static const char *JointMatrixBIPrefix = "__builtin_spirv_OpJointMatrix";
 static const char *JointMatrixBISuffix = "JointMatrixINTEL_";
 static const char *JointMatrixPrefetchPrefx = "CooperativeMatrixPrefetch";
@@ -191,6 +190,7 @@ bool JointMatrixFuncsResolutionPass::run(Module &M, CodeGenContext *pCtx, IGCMD:
   ResolvedFuncSignatures.clear();
   NewFuncWithResolvedSignatures.clear();
   ResolvedTypes.clear();
+  AccessChainElementPtrs.clear();
   Changed = false;
 
   for (auto &F : M) {
@@ -198,7 +198,7 @@ bool JointMatrixFuncsResolutionPass::run(Module &M, CodeGenContext *pCtx, IGCMD:
       continue;
 
     if (F.getName().contains(AccessChainPrefx))
-      Changed |= preprocessAccessChain(&F);
+      Changed |= resolveAccessChain(&F);
   }
 
   for (auto &F : M) {
@@ -2406,20 +2406,21 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
   return element;
 }
 
-bool JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
-  // We could resolve __spirv_AccessChain call, but apparently it's easier
-  // and more effecient to preprocess it and map on VectorInsertDynamic
-  // and VectorExtractDynamic here, before resolving and substituting matrix
-  // types
-  SmallVector<Instruction *, 16> toErase;
-  SmallVector<std::pair<Instruction *, Instruction *>, 8> replaces;
-  for (auto It = F->use_begin(); It != F->use_end(); It++) {
-    auto user = It->getUser();
-    if (!isa<CallInst>(user))
+bool JointMatrixFuncsResolutionPass::resolveAccessChain(Function *F) {
+  // __spirv_AccessChain returns a pointer to an element of the slice of the
+  // matrix owned by the work item. The resolved slice is laid out contiguously
+  // in the memory the matrix pointer points to, element after element in units
+  // of the matrix access width, so the element is addressed directly:
+  // %element_ptr = __spirv_AccessChain(%matrix_ptr, %index)
+  // becomes
+  // %element_ptr = getelementptr i<access width>, ptr %matrix_ptr, i64 %index
+  // and its users are resolved as ordinary memory accesses, wherever they are.
+  SmallVector<CallInst *, 16> toErase;
+  for (User *U : F->users()) {
+    auto *CI = dyn_cast<CallInst>(U);
+    if (!CI)
       continue;
-    auto *CI = cast<CallInst>(user);
-    IRBuilder<> builder(CI);
-    if (CI->getNumUses() == 0) {
+    if (CI->use_empty()) {
       toErase.push_back(CI);
       continue;
     }
@@ -2429,17 +2430,17 @@ bool JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
       continue;
 #endif
 
-    LLVM_DEBUG(dbgs() << " - PREPROCESS ACCESS CHAIN: " << *CI << "\n");
+    LLVM_DEBUG(dbgs() << " - RESOLVE ACCESS CHAIN: " << *CI << "\n");
 
     Type *chainBaseTy = nullptr;
-    auto operand0 = CI->getArgOperand(0);
+    Value *ptrToMatrix = CI->getArgOperand(0);
 
 #if LLVM_VERSION_MAJOR >= 16
-    if (IGCLLVM::isPointerTy(operand0->getType())) {
-      chainBaseTy = TryFindTargetExtensionTypeOfOpaquePtr(operand0);
+    if (IGCLLVM::isPointerTy(ptrToMatrix->getType())) {
+      chainBaseTy = TryFindTargetExtensionTypeOfOpaquePtr(ptrToMatrix);
 
       if (!chainBaseTy) {
-        m_Ctx->EmitError("__spirv_AccessChain call 1st argument must be pointer to target extension type", operand0);
+        m_Ctx->EmitError("__spirv_AccessChain call 1st argument must be pointer to target extension type", ptrToMatrix);
         continue;
       }
     } else
@@ -2447,85 +2448,37 @@ bool JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
     {
       // to be removed after we switch to LLVM 16 with opaque pointers by
       // default
-      chainBaseTy = IGCLLVM::getNonOpaquePtrEltTy(operand0->getType());
+      chainBaseTy = IGCLLVM::getNonOpaquePtrEltTy(ptrToMatrix->getType());
       IGC_ASSERT_MESSAGE(chainBaseTy, "__spirv_AccessChain call 1st argument is invalid");
     }
 
     IGC_ASSERT_MESSAGE(isMatrixType(chainBaseTy), "__spirv_AccessChain call 1st argument must be cooperative matrix");
-    Value *ptrToMatrix = CI->getArgOperand(0);
-    Value *index = CI->getArgOperand(1);
+    JointMatrixTypeDescription desc;
+    if (!ParseMatrixTypeName(chainBaseTy, &desc))
+      continue;
 
-    for (const auto &U : CI->users()) {
-      Instruction *memInst = dyn_cast<Instruction>(U);
-      if (!memInst)
-        continue;
-      // In case of sycl::half and sycl::bfloat16 storage will be accessed
-      // via zero GEP or pointer cast that we need to strip, for example:
-      // %call = call spir_func %structtype addrspace(4)* @__spirv_AccessChain(
-      //     %spirv.CooperativeMatrixKHR._half_3_8_16_0 addrspace(1)* addrspace(4)* %matrix,
-      //     i64 %idx)
-      // %gep = getelementptr inbounds %structtype, %structtype addrspace(4)* %call, i64 0, i32 0
-      // %cast = bitcast i16 addrspace(4)* %gep to half addrspace(4)*
-      // %extract = load half, half addrspace(4)* %cast
-      while (isa<GetElementPtrInst, BitCastInst, AddrSpaceCastInst>(memInst)) {
-        if (isa<GetElementPtrInst>(memInst))
-          IGC_ASSERT_MESSAGE(cast<GetElementPtrInst>(memInst)->hasAllZeroIndices(),
-                             "Unexpected matrix insert/extract format");
-        toErase.push_back(memInst);
-        memInst = cast<Instruction>(IGCLLVM::getUniqueUndroppableUser(memInst));
-      }
-      // Expected format is:
-      // %matrix_ptr = alloca %matrix_type
-      // (may be some casts)
-      // %element_ptr = __spirv_AccessChain(%matrix_ptr, %index)
-      // 1. For extract
-      // %element = load %element_ptr
-      // 2. For insert
-      // store %element %element_ptr
-      IGC_ASSERT_MESSAGE((isa<LoadInst, StoreInst>(memInst)), "Unexpected matrix insert/extract format");
-      // Get __spirv_AccessChain function's mangling postfix to reuse it
-      // for overloading of insert/extract
-      constexpr unsigned ACNameLength = 23; // "_Z19__spirv_AccessChain"
-      std::string funcPostfix = (F->getName().drop_front(ACNameLength)).str();
-      builder.SetInsertPoint(memInst);
-      // Read the slice where the access happens, not where the pointer was
-      // taken: two element pointers into the same matrix can both be produced
-      // before either access, and an insert working on a copy of the slice read
-      // that early writes back a value that misses the other insert.
-      Value *matrix = builder.CreateLoad(chainBaseTy, ptrToMatrix, "");
-      if (isa<LoadInst>(memInst)) {
-        std::vector<Value *> Args = {matrix, index};
-        FunctionType *funcType = FunctionType::get(memInst->getType(), {matrix->getType(), index->getType()}, false);
-        std::string funcName =
-            std::string("_Z28") + std::string(SPIRVPrefix) + std::string(JointMatrixSliceExtract) + funcPostfix;
-        Instruction *extractCall = builder.CreateCall(F->getParent()->getOrInsertFunction(funcName, funcType), Args);
-        replaces.push_back(std::make_pair(memInst, extractCall));
-      }
-      if (isa<StoreInst>(memInst)) {
-        Value *component = cast<StoreInst>(memInst)->getValueOperand();
-        std::vector<Value *> Args = {matrix, component, index};
-        FunctionType *funcType =
-            FunctionType::get(chainBaseTy, {matrix->getType(), component->getType(), index->getType()}, false);
-        std::string funcName =
-            std::string("_Z27") + std::string(SPIRVPrefix) + std::string(JointMatrixSliceInsert) + funcPostfix;
-        Instruction *extractCall = builder.CreateCall(F->getParent()->getOrInsertFunction(funcName, funcType), Args);
-        builder.CreateStore(extractCall, ptrToMatrix);
-      }
-      toErase.push_back(memInst);
+    IRBuilder<> builder(CI);
+    Type *accessTy = builder.getIntNTy(getAccessBitWidth(&desc));
+    unsigned addressSpace = ptrToMatrix->getType()->getPointerAddressSpace();
+    Value *base = builder.CreatePointerCast(ptrToMatrix, IGCLLVM::PointerType::get(accessTy, addressSpace));
+    Value *elementPtr = builder.CreateInBoundsGEP(accessTy, base, CI->getArgOperand(1), "matrix.element.ptr");
+    AccessChainElementPtrs.insert(elementPtr);
+
+    // Mark the access, so that the loop of joint_matrix_apply around it is
+    // fully unrolled, see getUnrollingPreferences.
+    if (auto *elementPtrInst = dyn_cast<Instruction>(elementPtr)) {
+      MDNode *node = MDNode::get(CI->getContext(), ConstantAsMetadata::get(builder.getInt1(true)));
+      elementPtrInst->setMetadata("joint_matrix_apply", node);
     }
+
+    CI->replaceAllUsesWith(builder.CreatePointerCast(elementPtr, CI->getType()));
     toErase.push_back(CI);
   }
-  for (const auto &InstPair : replaces) {
-    InstPair.first->replaceAllUsesWith(InstPair.second);
-  }
-  for (Instruction *I : reverse(toErase)) {
-    I->dropAllReferences();
-  }
-  for (Instruction *I : toErase) {
-    I->eraseFromParent();
-  }
 
-  return !replaces.empty() || !toErase.empty();
+  for (CallInst *CI : toErase)
+    CI->eraseFromParent();
+
+  return !toErase.empty();
 }
 
 void JointMatrixFuncsResolutionPass::InsertPlaceholder(Value *v) {
@@ -3027,7 +2980,10 @@ void JointMatrixFuncsResolutionPass::RecursiveSearchAndFixCanonicalizdGEPandLife
     if (auto GEP = dyn_cast<GetElementPtrInst>(U)) {
       // Update canonicalized i8 GEP:
       //   getelementptr i8, ptr %x, i64 <const>
-      if (GEP->getSourceElementType()->isIntegerTy(8) && GEP->hasAllConstantIndices() && GEP->getNumIndices() == 1) {
+      // An element pointer of an 8 bit matrix has the same form, but it
+      // already addresses the resolved slice.
+      if (GEP->getSourceElementType()->isIntegerTy(8) && GEP->hasAllConstantIndices() && GEP->getNumIndices() == 1 &&
+          !AccessChainElementPtrs.count(GEP)) {
         LLVM_DEBUG(dbgs() << "Found canonicalized i8 GEP: " << *GEP << "\n");
         auto offset = cast<ConstantInt>(GEP->getOperand(1));
         uint64_t pointerSize = DL.getPointerSizeInBits(GEP->getPointerAddressSpace()) / 8;

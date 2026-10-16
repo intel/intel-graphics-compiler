@@ -18,7 +18,8 @@
 ; CHECK:       define spir_kernel void @test()
 ; CHECK:       %addressCast = addrspacecast ptr %gep3 to ptr addrspace(4)
 ; CHECK:       %bitcast2 = bitcast ptr addrspace(4) %addressCast to ptr addrspace(4)
-; CHECK-NEXT:  %0 = load <8 x i16>, ptr addrspace(4) %bitcast2, align 8
+; CHECK-NEXT:  [[ELEMENT_PTR:%.*]] = getelementptr inbounds i16, ptr addrspace(4) %bitcast2, i64 0, !joint_matrix_apply
+; CHECK-NEXT:  store i16 5, ptr addrspace(4) [[ELEMENT_PTR]], align 2
 
 ; Resolution flow: Call operand0 -> Bitcast -> Address Space Cast -> GEP -> TET
 

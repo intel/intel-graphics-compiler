@@ -70,7 +70,7 @@ private:
 
   // Main recursive method used across pass to resolve Joint Matrix-related values
   llvm::Value *Resolve(llvm::Value *value);
-  bool preprocessAccessChain(llvm::Function *F);
+  bool resolveAccessChain(llvm::Function *F);
 
   bool parseMatrixTypeNameLegacy(const llvm::Type *opaqueType, JointMatrixTypeDescription *outDescription);
   bool ParseMatrixTypeName(llvm::Type *opaqueType, JointMatrixTypeDescription *outDescription);
@@ -134,6 +134,8 @@ private:
   llvm::ValueMap<llvm::Value *, llvm::Value *> MatrixAllocas;
   std::unordered_map<llvm::Type *, llvm::Type *> ResolvedTypes;
   llvm::SmallPtrSet<llvm::Instruction *, 8> InstsToErase;
+  // Element pointers created for __spirv_AccessChain calls
+  llvm::SmallPtrSet<llvm::Value *, 16> AccessChainElementPtrs;
   // Maps function with old signature to function with new signature
   std::unordered_map<llvm::Function *, llvm::Function *> ResolvedFuncSignatures;
   // Keeps track of new functions with new signature

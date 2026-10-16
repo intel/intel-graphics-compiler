@@ -16,12 +16,11 @@
 ; CHECK-LABEL: for.cond.i67
 ; CHECK: [[IDX_PHI:%.*]] = phi i32
 ; CHECK: [[IDX:%.*]] = zext i32 [[IDX_PHI]] to i64
-; CHECK: [[LOAD_1:%.*]] = load <8 x i32>, ptr addrspace(4) [[CAST]], align 8
-; CHECK: [[EXTRACT:%.*]] = extractelement <8 x i32> [[LOAD_1]], i64 [[IDX]]
+; CHECK: [[EXTRACT_PTR:%.*]] = getelementptr inbounds i32, ptr addrspace(4) [[CAST]], i64 [[IDX]], !joint_matrix_apply
+; CHECK: [[EXTRACT:%.*]] = load i32, ptr addrspace(4) [[EXTRACT_PTR]], align 4
 ; CHECK: [[SHL:%.*]] = shl nsw i32 [[EXTRACT]], 1
-; CHECK: [[LOAD_2:%.*]] = load <8 x i32>, ptr addrspace(4) [[CAST]], align 8
-; CHECK: [[INSERT:%.*]] = insertelement <8 x i32> [[LOAD_2]], i32 [[SHL]], i64 [[IDX]]
-; CHECK: store <8 x i32> [[INSERT]], ptr addrspace(4) [[CAST]], align 8
+; CHECK: [[INSERT_PTR:%.*]] = getelementptr inbounds i32, ptr addrspace(4) [[CAST]], i64 [[IDX]], !joint_matrix_apply
+; CHECK: store i32 [[SHL]], ptr addrspace(4) [[INSERT_PTR]], align 4
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"

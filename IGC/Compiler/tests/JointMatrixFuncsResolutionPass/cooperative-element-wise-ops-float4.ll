@@ -19,17 +19,12 @@
 ; those bytes.
 
 ; CHECK-LABEL: @element_wise_float4(
-; CHECK:         [[SLICE:%.*]] = extractelement <8 x i32> {{.*}}, i64 0
-; Access 3 is byte 3 of a dword, so shift it down by 24 bits and truncate. No
-; masking of a single element: both elements of the byte belong to the access.
-; CHECK:         [[SHIFTED:%.*]] = ashr i32 [[SLICE]], 24
-; CHECK:         [[BYTE:%.*]] = trunc i32 [[SHIFTED]] to i8
+; Access 3 is byte 3 of the slice: both elements of the byte belong to the
+; access, and the slice is not reinterpreted as an array of matrices.
+; CHECK:         [[ELEMENT_PTR:%.*]] = getelementptr inbounds i8, ptr addrspace(4) {{.*}}, i64 3, !joint_matrix_apply
+; CHECK:         [[BYTE:%.*]] = load i8, ptr addrspace(4) [[ELEMENT_PTR]], align 1
 ; CHECK:         [[SUM:%.*]] = add i8 [[BYTE]], 1
-; The insert clears the whole byte and merges the updated one back in.
-; CHECK:         [[WIDENED:%.*]] = zext i8 [[SUM]] to i32
-; CHECK:         [[CLEARED:%.*]] = and i32 {{.*}}, 16777215
-; CHECK:         [[SHIFTEDBACK:%.*]] = shl i32 [[WIDENED]], 24
-; CHECK:         [[MERGED:%.*]] = or i32 [[CLEARED]], [[SHIFTEDBACK]]
+; CHECK:         store i8 [[SUM]], ptr addrspace(4) [[ELEMENT_PTR]], align 1
 ; CHECK-NOT: error:
 
 define spir_kernel void @element_wise_float4() {
