@@ -794,6 +794,15 @@ static bool isScalarNaturalAlignedVar(
   return isNaturalAlignedVar;
 }
 
+// Check if an instruction in the kernel defines the given source operand.
+static bool hasReachingDef(G4_Operand *src) {
+  G4_INST *inst = src->getInst();
+  return std::any_of(inst->def_begin(), inst->def_end(),
+                     [&](const USE_DEF_NODE &node) {
+                       return inst->getOperand(node.second) == src;
+                     });
+}
+
 //
 // Check if the dst can be combined into the bundle
 // There are 2 scenarios:
@@ -1005,6 +1014,13 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
         return false;
       }
     } else if (prevSrcDcl->isInput() && srcDcl->isInput()) {
+      // The merged source reads a new input declare covering both inputs.
+      // That only preserves the def-use chains when the inputs are not
+      // redefined in the kernel: a def of either input would be linked to an
+      // operand of an unrelated declare, which later passes treat as disjoint.
+      if (hasReachingDef(prevSrc) || hasReachingDef(src)) {
+        return false;
+      }
       unsigned firstSrcGRFOffset =
           firstSrc->getLeftBound() +
           firstSrc->getTopDcl()->getRegVar()->getByteAddr(builder);
