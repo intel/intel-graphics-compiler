@@ -97,7 +97,16 @@ bool PromoteSubByte::run(Module &module) {
     changed |= getOrCreatePromotedValue(&globalVariable) != &globalVariable;
   }
 
-  visit(module);
+  // Promoting an instruction can recursively promote instructions further down in its block
+  // (through PHI nodes) and insert their replacements there. Visit only the instructions that
+  // existed before promotion: visiting a replacement would promote it again and make cleanUp()
+  // erase it while it still has users.
+  SmallVector<Instruction *, 128> originalInstructions;
+  for (auto &F : module)
+    for (auto &I : llvm::instructions(F))
+      originalInstructions.push_back(&I);
+  for (auto *I : originalInstructions)
+    visit(*I);
 
   while (!promotionQueue.empty()) {
     auto value = promotionQueue.front();
