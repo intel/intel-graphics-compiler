@@ -22,7 +22,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Support/MathExtras.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "llvmWrapper/Analysis/ValueTracking.h"
 #include <llvmWrapper/IR/Instructions.h>
 #include "llvmWrapper/Support/Alignment.h"
 #include <llvmWrapper/IR/CmpPredicate.h>
@@ -2894,8 +2893,6 @@ bool CodeGenPatternMatch::MatchBlockReadWritePointer(llvm::GenIntrinsicInst &I) 
 // Pattern matching to detect and handle immediate offsets in load/store
 // instructions.  It detects offsets of the form "add dst, var, imm"
 // The add instruction is removed, and imm included in the LSC message descriptor.
-// An "or dst, var, imm" is matched the same way when var and imm have no common
-// set bits, because the or then equals the add.
 //
 // OpenCL Load/Store launder the address through an inttoptr....
 //   %2 = add i32 %0, 64
@@ -2952,7 +2949,7 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
   }; // LSCImmOffsetPattern
 
   // match:
-  //   %addr = (add/sub %var, %imm) | (add %imm, %var) | (or %var, %imm) | (or %imm, %var)
+  //   %addr = (add/sub %var, %imm) | (add %imm, %var)
   //   [ %addr = inttoptr %addr, ... ]
   //   load/store/whatever ... %addr
   int addrOpnd = -1;
@@ -3019,32 +3016,17 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
   }
   if (!addSubInst) {
     return false; // e.g. intToPtr of constant
-  }
-  const unsigned Opcode = addSubInst->getOpcode();
-  if (Opcode != llvm::Instruction::Add && Opcode != llvm::Instruction::Sub && Opcode != llvm::Instruction::Or) {
+  } else if (addSubInst->getOpcode() != llvm::Instruction::Add && addSubInst->getOpcode() != llvm::Instruction::Sub) {
     return false;
   }
 
   // VISA interface accepts 32-bit immediate offset values
   const bool isConstant0 = Is32BitConstInt(addSubInst->getOperand(0));
   const bool isConstant1 = Is32BitConstInt(addSubInst->getOperand(1));
-  if (!isConstant0 && !isConstant1) {
-    return false;
-  }
-
-  // InstCombine turns "var + imm" into "var | imm" when var has no bit of imm
-  // set, e.g. "(x & 0x70) | 0x80". The or then computes the same address as
-  // the add. An or without that proof is not an add and cannot be folded.
-  if (Opcode == llvm::Instruction::Or &&
-      !IGCLLVM::haveNoCommonBitsSet(addSubInst->getOperand(0), addSubInst->getOperand(1), *m_DL)) {
-    return false;
-  }
-
-  if (isConstant1 || (isConstant0 && Opcode != llvm::Instruction::Sub)) {
+  if (isConstant1 || (isConstant0 && addSubInst->getOpcode() == llvm::Instruction::Add)) {
     // YES: var + imm
     // YES: var - imm
     // YES: imm + var
-    // YES: var | imm, imm | var  (no common set bits)
     // NO:  imm - var  (IGC drops the negation otherwise)
     IGC_ASSERT_MESSAGE(!isConstant0 || !isConstant1,
                        "Both operands are immediate - constants should be folded elsewhere.");
