@@ -158,7 +158,7 @@ bool TraceRayInlineLoweringPass::runOnFunction(Function &F) {
     FMD->second.rtInfo.numSyncRTStacks = numSyncRTStacks;
   }
 
-  DumpLLVMIR(m_CGCtx, "TraceRayInlineLoweringPass");
+  DumpOrOverrideLLVMIR(m_CGCtx, "TraceRayInlineLoweringPass");
   return true;
 }
 

@@ -576,7 +576,7 @@ bool VectorProcess::runOnFunction(Function &F) {
 
     m_WorkList.clear();
   }
-  // DumpLLVMIR(cgCtx, "vectorprocess");
+  // DumpOrOverrideLLVMIR(cgCtx, "vectorprocess");
   return changed;
 }
 

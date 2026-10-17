@@ -212,7 +212,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
   pContext->m_checkFastFlagPerInstructionInCustomUnsafeOptPass = true;
   pContext->m_mayHaveUnalignedAddressRegister = true;
 
-  DumpLLVMIR(pContext, "beforeUnification");
+  DumpOrOverrideLLVMIR(pContext, "beforeUnification");
 
   // override the data layout to match Gen HW
   int pointerSize = getPointerSize(*pContext->getModule());
@@ -719,7 +719,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
 
   COMPILER_TIME_END(pContext, TIME_UnificationPasses);
 
-  DumpLLVMIR(pContext, "afterUnification");
+  DumpOrOverrideLLVMIR(pContext, "afterUnification");
 
   MEM_SNAPSHOT(IGC::SMS_AFTER_UNIFICATION);
 }

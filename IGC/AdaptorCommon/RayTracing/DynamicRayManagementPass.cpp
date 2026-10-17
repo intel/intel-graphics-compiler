@@ -117,7 +117,7 @@ bool DynamicRayManagementPass::runOnFunction(Function &F) {
     }
   }
 
-  DumpLLVMIR(m_CGCtx, "DynamicRayManagementPass");
+  DumpOrOverrideLLVMIR(m_CGCtx, "DynamicRayManagementPass");
 
   return changed;
 }

@@ -2018,7 +2018,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
   COMPILER_TIME_END(pContext, TIME_OptimizationPasses);
 
   // pContext->shaderEntry->viewCFG();
-  DumpLLVMIR(pContext, "optimized");
+  DumpOrOverrideLLVMIR(pContext, "optimized");
   MEM_SNAPSHOT(IGC::SMS_AFTER_OPTIMIZER);
 } // OptimizeIR
 

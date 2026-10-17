@@ -110,6 +110,6 @@ bool MSAAInsertDiscard::runOnFunction(Function &F) {
   IRBuilder<> builder(F.getContext());
   m_builder = &builder;
   visit(F);
-  DumpLLVMIR(cgCtx, "AfterMSAAInsertDiscard");
+  DumpOrOverrideLLVMIR(cgCtx, "AfterMSAAInsertDiscard");
   return true;
 }

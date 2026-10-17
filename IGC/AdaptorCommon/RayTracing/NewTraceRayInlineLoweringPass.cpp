@@ -1132,7 +1132,7 @@ bool InlineRaytracing::runOnFunction(Function &F) {
     }
   }
 
-  DumpLLVMIR(m_pCGCtx, "InlineRaytracing");
+  DumpOrOverrideLLVMIR(m_pCGCtx, "InlineRaytracing");
 
   IGC_ASSERT(verifyFunction(F, &dbgs()) == false);
 

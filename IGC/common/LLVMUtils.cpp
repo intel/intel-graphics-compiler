@@ -802,7 +802,7 @@ void IGCPassManager::addPrintPass(Pass *P, bool isBefore) {
   }
 }
 
-void DumpLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName) {
+void DumpOrOverrideLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName) {
   SetCurrentDebugHash(pContext->hash);
   SetCurrentEntryPoints(pContext->entry_names);
   auto makeName = [&]() {

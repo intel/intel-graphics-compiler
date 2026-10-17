@@ -1119,7 +1119,7 @@ bool SLMConstProp::runOnFunction(Function &F) {
         m_Ctx = pCtxWrapper->getCodeGenContext();
 
         //COMPILER_TIME_END(cgCtx, TIME_CG_PreCodeEmit);
-        DumpLLVMIR(m_Ctx, "beforeSLMConstProp");
+        DumpOrOverrideLLVMIR(m_Ctx, "beforeSLMConstProp");
     }
 #endif
 
@@ -1319,7 +1319,7 @@ bool SLMConstProp::runOnFunction(Function &F) {
         m_Ctx = pCtxWrapper->getCodeGenContext();
 
         //COMPILER_TIME_END(cgCtx, TIME_CG_PreCodeEmit);
-        DumpLLVMIR(m_Ctx, "afterSLMConstProp");
+        DumpOrOverrideLLVMIR(m_Ctx, "afterSLMConstProp");
     }
 #endif
   return true;

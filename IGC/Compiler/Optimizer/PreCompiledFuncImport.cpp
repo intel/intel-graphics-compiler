@@ -793,7 +793,7 @@ bool PreCompiledFuncImport::runOnModule(Module &M) {
 #if 0
     {
         CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        DumpLLVMIR(pCtx, "PrecompiledLib_after");
+        DumpOrOverrideLLVMIR(pCtx, "PrecompiledLib_after");
     }
 #endif
 

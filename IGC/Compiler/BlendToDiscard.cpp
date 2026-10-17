@@ -154,7 +154,7 @@ bool BlendToDiscard::runOnFunction(Function &F) {
 
 #ifdef DEBUG_BLENDTODISCARD
   if (changed) {
-    DumpLLVMIR(m_cgCtx, "blendtodiscard");
+    DumpOrOverrideLLVMIR(m_cgCtx, "blendtodiscard");
   }
 #endif
 

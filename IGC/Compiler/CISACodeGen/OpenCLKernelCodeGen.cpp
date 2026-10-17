@@ -2373,7 +2373,7 @@ static void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &
     Passes2.run(*(ctx->getModule()));
 
     COMPILER_TIME_END(ctx, TIME_CodeGen);
-    DumpLLVMIR(ctx, "codegen");
+    DumpOrOverrideLLVMIR(ctx, "codegen");
     return;
   }
 
@@ -2395,7 +2395,7 @@ static void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &
 
   Passes.run(*(ctx->getModule()));
   COMPILER_TIME_END(ctx, TIME_CodeGen);
-  DumpLLVMIR(ctx, "codegen");
+  DumpOrOverrideLLVMIR(ctx, "codegen");
 }
 
 void CodeGen(OpenCLProgramContext *ctx) {

@@ -42,7 +42,7 @@ private:
 };
 } // namespace IGC
 
-void DumpLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName);
+void DumpOrOverrideLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName);
 void DumpHashToOptions(const ShaderHash &, const ShaderType);
 
 // New Pass Manager counterpart of the per-pass skip handling in IGCPassManager::add.

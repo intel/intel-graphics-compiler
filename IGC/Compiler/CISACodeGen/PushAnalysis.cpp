@@ -1369,7 +1369,7 @@ bool PushAnalysis::runOnModule(llvm::Module &M) {
     pFunc->eraseFromParent();
   }
 
-  DumpLLVMIR(m_context, "push_analysis");
+  DumpOrOverrideLLVMIR(m_context, "push_analysis");
 
   return retValue;
 }

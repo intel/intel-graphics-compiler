@@ -103,7 +103,7 @@ bool CustomLoopVersioning::runOnFunction(Function &F) {
 
   if (changed) {
     m_cgCtx->getModuleMetaData()->psInfo.hasVersionedLoop = true;
-    DumpLLVMIR(m_cgCtx, "customloop");
+    DumpOrOverrideLLVMIR(m_cgCtx, "customloop");
   }
   return changed;
 }
