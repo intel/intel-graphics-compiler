@@ -60,6 +60,18 @@ def AllPlatformsWithFP64Support : AllOf<[Not<ExactPlatform<IGFX_TIGERLAKE_LP>>,
                                          Not<ExactPlatform<IGFX_XE_HP_SDV>>,
                                          Not<ExactPlatform<IGFX_DG2>>]>;
 
+// Devices that only the device ID tells apart from the rest of their family.
+def ARL_S : Device<IGFX_ARROWLAKE, "isARLS", "ARL S">;
+def ARL_U : Device<IGFX_ARROWLAKE, "isARLU", "ARL U">;
+def ARL_H : Device<IGFX_ARROWLAKE, "", "ARL H">;
+
+// Platforms with bfloat16 HW support. Mirrors Platform::hasBF16Conversion().
+// METEORLAKE has no bfloat16 in the FPU, and ARL-S and ARL-U reuse its die.
+def AllPlatformsWithBF16Support : AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>,
+                                         Not<ExactPlatform<IGFX_METEORLAKE>>,
+                                         Not<isDevice<ARL_S>>,
+                                         Not<isDevice<ARL_U>>]>;
+
 // NOTE: The list of extensions below is INCOMPLETE and will be expanded
 // incrementally in future commits. Current entries may have provisional or
 // incorrect PlatformSupport assignments; they are included now to demonstrate
@@ -296,7 +308,7 @@ def SPV_KHR_subgroup_rotate : Extension<
   "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_subgroup_rotate.html"
 >;
 
-// Platforms without native bfloat16 conversion HW (pre-XE_HPG cores and
+// Platforms without native bfloat16 conversion HW (pre-XE_HPG cores, ARL-S, ARL-U and
 // METEORLAKE) emulate the conversions in the BiF.
 def SPV_INTEL_bfloat16_conversion : Extension<
   "SPV_INTEL_bfloat16_conversion",
@@ -434,7 +446,7 @@ def SPV_INTEL_bfloat16_arithmetic_experimental : ExperimentalExtension<
   "SPV_INTEL_bfloat16_arithmetic",
   [ CapabilityWithManualId<"BFloat16ArithmeticINTEL", 6226> ],
   "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc",
-  AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>
+  AllPlatformsWithBF16Support
 >;
 
 // def SPV_EXT_bfloat16_arithmetic : Extension<
@@ -449,9 +461,9 @@ def SPV_INTEL_bfloat16_arithmetic_experimental : ExperimentalExtension<
 //   [ CapabilityWithManualId<"BFloat16ArithmeticEXT", 6226> ],
 //   "https://github.com/KhronosGroup/SPIRV-Registry/pull/444",
 //   // XE3P platforms are officially supported via the Extension definition above. This ExperimentalExtension covers
-//   // older platforms (XE_HPG_CORE and newer, excluding METEORLAKE) to maintain compatibility with existing LIT tests
+//   // older platforms with bfloat16 HW to maintain compatibility with existing LIT tests
 //   // for PVC and DG2. We may consider promoting those platforms to full support in the future.
-//   AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>
+//   AllPlatformsWithBF16Support
 // >;
 
 def SPV_INTEL_int4 : ExperimentalExtension<
@@ -497,11 +509,13 @@ def SPV_KHR_bfloat16 : Extension<
   InheritFromCapabilities
 >;
 
+// BFloat16CooperativeMatrixKHR is not implemented yet: JointMatrixFuncsResolution
+// rejects bfloat as the element type of spirv.CooperativeMatrixKHR.
 def SPV_KHR_bfloat16_experimental : ExperimentalExtension<
   "SPV_KHR_bfloat16",
-  [ Capability<"BFloat16TypeKHR",              AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>>,
-    Capability<"BFloat16DotProductKHR",        AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>>,
-    Capability<"BFloat16CooperativeMatrixKHR", AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>> ],
+  [ Capability<"BFloat16TypeKHR",              AllPlatformsWithBF16Support>,
+    Capability<"BFloat16DotProductKHR",        AllPlatformsWithBF16Support>,
+    Capability<"BFloat16CooperativeMatrixKHR", NotSupported> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bfloat16.html",
   InheritFromCapabilities
 >;

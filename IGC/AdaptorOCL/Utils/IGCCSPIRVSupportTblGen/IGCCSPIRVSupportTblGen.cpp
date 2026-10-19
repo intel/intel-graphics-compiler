@@ -57,10 +57,11 @@ class ProductCoreTable {
     PRODUCT_FAMILY Product;
     StringRef CoreName;
     GFXCORE_FAMILY RenderCore;
+    const Record *Device; // set when the row is one device of Product
   };
 
   // Static data shared between all instances.
-#define PCR(P, C) {#P, P, #C, C}
+#define PCR(P, C) {#P, P, #C, C, nullptr}
   // clang-format off
   static constexpr Row kPlatforms[] = {
       PCR(IGFX_TIGERLAKE_LP,  IGFX_GEN12_CORE),
@@ -85,13 +86,37 @@ class ProductCoreTable {
 #undef PCR
 
   SmallVector<Row, 32> Rows;
+  // Rows are kept sorted by product, so a set of row indices lists platforms in
+  // the same order as the product enum.
+  using RowSet = std::set<size_t>;
   StringMap<PRODUCT_FAMILY> NameToProduct;
   StringMap<GFXCORE_FAMILY> NameToCore;
   std::map<PRODUCT_FAMILY, StringRef> ProductToName;
   std::map<GFXCORE_FAMILY, StringRef> CoreToName;
 
   // Max exclusions before a "<family>+ except ..." stem reads worse than a bare list.
-  static constexpr size_t kMaxStemExclusions = 3;
+  static constexpr size_t kMaxStemExclusions = 4;
+
+  // Replaces the row of each product that has Device records with one row per
+  // device, so device predicates evaluate per device.
+  void splitDevices(ArrayRef<const Record *> Devices) {
+    SmallVector<Row, 32> Split;
+    for (const Row &R : Rows) {
+      bool HasDevices = false;
+      for (const Record *D : Devices) {
+        if (D->getValueAsDef("Family")->getValueAsString("ProductFamily") != R.Name)
+          continue;
+        Row DevRow = R;
+        DevRow.Device = D;
+        Split.push_back(DevRow);
+        HasDevices = true;
+      }
+      if (!HasDevices)
+        Split.push_back(R);
+    }
+    Rows = std::move(Split);
+    llvm::stable_sort(Rows, [](const Row &A, const Row &B) { return A.Product < B.Product; });
+  }
 
   void initLookups() {
     for (const Row &R : Rows) {
@@ -126,6 +151,8 @@ class ProductCoreTable {
       auto PF = lookupProductFamily(Support->getValueAsDef("TargetPlatform")->getValueAsString("ProductFamily"));
       return PF && R.Product == *PF;
     }
+    case PlatformSupportKind::Device:
+      return R.Device == Support->getValueAsDef("TargetDevice");
     case PlatformSupportKind::InGroup: {
       auto Ps = Support->getValueAsDef("TargetGroup")->getValueAsListOfDefs("Platforms");
       for (const Record *P : Ps) {
@@ -152,8 +179,9 @@ class ProductCoreTable {
   }
 
 public:
-  ProductCoreTable() {
+  explicit ProductCoreTable(ArrayRef<const Record *> Devices) {
     Rows.append(std::begin(kPlatforms), std::end(kPlatforms));
+    splitDevices(Devices);
     initLookups();
   }
 
@@ -220,35 +248,46 @@ public:
     return expandProducts([T](const Row &R) { return R.Product >= T; }, Excluded);
   }
 
+  // Display names for a set of rows; device rows are shown by device name.
+  SmallVector<std::string, 16> rowNames(const RowSet &Set) const {
+    SmallVector<std::string, 16> Names;
+    for (size_t I : Set)
+      Names.push_back(Rows[I].Device ? Rows[I].Device->getValueAsString("DisplayName").str()
+                                     : displayProductName(Rows[I].Name).str());
+    return Names;
+  }
+
+  std::string stringifyRows(const RowSet &Set) const { return llvm::join(rowNames(Set), ", "); }
+
   // Renders a platform set for the docs, prepending a "<family>+ [except ...]"
   // stem derived from and verified against the set when it fits.
-  std::string describePlatforms(const std::set<PRODUCT_FAMILY> &Supported) const {
+  std::string describePlatforms(const RowSet &Supported) const {
     if (Supported.empty())
       return "Not supported";
-    if (Supported.size() == ProductToName.size())
+    if (Supported.size() == Rows.size())
       return "All platforms";
 
-    std::string List = stringifyPlatforms(Supported);
+    std::string List = stringifyRows(Supported);
 
     // Everything at or above the oldest core family present in Supported.
     GFXCORE_FAMILY Base = IGFX_MAX_CORE;
-    for (const Row &R : Rows)
-      if (Supported.count(R.Product) && R.RenderCore < Base)
-        Base = R.RenderCore;
+    for (size_t I : Supported)
+      Base = std::min(Base, Rows[I].RenderCore);
 
-    std::set<PRODUCT_FAMILY> Superset;
-    for (const Row &R : Rows)
-      if (R.RenderCore >= Base)
-        Superset.insert(R.Product);
+    RowSet Superset;
+    for (size_t I = 0; I < Rows.size(); ++I)
+      if (Rows[I].RenderCore >= Base)
+        Superset.insert(I);
 
-    std::set<PRODUCT_FAMILY> Excluded;
+    RowSet Excluded;
     std::set_difference(Superset.begin(), Superset.end(), Supported.begin(), Supported.end(),
                         std::inserter(Excluded, Excluded.begin()));
-    if (Excluded.size() > kMaxStemExclusions)
+    auto ExcludedNames = rowNames(Excluded);
+    if (ExcludedNames.size() > kMaxStemExclusions)
       return List;
 
-    if (Superset.size() == ProductToName.size())
-      return "All platforms except " + stringifyPlatforms(Excluded) + " (" + List + ")";
+    if (Superset.size() == Rows.size())
+      return "All platforms except " + llvm::join(ExcludedNames, ", ") + " (" + List + ")";
 
     auto It = CoreToName.find(Base);
     if (It == CoreToName.end())
@@ -256,18 +295,18 @@ public:
     StringRef Short = dropIgfxPrefix(It->second);
     Short.consume_back("_CORE");
     std::string Stem = (Short + "+").str();
-    if (!Excluded.empty())
-      Stem += " except " + stringifyPlatforms(Excluded);
+    if (!ExcludedNames.empty())
+      Stem += " except " + llvm::join(ExcludedNames, ", ");
     return Stem + " (" + List + ")";
   }
 
   // Evaluate a platform-support predicate against all known platforms,
-  // returning the concrete set of matching PRODUCT_FAMILY values.
-  std::set<PRODUCT_FAMILY> evaluateSupport(const Record *Support) const {
-    std::set<PRODUCT_FAMILY> Result;
-    for (const Row &R : Rows)
-      if (evaluateSupportForRow(Support, R))
-        Result.insert(R.Product);
+  // returning the matching rows.
+  RowSet evaluateSupport(const Record *Support) const {
+    RowSet Result;
+    for (size_t I = 0; I < Rows.size(); ++I)
+      if (evaluateSupportForRow(Support, Rows[I]))
+        Result.insert(I);
     return Result;
   }
 };
@@ -285,7 +324,7 @@ class SPIRVSupportDocsEmitter {
   std::string formatAdditionalExperimentalPlatforms(const Record *ExpSupport, const Record *ProdSupport);
 
 public:
-  SPIRVSupportDocsEmitter(const SPIRVExtensions &M) : Extensions(M), Table() {}
+  SPIRVSupportDocsEmitter(const SPIRVExtensions &M, ArrayRef<const Record *> Devices) : Extensions(M), Table(Devices) {}
   void emit(raw_ostream &OS);
 };
 
@@ -364,12 +403,12 @@ std::string SPIRVSupportDocsEmitter::formatAdditionalExperimentalPlatforms(const
                                                                            const Record *ProdSupport) {
   auto ExpPlatforms = Table.evaluateSupport(ExpSupport);
   auto ProdPlatforms = Table.evaluateSupport(ProdSupport);
-  std::set<PRODUCT_FAMILY> ExpOnly;
+  std::set<size_t> ExpOnly;
   std::set_difference(ExpPlatforms.begin(), ExpPlatforms.end(), ProdPlatforms.begin(), ProdPlatforms.end(),
                       std::inserter(ExpOnly, ExpOnly.begin()));
   if (ExpOnly.empty())
     return "";
-  return Table.stringifyPlatforms(ExpOnly);
+  return Table.stringifyRows(ExpOnly);
 }
 
 // ===== SPIRVSupportDocsEmitter implementation end =====
@@ -514,6 +553,15 @@ std::string SPIRVSupportQueriesEmitter::flattenPredicate(const Record *Support) 
       Names.push_back(P->getValueAsString("ProductFamily").str());
     return "Pred::isInGroup<" + llvm::join(Names, ", ") + ">";
   }
+  if (Kind == "isDevice") {
+    const Record *Dev = Support->getValueAsDef("TargetDevice");
+    if (Dev->getValueAsString("CheckFunction").empty())
+      PrintFatalError(Support->getLoc(),
+                      "Device '" + Dev->getName() + "' has no CheckFunction and can't be used in isDevice.");
+    return ("Pred::isDevice<" + Dev->getValueAsDef("Family")->getValueAsString("ProductFamily") +
+            ", Pred::Device::" + Dev->getValueAsString("CheckFunction") + ">")
+        .str();
+  }
   if (Kind == "AllOf" || Kind == "AnyOf") {
     auto Conditions = Support->getValueAsListOfDefs("Conditions");
     SmallVector<std::string, 4> Subs;
@@ -537,9 +585,19 @@ static void emitOptionsDocs(const RecordKeeper &Records, raw_ostream &OS) {
   // To be implemented
 }
 
+static std::vector<const Record *> collectDevices(const RecordKeeper &Records) {
+  std::vector<const Record *> Devices;
+  for (const Record *D : Records.getAllDerivedDefinitions("Device"))
+    Devices.push_back(D);
+  // Same reason as the extension sort in collectSPIRVExtensionSupport: the order
+  // of getAllDerivedDefinitions depends on the LLVM version.
+  llvm::sort(Devices, [](const Record *L, const Record *R) { return L->getName().compare_numeric(R->getName()) < 0; });
+  return Devices;
+}
+
 static void emitSPIRVDocs(const RecordKeeper &Records, raw_ostream &OS) {
   SPIRVExtensions Model = collectSPIRVExtensionSupport(Records);
-  SPIRVSupportDocsEmitter(Model).emit(OS);
+  SPIRVSupportDocsEmitter(Model, collectDevices(Records)).emit(OS);
 }
 
 

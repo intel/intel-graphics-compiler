@@ -40,6 +40,7 @@ enum class PlatformSupportKind {
   ProductChildOf,
   ExactPlatform,
   InGroup,
+  Device,
   AnyOf,
   AllOf,
   Not,
@@ -87,6 +88,8 @@ inline PlatformSupportKind classifyPlatformSupport(const Record *R) {
     return PlatformSupportKind::ExactPlatform;
   if (R->isSubClassOf("isInGroup"))
     return PlatformSupportKind::InGroup;
+  if (R->isSubClassOf("isDevice"))
+    return PlatformSupportKind::Device;
   if (R->isSubClassOf("AnyOf"))
     return PlatformSupportKind::AnyOf;
   if (R->isSubClassOf("AllOf"))

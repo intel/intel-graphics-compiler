@@ -45,6 +45,16 @@ template <PRODUCT_FAMILY Prod> constexpr bool ExactPlatform(PLATFORM P) { return
 
 template <PRODUCT_FAMILY... Ps> constexpr bool isInGroup(PLATFORM P) { return ((P.eProductFamily == Ps) || ...); }
 
+// Device ID checks named by Device records in the .td.
+namespace Device {
+constexpr bool isARLS(uint16_t DeviceID) { return GFX_IS_ARL_S(DeviceID); }
+constexpr bool isARLU(uint16_t DeviceID) { return GFX_IS_ARL_U(DeviceID); }
+} // namespace Device
+
+template <PRODUCT_FAMILY Prod, bool (*Check)(uint16_t)> constexpr bool isDevice(PLATFORM P) {
+  return P.eProductFamily == Prod && Check(P.usDeviceID);
+}
+
 template <PlatformPred... Cs> constexpr bool AllOf(PLATFORM P) { return (... && Cs(P)); }
 
 template <PlatformPred... Cs> constexpr bool AnyOf(PLATFORM P) { return (... || Cs(P)); }

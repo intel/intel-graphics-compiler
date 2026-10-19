@@ -131,6 +131,17 @@ class PlatformGroup<list<Platform> GroupPlatforms> {
   list<Platform> Platforms = GroupPlatforms;
 }
 
+// A subset of a product family that only the device ID tells apart, e.g. ARL-S
+// within IGFX_ARROWLAKE. CheckFunction names a bool(uint16_t DeviceID) in
+// Pred::Device (SPIRVExtensionsSupport.cpp); it may be empty for a device that
+// is only named in the docs and never used in isDevice. The docs split a family
+// into its Device records, so they must cover all device IDs of the family.
+class Device<Platform family, string checkFunction, string displayName> {
+  Platform Family = family;
+  string CheckFunction = checkFunction;
+  string DisplayName = displayName;
+}
+
 // Platform support specification classes
 class PlatformSupport;
 
@@ -152,6 +163,10 @@ class ExactPlatform<Platform platform> : PlatformSupport {
 
 class isInGroup<PlatformGroup group> : PlatformSupport {
   PlatformGroup TargetGroup = group;
+}
+
+class isDevice<Device device> : PlatformSupport {
+  Device TargetDevice = device;
 }
 
 class AnyOf<list<PlatformSupport> conditions> : PlatformSupport {
