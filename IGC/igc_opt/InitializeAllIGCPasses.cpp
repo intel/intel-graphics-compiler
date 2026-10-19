@@ -66,6 +66,7 @@ void initializeFixInvalidFuncNamePass(llvm::PassRegistry &);
 void initializePrintCodeGenContextPassPass(llvm::PassRegistry &);
 void initializeSerializePrintMetaDataPassPass(llvm::PassRegistry &);
 void initializeLSCCacheHintsPass(llvm::PassRegistry &);
+void initializeRegisterAccessBoundsChecksPass(llvm::PassRegistry &);
 } // namespace IGC
 
 void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
@@ -109,6 +110,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeGenIRLoweringPass(Registry);
   initializeGenSpecificPatternPass(Registry);
   initializeHandleLoadStoreInstructionsPass(Registry);
+  IGC::initializeRegisterAccessBoundsChecksPass(Registry);
   initializeIGCConstPropPass(Registry);
   initializeLowerSIMDSizePass(Registry);
   initializeImageFuncResolutionLPMPass(Registry);
