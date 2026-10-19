@@ -40,7 +40,18 @@ public:
   }
 
   unsigned int getMaxRP() const { return maxRP; }
-  void resetMaxRP() { maxRP = 0; }
+
+  // Max pressure to use when picking the GRF number (VRT). Kept separate from
+  // getMaxRP() because the scheduler's heuristics compare pressure against
+  // absolute thresholds tuned to that value, so changing it would perturb
+  // scheduling. GRF selection instead compares against the size of a GRF
+  // config, where an overestimate directly means an oversized config.
+  unsigned int getMaxRPForGRFSelection() const { return maxRPSel; }
+
+  void resetMaxRP() {
+    maxRP = 0;
+    maxRPSel = 0;
+  }
 
   const LivenessAnalysis *getLiveness() const { return liveAnalysis; }
 
@@ -61,6 +72,11 @@ private:
   std::unordered_map<const Loop *, unsigned int> loopRP;
   double regPressure = 0;
   uint32_t maxRP = 0;
+  // Pressure / max for GRF selection, tracked by the same walk. Differs from
+  // regPressure in that a sub-GRF variable is charged at BB exit with the
+  // value refunded at its def, and non-GRF variables are not counted.
+  double regPressureSel = 0;
+  uint32_t maxRPSel = 0;
   const Options *options;
   SparseBitVector live;
   const std::vector<G4_RegVar *> &vars;
@@ -87,6 +103,13 @@ private:
   void regPressureBBExit(G4_BB *);
   void updateRegisterPressure(bool change, bool clean, unsigned int);
   void updateLiveness(SparseBitVector &, uint32_t, bool);
+
+  // Pressure contributed by dcl in GRF units. Used to seed pressure at BB
+  // exit and to update it at each def/use, so the two stay in sync.
+  double getPressureContribution(G4_Declare *dcl, bool peekOnly = false);
+  unsigned int peekSubGRFPressure(unsigned int dclSize,
+                                  unsigned int alignBytes) const;
+  bool contributesToGRFPressure(const G4_Declare *dcl) const;
 
   // Collect the IDs of all reg-alloc-partaker variables referenced (def or
   // use) in the BBs belonging to loop.

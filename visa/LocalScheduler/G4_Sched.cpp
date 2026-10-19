@@ -386,6 +386,11 @@ struct RegisterPressure {
     return rpe->getMaxRP();
   }
 
+  // Return the max register pressure to drive GRF selection with.
+  unsigned getMaxRPForGRFSelection() const {
+    return rpe->getMaxRPForGRFSelection();
+  }
+
   // Return the max pressure in GRFs for this block.
   unsigned getPressure(G4_BB *bb, std::vector<G4_INST *> *Insts = nullptr) {
     unsigned Max = 0;
@@ -725,6 +730,9 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
   SchedConfig config(SchedCtrl);
   RegisterPressure rp(kernel, nullptr);
   KernelPressure = rp.getMaxRP();
+  // Snapshotted alongside KernelPressure at every point where that is
+  // refreshed, so GRF selection sees a value taken at the same time.
+  unsigned SelPressure = rp.getMaxRPForGRFSelection();
   unsigned RPReductionThreshold = getRPReductionThreshold(kernel);
   auto LT = LatencyTable::createLatencyTable(*kernel.fg.builder);
 
@@ -761,6 +769,7 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
     // Re-compute register pressure estimation
     rp.recompute();
     KernelPressure = rp.getMaxRP();
+    SelPressure = rp.getMaxRPForGRFSelection();
   }
 
   unsigned oldGRFNum = kernel.getNumRegTotal();
@@ -771,7 +780,7 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
   // can pick a smaller count and retain more HW threads per EU.
   if (kernel.getOption(vISA_BlockLevelSpillAllowed))
     kernel.grfMode.setSpillThresholdBonusInGRFs(computeAdjustedKernelPressure(rp, kernel));
-  kernel.updateKernelByRegPressure(KernelPressure);
+  kernel.updateKernelByRegPressure(SelPressure);
   bool GRFdecreased = kernel.getNumRegTotal() < oldGRFNum;
   Changed = false;
 
@@ -811,6 +820,7 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
   if (Changed) {
     rp.recompute();
     KernelPressure = rp.getMaxRP();
+    SelPressure = rp.getMaxRPForGRFSelection();
     // Final GRF selection: reapply adjusted pressure after latency scheduling
     // (rp was recomputed above if Changed). Overwrites the bonus set before
     // latency scheduling so the new register pressure drives GRF selection.
@@ -819,7 +829,7 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
           computeAdjustedKernelPressure(rp, kernel));
   }
 
-  kernel.updateKernelByRegPressure(KernelPressure, true);
+  kernel.updateKernelByRegPressure(SelPressure, true);
 
   return Changed;
 }
