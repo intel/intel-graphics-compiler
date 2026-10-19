@@ -410,6 +410,8 @@ bool hasFixedSIMDSize(const CodeGenContext *CTX, const llvm::Function *F, GenXFu
 // True if the private memory of the function group headed by F exceeds the large
 // private memory kernel threshold.
 bool hasLargePrivateMemoryKernel(const CodeGenContext *CTX, const llvm::Function *F);
+// GRF budget above which the early SIMD32 pressure check drops an OpenCL kernel to SIMD16 on XE2, 0 elsewhere.
+uint32_t getXe2SIMD16DropBudget(CodeGenContext *CTX, llvm::Function *F);
 
 // SIMD16 preference of the XE3 VRT SIMD16 drop: SIMD32 pressure is high while
 // SIMD16 pressure is low, so SIMD16 is chosen even if SIMD32 would fit.

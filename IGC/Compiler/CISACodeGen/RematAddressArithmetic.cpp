@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/ADT/BreadthFirstIterator.h"
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -23,6 +25,10 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 using namespace IGC;
+
+static cl::opt<bool> FirstCompileOpt("remat-first-compile", cl::init(false), cl::Hidden,
+                                     cl::desc("Run the default-constructed pass in first-compile mode: roll "
+                                              "back rematerialization that does not reach the pressure budget"));
 
 static cl::opt<bool> WidestSIMD("remat-widest-simd", cl::init(false), cl::Hidden,
                                 cl::desc("Estimate register pressure in the default-constructed pass at the "
@@ -42,6 +48,99 @@ enum REMAT_OPTIONS : uint8_t {
 static Value *getPrivateMemoryValue(Function &F);
 
 namespace {
+
+// A reversible IR edit. Edits are recorded as they are made, and the transaction is then either committed or rolled
+// back. Instructions are never deleted before the commit: removed ones are only detached from their block together
+// with the instruction that followed them, which lets a rollback put them back where they were.
+class IRTransaction {
+public:
+  IRTransaction() = default;
+  IRTransaction(const IRTransaction &) = delete;
+  IRTransaction &operator=(const IRTransaction &) = delete;
+  ~IRTransaction() { IGC_ASSERT_MESSAGE(isClosed(), "transaction was neither committed nor rolled back"); }
+
+  // Makes U use New and remembers the old value.
+  void replaceUse(Use &U, Value *New) {
+    RewrittenUses.push_back({&U, U.get()});
+    U.set(New);
+  }
+
+  // Registers an instruction inserted by the transaction. A rollback erases it.
+  void created(Instruction *I) { Created.push_back(I); }
+
+  // Registers an instruction whose uses were all replaced. detachDead() removes it when it is really dead.
+  void replaced(Instruction *I) { Replaced.push_back(I); }
+
+  // Removes I from its block without deleting it.
+  void detach(Instruction *I) {
+    Detached.push_back({I, I->getNextNode()});
+    I->removeFromParent();
+  }
+
+  // Detaches the replaced instructions that have no users left, and the operands only they kept alive. This is
+  // the IR that is left once dead code is removed, which is what an analysis run before the commit has to see.
+  void detachDead() {
+    llvm::SmallSetVector<Instruction *, 16> Dead;
+    llvm::SmallVector<Instruction *, 16> Worklist(Replaced.begin(), Replaced.end());
+    while (!Worklist.empty()) {
+      Instruction *I = Worklist.pop_back_val();
+      if (Dead.count(I) || !llvm::wouldInstructionBeTriviallyDead(I))
+        continue;
+      if (!llvm::all_of(I->users(), [&](User *U) { return Dead.count(cast<Instruction>(U)); }))
+        continue;
+      Dead.insert(I);
+      for (Value *Op : I->operands())
+        if (auto *OpI = dyn_cast<Instruction>(Op))
+          Worklist.push_back(OpI);
+    }
+    for (Instruction *I : Dead)
+      detach(I);
+    Replaced.clear();
+  }
+
+  // Keeps the edit: the detached instructions are deleted.
+  void commit() {
+    for (auto &D : Detached)
+      D.I->dropAllReferences();
+    for (auto &D : Detached)
+      D.I->deleteValue();
+    clear();
+  }
+
+  // Restores the IR: uses point to their old values, detached instructions return to their place, and the inserted
+  // instructions are erased.
+  void rollback() {
+    for (auto &[U, V] : llvm::reverse(RewrittenUses))
+      U->set(V);
+    // Reverse order of detaching, so the recorded successor is always in a block again.
+    for (auto &D : llvm::reverse(Detached))
+      IGCLLVM::insertBefore(D.I, D.Next);
+    for (Instruction *I : Created)
+      I->dropAllReferences();
+    for (Instruction *I : Created)
+      I->eraseFromParent();
+    clear();
+  }
+
+private:
+  struct DetachedInst {
+    Instruction *I;
+    Instruction *Next;
+  };
+
+  bool isClosed() const { return RewrittenUses.empty() && Created.empty() && Replaced.empty() && Detached.empty(); }
+  void clear() {
+    RewrittenUses.clear();
+    Created.clear();
+    Replaced.clear();
+    Detached.clear();
+  }
+
+  SmallVector<std::pair<Use *, Value *>, 64> RewrittenUses;
+  SmallVector<Instruction *, 64> Created;
+  SmallVector<Instruction *, 16> Replaced;
+  SmallVector<DetachedInst, 64> Detached;
+};
 
 class RematAddressArithmetic : public FunctionPass {
 
@@ -74,17 +173,18 @@ public:
   CloneAddressArithmetic()
       : CloneAddressArithmetic(rematFlagsFromRegKeys(), IGC_GET_FLAG_VALUE(RematChainLimit),
                                IGC_GET_FLAG_VALUE(RematFlowThreshold), IGC_GET_FLAG_VALUE(RematRPELimit),
-                               WidestSIMD ? widestAllowedSIMDSize : bestGuessSIMDSize) {}
+                               WidestSIMD ? widestAllowedSIMDSize : bestGuessSIMDSize, FirstCompileOpt) {}
 
   CloneAddressArithmetic(unsigned ChainLimit, unsigned FlowThresholdPercent, unsigned RPELimitPercent,
-                         RematSIMDSizeFn GetSIMDSize = bestGuessSIMDSize)
-      : CloneAddressArithmetic(rematFlagsFromRegKeys(), ChainLimit, FlowThresholdPercent, RPELimitPercent,
-                               GetSIMDSize) {}
+                         RematSIMDSizeFn GetSIMDSize = bestGuessSIMDSize, bool FirstCompile = false)
+      : CloneAddressArithmetic(rematFlagsFromRegKeys(), ChainLimit, FlowThresholdPercent, RPELimitPercent, GetSIMDSize,
+                               FirstCompile) {}
 
   CloneAddressArithmetic(IGC::REMAT_OPTIONS options, unsigned ChainLimit, unsigned FlowThresholdPercent,
-                         unsigned RPELimitPercent, RematSIMDSizeFn GetSIMDSize = bestGuessSIMDSize)
+                         unsigned RPELimitPercent, RematSIMDSizeFn GetSIMDSize = bestGuessSIMDSize,
+                         bool FirstCompile = false)
       : FunctionPass(ID), m_rematFlags(options), m_chainLimit(ChainLimit), m_flowThresholdPercent(FlowThresholdPercent),
-        m_rpeLimitPercent(RPELimitPercent), m_getSIMDSize(GetSIMDSize) {
+        m_rpeLimitPercent(RPELimitPercent), m_getSIMDSize(GetSIMDSize), m_firstCompile(FirstCompile) {
 
     initializeCloneAddressArithmeticPass(*PassRegistry::getPassRegistry());
   }
@@ -141,9 +241,10 @@ private:
   unsigned m_flowThresholdPercent = 0;
   unsigned m_rpeLimitPercent = 0;
   RematSIMDSizeFn m_getSIMDSize = bestGuessSIMDSize;
+  bool m_firstCompile = false;
   bool greedyRemat(Function &F);
   bool singleFlowRemat(Function &F);
-  bool rematerialize(RematSet &ToProcess, unsigned int FlowThreshold);
+  bool rematerialize(RematSet &ToProcess, unsigned int FlowThreshold, IRTransaction *Tx = nullptr);
   bool isRegPressureLow(Function &F);
   bool skipChain(RematChain &Chain, Instruction *Root);
 
@@ -157,7 +258,10 @@ private:
   void addToSystem(CloneAddressArithmetic::RematSet &Set, llvm::Instruction *I);
   void computeFlow(RematSet &ToProcess);
   void computeFlow(llvm::Instruction *I);
-  void rematWholeChain(llvm::Instruction *I, RematChain &Chain);
+  void rematWholeChain(llvm::Instruction *I, RematChain &Chain, IRTransaction *Tx);
+  unsigned int measurePressure(Function &F);
+  unsigned int pressureBudget(Function &F);
+  void commitIfBudgetReached(Function &F, IRTransaction &Remat, unsigned int Budget);
   void estimateProfit(RematSet &ToProcess);
   void initializeLogFile(Function &F);
   void writeLog();
@@ -165,13 +269,15 @@ private:
 } // end namespace
 
 FunctionPass *IGC::createCloneAddressArithmeticPass(unsigned ChainLimit, unsigned FlowThresholdPercent,
-                                                    unsigned RPELimitPercent, RematSIMDSizeFn GetSIMDSize) {
-  return new CloneAddressArithmetic(ChainLimit, FlowThresholdPercent, RPELimitPercent, GetSIMDSize);
+                                                    unsigned RPELimitPercent, RematSIMDSizeFn GetSIMDSize,
+                                                    bool FirstCompile) {
+  return new CloneAddressArithmetic(ChainLimit, FlowThresholdPercent, RPELimitPercent, GetSIMDSize, FirstCompile);
 }
 FunctionPass *IGC::createCloneAddressArithmeticPassWithFlags(IGC::REMAT_OPTIONS options, unsigned ChainLimit,
                                                              unsigned FlowThresholdPercent, unsigned RPELimitPercent,
-                                                             RematSIMDSizeFn GetSIMDSize) {
-  return new CloneAddressArithmetic(options, ChainLimit, FlowThresholdPercent, RPELimitPercent, GetSIMDSize);
+                                                             RematSIMDSizeFn GetSIMDSize, bool FirstCompile) {
+  return new CloneAddressArithmetic(options, ChainLimit, FlowThresholdPercent, RPELimitPercent, GetSIMDSize,
+                                    FirstCompile);
 }
 
 char CloneAddressArithmetic::ID = 0;
@@ -458,7 +564,7 @@ void CloneAddressArithmetic::addToSystem(RematSet &Set, llvm::Instruction *I) {
   PRINT_LOG_NL("");
 }
 
-void CloneAddressArithmetic::rematWholeChain(llvm::Instruction *I, RematChain &Chain) {
+void CloneAddressArithmetic::rematWholeChain(llvm::Instruction *I, RematChain &Chain, IRTransaction *Tx) {
 
   std::unordered_map<Instruction *, Instruction *> OldToNew;
 
@@ -478,6 +584,8 @@ void CloneAddressArithmetic::rematWholeChain(llvm::Instruction *I, RematChain &C
     Clone->setMetadata("remat", Node);
     Clone->setName("remat");
     IGCLLVM::insertBefore(Clone, I);
+    if (Tx)
+      Tx->created(Clone);
   }
 
   for (unsigned int i = 0; i < I->getNumOperands(); ++i) {
@@ -507,7 +615,7 @@ bool CloneAddressArithmetic::skipChain(RematChain &Chain, Instruction *Root) {
   return Result;
 }
 
-bool CloneAddressArithmetic::rematerialize(RematSet &ToProcess, unsigned int FlowThreshold) {
+bool CloneAddressArithmetic::rematerialize(RematSet &ToProcess, unsigned int FlowThreshold, IRTransaction *Tx) {
 
   for (auto El : ToProcess) {
 
@@ -551,13 +659,21 @@ bool CloneAddressArithmetic::rematerialize(RematSet &ToProcess, unsigned int Flo
       Clone->setMetadata("remat", Node);
       Clone->setName("cloned_" + El->getName());
       IGCLLVM::insertBefore(Clone, UserInst);
-      *Use = Clone;
+      if (Tx) {
+        Tx->created(Clone);
+        Tx->replaceUse(*Use, Clone);
+      } else {
+        *Use = Clone;
+      }
 
       PRINT_INST_NL(Clone);
-      rematWholeChain(Clone, Chain);
+      rematWholeChain(Clone, Chain, Tx);
     }
 
-    RecursivelyDeleteTriviallyDeadInstructions(El);
+    if (Tx)
+      Tx->replaced(El);
+    else
+      RecursivelyDeleteTriviallyDeadInstructions(El);
 
     PRINT_LOG_NL("");
   }
@@ -606,6 +722,46 @@ void CloneAddressArithmetic::estimateProfit(RematSet &ToProcess) {
   }
 
   return;
+}
+
+// Pressure a first-compile stage has to reach to be worth keeping, 0 when no such target applies to the function.
+// On XE2 an OpenCL kernel whose SIMD32 pressure is above the GRF budget is dropped to SIMD16 before codegen, so
+// rematerialization only helps if it brings the pressure back under that budget. On platforms with VRT a kernel
+// above the largest GRF mode cannot get more registers, so it only helps if it brings the pressure under that mode.
+unsigned int CloneAddressArithmetic::pressureBudget(Function &F) {
+  if (!m_firstCompile)
+    return 0;
+  if (SIMD == numLanes(SIMDMode::SIMD32) && !IGC::hasFixedSIMDSize(CGCtx, &F, FGA)) {
+    unsigned int Budget = IGC::getXe2SIMD16DropBudget(CGCtx, &F);
+    if (Budget && MaxPressure > Budget)
+      return Budget;
+  }
+  auto VRTTable = CGCtx->platform.getVRTTable();
+  if (!VRTTable.empty() && (int)MaxPressure > VRTTable.back().first)
+    return VRTTable.back().first;
+  return 0;
+}
+
+// Pressure of the function as it is now.
+unsigned int CloneAddressArithmetic::measurePressure(Function &F) {
+  RPE->rerunLivenessAnalysis(F);
+  return RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
+}
+
+// The static profit estimate assumes every cloned value is live at the pressure peak and is far too optimistic to
+// predict whether a budget is reached, so the pressure of the rematerialized function is measured instead.
+// Rematerialization that leaves it over the budget is undone: the clones would only add instructions. Otherwise the
+// transaction is committed.
+void CloneAddressArithmetic::commitIfBudgetReached(Function &F, IRTransaction &Remat, unsigned int Budget) {
+  const unsigned int Pressure = measurePressure(F);
+  PRINT_LOG_NL("Pressure budget: " << Budget << " MaxPressure: " << MaxPressure << " -> " << Pressure);
+  if (Budget && Pressure > Budget) {
+    PRINT_LOG_NL("Budget not reached, rolling back");
+    Remat.rollback();
+    measurePressure(F);
+    return;
+  }
+  Remat.commit();
 }
 
 void CloneAddressArithmetic::speculateWholeChain(RematSet &ToProcess, unsigned int UsesLimit) {
@@ -865,7 +1021,18 @@ bool CloneAddressArithmetic::greedyRemat(Function &F) {
     writeLog();
   }
 
-  rematerialize(ToProcess, FlowThreshold);
+  if (m_firstCompile) {
+    // On the first compile the result is measured before it is kept: stage -> remat -> analysis -> commit | rollback.
+    // The function always counts as changed, even after a rollback: WIAnalysis has entries for the erased clones and
+    // reporting a change invalidates it.
+    const unsigned int Budget = pressureBudget(F);
+    IRTransaction Remat;
+    rematerialize(ToProcess, FlowThreshold, &Remat);
+    Remat.detachDead();
+    commitIfBudgetReached(F, Remat, Budget);
+  } else {
+    rematerialize(ToProcess, FlowThreshold);
+  }
   writeLog();
 
   FlowMap.clear();
@@ -918,8 +1085,10 @@ bool CloneAddressArithmetic::runOnFunction(Function &F) {
   auto OriginalRematFlags = m_rematFlags;
   bool Modified = false;
 
+  // The first compile measures its result before keeping it, which only the greedy stage does. The single flow stage
+  // would clone chains without that check.
   m_rematFlags = static_cast<IGC::REMAT_OPTIONS>(m_rematFlags & ~REMAT_COMPARISONS);
-  Modified |= IGC_IS_FLAG_ENABLED(RematSingleFlowRematEnabled) && singleFlowRemat(F);
+  Modified |= !m_firstCompile && IGC_IS_FLAG_ENABLED(RematSingleFlowRematEnabled) && singleFlowRemat(F);
 
   // we only enable DATA_FLOW for first stage and we allow CMP remat back if it was enabled
   m_rematFlags = OriginalRematFlags;

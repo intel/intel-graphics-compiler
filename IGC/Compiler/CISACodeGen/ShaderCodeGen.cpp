@@ -1064,7 +1064,8 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
       constexpr unsigned FirstCompileChainLimit = 3;
       constexpr unsigned FirstCompileFlowThreshold = 1;
       mpm.add(createCloneAddressArithmeticPass(FirstCompileChainLimit, FirstCompileFlowThreshold,
-                                               IGC_GET_FLAG_VALUE(RematRPELimit), IGC::widestAllowedSIMDSize));
+                                               IGC_GET_FLAG_VALUE(RematRPELimit), IGC::widestAllowedSIMDSize,
+                                               /*FirstCompile=*/true));
     } else
       mpm.add(createCloneAddressArithmeticPass(IGC_GET_FLAG_VALUE(RematChainLimit),
                                                IGC_GET_FLAG_VALUE(RematFlowThreshold),

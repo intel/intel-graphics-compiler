@@ -2372,6 +2372,15 @@ bool hasLargePrivateMemoryKernel(const CodeGenContext *CTX, const llvm::Function
   return StackMemIter != PrivateMemoryPerFG.end() && StackMemIter->second > LargePrivateMemoryKernelThresholdBytes;
 }
 
+uint32_t getXe2SIMD16DropBudget(CodeGenContext *CTX, llvm::Function *F) {
+  if (!CTX->platform.isCoreXE2())
+    return 0;
+  uint32_t GRFBudget = CTX->getNumGRFPerThread(false, F);
+  if (GRFBudget == 0)
+    GRFBudget = CTX->isAutoGRFSelectionEnabled(F) ? 256 : 128;
+  return GRFBudget;
+}
+
 bool prefersSIMD16OnXE3VRT(const CodeGenContext *CTX, const llvm::Function *F, uint32_t simd16Pressure,
                            uint32_t simd32Pressure) {
   if (!CTX->supportsVRT() || CTX->platform.GetPlatformFamily() != IGFX_XE3_CORE)

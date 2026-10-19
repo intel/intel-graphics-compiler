@@ -2637,12 +2637,8 @@ static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, ui
   // its register pressure fits the GRF budget. Drop to SIMD16 when SIMD32
   // pressure exceeds the budget -- the forced GRF count, otherwise 128 (256 in
   // auto large-GRF mode).
-  if (pCtx->platform.isCoreXE2()) {
-    uint32_t grfBudget = pCtx->getNumGRFPerThread(false, F);
-    if (grfBudget == 0)
-      grfBudget = autoGRF ? 256 : 128;
-    return simd32Pressure > grfBudget;
-  }
+  if (pCtx->platform.isCoreXE2())
+    return simd32Pressure > IGC::getXe2SIMD16DropBudget(pCtx, F);
 
   if (!autoGRF || pCtx->getNumGRFPerThread(false, F) != 0) {
     return false;
