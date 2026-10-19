@@ -43,6 +43,7 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/Statistic.h>
+#include <llvm/ADT/MapVector.h>
 #include <llvm/BinaryFormat/Dwarf.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
@@ -3550,6 +3551,24 @@ bool LowerFma::runOnFunction(Function &F) {
 ///////////////////////////////////////////////////////////////////////
 // Hoist fp mul out of loop.
 ///////////////////////////////////////////////////////////////////////
+//
+// A sum of products that share loop-invariant factors, from:
+//   sum = 0;
+//   loop {
+//     sum += x * ... * y * loopinvariant;
+//   }
+// to:
+//   sum = 0;
+//   loop {
+//     sum += x * ... * y;
+//   }
+//   sum = sum * loopinvariant;
+//
+// Invariants are constants and values defined outside the loop being worked on; for an
+// inner loop that includes everything the enclosing loops compute, a seed among them. For
+// an accumulation every invariant in the product is a candidate, wherever it sits and
+// however often it appears: sum(x * k) == k * sum(x) holds for each of them. What limits a
+// hoist is who else reads the products it would change, never the invariant itself.
 
 class HoistFMulInLoopPass : public FunctionPass {
 public:
@@ -3568,125 +3587,48 @@ public:
 
   bool runOnFunction(Function &F);
 
-protected:
-  CodeGenContext *m_ctx;
-  LoopInfo *m_LI;
+private:
+  typedef MapVector<Value *, uint64_t> Factors;
 
-  struct MulNode {
-    llvm::Value *value = nullptr;
-    struct MulNode *left = nullptr;
-    struct MulNode *right = nullptr;
-    llvm::Value *replace = nullptr;
-
-    smallvector<llvm::Value *, 4> invariants;
-    bool hasInvariant = false;
-    bool visited = false;
-    FastMathFlags FMF;
+  struct Accumulator {
+    PHINode *Phi = nullptr;
+    BinaryOperator *FSum = nullptr;
+    BinaryOperator *FMul = nullptr;
+    Value *Seed = nullptr;
+    unsigned SeedIdx = 0;
   };
 
-  llvm::SpecificBumpPtrAllocator<MulNode> Allocator;
-
-  struct RootNode {
-    llvm::Instruction *fsum;
-    llvm::PHINode *phi;
-    llvm::Value *phiNonZeroValue;
-    unsigned phiNonZeroValueIdx;
-    MulNode *root;
-    RootNode(llvm::Instruction *_fsum, llvm::PHINode *_phi, llvm::Value *nonZero, unsigned idx, MulNode *_root)
-        : fsum(_fsum), phi(_phi), phiNonZeroValue(nonZero), phiNonZeroValueIdx(idx), root(_root) {}
+  struct Trace {
+    Value *S = nullptr;
+    Factors F;
+    bool Overflow = false;
   };
-  typedef llvm::DenseMap<llvm::Value *, MulNode *> MulToNodeMapTy;
-  typedef smallvector<RootNode, 8> MulNodeVecTy;
 
-  MulNode *addToNodeTree(llvm::Value *value, MulToNodeMapTy &nodeMap) {
-    MulNode *node;
-    auto it = nodeMap.find(value);
+  struct Entry {
+    bool IsInvar = false;
+    SmallPtrSet<User *, 4> NonTree;
+  };
 
-    if (it != nodeMap.end()) {
-      node = (*it).second;
-    } else {
-      node = new (Allocator.Allocate()) MulNode();
-      node->value = value;
-      nodeMap[value] = node;
-    }
-    return node;
-  }
+  CodeGenContext *Ctx = nullptr;
 
-  MulNode *visitFMul(Loop *loop, BinaryOperator *fmul, MulToNodeMapTy &nodeMap);
+  Loop *CurLoop = nullptr;
+  DenseMap<Value *, Entry> Entries;
+  SmallVector<BinaryOperator *, 16> Tree;
+  SmallPtrSet<Value *, 16> Dirty;
+  DenseMap<Value *, Trace> Memo;
+  bool Frozen = false;
 
-  bool isLeafNode(MulNode *node) { return node->left == nullptr && node->right == nullptr; }
-
-  bool appendInvariants(MulNode *node, MulNode *child) {
-    bool visited = false;
-    if (child && child->visited) {
-      visited = true;
-      if (child->invariants.size()) {
-        node->invariants.insert(node->invariants.end(), child->invariants.begin(), child->invariants.end());
-      }
-    }
-    return visited;
-  }
-
-  bool isInvariantLeaf(MulNode *node) { return (node && node->hasInvariant && isLeafNode(node)); }
-
-  void combineNode(MulNode *node, MulToNodeMapTy &nodeMap, bool isRoot = false);
-
-  void combineInvariant(MulNodeVecTy &roots, MulToNodeMapTy &nodeMap) {
-    for (auto &NI : roots) {
-      combineNode(NI.root, nodeMap, true);
-    }
-  }
-
-  void updateMulNode(MulNode *node, Instruction *use) {
-    if (!isLeafNode(node)) {
-      Instruction *inst;
-      if (node->replace)
-        inst = cast<Instruction>(node->replace);
-      else
-        inst = cast<Instruction>(node->value);
-      updateMulNode(node->left, inst);
-      updateMulNode(node->right, inst);
-    }
-
-    if (node->replace)
-      use->replaceUsesOfWith(node->replace, node->value);
-  }
-
-  // get rid of multiply with loop invariants
-  void updateMul(MulNodeVecTy &roots) {
-    for (auto &NI : roots) {
-      if (NI.root->hasInvariant || (isLeafNode(NI.root) && NI.root->replace)) {
-        updateMulNode(NI.root, NI.fsum);
-      }
-    }
-  }
-
-  //
-  // hoist multiply in loop with given pattern, from:
-  //   sum = 0;
-  //   loop {
-  //     sum += x * ... * y * loopinvirant;
-  //   }
-  // to:
-  //   sum = 0;
-  //   loop {
-  //     sum += x * ... * y;
-  //   }
-  //   sum = sum * loopinvirant
-  bool hoistMulInLoops();
-
-  llvm::BinaryOperator *dynCastFMul(llvm::Value *v) {
-    llvm::BinaryOperator *bi = llvm::dyn_cast<llvm::BinaryOperator>(v);
-    if (bi && bi->getOpcode() == llvm::Instruction::FMul) {
-      return bi;
-    }
-    return nullptr;
-  }
-
-  bool hoistMulInLoop(llvm::Loop *loop, bool replacePhi = true);
-
-  void updateOutLoopSumUse(llvm::Loop *loop, llvm::Instruction *fsum, const smallvector<llvm::Value *, 4> &invariants,
-                           llvm::Value *nonZero, const FastMathFlags &FMF);
+  bool hoistInLoopNest(Loop *L);
+  bool hoistInLoop(Loop *L);
+  bool matchAccumulator(PHINode *Phi, Accumulator &Acc);
+  BinaryOperator *asTreeFMul(Value *V) const;
+  bool isTree(Value *V) const;
+  void collect(Value *V, User *Parent);
+  void markDirty(BinaryOperator *Node);
+  Trace trace(Value *V);
+  void rewireTree();
+  Value *buildFactorProduct(IRBuilder<> &Builder, const Factors &Taken);
+  void compensateExitUses(Instruction *Sum, const Accumulator &Acc, const Factors &Taken, const FastMathFlags &FMF);
 };
 
 char HoistFMulInLoopPass::ID = 0;
@@ -3712,393 +3654,408 @@ HoistFMulInLoopPass::HoistFMulInLoopPass() : FunctionPass(ID) {
   initializeHoistFMulInLoopPassPass(*PassRegistry::getPassRegistry());
 }
 
-bool HoistFMulInLoopPass::runOnFunction(Function &F) {
-  m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
-  if (!IGC_IS_FLAG_ENABLED(EnableHoistMulInLoop) || m_ctx->type == ShaderType::VERTEX_SHADER) {
+bool HoistFMulInLoopPass::matchAccumulator(PHINode *Phi, Accumulator &Acc) {
+  if (!Phi->getType()->isFloatTy() && !Phi->getType()->isDoubleTy() && !Phi->getType()->isHalfTy())
     return false;
-  }
 
-  bool changed = false;
-
-  m_LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-  changed = hoistMulInLoops();
-
-  Allocator.DestroyAll();
-
-  return changed;
-}
-
-HoistFMulInLoopPass::MulNode *HoistFMulInLoopPass::visitFMul(Loop *loop, BinaryOperator *fmul,
-                                                             MulToNodeMapTy &nodeMap) {
-  MulNode *ret;
-  auto MI = nodeMap.find(fmul);
-  if (MI != nodeMap.end()) {
-    ret = (*MI).second;
-    return ret;
-  }
-  ret = addToNodeTree(fmul, nodeMap);
-  ret->FMF = fmul->getFastMathFlags();
-
-  for (int i = 0; i < 2; i++) {
-    MulNode **pp;
-    pp = i == 0 ? &ret->left : &ret->right;
-
-    Value *src = fmul->getOperand(i);
-    BinaryOperator *bop = dynCastFMul(src);
-    if (bop && loop->contains(bop)) {
-      *pp = visitFMul(loop, bop, nodeMap);
-    } else {
-      MulNode *leaf = addToNodeTree(src, nodeMap);
-      leaf->FMF = fmul->getFastMathFlags();
-      leaf->hasInvariant = loop->isLoopInvariant(src);
-      *pp = leaf;
-    }
-  }
-  ret->hasInvariant = ret->left->hasInvariant | ret->right->hasInvariant;
-  return ret;
-}
-
-//
-// There is a special case:
-//     %82 = fmul %81, %inv
-//   %83 = fmul %82, %inv
-//   %85 = fmul %83, %84
-//
-//   %86 = fmul %78, %85
-//   %87 = fmul %79, %85
-//   %88 = fmul %80, %85
-//   %89 = fmul %84, %82
-//
-//   %90 = fadd %86, ...
-//   %91 = fadd %87, ...
-//   %92 = fadd %88, ...
-//   %93 = fadd %89, ...
-//
-//   %131 = fcmp olt %93, 0x3F...
-// Here %82 is %81 * %inv, and %83 is %82 * %inv * %inv, and %90/%91/%92
-// are products from %83, while %93 is from %82 and used for comparison.
-// So we can optimize %90/%91/%92, while %82 need to be leave unmodified.
-//
-// The expression tree we built for %85 is:
-/*        %85
-          / \
-        %83  \
-        / \   \
-      %81  ---%inv
-   And we will try to recursively propogate %81 to %83 & %85, and remove
-   %83 from the tree:
-     ==>      %85              ==>      %85->%81
-              / \                     [%inv, %inv]
-             /   \
-        %83->%81  \
-        [%inv]     \
-                  %inv
-*/
-void HoistFMulInLoopPass::combineNode(MulNode *node, MulToNodeMapTy &nodeMap, bool isRoot) {
-  if (node->visited)
-    return;
-
-  if (isLeafNode(node)) {
-    node->visited = true;
-    if (node->hasInvariant)
-      node->invariants.push_back(node->value);
-    return;
-  }
-
-  if (node->left)
-    combineNode(node->left, nodeMap);
-  if (node->right)
-    combineNode(node->right, nodeMap);
-
-  appendInvariants(node, node->left);
-  appendInvariants(node, node->right);
-
-  if (isInvariantLeaf(node->left) && isInvariantLeaf(node->right)) {
-    // both sources are invariants, hoist this node to invariants
-    node->left = node->right = nullptr;
-  } else if (isInvariantLeaf(node->left)) {
-    // replace the mul reference with non-invariant source
-    node->replace = node->value;
-    node->value = node->right->value;
-
-    if (isLeafNode(node->right)) {
-      node->left = node->right = nullptr;
-      node->hasInvariant = false;
-    }
-  } else if (isInvariantLeaf(node->right)) {
-    // replace the mul reference with non-invariant source
-    node->replace = node->value;
-    node->value = node->left->value;
-
-    if (isLeafNode(node->left)) {
-      node->left = node->right = nullptr;
-      node->hasInvariant = false;
-    }
-  }
-
-  // check whether the product is used by other places
-  if (!isRoot && !isLeafNode(node) && !node->replace && node->invariants.size()) {
-    bool skipValue = false;
-    Value *value;
-    value = node->value;
-    for (auto *UI : value->users()) {
-      Instruction *ui = dyn_cast<Instruction>(UI);
-      if (ui && (nodeMap.find(ui) == nodeMap.end() || ui->getOpcode() != Instruction::FMul)) {
-        // the value is used by other places or used not as multiply,
-        // we cannot change it since the results won't be correct
-        skipValue = true;
-        break;
-      }
-    }
-
-    if (skipValue) {
-      node->left = node->right = nullptr;
-      node->hasInvariant = false;
-      node->invariants.clear();
-    }
-  }
-
-  node->visited = true;
-}
-
-// update references of sum result outside of the loop, need to multiply
-// the sum result by loop invariant factors
-void HoistFMulInLoopPass::updateOutLoopSumUse(Loop *loop, Instruction *fsum,
-                                              const smallvector<llvm::Value *, 4> &invariants, Value *nonZero,
-                                              const FastMathFlags &FMF) {
-  SmallPtrSet<BasicBlock *, 4> bbSet;
-
-  for (auto &UI : fsum->uses()) {
-    Instruction *inst = cast<Instruction>(UI.getUser());
-    if (loop->contains(inst))
-      continue;
-
-    if (bbSet.count(inst->getParent()))
-      continue;
-    bbSet.insert(inst->getParent());
-
-    IRBuilder<> irb(inst);
-    Instruction *insertPoint;
-    bool isLCSSA = false;
-
-    if (PHINode *phiUse = dyn_cast<PHINode>(inst)) {
-      if (phiUse->getNumOperands() == 1) {
-        // handle lcssa
-        insertPoint = &*inst->getParent()->getFirstInsertionPt();
-        isLCSSA = true;
-      } else {
-        // Use of the result is a phi node, we need to create the
-        // mul in incoming edge block. So we need to break critical
-        // edge in advance.
-        BasicBlock *bb = phiUse->getIncomingBlock(UI);
-        insertPoint = bb->getTerminator();
-      }
-    } else {
-      insertPoint = inst;
-    }
-    irb.SetInsertPoint(insertPoint);
-    irb.setFastMathFlags(FMF);
-
-    Value *mulSrc = nullptr;
-
-    // multiply all the factors together
-    for (auto VI : invariants) {
-      if (!mulSrc)
-        mulSrc = VI;
-      else
-        mulSrc = irb.CreateFMul(mulSrc, VI, VALUE_NAME("hoist"));
-    }
-
-    if (mulSrc) {
-      if (isLCSSA) {
-        Value *v = irb.CreateFMul(inst, mulSrc, VALUE_NAME("hoist"));
-        Value *w = v;
-        if (nonZero)
-          w = irb.CreateFAdd(v, nonZero, VALUE_NAME("hoist"));
-
-        for (auto UI = inst->uses().begin(); UI != inst->uses().end();) {
-          auto *usr = dyn_cast<Instruction>((*UI).getUser());
-          auto &use = (*UI);
-          ++UI;
-          if (usr && usr != v) {
-            use.set(w);
-          }
-        }
-      } else {
-        Value *v = irb.CreateFMul(fsum, mulSrc, VALUE_NAME("hoist"));
-        if (nonZero)
-          v = irb.CreateFAdd(v, nonZero, VALUE_NAME("hoist"));
-        inst->replaceUsesOfWith(fsum, v);
-      }
-    }
-  }
-}
-
-bool HoistFMulInLoopPass::hoistMulInLoop(Loop *loop, bool replacePhi) {
-  BasicBlock *header = loop->getHeader();
-  BasicBlock *body = loop->getLoopLatch();
-
-  MulToNodeMapTy nodeMap;
-  MulNodeVecTy roots;
-
-  for (auto &II : *header) {
-    PHINode *phi = dyn_cast<PHINode>(&II);
-    if (!phi) {
-      break;
-    }
-
-    if (!phi->getType()->isFloatTy() && !phi->getType()->isDoubleTy() && !phi->getType()->isHalfTy()) {
-      continue;
-    }
-
-    // look for pattern inside loop:
-    //   sum += x * y * ... * loop_invariant
-    BinaryOperator *fsum;
-    BinaryOperator *fmul = nullptr;
-    Value *phiNonZeroValue = nullptr;
-    unsigned phiNonZeroValueIdx = 0;
-
-    if (replacePhi && phi->getNumIncomingValues() == 2) {
-      // handle the cases where sum is not initialized to 0 before loop,
-      // we need to add the value before the loop with sum results
-      if (phi->getIncomingBlock(0) == body) {
-        phiNonZeroValueIdx = 1;
-      } else {
-        phiNonZeroValueIdx = 0;
-      }
-
-      bool skip = false;
-      BasicBlock *bb = phi->getIncomingBlock(phiNonZeroValueIdx);
-      Loop *lp = loop;
-      while (lp) {
-        if (lp->contains(bb)) {
-          skip = true;
-          break;
-        }
-        lp = lp->getParentLoop();
-      }
-
-      if (!skip) {
-        Value *v = phi->getIncomingValue(phiNonZeroValueIdx);
-        ConstantFP *ci = dyn_cast<ConstantFP>(v);
-        if (!ci || !ci->isZero()) {
-          phiNonZeroValue = v;
-          Constant *f0 = ConstantFP::get(v->getType(), 0.0);
-          phi->setIncomingValue(phiNonZeroValueIdx, f0);
-        }
-      }
-    }
-
-    for (unsigned i = 0; i < phi->getNumIncomingValues(); i++) {
-      Value *v = phi->getIncomingValue(i);
-      if (phi->getIncomingBlock(i) != body) {
-        ConstantFP *ci = dyn_cast<ConstantFP>(v);
-        // all incoming of phi need to be 0 except loop back edge
-        if (!ci || !ci->isZero()) {
-          fmul = nullptr;
-          break;
-        }
-      } else {
-        fsum = dyn_cast<BinaryOperator>(v);
-        if (!fsum || !allowUnsafeMathOpt(m_ctx, *fsum) || fsum->getOpcode() != Instruction::FAdd) {
-          break;
-        }
-
-        BinaryOperator *addsrc = nullptr;
-        if (fsum->getOperand(0) == phi) {
-          addsrc = dyn_cast<BinaryOperator>(fsum->getOperand(1));
-        } else if (fsum->getOperand(1) == phi) {
-          addsrc = dyn_cast<BinaryOperator>(fsum->getOperand(0));
-        } else {
-          break;
-        }
-
-        // skip if other add/phi result referece inside loop
-        for (auto *UI : fsum->users()) {
-          Instruction *ui = dyn_cast<Instruction>(UI);
-          if (ui && loop->contains(ui) && UI != phi) {
-            addsrc = nullptr;
-            break;
-          }
-        }
-        for (auto *UI : phi->users()) {
-          Instruction *ui = dyn_cast<Instruction>(UI);
-          if (ui && loop->contains(ui) && UI != fsum) {
-            addsrc = nullptr;
-            break;
-          }
-        }
-
-        if (addsrc && addsrc->getOpcode() == Instruction::FMul && allowUnsafeMathOpt(m_ctx, *addsrc)) {
-          fmul = addsrc;
-        }
-      }
-    }
-
-    if (fmul && loop->contains(fmul) && fmul->hasOneUse()) {
-      MulNode *root = visitFMul(loop, fmul, nodeMap);
-      if (root->hasInvariant) {
-        roots.emplace_back(fsum, phi, phiNonZeroValue, phiNonZeroValueIdx, root);
-      } else {
-        if (phiNonZeroValue)
-          phi->setIncomingValue(phiNonZeroValueIdx, phiNonZeroValue);
-      }
-    } else {
-      if (phiNonZeroValue)
-        phi->setIncomingValue(phiNonZeroValueIdx, phiNonZeroValue);
-    }
-  }
-
-  if (roots.size() == 0) {
-    // cannot find candidates
+  BasicBlock *Latch = CurLoop->getLoopLatch();
+  if (!Latch)
     return false;
+  int LatchIdx = Phi->getBasicBlockIndex(Latch);
+  if (LatchIdx < 0)
+    return false;
+
+  auto IsZero = [](Value *V) {
+    ConstantFP *C = dyn_cast<ConstantFP>(V);
+    return C && C->isZero();
+  };
+
+  Value *Seed = nullptr;
+  unsigned SeedIdx = 0;
+  if (Phi->getNumIncomingValues() == 2) {
+    SeedIdx = 1 - LatchIdx;
+    Value *V = Phi->getIncomingValue(SeedIdx);
+    if (!IsZero(V))
+      Seed = V;
   }
 
-  combineInvariant(roots, nodeMap);
-
-  updateMul(roots);
-
-  for (auto &NI : roots) {
-    // if we found values cannot be hoisted later, we need to
-    // restore the phi if it's changed
-    if (NI.root->invariants.size() == 0 && NI.phiNonZeroValue) {
-      NI.phi->setIncomingValue(NI.phiNonZeroValueIdx, NI.phiNonZeroValue);
-    }
+  for (unsigned I = 0; I < Phi->getNumIncomingValues(); I++) {
+    if (Phi->getIncomingBlock(I) == Latch)
+      continue;
+    bool IsSeed = Seed && I == SeedIdx;
+    if (!IsSeed && !IsZero(Phi->getIncomingValue(I)))
+      return false;
   }
 
-  for (auto &NI : roots) {
-    if (NI.root->invariants.size() > 0 || (isLeafNode(NI.root) && NI.root->replace)) {
-      updateOutLoopSumUse(loop, NI.phi, NI.root->invariants, NI.phiNonZeroValue, NI.root->FMF);
-      updateOutLoopSumUse(loop, NI.fsum, NI.root->invariants, NI.phiNonZeroValue, NI.root->FMF);
-    }
+  BinaryOperator *FSum = dyn_cast<BinaryOperator>(Phi->getIncomingValue(LatchIdx));
+  if (!FSum || !allowUnsafeMathOpt(Ctx, *FSum))
+    return false;
+
+  Value *Other;
+  if (FSum->getOpcode() == Instruction::FAdd && FSum->getOperand(0) == Phi)
+    Other = FSum->getOperand(1);
+  else if (FSum->getOpcode() == Instruction::FAdd && FSum->getOperand(1) == Phi)
+    Other = FSum->getOperand(0);
+  else if (FSum->getOpcode() == Instruction::FSub && FSum->getOperand(0) == Phi)
+    Other = FSum->getOperand(1);
+  else
+    return false;
+
+  BinaryOperator *FMul = dyn_cast<BinaryOperator>(Other);
+  if (!FMul || FMul->getOpcode() != Instruction::FMul || !allowUnsafeMathOpt(Ctx, *FMul))
+    return false;
+
+  for (auto *U : FSum->users()) {
+    Instruction *UserInst = dyn_cast<Instruction>(U);
+    if (UserInst && CurLoop->contains(UserInst) && U != Phi)
+      return false;
+  }
+  for (auto *U : Phi->users()) {
+    Instruction *UserInst = dyn_cast<Instruction>(U);
+    if (UserInst && CurLoop->contains(UserInst) && U != FSum)
+      return false;
   }
 
+  if (!CurLoop->contains(FMul) || !FMul->hasOneUse())
+    return false;
+
+  Acc.Phi = Phi;
+  Acc.FSum = FSum;
+  Acc.FMul = FMul;
+  Acc.Seed = Seed;
+  Acc.SeedIdx = SeedIdx;
   return true;
 }
 
-//
-// hoist multiply in loop with given pattern, from:
-//   sum = 0;
-//   loop {
-//     sum += x * ... * y * loopinvirant;
-//   }
-// to:
-//   sum = 0;
-//   loop {
-//     sum += x * ... * y;
-//   }
-//   sum = sum * loopinvirant
-bool HoistFMulInLoopPass::hoistMulInLoops() {
-  bool changed = false;
-  for (auto &LI : *m_LI) {
-    Loop *L = &(*LI);
+BinaryOperator *HoistFMulInLoopPass::asTreeFMul(Value *V) const {
+  BinaryOperator *BO = dyn_cast<BinaryOperator>(V);
+  if (BO && BO->getOpcode() == Instruction::FMul && CurLoop->contains(BO) && allowUnsafeMathOpt(Ctx, *BO))
+    return BO;
+  return nullptr;
+}
 
-    changed |= hoistMulInLoop(L);
+bool HoistFMulInLoopPass::isTree(Value *V) const {
+  auto It = Entries.find(V);
+  return It != Entries.end() && !It->second.IsInvar;
+}
 
-    for (auto &SL : L->getSubLoops()) {
-      changed |= hoistMulInLoop(SL);
+void HoistFMulInLoopPass::collect(Value *V, User *Parent) {
+  auto It = Entries.find(V);
+  if (It != Entries.end()) {
+    if (!It->second.IsInvar)
+      It->second.NonTree.erase(Parent);
+    return;
+  }
+
+  if (BinaryOperator *BO = asTreeFMul(V)) {
+    Entry E;
+    for (User *U : V->users())
+      E.NonTree.insert(U);
+    E.NonTree.erase(Parent);
+    Entries[V] = std::move(E);
+    Tree.push_back(BO);
+    for (Value *Op : BO->operands())
+      collect(Op, BO);
+  } else if (CurLoop->isLoopInvariant(V)) {
+    Entry E;
+    E.IsInvar = true;
+    Entries[V] = std::move(E);
+  }
+}
+
+void HoistFMulInLoopPass::markDirty(BinaryOperator *Node) {
+  if (!Dirty.insert(Node).second)
+    return;
+  for (Value *Op : Node->operands()) {
+    if (isTree(Op))
+      markDirty(cast<BinaryOperator>(Op));
+  }
+}
+
+HoistFMulInLoopPass::Trace HoistFMulInLoopPass::trace(Value *V) {
+  Trace T;
+
+  auto It = Entries.find(V);
+  if (It != Entries.end() && It->second.IsInvar) {
+    T.F[V] = 1;
+    return T;
+  }
+  if (It == Entries.end() || Dirty.count(V)) {
+    T.S = V;
+    return T;
+  }
+
+  auto MemoIt = Memo.find(V);
+  if (MemoIt != Memo.end())
+    return MemoIt->second;
+  IGC_ASSERT_MESSAGE(!Frozen, "tracing a new value after the first write");
+
+  BinaryOperator *BO = cast<BinaryOperator>(V);
+  Trace A = trace(BO->getOperand(0));
+  Trace B = trace(BO->getOperand(1));
+
+  T.F = A.F;
+  for (auto &KV : B.F) {
+    uint64_t &Count = T.F[KV.first];
+    if (Count + KV.second < Count)
+      T.Overflow = true;
+    Count += KV.second;
+  }
+  if (A.Overflow || B.Overflow)
+    T.Overflow = true;
+
+  if (!A.S && !B.S)
+    T.S = nullptr;
+  else if (!A.S)
+    T.S = B.S;
+  else if (!B.S)
+    T.S = A.S;
+  else
+    T.S = V;
+
+  Memo[V] = T;
+  return T;
+}
+
+void HoistFMulInLoopPass::rewireTree() {
+  for (BinaryOperator *Node : Tree) {
+    if (Dirty.count(Node) || trace(Node).S != Node)
+      continue;
+    for (unsigned I = 0; I < 2; I++) {
+      Value *Op = Node->getOperand(I);
+      Value *S = trace(Op).S;
+      if (S != Op)
+        Node->setOperand(I, S);
     }
   }
-  return changed;
+}
+
+Value *HoistFMulInLoopPass::buildFactorProduct(IRBuilder<> &Builder, const Factors &Taken) {
+  Value *Product = nullptr;
+  for (auto &KV : Taken) {
+    Value *Power = nullptr;
+    Value *Square = KV.first;
+    for (uint64_t Count = KV.second; Count; Count >>= 1) {
+      if (Count & 1)
+        Power = Power ? Builder.CreateFMul(Power, Square, VALUE_NAME("hoist")) : Square;
+      if (Count > 1)
+        Square = Builder.CreateFMul(Square, Square, VALUE_NAME("hoist"));
+    }
+    Product = Product ? Builder.CreateFMul(Product, Power, VALUE_NAME("hoist")) : Power;
+  }
+  return Product;
+}
+
+void HoistFMulInLoopPass::compensateExitUses(Instruction *Sum, const Accumulator &Acc, const Factors &Taken,
+                                             const FastMathFlags &FMF) {
+  SmallVector<PHINode *, 2> ExitPhis;
+  MapVector<BasicBlock *, SmallVector<Use *, 4>> OnEdge;
+  MapVector<BasicBlock *, SmallVector<Use *, 4>> InBlock;
+
+  for (Use &U : Sum->uses()) {
+    Instruction *UserInst = cast<Instruction>(U.getUser());
+    if (CurLoop->contains(UserInst))
+      continue;
+    if (PHINode *UserPhi = dyn_cast<PHINode>(UserInst)) {
+      if (UserPhi->getNumIncomingValues() == 1) {
+        if (!is_contained(ExitPhis, UserPhi))
+          ExitPhis.push_back(UserPhi);
+      } else {
+        OnEdge[UserPhi->getIncomingBlock(U)].push_back(&U);
+      }
+    } else {
+      InBlock[UserInst->getParent()].push_back(&U);
+    }
+  }
+
+  auto Compensate = [&](Value *V, Instruction *At, Value *&Mul) {
+    IRBuilder<> Builder(At);
+    Builder.setFastMathFlags(FMF);
+    Value *K = buildFactorProduct(Builder, Taken);
+    Mul = Builder.CreateFMul(V, K, VALUE_NAME("hoist"));
+    Value *C = Mul;
+    if (Acc.Seed)
+      C = Builder.CreateFAdd(C, Acc.Seed, VALUE_NAME("hoist"));
+    return C;
+  };
+
+  for (PHINode *ExitPhi : ExitPhis) {
+    Value *Mul = nullptr;
+    Value *C = Compensate(ExitPhi, &*ExitPhi->getParent()->getFirstInsertionPt(), Mul);
+    for (auto UI = ExitPhi->use_begin(); UI != ExitPhi->use_end();) {
+      Use &U = *UI++;
+      if (U.getUser() != Mul)
+        U.set(C);
+    }
+  }
+
+  for (auto &Edge : OnEdge) {
+    Value *Mul = nullptr;
+    Value *C = Compensate(Sum, Edge.first->getTerminator(), Mul);
+    for (Use *U : Edge.second)
+      U->set(C);
+  }
+
+  for (auto &Block : InBlock) {
+    SmallPtrSet<Instruction *, 4> Readers;
+    for (Use *U : Block.second)
+      Readers.insert(cast<Instruction>(U->getUser()));
+    Instruction *First = nullptr;
+    for (Instruction &I : *Block.first) {
+      if (Readers.count(&I)) {
+        First = &I;
+        break;
+      }
+    }
+    Value *Mul = nullptr;
+    Value *C = Compensate(Sum, First, Mul);
+    for (Use *U : Block.second)
+      U->set(C);
+  }
+}
+
+// hoistInLoopNest visits the loops of a nest innermost first: what an inner loop's sum
+// becomes once its factors are out is a multiply in the loop around it, which that loop's
+// own accumulator can take the factors out of in turn.
+//
+// hoistInLoop(loop), in steps. Nothing is written before step 4.
+//
+//   data  Entries[v]    one per tree fmul and per invariant factor
+//                       { IsInvar, NonTree: readers of v that are not tree fmuls }
+//         Tree          the tree fmuls, Dirty the ones that must keep their value
+//         trace(v)      { S: what v's readers read instead (null: nothing left),
+//                         F: invariant -> how often v contains it, Overflow }, memoized
+//
+//   1. accumulators
+//        a float phi of the loop header is one when
+//          phi = [ seed, entry ], [ sum, latch ]   entries are 0.0, or one seed (a value from
+//                                                  outside the loop, so invariant in it)
+//          sum = phi + product, or phi - product   relaxed math, product an fmul with relaxed math
+//          nothing in the loop reads phi or sum but each other; product is in the loop and
+//          has no other reader
+//
+//   2. collect(product, parent = sum) for every accumulator
+//        v is an fmul in the loop with relaxed math -> tree node; NonTree = users(v) - parent;
+//                                                      collect its operands with v as parent
+//        v is a constant or defined outside the loop -> invariant
+//        anything else                               -> opaque, no entry
+//        v seen again                                -> NonTree -= parent  (a set: x*x counts once)
+//
+//   3. decide
+//        dirty: every tree node with a non-tree reader, and every tree node below one
+//        TODO: a node whose only non-tree readers are after the loop need not be dirty. Give
+//          each such reader  value * R(node)  after the loop and let the node stay clean, R
+//          being what was taken out beneath it (not G, and not F(node) when the node keeps a
+//          factor of its own). Readers in the loop stay a reason to be dirty: compensating
+//          them costs a multiply every iteration. Decide by instruction count, per node: take
+//          it when the multiplies it frees in the loop, once per iteration, outweigh the ones
+//          it adds after it (building R and applying it, once per place that reads), using
+//          the trip count when it is known and one iteration's worth when it is not.
+//          The score can also look at the critical path: a factor taken out of the products
+//          that read a node, even a node that has to stay for a reader in the loop, takes
+//          one multiply out of their dependency chain every iteration. That is the one gain
+//          a hoist has where it frees no multiply, paid for with the multiplies after the
+//          loop. Use it as a tie-break only: the chain is not loop-carried, and the
+//          scheduler or other threads often hide it.
+//        trace(v): invariant           -> S = null, F = { v: 1 }
+//                  dirty or opaque     -> S = v,    F = {}
+//                  fmul(a, b)          -> F = F(a) + F(b)      (counts add per operand edge)
+//                                         S = null if both S are null, else the one that is
+//                                             not, else v
+//                                         Overflow if a count passes 64 bits
+//        an accumulator takes part when F(product) is not empty; a count that overflowed
+//          leaves the whole loop alone
+//
+//   4. rewrite
+//        a tree node that stays itself reads S of its operands
+//        sum reads S(product), or 1.0 when only invariants were left: n equal products are
+//          the count times the product
+//        phi starts at 0.0 when it had a seed
+//        what reads phi or sum after the loop reads value * factors (+ seed) instead, made
+//          once per place: before the first reader in a block, after the phis for a
+//          single-input exit phi, at the end of the incoming block for a multi-input one;
+//          a factor seen n times is built by squaring, in about log2(n) multiplies
+bool HoistFMulInLoopPass::hoistInLoop(Loop *L) {
+  CurLoop = L;
+  Entries.clear();
+  Tree.clear();
+  Dirty.clear();
+  Memo.clear();
+  Frozen = false;
+
+  // 1. accumulators
+  SmallVector<Accumulator, 4> Accs;
+  for (PHINode &Phi : CurLoop->getHeader()->phis()) {
+    Accumulator Acc;
+    if (matchAccumulator(&Phi, Acc))
+      Accs.push_back(Acc);
+  }
+  if (Accs.empty())
+    return false;
+
+  // 2. collect
+  for (Accumulator &Acc : Accs)
+    collect(Acc.FMul, Acc.FSum);
+
+  // 3. decide
+  for (BinaryOperator *Node : Tree) {
+    if (!Entries[Node].NonTree.empty())
+      markDirty(Node);
+  }
+
+  SmallVector<std::pair<Accumulator *, Trace>, 4> Active;
+  for (Accumulator &Acc : Accs) {
+    Trace T = trace(Acc.FMul);
+    if (T.Overflow)
+      return false;
+    if (!T.F.empty())
+      Active.push_back({&Acc, T});
+  }
+  if (Active.empty())
+    return false;
+
+  // 4. rewrite
+  Frozen = true;
+  rewireTree();
+
+  for (auto &Item : Active) {
+    Accumulator &Acc = *Item.first;
+    const Trace &T = Item.second;
+    FastMathFlags FMF = Acc.FMul->getFastMathFlags();
+
+    Value *Product = T.S ? T.S : ConstantFP::get(Acc.Phi->getType(), 1.0);
+    Acc.FSum->replaceUsesOfWith(Acc.FMul, Product);
+    if (Acc.Seed)
+      Acc.Phi->setIncomingValue(Acc.SeedIdx, ConstantFP::get(Acc.Phi->getType(), 0.0));
+
+    compensateExitUses(Acc.Phi, Acc, T.F, FMF);
+    compensateExitUses(Acc.FSum, Acc, T.F, FMF);
+  }
+  return true;
+}
+
+bool HoistFMulInLoopPass::hoistInLoopNest(Loop *L) {
+  bool Changed = false;
+  for (Loop *Sub : *L) {
+    Changed |= hoistInLoopNest(Sub);
+  }
+  Changed |= hoistInLoop(L);
+  return Changed;
+}
+
+bool HoistFMulInLoopPass::runOnFunction(Function &F) {
+  Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+  if (!IGC_IS_FLAG_ENABLED(EnableHoistMulInLoop) || Ctx->type == ShaderType::VERTEX_SHADER) {
+    return false;
+  }
+
+  bool Changed = false;
+
+  LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  for (Loop *L : LI) {
+    Changed |= hoistInLoopNest(L);
+  }
+
+  return Changed;
 }
