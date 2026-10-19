@@ -169,12 +169,12 @@ intrinsics:
         name: "GenISA_2fto2bf"
         comment: ""
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *tl_anyint__v_anyint
             comment: ""
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_float
+                type_definition: *tl_anyfloat__v_anyfloat
                 comment: ""
             - !<ArgumentDefinition>
                 name: Arg1
@@ -10984,12 +10984,12 @@ intrinsics:
         name: "GenISA_ftotf32"
         comment: "float to tf32 conversion"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_float
+            type_definition: *tl_anyfloat__v_anyfloat
             comment: "tf32 result (as float)"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_float
+                type_definition: *tl_anyfloat__v_anyfloat
                 comment: "float source"
             - !<ArgumentDefinition>
                 name: Arg1
