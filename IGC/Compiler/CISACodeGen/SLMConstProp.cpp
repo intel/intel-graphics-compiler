@@ -495,11 +495,15 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value *V, SymExpr *&S, int64
       }
 
       // Case: 'or V0  Const' or 'or const  V1'
+      //   V's symExpr is reused as is whether V is sign- or zero-extended
+      //   later (see SExt/ZExt below). Both agree only if Const's sign bit
+      //   is clear, so skip constants like 'or i8 %x, -128'.
       if ((S0 && !S1) || (!S0 && S1)) {
         const Value *tV = (S0 ? V0 : V1);
-        const uint64_t tC = (uint64_t)(S0 ? C1 : C0);
+        const int64_t tC = (S0 ? C1 : C0);
         uint32_t bits = (uint32_t)tV->getType()->getPrimitiveSizeInBits();
-        if (bits != 0 && MaskedValueIsZero(tV, APInt(bits, tC), *m_DL))
+        if (bits != 0 && tC >= 0 && isUIntN(bits - 1, (uint64_t)tC) &&
+            MaskedValueIsZero(tV, APInt(bits, (uint64_t)tC), *m_DL))
           S = add(S0 ? S0 : S1, tC);
       }
       break;
