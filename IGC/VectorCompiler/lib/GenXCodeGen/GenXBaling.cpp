@@ -1316,6 +1316,12 @@ bool GenXBaling::isBalableNewValueIntoWrr(Value *V, const Region &WrrR) {
       GenXIntrinsicInfo::ArgInfo AI = II.getRetInfo();
       switch (AI.getCategory()) {
       case GenXIntrinsicInfo::GENERAL: {
+        // A non-undef two-address operand must share the result's register.
+        unsigned LastArgIdx = Inst->getNumOperands() - 2;
+        if (II.getArgInfo(LastArgIdx).getCategory() ==
+                GenXIntrinsicInfo::TWOADDR &&
+            !isa<UndefValue>(Inst->getOperand(LastArgIdx)))
+          break;
         if (isRegionOKForIntrinsic(AI.Info, WrrR, canSplitBale(Inst)))
           return true;
       } break;
@@ -1510,7 +1516,8 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID) {
           }
           break;
         case GenXIntrinsicInfo::TWOADDR:
-          if (Kind == BalingKind::BK_CodeGen) {
+          if (Kind == BalingKind::BK_CodeGen &&
+              Info.getRetInfo().getCategory() == GenXIntrinsicInfo::RAW) {
             // Record this as a two address send for processing later.
             TwoAddrSends.push_back(cast<CallInst>(Inst));
           }
