@@ -647,6 +647,12 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
     // Always add metadata for stackcalls to provide info for inlining. They won't be added
     // to function argument list.
     ImplicitArg::ArgType argId = A.first;
+    // The runtime allocates the sync and assert buffers only if a kernel or an external function requires them,
+    // also for stack calls, which read the pointers from the implicit arg buffer.
+    if (argId == ImplicitArg::SYNC_BUFFER)
+      pCtx->getModuleMetaData()->FuncMD[f].requireSyncBuffer = true;
+    if (argId == ImplicitArg::ASSERT_BUFFER_POINTER)
+      pCtx->getModuleMetaData()->FuncMD[f].requireAssertBuffer = true;
     if (!isEntry && ImplicitArgs::hasIntrinsicSupport(argId) && !needImplicitArgs) {
       bool isStackCall = f->hasFnAttribute("visaStackCall");
       if (!isStackCall && IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic)) {

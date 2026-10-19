@@ -24,13 +24,11 @@ struct implicit_args {
   uint64_t rt_global_buffer_ptr;
   uint64_t assert_buffer_ptr;
   uint64_t scratch_ptr;
-  uint32_t region_group_size_x;
-  uint32_t region_group_size_y;
-  uint32_t region_group_size_z;
-  uint32_t region_group_dimension;
-  uint32_t region_group_wg_count;
-  uint32_t padding1; // remove if something is added after above member.
-  uint64_t region_group_barrier_buffer_ptr;
+  uint64_t sync_buffer_ptr;
+  uint32_t enqueued_local_size_x;
+  uint32_t enqueued_local_size_y;
+  uint32_t enqueued_local_size_z;
+  uint32_t padding1; // Explicit tail padding to 8 bytes; remove if something is added after above member.
 };
 
 #endif // IMPLICIT_ARGS_STRUCT_H_

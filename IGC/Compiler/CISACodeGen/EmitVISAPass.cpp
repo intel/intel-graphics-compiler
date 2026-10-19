@@ -10857,10 +10857,12 @@ void EmitPass::emitGEP(llvm::Instruction *I) {
   // GEP = VBasePtrt + VOffset
   vTmp = Add(vBasePtr, vOffset, vTmp); // The Add does a m_encoder->push
   // Copy the result
-  if (CEncoder::GetCISADataTypeSize(vTmp->GetType()) < CEncoder::GetCISADataTypeSize(m_destination->GetType())) {
+  if (CEncoder::GetCISADataTypeSize(vTmp->GetType()) != CEncoder::GetCISADataTypeSize(m_destination->GetType())) {
     // If both offset and the base are immediates, we may end up with an offset
     // of a smaller type than the destination, due to immediate creation
     // optimizations in the Add.
+    // With a zero offset the Add returns the base itself, which for a global is
+    // a 64-bit symbol even when pointers are 32-bit, so it has to be truncated.
     m_encoder->Cast(m_destination, vTmp);
   } else {
     m_encoder->Copy(m_destination, vTmp);
