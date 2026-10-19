@@ -237,7 +237,12 @@ void BfloatFuncsResolution::handleArithmetic(llvm::CallInst &CI, unsigned Opcode
 
   bool IsResFloat = CI.getType()->getScalarType()->isFloatTy();
 
-  if (IsResFloat || (FloatOperandIndex != -1)) {
+  // Without pure BF, vISA turns a bfloat fmul into a mixed mode mul with a BF
+  // destination, which rounds the product of a mad to bfloat. Compute the whole
+  // mad in float to round once.
+  bool ComputeInFloat = IsMadInstruction && !m_ctx->platform.supportsPureBF();
+
+  if (IsResFloat || (FloatOperandIndex != -1) || ComputeInFloat) {
     // 1. If we have float on destination, or float source extend the
     // short sources to float. Let vISA handle the mix mode propagation.
     for (size_t i = 0; i < Operands.size(); ++i) {

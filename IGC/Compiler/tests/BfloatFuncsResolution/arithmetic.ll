@@ -7,7 +7,8 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt --opaque-pointers %s -S -o - --igc-bfloat-funcs-resolution | FileCheck %s
+; RUN: igc_opt --opaque-pointers %s -S -o - --igc-bfloat-funcs-resolution --platformCri | FileCheck %s --check-prefixes=CHECK,CHECK-PURE-BF
+; RUN: igc_opt --opaque-pointers %s -S -o - --igc-bfloat-funcs-resolution --platformbmg | FileCheck %s --check-prefixes=CHECK,CHECK-NO-PURE-BF
 
 ; This test verifies if bfloat OCL validation functions are lowered correctly.
 
@@ -345,9 +346,15 @@ entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
 ; CHECK: %[[SRC2BF:.*]] = bitcast i16 %v3_1 to bfloat
-; CHECK: %[[FMULRES:.*]] = fmul bfloat %[[SRC0BF]], %[[SRC1BF]]
-; CHECK: %[[FADDRES:.*]] = fadd bfloat %[[FMULRES]], %[[SRC2BF]]
-; CHECK: %{{.*}} = bitcast bfloat %[[FADDRES]] to i16
+; CHECK-PURE-BF: %[[FMULRES:.*]] = fmul bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK-PURE-BF: %[[FADDRES:.*]] = fadd bfloat %[[FMULRES]], %[[SRC2BF]]
+; CHECK-PURE-BF: %{{.*}} = bitcast bfloat %[[FADDRES]] to i16
+; Without pure BF, the whole mad is computed in float to round once.
+; CHECK-NO-PURE-BF: %[[SRC2F:.*]] = fpext bfloat %[[SRC2BF]] to float
+; CHECK-NO-PURE-BF: %[[FMULRES:.*]] = fmul float %[[SRC0F:[0-9]+]], %[[SRC1F:[0-9]+]]
+; CHECK-NO-PURE-BF: %[[FADDRES:.*]] = fadd float %[[FMULRES]], %[[SRC2F]]
+; CHECK-NO-PURE-BF: %[[RES:.*]] = fptrunc float %[[FADDRES]] to bfloat
+; CHECK-NO-PURE-BF: %{{.*}} = bitcast bfloat %[[RES]] to i16
   %call = call spir_func zeroext i16 @_Z18__builtin_bf16_madttt(i16 zeroext %v1_1, i16 zeroext %v2_1, i16 zeroext %v3_1) #2
   %arrayidx = getelementptr inbounds i16, i16 addrspace(1)* %out1, i64 0
   store i16 %call, i16 addrspace(1)* %arrayidx, align 2
