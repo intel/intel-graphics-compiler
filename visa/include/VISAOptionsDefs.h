@@ -286,9 +286,9 @@ DEF_VISA_OPTION(vISA_VRTFillCost, ET_BOOL_TRUE, "-vrtFillCost",
                 "under budget, so spills in cold code with hideable fill "
                 "latency keep the threads instead of forcing a bump. Can only "
                 "hold a bump back, never trigger one, and only on the first RA "
-                "iteration. Off by default; pass -vrtFillCost 1 to let fill "
-                "cost veto the spill size threshold.",
-                false)
+                "iteration. On by default; pass -vrtFillCost 0 to let the "
+                "spill size threshold bump unconditionally.",
+                true)
 DEF_VISA_OPTION(vISA_VRTFillCostDump, ET_BOOL, "-vrtFillCostDump",
                 "Dump the per-BB fill counts, pressure, and budget that "
                 "-vrtFillCost bases the VRT GRF bump on.",
