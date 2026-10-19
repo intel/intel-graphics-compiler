@@ -24582,7 +24582,9 @@ void EmitPass::emitLSCAtomic(llvm::GenIntrinsicInst *inst) {
   // take the bitwidth from the intrinsic name, the return type might
   // differ; e.g. uint lsc_atomic_add(ushort *, uint) D16U32
   unsigned short bitwidth = getLSCAtomicBitWidth(inst);
-  pDstAddr = ReAlignUniformVariable(pDstAddr, EALIGN_GRF);
+  // Every lane performs its own atomic. A uniform address would make
+  // LSC_AtomicRaw emit a single SIMD1 message.
+  pDstAddr = BroadcastIfUniform(pDstAddr);
 
   auto cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(5), false
   );
