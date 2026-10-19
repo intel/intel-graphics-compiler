@@ -422,11 +422,7 @@ std::vector<std::string> CodeGenContext::getEntryNames() const { return entry_na
 static void initCompOptionFromRegkey(CodeGenContext *ctx) {
   SetCurrentDebugHash(ctx->hash);
   SetCurrentEntryPoints(ctx->entry_names);
-
-  CompOptions &opt = ctx->getModuleMetaData()->compOpt;
-
-  opt.pixelShaderDoNotAbortOnSpill = IGC_IS_FLAG_ENABLED(PixelShaderDoNotAbortOnSpill);
-  opt.forcePixelShaderSIMDMode = IGC_GET_FLAG_VALUE(ForcePixelShaderSIMDMode);
+  ctx->applyCompOptionFromRegkey();
 }
 
 void CodeGenContext::setModule(llvm::Module *m) {
@@ -448,6 +444,15 @@ void CodeGenContext::setEntryNames(llvm::Module *m) {
       this->entry_names.emplace_back(funcName);
     }
   }
+}
+
+void CodeGenContext::applyCompOptionFromRegkey() {
+  CompOptions &opt = getModuleMetaData()->compOpt;
+
+  if (IGC_IS_FLAG_SET(PixelShaderDoNotAbortOnSpill))
+    opt.pixelShaderDoNotAbortOnSpill = IGC_IS_FLAG_ENABLED(PixelShaderDoNotAbortOnSpill);
+  if (IGC_IS_FLAG_SET(ForcePixelShaderSIMDMode))
+    opt.forcePixelShaderSIMDMode = IGC_GET_FLAG_VALUE(ForcePixelShaderSIMDMode);
 }
 
 /// Returns the retry manager cast to RetryManagerVISA*.

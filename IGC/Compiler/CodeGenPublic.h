@@ -1129,6 +1129,7 @@ public:
   std::vector<std::string> getEntryNames() const;
 
   void setModule(llvm::Module *m);
+  void applyCompOptionFromRegkey();
   void setEntryNames(llvm::Module *m);
   void clearEntryNames();
   RetryManagerVISA *getRetryManagerVISA() const;

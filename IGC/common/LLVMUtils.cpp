@@ -921,7 +921,10 @@ void DumpOrOverrideLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName) {
           Module *mod = newModOrErr->release();
           pContext->deleteModule();
           pContext->setModule(mod);
+          // deserialize() replaces the whole ModuleMetaData, dropping the compOpt values that setModule() set from the
+          // registry keys, so re-fill them afterwards.
           deserialize(*(pContext->getModuleMetaData()), mod);
+          pContext->applyCompOptionFromRegkey();
           appendToShaderOverrideLogFile(fileName, "OVERRIDEN: ");
         }
       }
