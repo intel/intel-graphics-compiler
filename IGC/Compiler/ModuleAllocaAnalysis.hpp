@@ -86,7 +86,7 @@ private:
     unsigned TotalSizeForUniformAllocas = 0;
 
     /// \brief The total stride for non-uniform allocas
-    unsigned TotalStrideForNonUniformAllocas = 0;
+    uint64_t TotalStrideForNonUniformAllocas = 0;
 
     /// \brief Maximum alignment among all non-uniform allocas.
     unsigned MaximumAlignmentForNonUniformAllocas = 1;
@@ -104,12 +104,12 @@ private:
       return iSTD::Align(TotalSizeForUniformAllocas, GetMaxAlignment());
     }
 
-    unsigned GetStrideForNonUniformAllocas() const {
+    uint64_t GetStrideForNonUniformAllocas() const {
       return iSTD::Align(TotalStrideForNonUniformAllocas, MaximumAlignmentForNonUniformAllocas);
     }
 
     uint64_t GetTotalSize(unsigned simdSize) const {
-      unsigned size = GetOffsetForNonUniformAllocas() + simdSize * GetStrideForNonUniformAllocas();
+      uint64_t size = GetOffsetForNonUniformAllocas() + simdSize * GetStrideForNonUniformAllocas();
       return iSTD::Align(size, GetMaxAlignment());
     }
   };
