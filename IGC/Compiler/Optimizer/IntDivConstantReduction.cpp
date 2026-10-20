@@ -80,7 +80,7 @@ struct IntDivConstantReduction : public FunctionPass {
       case Instruction::UDiv:
       case Instruction::SRem:
       case Instruction::URem:
-        if (isa<ConstantInt>(I->getOperand(1))) {
+        if (isa<ConstantInt>(I->getOperand(1)) && I->getType()->getIntegerBitWidth() <= 64) {
           divRems.push_back(cast<BinaryOperator>(I));
         }
         break;
@@ -90,6 +90,7 @@ struct IntDivConstantReduction : public FunctionPass {
     }
 
     for (BinaryOperator *BO : divRems) {
+      BO = widenIllegalDivRem(BO);
       currDivRem = BO;
       expandDivModByConst(F, BO, cast<ConstantInt>(BO->getOperand(1)));
     }
@@ -97,6 +98,25 @@ struct IntDivConstantReduction : public FunctionPass {
 
     return !divRems.empty();
   } // runOnFunction
+
+  // Illegal widths (e.g. i3 from IndVarSimplify) reach this pass before type
+  // legalization; redo the div/rem in the next legal width and truncate back.
+  BinaryOperator *widenIllegalDivRem(BinaryOperator *divRem) {
+    const unsigned bitSize = divRem->getType()->getIntegerBitWidth();
+    if (bitSize == 8 || bitSize == 16 || bitSize == 32 || bitSize == 64)
+      return divRem;
+
+    IRBuilder<> B(divRem);
+    Type *wideTy = B.getIntNTy(std::max(8u, (unsigned)PowerOf2Ceil(bitSize)));
+    bool isSigned = divRem->getOpcode() == Instruction::SDiv || divRem->getOpcode() == Instruction::SRem;
+    auto ext = [&](Value *V) { return isSigned ? B.CreateSExt(V, wideTy) : B.CreateZExt(V, wideTy); };
+
+    auto *wide = BinaryOperator::Create(divRem->getOpcode(), ext(divRem->getOperand(0)), ext(divRem->getOperand(1)));
+    B.Insert(wide, divRem->getName());
+    divRem->replaceAllUsesWith(B.CreateTrunc(wide, divRem->getType()));
+    divRem->eraseFromParent();
+    return wide;
+  }
 
   void expandDivModByConst(Function &F, BinaryOperator *divRem, ConstantInt *divisor) {
     IRBuilder<> B(divRem);
