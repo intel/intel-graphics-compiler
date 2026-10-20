@@ -25,7 +25,7 @@ bfloat __attribute__((overloadable)) __spirv_ocl_nextafter( bfloat x, bfloat y )
 
     short tcir = tcix + delta;
     short nr = maxneg - tcir;
-    short smir = ( tcir < 0 ) ? nr : tcir;
+    short smir = ( tcir < 0 || (tcir == 0 && smix < 0) ) ? nr : tcir;
 
     bfloat result = as_bfloat(smir);
     result = (tcix == tciy) ? y : result;

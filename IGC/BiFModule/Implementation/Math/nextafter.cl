@@ -26,7 +26,8 @@ float __attribute__((overloadable)) __spirv_ocl_nextafter( float x, float y )
     //   complement encoding of the result.
     // - Convert from the twos-complement encoding of the result back
     //   to a sign-magnitude encoding of the result, and interpret as
-    //   a float.  We're done!  Well, almost.
+    //   a float, preserving the sign of x when the step reaches zero.
+    //   We're done!  Well, almost.
     // - Handle two special-cases:
     //    - When the two floats are equal then there is no delta.
     //    - When either float is NaN the result is NaN.
@@ -45,7 +46,7 @@ float __attribute__((overloadable)) __spirv_ocl_nextafter( float x, float y )
 
     int tcir = tcix + delta;
     int nr = maxneg - tcir;
-    int smir = ( tcir < 0 ) ? nr : tcir;
+    int smir = ( tcir < 0 || (tcir == 0 && smix < 0) ) ? nr : tcir;
 
     float result = as_float(smir);
     result = (tcix == tciy) ? y : result;
@@ -79,7 +80,7 @@ double __attribute__((overloadable)) __spirv_ocl_nextafter( double x, double y )
 
     long tcir = tcix + delta;
     long nr = maxneg - tcir;
-    long smir = ( tcir < 0 ) ? nr : tcir;
+    long smir = ( tcir < 0 || (tcir == 0 && smix < 0) ) ? nr : tcir;
 
     double result = as_double(smir);
     result = (tcix == tciy) ? y : result;
@@ -115,7 +116,7 @@ half __attribute__((overloadable)) __spirv_ocl_nextafter( half x, half y )
 
     short tcir = tcix + delta;
     short nr = maxneg - tcir;
-    short smir = ( tcir < 0 ) ? nr : tcir;
+    short smir = ( tcir < 0 || (tcir == 0 && smix < 0) ) ? nr : tcir;
 
     half result = as_half(smir);
     result = (tcix == tciy) ? y : result;
