@@ -689,14 +689,13 @@ double __attribute__((overloadable)) __spirv_ocl_ceil(double x ){
 
     // Second part is to calculate exponent adjustment based on sign of source
 
-    uint   temp5           = (uint)(as_ulong(fraction));
-    uint   temp6           = (uint)(as_ulong(fraction) >> 32);
-    uint   sign            = high32Bit & 0x80000000;
-    uint   expBias         = (sign == 0) ? 0x3ff00000 : 0;
-    uint   orDst           = temp5 | temp6;
-    ulong  signAdjustedVal = (orDst == 0) ? 0 : (expBias);
-    double output = as_double(signAdjustedVal << 32) + as_double(roundedToZeroVal);
-    return output;
+    uint  temp5           = (uint)(as_ulong(fraction));
+    uint  temp6           = (uint)(as_ulong(fraction) >> 32);
+    uint  sign            = high32Bit & 0x80000000;
+    uint  expBias         = (sign == 0) ? 0x3ff00000 : 0x80000000;
+    uint  orDst           = temp5 | temp6;
+    ulong signAdjustedVal = (orDst == 0) ? sign : (expBias);
+    return as_double(signAdjustedVal << 32) + as_double(roundedToZeroVal);
 }
 
 INLINE
@@ -724,9 +723,8 @@ double __attribute__((overloadable)) __spirv_ocl_floor(double x ){
     uint     sign            = high32Bit & 0x80000000;
     uint     expBias         = (sign != 0) ? 0xbff00000 : 0;
     uint     orDst           = temp5 | temp6;
-    ulong    signAdjustedVal = (orDst == 0) ? 0 : (expBias);
-    double   output = as_double(signAdjustedVal << 32) + as_double(roundedToZeroVal);
-    return output;
+    ulong    signAdjustedVal = (orDst == 0) ? sign : (expBias);
+    return as_double(signAdjustedVal << 32) + as_double(roundedToZeroVal);
 }
 
 INLINE double __attribute__((overloadable)) __spirv_ocl_native_sqrt(double x ){
