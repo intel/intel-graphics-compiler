@@ -9,9 +9,10 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 //
 // FPRangeAnalysis.cpp - Floating Point Range Tracking
-// WARNING: The implemented range analysis assumes fast math, and as such, does not currently track NaN, signed zero,
-// etc. Use this analysis only as an estimate of the possible range of a value given proper inputs and fast math
-// assumptions. Perform your own NaN and other special value checks if needed.
+// WARNING: The implemented range analysis assumes fast math. NaN is tracked - MayBeNaN == false is a proof of
+// non-NaN - but signed zero is not. Results the hardware approximates are widened loosely (widenApprox), but the bounds
+// are an estimate rather than a ULP-exact envelope: reassoc, contract and arcp let later passes compute a slightly
+// different value, so consumers should apply a margin.
 //
 //===----------------------------------------------------------------------===//
 
@@ -152,6 +153,32 @@ FPRange makeRange(double lo, double hi, const fltSemantics &Sem) {
   return FPRange::getRange(std::move(LoAP), std::move(HiAP));
 }
 
+/// R moved outward to cover a result the hardware approximates (fdiv, sqrt, exp, log, sin, cos): each bound by
+/// 2^-5 of itself, 2^-4 for half. AbsoluteBelowOne charges bounds below 1.0 the error of 1.0, for log, sin and cos,
+/// whose error near zero is absolute.
+static FPRange widenApprox(const FPRange &R, bool AbsoluteBelowOne = false) {
+  if (!R.isBounded())
+    return R;
+  const fltSemantics &Sem = R.getSemantics();
+  const int Bits = &Sem == &APFloat::IEEEhalf() ? 4 : 5;
+  const APFloat One = makeAPFloat(1.0, Sem);
+  auto Widen = [&](APFloat X, bool Down) {
+    APFloat Mag = llvm::abs(X);
+    if (AbsoluteBelowOne && Mag.compare(One) == APFloat::cmpLessThan)
+      Mag = One;
+    APFloat E = llvm::scalbn(Mag, -Bits, APFloat::rmTowardPositive);
+    // Infinite bounds stay put, and a zero error is skipped: 0 - 0 rounded toward negative is -0.
+    if (X.isInfinity() || E.isZero())
+      return X;
+    if (Down)
+      X.subtract(E, APFloat::rmTowardNegative);
+    else
+      X.add(E, APFloat::rmTowardPositive);
+    return X;
+  };
+  return FPRange::getRange(Widen(R.Lower, true), Widen(R.Upper, false)).withNaN(R.MayBeNaN);
+}
+
 //===----------------------------------------------------------------------===//
 // Pattern Detection (Fast-Math Aware)
 //
@@ -191,7 +218,7 @@ static bool isLogisticPattern(Value *V, FPRangeCache *Cache, unsigned Depth, FPR
         // Large abs(x) can cause overflow/underflow, but result is still bound in [0, 1]
         if (auto *NumC = dyn_cast<ConstantFP>(Num)) {
           if (NumC->isExactlyValue(1.0)) {
-            Result = makeRange(0.0, 1.0, Sem).withNaN(ExpArg.MayBeNaN);
+            Result = widenApprox(makeRange(0.0, 1.0, Sem)).withNaN(ExpArg.MayBeNaN);
             return true;
           }
         }
@@ -200,7 +227,7 @@ static bool isLogisticPattern(Value *V, FPRangeCache *Cache, unsigned Depth, FPR
           auto *NumExp = cast<IntrinsicInst>(Num);
           if (NumExp->getIntrinsicID() == DenomExp->getIntrinsicID() &&
               NumExp->getArgOperand(0) == DenomExp->getArgOperand(0)) {
-            Result = makeRange(0.0, 1.0, Sem).withNaN(ExpArg.MayBeNaN);
+            Result = widenApprox(makeRange(0.0, 1.0, Sem)).withNaN(ExpArg.MayBeNaN);
             return true;
           }
         }
@@ -310,12 +337,40 @@ static Value *matchSquareMul(Value *V) {
   return (Op == Mul->getOperand(1)) ? Op : nullptr;
 }
 
-/// Normalization: x / sqrt(x^2 + y^2 + ...) -> [-1, 1]
+/// True if a division matched by matchDivision cannot produce +/-Inf: ninf on the fdiv, or in the arcp form on the
+/// multiply or on the 1/Denom reciprocal itself. ninf on a numerator that is itself a division does not count.
+static bool divisionHasNoInfs(Value *V, Value *Denom) {
+  auto *BO = cast<BinaryOperator>(V);
+  if (BO->hasNoInfs())
+    return true;
+  if (BO->getOpcode() != Instruction::FMul)
+    return false;
+  for (Value *Op : BO->operands()) {
+    auto *Div = dyn_cast<BinaryOperator>(Op);
+    if (!Div || Div->getOpcode() != Instruction::FDiv || Div->getOperand(1) != Denom || !Div->hasNoInfs())
+      continue;
+    auto *One = dyn_cast<ConstantFP>(Div->getOperand(0));
+    if (One && One->isExactlyValue(1.0))
+      return true;
+  }
+  return false;
+}
+
+/// Normalization: x / sqrt(x^2 + y^2 + ...) -> [-1.5, 1.5]
 /// Verifies all sqrt addends are non-negative (squares). Handles arcp transform.
+///
+/// |x| <= sqrt(x^2 + ...) holds over the reals but not in floating point. A square that underflows to zero gives
+/// +/-Inf, which ninf on the division makes poison. A square rounded in the denormal band can fall to 1/2 of its true
+/// value (1/1.5 when rounding to nearest), bounding the quotient by sqrt(2); 1.5 also covers sqrt/rsqrt approximation.
+/// More addends only shrink the quotient. EnableUnsafeFPRangeNormalize skips the ninf check and bounds to [-1, 1].
 static bool isNormalizationPattern(Value *V, FPRangeCache *Cache, unsigned Depth, FPRange &Result) {
   const fltSemantics &Sem = Result.getSemantics();
   Value *Num = nullptr, *Denom = nullptr;
   if (!matchDivision(V, Num, Denom))
+    return false;
+
+  const bool Unsafe = IGC_IS_FLAG_ENABLED(EnableUnsafeFPRangeNormalize);
+  if (!Unsafe && !divisionHasNoInfs(V, Denom))
     return false;
 
   // Check if denominator is sqrt(...)
@@ -388,7 +443,8 @@ static bool isNormalizationPattern(Value *V, FPRangeCache *Cache, unsigned Depth
 
   // 0/sqrt(0) can produce NaN, but only if all terms could be zero.
   // If we found any term with strictly positive lower bound, the denominator is guaranteed non-zero.
-  Result = makeRange(-1.0, 1.0, Sem).withNaN(anyMayBeNaN || !foundStrictlyPositive);
+  const double Bound = Unsafe ? 1.0 : 1.5;
+  Result = makeRange(-Bound, Bound, Sem).withNaN(anyMayBeNaN || !foundStrictlyPositive);
   return true;
 }
 
@@ -441,6 +497,178 @@ static bool isSquarePattern(Value *V, FPRangeCache *Cache, unsigned Depth, FPRan
   return true;
 }
 
+/// Results of the two sign walks for one query. They recurse into each other, and an fmul asks both signs of both
+/// operands, so without this the work grows exponentially with depth.
+struct SignMemo {
+  DenseMap<Value *, bool> NonNeg;
+  DenseMap<Value *, bool> NonPos;
+};
+
+static bool structNonNeg(Value *V, unsigned Depth, SignMemo &M);
+static bool structNonPos(Value *V, unsigned Depth, SignMemo &M);
+
+/// Memoized wrapper around Compute. A false placeholder is stored while V is in progress, so a loop-carried phi
+/// terminates rather than recursing.
+template <typename ComputeFn>
+static bool memoizedSign(Value *V, unsigned Depth, DenseMap<Value *, bool> &Memo, ComputeFn Compute) {
+  if (!V || Depth > 12)
+    return false;
+  auto It = Memo.find(V);
+  if (It != Memo.end())
+    return It->second;
+  Memo[V] = false;
+  const bool Result = Compute();
+  Memo[V] = Result;
+  return Result;
+}
+
+static bool computeNonNeg(Value *V, unsigned Depth, SignMemo &M) {
+  auto pos = [&](Value *X) { return structNonNeg(X, Depth + 1, M); };
+  auto neg = [&](Value *X) { return structNonPos(X, Depth + 1, M); };
+
+  if (auto *C = dyn_cast<ConstantFP>(V)) {
+    const APFloat &F = C->getValueAPF();
+    return !F.isNaN() && (!F.isNegative() || F.isZero());
+  }
+  // fsat clamps to [0, 1] and sends NaN to 0; frc returns the fractional part in [0, 1).
+  if (auto *GII = dyn_cast<GenIntrinsicInst>(V))
+    return GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fsat ||
+           GII->getIntrinsicID() == GenISAIntrinsic::GenISA_frc;
+  if (auto *II = dyn_cast<IntrinsicInst>(V)) {
+    switch (II->getIntrinsicID()) {
+    // |x| is non-negative, sqrt of a negative is NaN rather than negative, and exp never returns a negative.
+    case Intrinsic::fabs:
+    case Intrinsic::sqrt:
+    case Intrinsic::exp:
+    case Intrinsic::exp2:
+      return true;
+    // Rounding cannot cross zero.
+    case Intrinsic::floor:
+    case Intrinsic::ceil:
+    case Intrinsic::trunc:
+    case Intrinsic::rint:
+    case Intrinsic::nearbyint:
+      return pos(II->getArgOperand(0));
+    // maximum is non-negative as soon as one side is (NaN propagates); min needs both. maxnum returns the other side
+    // when one is NaN, so one side is enough only if it is a literal, which the constant case keeps non-NaN.
+    case Intrinsic::maximum:
+      return pos(II->getArgOperand(0)) || pos(II->getArgOperand(1));
+    case Intrinsic::maxnum: {
+      Value *A = II->getArgOperand(0), *B = II->getArgOperand(1);
+      return (pos(A) && pos(B)) || (isa<ConstantFP>(A) && pos(A)) || (isa<ConstantFP>(B) && pos(B));
+    }
+    case Intrinsic::minnum:
+    case Intrinsic::minimum:
+      return pos(II->getArgOperand(0)) && pos(II->getArgOperand(1));
+    default:
+      return false;
+    }
+  }
+  auto *I = dyn_cast<Instruction>(V);
+  if (!I)
+    return false;
+  switch (I->getOpcode()) {
+  case Instruction::UIToFP:
+    return true;
+  // x*x is non-negative whatever x is, as is a product or sum of non-negatives however it is reassociated:
+  // overflow gives +Inf and underflow +0.
+  case Instruction::FMul:
+    return matchSquareMul(I) != nullptr || (pos(I->getOperand(0)) && pos(I->getOperand(1))) ||
+           (neg(I->getOperand(0)) && neg(I->getOperand(1)));
+  case Instruction::FAdd:
+    return pos(I->getOperand(0)) && pos(I->getOperand(1));
+  case Instruction::FNeg:
+    return neg(I->getOperand(0));
+  case Instruction::Select:
+    return pos(I->getOperand(1)) && pos(I->getOperand(2));
+  case Instruction::PHI: {
+    auto *PN = cast<PHINode>(I);
+    return PN->getNumIncomingValues() > 0 && llvm::all_of(PN->incoming_values(), pos);
+  }
+  case Instruction::FPExt:
+  case Instruction::FPTrunc:
+    return pos(I->getOperand(0));
+  default:
+    return false;
+  }
+}
+
+/// Mirror of computeNonNeg. Nothing modelled is unconditionally non-positive, so every case is a composition.
+static bool computeNonPos(Value *V, unsigned Depth, SignMemo &M) {
+  auto pos = [&](Value *X) { return structNonNeg(X, Depth + 1, M); };
+  auto neg = [&](Value *X) { return structNonPos(X, Depth + 1, M); };
+
+  if (auto *C = dyn_cast<ConstantFP>(V)) {
+    const APFloat &F = C->getValueAPF();
+    return !F.isNaN() && (F.isNegative() || F.isZero());
+  }
+  if (isa<GenIntrinsicInst>(V))
+    return false;
+  if (auto *II = dyn_cast<IntrinsicInst>(V)) {
+    switch (II->getIntrinsicID()) {
+    case Intrinsic::floor:
+    case Intrinsic::ceil:
+    case Intrinsic::trunc:
+    case Intrinsic::rint:
+    case Intrinsic::nearbyint:
+      return neg(II->getArgOperand(0));
+    // minimum is non-positive as soon as one side is; minnum, as maxnum above; max needs both.
+    case Intrinsic::minimum:
+      return neg(II->getArgOperand(0)) || neg(II->getArgOperand(1));
+    case Intrinsic::minnum: {
+      Value *A = II->getArgOperand(0), *B = II->getArgOperand(1);
+      return (neg(A) && neg(B)) || (isa<ConstantFP>(A) && neg(A)) || (isa<ConstantFP>(B) && neg(B));
+    }
+    case Intrinsic::maxnum:
+    case Intrinsic::maximum:
+      return neg(II->getArgOperand(0)) && neg(II->getArgOperand(1));
+    default:
+      return false;
+    }
+  }
+  auto *I = dyn_cast<Instruction>(V);
+  if (!I)
+    return false;
+  switch (I->getOpcode()) {
+  // Opposite signs multiply to a non-positive. This is the common shape: a magnitude scaled by a negative constant.
+  case Instruction::FMul:
+    return (pos(I->getOperand(0)) && neg(I->getOperand(1))) || (neg(I->getOperand(0)) && pos(I->getOperand(1)));
+  case Instruction::FAdd:
+    return neg(I->getOperand(0)) && neg(I->getOperand(1));
+  case Instruction::FNeg:
+    return pos(I->getOperand(0));
+  case Instruction::Select:
+    return neg(I->getOperand(1)) && neg(I->getOperand(2));
+  case Instruction::PHI: {
+    auto *PN = cast<PHINode>(I);
+    return PN->getNumIncomingValues() > 0 && llvm::all_of(PN->incoming_values(), neg);
+  }
+  case Instruction::FPExt:
+  case Instruction::FPTrunc:
+    return neg(I->getOperand(0));
+  default:
+    return false;
+  }
+}
+
+static bool structNonNeg(Value *V, unsigned Depth, SignMemo &M) {
+  return memoizedSign(V, Depth, M.NonNeg, [&] { return computeNonNeg(V, Depth, M); });
+}
+
+static bool structNonPos(Value *V, unsigned Depth, SignMemo &M) {
+  return memoizedSign(V, Depth, M.NonPos, [&] { return computeNonPos(V, Depth, M); });
+}
+
+bool isStructurallyNonNegative(Value *V) {
+  SignMemo M;
+  return structNonNeg(V, 0, M);
+}
+
+bool isStructurallyNonPositive(Value *V) {
+  SignMemo M;
+  return structNonPos(V, 0, M);
+}
+
 //===----------------------------------------------------------------------===//
 // Instruction Analysis
 //===----------------------------------------------------------------------===//
@@ -484,6 +712,10 @@ static FPRange analyzeIntrinsic(IntrinsicInst *II, FPRangeCache *Cache, unsigned
       FPRange In = computeFPRange(GII->getArgOperand(0), Cache, Depth + 1);
       return makeRange(0.0, 1.0, Sem).withNaN(In.MayBeNaN || In.isUnbounded());
     }
+    case GenISAIntrinsic::GenISA_fsat: {
+      // Clamps to [0, 1]; NaN saturates to 0.
+      return makeRange(0.0, 1.0, Sem);
+    }
     default:
       return FPRange::getFull(Sem);
     }
@@ -516,7 +748,9 @@ static FPRange analyzeIntrinsic(IntrinsicInst *II, FPRangeCache *Cache, unsigned
       }
       double hi = In.Upper.convertToDouble();
       APFloat SqrtHi = makeAPFloat(std::sqrt(hi), Sem, APFloat::rmTowardPositive);
-      return FPRange::getRange(std::move(SqrtLo), std::move(SqrtHi)).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+      return widenApprox(FPRange::getRange(std::move(SqrtLo), std::move(SqrtHi)))
+          .withNoInf(FMF.noInfs())
+          .withNaN(mayBeNaN);
     }
     case Intrinsic::minnum:
     case Intrinsic::minimum: {
@@ -527,16 +761,28 @@ static FPRange analyzeIntrinsic(IntrinsicInst *II, FPRangeCache *Cache, unsigned
       bool isMinimum = II->getIntrinsicID() == Intrinsic::minimum;
       bool mayBeNaN = !FMF.noNaNs() && (isMinimum ? (A.MayBeNaN || B.MayBeNaN) : (A.MayBeNaN && B.MayBeNaN));
 
+      // minnum returns the other operand when one is NaN, so all of that operand's values are possible too.
+      auto Finish = [&](FPRange R) {
+        if (!isMinimum && A.MayBeNaN)
+          R = R.unionWith(B);
+        if (!isMinimum && B.MayBeNaN)
+          R = R.unionWith(A);
+        return R.withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+      };
+
+      // An Empty operand is NaN-only or unreachable: minimum/maximum then give NaN, minnum/maxnum the other operand.
+      if (A.isEmptySet() || B.isEmptySet())
+        return Finish(FPRange::getEmpty(Sem));
       if (A.isFullSet() && B.isFullSet())
-        return FPRange::getFull(Sem).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+        return Finish(FPRange::getFull(Sem));
       if (A.isFullSet())
-        return FPRange::getRange(APFloat::getInf(Sem, true), B.Upper).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+        return Finish(FPRange::getRange(APFloat::getInf(Sem, true), B.Upper));
       if (B.isFullSet())
-        return FPRange::getRange(APFloat::getInf(Sem, true), A.Upper).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+        return Finish(FPRange::getRange(APFloat::getInf(Sem, true), A.Upper));
 
       APFloat Lo = apfMin(A.Lower, B.Lower);
       APFloat Hi = apfMin(A.Upper, B.Upper);
-      return FPRange::getRange(std::move(Lo), std::move(Hi)).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+      return Finish(FPRange::getRange(std::move(Lo), std::move(Hi)));
     }
     case Intrinsic::maxnum:
     case Intrinsic::maximum: {
@@ -547,25 +793,37 @@ static FPRange analyzeIntrinsic(IntrinsicInst *II, FPRangeCache *Cache, unsigned
       bool isMaximum = II->getIntrinsicID() == Intrinsic::maximum;
       bool mayBeNaN = !FMF.noNaNs() && (isMaximum ? (A.MayBeNaN || B.MayBeNaN) : (A.MayBeNaN && B.MayBeNaN));
 
+      // maxnum returns the other operand when one is NaN, so all of that operand's values are possible too.
+      auto Finish = [&](FPRange R) {
+        if (!isMaximum && A.MayBeNaN)
+          R = R.unionWith(B);
+        if (!isMaximum && B.MayBeNaN)
+          R = R.unionWith(A);
+        return R.withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+      };
+
+      // An Empty operand is NaN-only or unreachable: minimum/maximum then give NaN, minnum/maxnum the other operand.
+      if (A.isEmptySet() || B.isEmptySet())
+        return Finish(FPRange::getEmpty(Sem));
       if (A.isFullSet() && B.isFullSet())
-        return FPRange::getFull(Sem).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+        return Finish(FPRange::getFull(Sem));
       if (A.isFullSet())
-        return FPRange::getRange(B.Lower, APFloat::getInf(Sem, false)).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+        return Finish(FPRange::getRange(B.Lower, APFloat::getInf(Sem, false)));
       if (B.isFullSet())
-        return FPRange::getRange(A.Lower, APFloat::getInf(Sem, false)).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+        return Finish(FPRange::getRange(A.Lower, APFloat::getInf(Sem, false)));
 
       APFloat Lo = apfMax(A.Lower, B.Lower);
       APFloat Hi = apfMax(A.Upper, B.Upper);
-      return FPRange::getRange(std::move(Lo), std::move(Hi)).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+      return Finish(FPRange::getRange(std::move(Lo), std::move(Hi)));
     }
     case Intrinsic::sin:
     case Intrinsic::cos: {
       // sin/cos always return [-1, 1]
       // sin/cos(+/-Inf) and sin/cos(NaN) produce NaN.
       if (FMF.noNaNs())
-        return makeRange(-1.0, 1.0, Sem);
+        return widenApprox(makeRange(-1.0, 1.0, Sem), /*AbsoluteBelowOne=*/true);
       FPRange In = computeFPRange(II->getArgOperand(0), Cache, Depth + 1);
-      return makeRange(-1.0, 1.0, Sem).withNaN(In.MayBeNaN || In.isUnbounded());
+      return widenApprox(makeRange(-1.0, 1.0, Sem), /*AbsoluteBelowOne=*/true).withNaN(In.MayBeNaN || In.isUnbounded());
     }
     case Intrinsic::exp:
     case Intrinsic::exp2: {
@@ -586,7 +844,7 @@ static FPRange analyzeIntrinsic(IntrinsicInst *II, FPRangeCache *Cache, unsigned
 
       double outLo = isExp ? std::exp(inLo) : std::exp2(inLo);
       double outHi = isExp ? std::exp(inHi) : std::exp2(inHi);
-      return makeRange(outLo, outHi, Sem).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+      return widenApprox(makeRange(outLo, outHi, Sem)).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
     }
     case Intrinsic::log:
     case Intrinsic::log2:
@@ -617,7 +875,7 @@ static FPRange analyzeIntrinsic(IntrinsicInst *II, FPRangeCache *Cache, unsigned
                                     : II->getIntrinsicID() == Intrinsic::log2 ? std::log2(hi)
                                                                               : std::log10(hi),
                                     Sem, APFloat::rmTowardPositive);
-        return FPRange::getRange(APFloat::getInf(Sem, true), std::move(LogHi))
+        return widenApprox(FPRange::getRange(APFloat::getInf(Sem, true), std::move(LogHi)), /*AbsoluteBelowOne=*/true)
             .withNoInf(FMF.noInfs())
             .withNaN(mayBeNaN);
       }
@@ -639,7 +897,7 @@ static FPRange analyzeIntrinsic(IntrinsicInst *II, FPRangeCache *Cache, unsigned
         break;
       }
       // Lo > 0 means no negatives in range, so NaN only from input propagation
-      return Result.withNaN(!FMF.noNaNs() && In.MayBeNaN);
+      return widenApprox(Result, /*AbsoluteBelowOne=*/true).withNaN(!FMF.noNaNs() && In.MayBeNaN);
     }
     case Intrinsic::floor:
     case Intrinsic::ceil:
@@ -694,19 +952,23 @@ static FPRange analyzeIntrinsic(IntrinsicInst *II, FPRangeCache *Cache, unsigned
       FPRange Base = computeFPRange(II->getArgOperand(0), Cache, Depth + 1);
       bool mayBeNaN = !FMF.noNaNs() && Base.MayBeNaN;
 
+      // IGC emits powi as pow, which vISA expands to exp2(log2(|x|) * n), unless an earlier pass folds it. For n = 0
+      // the expansion gives exp2(-Inf * 0) = NaN for a zero or infinite base, and an unknown exponent may be 0.
       auto *ExpC = dyn_cast<ConstantInt>(II->getArgOperand(1));
       if (!ExpC)
-        return FPRange::getFull(Sem).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+        return FPRange::getFull(Sem).withNoInf(FMF.noInfs()).withNaN(!FMF.noNaNs());
 
       int exp = static_cast<int>(ExpC->getSExtValue());
 
-      // exp = 0: result is 1.0
-      if (exp == 0)
-        return FPRange::getPoint(makeAPFloat(1.0, Sem)).withNaN(mayBeNaN);
+      // exp = 0: 1.0, or NaN from the expansion.
+      if (exp == 0) {
+        const bool ZeroOrInf = Base.isFullSet() || Base.containsZero() || Base.isUnbounded();
+        return FPRange::getPoint(makeAPFloat(1.0, Sem)).withNaN(mayBeNaN || (!FMF.noNaNs() && ZeroOrInf));
+      }
 
-      // exp = 1: identity
+      // exp = 1: x if folded, an approximation of |x| from the expansion.
       if (exp == 1)
-        return Base.withNaN(mayBeNaN);
+        return Base.unionWith(widenApprox(Base.abs())).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
 
       // Even positive exponent: result is non-negative [0, max(|base|)^exp]
       if (exp > 0 && exp % 2 == 0) {
@@ -715,7 +977,7 @@ static FPRange analyzeIntrinsic(IntrinsicInst *II, FPRangeCache *Cache, unsigned
               .withNoInf(FMF.noInfs())
               .withNaN(mayBeNaN);
         double m = maxAbsValue(Base).convertToDouble();
-        return makeRange(0.0, std::pow(m, exp), Sem).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+        return widenApprox(makeRange(0.0, std::pow(m, exp), Sem)).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
       }
       return FPRange::getFull(Sem).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
     }
@@ -740,15 +1002,58 @@ static FPRange analyzeBinaryOp(BinaryOperator *BO, FPRangeCache *Cache, unsigned
     // Check for square pattern x*x which guarantees non-negative result
     FPRange SquareResult(Sem);
     if (isSquarePattern(BO, Cache, Depth, SquareResult))
-      return SquareResult;
+      return SquareResult.withNoInf(FMF.noInfs()).withNaN(!FMF.noNaNs() && SquareResult.MayBeNaN);
     return L.mul(R, FMF);
   }
-  case Instruction::FDiv:
-    return L.div(R, FMF);
+  case Instruction::FDiv: {
+    FPRange Quotient = widenApprox(L.div(R, FMF));
+    // fdiv is lowered to mul(x, inv(y)), and inv(y) flushes to zero once |y| exceeds 1 / smallest normal.
+    APFloat InvLimit = makeAPFloat(1.0, Sem);
+    InvLimit.divide(APFloat::getSmallestNormalized(Sem), APFloat::rmTowardZero);
+    if (Quotient.isBounded() && maxAbsValue(R).compare(InvLimit) == APFloat::cmpGreaterThan)
+      Quotient = Quotient.unionWith(FPRange::getPoint(APFloat::getZero(Sem)));
+    return Quotient;
+  }
   default:
     // Unsupported binary operator (e.g., FRem) - return full range
     return FPRange::getFull(Sem);
   }
+}
+
+/// extractelement: follow the insertelement chain to the value written to this lane.
+static FPRange analyzeExtractElement(ExtractElementInst *EE, FPRangeCache *Cache, unsigned Depth,
+                                     const fltSemantics &Sem) {
+  auto *CIdx = dyn_cast<ConstantInt>(EE->getIndexOperand());
+  if (!CIdx)
+    return FPRange::getFull(Sem);
+
+  Value *Vec = EE->getVectorOperand();
+
+  constexpr unsigned MaxSteps = 64;
+  // Bound the walk; insertelement chains are short in practice, don't look past MaxSteps.
+  for (unsigned Steps = 0; Steps < MaxSteps; ++Steps) {
+    if (auto *IE = dyn_cast<InsertElementInst>(Vec)) {
+      auto *IEConstIdx = dyn_cast<ConstantInt>(IE->getOperand(2));
+      // A non-constant insert index may have clobbered the lane we want.
+      if (!IEConstIdx)
+        return FPRange::getFull(Sem);
+      if (IEConstIdx->getZExtValue() == CIdx->getZExtValue())
+        return computeFPRange(IE->getOperand(1), Cache, Depth + 1);
+      // Different index - keep walking towards the base vector.
+      Vec = IE->getOperand(0);
+      continue;
+    }
+
+    if (auto *C = dyn_cast<Constant>(Vec)) {
+      if (Constant *Elt = C->getAggregateElement(static_cast<unsigned>(CIdx->getZExtValue())))
+        if (auto *EltFP = dyn_cast<ConstantFP>(Elt))
+          return FPRange::getPoint(EltFP->getValueAPF());
+    }
+
+    return FPRange::getFull(Sem);
+  }
+
+  return FPRange::getFull(Sem);
 }
 
 static FPRange analyzeSelect(SelectInst *SI, FPRangeCache *Cache, unsigned Depth, const fltSemantics &Sem) {
@@ -801,8 +1106,7 @@ FPRange computeFPRange(Value *V, FPRangeCache *Cache, unsigned Depth) {
   if (auto *C = dyn_cast<ConstantFP>(V)) {
     return FPRange::getPoint(C->getValueAPF());
   } else if (isa<UndefValue, PoisonValue, Argument>(V)) {
-    // Unknown values - don't set MayBeNaN here; we track operation-generated NaN,
-    // not whether inputs could already be NaN.
+    // Unknown value: Full, which carries MayBeNaN.
     return FPRange::getFull(Sem);
   }
 
@@ -825,6 +1129,8 @@ FPRange computeFPRange(Value *V, FPRangeCache *Cache, unsigned Depth) {
     Result = analyzeSelect(SI, Cache, Depth, Sem);
   } else if (auto *PN = dyn_cast<PHINode>(V)) {
     Result = analyzePHI(PN, Cache, Depth, Sem);
+  } else if (auto *EE = dyn_cast<ExtractElementInst>(V)) {
+    Result = analyzeExtractElement(EE, Cache, Depth, Sem);
   } else if (auto *Ext = dyn_cast<FPExtInst>(V)) {
     FPRange In = computeFPRange(Ext->getOperand(0), Cache, Depth + 1);
     if (In.isFullSet()) {
@@ -862,10 +1168,13 @@ FPRange computeFPRange(Value *V, FPRangeCache *Cache, unsigned Depth) {
   // Patterns provide semantic bounds (e.g., logistic is always in (0,1)), while instruction analysis provides
   // input-dependent bounds.
   // Taking the intersection gives the tightest sound approximation.
-  // If intersection is empty (disjoint bounds from a bug or malformed IR), fall back to pattern bounds.
+  // If intersection is empty (disjoint bounds from a bug or malformed IR), one side is wrong and it is not known
+  // which, so fall back to their union.
+  //
+  // Propagate MayBeNaN from the instruction analysis. Math patterns provide bounds only.
   auto intersectOrFallback = [](const FPRange &Inst, const FPRange &Pattern) {
     FPRange I = Inst.intersectWith(Pattern);
-    return I.isEmptySet() ? Pattern : I;
+    return (I.isEmptySet() ? Inst.unionWith(Pattern) : I).withNaN(Inst.MayBeNaN);
   };
 
   {
@@ -911,22 +1220,7 @@ bool PrintFPRangeAnalysis::runOnFunction(Function &F) {
       OS << "%" << I.getName();
     else
       I.printAsOperand(OS, false);
-    OS << ": ";
-
-    // Print range
-    if (R.isEmptySet()) {
-      OS << "empty";
-    } else if (R.isFullSet()) {
-      OS << "full";
-    } else {
-      SmallString<32> LoStr, HiStr;
-      R.Lower.toString(LoStr);
-      R.Upper.toString(HiStr);
-      OS << "[" << LoStr << ", " << HiStr << "]";
-    }
-    if (R.MayBeNaN)
-      OS << " (may be NaN)";
-    OS << "\n";
+    OS << ": " << R << "\n";
   }
 
   return false;

@@ -888,6 +888,19 @@ DECLARE_IGC_REGKEY(bool, EnableSinkPointerConstAdd, true,
 DECLARE_IGC_REGKEY(bool, ForceHoistUDivURem, false,
                    "Always hoist UDiv/URem to common ancestor, even if it results in speculative execution", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, FPRangeAnalysisMaxDepth, 64, "Max recursive depth for FP range analysis", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, EnableUnsafeFPRangeNormalize, false,
+                   "Bound x/sqrt(x^2+y^2+...) to [-1, 1] in FP range analysis, even without ninf on the division. "
+                   "UNSAFE: a square that underflows makes the quotient +/-Inf. By default the pattern requires ninf "
+                   "and bounds to [-1.5, 1.5]",
+                   DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, EnableFoldProvableFCmp, false,
+                   "Fold fcmp instructions whose result FPRangeAnalysis can prove, and delete the control flow that "
+                   "becomes dead",
+                   ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, FoldProvableFCmpMarginBits, 5,
+                   "Relative margin, as 2^-N of the bound, that a bound must clear the other operand by before "
+                   "FoldProvableFCmp decides a compare. 0 disables the margin",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableSimpleAluVectorizer, true,
                    "Enable coalescing of ALU SIMD1/SIMD2 uniform operations into wider SIMD", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableRedundantOpsCSE, true, "Enable redundant binary operator CSE pass", DEBUG_ONLY)

@@ -5,7 +5,9 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt -print-fp-range-analysis -S < %s 2>&1 | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt -print-fp-range-analysis -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,DEFAULT
+; RUN: igc_opt --regkey EnableUnsafeFPRangeNormalize=1 -print-fp-range-analysis -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,NORM
 ; ------------------------------------------------
 ;
 ; Comprehensive FPRangeAnalysis test
@@ -14,6 +16,8 @@
 ; Developers can reference this to understand what ranges the analysis produces
 ; for various IR constructs. The main function test_comprehensive exercises
 ; most supported patterns in a single function.
+;
+; Only the normalization cases differ between the two RUN lines.
 ;
 ; ------------------------------------------------
 
@@ -90,6 +94,10 @@ entry:
   ; CHECK: %square_unknown: [0, +Inf]
   %square_unknown = fmul float %unknown, %unknown
 
+  ; Square honours the fmul's own fast-math flags
+  ; CHECK: %square_unknown_ninf: [0, 3.{{.*}}E+38]
+  %square_unknown_ninf = fmul ninf nnan float %unknown, %unknown
+
   ; ===== Clamp Patterns =====
   ; maxnum clamps lower bound
   ; CHECK: %max_zero: [0, +Inf]
@@ -120,7 +128,7 @@ entry:
   %sqrt_nonneg = call float @llvm.sqrt.f32(float %abs_unknown)
 
   ; sqrt of bounded non-negative: sqrt(255) ~ 15.97
-  ; CHECK: %sqrt_bounded: [0, 15.{{.*}}]
+  ; CHECK: %sqrt_bounded: [0, 16.{{.*}}]
   %sqrt_bounded = call float @llvm.sqrt.f32(float %uit_i8)
 
   ; ===== GenX Fractional Part =====
@@ -156,8 +164,9 @@ entry:
   %fmuladd_bounded = call float @llvm.fmuladd.f32(float %sit_i8, float %sit_i8, float %sit_i8)
 
   ; ===== Normalization Pattern =====
-  ; x / sqrt(x^2 + y^2) -> [-1, 1]
-  ; CHECK: %norm_2d: [-1, 1]
+  ; x / sqrt(x^2 + y^2) without ninf: matched only under EnableUnsafeFPRangeNormalize. See test_normalize_variants.
+  ; DEFAULT: %norm_2d: full (may be NaN)
+  ; NORM: %norm_2d: [-1, 1] (may be NaN)
   %x2 = fmul float %sit_i8, %sit_i8
   %y2 = fmul float %sit_i16, %sit_i16
   %sum_sq = fadd float %x2, %y2
@@ -165,7 +174,8 @@ entry:
   %norm_2d = fdiv float %sit_i8, %len
 
   ; 3D normalization
-  ; CHECK: %norm_3d: [-1, 1]
+  ; DEFAULT: %norm_3d: full (may be NaN)
+  ; NORM: %norm_3d: [-1, 1] (may be NaN)
   %z2 = fmul float %uit_i8, %uit_i8
   %sum_xy = fadd float %x2, %y2
   %sum_xyz = fadd float %sum_xy, %z2
@@ -188,7 +198,7 @@ entry:
   %chain3 = call float @llvm.maxnum.f32(float %chain2, float 0.000000e+00)
 
   ; sqrt(382) ~ 19.54
-  ; CHECK: %chain4: [0, 19.{{.*}}]
+  ; CHECK: %chain4: [0, 20.{{.*}}]
   %chain4 = call float @llvm.sqrt.f32(float %chain3)
 
   ; ===== FP Conversions =====
@@ -274,14 +284,15 @@ entry:
   ; CHECK: %exp_bounded: [0, +Inf]
   %exp_bounded = call float @llvm.exp.f32(float %fb)
 
-  ; exp2 of bounded input: 2^-128 ~ 2.9e-39, 2^127 ~ 1.7e38
-  ; CHECK: %exp2_bounded: [2.{{.*}}E-39, 1.{{.*}}E+38]
+  ; exp2 of bounded input: 2^-128 ~ 2.9e-39, 2^127 ~ 1.7e38. The lower bound is
+  ; denormal, so it snaps to zero.
+  ; CHECK: %exp2_bounded: [0, 1.{{.*}}E+38]
   %exp2_bounded = call float @llvm.exp2.f32(float %fb)
-
+  ; log of positive input, widened by the error of log near 1
   ; log of positive input
   %pos = call float @llvm.fabs.f32(float %x)
   %pos1 = fadd float %pos, 1.000000e+00
-  ; CHECK: %log_pos: [0, +Inf]
+  ; CHECK: %log_pos: [-0.03125, +Inf]
   %log_pos = call float @llvm.log.f32(float %pos1)
 
   call void @use(float %exp_bounded)
@@ -300,12 +311,13 @@ entry:
   ; CHECK: %powi_even: [0, +Inf]
   %powi_even = call float @llvm.powi.f32(float %x, i32 2)
 
-  ; powi with exponent 0 -> 1.0
-  ; CHECK: %powi_zero: [1, 1]
+  ; powi with exponent 0 -> 1.0, or NaN for a zero or infinite base where pow's
+  ; exp2(log2(|x|) * 0) expansion is not folded
+  ; CHECK: %powi_zero: [1, 1] (may be NaN)
   %powi_zero = call float @llvm.powi.f32(float %x, i32 0)
 
-  ; powi with exponent 1 -> identity
-  ; CHECK: %powi_one: [-128, 127]
+  ; powi with exponent 1 -> x if folded, an approximation of |x| if expanded
+  ; CHECK: %powi_one: [-128, 132]
   %powi_one = call float @llvm.powi.f32(float %fb, i32 1)
 
   call void @use(float %powi_even)
@@ -320,11 +332,11 @@ define void @test_sincos(float %x, i8 %bounded) {
 entry:
   %fb = sitofp i8 %bounded to float
 
-  ; sin/cos always produce [-1, 1]
-  ; CHECK: %sin_val: [-1, 1]
+  ; sin/cos produce [-1, 1], widened for the hardware approximation
+  ; CHECK: %sin_val: [-1.03125, 1.03125]
   %sin_val = call float @llvm.sin.f32(float %fb)
 
-  ; CHECK: %cos_val: [-1, 1]
+  ; CHECK: %cos_val: [-1.03125, 1.03125]
   %cos_val = call float @llvm.cos.f32(float %fb)
 
   call void @use(float %sin_val)
@@ -349,8 +361,8 @@ entry:
   ; CHECK: %one_minus: [-0, 1]
   %one_minus = fsub float 1.000000e+00, %abs_c
 
-  ; sqrt([0,1]) -> [0, 1] (note: -0 propagated from one_minus)
-  ; CHECK: %sqrt_om: [-0, 1]
+  ; sqrt([0,1]) -> [0, 1], widened (note: -0 propagated from one_minus)
+  ; CHECK: %sqrt_om: [-0, 1.03125]
   %sqrt_om = call float @llvm.sqrt.f32(float %one_minus)
 
   ; coefficient calculation
@@ -383,8 +395,8 @@ entry:
   %relu_base = call float @llvm.maxnum.f32(float %x, float 0.000000e+00)
   %relu6 = call float @llvm.minnum.f32(float %relu_base, float 6.000000e+00)
 
-  ; Sigmoid pattern: 1/(1+exp(x)) -> (0, 1)
-  ; CHECK: %sigmoid: [0, 1]
+  ; Sigmoid pattern: 1/(1+exp(x)) -> (0, 1), widened
+  ; CHECK: %sigmoid: [0, 1.03125]
   %exp_x = call float @llvm.exp.f32(float %fb)
   %denom = fadd float 1.000000e+00, %exp_x
   %sigmoid = fdiv float 1.000000e+00, %denom
@@ -402,37 +414,86 @@ entry:
   ret void
 }
 
-; ===== Normalization Patterns =====
+; ===== Normalization Pattern =====
+; x / sqrt(x^2 + ...) is within [-1, 1] over the reals. In floating point a
+; square can underflow to zero, giving +/-Inf, so the pattern needs ninf on the
+; division; and a square rounded in the denormal band can push the quotient up
+; to sqrt(2), so the bound is [-1.5, 1.5]. EnableUnsafeFPRangeNormalize drops
+; the ninf requirement and bounds to [-1, 1]. %x is an argument, so every result
+; may be NaN.
+;
 ; CHECK-LABEL: FPRange results for function: test_normalize_variants
 define void @test_normalize_variants(float %x, float %y, float %z) {
 entry:
   %x2 = fmul float %x, %x
   %y2 = fmul float %y, %y
   %z2 = fmul float %z, %z
-
-  ; Standard 2D normalization: may produce NaN if x=y=0
   %sum2d = fadd float %x2, %y2
   %len2d = call float @llvm.sqrt.f32(float %sum2d)
-  ; CHECK: %norm2d: [-1, 1] (may be NaN)
+
+  ; No ninf: a zero divisor gives a real Inf.
+  ; DEFAULT: %norm2d: full (may be NaN)
+  ; NORM: %norm2d: [-1, 1] (may be NaN)
   %norm2d = fdiv float %x, %len2d
 
-  ; Normalization with epsilon: guaranteed no NaN
-  ; (epsilon=1.0 is strictly positive, so sqrt arg is >0)
+  ; arcp form x * (1/len): ninf on either the reciprocal or the multiply.
+  %rcp_ninf = fdiv ninf float 1.000000e+00, %len2d
+  ; DEFAULT: %norm_arcp_rcp: [-1.5, 1.5] (may be NaN)
+  ; NORM: %norm_arcp_rcp: [-1, 1] (may be NaN)
+  %norm_arcp_rcp = fmul float %x, %rcp_ninf
+  %rcp = fdiv float 1.000000e+00, %len2d
+  ; DEFAULT: %norm_arcp_mul: [-1.5, 1.5] (may be NaN)
+  ; NORM: %norm_arcp_mul: [-1, 1] (may be NaN)
+  %norm_arcp_mul = fmul ninf float %x, %rcp
+
+  ; ninf on a numerator that is itself a division says nothing about 1/len.
+  %q = fdiv ninf float %x, %z
+  %q2 = fmul float %q, %q
+  %sumq = fadd float %q2, %y2
+  %lenq = call float @llvm.sqrt.f32(float %sumq)
+  %rcpq = fdiv float 1.000000e+00, %lenq
+  ; DEFAULT: %norm_num_ninf: full (may be NaN)
+  ; NORM: %norm_num_ninf: [-1, 1] (may be NaN)
+  %norm_num_ninf = fmul float %q, %rcpq
+
+  ; An epsilon keeps the divisor off zero, but only the pattern sees the bound.
   %sum_eps = fadd float %sum2d, 1.000000e+00
   %len_eps = call float @llvm.sqrt.f32(float %sum_eps)
-  ; CHECK: %norm_eps: [-1, 1]{{$}}
-  %norm_eps = fdiv float %x, %len_eps
+  ; DEFAULT: %norm_eps: [-1.5, 1.5] (may be NaN)
+  ; NORM: %norm_eps: [-1, 1] (may be NaN)
+  %norm_eps = fdiv ninf float %x, %len_eps
 
-  ; 3D normalization
+  ; 3D, numerator taken from the third component.
   %sum_xy = fadd float %x2, %y2
   %sum3d = fadd float %sum_xy, %z2
   %len3d = call float @llvm.sqrt.f32(float %sum3d)
-  ; CHECK: %norm3d: [-1, 1] (may be NaN)
-  %norm3d = fdiv float %z, %len3d
+  ; DEFAULT: %norm3d: [-1.5, 1.5] (may be NaN)
+  ; NORM: %norm3d: [-1, 1] (may be NaN)
+  %norm3d = fdiv ninf float %z, %len3d
 
   call void @use(float %norm2d)
+  call void @use(float %norm_arcp_rcp)
+  call void @use(float %norm_arcp_mul)
+  call void @use(float %norm_num_ninf)
   call void @use(float %norm_eps)
   call void @use(float %norm3d)
+  ret void
+}
+
+; ===== Pattern NaN Laundering =====
+; A pattern contributes bounds only; the NaN verdict is the instruction walk's.
+; CHECK-LABEL: FPRange results for function: test_pattern_does_not_clear_nan
+define void @test_pattern_does_not_clear_nan(float %a, float %b) {
+entry:
+  ; exp(x) can reach +Inf, making the fdiv +Inf / (1 + +Inf) = NaN. The logistic
+  ; pattern bounds it to [0, 1], but the NaN flag has to survive.
+  %e = fmul nnan float %a, %b
+  %ex = call float @llvm.exp.f32(float %e)
+  %den = fadd float 1.000000e+00, %ex
+  ; CHECK: %sig: [0, 1.03125] (may be NaN)
+  %sig = fdiv float %ex, %den
+
+  call void @use(float %sig)
   ret void
 }
 
@@ -446,24 +507,31 @@ entry:
   ; CHECK: %sqrt_unknown: [0, +Inf] (may be NaN)
   %sqrt_unknown = call float @llvm.sqrt.f32(float %unknown)
 
-  ; sqrt of non-negative input cannot produce NaN
+  ; fabs makes the input non-negative, but fabs(NaN) is NaN.
   %abs_x = call float @llvm.fabs.f32(float %unknown)
-  ; CHECK: %sqrt_safe: [0, +Inf]{{$}}
+  ; CHECK: %sqrt_safe: [0, +Inf] (may be NaN)
   %sqrt_safe = call float @llvm.sqrt.f32(float %abs_x)
 
   ; log of unknown input may produce NaN (non-positive input)
   ; CHECK: %log_unknown: full (may be NaN)
   %log_unknown = call float @llvm.log.f32(float %unknown)
 
-  ; log of guaranteed positive cannot produce NaN
+  ; maxnum returns the non-NaN operand (IEEE 754-2008), so the log input is
+  ; strictly positive and non-NaN.
   %pos_x = call float @llvm.maxnum.f32(float %abs_x, float 1.000000e+00)
-  ; CHECK: %log_safe: [0, +Inf]{{$}}
+  ; CHECK: %log_safe: [-0.03125, +Inf]{{$}}
   %log_safe = call float @llvm.log.f32(float %pos_x)
+
+  ; maximum (IEEE 754-2019) propagates NaN instead, so it does not launder.
+  %pos_x_prop = call float @llvm.maximum.f32(float %abs_x, float 1.000000e+00)
+  ; CHECK: %log_prop: [-0.03125, +Inf] (may be NaN)
+  %log_prop = call float @llvm.log.f32(float %pos_x_prop)
 
   call void @use(float %sqrt_unknown)
   call void @use(float %sqrt_safe)
   call void @use(float %log_unknown)
   call void @use(float %log_safe)
+  call void @use(float %log_prop)
   ret void
 }
 
@@ -494,6 +562,32 @@ entry:
   ret void
 }
 
+; ===== Denormal Flushing =====
+; A bound in the denormal band snaps to zero where the range is built: sqrt can
+; lift a range back out of the band, after which nothing can tell it was zero.
+; CHECK-LABEL: FPRange results for function: test_denormal_flush
+define void @test_denormal_flush(float %v) {
+entry:
+  %hi = call float @llvm.minnum.f32(float %v, float 0x3BC79CA100000000)
+  ; CHECK: %x: [1.{{.*}}E-22, 9.{{.*}}E-21]
+  %x = call float @llvm.maxnum.f32(float %hi, float 0x3B5E392020000000)
+
+  ; x*x is about [1e-44, 1e-40], entirely denormal. Only the lower bound snaps.
+  ; CHECK: %xx: [0, 1.{{.*}}E-40]
+  %xx = fmul float %x, %x
+
+  ; Zero in, zero out.
+  ; CHECK: %len: [0, 1.{{.*}}E-20]
+  %len = call float @llvm.sqrt.f32(float %xx)
+
+  ; So the reciprocal divides by a range that reaches zero.
+  ; CHECK: %rcp: full
+  %rcp = fdiv float 1.000000e+00, %len
+
+  call void @use(float %rcp)
+  ret void
+}
+
 ; ===== Intrinsic Declarations =====
 declare void @use(float)
 declare float @llvm.fabs.f32(float)
@@ -509,6 +603,7 @@ declare float @llvm.sin.f32(float)
 declare float @llvm.cos.f32(float)
 declare float @llvm.minnum.f32(float, float)
 declare float @llvm.maxnum.f32(float, float)
+declare float @llvm.maximum.f32(float, float)
 declare float @llvm.fma.f32(float, float, float)
 declare float @llvm.fmuladd.f32(float, float, float)
 declare float @llvm.powi.f32(float, i32)

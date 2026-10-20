@@ -139,6 +139,7 @@ void initializePeepholeTypeLegalizerPass(llvm::PassRegistry &);
 void initializePositionDepAnalysisPass(llvm::PassRegistry &);
 void initializePrepareInlineSamplerForBindlessLPMPass(llvm::PassRegistry &);
 void initializePrintFPRangeAnalysisPass(llvm::PassRegistry &);
+void initializeFoldProvableFCmpPass(llvm::PassRegistry &);
 void initializePrivateMemoryResolutionPass(llvm::PassRegistry &);
 void initializePrivateMemoryToSLMPass(llvm::PassRegistry &);
 void initializePrivateMemoryUsageAnalysisLPMPass(llvm::PassRegistry &);

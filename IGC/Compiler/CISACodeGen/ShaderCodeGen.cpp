@@ -139,6 +139,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/VerificationPass.hpp"
 #endif
 #include "Compiler/FixInvalidFuncNamePass.hpp"
+#include "Compiler/FoldProvableFCmp.hpp"
 #include "Compiler/LegalizationPass.hpp"
 #include "Compiler/LowPrecisionOptPass.hpp"
 #include "Compiler/WorkaroundAnalysisPass.h"
@@ -1702,6 +1703,11 @@ void OptimizeIR(CodeGenContext *const pContext) {
             mpm.add(createSROAPass());
           }
         }
+      }
+
+      // After LoopUnroll and SROA have promoted alloca round-trips, which FPRangeAnalysis cannot see through.
+      if (IGC_IS_FLAG_ENABLED(EnableFoldProvableFCmp)) {
+        mpm.add(createFoldProvableFCmpPass());
       }
 
       mpm.add(new SplitStructurePhisPass());

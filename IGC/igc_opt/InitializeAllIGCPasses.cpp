@@ -379,6 +379,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeProcessBICodeAssumptionLPMPass(Registry);
   initializeFoldZeroInitAllocaIntoMemsetLPMPass(Registry);
   initializePrintFPRangeAnalysisPass(Registry);
+  initializeFoldProvableFCmpPass(Registry);
   initializeSimpleAluVectorizerPass(Registry);
   initializeRedundantOpsCSEPassPass(Registry);
   initializeStateIndexAddrChainCanonicalizePass(Registry);

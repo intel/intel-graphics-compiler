@@ -10,30 +10,33 @@ SPDX-License-Identifier: MIT
 //
 // FPRangeAnalysis.hpp - Floating Point Range Tracking Utilities
 //
-// Utilities for computing floating-point value ranges, similar to how
-// ValueTracking.h provides computeKnownBits() for integer values.
+// Utilities for computing floating-point value ranges, similar to how ValueTracking.h provides computeKnownBits() for
+// integer values.
 //
-// FPRange is a lightweight interval type representing one of three states:
-//   - Empty:   Unreachable code (no possible values)
-//   - Bounded: Interval [Lower, Upper] with optional infinite bounds
-//   - Full:    Unknown range (any value possible, including +/-Inf)
-//
-// TODO(LLVM-22): Consider migrating to llvm::ConstantFPRange
-//   Note: ConstantFPRange has a different API:
-//     - Constructor ConstantFPRange(Lo, Hi, QNaN, SNaN) instead of getRange()
-//     - Arithmetic (add/sub/mul/div) are free functions, not methods
-//     - ConstantFPRange tracks QNaN/SNaN separately; FPRange uses single MayBeNaN
-//     - unionWith() is a free function unionOf()
-//   A wrapper or adapter may be needed rather than direct substitution.
-//
-// Usage:
 //   FPRange Range = computeFPRange(SomeFloatValue);
 //   if (Range.isBounded() && isWithin(Range, 0.0, 1.0)) { ... }
 //
 // For repeated queries, pass a cache:
+//
 //   FPRangeCache Cache;
 //   FPRange R1 = computeFPRange(V1, &Cache);
 //   FPRange R2 = computeFPRange(V2, &Cache);
+//
+//===----------------------------------------------------------------------===//
+// TODO(LLVM-22): Migrate to llvm::ConstantFPRange. The API maps nearly one to one:
+//   getFull(Sem).withNaN(false) -> getNonNaN(Sem)          getEmpty(Sem).withNaN(true) -> getNaNOnly(Sem, true, true)
+//   getPoint(V)                 -> ConstantFPRange(V)       getRange(Lo, Hi) -> getNonNaN(Lo, Hi), then flushDenormals
+//   MayBeNaN -> containsNaN()   withNaN(false) -> getWithoutNaN()   withNoInf(true) -> getWithoutInf()
+//   containsZero() -> classify() & fcZero                   fpext/fptrunc -> cast(DstSem, RM)
+//   add/sub/mul/div/abs/negate and unionWith/intersectWith keep their names.
+// flushDenormals in PreserveSign mode widens exactly as the snap in getRange does.
+//
+// What stays IGC-side: the instruction walk and FPRangeCache, GenISA_fsat/GenISA_frc, the patterns, the NaN
+// discipline in intersectOrFallback, and the margin in FoldProvableFCmp.cpp.
+//
+// Two hazards. LLVM's flushing is opt-in per operation, so route every operation through a helper that flushes rather
+// than calling them from the walk directly; missing one reopens the sqrt-of-denormal hole described below. And
+// ConstantFPRange distinguishes -0 from +0, so normalize a -0 lower bound to +0 at construction.
 //
 //===----------------------------------------------------------------------===//
 
@@ -45,6 +48,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/DenseMap.h>
+#include <llvm/ADT/SmallString.h>
 #include <llvm/IR/Operator.h>
 #include <llvm/IR/Value.h>
 #include <llvm/Pass.h>
@@ -60,7 +64,8 @@ namespace IGC {
 //   Empty   - No numeric values. May indicate unreachable code OR
 //             NaN-only output (when MayBeNaN=true). Bounds are undefined.
 //   Bounded - Interval [Lower, Upper]. Bounds may be infinite.
-//   Full    - Any value possible (unknown). Symbolic [-Inf, +Inf].
+//   Full    - Bounds unknown. Symbolic [-Inf, +Inf]. Says nothing about NaN
+//             either way; that is MayBeNaN's job.
 //
 //   - union(Empty, X) = X
 //   - union(X, Full) = Full
@@ -68,21 +73,18 @@ namespace IGC {
 //   - intersect(X, Empty) = Empty
 //
 // NaN Tracking (MayBeNaN)
-// FPRange tracks whether a computation MAY produce NaN via the MayBeNaN flag.
-// This flag is:
-// - Initialized to false for all constructors (getFull, getPoint, getRange)
-// - Set to true by operations that can generate NaN:
-//   * sqrt(x) where x may be negative
-//   * log(x) where x may be non-positive
-//   * 0/0, +-Inf/+-Inf (division edge cases)
-//   * 0 * +-Inf (multiplication edge case)
-//   * +Inf + -Inf, +Inf - +Inf (addition/subtraction edge cases)
-// - Propagated through operations: if either input MayBeNaN, so does output
+// MayBeNaN == false is a proof the value is never NaN. getFull() sets it, which covers every give-up path
+// (unanalyzable leaf, depth cutoff, unsupported opcode). It is orthogonal to Kind: an nnan operation on unbounded
+// operands is Full yet never NaN. Operations that can generate NaN set it and the rest propagate it, except that
+// minnum/maxnum need only one non-NaN operand (IEEE 754-2008) and nnan on the consumer clears it. Patterns describe
+// exact arithmetic and never decide it, so computeFPRange keeps the instruction walk's value.
 //
-// Semantics:
-// - MayBeNaN=false on Full does NOT mean "definitely not NaN"; it means we haven't tracked any NaN-producing
-//   operations yet.
-// - We track operation-generated NaN, not whether inputs, loaded values, or intrinsic return values may be NaN.
+// Denormals
+// getRange pulls any bound in the denormal band to zero, so every bound is zero or normal. It has to happen at
+// construction: x*x for x in [1e-22, 1e-20] is entirely denormal and sqrt lifts it back out, after which a division
+// looks safe while flushing hardware divides by zero. [0, d] holds both the flushed and the retained value, so nothing
+// here depends on the denormal mode. Flushing preserves weak order and sign, so only claims that a value is not zero
+// rest on the snap. An identity asserted by a pattern does not get this for free; see isNormalizationPattern.
 //
 // Usage:
 // FPRange R = computeFPRange(V);
@@ -108,52 +110,53 @@ public:
   // Named constructors
   //===------------------------------------------------------------------===//
 
-  /// Full set: any value
+  /// Nothing known: any value, including NaN - hence MayBeNaN=true. Caller can override with withNaN().
   static FPRange getFull(const llvm::fltSemantics &Sem) {
-    FPRange R(Sem);
-    return R;
+    return FPRange(llvm::APFloat::getInf(Sem, true), llvm::APFloat::getInf(Sem, false), Kind::Full, /*NaN=*/true);
   }
 
   /// Point range [Val, Val].
   /// If Val is NaN or Infinity, returns Full range (special values disallowed as point).
   static FPRange getPoint(const llvm::APFloat &Val) {
-    if (Val.isNaN() || Val.isInfinity()) {
-      // Treat NaN or Inf point as full range to avoid complications of bound calculations and needing to account for
-      // Lower and Upper possibly being NaN themselves.
+    // A NaN or infinite point widens to Full, so no bound is ever NaN. An infinity is still known non-NaN.
+    if (Val.isNaN())
       return getFull(Val.getSemantics());
-    }
+    if (Val.isInfinity())
+      return getFull(Val.getSemantics()).withNaN(false);
     return getRange(Val, Val);
   }
 
   /// Empty set: no values (symbolizes impossible range)
   static FPRange getEmpty(const llvm::fltSemantics &Sem) {
-    FPRange R(Sem);
-    R.Lower = llvm::APFloat::getZero(Sem); // Bounds are irrelevant for empty set
-    R.Upper = llvm::APFloat::getZero(Sem);
-    R.RangeKind = Kind::Empty;
-    return R;
+    // Bounds are irrelevant for the empty set.
+    return FPRange(llvm::APFloat::getZero(Sem), llvm::APFloat::getZero(Sem), Kind::Empty, /*NaN=*/false);
   }
 
   /// Range [Lo, Hi].
   /// Infinity bounds are valid (e.g., [0, +Inf] for non-negative values).
-  /// Full-span [-Inf, +Inf] and point-infinity ranges are converted to Full.
+  /// Full-span [-Inf, +Inf] and point-infinity ranges are converted to FPRange::Full with NaN set to false.
   static FPRange getRange(llvm::APFloat Lo, llvm::APFloat Hi) {
     IGC_ASSERT_MESSAGE(!Lo.isNaN() && !Hi.isNaN(), "Range bounds cannot be NaN");
     IGC_ASSERT_MESSAGE(Lo.compare(Hi) != llvm::APFloat::cmpGreaterThan, "Range lower bound cannot exceed upper bound");
 
-    // [-Inf, +Inf] is semantically Full
+    // [-Inf, +Inf] is Full, but an interval holds no NaN.
     if (Lo.isInfinity() && Lo.isNegative() && Hi.isInfinity() && !Hi.isNegative())
-      return getFull(Lo.getSemantics());
+      return getFull(Lo.getSemantics()).withNaN(false);
 
     // Point-infinity ranges [+Inf, +Inf] or [-Inf, -Inf] are also Full
     if (Lo.isInfinity() && Lo.bitwiseIsEqual(Hi))
-      return getFull(Lo.getSemantics());
+      return getFull(Lo.getSemantics()).withNaN(false);
 
-    FPRange R(Lo.getSemantics());
-    R.Lower = std::move(Lo);
-    R.Upper = std::move(Hi);
-    R.RangeKind = Kind::Bounded;
-    return R;
+    // Assume flushing to zero by default for conservative interval analysis: any denormal lower bound that is positive
+    // becomes +0, and any denormal upper bound that is negative becomes -0.
+    const bool LoFlushes = Lo.isDenormal() && !Lo.isNegative();
+    const bool HiFlushes = Hi.isDenormal() && Hi.isNegative();
+
+    if (LoFlushes)
+      Lo = llvm::APFloat::getZero(Lo.getSemantics());
+    if (HiFlushes)
+      Hi = llvm::APFloat::getZero(Hi.getSemantics(), /*Negative=*/true);
+    return FPRange(std::move(Lo), std::move(Hi), Kind::Bounded, /*NaN=*/false);
   }
 
   // Range members
@@ -161,8 +164,7 @@ public:
   llvm::APFloat Upper;
   Kind RangeKind = Kind::Full;
 
-  // True if the computation producing this range may generate NaN.
-  // This tracks operation-generated NaN (e.g., sqrt of negative), not whether input values might already be NaN.
+  // False is a proof of non-NaN; see NaN Tracking above. getFull sets it.
   bool MayBeNaN = false;
 
   //===------------------------------------------------------------------===//
@@ -201,7 +203,8 @@ public:
     return Upper.compare(Zero) != llvm::APFloat::cmpGreaterThan;
   }
 
-  /// Returns true if the range is bounded and excludes zero (Lo > 0 or Hi < 0).
+  /// Returns true if the range is bounded and cannot be zero (Lo > 0 or Hi < 0). Denormal bounds have already snapped
+  /// to zero, so this is usable as a division-by-zero test.
   bool isNonZero() const { return isStrictlyPositive() || isStrictlyNegative(); }
 
   /// Returns true if the range is bounded and entirely negative (Hi < 0).
@@ -220,7 +223,7 @@ public:
     return Lower.compare(Zero) == llvm::APFloat::cmpGreaterThan;
   }
 
-  /// Returns true if the range could contain zero (Lo <= 0 && Hi >= 0).
+  /// Returns true if the range could be zero (Lo <= 0 && Hi >= 0), the denormal band included.
   bool containsZero() const {
     if (isFullSet())
       return true;
@@ -248,33 +251,38 @@ public:
     return Lower.isInfinity() && Lower.isNegative();
   }
 
-  /// Return copy with MayBeNaN set to given value.
-  FPRange withNaN(bool NaN) const {
-    FPRange R = *this;
-    R.MayBeNaN = NaN;
-    return R;
+  /// Return copy with MayBeNaN set to given value. On a temporary this updates it in place.
+  FPRange withNaN(bool NaN) const & { return FPRange(*this).withNaN(NaN); }
+  FPRange withNaN(bool NaN) && {
+    MayBeNaN = NaN;
+    return std::move(*this);
   }
 
-  /// Apply ninf flag: clamp infinite bounds to largest finite value.
-  FPRange withNoInf(bool NoInf) const {
-    if (!NoInf || isEmptySet())
-      return *this;
+  /// Apply ninf flag: clamp infinite bounds to largest finite value. On a temporary this updates it in place.
+  FPRange withNoInf(bool NoInf) const & { return NoInf ? FPRange(*this).withNoInf(true) : *this; }
+  FPRange withNoInf(bool NoInf) && {
+    if (NoInf)
+      clampInfinities();
+    return std::move(*this);
+  }
 
-    if (isFullSet()) {
-      // Full with NoInf becomes [-Largest, +Largest]
-      return getRange(llvm::APFloat::getLargest(sem(), true), llvm::APFloat::getLargest(sem(), false));
+  //===------------------------------------------------------------------===//
+  // Printing
+  //===------------------------------------------------------------------===//
+
+  void print(llvm::raw_ostream &OS) const {
+    if (isEmptySet()) {
+      OS << "empty";
+    } else if (isFullSet()) {
+      OS << "full";
+    } else {
+      llvm::SmallString<32> LoStr, HiStr;
+      Lower.toString(LoStr);
+      Upper.toString(HiStr);
+      OS << "[" << LoStr << ", " << HiStr << "]";
     }
-
-    FPRange R = *this;
-    llvm::APFloat Largest = llvm::APFloat::getLargest(sem(), false);
-    llvm::APFloat NegLargest = llvm::APFloat::getLargest(sem(), true);
-
-    if (R.Lower.isInfinity() && R.Lower.isNegative())
-      R.Lower = NegLargest;
-    if (R.Upper.isInfinity() && !R.Upper.isNegative())
-      R.Upper = Largest;
-
-    return R;
+    if (MayBeNaN)
+      OS << " (may be NaN)";
   }
 
   //===------------------------------------------------------------------===//
@@ -311,7 +319,7 @@ public:
     llvm::APFloat Hi = L.Upper;
     Lo.add(R.Lower, llvm::APFloat::rmTowardNegative);
     Hi.add(R.Upper, llvm::APFloat::rmTowardPositive);
-    return getRange(Lo, Hi).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+    return getRange(std::move(Lo), std::move(Hi)).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
   }
 
   FPRange sub(const FPRange &Other, llvm::FastMathFlags FMF = {}) const {
@@ -337,7 +345,7 @@ public:
     llvm::APFloat Hi = L.Upper;
     Lo.subtract(R.Upper, llvm::APFloat::rmTowardNegative);
     Hi.subtract(R.Lower, llvm::APFloat::rmTowardPositive);
-    return getRange(Lo, Hi).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+    return getRange(std::move(Lo), std::move(Hi)).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
   }
 
   FPRange mul(const FPRange &Other, llvm::FastMathFlags FMF = {}) const {
@@ -374,7 +382,7 @@ public:
     if (Lo.isNaN() || Hi.isNaN())
       return getFull(sem()).withNaN(mayBeNaN);
 
-    return getRange(Lo, Hi).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+    return getRange(std::move(Lo), std::move(Hi)).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
   }
 
   FPRange div(const FPRange &Other, llvm::FastMathFlags FMF = {}) const {
@@ -393,9 +401,9 @@ public:
     if (L.isFullSet() || R.isFullSet())
       return getFull(sem()).withNaN(mayBeNaN);
 
-    // Division by zero produces +/-Inf. If divisor may contain zero, return Full.
+    // A divisor that may be zero gives +/-Inf, so Full - reachable with ninf, hence withNoInf.
     if (R.containsZero())
-      return getFull(sem()).withNaN(mayBeNaN);
+      return getFull(sem()).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
 
     // Compute quotients - use minOfOrNaN/maxOfOrNaN to handle Inf/Inf = NaN
     llvm::APFloat quotients[4] = {L.Lower, L.Lower, L.Upper, L.Upper};
@@ -416,7 +424,7 @@ public:
     if (Lo.isNaN() || Hi.isNaN())
       return getFull(sem()).withNaN(mayBeNaN);
 
-    return getRange(Lo, Hi).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
+    return getRange(std::move(Lo), std::move(Hi)).withNoInf(FMF.noInfs()).withNaN(mayBeNaN);
   }
 
   FPRange abs(llvm::FastMathFlags FMF = {}) const {
@@ -517,6 +525,21 @@ public:
   }
 
 private:
+  FPRange(llvm::APFloat Lo, llvm::APFloat Hi, Kind K, bool NaN)
+      : Lower(std::move(Lo)), Upper(std::move(Hi)), RangeKind(K), MayBeNaN(NaN) {}
+
+  /// Infinite bounds become the largest finite value: Full becomes [-Largest, +Largest]. ninf says nothing about NaN,
+  /// so MayBeNaN is kept.
+  void clampInfinities() {
+    if (isEmptySet())
+      return;
+    if (isFullSet() || (Lower.isInfinity() && Lower.isNegative()))
+      Lower = llvm::APFloat::getLargest(sem(), /*Negative=*/true);
+    if (isFullSet() || (Upper.isInfinity() && !Upper.isNegative()))
+      Upper = llvm::APFloat::getLargest(sem(), /*Negative=*/false);
+    RangeKind = Kind::Bounded;
+  }
+
   const llvm::fltSemantics &sem() const { return Lower.getSemantics(); }
 
   /// Find minimum of non-NaN values, or NaN if all values are NaN.
@@ -544,6 +567,11 @@ private:
   }
 };
 
+inline llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const FPRange &R) {
+  R.print(OS);
+  return OS;
+}
+
 //===----------------------------------------------------------------------===//
 // FPRangeCache - Optional cache for repeated queries
 //===----------------------------------------------------------------------===//
@@ -554,8 +582,7 @@ using FPRangeCache = llvm::DenseMap<llvm::Value *, FPRange>;
 /// The returned FPRange includes MayBeNaN flag indicating if the computation could produce NaN (e.g., sqrt of
 /// negative, log of non-positive, 0/0).
 /// The range bounds describe the numeric (non-NaN) portion of possible values.
-/// MayBeNaN does not track whether inputs or loads could be NaN, only whether the operations in the computation could
-/// generate NaN.
+/// Values the walk cannot see through (arguments, loads, unsupported operations) are Full and may be NaN.
 FPRange computeFPRange(llvm::Value *V, FPRangeCache *Cache = nullptr, unsigned Depth = 0);
 
 /// Check if the entire range is within [lo, hi].
@@ -569,6 +596,16 @@ llvm::APFloat maxAbsValue(const FPRange &Range);
 
 /// Create an FPRange from double bounds.
 FPRange makeRange(double lo, double hi, const llvm::fltSemantics &Sem);
+
+/// True if V cannot be negative by construction - a saturate, fract, fabs, sqrt, square, exp, unsigned conversion or
+/// clamp, or a combination of those - rather than by arithmetic a later pass could rewrite. Only such a zero lower
+/// bound is safe to use without a margin.
+///
+/// Conservative: false means "not shown", not "can be negative".
+bool isStructurallyNonNegative(llvm::Value *V);
+
+/// Mirror of the above for an upper bound of zero.
+bool isStructurallyNonPositive(llvm::Value *V);
 
 //===----------------------------------------------------------------------===//
 // PrintFPRangeAnalysis - Printer pass providing FPRange for all FP values
