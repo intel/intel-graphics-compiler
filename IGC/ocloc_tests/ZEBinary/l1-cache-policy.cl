@@ -17,7 +17,11 @@ SPDX-License-Identifier: MIT
 // RUN: %if cri-supported %{ ocloc compile -file %s -device cri -o %t.cri %}
 // RUN: %if cri-supported %{ oneapi-readelf -p .ze_info %t.cri | FileCheck %s --check-prefix=WB %}
 
+// RUN: %if cri-supported && regkeys %{ env IGC_ExtraOCLInternalOptions="-cl-store-cache-default=28 -cl-load-cache-default=25" ocloc compile -file %s -device cri -o %t.cri.ws %}
+// RUN: %if cri-supported && regkeys %{ oneapi-readelf -p .ze_info %t.cri.ws | FileCheck %s --check-prefix=WS %}
+
 // WBP: l1_cache_policy: wbp
 // WB:  l1_cache_policy: wb
+// WS:  l1_cache_policy: ws
 
 kernel void test(global int *out) { out[0] = 0; }

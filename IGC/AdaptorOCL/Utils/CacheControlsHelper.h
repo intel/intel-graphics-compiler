@@ -201,6 +201,28 @@ inline LSC_LDCC_L1_L2_L3 mapToLSCL1L2L3CacheControl(LoadCacheControl L1Control, 
   return LSC_LDCC_INVALID;
 }
 
+// Returns the L1 control set by a -cl-load-cache-default / -cl-store-cache-default value, or nullopt
+// when the value does not set one: unknown values and defaults that leave L1 to state.
+template <typename T> std::optional<T> getL1CacheControlFromDefault(int) = delete;
+
+template <> inline std::optional<LoadCacheControl> getL1CacheControlFromDefault<LoadCacheControl>(int cacheDefault) {
+  if (auto I = supportedLoadConfigs.find(static_cast<LSC_L1_L3_CC>(cacheDefault)); I != supportedLoadConfigs.end())
+    return I->second.L1;
+  if (auto I = supportedL1L2L3LoadConfigs.find(static_cast<LSC_LDCC_L1_L2_L3>(cacheDefault));
+      I != supportedL1L2L3LoadConfigs.end())
+    return I->second.L1;
+  return {};
+}
+
+template <> inline std::optional<StoreCacheControl> getL1CacheControlFromDefault<StoreCacheControl>(int cacheDefault) {
+  if (auto I = supportedStoreConfigs.find(static_cast<LSC_L1_L3_CC>(cacheDefault)); I != supportedStoreConfigs.end())
+    return I->second.L1;
+  if (auto I = supportedL1L2L3StoreConfigs.find(static_cast<LSC_STCC_L1_L2_L3>(cacheDefault));
+      I != supportedL1L2L3StoreConfigs.end())
+    return I->second.L1;
+  return {};
+}
+
 template <typename T> SeparateCacheControlsL1L3<T> mapToSPIRVCacheControl(LSC_L1_L3_CC) = delete;
 
 template <>

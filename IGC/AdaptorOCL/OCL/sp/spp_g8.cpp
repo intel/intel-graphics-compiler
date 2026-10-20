@@ -87,12 +87,8 @@ getL1CachePolicy(const IGC::OpenCLProgramContext &Ctx) {
   if (LoadDefault == -1 || StoreDefault == -1)
     return std::nullopt;
 
-  auto LoadL1 = LoadDefault > LSC_CC_INVALID
-                    ? IGC::mapToSPIRVL1L2L3CacheControl<LoadCacheControl>(LoadDefault).L1
-                    : IGC::mapToSPIRVCacheControl<LoadCacheControl>(static_cast<LSC_L1_L3_CC>(LoadDefault)).L1;
-  auto StoreL1 = StoreDefault > LSC_CC_INVALID
-                     ? IGC::mapToSPIRVL1L2L3CacheControl<StoreCacheControl>(StoreDefault).L1
-                     : IGC::mapToSPIRVCacheControl<StoreCacheControl>(static_cast<LSC_L1_L3_CC>(StoreDefault)).L1;
+  auto LoadL1 = IGC::getL1CacheControlFromDefault<LoadCacheControl>(LoadDefault);
+  auto StoreL1 = IGC::getL1CacheControlFromDefault<StoreCacheControl>(StoreDefault);
 
   // Mapping between these values should stay in sync with NEO
   // https://github.com/intel/compute-runtime/blob/master/shared/source/helpers/cache_policy_from_xe_hpg_to_xe3.inl
@@ -104,6 +100,7 @@ getL1CachePolicy(const IGC::OpenCLProgramContext &Ctx) {
   } Policies[] = {
       {LoadCacheControl::Cached, StoreCacheControl::Uncached, ArgL1CachePolicy::wbp},
       {LoadCacheControl::Cached, StoreCacheControl::WriteBack, ArgL1CachePolicy::wb},
+      {LoadCacheControl::Cached, StoreCacheControl::Streaming, ArgL1CachePolicy::ws},
       {LoadCacheControl::Uncached, StoreCacheControl::Uncached, ArgL1CachePolicy::uc},
   };
 

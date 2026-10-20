@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include "common/Stats.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "getCacheOpts.h"
+#include "AdaptorOCL/Utils/CacheControlsHelper.h"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "DebugInfo/VISAIDebugEmitter.hpp"
 #include "DebugInfo/EmitterOpts.hpp"
@@ -16772,20 +16773,13 @@ void EmitPass::emitMemoryFence(llvm::Instruction *inst) {
     if (!Global_Mem_Fence && Scope >= LSC_SCOPE_LOCAL) {
       Scope = LSC_SCOPE_GROUP;
     }
-    // Do L1 evict only when default L1 cache policy is write-back.
+    // Skip L1 evict only when the default L1 store policy is known to leave no dirty data in L1,
+    // i.e. it is neither write-back nor write-streaming. Keep it when the default does not set
+    // the L1 policy, e.g. leaves it to state.
     if (L1_Evict && m_pCtx->type == ShaderType::OPENCL_SHADER) {
       int StoreCacheDefault = m_pCtx->getModuleMetaData()->compOpt.StoreCacheDefault;
-      if (StoreCacheDefault != -1) {
-        LSC_L1_L3_CC L1L3Val = static_cast<LSC_L1_L3_CC>(StoreCacheDefault);
-        bool HasNewCacheEncoding = m_pCtx->platform.hasNewLSCCacheEncoding();
-        if (HasNewCacheEncoding && L1L3Val > LSC_L1_L3_CC::LSC_CC_INVALID) {
-          LSC_STCC_L1_L2_L3 L1L2L3Val = static_cast<LSC_STCC_L1_L2_L3>(L1L3Val);
-          L1_Evict = L1L2L3Val == LSC_STCC_L1WB_L2UC_L3UC || L1L2L3Val == LSC_STCC_L1WB_L2WB_L3UC ||
-                     L1L2L3Val == LSC_STCC_L1WB_L2UC_L3WB;
-        } else {
-          L1_Evict = L1L3Val == LSC_L1IAR_WB_L3C_WB;
-        }
-      }
+      if (auto L1 = getL1CacheControlFromDefault<StoreCacheControl>(StoreCacheDefault))
+        L1_Evict = *L1 == StoreCacheControl::WriteBack || *L1 == StoreCacheControl::Streaming;
     }
     // Change the scope from `GPU` or wider to `Tile` on single-tile platforms
     // to avoid L3 flush on DG2 and MTL and ARL.
