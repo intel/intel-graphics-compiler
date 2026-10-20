@@ -211,7 +211,7 @@ bool TypesLegalizationPass::LegalizeTypes() {
 Value *TypesLegalizationPass::LoadByElements(IGCLLVM::IRBuilder<> &builder, LoadInst *ld, Type *type, Value *agg,
                                              SmallVector<unsigned, 8> &indices) {
   if (type->isStructTy() || type->isArrayTy()) {
-    unsigned numElements = type->isStructTy() ? type->getStructNumElements() : type->getArrayNumElements();
+    uint64_t numElements = type->isStructTy() ? type->getStructNumElements() : type->getArrayNumElements();
     for (unsigned i = 0; i < numElements; ++i) {
       Type *elementType = type->isStructTy() ? type->getStructElementType(i) : type->getArrayElementType();
       indices.push_back(i);
