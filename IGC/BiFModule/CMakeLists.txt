@@ -143,7 +143,7 @@ set_target_properties("${IGC_BUILD__PROJ__BiFModule_OCL}" PROPERTIES FOLDER "Mis
 
 build_bif_bitcode()
 
-generate_bif_src_checksum(${IGC_BUILD__PROJ__BiFModule_OCL})
+generate_bif_src_checksum(${IGC_BUILD__PROJ__BiFModuleCache_OCL})
 
 generate_bif_prebuild_pack(${IGC_BUILD__PROJ__BiFModuleCache_OCL})
 
