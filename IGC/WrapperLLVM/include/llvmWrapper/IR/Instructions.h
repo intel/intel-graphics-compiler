@@ -436,6 +436,16 @@ constexpr int PoisonMaskElem = llvm::UndefMaskElem;
 constexpr int PoisonMaskElem = llvm::PoisonMaskElem;
 #endif
 
+inline void dropPoisonGeneratingAnnotations(llvm::Instruction *I) {
+#if LLVM_VERSION_MAJOR >= 19
+  I->dropPoisonGeneratingAnnotations();
+#elif LLVM_VERSION_MAJOR == 18
+  I->dropPoisonGeneratingFlagsAndMetadata();
+#else
+  I->dropPoisonGeneratingFlags();
+#endif
+}
+
 } // namespace IGCLLVM
 
 #endif
