@@ -469,6 +469,10 @@ public:
 
   bool doScalar64bScan() const { return isProductChildOf(IGFX_XE_HP_SDV); }
 
+  // Prefix scan (WavePrefix) of 64-bit types can use SIMD-wide instructions instead of the scalar fallback
+  // selected by doScalar64bScan().
+  bool hasVector64bScan() const { return isCoreChildOf(IGFX_XE3P_CORE); }
+
   bool hasHWLocalThreadID() const { return isProductChildOf(IGFX_XE_HP_SDV); }
 
   unsigned int getOfflineCompilerMaxWorkGroupSize() const {

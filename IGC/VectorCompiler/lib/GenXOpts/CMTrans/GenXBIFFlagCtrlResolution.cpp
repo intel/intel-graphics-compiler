@@ -70,6 +70,7 @@ void GenXBIFFlagCtrlResolution::FillFlagCtrl() {
   BIF_FLAG_CTRL_SET(FastRelaxedMath, false);
   BIF_FLAG_CTRL_SET(MadEnable, false);
   BIF_FLAG_CTRL_SET(UseNative64BitIntBuiltin, true);
+  BIF_FLAG_CTRL_SET(UseNative64BitIntAddBuiltin, true);
   BIF_FLAG_CTRL_SET(UseNative64BitFloatBuiltin, true);
   BIF_FLAG_CTRL_SET(CRMacros, true);
   BIF_FLAG_CTRL_SET(IsSPIRV, false);

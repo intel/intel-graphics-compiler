@@ -52,6 +52,9 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   BIF_FLAG_CTRL_SET(HasInt64SLMAtomicCAS, PtrCGC->platform.hasInt64SLMAtomicCAS());
   BIF_FLAG_CTRL_SET(UseNativeFP64GlobalAtomicAdd, PtrCGC->platform.hasFP64GlobalAtomicAdd());
   BIF_FLAG_CTRL_SET(UseNative64BitIntBuiltin, !PtrCGC->platform.hasNoFullI64Support());
+  // i64 add needs only the 64-bit adder, not the full i64 support. Compare/logic (min/max/bitwise) are not covered:
+  // partial-i64 platforms emulate them on 32-bit halves.
+  BIF_FLAG_CTRL_SET(UseNative64BitIntAddBuiltin, PtrCGC->platform.hasInt64Add());
   BIF_FLAG_CTRL_SET(HasThreadPauseSupport, PtrCGC->platform.hasThreadPauseSupport());
   BIF_FLAG_CTRL_SET(UseNative64BitFloatBuiltin, !PtrCGC->platform.hasNoFP64Inst());
   BIF_FLAG_CTRL_SET(UseBfn, IGC_IS_FLAG_ENABLED(EnableBfn) && PtrCGC->platform.supportBfnInstruction());

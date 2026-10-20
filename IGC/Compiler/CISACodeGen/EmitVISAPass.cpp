@@ -14902,7 +14902,13 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
   const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
   const bool int64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
 
-  if ((m_currShader->m_Platform->doScalar64bScan() && CEncoder::GetCISADataTypeSize(type) == 8 && !isQuad) ||
+  // The vector 64-bit scan is implemented only for a single SIMD32 variable (see below). The legacy code path assumes
+  // a 32B GRF for 64-bit types, so SIMD16/SIMD8 stay scalar.
+  const bool useVector64bScan = m_currShader->m_Platform->hasVector64bScan() &&
+                                m_currShader->m_State.m_dispatchSize == SIMDMode::SIMD32 &&
+                                m_currShader->m_numberInstance == 1;
+  if ((m_currShader->m_Platform->doScalar64bScan() && !useVector64bScan && CEncoder::GetCISADataTypeSize(type) == 8 &&
+       !isQuad) ||
       int64EmulationNeeded) {
     emitPreOrPostFixOpScalar(op, identityValue, type, negateSrc, pSrc, pSrcsArr, Flag, isPrefix, clusterSize);
     return;
@@ -14942,11 +14948,14 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
       unsigned int offset = 1;
       while (simdsize > 1) {
         simdsize = simdsize >> 1;
-        int numInst = m_encoder->GetCISADataTypeSize(type) == 8 && simdsize == 8 ? 2 : 1;
+        // The copy is shifted by one element, so a region of more than one GRF would cross 3 GRFs. Split it.
+        const int numInst =
+            m_encoder->GetCISADataTypeSize(type) == 8 && simdsize * 8 > m_currShader->getGRFSize() ? 2 : 1;
+        const int lanesPerInst = simdsize / numInst;
         for (int instNum = 0; instNum < numInst; ++instNum) {
-          m_encoder->SetSimdSize(lanesToSIMDMode(simdsize / numInst));
-          m_encoder->SetDstSubReg(offset + instNum * 4);
-          m_encoder->SetSrcSubReg(0, offset - 1 + instNum * 4);
+          m_encoder->SetSimdSize(lanesToSIMDMode(lanesPerInst));
+          m_encoder->SetDstSubReg(offset + instNum * lanesPerInst);
+          m_encoder->SetSrcSubReg(0, offset - 1 + instNum * lanesPerInst);
           m_encoder->SetNoMask();
           m_encoder->Copy(pSrcCopy, maskedSrc[i]);
           m_encoder->Push();
@@ -15042,32 +15051,39 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
     // the logic is mostly similar to the legacy code sequence below, except
     // that we have a single SIMD32 variable instead of two SIMD16 variables
 
-    // 64-bit types is handled using the scalar version as there's no regioning
-    // support
-    IGC_ASSERT_MESSAGE(m_encoder->GetCISADataTypeSize(type) < 8, "64-bit type is not supported for this function");
+    // 64-bit types are handled by the scalar version unless the platform supports the vector scan. The vector scan
+    // needs a 64B GRF here: the first 3 steps would span 4 GRFs per region, so they are split into 2 instructions
+    // of up to 2 GRFs each (the same way the legacy SIMD16 code does it); the later steps fit in 2 GRFs.
+    const bool is64bit = m_encoder->GetCISADataTypeSize(type) == 8;
+    IGC_ASSERT_MESSAGE(!is64bit || (m_currShader->m_Platform->hasVector64bScan() && getGRFSize() == 64),
+                       "64-bit type is not supported for this function");
 
     {
-      uint numInst = 1;
-      auto simdSize = SIMDMode::SIMD16;
+      uint numInst = is64bit ? 2 : 1;
+      auto simdSize = is64bit ? SIMDMode::SIMD8 : SIMDMode::SIMD16;
       const uint srcRegion[3] = {2, 1, 0};
       CreateAlu(simdSize, numInst, pSrcsArr[0], pSrcsArr[0], pSrcsArr[0], 0 /*src0 subreg*/, srcRegion /*src0 region*/,
                 1 /*src1 subreg*/, srcRegion /*src1 region*/, 1 /*dst subreg*/, 2 /*dst region*/);
     }
 
     {
-      uint numInst = 1;
-      auto simdSize = SIMDMode::SIMD8;
+      uint numInst = is64bit ? 2 : 1;
+      auto simdSize = is64bit ? SIMDMode::SIMD4 : SIMDMode::SIMD8;
       const uint srcRegion[3] = {4, 1, 0};
-      CreateAlu(simdSize, numInst, pSrcsArr[0], pSrcsArr[0], pSrcsArr[0], 2 /*src0 subreg*/, srcRegion /*src0 region*/,
-                1 /*src1 subreg*/, srcRegion /*src1 region*/, 2 /*dst subreg*/, 4 /*dst region*/);
+      // For 64-bit src1 must be aligned with dst (same subreg and stride), src0 is unrestricted. Swap the commutative
+      // sources, otherwise the vISA copies src1 and dst through temporaries.
+      CreateAlu(simdSize, numInst, pSrcsArr[0], pSrcsArr[0], pSrcsArr[0], (is64bit ? 1 : 2) /*src0 subreg*/,
+                srcRegion /*src0 region*/, (is64bit ? 2 : 1) /*src1 subreg*/, srcRegion /*src1 region*/,
+                2 /*dst subreg*/, 4 /*dst region*/);
     }
 
     {
-      uint numInst = 1;
-      auto simdSize = SIMDMode::SIMD8;
+      uint numInst = is64bit ? 2 : 1;
+      auto simdSize = is64bit ? SIMDMode::SIMD4 : SIMDMode::SIMD8;
       const uint srcRegion[3] = {4, 1, 0};
-      CreateAlu(simdSize, numInst, pSrcsArr[0], pSrcsArr[0], pSrcsArr[0], 3 /*src0 subreg*/, srcRegion /*src0 region*/,
-                1 /*src1 subreg*/, srcRegion /*src1 region*/, 3 /*dst subreg*/, 4 /*dst region*/);
+      CreateAlu(simdSize, numInst, pSrcsArr[0], pSrcsArr[0], pSrcsArr[0], (is64bit ? 1 : 3) /*src0 subreg*/,
+                srcRegion /*src0 region*/, (is64bit ? 3 : 1) /*src1 subreg*/, srcRegion /*src1 region*/,
+                3 /*dst subreg*/, 4 /*dst region*/);
     }
 
     // Merge: 4 SIMD4's to get 4 SIMD8 prefix sequences
@@ -15148,8 +15164,11 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
                           ? SIMDMode::SIMD2
                           : SIMDMode::SIMD4;
       const uint srcRegion[3] = {4, 1, 0};
-      CreateAlu(simdSize, numInst, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i], 2 /*src0 subreg*/, srcRegion /*src0 region*/,
-                1 /*src1 subreg*/, srcRegion /*src1 region*/, 2 /*dst subreg*/, 4 /*dst region*/);
+      // See the comment in the SIMD32 code path: for 64-bit src1 must be aligned with dst.
+      const bool is64bit = m_encoder->GetCISADataTypeSize(type) == 8 && m_currShader->m_Platform->hasVector64bScan();
+      CreateAlu(simdSize, numInst, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i], (is64bit ? 1 : 2) /*src0 subreg*/,
+                srcRegion /*src0 region*/, (is64bit ? 2 : 1) /*src1 subreg*/, srcRegion /*src1 region*/,
+                2 /*dst subreg*/, 4 /*dst region*/);
     }
 
     // clang-format off
@@ -15167,8 +15186,10 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
                           ? SIMDMode::SIMD2
                           : SIMDMode::SIMD4;
       const uint srcRegion[3] = {4, 1, 0};
-      CreateAlu(simdSize, numInst, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i], 3 /*src0 subreg*/, srcRegion /*src0 region*/,
-                1 /*src1 subreg*/, srcRegion /*src1 region*/, 3 /*dst subreg*/, 4 /*dst region*/);
+      const bool is64bit = m_encoder->GetCISADataTypeSize(type) == 8 && m_currShader->m_Platform->hasVector64bScan();
+      CreateAlu(simdSize, numInst, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i], (is64bit ? 1 : 3) /*src0 subreg*/,
+                srcRegion /*src0 region*/, (is64bit ? 3 : 1) /*src1 subreg*/, srcRegion /*src1 region*/,
+                3 /*dst subreg*/, 4 /*dst region*/);
     }
 
     if (isQuad) {
