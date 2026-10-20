@@ -24,4 +24,17 @@ define i32 @test_DotAddToDp4a(i32 %a, i32 %b, i32 %c, i32 %d, i32 %e, i32 %f) {
   ret i32 %5
 }
 
+define i32 @test_DotAddToDp4a_multiple_uses(i32 %a, i32 %b, i32 %c) {
+; CHECK-LABEL: @test_DotAddToDp4a_multiple_uses(
+; CHECK:    [[TMP1:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss(i32 0, i32 %a, i32 %b, i1 false)
+; CHECK:    [[TMP2:%.*]] = add i32 [[TMP1]], %c
+; CHECK:    [[TMP3:%.*]] = icmp eq i32 [[TMP1]], -1
+;
+  %1 = call i32 @llvm.genx.GenISA.dp4a.ss(i32 0, i32 %a, i32 %b, i1 false)
+  %2 = add i32 %1, %c
+  %3 = icmp eq i32 %1, -1
+  %4 = select i1 %3, i32 %2, i32 0
+  ret i32 %4
+}
+
 declare i32 @llvm.genx.GenISA.dp4a.ss(i32, i32, i32, i1)

@@ -602,7 +602,7 @@ void CustomSafeOptPass::mergeDotAddToDp4a(llvm::CallInst *I) {
           }
 
           // if a valid acc is found
-          if (accVal && !instr->users().empty()) {
+          if (accVal && instr->hasOneUse()) {
             auto *user = *instr->users().begin();
             // replace i32 0 with %id113-
             instr->setOperand(0, accVal);
