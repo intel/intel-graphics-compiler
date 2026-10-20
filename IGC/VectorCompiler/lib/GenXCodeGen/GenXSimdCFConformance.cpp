@@ -4233,6 +4233,10 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM) {
     Value *Wr = R.createWrRegion(FalseVal, Sel->getTrueValue(), Sel->getName(),
                                  Sel, Sel->getDebugLoc());
     Sel->replaceAllUsesWith(Wr);
+    // Keep the category and alignment GenXCategory computed for the select.
+    if (auto *SelLR = Liveness->getLiveRangeOrNull(Sel))
+      Liveness->getOrCreateLiveRange(Wr, SelLR->getCategory(),
+                                     SelLR->getLogAlignment());
     Liveness->eraseLiveRange(Sel);
     Sel->eraseFromParent();
     Modified = true;
