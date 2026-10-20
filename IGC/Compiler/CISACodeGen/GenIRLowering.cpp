@@ -25,10 +25,13 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/Support/KnownBits.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include <llvm/ADT/SetOperations.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/MathExtras.h"
+#include "llvmWrapper/Analysis/ScalarEvolution.h"
 #include "llvmWrapper/Transforms/Utils/ScalarEvolutionExpander.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "common/IGCIRBuilder.h"
@@ -414,6 +417,10 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
     return false;
   };
 
+  // Reusable bases, with the instructions to drop poison-generating flags from
+  // only if the base is actually reused.
+  DenseMap<GetElementPtrInst *, SmallVector<Instruction *, 4>> ReusableBases;
+
   bool Changed = false;
   for (auto BI = BB.begin(), BE = BB.end(); BI != BE; ++BI) {
     auto *GEP = dyn_cast<GetElementPtrInst>(BI);
@@ -426,11 +433,13 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
     if (IsUsedByBindless(GEP))
       continue;
     auto *Idx = GEP->getOperand(1);
+    const Value *ExtNoWrapOp = nullptr;
     if (auto *ZExt = dyn_cast<ZExtInst>(Idx)) {
       Idx = ZExt->getOperand(0);
       auto *Op = dyn_cast<OverflowingBinaryOperator>(Idx);
       if (Op && !Op->hasNoUnsignedWrap())
         continue;
+      ExtNoWrapOp = Op;
     } else if (auto *SExt = dyn_cast<SExtInst>(Idx)) {
       Idx = SExt->getOperand(0);
       Operator *Opr = dyn_cast<Operator>(Idx);
@@ -442,6 +451,7 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
       auto *Op = dyn_cast<OverflowingBinaryOperator>(Idx);
       if (Op && !Op->hasNoSignedWrap())
         continue;
+      ExtNoWrapOp = Op;
     }
 
     const SCEV *E = SE->getSCEV(Idx);
@@ -470,9 +480,16 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
     unsigned MinDiff = DIFF_SIZE_THRESHOLD;
     bool isDiffOne = false;
     GetElementPtrInst *BaseWithMinDiff = nullptr;
+    SmallPtrSet<const Value *, 8> GEPPoisonSources;
+    IGCLLVM::getPoisonGeneratingValues(*SE, GEPPoisonSources, E);
     for (/*EMPTY*/; EI != EE; ++EI) {
-      // Skip if the result types do not match.
-      if (EI->GEP->getResultElementType() != GEP->getResultElementType() || E->getType() != EI->Idx->getType())
+      if (!ReusableBases.count(EI->GEP) || EI->GEP->getResultElementType() != GEP->getResultElementType() ||
+          E->getType() != EI->Idx->getType())
+        continue;
+      // Rebasing must not add poison: GEP would inherit all of its base's sources.
+      SmallPtrSet<const Value *, 8> BasePoisonSources;
+      IGCLLVM::getPoisonGeneratingValues(*SE, BasePoisonSources, EI->Idx);
+      if (!set_is_subset(BasePoisonSources, GEPPoisonSources))
         continue;
 
       auto *Diff = SE->getMinusSCEV(E, EI->Idx);
@@ -492,6 +509,14 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
         }
       }
     }
+    // A GEP may be poison where it is unused, e.g. after speculation, while SCEV
+    // equates it with a non-poison expression (as in StraightLineStrengthReduce).
+    SmallVector<Instruction *, 4> DropPoisonGeneratingInsts;
+    bool IRAsDefinedAsSCEV = IGCLLVM::canReuseInstruction(*SE, SE->getSCEV(GEP), GEP, DropPoisonGeneratingInsts);
+    // Looking through the extension above relies on this flag, so keep it.
+    bool KeepsExtNoWrapFlag = !is_contained(DropPoisonGeneratingInsts, ExtNoWrapOp);
+    if (IRAsDefinedAsSCEV && KeepsExtNoWrapFlag)
+      ReusableBases[GEP] = std::move(DropPoisonGeneratingInsts);
     // Not found, add this GEP as a potential base expr.
     if (!Offset) {
       Exprs.emplace_back(PointerExpr{GEP, E, nullptr, nullptr});
@@ -499,6 +524,14 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
     }
     Exprs.emplace_back(PointerExpr{GEP, E, BaseWithMinDiff, Offset});
   }
+  // The bases gain uses their poison-generating flags were never proven for.
+  // Drop them all first: a drop list may reach into another bucket, whose
+  // rewrite must see the final inbounds.
+  for (const auto &B : Pointers)
+    for (const auto &P : B.second)
+      if (P.Offset)
+        for (Instruction *I : ReusableBases[P.Base])
+          IGCLLVM::dropPoisonGeneratingAnnotations(I);
   std::vector<Instruction *> DeadInsts;
   for (const auto &B : Pointers) {
     for (auto PI = B.second.rbegin(), PE = B.second.rend(); PI != PE; ++PI) {
@@ -507,8 +540,12 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
         IGCLLVM::IGCSCEVExpander E(*SE, *DL, "gep-simplification");
         Value *V = E.expandCodeFor(P.Offset, P.Idx->getType(), P.GEP);
         Builder->SetInsertPoint(P.GEP);
-        auto *NewGEP = Builder->CreateInBoundsGEP(P.Base->getResultElementType(), P.Base,
-                                                  Builder->CreateSExt(V, P.GEP->getOperand(1)->getType()));
+        Type *Ty = P.Base->getResultElementType();
+        Value *Idx = Builder->CreateSExt(V, P.GEP->getOperand(1)->getType());
+        // inbounds needs an in-bounds base, which a dropped inbounds no longer
+        // guarantees; P.GEP may have lost its own as a base of a later GEP.
+        auto *NewGEP = P.GEP->isInBounds() && P.Base->isInBounds() ? Builder->CreateInBoundsGEP(Ty, P.Base, Idx)
+                                                                   : Builder->CreateGEP(Ty, P.Base, Idx);
         P.GEP->replaceAllUsesWith(NewGEP);
         DeadInsts.push_back(P.GEP);
         Changed = true;
