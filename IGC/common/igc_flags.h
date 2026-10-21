@@ -482,6 +482,13 @@ DECLARE_IGC_REGKEY(int, forcePushConstantMode, 0,
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableSimplePushSizeBasedOpimization, true,
                    "Enable the simplepush optimization to do push based on size", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, EnableScalarLCSSAInConstantCoalescing, true,
+                   "Form scalar loop-exit PHIs before ConstantCoalescing's uniformity analysis", ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, ScalarLCSSAUniformExitGRFBudgetPercent, 80,
+                   "Percentage of the GRF target ConstantCoalescing may fill with live values when widening uniform "
+                   "loads across divergent loop exits. The rest is headroom for lowering and allocation overhead. "
+                   "Values above 100 are treated as 100.",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(bool, DisableConstantCoalescing, false,
                    "Setting this to 1/true adds a compiler switch to disable constant coalesing", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableConstantCoalescingOutOfBoundsCheck, false,

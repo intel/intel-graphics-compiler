@@ -14,16 +14,20 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ConstantCoalescing.hpp"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
+#include "Compiler/CISACodeGen/GenCodeGenModule.h"
+#include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Support/KnownBits.h"
+#include "llvm/Transforms/Utils/LoopUtils.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include <optional>
 
 /// @brief ConstantCoalescing merges multiple constant loads into one load
 /// of larger quantity
@@ -34,6 +38,119 @@ using namespace llvm;
 using namespace IGC;
 using IGCLLVM::getAlign;
 
+// Close non-Boolean scalar live-outs from the inside out, leaving vector loads
+// connected to their extracts for CheckVectorElementUses(). This does not form full LCSSA.
+static bool formScalarLCSSA(Loop &L, const DominatorTree &DT, const LoopInfo &LI) {
+  bool Changed = false;
+  for (Loop *SubLoop : L.getSubLoops())
+    Changed |= formScalarLCSSA(*SubLoop, DT, LI);
+
+  SmallVector<Instruction *, 16> Worklist;
+  for (BasicBlock *BB : L.blocks()) {
+    // Include exit PHIs from subloops when closing the enclosing loop.
+    if (LI.getLoopFor(BB) != &L)
+      continue;
+    for (Instruction &I : *BB) {
+      Type *Ty = I.getType();
+      if (I.use_empty() || !(Ty->isIntegerTy() || Ty->isFloatingPointTy() || Ty->isPointerTy()))
+        continue;
+      // WIAnalysis forces i1 PHI sources to RANDOM for codegen. Adding a Boolean
+      // exit PHI can therefore make a uniform loop branch and downstream loads
+      // nonuniform before coalescing. Leave Boolean live-outs to later LCSSA.
+      if (Ty->isIntegerTy(1))
+        continue;
+      // PHI operands are used on their incoming edges. Ignore unreachable users.
+      bool UsedOutside = any_of(I.uses(), [&](const Use &U) {
+        auto *User = cast<Instruction>(U.getUser());
+        if (!DT.isReachableFromEntry(User->getParent()))
+          return false;
+        const BasicBlock *UseBB = User->getParent();
+        if (auto *PN = dyn_cast<PHINode>(User))
+          UseBB = PN->getIncomingBlock(U);
+        return !L.contains(UseBB);
+      });
+      if (UsedOutside)
+        Worklist.push_back(&I);
+    }
+  }
+  // LLVM 17 dropped the IRBuilderBase parameter.
+#if LLVM_VERSION_MAJOR < 17
+  IRBuilder<> Builder(L.getHeader()->getContext());
+  Changed |= formLCSSAForInstructions(Worklist, DT, LI, nullptr, Builder);
+#else
+  Changed |= formLCSSAForInstructions(Worklist, DT, LI, nullptr);
+#endif
+  return Changed;
+}
+
+namespace IGC {
+// Internal to ConstantCoalescing. Required ahead of WIAnalysis so that the
+// pass-manager uniformity result sees scalar loop-exit PHIs.
+class ScalarLCSSAConstantCoalescing : public FunctionPass {
+public:
+  static char ID;
+  ScalarLCSSAConstantCoalescing() : FunctionPass(ID) {
+    initializeScalarLCSSAConstantCoalescingPass(*PassRegistry::getPassRegistry());
+  }
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<LoopInfoWrapperPass>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addPreserved<DominatorTreeWrapperPass>();
+    AU.addPreserved<PostDominatorTreeWrapperPass>();
+    AU.addPreserved<LoopInfoWrapperPass>();
+    // No setPreservesCFG(): WIAnalysis and TranslationTable are CFG-only and
+    // must be invalidated when exit PHIs are inserted.
+  }
+
+  bool runOnFunction(Function &F) override {
+    // Skip functions ConstantCoalescing does not process.
+    CodeGenContext *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    IGCMD::MetaDataUtils *MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    if (isOptDisabledForFunction(Ctx->getModuleMetaData(), IGCOpts::ConstantCoalescingPass, &F) ||
+        MDUtils->findFunctionsInfoItem(&F) == MDUtils->end_FunctionsInfo())
+      return false;
+
+    // Without LICM, uniform values computed from loop-invariant operands stay in
+    // the loop. An exit PHI on such a value makes its uses after a divergent loop
+    // nonuniform, although the value never changes in the loop and so is still
+    // uniform after it. Skip.
+    bool AllowLICM =
+        IGC_IS_FLAG_SET(allowLICM) ? IGC_IS_FLAG_ENABLED(allowLICM) : Ctx->getModuleMetaData()->compOpt.AllowLICM;
+    if (!AllowLICM || !Ctx->m_retryManager->AllowLICM())
+      return false;
+
+    auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+    auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    bool Changed = false;
+    for (Loop *L : LI)
+      Changed |= formScalarLCSSA(*L, DT, LI);
+    return Changed;
+  }
+
+  StringRef getPassName() const override { return "ScalarLCSSAConstantCoalescing"; }
+};
+} // namespace IGC
+
+char ScalarLCSSAConstantCoalescing::ID = 0;
+
+#define PASS_FLAG "igc-scalar-lcssa-constant-coalescing"
+#define PASS_DESCRIPTION "Scalar loop-exit PHIs for Constant Coalescing"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(ScalarLCSSAConstantCoalescing, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_END(ScalarLCSSAConstantCoalescing, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+#undef PASS_FLAG
+#undef PASS_DESCRIPTION
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+
 // Register pass to igc-opt
 #define PASS_FLAG "igc-constant-coalescing"
 #define PASS_DESCRIPTION "Constant Coalescing"
@@ -41,6 +158,7 @@ using IGCLLVM::getAlign;
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(ConstantCoalescing, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(ScalarLCSSAConstantCoalescing)
 IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
@@ -50,6 +168,22 @@ ConstantCoalescing::ConstantCoalescing() : FunctionPass(ID) {
   curFunc = NULL;
   irBuilder = NULL;
   initializeConstantCoalescingPass(*PassRegistry::getPassRegistry());
+}
+
+void ConstantCoalescing::getAnalysisUsage(AnalysisUsage &AU) const {
+  AU.setPreservesCFG();
+  AU.addPreservedID(WIAnalysis::ID);
+  AU.addRequired<DominatorTreeWrapperPass>();
+  AU.addRequired<llvm::LoopInfoWrapperPass>();
+  // Form scalar exit PHIs before computing uniformity for coalescing.
+  if (IGC_IS_FLAG_ENABLED(EnableScalarLCSSAInConstantCoalescing))
+    AU.addRequired<ScalarLCSSAConstantCoalescing>();
+  AU.addRequired<WIAnalysis>();
+  AU.addRequired<MetaDataUtilsWrapper>();
+  AU.addRequired<CodeGenContextWrapper>();
+  AU.addRequired<TranslationTable>();
+  AU.addPreservedID(TranslationTable::ID);
+  AU.addPreserved<llvm::LoopInfoWrapperPass>();
 }
 
 bool ConstantCoalescing::runOnFunction(Function &func) {
@@ -88,6 +222,7 @@ void ConstantCoalescing::ProcessFunction(Function *function) {
   dataLayout = &function->getParent()->getDataLayout();
   wiAns = &getAnalysis<WIAnalysis>();
   m_BaseOffsets.clear();
+  m_uniformExitPressure.clear();
 
   // clean up unnecessary lcssa-phi
   for (Function::iterator I = function->begin(), E = function->end(); I != E; ++I) {
@@ -358,6 +493,272 @@ bool ConstantCoalescing::isProfitableLoad(const Instruction *I, uint32_t &MaxElt
   return true;
 }
 
+// Returns true if eltIdxV, the base of a load after a loop, is a web of exit
+// PHIs whose leaves are all the base of chunk, which is a vector load in that
+// loop that dominates every edge carrying that base into the web. If so,
+// fills exitAccess so that, after the merge, the load's elements can leave
+// the loop through scalar exit PHIs.
+bool ConstantCoalescing::IsLoopExitOfChunkBase(const BufChunk *chunk, const Instruction *load, Value *eltIdxV,
+                                               LoopExitAccess &exitAccess) const {
+  if (IGC_IS_FLAG_DISABLED(EnableScalarLCSSAInConstantCoalescing))
+    return false;
+  auto *basePhi = dyn_cast_or_null<PHINode>(eltIdxV);
+  auto *inLoopBase = dyn_cast_or_null<Instruction>(chunk->baseIdxV);
+  // Elements are extracted from the chunk load, so it must be a vector raw or
+  // constant buffer load. Sampler chunks in the scatter stream use OWORD
+  // bases, not byte bases.
+  if (!basePhi || !inLoopBase || !isa<LdRawIntrinsic, LoadInst>(chunk->chunkIO) ||
+      !chunk->chunkIO->getType()->isVectorTy())
+    return false;
+  // Only extractelement users of a vector load are supported for now.
+  if (load->getType()->isVectorTy() && !all_of(load->users(), [](const User *U) { return isa<ExtractElementInst>(U); }))
+    return false;
+  const LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  const Loop *L = LI.getLoopFor(inLoopBase->getParent());
+  if (!L || !L->contains(chunk->chunkIO))
+    return false;
+
+  // Walk the PHIs that carry the base out of the loop, e.g. an LCSSA PHI on a
+  // divergent exit joined with the base itself from a uniform exit. All leaves
+  // must be the chunk's base. PHIs in the loop or in any loop header are
+  // rejected, and so is an irreducible CFG, which would make
+  // GetOrCreateExitPhi() recurse forever.
+  const DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  exitAccess = {basePhi, inLoopBase, L, {}};
+  SmallPtrSet<PHINode *, 4> web;  // PHIs reached by the walk
+  SmallPtrSet<PHINode *, 4> done; // PHIs whose incoming values are all walked
+  // Each PHI on the path with the index of its next incoming value.
+  SmallVector<std::pair<PHINode *, unsigned>, 4> path;
+  auto pushPhi = [&](PHINode *phi) {
+    if (L->contains(phi) || LI.isLoopHeader(phi->getParent()))
+      return false;
+    web.insert(phi);
+    path.push_back({phi, 0});
+    return true;
+  };
+  if (!pushPhi(basePhi))
+    return false;
+  while (!path.empty()) {
+    PHINode *phi = path.back().first;
+    unsigned i = path.back().second++;
+    if (i == phi->getNumIncomingValues()) {
+      done.insert(phi);
+      path.pop_back();
+      continue;
+    }
+    Value *value = phi->getIncomingValue(i);
+    BasicBlock *exitingBB = phi->getIncomingBlock(i);
+    if (value == inLoopBase) {
+      // The chunk must dominate the edge, so it was read with the value of
+      // inLoopBase that the edge carries.
+      if (!DT.dominates(chunk->chunkIO, exitingBB->getTerminator()))
+        return false;
+      exitAccess.exitingBlocks.push_back(exitingBB);
+    } else if (auto *valuePhi = dyn_cast<PHINode>(value)) {
+      if (!web.count(valuePhi)) {
+        if (!pushPhi(valuePhi))
+          return false;
+      } else if (!done.count(valuePhi)) {
+        return false; // valuePhi is revisited from its successor, so the web has a cycle.
+      }
+    } else {
+      return false;
+    }
+  }
+  return !exitAccess.exitingBlocks.empty();
+}
+
+// Stateless accesses are not bounds checked, so reading past an allocation can fault.
+static bool mayAccessOOB(uint addrSpace) {
+  return IGC_IS_FLAG_DISABLED(DisableConstantCoalescingOutOfBoundsCheck) &&
+         (addrSpace == ADDRESS_SPACE_CONSTANT || addrSpace == ADDRESS_SPACE_GLOBAL);
+}
+
+// Returns true if a load can be merged into chunk, making it cover
+// [newStart, newStart + newSize) elements, without reading out of bounds.
+// Growing the chunk for a load after a loop (exitAccess) may read out of
+// bounds: the chunk runs on every iteration, but the load's address is only
+// known to be valid on the iteration that exits the loop. A stateless
+// out-of-bounds read can fault, so such a load may only reuse within the
+// chunk's existing footprint.
+bool ConstantCoalescing::CanMergeWithoutOOB(const BufChunk *chunk, uint64_t newStart, uint64_t newSize, uint addrSpace,
+                                            const LoopExitAccess *exitAccess) const {
+  // Keep the original coalescing when EnableScalarLCSSAInConstantCoalescing=false.
+  if (IGC_IS_FLAG_DISABLED(EnableScalarLCSSAInConstantCoalescing))
+    return true;
+  // It's safe to reuse elements the chunk already reads.
+  if (newStart >= chunk->chunkStart && newStart + newSize <= chunk->chunkStart + chunk->chunkSize)
+    return true;
+  // Safe if the load isn't merged through exit PHIs, or the access is stateful.
+  return !exitAccess || !mayAccessOOB(addrSpace);
+}
+
+// Fills region with the blocks where chunk's exit storage would be live if
+// load joined it: the loop being exited, the blocks already recorded for
+// chunk, the path from the chunk load to load, and the live ranges of load's
+// elements.
+void ConstantCoalescing::CollectUniformExitRegion(const BufChunk *chunk, Instruction *load, const Loop *exitLoop,
+                                                  ExitPressureRegion &region) {
+  if (m_uniformExitPressure.empty()) {
+    // Coalescing precedes SIMD selection. Use a fixed width (required, forced,
+    // or the function group head's) or a known one (e.g. ray tracing);
+    // otherwise protect the option of compiling SIMD32.
+    auto *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
+    m_uniformExitSIMD = hasFixedSIMDSize(m_ctx, curFunc, FGA)
+                            ? numLanes(widestAllowedSIMDSize(m_ctx, curFunc, FGA))
+                            : numLanes(m_ctx->knownSIMDSize().value_or(SIMDMode::SIMD32));
+    // Take one snapshot before the first exit update. Store only numbers: the
+    // pass subsequently replaces/deletes instructions used by the analysis.
+    IGCLivenessAnalysisRunner pressure(m_ctx, nullptr, nullptr);
+    pressure.livenessAnalysis(*curFunc);
+    for (BasicBlock &BB : *curFunc)
+      m_uniformExitPressure[&BB] = pressure.getMaxPressurePairForBB(BB, m_uniformExitSIMD, &wiAns->Runner);
+  }
+
+  region.clear();
+  if (exitLoop)
+    region.insert(exitLoop->block_begin(), exitLoop->block_end());
+  for (const auto &recorded : chunk->uniformExitPressure)
+    region.insert(recorded.first);
+
+  // Add the blocks where a value defined in defBB is live on its way to the
+  // blocks in worklist. All of them are dominated by defBB, which keeps the
+  // walk from leaving through the other incoming paths of a PHI.
+  const DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  auto addLiveRange = [&](BasicBlock *defBB, SmallVectorImpl<BasicBlock *> &worklist) {
+    SmallPtrSet<BasicBlock *, 16> live;
+    while (!worklist.empty()) {
+      BasicBlock *BB = worklist.pop_back_val();
+      if (!live.insert(BB).second)
+        continue;
+      region.insert(BB);
+      if (BB == defBB)
+        continue;
+      for (BasicBlock *pred : predecessors(BB))
+        if (DT.isReachableFromEntry(pred) && DT.dominates(defBB, pred))
+          worklist.push_back(pred);
+    }
+  };
+  // The chunk's elements are carried from the chunk load to load.
+  SmallVector<BasicBlock *, 16> worklist{load->getParent()};
+  addLiveRange(chunk->chunkIO->getParent(), worklist);
+  // Extend the region through uses of the loaded elements. PHI operands
+  // are live on their incoming edges, not in the PHI's block.
+  SmallVector<Instruction *, 16> values{load};
+  SmallPtrSet<Instruction *, 16> visited;
+  while (!values.empty()) {
+    Instruction *I = values.pop_back_val();
+    if (!visited.insert(I).second)
+      continue;
+    for (Use &U : I->uses()) {
+      auto *user = cast<Instruction>(U.getUser());
+      if (isa<ExtractElementInst, PHINode>(user))
+        values.push_back(user);
+      auto *phi = dyn_cast<PHINode>(user);
+      worklist.push_back(phi ? phi->getIncomingBlock(U) : user->getParent());
+    }
+    addLiveRange(I->getParent(), worklist);
+  }
+}
+
+// Returns true if growing chunk to newSize elements keeps its exit storage
+// within the GRF budget in every block of region. Reuse within the existing
+// chunk remains legal even under pressure.
+bool ConstantCoalescing::FitsUniformExitPressure(const BufChunk *chunk, unsigned newSize,
+                                                 const ExitPressureRegion &region) const {
+  if (newSize <= chunk->chunkSize)
+    return true;
+  // Single-input scalar exit PHIs can be simplified away later. Final LCSSA
+  // can then carry the entire rounded vector across a divergent exit. Budget
+  // that per-lane vector, including unused/padding elements, not a uniform
+  // message's bytes or just the scalar elements used by this load.
+  unsigned bytes = newSize * chunk->elementSize * m_uniformExitSIMD;
+  unsigned budget = m_ctx->getNumGRFPerThread(true, curFunc) * m_ctx->platform.getGRFSize();
+  // This early IR estimate does not include all lowering temporaries, message
+  // payloads or allocation constraints. Use only part of the GRF target (80%
+  // by default) and leave the rest for them. Clamp so the budget never
+  // exceeds the GRF target, which also keeps the product from overflowing.
+  unsigned budgetPercent = std::min<unsigned>(IGC_GET_FLAG_VALUE(ScalarLCSSAUniformExitGRFBudgetPercent), 100);
+  budget = budget * budgetPercent / 100;
+
+  for (BasicBlock *BB : region) {
+    unsigned recorded = chunk->uniformExitPressure.lookup(BB);
+    unsigned added = bytes > recorded ? bytes - recorded : 0;
+    if (m_uniformExitPressure.lookup(BB) + added > budget)
+      return false;
+  }
+  return true;
+}
+
+// Records chunk's exit storage at newSize elements in every block of region,
+// so a later widening or another chunk sees it.
+void ConstantCoalescing::UpdateUniformExitPressure(BufChunk *chunk, unsigned newSize,
+                                                   const ExitPressureRegion &region) {
+  unsigned bytes = newSize * chunk->elementSize * m_uniformExitSIMD;
+  for (BasicBlock *BB : region) {
+    unsigned &recorded = chunk->uniformExitPressure[BB];
+    if (bytes > recorded) {
+      m_uniformExitPressure[BB] += bytes - recorded;
+      recorded = bytes;
+    }
+  }
+}
+
+// Replace load, a load after a loop now covered by cov_chunk starting at
+// element eltid, with the chunk's elements carried out of the loop through
+// exit PHIs. Each used element of a vector load gets its own scalar PHI.
+void ConstantCoalescing::ReplaceLoadAtLoopExit(BufChunk *cov_chunk, Instruction *load, uint64_t eltid,
+                                               const LoopExitAccess &exitAccess) {
+  // The in-loop extracts keep the chunk's dependence. The root exit PHI takes
+  // the dependence of the value it replaces, and each inner exit PHI that of
+  // the base PHI it mirrors.
+  auto carryOut = [&](uint64_t elt, Instruction *replaced) {
+    return GetOrCreateExitPhi(exitAccess.basePhi, exitAccess.inLoopBase, FindOrAddChunkExtract(cov_chunk, elt),
+                              wiAns->whichDepend(replaced), replaced);
+  };
+  if (!load->getType()->isVectorTy()) {
+    load->replaceAllUsesWith(carryOut(eltid, load));
+    return;
+  }
+  SmallVector<ExtractElementInst *, 4> extracts;
+  for (User *U : load->users())
+    extracts.push_back(cast<ExtractElementInst>(U));
+  for (ExtractElementInst *extract : extracts) {
+    uint64_t index = cast<ConstantInt>(extract->getIndexOperand())->getZExtValue();
+    extract->replaceAllUsesWith(carryOut(eltid + index, extract));
+    extract->eraseFromParent();
+  }
+}
+
+// Propagate inLoopValue, the chunk element in the loop after merging, to its uses
+// outside the loop through LCSSA PHIs that follow the shape of the base PHIs.
+// Reuses an equivalent PHI if one exists.
+Value *ConstantCoalescing::GetOrCreateExitPhi(PHINode *basePhi, Instruction *inLoopBase, Instruction *inLoopValue,
+                                              WIAnalysis::WIDependancy dep, Instruction *replaced) {
+  SmallVector<Value *, 4> incoming;
+  for (Value *V : basePhi->incoming_values()) {
+    if (V == inLoopBase)
+      incoming.push_back(inLoopValue);
+    else
+      incoming.push_back(
+          GetOrCreateExitPhi(cast<PHINode>(V), inLoopBase, inLoopValue, wiAns->whichDepend(V), replaced));
+  }
+  BasicBlock *BB = basePhi->getParent();
+  for (PHINode &phi : BB->phis()) {
+    if (phi.getType() == inLoopValue->getType() && wiAns->whichDepend(&phi) == dep &&
+        equal(phi.blocks(), basePhi->blocks()) && equal(phi.incoming_values(), incoming))
+      return &phi;
+  }
+  auto *phi = PHINode::Create(inLoopValue->getType(), incoming.size(), replaced->getName() + ".lcssa",
+                              IGCLLVM::insertPosition(&BB->front()));
+  for (unsigned i = 0, e = incoming.size(); i < e; ++i)
+    phi->addIncoming(incoming[i], basePhi->getIncomingBlock(i));
+  phi->setDebugLoc(replaced->getDebugLoc());
+  m_TT->RegisterNewValueAndAssignID(phi);
+  wiAns->incUpdateDepend(phi, dep);
+  return phi;
+}
+
 void ConstantCoalescing::ProcessBlock(BasicBlock *blk, std::vector<BufChunk *> &dircb_owloads,
                                       std::vector<BufChunk *> &indcb_owloads, std::vector<BufChunk *> &indcb_gathers) {
   // get work-item analysis, need to update uniformness information
@@ -391,6 +792,13 @@ void ConstantCoalescing::ProcessBlock(BasicBlock *blk, std::vector<BufChunk *> &
         if (wiAns->isUniform(ldRaw)) {
           MergeUniformLoad(ldRaw, ldRaw->getResourceValue(), addrSpace, baseOffsetInBytes, offsetInBytes, maxEltPlus,
                            Extension, baseOffsetInBytes ? indcb_owloads : dircb_owloads);
+        } else if (IGC_IS_FLAG_ENABLED(EnableScalarLCSSAInConstantCoalescing) &&
+                   MergeUniformLoad(ldRaw, ldRaw->getResourceValue(), addrSpace, baseOffsetInBytes, offsetInBytes,
+                                    maxEltPlus, Extension, indcb_owloads)) {
+          // A nonuniform load after a loop whose base is an exit PHI, typically one added by
+          // ScalarLCSSAConstantCoalescing. The PHI's value is uniform in the loop but nonuniform when
+          // lanes leave on different iterations. The load still has a chance to merge into a uniform
+          // chunk in the loop that reads that value.
         } else if (IsUntypedBuffer(bufType)) {
           if (UsesTypedConstantBuffer(m_ctx, bufType)) {
             ScatterToSampler(ldRaw, ldRaw->getResourceValue(), addrSpace, baseOffsetInBytes, offsetInBytes,
@@ -446,6 +854,13 @@ void ConstantCoalescing::ProcessBlock(BasicBlock *blk, std::vector<BufChunk *> &
               MergeUniformLoad(LI, buf_idxv, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, Extension, indcb_owloads);
             else
               MergeUniformLoad(LI, buf_idxv, addrSpace, nullptr, offsetInBytes, maxEltPlus, Extension, dircb_owloads);
+          } else if (IGC_IS_FLAG_ENABLED(EnableScalarLCSSAInConstantCoalescing) &&
+                     MergeUniformLoad(LI, buf_idxv, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, Extension,
+                                      indcb_owloads)) {
+            // A nonuniform load after a loop whose base is an exit PHI, typically one added by
+            // ScalarLCSSAConstantCoalescing. The PHI's value is uniform in the loop but nonuniform when
+            // lanes leave on different iterations. The load still has a chance to merge into a uniform
+            // chunk in the loop that reads that value.
           } else { // not uniform
             MergeScatterLoad(LI, buf_idxv, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, Extension, indcb_gathers);
           }
@@ -485,6 +900,13 @@ void ConstantCoalescing::ProcessBlock(BasicBlock *blk, std::vector<BufChunk *> &
           if ((int64_t)offsetInBytes >= 0) {
             if (wiAns->isUniform(LI)) { // uniform
               MergeUniformLoad(LI, nullptr, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, Extension, indcb_owloads);
+            } else if (IGC_IS_FLAG_ENABLED(EnableScalarLCSSAInConstantCoalescing) &&
+                       MergeUniformLoad(LI, nullptr, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, Extension,
+                                        indcb_owloads)) {
+              // A nonuniform load after a loop whose base is an exit PHI, typically one added by
+              // ScalarLCSSAConstantCoalescing. The PHI's value is uniform in the loop but nonuniform when
+              // lanes leave on different iterations. The load still has a chance to merge into a uniform
+              // chunk in the loop that reads that value.
             } else if (bufType == CONSTANT_BUFFER) { // not uniform
               if (UsesTypedConstantBuffer(m_ctx, bufType)) {
                 ScatterToSampler(LI, nullptr, addrSpace, elt_idxv, offsetInBytes, indcb_gathers);
@@ -585,18 +1007,25 @@ void ConstantCoalescing::MergeScatterLoad(Instruction *load, Value *bufIdxV, uin
       ((offsetInBytes % 4) == 0 && (alignment >= 4 || eltIdxV == nullptr || IsDwordAligned(eltIdxV)));
 
   BufChunk *cov_chunk = nullptr;
+  // Set if a load after a loop merges into a chunk in the loop through exit PHIs on the chunk's base.
+  std::optional<LoopExitAccess> exitAccess;
   for (std::vector<BufChunk *>::reverse_iterator rit = chunk_vec.rbegin(), rie = chunk_vec.rend(); rit != rie; ++rit) {
     BufChunk *cur_chunk = *rit;
+    std::optional<LoopExitAccess> access;
     if (CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
-        cur_chunk->baseIdxV == eltIdxV && cur_chunk->usesWideLSC == usesWideLSC &&
+        cur_chunk->usesWideLSC == usesWideLSC &&
         cur_chunk->chunkIO->getType()->getScalarType() == load->getType()->getScalarType() &&
-        CompareMetadata(cur_chunk->chunkIO, load) && !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load)) {
+        CompareMetadata(cur_chunk->chunkIO, load) &&
+        (cur_chunk->baseIdxV == eltIdxV || IsLoopExitOfChunkBase(cur_chunk, load, eltIdxV, access.emplace())) &&
+        !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load)) {
       uint64_t lb = std::min(eltid, cur_chunk->chunkStart);
       uint64_t ub = std::max(eltid + (uint64_t)maxEltPlus, cur_chunk->chunkStart + (uint64_t)cur_chunk->chunkSize);
       static_assert(MAX_VECTOR_NUM_ELEMENTS >= SIZE_OWORD, "Code below may need an update");
       // if input load is not DWORD aligned it can only be appended to an aligned chunk
       if (((ub - lb) * scalarSizeInBytes) <= maxChunkSizeInBytes && (ub - lb) <= MAX_VECTOR_NUM_ELEMENTS &&
-          (isDwordAligned || eltid >= cur_chunk->chunkStart)) {
+          (isDwordAligned || eltid >= cur_chunk->chunkStart) &&
+          CanMergeWithoutOOB(cur_chunk, lb, RoundChunkSize(static_cast<uint>(ub - lb), scalarSizeInBytes, usesWideLSC),
+                             addrSpace, access ? &*access : nullptr)) {
         // Since the algorithm allows changing chunk's starting point as
         // well as the size it is possible that a load "matches"
         // multiple chunks, e.g., a load at offset 1 (in elements) would
@@ -612,6 +1041,7 @@ void ConstantCoalescing::MergeScatterLoad(Instruction *load, Value *bufIdxV, uin
         const uint owordSizeInElems = SIZE_OWORD / scalarSizeInBytes;
         if (!cov_chunk || (eltid / owordSizeInElems == cur_chunk->chunkStart / owordSizeInElems)) {
           cov_chunk = cur_chunk;
+          exitAccess = std::move(access);
         }
       }
     }
@@ -638,6 +1068,20 @@ void ConstantCoalescing::MergeScatterLoad(Instruction *load, Value *bufIdxV, uin
 
       chunk_vec.push_back(cov_chunk);
     }
+  } else if (exitAccess) {
+    uint64_t lb = std::min(eltid, cov_chunk->chunkStart);
+    uint64_t ub = std::max(eltid + (uint64_t)maxEltPlus, cov_chunk->chunkStart + (uint64_t)cov_chunk->chunkSize);
+    uint start_adj = static_cast<uint>(cov_chunk->chunkStart - lb);
+    uint size_adj = RoundChunkSize(static_cast<uint>(ub - lb), cov_chunk->elementSize, cov_chunk->usesWideLSC) -
+                    cov_chunk->chunkSize;
+    if (start_adj)
+      AdjustChunk(cov_chunk, start_adj, size_adj, Extension);
+    else if (size_adj)
+      EnlargeChunk(cov_chunk, size_adj);
+    ReplaceLoadAtLoopExit(cov_chunk, load, eltid, *exitAccess);
+    // The load is merged on the edges carrying the base into the exit PHIs.
+    // Track the depth at the first of them.
+    setChunkDeepestLvl(cov_chunk, exitAccess->exitingBlocks.front());
   } else if (!cov_chunk->chunkIO->getType()->isVectorTy()) {
     // combine the initial scalar loads with this incoming load (which can be a vector-load),
     // then add extracts
@@ -904,14 +1348,20 @@ void ConstantCoalescing::SetAlignmentFromOffset(Instruction *load) {
   SetAlignment(load, alignment);
 }
 
-void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uint addrSpace, Value *eltIdxV,
+bool ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uint addrSpace, Value *eltIdxV,
                                           uint64_t offsetInBytes, uint maxEltPlus, const ExtensionKind &Extension,
                                           std::vector<BufChunk *> &chunk_vec) {
+  // A nonuniform load may only join a uniform chunk in a loop it follows,
+  // through exit PHIs on the chunk's base.
+  const bool isUniformLoad = wiAns->isUniform(load);
+  if (!isUniformLoad && !isa_and_nonnull<PHINode>(eltIdxV))
+    return false;
+
   // Only natural alignment is supported
   const alignment_t alignment = GetAlignment(load);
 
   if (!isPowerOf2_64(alignment)) {
-    return;
+    return false;
   }
 
   const Type *loadDataTy = load->getType();
@@ -923,12 +1373,12 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
     if (IsBindless(buffType) || buffType == STATELESS_A32 || buffType == SSH_BINDLESS_CONSTANT_BUFFER)
       loadEltTy = irBuilder->getInt32Ty();
     else
-      return;
+      return false;
   }
   const uint scalarSizeInBytes = (const uint)(loadEltTy->getPrimitiveSizeInBits() / 8);
 
   if (0 == scalarSizeInBytes || (offsetInBytes % scalarSizeInBytes) != 0) {
-    return;
+    return false;
   }
 
   const uint64_t eltid = offsetInBytes / scalarSizeInBytes;
@@ -939,18 +1389,45 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
   const bool isDwordAligned =
       ((offsetInBytes % 4) == 0 && (alignment >= 4 || eltIdxV == nullptr || IsDwordAligned(eltIdxV)));
 
+  // Lambda rounds the chunk size up to the next value supported by data port
+  // loads or LSC transposed load.
+  // Legacy data port supports:
+  // - block loads of 1, 2, 4 or 8 OWords
+  // - scattered loads of 1, 2 and 4 DWords/QWords
+  // - (byte aligned) 1, 2 and 4 Bytes
+  // LSC supports:
+  // - transposed loads of 1, 2, 3, 4, 8, 16, 32 and 64 DWords/QWords
+  // - (byte aligned) loads of 1, 2 and 4 Bytes
+  auto RoundChunkSize = [this, scalarSizeInBytes, load](const uint32_t chunkSize) {
+    bool supportsVec3Load = scalarSizeInBytes >= 4 && EmitPass::shouldGenerateLSCQuery(*m_ctx, load) == Tristate::True;
+    uint32_t validChunkSize = (supportsVec3Load && chunkSize == 3) ? 3 : iSTD::RoundPower2((DWORD)chunkSize);
+    return validChunkSize;
+  };
+
+  // Set if a load after a loop merges into a chunk in the loop through exit PHIs on the chunk's base.
+  std::optional<LoopExitAccess> exitAccess;
+  // Set if the chosen chunk is carried out of a loop: where its exit storage is live.
+  ExitPressureRegion exitRegion;
   auto shouldMerge = [&](const BufChunk *cur_chunk) {
+    std::optional<LoopExitAccess> access;
     if (!(CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
-          cur_chunk->baseIdxV == eltIdxV && cur_chunk->chunkIO->getType()->getScalarType() == loadEltTy &&
-          CompareMetadata(cur_chunk->chunkIO, load) && !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load) &&
-          cur_chunk->extensionKind == Extension))
+          cur_chunk->chunkIO->getType()->getScalarType() == loadEltTy && CompareMetadata(cur_chunk->chunkIO, load) &&
+          cur_chunk->extensionKind == Extension &&
+          (cur_chunk->baseIdxV == eltIdxV ? isUniformLoad
+                                          : IsLoopExitOfChunkBase(cur_chunk, load, eltIdxV, access.emplace())) &&
+          !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load)))
       return false;
+    // A load after a loop is merged on the edges carrying the base into the
+    // exit PHIs. Check the depth at the first of them.
+    BasicBlock *mergeBB = access ? access->exitingBlocks.front() : load->getParent();
 
     const uint64_t lb = std::min(eltid, cur_chunk->chunkStart);
     const uint64_t ub = std::max(eltid + (uint64_t)maxEltPlus, cur_chunk->chunkStart + (uint64_t)cur_chunk->chunkSize);
     const uint64_t chunkRange = ub - lb;
     if (chunkRange > UINT32_MAX || !profitableChunkSize(static_cast<uint32_t>(chunkRange), scalarSizeInBytes) ||
-        !(isDwordAligned || eltid >= cur_chunk->chunkStart))
+        !(isDwordAligned || eltid >= cur_chunk->chunkStart) ||
+        !CanMergeWithoutOOB(cur_chunk, lb, RoundChunkSize(static_cast<uint32_t>(chunkRange)), addrSpace,
+                            access ? &*access : nullptr))
       return false;
 
     // Do not merge two loads of the same buffer when the merge would stretch the
@@ -975,7 +1452,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
       if (mergedChunkBytes >= minBytesForDepthCheck) {
         DominatorTree &domTree = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
         LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-        if (auto *loadNode = domTree.getNode(load->getParent())) {
+        if (auto *loadNode = domTree.getNode(mergeBB)) {
           const unsigned lLvl = loadNode->getLevel();
           const unsigned dLvl = cur_chunk->deepestLvl;
           const unsigned delta = (lLvl > dLvl) ? (lLvl - dLvl) : 0;
@@ -984,7 +1461,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
             // Loads in the same loop body are re-executed every iteration;
             // the merged value's live range does not extend across iterations.
             const Loop *chunkLoop = LI.getLoopFor(cur_chunk->chunkIO->getParent());
-            const Loop *loadLoop = LI.getLoopFor(load->getParent());
+            const Loop *loadLoop = LI.getLoopFor(mergeBB);
             if (!chunkLoop || chunkLoop != loadLoop)
               return false;
           }
@@ -992,6 +1469,15 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
       }
     }
 
+    // Budget a chunk carried out of a loop before choosing it, so a load that
+    // would widen it too much can still join another chunk or start its own.
+    if (access || !cur_chunk->uniformExitPressure.empty()) {
+      CollectUniformExitRegion(cur_chunk, load, access ? access->loop : nullptr, exitRegion);
+      if (!FitsUniformExitPressure(cur_chunk, RoundChunkSize(static_cast<uint32_t>(chunkRange)), exitRegion))
+        return false;
+    }
+
+    exitAccess = std::move(access);
     return true;
   };
 
@@ -1001,40 +1487,44 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
   }
 
   // Stateless access needs OOB checks to avoid page faults.
-  bool needsOutOfBoundsChecks = IGC_IS_FLAG_DISABLED(DisableConstantCoalescingOutOfBoundsCheck) &&
-                                (addrSpace == ADDRESS_SPACE_CONSTANT || addrSpace == ADDRESS_SPACE_GLOBAL);
+  bool needsOutOfBoundsChecks = mayAccessOOB(addrSpace);
 
-  // Lambda rounds the chunk size up to the next value supported by data port
-  // loads or LSC transposed load.
-  // Legacy data port supports:
-  // - block loads of 1, 2, 4 or 8 OWords
-  // - scattered loads of 1, 2 and 4 DWords/QWords
-  // - (byte aligned) 1, 2 and 4 Bytes
-  // LSC supports:
-  // - transposed loads of 1, 2, 3, 4, 8, 16, 32 and 64 DWords/QWords
-  // - (byte aligned) loads of 1, 2 and 4 Bytes
-  auto RoundChunkSize = [this, scalarSizeInBytes, load](const uint32_t chunkSize) {
-    bool supportsVec3Load = scalarSizeInBytes >= 4 && EmitPass::shouldGenerateLSCQuery(*m_ctx, load) == Tristate::True;
-    uint32_t validChunkSize = (supportsVec3Load && chunkSize == 3) ? 3 : iSTD::RoundPower2((DWORD)chunkSize);
-    return validChunkSize;
-  };
   [[maybe_unused]] const uint32_t loadNumElements =
       loadDataTy->isVectorTy() ? int_cast<uint32_t>(cast<IGCLLVM::FixedVectorType>(loadDataTy)->getNumElements()) : 1;
   // VectorPreProcess pass legalizes loaded data size.
   if (!cov_chunk) {
-    if (isDwordAligned) {
-      cov_chunk = new BufChunk();
-      cov_chunk->bufIdxV = bufIdxV;
-      cov_chunk->addrSpace = addrSpace;
-      cov_chunk->baseIdxV = eltIdxV;
-      cov_chunk->elementSize = scalarSizeInBytes;
-      cov_chunk->chunkStart = eltid;
-      cov_chunk->chunkSize = RoundChunkSize(maxEltPlus);
-      cov_chunk->extensionKind = Extension;
-      const alignment_t chunkAlignment = std::max<alignment_t>(alignment, 4);
-      cov_chunk->chunkIO = CreateChunkLoad(load, cov_chunk, eltid, chunkAlignment, Extension);
-      cov_chunk->deepestLvl = getBBLevel(load->getParent());
-      chunk_vec.push_back(cov_chunk);
+    // A nonuniform load must not start a uniform chunk.
+    if (!isUniformLoad || !isDwordAligned)
+      return false;
+    cov_chunk = new BufChunk();
+    cov_chunk->bufIdxV = bufIdxV;
+    cov_chunk->addrSpace = addrSpace;
+    cov_chunk->baseIdxV = eltIdxV;
+    cov_chunk->elementSize = scalarSizeInBytes;
+    cov_chunk->chunkStart = eltid;
+    cov_chunk->chunkSize = RoundChunkSize(maxEltPlus);
+    cov_chunk->extensionKind = Extension;
+    const alignment_t chunkAlignment = std::max<alignment_t>(alignment, 4);
+    cov_chunk->chunkIO = CreateChunkLoad(load, cov_chunk, eltid, chunkAlignment, Extension);
+    cov_chunk->deepestLvl = getBBLevel(load->getParent());
+    chunk_vec.push_back(cov_chunk);
+    // A previous invocation may already have carried this chunk out of a loop.
+    // Record that storage too, so repeated coalescing cannot reset the budget.
+    Loop *L = IGC_IS_FLAG_ENABLED(EnableScalarLCSSAInConstantCoalescing)
+                  ? getAnalysis<LoopInfoWrapperPass>().getLoopInfo().getLoopFor(load->getParent())
+                  : nullptr;
+    if (L) {
+      auto isVaryingExitPhi = [&](User *U) {
+        auto *phi = dyn_cast<PHINode>(U);
+        return phi && !L->contains(phi->getParent()) && !wiAns->isUniform(phi);
+      };
+      bool liveOut = any_of(cov_chunk->chunkIO->users(), [&](User *U) {
+        return isVaryingExitPhi(U) || (isa<ExtractElementInst>(U) && any_of(U->users(), isVaryingExitPhi));
+      });
+      if (liveOut) {
+        CollectUniformExitRegion(cov_chunk, cov_chunk->chunkIO, L, exitRegion);
+        UpdateUniformExitPressure(cov_chunk, cov_chunk->chunkSize, exitRegion);
+      }
     }
   } else {
     // Determine load boundaries
@@ -1062,14 +1552,25 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
               furthest_cb_access = std::max(furthest_cb_access, cur_chunk->chunkStart + (uint64_t)cur_chunk->chunkSize);
           }
           if (furthest_cb_access < furthest_access)
-            return; // Not able to really benefit from merge for its not safe with this size
+            return false; // Not able to really benefit from merge for its not safe with this size
         } else
           start_adj = new_start_adj;
       }
     }
 
+    // shouldMerge checked the budget. Charge growth of a chunk carried out of
+    // a loop across all of its exit uses, including later ordinary merges.
+    if (exitAccess || !cov_chunk->uniformExitPressure.empty())
+      UpdateUniformExitPressure(cov_chunk, cov_chunk->chunkSize + size_adj, exitRegion);
+
     // Apply adjustments
-    if (load->getType()->isVectorTy()) {
+    if (exitAccess) {
+      if (start_adj)
+        AdjustChunk(cov_chunk, start_adj, size_adj, Extension);
+      else if (size_adj)
+        EnlargeChunk(cov_chunk, size_adj);
+      ReplaceLoadAtLoopExit(cov_chunk, load, eltid, *exitAccess);
+    } else if (load->getType()->isVectorTy()) {
       if (start_adj == 0) {
         if (size_adj)
           EnlargeChunk(cov_chunk, size_adj);
@@ -1089,8 +1590,9 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
       load->replaceAllUsesWith(splitter);
       wiAns->incUpdateDepend(splitter, wiAns->whichDepend(load));
     }
-    setChunkDeepestLvl(cov_chunk, load->getParent());
+    setChunkDeepestLvl(cov_chunk, exitAccess ? exitAccess->exitingBlocks.front() : load->getParent());
   }
+  return true;
 }
 
 #define IDENTICAL_PHI 0

@@ -53,6 +53,8 @@ struct BufChunk {
   ExtensionKind extensionKind;
   unsigned deepestLvl;      // deepest BB absorbed so far; for BB-depth-delta guard
   bool usesWideLSC = false; // stateful LSC access; may use the 32-byte message
+  // Per-lane exit storage already recorded in each affected block, in bytes.
+  llvm::DenseMap<llvm::BasicBlock *, unsigned> uniformExitPressure;
 };
 
 class ConstantCoalescing : public llvm::FunctionPass {
@@ -60,18 +62,7 @@ public:
   static char ID;
   ConstantCoalescing();
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-    AU.addPreservedID(WIAnalysis::ID);
-    AU.addRequired<DominatorTreeWrapperPass>();
-    AU.addRequired<llvm::LoopInfoWrapperPass>();
-    AU.addRequired<WIAnalysis>();
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-    AU.addRequired<TranslationTable>();
-    AU.addPreservedID(TranslationTable::ID);
-    AU.addPreserved<llvm::LoopInfoWrapperPass>();
-  }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
 
   void ProcessBlock(llvm::BasicBlock *blk, std::vector<BufChunk *> &dircb_owlds, std::vector<BufChunk *> &indcb_owlds,
                     std::vector<BufChunk *> &indcb_gathers);
@@ -234,6 +225,10 @@ private:
   // Helper map that tracks already processed or created base offsets.
   // The map holds `add` instructions with their arguments as the key.
   llvm::MapVector<std::pair<llvm::Value *, llvm::Value *>, llvm::Instruction *> m_BaseOffsets;
+  // Snapshot of live bytes, plus exit storage recorded for uniform chunks carried out of loops.
+  llvm::DenseMap<llvm::BasicBlock *, unsigned> m_uniformExitPressure;
+  // Dispatch width the snapshot and the recorded exit storage are measured at.
+  unsigned m_uniformExitSIMD = 0;
   // agent to modify the llvm-ir
   IRBuilderWrapper *irBuilder;
   // maintain the uniformness info
@@ -244,6 +239,31 @@ private:
   /// Examines the uniformity of the load and the number of used elements
   /// to determine whether we should try to merge it.
   bool isProfitableLoad(const Instruction *I, uint32_t &MaxEltPlus) const;
+  /// A load after a loop whose address base is a web of exit PHIs whose leaves
+  /// are all one value defined in the loop. The load is merged as if it were
+  /// executed on the edges that carry that value into the web.
+  struct LoopExitAccess {
+    llvm::PHINode *basePhi;        // address base of the load
+    llvm::Instruction *inLoopBase; // the value at every leaf of the web
+    const llvm::Loop *loop;        // innermost loop defining inLoopBase
+    // Incoming blocks of the edges carrying inLoopBase into the web. A block
+    // can be outside the loop, e.g. a split critical edge.
+    llvm::SmallVector<llvm::BasicBlock *, 4> exitingBlocks;
+  };
+  bool IsLoopExitOfChunkBase(const BufChunk *chunk, const llvm::Instruction *load, llvm::Value *eltIdxV,
+                             LoopExitAccess &exitAccess) const;
+  bool CanMergeWithoutOOB(const BufChunk *chunk, uint64_t newStart, uint64_t newSize, uint addrSpace,
+                          const LoopExitAccess *exitAccess) const;
+  // Blocks where the exit storage of a uniform chunk carried out of a loop is live.
+  using ExitPressureRegion = llvm::SmallPtrSet<llvm::BasicBlock *, 32>;
+  void CollectUniformExitRegion(const BufChunk *chunk, llvm::Instruction *load, const llvm::Loop *exitLoop,
+                                ExitPressureRegion &region);
+  bool FitsUniformExitPressure(const BufChunk *chunk, unsigned newSize, const ExitPressureRegion &region) const;
+  void UpdateUniformExitPressure(BufChunk *chunk, unsigned newSize, const ExitPressureRegion &region);
+  void ReplaceLoadAtLoopExit(BufChunk *cov_chunk, llvm::Instruction *load, uint64_t eltid,
+                             const LoopExitAccess &exitAccess);
+  llvm::Value *GetOrCreateExitPhi(llvm::PHINode *basePhi, llvm::Instruction *inLoopBase, llvm::Instruction *inLoopValue,
+                                  WIAnalysis::WIDependancy dep, llvm::Instruction *replaced);
   /// Is this a chunk we should be creating?
   static bool profitableChunkSize(uint32_t ub, uint32_t lb, uint32_t eltSizeInBytes);
   static bool profitableChunkSize(uint32_t chunkSize, uint32_t eltSizeInBytes);
@@ -272,7 +292,10 @@ private:
                                            const ExtensionKind &Extension);
   llvm::Instruction *CreateSamplerLoad(llvm::Value *index, llvm::Value *resourcePtr, uint addrSpace);
   void ReplaceLoadWithSamplerLoad(Instruction *loadToReplace, Instruction *ldData, uint64_t offsetInBytes);
-  void MergeUniformLoad(llvm::Instruction *load, llvm::Value *bufIdxV, uint addrSpace, llvm::Value *eltIdxV,
+  /// Returns true if the load was replaced by a new or an existing chunk. A
+  /// nonuniform load is only merged into an existing uniform chunk in a loop
+  /// it follows, see IsLoopExitOfChunkBase().
+  bool MergeUniformLoad(llvm::Instruction *load, llvm::Value *bufIdxV, uint addrSpace, llvm::Value *eltIdxV,
                         uint64_t offsetInBytes, uint maxEltPlus, const ExtensionKind &Extension,
                         std::vector<BufChunk *> &chunk_vec);
   void MergeScatterLoad(llvm::Instruction *load, llvm::Value *bufIdxV, uint bufid, llvm::Value *eltIdxV,
