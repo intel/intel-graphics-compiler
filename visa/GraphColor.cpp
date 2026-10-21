@@ -4047,6 +4047,33 @@ void Augmentation::markNonDefaultDstRgn(G4_INST *inst, G4_Operand *opnd) {
 
 // Returns true if any inst found using non-default mask.
 // This function sets up lexical id of all instructions.
+// Implicit-LOD sampler messages derive the LOD from every pixel of a 2x2
+// subspan, including lanes disabled by divergent control flow.
+static bool usesSubspanDerivatives(const G4_INST *inst, const IR_Builder &builder) {
+  const G4_SendDescRaw *desc = inst->isSend() ? inst->getMsgDescRaw() : nullptr;
+  if (!desc || !desc->isSampler())
+    return false;
+  // Positional-offset variants share the low 5 bits with their base op, except
+  // sample_po_b_c, which aliases ld_lz and is told apart by the PO bit.
+  bool hasPO = (desc->getDesc() >> 31) & 1;
+  switch (desc->getSamplerMessageType()) {
+  case VISA_3D_SAMPLE:
+  case VISA_3D_SAMPLE_B:
+  case VISA_3D_SAMPLE_C:
+  case VISA_3D_SAMPLE_B_C:
+  case VISA_3D_LOD:
+  case VISA_3D_SAMPLE_KILLPIX:
+    return true;
+  case VISA_3D_SAMPLE_MLOD:
+  case VISA_3D_SAMPLE_C_MLOD:
+    return builder.hasSampleMlod();
+  case VISA_3D_SAMPLE_PO_B_C & 0x1f:
+    return hasPO;
+  default:
+    return false;
+  }
+}
+
 bool Augmentation::markNonDefaultMaskDef() {
   // Iterate dcls list and mark obvious ones as non-default.
   // Obvoius non-default is 1 element, ie uniform dcl.
@@ -4080,6 +4107,19 @@ bool Augmentation::markNonDefaultMaskDef() {
 
       if (isFlagRA && inst->getCondMod()) {
         markNonDefaultDstRgn(inst, inst->getCondMod());
+      }
+
+      // Disabled lanes of the payload are read for derivatives, so the
+      // payload must not share registers with another branch's values.
+      if (!isFlagRA && usesSubspanDerivatives(inst, *kernel.fg.builder)) {
+        for (unsigned i = 0, e = inst->getNumSrc(); i < e; ++i) {
+          G4_Operand *src = inst->getSrc(i);
+          if (!src || !src->isSrcRegRegion() || !src->getTopDcl())
+            continue;
+          G4_Declare *dcl = src->getTopDcl()->getRootDeclare();
+          if (liveAnalysis.livenessClass(dcl->getRegFile()))
+            gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
+        }
       }
     }
   }
