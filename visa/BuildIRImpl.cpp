@@ -3164,6 +3164,49 @@ static void computeOperandLengthsUntypedLscLdSt(G4_SendgDesc* msgDesc,
   }
 }
 
+/// encodeUntypedLscAddrScaleAndOffset - Encode the address scale and the
+/// immediate offset of an untyped LSC message in its descriptor. On return,
+/// addrScale and addrOffset hold what the caller still has to apply to the
+/// per-lane address before the send (see lscMulAdd).
+///
+/// HW computes  base + scale * src0 + offset,  so an encoded scale also
+/// multiplies anything the caller adds to src0. An offset that does not fit
+/// in the descriptor is therefore split into  scale * quot + rem  with
+/// 0 <= rem < scale: quot is left for the caller to add to src0 and rem is
+/// encoded in the descriptor. The encoded scale is a multiple of the data
+/// size, so rem is encodable whenever the offset is a multiple of the data
+/// size. Otherwise the scale is not encoded either.
+static void encodeUntypedLscAddrScaleAndOffset(IR_Builder &builder,
+                                               G4_SendgDesc *msgDesc,
+                                               int &addrScale,
+                                               int &addrOffset) {
+  if (msgDesc->encodeAddrGlobalOffset(addrOffset))
+    addrOffset = 0;
+
+  // offset scaling is not supported for URB and TGM SFID
+  // TGM is handled in a different code path; URB is handled here
+  if (msgDesc->getSFID() == SFID::URB ||
+      !builder.supportSendAddrScale(msgDesc->isSLM(), msgDesc->isBTS()))
+    return;
+
+  const int dataSize = msgDesc->getDataSizeBytesMem();
+  bool canSplitOffset =
+      addrOffset == 0 || (dataSize != 0 && addrOffset % dataSize == 0);
+  if (!canSplitOffset || !msgDesc->encodeAddrScale(addrScale))
+    return;
+
+  const int scale = addrScale;
+  addrScale = 1;
+  if (addrOffset == 0)
+    return;
+  int rem = addrOffset % scale;
+  if (rem < 0)
+    rem += scale;
+  [[maybe_unused]] bool remEncoded = msgDesc->encodeAddrGlobalOffset(rem);
+  vISA_ASSERT(remEncoded, "offset remainder must fit in the descriptor");
+  addrOffset = (addrOffset - rem) / scale;
+}
+
 G4_SendgDesc *IR_Builder::createUntypedCMaskDesc(
     SFID sfid, MsgOp op,
     G4_ExecSize execSize, bool isDstNull,
@@ -3224,15 +3267,7 @@ G4_SendgDesc *IR_Builder::createUntypedCMaskDesc(
 
   // generate the G4_SendgDesc object
   auto msgDesc = new (mem) G4_SendgDesc(sfid, desc, *this);
-  if (sfid != SFID::URB) {
-    // offset scaling is not supported for URB and TGM SFID
-    // TGM is handled in a different code path; URB is handled here
-    if (supportSendAddrScale(msgDesc->isSLM(), msgDesc->isBTS()) &&
-        msgDesc->encodeAddrScale(addrScale))
-      addrScale = 1;
-  }
-  if (msgDesc->encodeAddrGlobalOffset(addrOffset))
-    addrOffset = 0;
+  encodeUntypedLscAddrScaleAndOffset(*this, msgDesc, addrScale, addrOffset);
   computeOperandLengthsUntypedLscLdSt(msgDesc, getGRFSize(), execSize,
                                       isDstNull);
   return msgDesc;
@@ -3309,15 +3344,7 @@ G4_SendgDesc *IR_Builder::createUntypedVecDesc(
 
   // generate the G4_SendgDesc object
   auto msgDesc = new (mem) G4_SendgDesc(sfid, desc, *this);
-  if (sfid != SFID::URB) {
-    // offset scaling is not supported for URB and TGM SFID
-    // TGM is handled in a different code path; URB is handled here
-    if (supportSendAddrScale(msgDesc->isSLM(), msgDesc->isBTS()) &&
-        msgDesc->encodeAddrScale(addrScale))
-      addrScale = 1;
-  }
-  if (msgDesc->encodeAddrGlobalOffset(addrOffset))
-    addrOffset = 0;
+  encodeUntypedLscAddrScaleAndOffset(*this, msgDesc, addrScale, addrOffset);
   computeOperandLengthsUntypedLscLdSt(msgDesc, getGRFSize(), execSize,
                                       isDstNull);
   return msgDesc;
