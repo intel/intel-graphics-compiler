@@ -478,13 +478,13 @@ void CShader::CreateAliasVars() {
           if (dessaRootVal && dessaRootVal != V)
             Vals[1] = dessaRootVal;
         }
-        // index to baseVal, use baseElt to compute offset
-        int offsetInBytes = aSV->StartByteOffset;
-
         for (int i = 0; i < 2; ++i) {
           V = Vals[i];
           if (!V)
             continue;
+
+          // index to baseVal, use baseElt to compute offset
+          int offsetInBytes = aSV->StartByteOffset;
 
           Type *Ty = V->getType();
           IGCLLVM::FixedVectorType *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);

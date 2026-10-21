@@ -1809,8 +1809,10 @@ DECLARE_IGC_REGKEY(bool, DisableResourceLoopUnrollNestedSampler, false, "Disable
 DECLARE_IGC_REGKEY(bool, EnableVariableReuse, true, "Enable local variable reuse", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableVariableAlias, true,
                    "Enable variable aliases (part of VariableReuse Pass, but separate functionality)", DEBUG_ONLY)
-DECLARE_IGC_REGKEY(DWORD, VectorAlias, 1,
-                   "Vector aliasing control under EnableVariableAlias. Some features are still experimental", ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, VectorAlias, -1,
+                   "Vector aliasing control under EnableVariableAlias. -1 - context default. "
+                   "Some features are still experimental",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, VectorAliasBBThreshold, 200,
                    "Max number of BBs of a function that VectorAlias will apply. VectorAlias will skip for funtions "
                    "beyond this threshold",

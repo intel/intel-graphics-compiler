@@ -3317,6 +3317,16 @@ bool AllowRemovingUnusedImplicitLocalIDs(const CodeGenContext *ctx) {
   return ctx->platform.isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
+// Returns VectorAlias regkey value. If not set (-1), returns default for current context.
+int16_t GetVectorAliasControl(const CodeGenContext *ctx) {
+  const int value = static_cast<int>(IGC_GET_FLAG_VALUE(VectorAlias));
+
+  if (value > -1)
+    return static_cast<int16_t>(value);
+
+  return 0x1;
+}
+
 ExtractBoundsResult ExtractBounds(llvm::Use &U, llvm::AssumptionCache &AC, llvm::Instruction *CtxI,
                                   bool peelLaunder /*= true*/) {
   IGC_ASSERT_MESSAGE(U.get() && U.get()->getType()->isIntegerTy(), "Expecting an integer operand");

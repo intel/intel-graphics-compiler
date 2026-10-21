@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CSWalkOrder.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
+#include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "AdaptorOCL/OCL/KernelAnnotations.hpp"
 #include "common/igc_regkeys.hpp"
@@ -196,7 +197,7 @@ int16_t OpenCLProgramContext::getVectorCoalescingControl() const {
   int val = m_InternalOptions.VectorCoalescingControl;
   if (val < 0) {
     // no cmdline option
-    val = IGC_GET_FLAG_VALUE(VectorAlias);
+    val = GetVectorAliasControl(this);
   }
   return val;
 }

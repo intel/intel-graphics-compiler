@@ -687,6 +687,7 @@ bool UsedWithoutImmInMemInst(llvm::Value *v);
 bool AllowShortImplicitPayloadHeader(const CodeGenContext *ctx);
 bool AllowRemovingUnusedImplicitArguments(const CodeGenContext *ctx);
 bool AllowRemovingUnusedImplicitLocalIDs(const CodeGenContext *ctx);
+int16_t GetVectorAliasControl(const CodeGenContext *ctx);
 
 struct ExtractBoundsResult {
   llvm::Value *SourceValue = nullptr;
