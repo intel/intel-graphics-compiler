@@ -663,6 +663,8 @@ bool GenXTargetMachine::addPassesToEmitFile(
   /// GenXPrologEpilogInsertion, GenXAggregatePseudoLowering,
   /// GenXLoadStoreLowering.
   vc::addPass(PM, createInstructionCombiningPass());
+  // InstCombine may create new freeze instructions that codegen cannot lower.
+  vc::addPass(PM, createGenXUnfreezePass());
   // Run integer reduction again to revert some trunc/ext patterns transformed
   // by instcombine.
   vc::addPass(PM, createGenXReduceIntSizePass());
