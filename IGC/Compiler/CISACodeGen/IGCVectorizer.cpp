@@ -438,15 +438,17 @@ bool IGCVectorizer::handlePHI(VecArr &Slice) {
   return true;
 }
 
-bool IGCVectorizer::handleInsertElement(VecArr &Slice, InsertElementInst *Final) {
+bool IGCVectorizer::handleInsertElement(VecArr &Slice) {
   Instruction *First = Slice.front();
+  Instruction *Final = Slice.back();
   if (!checkInsertElement(First, Slice))
     return false;
 
-  PRINT_LOG_NL("InsertElement substituted with vectorized instruction");
-  PRINT_LOG_NL("");
   Value *Compare = ScalarToVector[First->getOperand(1)];
   Final->replaceAllUsesWith(Compare);
+
+  PRINT_LOG_NL("InsertElement substituted with vectorized instruction");
+  PRINT_LOG_NL("");
   return true;
 }
 
@@ -658,6 +660,9 @@ bool IGCVectorizer::handleBinaryInstruction(VecArr &Slice) {
   auto BinaryOpcode = llvm::cast<BinaryOperator>(First)->getOpcode();
 
   auto *CreatedInst = BinaryOperator::CreateWithCopiedFlags(BinaryOpcode, Operands[0], Operands[1], First);
+  // use the most restrictive version
+  for (auto *I : Slice)
+    CreatedInst->andIRFlags(I);
   CreatedInst->setName("vectorized_binary");
   CreatedInst->setDebugLoc(First->getDebugLoc());
   IGCLLVM::insertBefore(CreatedInst, InsertPoint);
@@ -924,6 +929,7 @@ bool IGCVectorizer::handleCastInstruction(VecArr &Slice) {
   PRINT_LOG("Cast instruction created: ");
   PRINT_INST_NL(CreatedCast);
 
+  replaceSliceInstructionsWithExtract(Slice, CreatedCast);
   remapSliceToVector(Slice, CreatedCast);
 
   return true;
@@ -1031,6 +1037,11 @@ bool IGCVectorizer::handleWaveAll(VecArr &Slice) {
       PRINT_LOG_NL("Wavealls are not same predicate");
       return false;
     }
+    bool SameHelperLane = First->getOperand(3) == ElWave->getOperand(3);
+    if (!SameHelperLane) {
+      PRINT_LOG_NL("Wavealls are not using same helper lane mode");
+      return false;
+    }
   }
 
   PRINT_DS("waveall: ", Slice);
@@ -1067,7 +1078,6 @@ bool IGCVectorizer::handleWaveAll(VecArr &Slice) {
   PRINT_INST_NL(CreatedInst);
 
   replaceSliceInstructionsWithExtract(Slice, CreatedInst);
-
   remapSliceToVector(Slice, CreatedInst, PrevVectorization);
 
   for (auto El : Slice)
@@ -1207,7 +1217,7 @@ bool IGCVectorizer::processChain(InsertElementInst *FinalInsert, VecOfSlices &Sl
       if (!handleExtractElement(Slice))
         return false;
     } else if (llvm::isa<InsertElementInst>(First)) {
-      if (!handleInsertElement(Slice, FinalInsert))
+      if (!handleInsertElement(Slice))
         return false;
     } else if (isAllowedStub(First)) {
       if (!handleStub(Slice))
@@ -1426,6 +1436,13 @@ bool IGCVectorizer::checkVectorMatchesSlice(const VecVal &Slice, Value *Vectoriz
     return false;
   }
 
+  VecArr Extracts;
+  for (auto El : Slice)
+    if (auto *Extract = llvm::dyn_cast<ExtractElementInst>(El))
+      Extracts.push_back(Extract);
+  if (Extracts.size() == Slice.size())
+    return checkNaiveSwizzle(Extracts);
+
   return true;
 }
 
@@ -1468,7 +1485,8 @@ Value *IGCVectorizer::checkOperandsToBeVectorized(Instruction *First, unsigned i
   if (checkVectorMatchesSlice(SliceOfOperands, Compare))
     return Compare;
 
-  PRINT_LOG_NL("Not the same order");
+  PRINT_LOG(" OperandNum: " << OperNum << " is not the same order as already vectorized: ");
+  PRINT_INST_NL(Compare);
   return nullptr;
 }
 
@@ -1580,7 +1598,6 @@ bool IGCVectorizerCommon::checkDependencyAndTryToEliminate(VecArr &Slice, unsign
 
   PRINT_INST_NL(MinPoint);
   PRINT_INST_NL(MaxPoint);
-  PRINT_DS("Slice Scope: ", SliceScope);
 
   if (SliceScope.size() > WindowSize) {
     PRINT_LOG_NL("Slice scope is too big -> bail");
@@ -1590,6 +1607,20 @@ bool IGCVectorizerCommon::checkDependencyAndTryToEliminate(VecArr &Slice, unsign
   for (auto El : Slice) {
     Poisoned.insert(El);
     SliceSet.insert(El);
+  }
+
+  std::unordered_set<Value *> SliceDeps;
+  VecArr FixedOrder;
+
+  for (auto El : SliceScope) {
+    PRINT_LOG("Slice Scope: ");
+    PRINT_INST(El);
+    bool WhiteListed = isa<WaveAllIntrinsic>(El);
+    if (El->mayReadOrWriteMemory() && !WhiteListed) {
+      PRINT_LOG(" <-- fixed order ");
+      FixedOrder.push_back(El);
+    }
+    PRINT_LOG_NL("");
   }
 
   // this is a small implementation of a wavefront algorithm
@@ -1608,6 +1639,14 @@ bool IGCVectorizerCommon::checkDependencyAndTryToEliminate(VecArr &Slice, unsign
     }
   }
 
+  // same thing, but backwards to find WHAT SLICE VALUES depend on
+  for (auto It = SliceScope.rbegin(); It != SliceScope.rend(); ++It) {
+    if (!SliceSet.count(*It) && !SliceDeps.count(*It))
+      continue;
+    for (Value *Operand : (*It)->operands())
+      SliceDeps.insert(Operand);
+  }
+
   for (auto El : Slice) {
     for (Value *Operand : El->operands()) {
       if (!Poisoned.count(Operand))
@@ -1620,21 +1659,50 @@ bool IGCVectorizerCommon::checkDependencyAndTryToEliminate(VecArr &Slice, unsign
     }
   }
 
+  // we want to have single flip bit stream
+  // [after after after before before] --> legal
+  // we can't have multiple flip
+  // [after after before after after before] --> illegal
+  bool Flipped = false;
+  std::unordered_set<Value *> GoesAfter = {Poisoned.begin(), Poisoned.end()};
+  for (auto El : FixedOrder) {
+    if (Poisoned.count(El)) {
+      PRINT_LOG("Flipped: ");
+      PRINT_INST_NL(El);
+      Flipped = true;
+    }
+    if (SliceDeps.count(El) && Flipped) {
+      PRINT_LOG("Trying to flip again: ");
+      PRINT_INST_NL(El);
+      return true;
+    }
+    if (Flipped)
+      GoesAfter.insert(El);
+  }
+
+  // closure loop, to keep ordering of the instructions that depend on
+  // fixed order instructions right
+  for (auto El : SliceScope)
+    for (auto const &Op : El->operands())
+      if (GoesAfter.count(Op))
+        GoesAfter.insert(El);
+
   Instruction *AfterInsertPoint = IGCLLVM::getNextNonDebugInstruction(MaxPoint);
   // scheduling part
-  // everything that doesn't depend on slice values goes before
   // everything that DEPENDS on slice-value goes after
+  // when fixed order instructions go after, everything that depends on them
+  // has to go after too, otherwise it would be placed before its definition
   for (auto El : SliceScope) {
-    if (!Poisoned.count(El)) {
-      PRINT_LOG("Before minpoint: ");
-      PRINT_INST_NL(El);
-      IGCLLVM::moveBefore(El, MinPoint);
-    } else if (SliceSet.count(El))
+    if (SliceSet.count(El))
       continue;
-    else {
+    else if (GoesAfter.count(El)) {
       PRINT_LOG("After maxpoint: ");
       PRINT_INST_NL(El);
       IGCLLVM::moveBefore(El, AfterInsertPoint);
+    } else {
+      PRINT_LOG("Before minpoint: ");
+      PRINT_INST_NL(El);
+      IGCLLVM::moveBefore(El, MinPoint);
     }
   }
 
@@ -1644,9 +1712,23 @@ bool IGCVectorizerCommon::checkDependencyAndTryToEliminate(VecArr &Slice, unsign
 bool IGCVectorizerCommon::basicCheck(VecArr &Slice) {
 
   Instruction *Compare = Slice[0];
+  auto *CompareCall = llvm::dyn_cast<llvm::CallBase>(Compare);
+  auto *Callee = CompareCall ? CompareCall->getCalledFunction() : nullptr;
+  // indirect function is nullptr --> we do not support them
+  if (CompareCall && !Callee) {
+    PRINT_LOG_NL("Indirect call in the slice");
+    return false;
+  }
   for (unsigned int i = 1; i < Slice.size(); ++i) {
+
     if (!Compare->isSameOperationAs(Slice[i])) {
       PRINT_LOG_NL("Not all operations in the slice are identical");
+      return false;
+    }
+    // isSameOperation doesn't check that the callee is the same,
+    // but it guarantees that both are calls
+    if (Callee && Callee != llvm::cast<llvm::CallBase>(Slice[i])->getCalledFunction()) {
+      PRINT_LOG_NL("Different callees in the slice");
       return false;
     }
     if (Compare->getParent() != Slice[i]->getParent()) {

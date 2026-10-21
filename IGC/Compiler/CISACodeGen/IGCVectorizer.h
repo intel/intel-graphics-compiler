@@ -110,7 +110,7 @@ private:
   bool handleStub(VecArr &Slice);
   bool handlePHI(VecArr &Slice);
   bool checkInsertElement(Instruction *First, VecArr &Slice);
-  bool handleInsertElement(VecArr &Slice, InsertElementInst *Final);
+  bool handleInsertElement(VecArr &Slice);
   bool checkNaiveSwizzle(VecArr &Slice);
   bool checkExtractElement(VecArr &Slice);
   bool handleExtractElement(VecArr &Slice);

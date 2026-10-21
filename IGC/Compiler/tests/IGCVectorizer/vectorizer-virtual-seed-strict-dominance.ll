@@ -22,15 +22,15 @@
 ; CHECK-NEXT:  %u5 = extractelement <8 x float> %use, i64 5
 ; CHECK-NEXT:  %u6 = extractelement <8 x float> %use, i64 6
 ; CHECK-NEXT:  %u7 = extractelement <8 x float> %use, i64 7
-; CHECK-NEXT:  %vector31 = insertelement <8 x float> undef, float %u0, i32 0
-; CHECK-NEXT:  %vector32 = insertelement <8 x float> %vector31, float %u1, i32 1
-; CHECK-NEXT:  %vector33 = insertelement <8 x float> %vector32, float %u2, i32 2
-; CHECK-NEXT:  %vector34 = insertelement <8 x float> %vector33, float %u3, i32 3
-; CHECK-NEXT:  %vector35 = insertelement <8 x float> %vector34, float %u4, i32 4
-; CHECK-NEXT:  %vector36 = insertelement <8 x float> %vector35, float %u5, i32 5
-; CHECK-NEXT:  %vector37 = insertelement <8 x float> %vector36, float %u6, i32 6
-; CHECK-NEXT:  %vector38 = insertelement <8 x float> %vector37, float %u7, i32 7
-; CHECK-NEXT:  %vectorized_binary = fadd <8 x float> %src, %vector38
+; CHECK-NEXT:  [[V0:%vector[0-9]*]] = insertelement <8 x float> undef, float %u0, i32 0
+; CHECK-NEXT:  [[V1:%vector[0-9]*]] = insertelement <8 x float> [[V0]], float %u1, i32 1
+; CHECK-NEXT:  [[V2:%vector[0-9]*]] = insertelement <8 x float> [[V1]], float %u2, i32 2
+; CHECK-NEXT:  [[V3:%vector[0-9]*]] = insertelement <8 x float> [[V2]], float %u3, i32 3
+; CHECK-NEXT:  [[V4:%vector[0-9]*]] = insertelement <8 x float> [[V3]], float %u4, i32 4
+; CHECK-NEXT:  [[V5:%vector[0-9]*]] = insertelement <8 x float> [[V4]], float %u5, i32 5
+; CHECK-NEXT:  [[V6:%vector[0-9]*]] = insertelement <8 x float> [[V5]], float %u6, i32 6
+; CHECK-NEXT:  [[V7:%vector[0-9]*]] = insertelement <8 x float> [[V6]], float %u7, i32 7
+; CHECK-NEXT:  %vectorized_binary = fadd <8 x float> %src, [[V7]]
 ; CHECK-NEXT:  %vectorized_cast = bitcast <8 x float> %src to <8 x i32>
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
