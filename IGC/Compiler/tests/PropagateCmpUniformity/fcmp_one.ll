@@ -15,8 +15,8 @@
 
 ; ============================================================================
 ; Test: fcmp one (float ordered not-equal)
-; For ONE the pass maps trueBranch = successor(1). Replacement in eq_branch
-; (where one is false, i.e. equality holds), not in ne_branch.
+; one is also false when either operand is NaN, so equality does not hold on
+; the false edge and %ftid must not be replaced with %fK in eq_branch.
 ; ============================================================================
 ; CHECK-LABEL: @test_fcmp_one(
 define spir_kernel void @test_fcmp_one(float %fK, ptr addrspace(1) %out) {
@@ -35,7 +35,7 @@ ne_branch:
 
 eq_branch:
 ; CHECK-LABEL: eq_branch:
-; CHECK: %result2 = fadd float %fK, 1.000000e+00
+; CHECK: %result2 = fadd float %ftid, 1.000000e+00
   %result2 = fadd float %ftid, 1.000000e+00
   store float %result2, ptr addrspace(1) %out, align 4
   br label %exit

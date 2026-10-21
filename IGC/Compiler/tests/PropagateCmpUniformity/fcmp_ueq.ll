@@ -15,7 +15,8 @@
 
 ; ============================================================================
 ; Test: fcmp ueq (float unordered equality)
-; Same structure as oeq but with unordered semantics; trueBranch = successor 0.
+; ueq is also true when either operand is NaN, so equality does not hold on
+; the true edge and %ftid must not be replaced with %fK.
 ; ============================================================================
 ; CHECK-LABEL: @test_fcmp_ueq(
 define spir_kernel void @test_fcmp_ueq(float %fK, ptr addrspace(1) %out) {
@@ -27,7 +28,7 @@ entry:
 
 equal:
 ; CHECK-LABEL: equal:
-; CHECK: %result = fadd float %fK, 1.000000e+00
+; CHECK: %result = fadd float %ftid, 1.000000e+00
   %result = fadd float %ftid, 1.000000e+00
   store float %result, ptr addrspace(1) %out, align 4
   br label %exit

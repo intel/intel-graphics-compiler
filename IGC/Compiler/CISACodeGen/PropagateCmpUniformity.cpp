@@ -100,12 +100,12 @@ bool PropagateCmpUniformity::getEqualityBranches(CmpInst *cmp, IGCLLVM::CondBrIn
       if (cfp->isZero())
         return false;
     auto pred = fcmp->getPredicate();
-    if (pred == FCmpInst::FCMP_OEQ || pred == FCmpInst::FCMP_UEQ) {
+    if (pred == FCmpInst::FCMP_OEQ) {
       trueBranch = br->getSuccessor(0);
       falseBranch = br->getSuccessor(1);
       return true;
     }
-    if (pred == FCmpInst::FCMP_ONE || pred == FCmpInst::FCMP_UNE) {
+    if (pred == FCmpInst::FCMP_UNE) {
       trueBranch = br->getSuccessor(1);
       falseBranch = br->getSuccessor(0);
       return true;
