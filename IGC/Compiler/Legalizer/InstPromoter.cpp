@@ -373,38 +373,33 @@ bool InstPromoter::visitTruncInst(TruncInst &I) {
   return true;
 }
 
-bool InstPromoter::visitSExtInst(SExtInst &I) {
-  auto *ExtendedValue = I.getOperand(0);
-  // Check if SExt operand was legalized before
-  if (Value *LegalizedSingleValue = getSinglePromotedValueIfExist(ExtendedValue)) {
-    if (LegalizedSingleValue->getType() == I.getDestTy()) {
-      Promoted = LegalizedSingleValue;
+bool InstPromoter::visitSExtInst(SExtInst &I) { return promoteIntExt(I); }
 
-      // Extend the legalized value
-      unsigned shiftAmt = I.getDestTy()->getIntegerBitWidth() - I.getSrcTy()->getIntegerBitWidth();
-      Promoted = IRB->CreateShl(Promoted, shiftAmt);
-      Promoted = IRB->CreateAShr(Promoted, shiftAmt);
-      return true;
-    }
-  }
-  return false;
-}
+bool InstPromoter::visitZExtInst(ZExtInst &I) { return promoteIntExt(I); }
 
-bool InstPromoter::visitZExtInst(ZExtInst &I) {
+bool InstPromoter::promoteIntExt(CastInst &I) {
+  IGC_ASSERT(isa<SExtInst>(I) || isa<ZExtInst>(I));
+  const bool IsSigned = isa<SExtInst>(I);
+  // Bits above the source width of a promoted value are undefined, extend from
+  // the original source width.
+  auto ExtendFromSrc = [&](Value *V) { return IsSigned ? TL->sext(V, I.getSrcTy()) : TL->zext(V, I.getSrcTy()); };
+
   Value *Val = I.getOperand(0);
-  // Check if ZExt operand was legalized before
+  // Check if the operand was legalized before
   if (Value *LegalizedSingleValue = getSinglePromotedValueIfExist(Val)) {
     if (LegalizedSingleValue->getType() == I.getDestTy()) {
-      // Bits above the source width of a promoted value are undefined, clear them.
-      Promoted = TL->zext(LegalizedSingleValue, I.getSrcTy());
+      Promoted = ExtendFromSrc(LegalizedSingleValue);
       return true;
     }
   }
 
-  auto [ValSeq, ValAct] = TL->getLegalizedValues(I.getOperand(0));
+  auto [ValSeq, ValAct] = TL->getLegalizedValues(Val, IsSigned);
 
-  if (ValAct != Legal)
+  if (ValAct != Legal) {
+    if (!ValSeq || ValSeq->empty())
+      return false;
     Val = ValSeq->front();
+  }
 
   auto [TySeq, Act] = TL->getLegalizedTypes(I.getDestTy());
   IGC_ASSERT(Act == Legal || Act == Promote);
@@ -415,7 +410,7 @@ bool InstPromoter::visitZExtInst(ZExtInst &I) {
     IRB->SetInsertPoint(&I);
 
     if (ValAct != Legal)
-      Val = TL->zext(Val, I.getSrcTy());
+      Val = ExtendFromSrc(Val);
 
     if (Val->getType() == I.getType())
       I.replaceAllUsesWith(Val);
@@ -432,9 +427,10 @@ bool InstPromoter::visitZExtInst(ZExtInst &I) {
   IGC_ASSERT(cast<IntegerType>(PromotedTy)->getBitWidth() >= cast<IntegerType>(Val->getType())->getBitWidth());
 
   if (ValAct != Legal)
-    Val = TL->zext(Val, I.getSrcTy());
+    Val = ExtendFromSrc(Val);
 
-  Promoted = IRB->CreateZExt(Val, PromotedTy, Twine(I.getName(), getSuffix()));
+  Promoted = IsSigned ? IRB->CreateSExt(Val, PromotedTy, Twine(I.getName(), getSuffix()))
+                      : IRB->CreateZExt(Val, PromotedTy, Twine(I.getName(), getSuffix()));
 
   return true;
 }

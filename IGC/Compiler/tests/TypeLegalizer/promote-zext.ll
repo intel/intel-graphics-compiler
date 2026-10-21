@@ -87,3 +87,21 @@ define i16 @test_add_i3_to_i16(i8 %x, i8 %y) {
   %z = zext i3 %s to i16
   ret i16 %z
 }
+
+; zext of an illegal value that is deliberately left unpromoted (GenISA
+; intrinsic result) must be left untouched.
+define void @test_zext_of_unpromoted_intrinsic() {
+; CHECK-LABEL: define void @test_zext_of_unpromoted_intrinsic(
+; CHECK:         [[V:%.*]] = call i4 @llvm.genx.GenISA.WaveShuffleIndex.i4(i4 3, i32 11, i32 13)
+; CHECK:         [[Z:%.*]] = zext i4 [[V]] to i8
+; CHECK:         call void @use.i8(i8 [[Z]])
+; CHECK:         ret void
+;
+  %v = call i4 @llvm.genx.GenISA.WaveShuffleIndex.i4(i4 3, i32 11, i32 13)
+  %z = zext i4 %v to i8
+  call void @use.i8(i8 %z)
+  ret void
+}
+
+declare i4 @llvm.genx.GenISA.WaveShuffleIndex.i4(i4, i32, i32)
+declare void @use.i8(i8)

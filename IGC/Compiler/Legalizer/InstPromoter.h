@@ -39,6 +39,7 @@ private:
   Type *getSinglePromotedTypeIfExist(Type *OriginalType);
   std::pair<Value *, Type *> preparePromotedIntrinsicInst(IntrinsicInst &I,
                                                           std::optional<Instruction::CastOps> ArgExt = std::nullopt);
+  bool promoteIntExt(CastInst &I);
 
 private:
   // By default, capture all missing instructions!
