@@ -139,16 +139,19 @@ static DepType DoMemoryInterfereScratchSend(G4_INST *send1, G4_INST *send2,
     if ((depT == RET_WAR && send1IsRead && !send2IsRead) ||
         (depT == RET_WAW && !send1IsRead && !send2IsRead) ||
         (depT == RET_RAW && !send1IsRead && send2IsRead)) {
-      // scratch guaranteed to return valid linear ImmOff
-      uint32_t leftOff1 = (uint32_t)send1->getMsgDesc()->getOffset()->immOff;
-      uint32_t leftOff2 = (uint32_t)send2->getMsgDesc()->getOffset()->immOff;
+      // scratch guaranteed to return valid linear ImmOff. The offset is
+      // signed (spill/fill address relative to a base that can sit past the
+      // slots), so compare in signed 64-bit: as uint32_t a negative range
+      // wraps and two overlapping accesses look disjoint.
+      int64_t leftOff1 = send1->getMsgDesc()->getOffset()->immOff;
+      int64_t leftOff2 = send2->getMsgDesc()->getOffset()->immOff;
       auto bytesAccessed = [](const G4_INST *send) {
         return send->getMsgDesc()->isRead()
                    ? (uint16_t)send->getMsgDesc()->getDstLenBytes()
                    : (uint16_t)send->getMsgDesc()->getSrc1LenBytes();
       };
-      uint32_t rightOff1 = leftOff1 + bytesAccessed(send1) - 1;
-      uint32_t rightOff2 = leftOff2 + bytesAccessed(send2) - 1;
+      int64_t rightOff1 = leftOff1 + bytesAccessed(send1) - 1;
+      int64_t rightOff2 = leftOff2 + bytesAccessed(send2) - 1;
       if (leftOff1 > rightOff2 || leftOff2 > rightOff1) {
         return NODEP;
       }
