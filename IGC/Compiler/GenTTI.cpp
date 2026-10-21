@@ -547,10 +547,13 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
                                                  ctx->getModuleMetaData()->compOpt.EnableSamplerLoopSpeculation;
       const bool ForceSamplerLoopUnroll =
           SamplerLoopSpeculationEnabled && SamplerCount == 1 && !HasDisallowedSamplerLoopSideEffect;
+      const bool AllowLoad = IGC_IS_FLAG_ENABLED(AdvRuntimeUnrollAllowLoadInCFG) || MayHasLoadInHeaderOnly;
+      unsigned AdvRuntimeUnrollThreshold =
+          IGC_IS_FLAG_SET(AdvRuntimeUnrollThreshold) ? IGC_GET_FLAG_VALUE(AdvRuntimeUnrollThreshold) : 100;
 
       // Runtime unroll it.
-      if (((!HasCall && !HasStore && MayHasLoadInHeaderOnly) || ForceSamplerLoopUnroll) && Count < 100) {
-        unsigned C = IGC_GET_FLAG_VALUE(AdvRuntimeUnrollCount);
+      if (((!HasCall && !HasStore && AllowLoad) || ForceSamplerLoopUnroll) && Count < AdvRuntimeUnrollThreshold) {
+        unsigned C = IGC_IS_FLAG_SET(AdvRuntimeUnrollCount) ? IGC_GET_FLAG_VALUE(AdvRuntimeUnrollCount) : 4;
         if (C == 0)
           C = 4;
         UP.Runtime = true;
@@ -631,8 +634,11 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   }
 
   unsigned int estimateUnrolledInstCount = (instCount + sendMessage * 4) * TripCount;
+  const unsigned int smallLoopsThreshold = IGC_IS_FLAG_SET(SetLoopUnrollThresholdForSmallLoops)
+                                               ? IGC_GET_FLAG_VALUE(SetLoopUnrollThresholdForSmallLoops)
+                                               : 0;
   unsigned int unrollLimitInstCount =
-      LoopUnrollThreshold > totalInstCountInShader ? LoopUnrollThreshold - totalInstCountInShader : 0;
+      LoopUnrollThreshold > totalInstCountInShader ? LoopUnrollThreshold - totalInstCountInShader : smallLoopsThreshold;
   bool limitUnrolling = (estimateUnrolledInstCount > unrollLimitInstCount) || (TripCount > unrollLimitInstCount) ||
                         (instCount + sendMessage * 4 > unrollLimitInstCount);
 
@@ -668,7 +674,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
 
   if (!limitUnrolling) {
     UP.Runtime = true;
-    UP.MaxCount = 4;
+    UP.MaxCount = IGC_IS_FLAG_SET(RuntimeLoopUnrollingCount) ? IGC_GET_FLAG_VALUE(RuntimeLoopUnrollingCount) : 4;
     // The following is only available and required from LLVM 3.7+.
     UP.AllowExpensiveTripCount = true;
   }

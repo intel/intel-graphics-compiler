@@ -574,6 +574,7 @@ DECLARE_IGC_REGKEY(bool, DisableLoopUnroll, false,
 DECLARE_IGC_REGKEY(DWORD, RuntimeLoopUnrolling, 0,
                    "Setting this to switch on/off runtime loop unrolling. 0: default (on), 1: force on, 2: force off",
                    DEBUG_ONLY)
+DECLARE_IGC_REGKEY(DWORD, RuntimeLoopUnrollingCount, 0, "Runtime loop unrolling count", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableIndVarSimplification, true, "Enables IndVarSimplification pass.", ALWAYS)
 DECLARE_IGC_REGKEY(bool, DisableBranchSwaping, false,
                    "Setting this to 1/true adds a compiler switch to disable branch swapping.", DEBUG_ONLY)
@@ -608,6 +609,8 @@ DECLARE_IGC_REGKEY(DWORD, SetLoopUnrollMaxPercentThresholdBoostForHighRegPressur
                    "Set the loop unroll max allowed threshold boost in percentage for shaders with high reg pressure. "
                    "The LLVM internal value is 400.",
                    DEBUG_ONLY)
+DECLARE_IGC_REGKEY(DWORD, SetLoopUnrollThresholdForSmallLoops, 0,
+                   "Set loop-size-based unroll threshold in case shader-size-based threshold is reached.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY_ENUM(
     ForcePromoteLoopUnrollwithAlloca, -1,
     "Loop cost estimation assumes Load/Store who accesses Alloca with index deductible to loop count having 0 cost. "
@@ -1450,7 +1453,10 @@ DECLARE_IGC_REGKEY(bool, DisablePromoteToDirectAS, false, "This key disables the
 DECLARE_IGC_REGKEY(bool, EnableAdvCodeMotion, true, "Enable advanced code motion", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, AdvCodeMotionControl, true, "Control bits to fine-tune advanced code motion", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableAdvRuntimeUnroll, true, "Enable advanced runtime unroll", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(DWORD, AdvRuntimeUnrollThreshold, 100, "Advanced runtime unroll threshold", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, AdvRuntimeUnrollCount, 0, "Advanced runtime unroll count", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, AdvRuntimeUnrollAllowLoadInCFG, false, "Allow loads in CFG for advanced runtime unroll",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableAdvMemOpt, true, "Enable advanced memory optimization", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, UniformMemOpt4OW, false, "increase uniform memory optimization from 2 owords to 4 owords",
                    ALWAYS)
