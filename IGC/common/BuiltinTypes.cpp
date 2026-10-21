@@ -381,7 +381,8 @@ void retypeOpenCLTargetExtTyAsPointers(Module *M) {
     std::string OldName = OldF->getName().str();
 
     // Create new function with same linkage & addr space (temporary unique name).
-    Function *NewF = Function::Create(Change.NewFuncTy, OldF->getLinkage(), OldF->getAddressSpace(), OldName, M);
+    Function *NewF = Function::Create(Change.NewFuncTy, OldF->getLinkage(), OldF->getAddressSpace(), OldName);
+    M->getFunctionList().insert(OldF->getIterator(), NewF);
 
     // Set remapped attributes.
     NewF->setAttributes(Change.NewAttrs);
