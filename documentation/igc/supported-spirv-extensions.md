@@ -228,8 +228,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Capabilities**:
 
-- **Float4TypeINTEL**
-- **Float4CooperativeMatrixINTEL**
+- **Float4E2M1CooperativeMatrixINTEL**
 
 ---
 
