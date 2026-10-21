@@ -2398,7 +2398,8 @@ private:
       }
 
       if (G.MaskSelects) {
-        PrintDump("Masks: " << G.MaskSelects->size() << ", open mask limit: " << getOpenMaskLimit() << "\n");
+        PrintDump("Masks: " << G.MaskSelects->size() << ", open mask limit: " << getOpenMaskLimit(true)
+                            << ", below high register pressure: " << getOpenMaskLimit(false) << "\n");
       }
 
       IGC_ASSERT(this->VSA->getDestVector(BB->getTerminator()) == nullptr);
@@ -2663,13 +2664,20 @@ private:
     DenseSet<Instruction *> OpenMasks;
 
     // LimitOpenMasks: number of open masks from which the instructions that
-    // complete their users come first. 0 is no limit.
-    int getOpenMaskLimit() const {
+    // complete their users come first. 0 is no limit. Every open mask holds a
+    // flag register, and vISA overlaps the compare chains of the other masks
+    // only on the free ones. Completing a mask early moves its select up,
+    // which raises the register pressure, so the tighter LimitOpenMasksAtLowRP
+    // applies only while the pressure is not high.
+    int getOpenMaskLimit(bool RegpressureHigh) const {
       if (!C[Option::LimitOpenMasks])
         return 0;
       // A SIMD32 mask takes two 16-bit flag registers.
       int MaskFlags = static_cast<int>(CTX->platform.getNumFlagRegisters()) / (RT.getSIMD() == 32 ? 2 : 1);
-      return std::max(1, MaskFlags - C[Option::LimitOpenMasksFreeFlags]);
+      int Limit = std::max(1, MaskFlags - C[Option::LimitOpenMasksFreeFlags]);
+      if (!RegpressureHigh && C[Option::LimitOpenMasksAtLowRP] > 0)
+        Limit = std::min(Limit, C[Option::LimitOpenMasksAtLowRP]);
+      return Limit;
     }
 
     // An instruction of this block that is not placed yet. PHIs are not
@@ -3189,7 +3197,7 @@ private:
       // MaxWeight computes the masks of a block level by level: the deepest
       // compare of every mask first, then the next level. A mask whose user
       // waits for a sibling holds a flag register meanwhile. When
-      // getOpenMaskLimit() masks are open, keep the ready instructions that the
+      // getOpenMaskLimit masks are open, keep the ready instructions that the
       // users of the open masks wait for, so that these masks close before
       // others open.
       auto closeOpenMasks = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
@@ -3676,7 +3684,7 @@ private:
         if (G.MaskSelects && C[Option::DeferMasksUntilSelectReady]) {
           FilteredReadyList = deferMasksUntilSelectReady(FilteredReadyList);
         }
-        int OpenMaskLimit = getOpenMaskLimit();
+        int OpenMaskLimit = getOpenMaskLimit(RT.isRegpressureHigh());
         if (OpenMaskLimit > 0 && static_cast<int>(OpenMasks.size()) >= OpenMaskLimit) {
           FilteredReadyList = closeOpenMasks(FilteredReadyList);
         }

@@ -14,22 +14,32 @@
 ; operand of an and/or of i1 when the other operand has one use). Check that
 ; CodeScheduling
 ; - computes a mask only once one of its selects has its value operands
-;   scheduled (DeferMasksUntilSelectReady), and
+;   scheduled (DeferMasksUntilSelectReady),
 ; - keeps the number of open masks within the flag registers of the dispatch
 ;   width minus two (LimitOpenMasks): 6 for SIMD16 with 8 flag registers (PVC),
-;   2 for SIMD32 with 8 and for SIMD16 with 4 flag registers (DG2).
+;   2 for SIMD32 with 8 and for SIMD16 with 4 flag registers (DG2), and
+; - keeps at most one mask open while the register pressure is not high
+;   (LimitOpenMasksAtLowRP). CodeSchedulingRPMargin=100 makes the pressure of
+;   these small kernels high, so the flag register limit applies.
 
 ; RUN: igc_opt --opaque-pointers -platformpvc --regkey ForceOCLSIMDWidth=16 --regkey DisableCodeScheduling=0 \
 ; RUN:         --regkey CodeSchedulingForceMWOnly=1 --regkey EnableCodeSchedulingIfNoSpills=1 \
 ; RUN:         --regkey CodeSchedulingRPThreshold=-512 --igc-code-scheduling --verify -S %s \
+; RUN:   | FileCheck %s --check-prefixes=CHECK,LIMIT1
+; RUN: igc_opt --opaque-pointers -platformpvc --regkey ForceOCLSIMDWidth=16 --regkey DisableCodeScheduling=0 \
+; RUN:         --regkey CodeSchedulingForceMWOnly=1 --regkey EnableCodeSchedulingIfNoSpills=1 \
+; RUN:         --regkey CodeSchedulingRPThreshold=-512 --regkey CodeSchedulingRPMargin=100 \
+; RUN:         --igc-code-scheduling --verify -S %s \
 ; RUN:   | FileCheck %s --check-prefixes=CHECK,LIMIT6
 ; RUN: igc_opt --opaque-pointers -platformpvc --regkey ForceOCLSIMDWidth=32 --regkey DisableCodeScheduling=0 \
 ; RUN:         --regkey CodeSchedulingForceMWOnly=1 --regkey EnableCodeSchedulingIfNoSpills=1 \
-; RUN:         --regkey CodeSchedulingRPThreshold=-512 --igc-code-scheduling --verify -S %s \
+; RUN:         --regkey CodeSchedulingRPThreshold=-512 --regkey CodeSchedulingRPMargin=100 \
+; RUN:         --igc-code-scheduling --verify -S %s \
 ; RUN:   | FileCheck %s --check-prefixes=CHECK,LIMIT2
 ; RUN: igc_opt --opaque-pointers -platformdg2 --regkey ForceOCLSIMDWidth=16 --regkey DisableCodeScheduling=0 \
 ; RUN:         --regkey CodeSchedulingForceMWOnly=1 --regkey EnableCodeSchedulingIfNoSpills=1 \
-; RUN:         --regkey CodeSchedulingRPThreshold=-512 --igc-code-scheduling --verify -S %s \
+; RUN:         --regkey CodeSchedulingRPThreshold=-512 --regkey CodeSchedulingRPMargin=100 \
+; RUN:         --igc-code-scheduling --verify -S %s \
 ; RUN:   | FileCheck %s --check-prefixes=CHECK,LIMIT2
 ; RUN: igc_opt --opaque-pointers -platformpvc --regkey ForceOCLSIMDWidth=16 --regkey DisableCodeScheduling=0 \
 ; RUN:         --regkey CodeSchedulingForceMWOnly=1 --regkey EnableCodeSchedulingIfNoSpills=1 \
@@ -43,20 +53,28 @@
 ; RUN:   | FileCheck %s --check-prefix=DUMP4FLAGS
 
 ; DUMP16-LABEL: Function open_mask_limit
-; DUMP16:       Masks: 24, open mask limit: 6
+; DUMP16:       Masks: 24, open mask limit: 6, below high register pressure: 1
 ; DUMP16-LABEL: Function shared_masks
-; DUMP16:       Masks: 28, open mask limit: 6
+; DUMP16:       Masks: 28, open mask limit: 6, below high register pressure: 1
 ; DUMP4FLAGS-LABEL: Function open_mask_limit
-; DUMP4FLAGS:       Masks: 24, open mask limit: 2
+; DUMP4FLAGS:       Masks: 24, open mask limit: 2, below high register pressure: 1
 
 ; Eight selects choose between lanes of one DPAS result. In each mask
 ; %m = and %c, %e, MatchBoolOp folds %c, so %e holds a flag register until %m.
 ; All %e have the same MaxWeight, so without the limit MaxWeight computes all
 ; eight of them before the first %m. With the limit, the open masks close
-; (%m0, %s0) before the next one opens.
+; (%m0, %s0) before the next one opens. Below high register pressure, every
+; mask closes before the next one opens.
 
 define spir_kernel void @open_mask_limit(ptr addrspace(1) %out, <8 x i16> %a, <8 x i32> %b, i32 %q, <8 x i32> %k) {
 ; CHECK-LABEL: @open_mask_limit(
+; LIMIT1:      %e0 = icmp ne i32 %k0, 0
+; LIMIT1-NOT:  %e1 = icmp
+; LIMIT1:      %s0 = select i1 %m0
+; LIMIT1:      %e1 = icmp ne i32 %k1, 0
+; LIMIT1-NOT:  %e2 = icmp
+; LIMIT1:      %s1 = select i1 %m1
+; LIMIT1:      %e2 = icmp ne i32 %k2, 0
 ; LIMIT6:      %e5 = icmp ne i32 %k5, 0
 ; LIMIT6-NOT:  %e6 = icmp
 ; LIMIT6:      %s0 = select i1 %m0

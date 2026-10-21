@@ -134,6 +134,10 @@ DECLARE_SCHEDULING_OPTION(LimitOpenMasks, 1,
 DECLARE_SCHEDULING_OPTION(LimitOpenMasksFreeFlags, 2,
                           "Heuristic: number of flag registers of the dispatch width left to other i1 values by "
                           "LimitOpenMasks. At least one mask is allowed")
+DECLARE_SCHEDULING_OPTION(LimitOpenMasksAtLowRP, 1,
+                          "Heuristic: while the register pressure is not high, LimitOpenMasks allows at most this "
+                          "many open masks, so that the flag registers stay free for the compares of other masks "
+                          "(0 = only LimitOpenMasksFreeFlags applies)")
 DECLARE_SCHEDULING_OPTION(PairDPASForFwd, 1,
                           "Heuristic: on platforms with DPAS forwarding, schedule the 1st, 3rd, ... DPAS of an "
                           "accumulation chain directly before the next DPAS of the chain (0/1)")
