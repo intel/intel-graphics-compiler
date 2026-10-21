@@ -3072,45 +3072,60 @@ DEFN_UNIFORM_GROUP_FUNC(LogicalXorKHR, bool, Int, i1, __intel_xor, 0)
 }
 
 // ClusterSize is an optional parameter
-#define DEFN_NON_UNIFORM_GROUP_FUNC_BASE(func, type, type_gen, type_abbr, op, identity, signed_cast)                                 \
-type  __attribute__((overloadable)) __spirv_GroupNonUniform##func(int Execution, int Operation, type X, uint ClusterSize) \
-{                                                                                                                                    \
-    if (Execution == Subgroup)                                                                                                       \
-    {                                                                                                                                \
-        if (sizeof(X) < 8 || BIF_FLAG_CTRL_N(UseNative64Bit##type_gen##Builtin))                                                        \
-        {                                                                                                                            \
-            if (Operation == GroupOperationReduce)                                                                                   \
-            {                                                                                                                        \
-                return __builtin_IB_sub_group_reduce_##func##_##type_abbr(X);                                                        \
-            }                                                                                                                        \
-            else if (Operation == GroupOperationInclusiveScan)                                                                       \
-            {                                                                                                                        \
-                return op(X, __builtin_IB_sub_group_scan_##func##_##type_abbr(X));                                                   \
-            }                                                                                                                        \
-            else if (Operation == GroupOperationExclusiveScan)                                                                       \
-            {                                                                                                                        \
-                return __builtin_IB_sub_group_scan_##func##_##type_abbr(X);                                                          \
-            }                                                                                                                        \
-            else if (Operation == GroupOperationClusteredReduce)                                                                     \
-            {                                                                                                                        \
-                return __builtin_IB_sub_group_clustered_reduce_##func##_##type_abbr(X, ClusterSize);                                 \
-            }                                                                                                                        \
-        }                                                                                                                            \
-        else {                                                                                                                       \
-            SUB_GROUP_SWITCH_NON_UNIFORM(type, type_abbr, op, identity, X, Operation, ClusterSize, signed_cast)                      \
-            return X;                                                                                                                \
-        }                                                                                                                            \
-        return 0;                                                                                                                    \
-    }                                                                                                                                \
-    else                                                                                                                             \
-    {                                                                                                                                \
-        return 0;                                                                                                                    \
-    }                                                                                                                                \
-}                                                                                                                                    \
-type  __attribute__((overloadable)) __spirv_GroupNonUniform##func(int Execution, int Operation, type X)          \
-{                                                                                                                                    \
-    return __spirv_GroupNonUniform##func(Execution, Operation, X, 0);                           \
-}
+#define DEFN_NON_UNIFORM_GROUP_FUNC_BASE(                                                \
+    func, type, type_gen, type_abbr, op, identity, signed_cast)                          \
+    type __attribute__((overloadable)) __spirv_GroupNonUniform##func(                    \
+        int Execution, int Operation, type X, uint ClusterSize)                          \
+    {                                                                                    \
+        if (Execution == Subgroup)                                                       \
+        {                                                                                \
+            if (Operation == GroupOperationClusteredReduce && ClusterSize == 1)          \
+                return X;                                                                \
+            if (sizeof(X) < 8 || BIF_FLAG_CTRL_N(UseNative64Bit##type_gen##Builtin))     \
+            {                                                                            \
+                if (Operation == GroupOperationReduce)                                   \
+                {                                                                        \
+                    return __builtin_IB_sub_group_reduce_##func##_##type_abbr(X);        \
+                }                                                                        \
+                else if (Operation == GroupOperationInclusiveScan)                       \
+                {                                                                        \
+                    return op(X, __builtin_IB_sub_group_scan_##func##_##type_abbr(X));   \
+                }                                                                        \
+                else if (Operation == GroupOperationExclusiveScan)                       \
+                {                                                                        \
+                    return __builtin_IB_sub_group_scan_##func##_##type_abbr(X);          \
+                }                                                                        \
+                else if (Operation == GroupOperationClusteredReduce)                     \
+                {                                                                        \
+                    return __builtin_IB_sub_group_clustered_reduce_##func##_##type_abbr( \
+                        X, ClusterSize);                                                 \
+                }                                                                        \
+            }                                                                            \
+            else                                                                         \
+            {                                                                            \
+                SUB_GROUP_SWITCH_NON_UNIFORM(                                            \
+                    type,                                                                \
+                    type_abbr,                                                           \
+                    op,                                                                  \
+                    identity,                                                            \
+                    X,                                                                   \
+                    Operation,                                                           \
+                    ClusterSize,                                                         \
+                    signed_cast)                                                         \
+                return X;                                                                \
+            }                                                                            \
+            return 0;                                                                    \
+        }                                                                                \
+        else                                                                             \
+        {                                                                                \
+            return 0;                                                                    \
+        }                                                                                \
+    }                                                                                    \
+    type __attribute__((overloadable)) __spirv_GroupNonUniform##func(                    \
+        int Execution, int Operation, type X)                                            \
+    {                                                                                    \
+        return __spirv_GroupNonUniform##func(Execution, Operation, X, 0);                \
+    }
 
 #define DEFN_NON_UNIFORM_GROUP_FUNC(func, type, type_gen, type_abbr, op, identity) \
 DEFN_NON_UNIFORM_GROUP_FUNC_BASE(func, type, type_gen, type_abbr, op, identity, )
