@@ -35,12 +35,15 @@ SPDX-License-Identifier: MIT
 #include <optional>
 #include <algorithm>
 #include <chrono>
+#include <climits>
 #include <fstream>
 #include <iomanip>
 #include <map>
 #include <random>
 #include <sstream>
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 using namespace vISA;
@@ -780,6 +783,8 @@ void Optimizer::initOptimizations() {
   OPT_INITIALIZE_PASS(fixSamplerCacheBit, vISA_EnableAlways,
                       TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(localSchedule, vISA_LocalScheduling, TimerID::SCHEDULING);
+  OPT_INITIALIZE_PASS(markLastFillsInProgramOrder, vISA_EnableAlways,
+                      TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(HWWorkaround, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(fixEndIfWhileLabels, vISA_EnableAlways,
                       TimerID::NUM_TIMERS);
@@ -1152,6 +1157,9 @@ int Optimizer::optimization() {
   if (!builder.getIsPayload()) {
     runPass(PI_localSchedule);
   }
+
+  // Fill cache control depends on the final order of the fills.
+  runPass(PI_markLastFillsInProgramOrder);
 
   if (!builder.enableACCBeforRA() && !builder.enablePreSchedACC()) {
     runPass(PI_expandMulPostSchedule);
@@ -1631,6 +1639,200 @@ void Optimizer::fixSamplerCacheBit() {
     }
   }
 }
+// Returns true if fills may load with invalidate-after-read cache control.
+bool Optimizer::canMarkSpillFillIAR() const {
+  if (!builder.getOption(vISA_enableSpillFillIAR))
+    return false;
+  // IAR needs {RI,RI} cache control on L1 and L3, and a GRF row must be one
+  // 64-byte cache line. Both hold from Xe2.
+  if (builder.getPlatform() < Xe2)
+    return false;
+  // An explicit fill cache control takes precedence.
+  if (builder.getuint32Option(vISA_lscSpillLoadCCOverride) != LSC_L1DEF_L3DEF)
+    return false;
+  // Stack-call frames are addressed off FP, and -debug keeps the code
+  // unoptimized.
+  return !fg.getHasStackCalls() && !fg.getIsStackCallFunc() &&
+         !builder.getOption(vISA_Debug);
+}
+
+// Loads the last fill of each scratch row with invalidate-after-read cache
+// control, so dead spill data does not stay in the cache.
+//
+// A fill is the last read of a row when no later fill in layout order reads
+// it, and no path leads from the fill's block back to that block or an
+// earlier one: blocks run in layout order except for backward branches, and a
+// goto or join that jumps to its JIP only skips forward. Spills are not
+// considered, so a row is only marked at its last fill in the kernel.
+//
+// This runs after scheduling, which may reorder fills of the same row.
+//
+// IAR works on whole cache lines. From Xe2 a GRF row is one 64-byte cache line,
+// and the spill area starts at a GRF boundary, so invalidating a row never
+// drops other data.
+void Optimizer::markLastFillsInProgramOrder() {
+  if (!canMarkSpillFillIAR())
+    return;
+
+  std::unordered_map<const G4_Label *, G4_BB *> labelToBB;
+  [[maybe_unused]] unsigned layoutIdx = 0;
+  for (auto bb : fg) {
+    vISA_ASSERT(bb->getId() == layoutIdx++,
+                "block ids must follow the layout order");
+    for (auto inst : *bb) {
+      if (!inst->isLabel())
+        break;
+      labelToBB[inst->getLabel()] = bb;
+    }
+  }
+  const unsigned numBBs = fg.size();
+
+  // Successors: CFG succs edges plus the JIP of each SIMD control-flow
+  // instruction.
+  std::vector<std::vector<G4_BB *>> succs(numBBs);
+  for (auto bb : fg) {
+    auto &s = succs[bb->getId()];
+    s.assign(bb->Succs.begin(), bb->Succs.end());
+    for (auto inst : *bb) {
+      if (!inst->isCFInst() || inst->opcode() == G4_jmpi || inst->isCall() ||
+          inst->isFCall() || inst->isReturn() || inst->isFReturn())
+        continue;
+      if (auto jip = inst->asCFInst()->getJip()) {
+        auto it = labelToBB.find(jip);
+        if (it == labelToBB.end())
+          return;
+        s.push_back(it->second);
+      }
+    }
+  }
+
+  // minReach[b]: the lowest layout index of a block reachable from b.
+  std::vector<unsigned> minReach(numBBs, UINT_MAX);
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (auto it = fg.rbegin(); it != fg.rend(); ++it) {
+      unsigned id = (*it)->getId();
+      unsigned m = minReach[id];
+      for (G4_BB *succ : succs[id])
+        m = std::min({m, succ->getId(), minReach[succ->getId()]});
+      if (m != minReach[id]) {
+        minReach[id] = m;
+        changed = true;
+      }
+    }
+  }
+
+  // The last fill of each row in layout order, and the block of that fill.
+  std::unordered_map<uint32_t, std::pair<G4_InstSend *, G4_BB *>>
+      lastLexicalFill;
+  // descUses - keep track of how many fills use this G4_SendDesc. G4_SendDesc
+  // object by design can be shared across multiple fills. We will mark IAR to a
+  // G4_SendDesc if there is only one fill using it.
+  std::unordered_map<const G4_SendDesc *, unsigned> descUses;
+
+  for (auto bb : fg) {
+    for (auto inst : *bb) {
+      if (!inst->isSend() || !inst->getMsgDesc()->isScratchRead())
+        continue;
+      auto desc = inst->getMsgDesc();
+      vISA_ASSERT(desc->hasFillRows(), "spill/fill read without its rows");
+      ++descUses[desc];
+      // keep track of the last fill seen in layout order by overwritting the
+      // previously seen ones.
+      for (uint32_t i = 0; i < desc->getFillNumRows(); ++i)
+        lastLexicalFill[desc->getFillFirstRow() + i] = {inst->asSendInst(), bb};
+    }
+  }
+
+  // The number of rows each fill reads last, counting only fills whose block
+  // cannot be reached by itself or an earlier block.
+  std::unordered_map<G4_InstSend *, uint32_t> lastReadRows;
+  for (auto &[row, last] : lastLexicalFill) {
+    auto [send, bb] = last;
+    // A block's id is its layout index, so minReach above the block's own id
+    // means no path leads from the block back to itself or an earlier block.
+    // The fill must be the last fill.
+    if (minReach[bb->getId()] > bb->getId())
+      ++lastReadRows[send];
+  }
+
+  // A fill can be marked IAR only if it is the last read of every row it reads.
+  std::vector<G4_InstSend *> iarFills;
+  for (auto &[send, rows] : lastReadRows) {
+    auto desc = send->getMsgDesc();
+    if (rows != desc->getFillNumRows() || descUses[desc] != 1)
+      continue;
+    // Update the caching bits in the message descriptor to IAR.
+    if (desc->isGeneralized()) {
+      static_cast<G4_SendgDesc *>(desc)->setCaching(
+          {Caching::RI, Caching::RI, Caching::RI});
+    } else {
+      unsigned descOpndNum = send->isSplitSend() ? 2 : 1;
+      if (!send->getMsgDescOperand()->isImm())
+        continue;
+      auto rawDesc = send->getMsgDescRaw();
+      rawDesc->setCaching(Caching::RI, Caching::RI);
+      send->setSrc(builder.createImm(rawDesc->getDesc(), Type_UD),
+                   descOpndNum);
+    }
+    iarFills.push_back(send);
+  }
+
+  if (!iarFills.empty() && builder.getOption(vISA_GenerateDebugInfo))
+    endDebugLiveIntervalsAtIARFills(iarFills);
+}
+
+// The debugger reads a spilled variable from its scratch rows while the vISA
+// index of the current instruction is in one of the variable's live
+// intervals. A fill that invalidates a row after reading it may leave stale
+// data in memory, so the live intervals of every spilled variable on that row
+// end before the fill.
+void Optimizer::endDebugLiveIntervalsAtIARFills(
+    const std::vector<G4_InstSend *> &iarFills) {
+  std::unordered_set<const G4_INST *> isIARFill(iarFills.begin(),
+                                                iarFills.end());
+  // The smallest vISA index at or after each IAR fill. The fill's block cannot
+  // be reached by itself or an earlier block, so only the instructions after
+  // it in layout order run after it.
+  std::unordered_map<const G4_INST *, uint32_t> endAt;
+  uint32_t minVISAId = UINT_MAX;
+  for (auto bbIt = fg.rbegin(); bbIt != fg.rend(); ++bbIt) {
+    for (auto it = (*bbIt)->rbegin(); it != (*bbIt)->rend(); ++it) {
+      G4_INST *inst = *it;
+      if (inst->getVISAId() != UNMAPPABLE_VISA_INDEX)
+        minVISAId = std::min(minVISAId, (uint32_t)inst->getVISAId());
+      if (isIARFill.count(inst))
+        endAt[inst] = minVISAId;
+    }
+  }
+
+  const uint32_t spillMemOffset =
+      kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
+  const uint32_t grfSize = builder.getGRFSize();
+  auto *dbgInfo = kernel.getKernelDebugInfo();
+  for (auto dcl : kernel.Declares) {
+    // Live intervals are kept for root declares.
+    if (dcl->getAliasDeclare() || dcl->getRegFile() != G4_GRF ||
+        !dcl->isSpilled() || dcl->getRegVar()->getPhyReg())
+      continue;
+    auto *lrInfo = dbgInfo->getLiveIntervalInfo(dcl, false);
+    uint32_t disp = dcl->getRegVar()->getDisp();
+    if (!lrInfo || disp == UINT_MAX)
+      continue;
+    // The scratch rows of the variable, as debug info locates it.
+    uint32_t firstRow = (spillMemOffset + disp) / grfSize;
+    uint32_t lastRow =
+        (spillMemOffset + disp + dcl->getByteSize() - 1) / grfSize;
+    for (auto fill : iarFills) {
+      auto desc = fill->getMsgDesc();
+      if (desc->getFillFirstRow() <= lastRow &&
+          firstRow < desc->getFillFirstRow() + desc->getFillNumRows())
+        lrInfo->endBefore(endAt[fill]);
+    }
+  }
+}
+
 void Optimizer::FoldAddrImmediate() {
   AddrSubReg_Node *addrRegInfo =
       new AddrSubReg_Node[builder.getNumAddrRegisters()];

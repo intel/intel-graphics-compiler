@@ -501,6 +501,9 @@ DEF_VISA_OPTION(vISA_LastCallerSavedGRF, ET_INT32, "-lastCallerSavedGRF",
 DEF_VISA_OPTION(vISA_lscSpillLoadCCOverride, ET_INT32,
                 "-lscSpillLoadCCOverride",
                 "lsc load cache control option for spill", 0)
+DEF_VISA_OPTION(vISA_enableSpillFillIAR, ET_BOOL_TRUE, "-enableSpillFillIAR",
+                "Load the last fill of spilled data with invalidate-after-read "
+                "cache control (Xe2+)", true)
 DEF_VISA_OPTION(vISA_lscSpillStoreCCOverride, ET_INT32,
                 "-lscSpillStoreCCOverride",
                 "lsc store cache control option for spill", 0)
