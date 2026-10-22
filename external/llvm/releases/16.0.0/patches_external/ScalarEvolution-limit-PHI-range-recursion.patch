@@ -1,0 +1,427 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2026 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+/*========================== begin_copyright_notice ============================
+
+Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+See https://llvm.org/LICENSE.txt for license information.
+SPDX-License-Identifier: Apache-2.0 with LLVM-exception
+
+============================= end_copyright_notice ===========================*/
+
+# Backport of LLVM commit 7bc3bb0196d593d57ce5acbecd0b3c26e15b83a5
+# [ScalarEvolution] Limit recursion in getRangeRef for PHI nodes. (#152823)
+# https://github.com/llvm/llvm-project/pull/152823
+#
+# LLVM 16 adaptation retains its LCSSA and IsAvailableOnEntry restrictions and
+# omits the newer identical-operands PHI simplification, absent from LLVM 16.
+# AddRec construction remains recursive, as in the upstream fix; PHI range
+# dependencies are prepared by createSCEVIter rather than nested range queries.
+
+diff --git a/llvm/lib/Analysis/ScalarEvolution.cpp b/llvm/lib/Analysis/ScalarEvolution.cpp
+--- a/llvm/lib/Analysis/ScalarEvolution.cpp
++++ b/llvm/lib/Analysis/ScalarEvolution.cpp
+@@ -6019,42 +6019,34 @@
+   return false;
+ }
+ 
+-const SCEV *ScalarEvolution::createNodeFromSelectLikePHI(PHINode *PN) {
++static bool getOperandsForSelectLikePHI(DominatorTree &DT, LoopInfo &LI,
++                                        PHINode *PN, Value *&Cond, Value *&LHS,
++                                        Value *&RHS) {
+   auto IsReachable =
+       [&](BasicBlock *BB) { return DT.isReachableFromEntry(BB); };
+-  if (PN->getNumIncomingValues() == 2 && all_of(PN->blocks(), IsReachable)) {
+-    const Loop *L = LI.getLoopFor(PN->getParent());
+-
+-    // We don't want to break LCSSA, even in a SCEV expression tree.
+-    for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i)
+-      if (LI.getLoopFor(PN->getIncomingBlock(i)) != L)
+-        return nullptr;
+-
+-    // Try to match
+-    //
+-    //  br %cond, label %left, label %right
+-    // left:
+-    //  br label %merge
+-    // right:
+-    //  br label %merge
+-    // merge:
+-    //  V = phi [ %x, %left ], [ %y, %right ]
+-    //
+-    // as "select %cond, %x, %y"
+-
+-    BasicBlock *IDom = DT[PN->getParent()]->getIDom()->getBlock();
+-    assert(IDom && "At least the entry block should dominate PN");
+-
+-    auto *BI = dyn_cast<BranchInst>(IDom->getTerminator());
+-    Value *Cond = nullptr, *LHS = nullptr, *RHS = nullptr;
+-
+-    if (BI && BI->isConditional() &&
+-        BrPHIToSelect(DT, BI, PN, Cond, LHS, RHS) &&
+-        IsAvailableOnEntry(L, DT, getSCEV(LHS), PN->getParent()) &&
+-        IsAvailableOnEntry(L, DT, getSCEV(RHS), PN->getParent()))
+-      return createNodeForSelectOrPHI(PN, Cond, LHS, RHS);
+-  }
+-
++  if (PN->getNumIncomingValues() != 2 || !all_of(PN->blocks(), IsReachable))
++    return false;
++
++  const Loop *L = LI.getLoopFor(PN->getParent());
++  // Preserve LLVM 16's LCSSA restriction for select-like PHIs.
++  for (BasicBlock *IncomingBB : PN->blocks())
++    if (LI.getLoopFor(IncomingBB) != L)
++      return false;
++
++  BasicBlock *IDom = DT[PN->getParent()]->getIDom()->getBlock();
++  assert(IDom && "At least the entry block should dominate PN");
++  auto *BI = dyn_cast<BranchInst>(IDom->getTerminator());
++  return BI && BI->isConditional() &&
++         BrPHIToSelect(DT, BI, PN, Cond, LHS, RHS);
++}
++
++const SCEV *ScalarEvolution::createNodeFromSelectLikePHI(PHINode *PN) {
++  Value *Cond = nullptr, *LHS = nullptr, *RHS = nullptr;
++  const Loop *L = LI.getLoopFor(PN->getParent());
++  if (getOperandsForSelectLikePHI(DT, LI, PN, Cond, LHS, RHS) &&
++      IsAvailableOnEntry(L, DT, getSCEV(LHS), PN->getParent()) &&
++      IsAvailableOnEntry(L, DT, getSCEV(RHS), PN->getParent()))
++    return createNodeForSelectOrPHI(PN, Cond, LHS, RHS);
+   return nullptr;
+ }
+ 
+@@ -6522,6 +6514,19 @@
+   return FullSet;
+ }
+ 
++// Restrict PHI traversal to acyclic dependencies. A visited set alone does not
++// prevent getRangeRef and createSCEVIter from recursively calling each other
++// while creating SCEVs for PHI operands (LLVM issue #148253).
++static bool RangeRefPHIAllowedOperands(DominatorTree &DT, LoopInfo &LI,
++                                       PHINode *PHI) {
++  Value *Cond = nullptr, *LHS = nullptr, *RHS = nullptr;
++  if (getOperandsForSelectLikePHI(DT, LI, PHI, Cond, LHS, RHS))
++    return true;
++
++  return all_of(PHI->operands(),
++                [&](Value *Operand) { return DT.dominates(Operand, PHI); });
++}
++
+ const ConstantRange &
+ ScalarEvolution::getRangeRefIter(const SCEV *S,
+                                  ScalarEvolution::RangeSignHint SignHint) {
+@@ -6576,8 +6581,8 @@
+       continue;
+     }
+     // `SCEVUnknown`'s require special treatment.
+-    if (const PHINode *P = dyn_cast<PHINode>(UnknownS->getValue())) {
+-      if (!PendingPhiRangesIter.insert(P).second)
++    if (PHINode *P = dyn_cast<PHINode>(UnknownS->getValue())) {
++      if (!RangeRefPHIAllowedOperands(DT, LI, P))
+         continue;
+       for (auto &Op : reverse(P->operands()))
+         AddToWorklist(getSCEV(Op));
+@@ -6591,10 +6596,6 @@
+     for (const SCEV *P :
+          reverse(make_range(WorkList.begin() + 1, WorkList.end()))) {
+       getRangeRef(P, SignHint);
+-
+-      if (auto *UnknownS = dyn_cast<SCEVUnknown>(P))
+-        if (const PHINode *P = dyn_cast<PHINode>(UnknownS->getValue()))
+-          PendingPhiRangesIter.erase(P);
+     }
+   }
+ 
+@@ -6861,8 +6862,11 @@
+ 
+     // A range of Phi is a subset of union of all ranges of its input.
+     if (PHINode *Phi = dyn_cast<PHINode>(U->getValue())) {
+-      // Make sure that we do not run over cycled Phis.
+-      if (PendingPhiRanges.insert(Phi).second) {
++      // SCEVExpander can create SCEVUnknowns for PHIs that are AddRecs.
++      if (auto *AR = dyn_cast<SCEVAddRecExpr>(getSCEV(Phi)))
++        return getRangeRef(AR, SignHint, Depth + 1);
++
++      if (RangeRefPHIAllowedOperands(DT, LI, Phi)) {
+         ConstantRange RangeFromOps(BitWidth, /*isFullSet=*/false);
+ 
+         for (const auto &Op : Phi->operands()) {
+@@ -6874,9 +6878,6 @@
+         }
+         ConservativeResult =
+             ConservativeResult.intersectWith(RangeFromOps, RangeType);
+-        bool Erased = PendingPhiRanges.erase(Phi);
+-        assert(Erased && "Failed to erase Phi properly?");
+-        (void)Erased;
+       }
+     }
+ 
+@@ -7557,9 +7558,34 @@
+   case Instruction::IntToPtr:
+     return getUnknown(V);
+ 
+-  case Instruction::PHI:
+-    // Keep constructing SCEVs' for phis recursively for now.
++  case Instruction::PHI: {
++    auto *PN = cast<PHINode>(U);
++    if (Value *Simplified = simplifyInstruction(
++            PN, {getDataLayout(), &TLI, &DT, &AC, /*CxtI=*/nullptr,
++                 /*UseInstrInfo=*/true, /*CanUseUndef=*/false})) {
++      Ops.push_back(Simplified);
++      return nullptr;
++    }
++
++    Value *Cond = nullptr, *LHS = nullptr, *RHS = nullptr;
++    if (getOperandsForSelectLikePHI(DT, LI, PN, Cond, LHS, RHS)) {
++      if (auto *CondICmp = dyn_cast<ICmpInst>(Cond)) {
++        Ops.push_back(CondICmp->getOperand(0));
++        Ops.push_back(CondICmp->getOperand(1));
++      }
++      Ops.push_back(Cond);
++      Ops.push_back(LHS);
++      Ops.push_back(RHS);
++      return nullptr;
++    }
++
++    // AddRec construction still handles cyclic dependencies recursively.
++    // Precompute the additional acyclic inputs that getRangeRef may query.
++    if (RangeRefPHIAllowedOperands(DT, LI, PN))
++      for (Value *Operand : PN->operands())
++        Ops.push_back(Operand);
+     return nullptr;
++  }
+ 
+   case Instruction::Select: {
+     // Check if U is a select that can be simplified to a SCEVUnknown.
+@@ -13442,7 +13468,6 @@
+       CouldNotCompute(std::move(Arg.CouldNotCompute)),
+       ValueExprMap(std::move(Arg.ValueExprMap)),
+       PendingLoopPredicates(std::move(Arg.PendingLoopPredicates)),
+-      PendingPhiRanges(std::move(Arg.PendingPhiRanges)),
+       PendingMerges(std::move(Arg.PendingMerges)),
+       MinTrailingZerosCache(std::move(Arg.MinTrailingZerosCache)),
+       BackedgeTakenCounts(std::move(Arg.BackedgeTakenCounts)),
+@@ -13485,7 +13510,6 @@
+   PredicatedBackedgeTakenCounts.clear();
+ 
+   assert(PendingLoopPredicates.empty() && "isImpliedCond garbage");
+-  assert(PendingPhiRanges.empty() && "getRangeRef garbage");
+   assert(PendingMerges.empty() && "isImpliedViaMerge garbage");
+   assert(!WalkingBEDominatingConds && "isLoopBackedgeGuardedByCond garbage!");
+   assert(!ProvingSplitPredicate && "ProvingSplitPredicate garbage!");
+diff --git a/llvm/include/llvm/Analysis/ScalarEvolution.h b/llvm/include/llvm/Analysis/ScalarEvolution.h
+--- a/llvm/include/llvm/Analysis/ScalarEvolution.h
++++ b/llvm/include/llvm/Analysis/ScalarEvolution.h
+@@ -1411,12 +1411,6 @@
+   /// Mark predicate values currently being processed by isImpliedCond.
+   SmallPtrSet<const Value *, 6> PendingLoopPredicates;
+ 
+-  /// Mark SCEVUnknown Phis currently being processed by getRangeRef.
+-  SmallPtrSet<const PHINode *, 6> PendingPhiRanges;
+-
+-  /// Mark SCEVUnknown Phis currently being processed by getRangeRefIter.
+-  SmallPtrSet<const PHINode *, 6> PendingPhiRangesIter;
+-
+   // Mark SCEVUnknown Phis currently being processed by isImpliedViaMerge.
+   SmallPtrSet<const PHINode *, 6> PendingMerges;
+ 
+diff --git a/llvm/test/Analysis/ScalarEvolution/phi-range-recursion.ll b/llvm/test/Analysis/ScalarEvolution/phi-range-recursion.ll
+new file mode 100644
+--- /dev/null
++++ b/llvm/test/Analysis/ScalarEvolution/phi-range-recursion.ll
+@@ -0,0 +1,22 @@
++; RUN: opt -passes='print<scalar-evolution>' -disable-output %s 2>&1 | FileCheck %s
++; RUN: opt -passes='print<scalar-evolution>' -scev-range-iter-threshold=1 -disable-output %s 2>&1 | FileCheck %s
++; RUN: %python %S/Inputs/phi-range-recursion.py > %t.ll
++; RUN: opt -passes='print<scalar-evolution>' -disable-output %t.ll 2> %t.out
++; RUN: opt -passes='print<scalar-evolution>' -scev-range-iter-threshold=1 -disable-output %t.ll 2> %t.iter.out
++;
++; A nonlinear recurrence must not recursively request SCEVs of its backedge
++; inputs from getRangeRef. ValueTracking still supplies a conservative range.
++define void @cyclic_phi(i32 %n) {
++; CHECK-LABEL: 'cyclic_phi'
++; CHECK: %iv = phi i32
++; CHECK-NEXT: --> %iv U: [0,-7) S: [-2147483648,2147483641)
++entry:
++  br label %loop
++loop:
++  %iv = phi i32 [ 0, %entry ], [ %next, %loop ]
++  %next = mul nuw i32 %iv, 8
++  %cmp = icmp ult i32 %next, %n
++  br i1 %cmp, label %loop, label %exit
++exit:
++  ret void
++}
+diff --git a/llvm/test/Analysis/ScalarEvolution/Inputs/phi-range-recursion.py b/llvm/test/Analysis/ScalarEvolution/Inputs/phi-range-recursion.py
+new file mode 100644
+--- /dev/null
++++ b/llvm/test/Analysis/ScalarEvolution/Inputs/phi-range-recursion.py
+@@ -0,0 +1,22 @@
++# Generate a chain whose SCEV construction used to recurse through select-like
++# PHIs. Visiting the last value first prevents the printer from warming caches.
++print("define i32 @deep_phi(i1 %cond, i32 %start) {")
++print("entry:")
++print("  br label %branch0")
++for i in reversed(range(8192)):
++    previous = "%start" if i == 0 else "%p" + str(i - 1)
++    print("branch%d:" % i)
++    print("  br i1 %%cond, label %%left%d, label %%right%d" % (i, i))
++    print("left%d:" % i)
++    print("  %%a%d = add i32 %s, 1" % (i, previous))
++    print("  br label %%merge%d" % i)
++    print("right%d:" % i)
++    print("  br label %%merge%d" % i)
++    print("merge%d:" % i)
++    print("  %%p%d = phi i32 [ %%a%d, %%left%d ], [ %s, %%right%d ]" %
++          (i, i, i, previous, i))
++    if i == 8191:
++        print("  ret i32 %%p%d" % i)
++    else:
++        print("  br label %%branch%d" % (i + 1))
++print("}")
+diff --git a/llvm/test/Analysis/ScalarEvolution/addrec-computed-during-addrec-calculation.ll b/llvm/test/Analysis/ScalarEvolution/addrec-computed-during-addrec-calculation.ll
+--- a/llvm/test/Analysis/ScalarEvolution/addrec-computed-during-addrec-calculation.ll
++++ b/llvm/test/Analysis/ScalarEvolution/addrec-computed-during-addrec-calculation.ll
+@@ -18,11 +18,11 @@
+ ; CHECK-NEXT:    %v = load i32, ptr %p, align 4
+ ; CHECK-NEXT:    --> %v U: full-set S: full-set Exits: <<Unknown>> LoopDispositions: { %loop2: Variant, %loop.header: Variant }
+ ; CHECK-NEXT:    %iv2.ext = sext i32 %iv2 to i64
+-; CHECK-NEXT:    --> (sext i32 {%iv,+,1}<nsw><%loop2> to i64) U: [-2147483648,2147483648) S: [-2147483648,2147483648) Exits: <<Unknown>> LoopDispositions: { %loop.header: Variant, %loop2: Computable, %loop3: Invariant }
++; CHECK-NEXT:    --> {(sext i32 %iv to i64),+,1}<nsw><%loop2> U: [-2147483648,6442450943) S: [-2147483648,6442450943) Exits: <<Unknown>> LoopDispositions: { %loop.header: Variant, %loop2: Computable, %loop3: Invariant }
+ ; CHECK-NEXT:    %iv3 = phi i64 [ %iv2.ext, %loop2.end ], [ %iv3.next, %loop3 ]
+-; CHECK-NEXT:    --> {(sext i32 {%iv,+,1}<nsw><%loop2> to i64),+,1}<nsw><%loop3> U: [-2147483648,2147483648) S: [-2147483648,2147483648) Exits: (sext i32 {%iv,+,1}<nsw><%loop2> to i64) LoopDispositions: { %loop3: Computable, %loop.header: Variant }
++; CHECK-NEXT:    --> {{\{\{}}(sext i32 %iv to i64),+,1}<nsw><%loop2>,+,1}<nsw><%loop3> U: [-2147483648,6442450943) S: [-2147483648,6442450943) Exits: {(sext i32 %iv to i64),+,1}<nsw><%loop2> LoopDispositions: { %loop3: Computable, %loop.header: Variant }
+ ; CHECK-NEXT:    %iv3.next = add nsw i64 %iv3, 1
+-; CHECK-NEXT:    --> {(1 + (sext i32 {%iv,+,1}<nsw><%loop2> to i64))<nsw>,+,1}<nsw><%loop3> U: [-2147483647,2147483649) S: [-2147483647,2147483649) Exits: (1 + (sext i32 {%iv,+,1}<nsw><%loop2> to i64))<nsw> LoopDispositions: { %loop3: Computable, %loop.header: Variant }
++; CHECK-NEXT:    --> {{\{\{}}(1 + (sext i32 %iv to i64))<nsw>,+,1}<nsw><%loop2>,+,1}<nsw><%loop3> U: [-2147483647,6442450944) S: [-2147483647,6442450944) Exits: {(1 + (sext i32 %iv to i64))<nsw>,+,1}<nsw><%loop2> LoopDispositions: { %loop3: Computable, %loop.header: Variant }
+ ; CHECK-NEXT:    %iv.next = trunc i64 %iv3 to i32
+ ; CHECK-NEXT:    --> {{\{}}{%iv,+,1}<nsw><%loop2>,+,1}<%loop3> U: full-set S: full-set --> {%iv,+,1}<nsw><%loop2> U: full-set S: full-set Exits: <<Unknown>> LoopDispositions: { %loop.header: Variant, %loop2: Variant, %loop3: Computable }
+ ; CHECK-NEXT:  Determining loop execution counts for: @test
+diff --git a/llvm/test/Analysis/ScalarEvolution/outer_phi.ll b/llvm/test/Analysis/ScalarEvolution/outer_phi.ll
+--- a/llvm/test/Analysis/ScalarEvolution/outer_phi.ll
++++ b/llvm/test/Analysis/ScalarEvolution/outer_phi.ll
+@@ -7,7 +7,7 @@
+ ; CHECK-LABEL: 'test_01'
+ ; CHECK-NEXT:  Classifying expressions for: @test_01
+ ; CHECK-NEXT:    %outer.iv = phi i32 [ 0, %entry ], [ %iv.next, %outer.backedge ]
+-; CHECK-NEXT:    --> %outer.iv U: [0,-2147483647) S: [0,-2147483647) Exits: <<Unknown>> LoopDispositions: { %outer: Variant, %inner: Invariant }
++; CHECK-NEXT:    --> %outer.iv U: full-set S: full-set Exits: <<Unknown>> LoopDispositions: { %outer: Variant, %inner: Invariant }
+ ; CHECK-NEXT:    %iv = phi i32 [ 0, %outer ], [ %iv.next, %inner.backedge ]
+ ; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%inner> U: [0,-2147483648) S: [0,-2147483648) Exits: <<Unknown>> LoopDispositions: { %inner: Computable, %outer: Variant }
+ ; CHECK-NEXT:    %iv.next = add nuw nsw i32 %iv, 1
+diff --git a/llvm/test/Analysis/ScalarEvolution/pr49856.ll b/llvm/test/Analysis/ScalarEvolution/pr49856.ll
+--- a/llvm/test/Analysis/ScalarEvolution/pr49856.ll
++++ b/llvm/test/Analysis/ScalarEvolution/pr49856.ll
+@@ -5,7 +5,7 @@
+ ; CHECK-LABEL: 'test'
+ ; CHECK-NEXT:  Classifying expressions for: @test
+ ; CHECK-NEXT:    %tmp = phi i32 [ 2, %bb ], [ %tmp2, %bb3 ]
+-; CHECK-NEXT:    --> %tmp U: [1,-2147483648) S: [0,-2147483648)
++; CHECK-NEXT:    --> %tmp U: [0,-2147483648) S: [0,-2147483648)
+ ; CHECK-NEXT:    %tmp2 = add nuw nsw i32 %tmp, 1
+ ; CHECK-NEXT:    --> (1 + %tmp)<nuw> U: [1,-2147483647) S: [1,-2147483647)
+ ; CHECK-NEXT:  Determining loop execution counts for: @test
+diff --git a/llvm/test/Analysis/ScalarEvolution/pr58402-large-number-of-zext-exprs.ll b/llvm/test/Analysis/ScalarEvolution/pr58402-large-number-of-zext-exprs.ll
+--- a/llvm/test/Analysis/ScalarEvolution/pr58402-large-number-of-zext-exprs.ll
++++ b/llvm/test/Analysis/ScalarEvolution/pr58402-large-number-of-zext-exprs.ll
+@@ -5,7 +5,7 @@
+ ; CHECK-LABEL: 'pr58402_large_number_of_zext'
+ ; CHECK-NEXT:  Classifying expressions for: @pr58402_large_number_of_zext
+ ; CHECK-NEXT:    %d.0 = phi i32 [ 0, %entry ], [ %add7.15, %header ]
+-; CHECK-NEXT:    --> %d.0 U: [0,65) S: [0,65) Exits: <<Unknown>> LoopDispositions: { %header: Variant }
++; CHECK-NEXT:    --> %d.0 U: full-set S: full-set Exits: <<Unknown>> LoopDispositions: { %header: Variant }
+ ; CHECK-NEXT:    %b.0 = phi i32 [ 59, %entry ], [ %b.0, %header ]
+ ; CHECK-NEXT:    --> 59 U: [59,60) S: [59,60) Exits: 59 LoopDispositions: { %header: Invariant }
+ ; CHECK-NEXT:    %conv.neg = sext i1 %cmp to i32
+diff --git a/llvm/test/Analysis/ScalarEvolution/shift-recurrences.ll b/llvm/test/Analysis/ScalarEvolution/shift-recurrences.ll
+--- a/llvm/test/Analysis/ScalarEvolution/shift-recurrences.ll
++++ b/llvm/test/Analysis/ScalarEvolution/shift-recurrences.ll
+@@ -76,7 +76,7 @@
+ ; CHECK-LABEL: 'test_ashr_ones'
+ ; CHECK-NEXT:  Classifying expressions for: @test_ashr_ones
+ ; CHECK-NEXT:    %iv.ashr = phi i64 [ -1023, %entry ], [ %iv.ashr.next, %loop ]
+-; CHECK-NEXT:    --> %iv.ashr U: [-1023,0) S: [-1023,0) Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
++; CHECK-NEXT:    --> %iv.ashr U: [-1024,0) S: [-1024,0) Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
+ ; CHECK-NEXT:    %iv.ashr.next = ashr i64 %iv.ashr, 1
+ ; CHECK-NEXT:    --> %iv.ashr.next U: [-512,0) S: [-512,0) Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
+ ; CHECK-NEXT:  Determining loop execution counts for: @test_ashr_ones
+@@ -100,7 +100,7 @@
+ ; CHECK-LABEL: 'test_ashr_ones2'
+ ; CHECK-NEXT:  Classifying expressions for: @test_ashr_ones2
+ ; CHECK-NEXT:    %iv.ashr = phi i64 [ %iv.ashr.next, %loop ], [ -1023, %entry ]
+-; CHECK-NEXT:    --> %iv.ashr U: [-1023,0) S: [-1023,0) Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
++; CHECK-NEXT:    --> %iv.ashr U: [-1024,0) S: [-1024,0) Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
+ ; CHECK-NEXT:    %iv.ashr.next = ashr i64 %iv.ashr, 1
+ ; CHECK-NEXT:    --> %iv.ashr.next U: [-512,0) S: [-512,0) Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
+ ; CHECK-NEXT:  Determining loop execution counts for: @test_ashr_ones2
+@@ -174,7 +174,7 @@
+ ; CHECK-LABEL: 'test_shl'
+ ; CHECK-NEXT:  Classifying expressions for: @test_shl
+ ; CHECK-NEXT:    %iv.shl = phi i64 [ 8, %entry ], [ %iv.shl.next, %loop ]
+-; CHECK-NEXT:    --> %iv.shl U: [0,-7) S: [-9223372036854775808,9223372036854775793) Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
++; CHECK-NEXT:    --> %iv.shl U: [0,-7) S: [-9223372036854775808,9223372036854775801) Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
+ ; CHECK-NEXT:    %iv.shl.next = shl i64 %iv.shl, 1
+ ; CHECK-NEXT:    --> (2 * %iv.shl) U: [0,-15) S: [-9223372036854775808,9223372036854775793) Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
+ ; CHECK-NEXT:  Determining loop execution counts for: @test_shl
+@@ -302,7 +302,7 @@
+ ; CHECK-NEXT:    %iv = phi i64 [ 0, %entry ], [ %iv.next, %loop ]
+ ; CHECK-NEXT:    --> {0,+,1}<%loop> U: [0,62) S: [0,62) Exits: 61 LoopDispositions: { %loop: Computable }
+ ; CHECK-NEXT:    %iv.shl = phi i64 [ 4, %entry ], [ %iv.shl.next, %loop ]
+-; CHECK-NEXT:    --> %iv.shl U: [0,-3) S: [-9223372036854775808,9223372036854775801) Exits: -9223372036854775808 LoopDispositions: { %loop: Variant }
++; CHECK-NEXT:    --> %iv.shl U: [0,-3) S: [-9223372036854775808,9223372036854775805) Exits: -9223372036854775808 LoopDispositions: { %loop: Variant }
+ ; CHECK-NEXT:    %iv.next = add i64 %iv, 1
+ ; CHECK-NEXT:    --> {1,+,1}<%loop> U: [1,63) S: [1,63) Exits: 62 LoopDispositions: { %loop: Computable }
+ ; CHECK-NEXT:    %iv.shl.next = shl i64 %iv.shl, 1
+@@ -461,7 +461,7 @@
+ ; CHECK-LABEL: 'nonloop_recurrence'
+ ; CHECK-NEXT:  Classifying expressions for: @nonloop_recurrence
+ ; CHECK-NEXT:    %tmp = phi i32 [ 2, %bb ], [ %tmp2, %bb3 ]
+-; CHECK-NEXT:    --> %tmp U: [1,-2147483648) S: [0,-2147483648)
++; CHECK-NEXT:    --> %tmp U: [0,-2147483648) S: [0,-2147483648)
+ ; CHECK-NEXT:    %tmp2 = add nuw nsw i32 %tmp, 1
+ ; CHECK-NEXT:    --> (1 + %tmp)<nuw> U: [1,-2147483647) S: [1,-2147483647)
+ ; CHECK-NEXT:  Determining loop execution counts for: @nonloop_recurrence
+@@ -485,7 +485,7 @@
+ ; CHECK-LABEL: 'nonloop_recurrence_2'
+ ; CHECK-NEXT:  Classifying expressions for: @nonloop_recurrence_2
+ ; CHECK-NEXT:    %tmp = phi i32 [ 2, %loop ], [ %tmp2, %bb3 ]
+-; CHECK-NEXT:    --> %tmp U: [1,-2147483648) S: [0,-2147483648) Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
++; CHECK-NEXT:    --> %tmp U: [0,-2147483648) S: [0,-2147483648) Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
+ ; CHECK-NEXT:    %tmp2 = add nuw nsw i32 %tmp, 1
+ ; CHECK-NEXT:    --> (1 + %tmp)<nuw> U: [1,-2147483647) S: [1,-2147483647) Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
+ ; CHECK-NEXT:  Determining loop execution counts for: @nonloop_recurrence_2
+@@ -681,7 +681,7 @@
+ ; CHECK-NEXT:    %iv = phi i64 [ 0, %entry ], [ %iv.next, %loop ]
+ ; CHECK-NEXT:    --> {0,+,1}<%loop> U: [0,5) S: [0,5) Exits: 4 LoopDispositions: { %loop: Computable }
+ ; CHECK-NEXT:    %iv.lshr = phi i8 [ -1, %entry ], [ %iv.lshr.next, %loop ]
+-; CHECK-NEXT:    --> %iv.lshr U: [15,0) S: [-1,-128) Exits: 15 LoopDispositions: { %loop: Variant }
++; CHECK-NEXT:    --> %iv.lshr U: [15,0) S: [15,0) Exits: 15 LoopDispositions: { %loop: Variant }
+ ; CHECK-NEXT:    %iv.next = add i64 %iv, 1
+ ; CHECK-NEXT:    --> {1,+,1}<%loop> U: [1,6) S: [1,6) Exits: 5 LoopDispositions: { %loop: Computable }
+ ; CHECK-NEXT:    %iv.lshr.next = lshr i8 %iv.lshr, 1
+@@ -715,7 +715,7 @@
+ ; CHECK-NEXT:    %iv = phi i64 [ 0, %entry ], [ %iv.next, %loop ]
+ ; CHECK-NEXT:    --> {0,+,1}<%loop> U: [0,5) S: [0,5) Exits: 4 LoopDispositions: { %loop: Computable }
+ ; CHECK-NEXT:    %iv.lshr = phi i8 [ %start, %entry ], [ %iv.lshr.next, %loop ]
+-; CHECK-NEXT:    --> %iv.lshr U: [-1,-128) S: [-1,-128) Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
++; CHECK-NEXT:    --> %iv.lshr U: full-set S: full-set Exits: <<Unknown>> LoopDispositions: { %loop: Variant }
+ ; CHECK-NEXT:    %iv.next = add i64 %iv, 1
+ ; CHECK-NEXT:    --> {1,+,1}<%loop> U: [1,6) S: [1,6) Exits: 5 LoopDispositions: { %loop: Computable }
+ ; CHECK-NEXT:    %iv.lshr.next = lshr i8 %iv.lshr, 1
+diff --git a/llvm/test/Transforms/LoopVectorize/create-induction-resume.ll b/llvm/test/Transforms/LoopVectorize/create-induction-resume.ll
+--- a/llvm/test/Transforms/LoopVectorize/create-induction-resume.ll
++++ b/llvm/test/Transforms/LoopVectorize/create-induction-resume.ll
+@@ -16,7 +16,7 @@
+ ; CHECK-NEXT:    [[INDVAR:%.*]] = phi i32 [ [[INDVAR_NEXT:%.*]], [[L1_BACKEDGE]] ], [ 0, [[L1_PREHEADER]] ]
+ ; CHECK-NEXT:    [[L1_SUM:%.*]] = phi i32 [ [[ARG]], [[L1_PREHEADER]] ], [ [[L1_SUM_NEXT:%.*]], [[L1_BACKEDGE]] ]
+ ; CHECK-NEXT:    [[L1_IV:%.*]] = phi i32 [ 1, [[L1_PREHEADER]] ], [ [[L1_IV_NEXT:%.*]], [[L1_BACKEDGE]] ]
+-; CHECK-NEXT:    [[TMP1:%.*]] = mul nsw i32 [[INDVAR]], -1
++; CHECK-NEXT:    [[TMP1:%.*]] = mul i32 [[INDVAR]], -1
+ ; CHECK-NEXT:    [[TMP2:%.*]] = add i32 [[TMP1]], -2
+ ; CHECK-NEXT:    br i1 [[C:%.*]], label [[L1_BACKEDGE]], label [[L1_EARLY_EXIT:%.*]]
+ ; CHECK:       L1.backedge:
