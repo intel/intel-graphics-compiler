@@ -60,6 +60,7 @@ void MappingTraits<zeInfoUserAttribute>::mapping(IO& io, zeInfoUserAttribute& in
 void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info)
 {
     io.mapOptional("barrier_count", info.barrier_count, 0);
+    io.mapOptional("cross_thread_load_size", info.cross_thread_load_size, 0);
     io.mapOptional("disable_mid_thread_preemption", info.disable_mid_thread_preemption, false);
     io.mapRequired("grf_count", info.grf_count);
     io.mapOptional("has_4gb_buffers", info.has_4gb_buffers, false);
