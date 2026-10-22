@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <cstddef>
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/Analysis/ScalarEvolution.h>
+#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/Support/raw_ostream.h>
 #include <memory>
@@ -97,6 +98,7 @@ private:
   std::unique_ptr<SCEVExpander> E;
   const CPlatform *Platform{nullptr};
   LoopInfo *LI{nullptr};
+  DominatorTree *DT{nullptr};
 
   // Store the values of the IGC I/O builtins in this class
   class InputValues {
@@ -182,6 +184,12 @@ private:
 
   GenIntrinsicInst *checkLSCIntrinsic(CallInst *CI, InputValues &IV, SmallVector<Loop *, 4> &ParentLoops) const;
 
+  /// Returns an operand of one of the original LSC intrinsics that computes the
+  /// given SCEV, is available at InsertPt and is no more poisonous or undefined
+  /// than the operand of any LSC in the group, or nullptr if there is none.
+  Value *findReusableFieldValue(const LSCToDecomposeType &OldLSCs, BlockField Field, const SCEV *S, Type *Ty,
+                                const Instruction *InsertPt) const;
+
   void decompose();
   const SmallVector<Loop *, 4> innerToOuterLoops(const BasicBlock &BB) const;
 
@@ -265,6 +273,7 @@ bool Decompose2DBlockFuncsWithHoisting::runOnFunction(Function &F) {
   SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   DL = &F.getParent()->getDataLayout();
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
   E = std::make_unique<IGCLLVM::IGCSCEVExpander>(*SE, *DL, "decompose-2d-block-funcs-with-hoisting");
   Platform = &CGC->platform;
@@ -969,7 +978,6 @@ void Decompose2DBlockFuncsWithHoisting::dropPayloadsAbovePressureThreshold(Funct
 
   auto &MDUW = getAnalysis<MetaDataUtilsWrapper>();
   auto *MDUtils = MDUW.getMetaDataUtils();
-  auto *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   PostDominatorTree PDT(F);
   TranslationTable TT;
   TT.run(F);
@@ -1024,6 +1032,57 @@ void Decompose2DBlockFuncsWithHoisting::dropPayloadsAbovePressureThreshold(Funct
   CreatedPayloads.remove_if([&](const auto &Entry) { return KeysToDrop.count(&Entry.first); });
 }
 
+// Returns true if Op is V, or V plus or minus an integer constant. Then for any
+// value V takes, Op equals what the payload reproduces from V.
+static bool isConstantOffsetOf(const Value *Op, const Value *V) {
+  if (Op == V)
+    return true;
+  const auto *BO = dyn_cast<BinaryOperator>(Op);
+  if (!BO)
+    return false;
+  const auto Opcode = BO->getOpcode();
+  bool IsAddLike = Opcode == Instruction::Add || Opcode == Instruction::Sub;
+#if LLVM_VERSION_MAJOR >= 18
+  if (const auto *PDI = dyn_cast<PossiblyDisjointInst>(BO))
+    IsAddLike |= PDI->isDisjoint();
+#endif
+  if (!IsAddLike)
+    return false;
+  if (BO->getOperand(0) == V && isa<ConstantInt>(BO->getOperand(1)))
+    return true;
+  return Opcode != Instruction::Sub && BO->getOperand(1) == V && isa<ConstantInt>(BO->getOperand(0));
+}
+
+Value *Decompose2DBlockFuncsWithHoisting::findReusableFieldValue(const LSCToDecomposeType &OldLSCs, BlockField Field,
+                                                                 const SCEV *S, Type *Ty,
+                                                                 const Instruction *InsertPt) const {
+  // Like SCEVExpander, prefer a constant over reusing an instruction.
+  if (isa<SCEVConstant>(S))
+    return nullptr;
+
+  SmallVector<Value *, 4> FieldValues;
+  for (const OldLSCAndRequiredSetFields *OldLSCEntry : OldLSCs)
+    if (OldLSCEntry && OldLSCEntry->LSC)
+      FieldValues.push_back(InputValues(*OldLSCEntry->LSC).getVal(Field));
+
+  for (Value *V : FieldValues) {
+    if (V->getType() != Ty || SE->getSCEV(V) != S)
+      continue;
+    auto *I = dyn_cast<Instruction>(V);
+    if (!isa<Argument>(V) && !(I && DT->dominates(I, InsertPt)))
+      continue;
+    // Every message in the group uses the payload, including messages on paths
+    // that never use V. V may be poison only where each message's own value is,
+    // and may have undefined bits only if that value is V plus a constant.
+    const bool VIsDefined = isGuaranteedNotToBeUndefOrPoison(V, nullptr, InsertPt, DT);
+    if (all_of(FieldValues, [&](const Value *Other) {
+          return impliesPoison(V, Other) && (VIsDefined || isConstantOffsetOf(Other, V));
+        }))
+      return V;
+  }
+  return nullptr;
+}
+
 void Decompose2DBlockFuncsWithHoisting::decompose() {
   DenseMap<GenIntrinsicInst *, Instruction *> OldToNewInstMap;
 
@@ -1042,7 +1101,13 @@ void Decompose2DBlockFuncsWithHoisting::decompose() {
       // BASE (ImageOffset) is i64, all other fields are i32
       Type *TargetType = (Field == BlockField::BASE) ? Type::getInt64Ty(Key.PayloadInsertBefore->getContext())
                                                      : Type::getInt32Ty(Key.PayloadInsertBefore->getContext());
-      Value *Expanded = E->expandCodeFor(Scev, TargetType, Key.PayloadInsertBefore);
+      // Prefer a value the original LSCs already use. SCEVExpander declines to
+      // reuse an instruction that may be more poisonous than the expression it
+      // computes, and then rebuilds the expression from its leaves, which can
+      // keep extra values live across the loop.
+      Value *Expanded = findReusableFieldValue(OldLSCs, Field, Scev, TargetType, Key.PayloadInsertBefore);
+      if (!Expanded)
+        Expanded = E->expandCodeFor(Scev, TargetType, Key.PayloadInsertBefore);
       BlockCreateAddrPayloadArgs[static_cast<int>(Field) - 1] = Expanded;
     }
 
