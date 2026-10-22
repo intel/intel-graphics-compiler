@@ -1727,7 +1727,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       case DISPATCH_DIMENSION_Y:  // dispatch size Y from MS payload
       case DISPATCH_DIMENSION_Z:  // dispatch size Z from MS payload
       case INDIRECT_DATA_ADDRESS: // indirect data address from MS payload
-      case SHADER_TYPE: {
+      case SHADER_TYPE:           // BTD shader type from RT payload
+      {
         return WIAnalysis::UNIFORM_GLOBAL;
       }
       case THREAD_GROUP_ID_X: // workgroup id X in CS or OCL Kernel
