@@ -1274,6 +1274,12 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
       // Note: As per Amjad, later LLVM version has a fix for this in llvm/lib/Transforms/Utils/InlineFunction.cpp.
       builder.SetCurrentDebugLocation(pAI->getDebugLoc());
 
+      // A scratch-surface offset is not an address the debugger can dereference.
+      if (scratchMemoryAddressSpace == ADDRESS_SPACE_PRIVATE) {
+        for (auto DbgDcl : IGCLLVM::findDbgDeclareUses(pAI))
+          IGCLLVM::setKillLocation(DbgDcl);
+      }
+
       // If we can use SOA layout transpose the memory
       IGC::SOALayoutChecker SOAChecker(*pAI, Ctx.type == ShaderType::OPENCL_SHADER,
                                        UseScratchSpacePrivateMemoryOrUseStatelessStrategy);
