@@ -498,6 +498,12 @@ DECLARE_IGC_REGKEY(
     bool, DisableConstantCoalescingOfStatefulNonUniformLoads, false,
     "Disable merging non-uniform loads from stateful buffers. Note: does not affect merging to sampler loads",
     DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, DisableHoistImmutableBufferLoads, false,
+                   "Disable the pass that lifts read-only buffer loads out of loops that LICM leaves them in", ALWAYS)
+DECLARE_IGC_REGKEY(DWORD, HoistImmutableBufferLoadsMaxPerLoop, 1,
+                   "Largest number of distinct read-only buffer loads HoistImmutableBufferLoads lifts out of one "
+                   "loop; a loop with more keeps all of them. 0 means no limit",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(bool, DisableHoistImmutableLoadsAboveBarriers, false,
                    "Keep loads from read-only buffers after the barriers and fences that precede them instead of "
                    "issuing them early so their latency overlaps the wait",

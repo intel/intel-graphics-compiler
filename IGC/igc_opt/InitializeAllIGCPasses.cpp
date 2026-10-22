@@ -274,6 +274,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeFlattenSmallSwitchPass(Registry);
   initializeIGCIndirectICBPropagaionPass(Registry);
   initializeHoistFMulInLoopPassPass(Registry);
+  initializeHoistImmutableBufferLoadsPass(Registry);
   IGC::initializeLoopDeadCodeEliminationPass(Registry);
   initializeDisableLoopUnrollOnRetryPass(Registry);
   initializeCustomLoopVersioningPass(Registry);
