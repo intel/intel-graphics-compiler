@@ -2792,8 +2792,11 @@ HWConformityPro::insertMovAfterAndGetInserted(INST_LIST_ITER it, G4_BB *bb,
   // to the newly inserted MOV instruction. And newExecSize always equals its
   // origal execution size for G4_sel. In other words, we must not set NoMask
   // for SIMD1 G4_sel inst after inserting MOV inst.
+  // Keep the channel offset of an inst with an implicit acc dst, as it
+  // selects the acc register (e.g., (1|M16) addc writes acc1, which a
+  // following add reads explicitly).
   if (newExecSize == 1 && !inst->getPredicate()) {
-    inst->setNoMask(true);
+    inst->setNoMask(!inst->getImplAccDst());
   }
 
   return std::make_pair(builder.createDstRegRegion(dcl, scale), wasMovInserted);
@@ -3880,13 +3883,18 @@ void HWConformityPro::fixAccRestrictions(INST_LIST_ITER it, G4_BB *bb) {
   if (!inst->hasACCOpnd())
     return;
 
-  vISA_ASSERT(!inst->getDst()->isAccReg(), "unexpected explicit ACC dst");
+  auto dst = inst->getDst();
+  vISA_ASSERT(!dst->isAccReg(), "unexpected explicit ACC dst");
+
+  // The dst stride of a SIMD1 inst has no effect, so set it to 1 directly
+  // instead of introducing a mov.
+  if (inst->getExecSize() == g4::SIMD1 && dst->getHorzStride() != 1)
+    dst->setHorzStride(1);
 
   // Make dst as GRF-aligned, and dst stride as 1. Otherwise, the implicit
   // acc dst or explicit acc src won't be aligned with dst.
-  if (!builder.tryToAlignOperand(inst->getDst(),
-                                 builder.numEltPerGRF<Type_UB>()) ||
-      inst->getDst()->getHorzStride() != 1)
+  if (!builder.tryToAlignOperand(dst, builder.numEltPerGRF<Type_UB>()) ||
+      dst->getHorzStride() != 1)
     replaceDstWithRawMov(it, bb, /*tmpStride*/ 1, builder.getGRFAlign());
 }
 
