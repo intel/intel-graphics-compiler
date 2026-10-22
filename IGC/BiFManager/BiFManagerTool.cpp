@@ -397,6 +397,14 @@ void BiFManagerTool::generateSplitedBiFModules(llvm::Module *pMainModule) {
     std::unique_ptr<Module> kernelM =
         CloneModule(*pMainModule, VMap, [&](const GlobalValue *GV) { return GVs.count(GV); });
 
+    // MakeBiFPackage() makes all globals linkonce. Doing it here lets
+    // GlobalDCE drop the ones this section's functions don't use; with
+    // external linkage every section would carry a copy of all the global
+    // tables. This reduces linking time significantly.
+    for (auto &GV : kernelM->globals())
+      if (!GV.isDeclaration() && !GV.hasAppendingLinkage())
+        GV.setLinkage(GlobalValue::LinkOnceAnyLinkage);
+
     // Do cleanup.
     llvm::legacy::PassManager mpm;
     mpm.add(IGCLLVM::createLegacyWrappedGlobalDCEPass());           // Delete unreachable globals.

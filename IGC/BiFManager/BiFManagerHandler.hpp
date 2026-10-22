@@ -77,6 +77,11 @@ private:
   // Base : User module
   void cleanModule(llvm::Module &Base);
 
+  // Function which erases the global variables of a materialized built-in
+  // section which nothing references.
+  // Section : Built-in section module
+  static void eraseUnusedGlobals(llvm::Module &Section);
+
   // Get all the functions called by given function.
   // pFunc : the given function.
   // calledFuncs [OUT] : The list of all functions called by pFunc.

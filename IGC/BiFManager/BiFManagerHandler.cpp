@@ -112,6 +112,9 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
       IGC_ASSERT_MESSAGE(0, "materializeAll failed for generic builtin module");
     }
 
+    // Erase globals before linking to improve linking time.
+    eraseUnusedGlobals(*BiFSection->get());
+
     if (CallbackLinker == nullptr) {
       BiFSection->get()->setDataLayout(Module.getDataLayout());
       BiFSection->get()->setTargetTriple(Module.getTargetTriple());
@@ -423,6 +426,24 @@ void BiFManagerHandler::cleanModule(llvm::Module &Base) {
       if (F.isMaterializable() && F.materialized_use_empty())
         F.deleteBody();
 #endif
+}
+
+void BiFManagerHandler::eraseUnusedGlobals(llvm::Module &Section) {
+  // Iterate to a fixed point to handle dependencies between globals.
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (auto &GV : llvm::make_early_inc_range(Section.globals())) {
+      // Declarations (e.g. BiF control flags) and llvm.* globals are not discardable.
+      if (!GV.isDiscardableIfUnused())
+        continue;
+      GV.removeDeadConstantUsers();
+      if (GV.use_empty()) {
+        GV.eraseFromParent();
+        changed = true;
+      }
+    }
+  }
 }
 
 bool BiFManagerHandler::isModulePtrSize32(llvm::Module *pMain) {
