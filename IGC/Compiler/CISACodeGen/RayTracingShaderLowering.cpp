@@ -259,7 +259,9 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
   RTBuilder RTB(M.getContext(), *CGCtx);
-  const bool ForcePreemptionDisable = CGCtx->type == ShaderType::RAYTRACING_SHADER && CGCtx->platform.canSupportWMTP();
+  const bool IsRT = CGCtx->type == ShaderType::RAYTRACING_SHADER;
+  const bool SkipRTMTPControl = IsRT && CGCtx->platform.skipForcePreemptionDisable();
+  const bool ForcePreemptionDisable = IsRT && CGCtx->platform.canSupportWMTP() && !SkipRTMTPControl;
 
   bool Changed = false;
   SmallVector<TraceRaySyncIntrinsic *> traceRaysToGroup;
@@ -362,14 +364,14 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
         break;
       }
       case GenISAIntrinsic::GenISA_RayQueryCheck:
-        if (!ForcePreemptionDisable) {
+        if (!ForcePreemptionDisable && !SkipRTMTPControl) {
           disablePreemptionBB = disablePreemptionBB
                                     ? DT.findNearestCommonDominator(disablePreemptionBB, GII->getParent())
                                     : GII->getParent();
         }
         break;
       case GenISAIntrinsic::GenISA_RayQueryRelease:
-        if (!ForcePreemptionDisable) {
+        if (!ForcePreemptionDisable && !SkipRTMTPControl) {
           enablePreemptionBB = enablePreemptionBB ? PDT.findNearestCommonDominator(enablePreemptionBB, GII->getParent())
                                                   : GII->getParent();
         }

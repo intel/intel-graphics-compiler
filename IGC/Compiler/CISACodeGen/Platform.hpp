@@ -125,6 +125,10 @@ public:
     return isCoreChildOf(IGFX_XE2_HPG_CORE);
   }
 
+  bool skipForcePreemptionDisable() const {
+    return IGC_IS_FLAG_ENABLED(RayTracingSkipMTPDisableInst) && isCoreChildOf(IGFX_XE3_CORE);
+  }
+
   bool supportsWMTPForShaderType(ShaderType type) const {
     if (isCoreChildOf(IGFX_XE3_CORE)) {
       switch (type) {

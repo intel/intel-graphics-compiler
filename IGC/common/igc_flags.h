@@ -1867,6 +1867,9 @@ DECLARE_IGC_REGKEY(bool, forceGlobalRA, false, "force global register allocator"
 DECLARE_IGC_REGKEY(bool, disableVarSplit, false, "disable variable splitting", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, delayVarSplit, false, "delay local variable splitting", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, disableRemat, false, "disable re-materialization", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, RayTracingSkipMTPDisableInst, true,
+                   "Skip IGC-inserted MTP disable for RT shaders on Xe3+ (MTP controlled via COMPUTE_WALKER)",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableDisableMidThreadPreemptionOpt, true, "Disable mid thread preemption", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, MidThreadPreemptionDisableThreshold, 600, "Threshold to disable mid thread preemption",
                    DEBUG_ONLY)
