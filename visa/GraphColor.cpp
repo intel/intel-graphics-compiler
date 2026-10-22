@@ -11556,7 +11556,11 @@ bool GlobalRA::hybridRA(LocalRA &lra) {
       // extra interferences in graph compared to case when we use conservative
       // alignment computed in LRA. So when the WA is enabled, we avoid
       // resetting alignment as it may produce better code.
-      if (!builder.avoidDstSrcOverlap() || use4GRFAlign)
+      // A config held for occupancy is likely to step up after global RA
+      // spills. The LRA alignment would then stay on the step-up config, where
+      // hybrid RA is not retried, and pin bank-conflict sources to even GRFs.
+      if (!builder.avoidDstSrcOverlap() || use4GRFAlign ||
+          kernel.grfMode.isHeldForOccupancy())
         copyAlignment();
       return false;
     }
