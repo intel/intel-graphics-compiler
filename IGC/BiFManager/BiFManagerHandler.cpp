@@ -151,15 +151,7 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
   }
 
 #if LLVM_VERSION_MAJOR >= 23
-  // Remove unused BiF functions & globals
-  // Previously - removal of unused functions was performed earlier - before linking
-  // ld.linkInModule(std::move(*BiFSection), llvm::Linker::OverrideFromSrc)
-
-  // But now, when removal of unused functions was moved here, to later stage - after linking,
-  // then during linking global values are also being copied - because they're used by those functions.
-
-  // So, when we remove those unused functions here, we also need to remove unused globals.
-
+  // Unused BiF globals are still linked in after unused function bodies are dropped.
   bool changed = true;
   auto removeUnusedBiF = [&](auto &Item) {
     if (IsBiF(&Item)) {
@@ -403,7 +395,6 @@ void BiFManagerHandler::cleanModule(llvm::Module &Base) {
 
 #if LLVM_VERSION_MAJOR < 23
   // Nuke the unused functions so we can materializeAll() quickly.
-  // On LLVMs >= 23 we perform it at later stages of BiF management: in LinkBiF method.
   auto CleanUnused = [](Module *Module) {
     for (auto I = Module->begin(), E = Module->end(); I != E;) {
       auto *F = &(*I++);
@@ -424,6 +415,13 @@ void BiFManagerHandler::cleanModule(llvm::Module &Base) {
     llvm::Module *Module = bifsection_i->second.get();
     CleanUnused(Module);
   }
+#else
+  // Every reachable callee is materialized by now. Drop the other bodies but keep the functions, which
+  // BitcodeReader still refers to.
+  for (auto &Section : LoadedBiFSections)
+    for (auto &F : *Section.second)
+      if (F.isMaterializable() && F.materialized_use_empty())
+        F.deleteBody();
 #endif
 }
 
