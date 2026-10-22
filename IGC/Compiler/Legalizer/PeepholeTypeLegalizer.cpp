@@ -123,6 +123,8 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction &I) {
       legalizeBinaryOperator(I); // Bitwise and Arithmetic Operations
     } else if (isa<ExtractElementInst>(&I)) {
       legalizeExtractElement(I);
+    } else if (auto *II = dyn_cast<IntrinsicInst>(&I)) {
+      legalizeIntrinsic(*II);
     }
   } else if (!CastInst_ZExtWithIntermediateIllegalsEliminated) { // Eliminate intermediate ILLEGAL operands in
                                                                  // bitcast-zext or trunc-zext pairs
@@ -364,6 +366,66 @@ void PeepholeTypeLegalizer::legalizeExtractElement(Instruction &I) {
       }
     }
   }
+}
+
+void PeepholeTypeLegalizer::legalizeIntrinsic(IntrinsicInst &I) {
+  /*
+  %1 = call i3 @llvm.ctpop.i3(i3 %0)
+  %2 = zext i3 %1 to i32
+  -->
+  %1 = zext i3 %0 to i8
+  %2 = call i8 @llvm.ctpop.i8(i8 %1)
+  %3 = trunc i8 %2 to i3
+  %4 = zext i3 %3 to i32
+
+  Later, the trunc and zexts instruction are being legalized by CleanupZExtInst()
+  */
+  Type *Ty = I.getType();
+  if (!Ty->isIntegerTy())
+    return;
+
+  unsigned SrcWidth = Ty->getIntegerBitWidth();
+  if (isLegalInteger(SrcWidth) || SrcWidth == 1) // nothing to legalize
+    return;
+
+  unsigned quotient = 0, promoteToInt = 0;
+  promoteInt(SrcWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
+  if (quotient > 1 || promoteToInt == SrcWidth) {
+    IGC_ASSERT_MESSAGE(0, "Only promotion to a single legal integer is supported");
+    return;
+  }
+
+  Type *PromotedTy = Type::getIntNTy(I.getContext(), promoteToInt);
+  unsigned ExtBits = promoteToInt - SrcWidth;
+
+  auto zext = [&](Value *V) { return m_builder->CreateZExt(V, PromotedTy); };
+  // Sign extension is done with shl/ashr so that only zext of the illegal type
+  // is emitted, which cleanupZExtInst knows how to remove.
+  auto sext = [&](Value *V) { return m_builder->CreateAShr(m_builder->CreateShl(zext(V), ExtBits), ExtBits); };
+
+  Intrinsic::ID IID = I.getIntrinsicID();
+  Value *NewVal = nullptr;
+  switch (IID) {
+  case Intrinsic::ctpop:
+    NewVal = m_builder->CreateUnaryIntrinsic(IID, zext(I.getArgOperand(0)));
+    break;
+  case Intrinsic::umin:
+  case Intrinsic::umax:
+    NewVal = m_builder->CreateBinaryIntrinsic(IID, zext(I.getArgOperand(0)), zext(I.getArgOperand(1)));
+    break;
+  case Intrinsic::smin:
+  case Intrinsic::smax:
+    NewVal = m_builder->CreateBinaryIntrinsic(IID, sext(I.getArgOperand(0)), sext(I.getArgOperand(1)));
+    break;
+  default:
+    IGC_ASSERT_MESSAGE(0, "Unsupported intrinsic with illegal integer type");
+    return;
+  }
+
+  Value *NewIllegal = m_builder->CreateTrunc(NewVal, Ty);
+  I.replaceAllUsesWith(NewIllegal);
+  I.eraseFromParent();
+  Changed = true;
 }
 
 void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {

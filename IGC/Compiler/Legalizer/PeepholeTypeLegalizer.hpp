@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Value.h"
@@ -49,6 +50,7 @@ public:
   void legalizeUnaryInstruction(Instruction &I);
   void legalizeBinaryOperator(Instruction &I);
   void legalizeExtractElement(Instruction &I);
+  void legalizeIntrinsic(IntrinsicInst &I);
   void cleanupZExtInst(Instruction &I);
   void cleanupTruncInst(Instruction &I);
   void cleanupBitCastInst(Instruction &I);
