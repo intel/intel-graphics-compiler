@@ -346,6 +346,9 @@ private:
   // isSafeApplyPhiFromShapeEquivalence would be O(P*N). Reset in init().
   int m_hoistEnabledForFunction = -1;
 
+  // Cached m_func->hasFnAttribute("KMPLOCK"), computed at the start of run().
+  bool m_isKMPLock = false;
+
   // For dumpping WIA info per each invocation
   static llvm::DenseMap<const llvm::Function *, int> m_funcInvocationId;
 

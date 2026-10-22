@@ -313,6 +313,10 @@ bool WIAnalysisRunner::run() {
   m_allocaDepMap.clear();
   m_forcedUniforms.clear();
 
+  // Function attributes are not modified by this analysis; query once
+  // instead of per calculate_dep invocation.
+  m_isKMPLock = F.hasFnAttribute("KMPLOCK");
+
   updateArgsDependency(&F);
 
   if (!IGC_IS_FLAG_ENABLED(DisableUniformAnalysis)) {
@@ -611,7 +615,8 @@ bool WIAnalysisRunner::insideWorkgroupDivergentCF(const Value *val) const {
 }
 
 WIAnalysis::WIDependancy WIAnalysisRunner::getDependency(const Value *val) {
-  if (m_depMap.GetAttributeWithoutCreating(val) == m_depMap.end()) {
+  const WIAnalysis::WIDependancy dep = m_depMap.GetAttributeWithoutCreating(val);
+  if (dep == m_depMap.end()) {
     // Make sure that constants are not added in the map.
     if (!isa<Instruction>(val) && !isa<Argument>(val)) {
       return WIAnalysis::UNIFORM_GLOBAL;
@@ -619,8 +624,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::getDependency(const Value *val) {
     // Don't expect this happens, let's assertion fail
     IGC_ASSERT_MESSAGE(0, "Dependence for 'val' should bave been set already!");
   }
-  IGC_ASSERT(m_depMap.GetAttributeWithoutCreating(val) != m_depMap.end());
-  return m_depMap.GetAttributeWithoutCreating(val);
+  return dep;
 }
 
 bool WIAnalysisRunner::hasDependency(const Value *val) const {
@@ -651,7 +655,11 @@ void WIAnalysisRunner::calculate_dep(const Value *val) {
   const Instruction *const inst = dyn_cast<Instruction>(val);
   IGC_ASSERT_MESSAGE(nullptr != inst, "This Value is not an Instruction");
   if (inst) {
-    bool hasOriginal = hasDependency(inst);
+    // inst is an Instruction, so hasDependency(inst) is exactly a map lookup.
+    // The map entry for inst is not modified until the update below, so a
+    // single lookup serves both hasOriginal and orig.
+    const WIAnalysis::WIDependancy origLookup = m_depMap.GetAttributeWithoutCreating(inst);
+    const bool hasOriginal = origLookup != m_depMap.end();
     WIAnalysis::WIDependancy orig;
     // We only calculate dependency on unset instructions if all their operands
     // were already given dependency. This is good for compile time since these
@@ -720,7 +728,7 @@ void WIAnalysisRunner::calculate_dep(const Value *val) {
     if (!hasOriginal) {
       orig = WIAnalysis::UNIFORM_GLOBAL;
     } else {
-      orig = m_depMap.GetAttributeWithoutCreating(inst);
+      orig = origLookup;
 
       // if inst is already marked random, it cannot get better
       if (orig == WIAnalysis::RANDOM) {
@@ -772,13 +780,13 @@ void WIAnalysisRunner::calculate_dep(const Value *val) {
     else if (inst->getOpcode() == Instruction::Freeze)
       dep = calculate_dep_simple(inst);
 
-    if (m_func->hasFnAttribute("KMPLOCK")) {
+    if (m_isKMPLock) {
       dep = WIAnalysis::UNIFORM_THREAD;
     }
 
+#ifdef _DEBUG
     // Spec enforces subgroup broadcast to use thread-uniform local ID.
     if (isUsedByWaveBroadcastAsLocalID(inst)) {
-#ifdef _DEBUG
       // Print warning exactly once per kernel.
       static SmallPtrSet<Function *, 8> detectedKernels;
       if (dep > WIAnalysis::UNIFORM_THREAD && !detectedKernels.count(m_func)) {
@@ -789,8 +797,8 @@ void WIAnalysisRunner::calculate_dep(const Value *val) {
             "; such operation doesn't meet specification of OpGroupBroadcast and can lead to unexpected results.";
         m_CGCtx->EmitWarning(msg.c_str(), inst);
       }
-#endif // DEBUG
     }
+#endif // _DEBUG
 
     // If the value was changed in this calculation
     if (!hasOriginal || dep != orig) {
@@ -960,7 +968,8 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst *inst) {
 
     for (BasicBlock::iterator I = def_blk->begin(), E = def_blk->end(); I != E; ++I) {
       Instruction *defi = &(*I);
-      if (hasDependency(defi) && depRank(getDependency(defi)) >= depRank(instDep)) {
+      const WIAnalysis::WIDependancy defDep = m_depMap.GetAttributeWithoutCreating(defi);
+      if (defDep != m_depMap.end() && depRank(defDep) >= depRank(instDep)) {
         // defi is already weaker than or equal to inst (br), do nothing.
         continue;
       }
@@ -974,22 +983,15 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst *inst) {
           m_pChangedNew->push_back(it->second);
       }
 
-      // This is an optimization that tries to detect instruction
-      // not really affected by control-flow divergency because
-      // all the sources are outside the region.
-      // However this is only as good as we can get because we
-      // only search limited depth
-      if (isRegionInvariant(defi, &br_info)) {
-        continue;
-      }
-
-      // Skip defs whose every in-region user is covered by a vouching
-      // phi from updatePHIDepAtJoin. Downgrading them would re-propagate
-      // non-uniformity back into the phi and undo the shape-equivalence
-      // decision.
-      if (isDefiExemptViaVouchingPhi(defi, &br_info)) {
-        continue;
-      }
+      // defi is downgraded to instDep only if all of the following hold:
+      //  a) some use of defi requires it (use scan below),
+      //  b) defi is not region-invariant (isRegionInvariant),
+      //  c) defi is not exempt via a vouching phi (isDefiExemptViaVouchingPhi).
+      // All three checks are side-effect free and do not depend on the
+      // dependency of any other value, so they are evaluated cheapest-first:
+      // the use scan usually rejects defi (e.g. only block-local uses)
+      // without paying for the operand walk in isRegionInvariant.
+      //
       // We need to look at where the use is in order to decide
       // we should make def to be "random" when loop is not in
       // LCSSA form because we do not have LCSSA phi-nodes.
@@ -997,6 +999,7 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst *inst) {
       // 2) if use is even outside the full-join
       // 3) if use is in partial-join but def is not in partial-join
       // 4) if def and use are in partial-join but def inside loop
+      bool needsUpdate = false;
       Value::use_iterator use_it = defi->use_begin();
       Value::use_iterator use_e = defi->use_end();
       for (; use_it != use_e; ++use_it) {
@@ -1017,17 +1020,46 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst *inst) {
           // Only forwarding blocks between: the use runs under a subset of def_blk's mask.
           continue; // skip
         }
-        auto DefLoop = LI->getLoopFor(def_blk);
-        auto UseLoop = LI->getLoopFor(user_blk);
-        if (user_blk == br_info.full_join || !br_info.influence_region.count(user_blk) ||
-            (br_info.partial_joins.count(user_blk) &&
-             (!br_info.partial_joins.count(def_blk) || (DefLoop && !DefLoop->contains(UseLoop))))) {
-          updateDepMap(defi, instDep);
-          // break out of the use loop
-          // since def is changed to RANDOM, all uses will be changed later
+        if (user_blk == br_info.full_join || !br_info.influence_region.count(user_blk)) {
+          needsUpdate = true;
           break;
         }
+        if (br_info.partial_joins.count(user_blk)) {
+          if (!br_info.partial_joins.count(def_blk)) {
+            needsUpdate = true;
+            break;
+          }
+          auto DefLoop = LI->getLoopFor(def_blk);
+          if (DefLoop && !DefLoop->contains(LI->getLoopFor(user_blk))) {
+            needsUpdate = true;
+            break;
+          }
+        }
       } // end of usei loop
+
+      if (!needsUpdate) {
+        continue;
+      }
+
+      // This is an optimization that tries to detect instruction
+      // not really affected by control-flow divergency because
+      // all the sources are outside the region.
+      // However this is only as good as we can get because we
+      // only search limited depth
+      if (isRegionInvariant(defi, &br_info)) {
+        continue;
+      }
+
+      // Skip defs whose every in-region user is covered by a vouching
+      // phi from updatePHIDepAtJoin. Downgrading them would re-propagate
+      // non-uniformity back into the phi and undo the shape-equivalence
+      // decision.
+      if (isDefiExemptViaVouchingPhi(defi, &br_info)) {
+        continue;
+      }
+
+      // since def is changed to RANDOM, all uses will be changed later
+      updateDepMap(defi, instDep);
     } // end of defi loop within a block
   } // end of influence-region block loop
 }
@@ -1248,7 +1280,8 @@ void WIAnalysisRunner::updatePHIDepAtJoin(BasicBlock *blk, BranchInfo *brInfo) {
     if (!phi) {
       break;
     }
-    if (hasDependency(phi) && depRank(getDependency(phi)) >= depRank(brDep)) {
+    const WIAnalysis::WIDependancy phiDep = m_depMap.GetAttributeWithoutCreating(phi);
+    if (phiDep != m_depMap.end() && depRank(phiDep) >= depRank(brDep)) {
       // phi's dep is already the same or weaker, do nothing.
       continue;
     }
