@@ -129,9 +129,11 @@ INLINE float __attribute__((overloadable)) __spirv_ocl_lgamma_r( float          
     }
     else
     {
-        float g = __spirv_ocl_tgamma(x);
-        r = __intel_relaxed_isnan(g) ? INFINITY : __spirv_ocl_native_log(__spirv_ocl_fabs(g));
-        s = (x == 0) ? 0 : __spirv_ocl_sign(g);
+        // log(|tgamma(x)|) overflows for x > ~35, so take the value from lgamma.
+        r = __spirv_ocl_lgamma(x);
+        // Gamma is negative on (-2k-1, -2k); signp is 0 for zero and negative integers.
+        float f = __spirv_ocl_floor(x);
+        s       = (x > 0) ? 1 : ((x == f) ? 0 : (((int)f & 1) ? -1 : 1));
     }
     signp[0] = s;
     return r;
