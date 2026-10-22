@@ -499,7 +499,25 @@ Instruction *IGCVectorizer::getInsertPointForCreatedInstruction(VecVal &Operands
   return InsertPoint;
 }
 
+// getPositionInsideBB() renumbers the whole basic block on every call, which is
+// quadratic for large blocks. When the slice lives in a single block, use the
+// instruction order LLVM maintains (and invalidates on moves) instead.
+static bool isInSingleBB(IGCVectorizerCommon::VecArr &Slice) {
+  BasicBlock *BB = Slice.front()->getParent();
+  return llvm::all_of(Slice, [BB](Instruction *I) { return I->getParent() == BB; });
+}
+
 Instruction *IGCVectorizerCommon::getMaxPoint(VecArr &Slice) {
+  // The log prints each element's position, so keep the numbering path for it.
+  if (!DEBUG && isInSingleBB(Slice)) {
+    Instruction *MaxPoint = Slice.front();
+    for (auto &El : Slice) {
+      if (MaxPoint->comesBefore(El))
+        MaxPoint = El;
+    }
+    return MaxPoint;
+  }
+
   unsigned MaxPos = 0;
   Instruction *MaxPoint = Slice.front();
   for (auto &El : Slice) {
@@ -515,6 +533,15 @@ Instruction *IGCVectorizerCommon::getMaxPoint(VecArr &Slice) {
 }
 
 Instruction *IGCVectorizerCommon::getMinPoint(VecArr &Slice) {
+  if (isInSingleBB(Slice)) {
+    Instruction *MinPoint = Slice.front();
+    for (auto &El : Slice) {
+      if (El->comesBefore(MinPoint))
+        MinPoint = El;
+    }
+    return MinPoint;
+  }
+
   unsigned MinPos = UINT32_MAX;
   Instruction *MinPoint = Slice.front();
   for (auto &El : Slice) {
