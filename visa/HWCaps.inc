@@ -983,6 +983,12 @@ bool modelSendSrcReadLatency () const {
   return getOption(vISA_schedWithSendSrcReadCycle);
 }
 
+bool schedFlagRegDep() const {
+  if (getOptions()->isOptionSetByUser(vISA_SchedFlagRegDep))
+    return getOption(vISA_SchedFlagRegDep);
+  return getPlatform() == Xe3P_CRI;
+}
+
 bool hasReadSuppressionOrSharedLocalMemoryWAs() const {
   return true;
 }

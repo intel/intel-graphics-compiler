@@ -1751,6 +1751,7 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
   dpasIsSchedBarrier = getOptions()->getOption(vISA_DPASScheduleBarrier);
   const bool refinePredChannelDep =
       getOptions()->getOption(vISA_SchedPredChannelDep);
+  const bool flagRegDep = getBuilder()->schedFlagRegDep();
   isThreeSouceBlock = false;
   is_2XFP_Block = false;
   bool BTIIsRestrict =
@@ -2045,6 +2046,14 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
                      curBucket == FLAG2_BUCKET || curBucket == FLAG3_BUCKET) {
             dep = getDepForOpnd(curOpnd, liveOpnd);
             curKillsBucket = false;
+            // A write of one half of a flag register and a later access to the
+            // other half, e.g. f1.0 then f1.1, do not overlap, but the access
+            // can stall on the write. Order them like a read after the write.
+            if (flagRegDep && !hasOverlap && (dep == RAW || dep == WAW)) {
+              dep = RAW;
+              hasOverlap = true;
+              curKillsLive = false;
+            }
           } else if (curBucket == OTHER_ARF_BUCKET) {
             dep = getDepForOpnd(curOpnd, liveOpnd);
             hasOverlap = (dep != NODEP); // Let's be conservative
