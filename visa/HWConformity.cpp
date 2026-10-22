@@ -9656,9 +9656,10 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
   G4_Operand *opnd0 = inst->getSrc(0);
   G4_SrcRegRegion* src0R =
     opnd0->isSrcRegRegion() ? opnd0->asSrcRegRegion() : nullptr;
-  if (!src0R ||                                                 // case 1
-      !builder.tryToAlignOperand(opnd0, GRFByteSize) ||         // case 2
-      (isHF2BF8 && src0R->getRegion()->isContiguous(execsize))) // case 3
+  if (!src0R ||                                         // case 1
+      !builder.tryToAlignOperand(opnd0, GRFByteSize) || // case 2
+      (isHF2BF8 && (execsize == 1 ||                    // case 3
+                    !src0R->getRegion()->isContiguous(execsize))))
   {
     G4_Operand *newSrc0 =
         insertMovBefore(it, 0, opnd0->getType(), bb, builder.getGRFAlign());
