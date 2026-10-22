@@ -85,7 +85,6 @@ typedef struct _SKU_FEATURE_TABLE
         unsigned int   FtrIVBE0E1Platform : 1;
         unsigned int   FtrIVBE2Platform : 1;
         unsigned int   FtrInternalSSC : 1;
-        unsigned int   FtrUseMuxedSSCAsRef : 1;
         unsigned int   FtrChannelSwizzlingXOREnabled : 1;
         unsigned int   FtrULX : 1;
         unsigned int   FtrPipeCDisabled : 1;
@@ -113,53 +112,23 @@ typedef struct _SKU_FEATURE_TABLE
 
     struct
     {
-        unsigned int   FtrMultiPipe : 1;
-        unsigned int   Ftr3Pipes : 1;
-        unsigned int   FtrInternalLvds : 1;
-        unsigned int   FtrCrtOnPipeB : 1;
-        unsigned int   FtrSerialDvo : 1;
-        unsigned int   FtrSDVOHDMI : 1;
-        unsigned int   FtrDualView : 1;
-        unsigned int   FtrWirelessDisplayNndi : 1;
-        unsigned int   FtreDPonPortD : 1;
-        unsigned int   FtreDPonPortC : 1;
-        unsigned int   FtreDPonPortB : 1;
-        unsigned int   FtrWirelessDisplay_2_1 : 1;
         unsigned int   FtrDisplayDisabled : 1;
         unsigned int   FtrSGTPVSKUStrapPresent : 1;
-        unsigned int   FtrS0ixSKU : 1;
         unsigned int   FtrS0ixSRByGunit : 1;
         unsigned int   FtrGfxS0ixCapable : 1;
         unsigned int   FtrConnectedStandby : 1;
-        unsigned int   FtrSKU4KDisplay : 1;
-        unsigned int   FtrSupportModesGreaterThan3840Horizontal : 1;
         unsigned int   FtrCollageSupport : 1;
-        unsigned int   FtrLPEAudio : 1;
-        unsigned int   FtrHDMIPixelMax225Mhz : 1;
-        unsigned int   FtrDPMaxRes25x16_60 : 1;
-        unsigned int   FtrCRTNotSupported : 1;
         unsigned int   FtrMipi : 1;
         unsigned int   FtrCommandModeMIPI  :   1;
         unsigned int   FtrAllowDC9WithMIPIDSR : 1;
         unsigned int   FtrDualMipi : 1;
-        unsigned int   FtrSF1_0 : 1;
         unsigned int   FtrMPOSupport : 1;
         unsigned int   FtrDisableMPOMultiDisplayConfig : 1;
-        unsigned int   FtrFractional48Hz : 1;
-        unsigned int   FtrCHVBxSku : 1;
-        unsigned int   FtrSplitScreenMPO : 1;
         unsigned int   FtrInvertRotation : 1;
-        unsigned int   FtrPortraitLFP : 1;
-        unsigned int   FtrGunitOffset : 1;
-        unsigned int   FtrHWScalingNotSupported : 1;
-        unsigned int   FtrDynamicCDClkOnlyForSDInternal : 1;
-        unsigned int   FtrDDI4 : 1;
-        unsigned int   FtrEnableUnderRun : 1;
         unsigned int   FtrEnable10bitRGBMPO : 1;
         unsigned int   FtrSAGVNotifyPCode : 1;
         unsigned int   FtrCoG : 1;
         unsigned int   FtreDPVDSC : 1;
-        unsigned int   FtrPeriodicFrameNotification : 1;
         unsigned int   FtrDPVDSC : 1;
     };
 
@@ -426,4 +395,3 @@ struct HW_STATUS
 #define GRAPHICS_IS_WA(s, w)  ((s)->w)
 
 #endif
-
