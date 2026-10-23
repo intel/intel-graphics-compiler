@@ -3255,47 +3255,7 @@ bool CShader::CanTreatAsAlias(llvm::ExtractElementInst *inst) {
     return false;
   }
 
-  llvm::Value *idxSrc = inst->getIndexOperand();
-  if (!isa<llvm::ConstantInt>(idxSrc)) {
-    return false;
-  }
-
-  llvm::Value *vecSrc = inst->getVectorOperand();
-  if (isa<llvm::InsertElementInst>(vecSrc)) {
-    return false;
-  }
-
-  // A constant vector has no variable of its own to alias: GetSymbol() would
-  // materialize it on the spot, outside the extract's emission, and
-  // emitExtract() reads it from the constant pool instead.
-  if (isa<llvm::Constant>(vecSrc)) {
-    return false;
-  }
-
-  if (IsCoalesced(inst) || IsCoalesced(vecSrc)) {
-    return false;
-  }
-
-  const bool vecUniform = GetIsUniform(vecSrc);
-  for (auto I = vecSrc->user_begin(), E = vecSrc->user_end(); I != E; ++I) {
-    llvm::ExtractElementInst *extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I);
-    if (!extract) {
-      return false;
-    }
-    if (!isa<ConstantInt>(extract->getIndexOperand())) {
-      return false;
-    }
-    // If there is another component not being treated as alias, this
-    // component cannot be neither. This decision should be mitigated once
-    // the VISA could track the liveness of individual elements of vector
-    // variables.
-    if (IsCoalesced(extract))
-      return false;
-    // An alias takes the vector's uniformity, so WIAnalysis must agree on both.
-    if (GetIsUniform(extract) != vecUniform)
-      return false;
-  }
-  return true;
+  return canEmitExtractAsAlias(inst, m_deSSA, m_coalescingEngine, m_VRA, m_WI);
 }
 
 // EnableSampleTailDeAlias optimization. See header comment on the declaration and
@@ -3559,13 +3519,7 @@ bool CShader::CanTreatScalarSourceAsAlias(llvm::InsertElementInst *IEI) {
 
 bool CShader::HasBecomeNoop(Instruction *inst) { return m_VRA->m_HasBecomeNoopInsts.count(inst); }
 
-bool CShader::IsCoalesced(Value *V) {
-  if ((m_VRA && m_VRA->isAliasedValue(V)) || (m_deSSA && m_deSSA->getRootValue(V)) ||
-      (m_coalescingEngine && m_coalescingEngine->GetValueCCTupleMapping(V))) {
-    return true;
-  }
-  return false;
-}
+bool CShader::IsCoalesced(Value *V) { return isCoalescedValue(V, m_deSSA, m_coalescingEngine, m_VRA); }
 
 #define SET_INTRINSICS()                                                                                               \
   GenISAIntrinsic::GenISA_setMessagePhaseX : case GenISAIntrinsic::GenISA_setMessagePhaseXV:                           \

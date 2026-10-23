@@ -548,6 +548,11 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst &I) {
     }
   }
 
+  // If EmitVISA can alias EEI, VRA should skip creating a separate alias for it.
+  if (canEmitExtractAsAlias(EEI, m_DeSSA, m_coalescingEngine, this, m_WIA)) {
+    return;
+  }
+
   // If inst is dead, EEI is an argument, or EEI & vecVal have
   // different uniformness, skip it. (Current igc & visa interface
   // requires any argument value to be a root value, not alias.)
@@ -1553,6 +1558,47 @@ bool VariableReuseAnalysis::isExtractMaskCandidate(Value *V) const {
   }
   uint32_t fullMask = maskTrailingOnes<uint32_t>(nelts);
   return fullMask > mask;
+}
+
+bool IGC::isCoalescedValue(Value *V, DeSSA *DS, CoalescingEngine *CE, VariableReuseAnalysis *VRA) {
+  return (VRA && VRA->isAliasedValue(V)) || (DS && DS->getRootValue(V)) || (CE && CE->GetValueCCTupleMapping(V));
+}
+
+bool IGC::canEmitExtractAsAlias(ExtractElementInst *EEI, DeSSA *DS, CoalescingEngine *CE, VariableReuseAnalysis *VRA,
+                                WIAnalysis *WIA) {
+  if (!isa<ConstantInt>(EEI->getIndexOperand()))
+    return false;
+
+  Value *vecVal = EEI->getVectorOperand();
+  if (isa<InsertElementInst>(vecVal))
+    return false;
+
+  // A constant vector has no variable of its own to alias: GetSymbol() would
+  // materialize it on the spot, outside the extract's emission, and
+  // emitExtract() reads it from the constant pool instead.
+  if (isa<Constant>(vecVal))
+    return false;
+
+  if (isCoalescedValue(EEI, DS, CE, VRA) || isCoalescedValue(vecVal, DS, CE, VRA))
+    return false;
+
+  auto isUniform = [WIA](Value *V) { return WIA && WIA->isUniform(V); };
+  const bool vecUniform = isUniform(vecVal);
+  for (User *U : vecVal->users()) {
+    auto *extract = dyn_cast<ExtractElementInst>(U);
+    if (!extract || !isa<ConstantInt>(extract->getIndexOperand()))
+      return false;
+    // If there is another component not being treated as alias, this
+    // component cannot be neither. This decision should be mitigated once
+    // the VISA could track the liveness of individual elements of vector
+    // variables.
+    if (isCoalescedValue(extract, DS, CE, VRA))
+      return false;
+    // An alias takes the vector's uniformity, so WIAnalysis must agree on both.
+    if (isUniform(extract) != vecUniform)
+      return false;
+  }
+  return true;
 }
 
 // This function is to check if SubVec still meets its alignment requirement

@@ -485,4 +485,17 @@ private:
 
 llvm::FunctionPass *createVariableReuseAnalysisPass();
 
+//
+// Helper functions shared by VariableReuseAnalysis and CShader (EmitVISA)
+//
+
+// Return true if V's variable layout is decided by DeSSA, payload coalescing or
+// VRA. Null analyses are skipped.
+bool isCoalescedValue(llvm::Value *V, DeSSA *DS, CoalescingEngine *CE, VariableReuseAnalysis *VRA);
+
+// Return true if EmitVISA can emit EEI as an alias of its vector operand. VRA will skip such
+// extracts.
+bool canEmitExtractAsAlias(llvm::ExtractElementInst *EEI, DeSSA *DS, CoalescingEngine *CE, VariableReuseAnalysis *VRA,
+                           WIAnalysis *WIA);
+
 } // namespace IGC
