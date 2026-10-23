@@ -1793,6 +1793,19 @@ private:
     SmallVector<DPASChainGroup, 4> DPASChainGroups;
     DenseMap<Instruction *, int> DPASToChainIdx; // Inst → index into DPASChains
 
+    // Instruction of a computation that ends in an extended math instruction
+    // -> that math instruction (Stage 4 of the graph build). Null when the
+    // block has no extended math or ExtendedMathBatchElements is 0. Shared by
+    // the copies of the graph.
+    std::shared_ptr<const DenseMap<Instruction *, Instruction *>> ExtendedMathOf;
+
+    Instruction *getExtendedMathOf(Instruction *I) const {
+      if (!ExtendedMathOf)
+        return nullptr;
+      auto It = ExtendedMathOf->find(I);
+      return It == ExtendedMathOf->end() ? nullptr : It->second;
+    }
+
     // Mask -> the selects whose conditions it computes. A mask is a compare or
     // an i1 logic instruction of this block whose users are only select
     // conditions, directly or through other masks. Null when the block has no
@@ -2352,6 +2365,45 @@ private:
           MaskSelects = std::move(Masks);
       }
 
+      // Stage 4. Computations of extended math operands, for
+      // ExtendedMathBatchElements. The math pipe issues extended math
+      // instructions (exp, log, sqrt, sin, cos, pow, div) at a lower rate than
+      // the float and int pipes. When the block computes math(f(g(x))) for
+      // several independent x, the instructions of one level have the same
+      // MaxWeight, so MaxWeight scheduling places the computations level by
+      // level: every g, then every f, then every math instruction. vISA then
+      // has no independent instruction to issue between the math
+      // instructions, and each of them waits for the math pipe.
+      //
+      // Maps every instruction of such a computation to its math instruction:
+      // the math instruction itself, and each instruction of the block that
+      // computes one of its operands, directly or through others of the
+      // computation, has no other use, and is a binary, unary or cast
+      // operation. Defs precede uses, so a math instruction that feeds another
+      // one is already mapped to itself and ends the walk.
+      if (C[Option::ExtendedMathBatchElements] > 0) {
+        auto MathOf = std::make_shared<DenseMap<Instruction *, Instruction *>>();
+        for (auto &Node : InstNodes) {
+          if (!IsExtendedMathInstruction(Node.I))
+            continue;
+          (*MathOf)[Node.I] = Node.I;
+          SmallVector<Instruction *, 8> Worklist{Node.I};
+          while (!Worklist.empty()) {
+            Instruction *UserI = Worklist.pop_back_val();
+            for (Value *Op : UserI->operands()) {
+              auto *OpI = dyn_cast<Instruction>(Op);
+              if (!OpI || OpI->getParent() != BB || !OpI->hasOneUse() || MathOf->count(OpI) ||
+                  !isa<BinaryOperator, UnaryOperator, CastInst>(OpI))
+                continue;
+              (*MathOf)[OpI] = Node.I;
+              Worklist.push_back(OpI);
+            }
+          }
+        }
+        if (!MathOf->empty())
+          ExtendedMathOf = std::move(MathOf);
+      }
+
       if (IGC_GET_FLAG_VALUE(CodeSchedulingDumpLevel) >= VerbosityLevel::High) {
         PrintDumpLevel(VerbosityLevel::High, "Dependency graph dump:\n");
         this->print(*LogStream);
@@ -2416,7 +2468,8 @@ private:
           AllInstructionsScheduledByRP(S.AllInstructionsScheduledByRP), MaxRegpressure(S.MaxRegpressure),
           RefLiveIntervals(S.RefLiveIntervals), ScheduledInstructions(S.ScheduledInstructions),
           ActiveLargeLoad(S.ActiveLargeLoad), MWDecisions(S.MWDecisions), RPDecisions(S.RPDecisions),
-          ImmediateOverrideDecisions(S.ImmediateOverrideDecisions), OpenMasks(S.OpenMasks) {
+          ImmediateOverrideDecisions(S.ImmediateOverrideDecisions), OpenMasks(S.OpenMasks),
+          StartedExtendedMath(S.StartedExtendedMath), StartedExtendedMathElements(S.StartedExtendedMathElements) {
       G.InstNodes.reserve(S.G.InstNodes.size());
       G.DepEdges.reserve(S.G.DepEdges.size());
 
@@ -2454,6 +2507,7 @@ private:
       G.DPASChains = S.G.DPASChains;
       G.DPASChainGroups = S.G.DPASChainGroups;
       G.DPASToChainIdx = S.G.DPASToChainIdx;
+      G.ExtendedMathOf = S.G.ExtendedMathOf;
       G.MaskSelects = S.G.MaskSelects;
       G.DPASForwardPartner = S.G.DPASForwardPartner;
 
@@ -2501,6 +2555,8 @@ private:
       ScheduledInstructions.insert(Node->I);
       if (G.MaskSelects)
         updateOpenMasks(Node->I);
+      if (G.ExtendedMathOf)
+        updateStartedExtendedMath(Node->I);
       RT.update(Node->I);
       MaxRegpressure = std::max(MaxRegpressure, RT.getCurrentPressure());
       if (RT.isRegpressureCritical()) {
@@ -2663,6 +2719,16 @@ private:
     // does not fold them. Each of them holds a flag register.
     DenseSet<Instruction *> OpenMasks;
 
+    // The batch of ExtendedMathBatchElements. StartedExtendedMath holds the
+    // math instructions whose computation has started but that are not
+    // scheduled yet. StartedExtendedMathElements counts the vector elements of
+    // the math results of the computations started since the batch began; a
+    // scalar is one element. The batch is full once this cumulative count
+    // reaches ExtendedMathBatchElements while any math instruction remains
+    // pending.
+    SmallVector<Instruction *, 16> StartedExtendedMath;
+    int32_t StartedExtendedMathElements = 0;
+
     // LimitOpenMasks: number of open masks from which the instructions that
     // complete their users come first. 0 is no limit. Every open mask holds a
     // flag register, and vISA overlaps the compare chains of the other masks
@@ -2697,6 +2763,24 @@ private:
       }
       if (G.MaskSelects->count(I) && holdsFlagRegister(I))
         OpenMasks.insert(I);
+    }
+
+    void updateStartedExtendedMath(Instruction *I) {
+      Instruction *Math = G.getExtendedMathOf(I);
+      if (!Math)
+        return;
+      auto It = llvm::find(StartedExtendedMath, Math);
+      if (Math == I) {
+        if (It != StartedExtendedMath.end())
+          StartedExtendedMath.erase(It);
+        if (StartedExtendedMath.empty()) {
+          StartedExtendedMathElements = 0;
+        }
+      } else if (It == StartedExtendedMath.end()) {
+        StartedExtendedMath.push_back(Math);
+        auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Math->getType());
+        StartedExtendedMathElements += VT ? static_cast<int32_t>(VT->getNumElements()) : 1;
+      }
     }
 
     // Helper: compute load's register footprint in bytes
@@ -3236,6 +3320,41 @@ private:
         return Nodes;
       };
 
+      // While a full batch of computations of extended math operands is in
+      // progress, keep the instructions of the batch while its best ready
+      // instruction is within ExtendedMathBatchWindow of the best MaxWeight.
+      // With a batch of two computations, the order of four computations
+      // becomes
+      //   g0 g1 f0 f1 math0 math1 g2 g3 f2 f3 math2 math3
+      // instead of g0 g1 g2 g3 f0 f1 f2 f3 math0 math1 math2 math3, so vISA can
+      // issue the float instructions of the next batch between the math
+      // instructions of the previous one.
+      auto keepExtendedMathBatch = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
+        const bool IsExtendedMathBatchFull =
+            !StartedExtendedMath.empty() &&
+            StartedExtendedMathElements >= RT.adjustElementsFromSIMDSize(C[Option::ExtendedMathBatchElements]);
+        if (!IsExtendedMathBatchFull || Nodes.size() <= 1)
+          return Nodes;
+        int32_t BestWeight = Nodes.front()->MaxWeight;
+        int32_t BestBatchWeight = INT32_MIN;
+        InstNodePtrList BatchNodes;
+        for (InstructionNode *Node : Nodes) {
+          BestWeight = std::max(BestWeight, Node->MaxWeight);
+          Instruction *Math = G.getExtendedMathOf(Node->I);
+          if (!Math || !llvm::is_contained(StartedExtendedMath, Math))
+            continue;
+          BestBatchWeight = std::max(BestBatchWeight, Node->MaxWeight);
+          BatchNodes.push_back(Node);
+        }
+        if (!BatchNodes.empty() && BestBatchWeight >= BestWeight - C[Option::ExtendedMathBatchWindow]) {
+          PrintDumpLevel(VerbosityLevel::Medium, "Extended math batch: " << StartedExtendedMath.size()
+                                                                         << " computations, keeping "
+                                                                         << BatchNodes.size() << " instructions\n");
+          Nodes = std::move(BatchNodes);
+        }
+        return Nodes;
+      };
+
       auto focusLoadsOnOneDPAS = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
         // Focus loads on one DPAS: choose the DPAS user with the lowest
         // OriginalPosition and filter out loads feeding later DPASes. This
@@ -3716,6 +3835,9 @@ private:
           }
           if (C[Option::PrioritizeDataLoadsOverPrefetches]) {
             FilteredReadyList = prioritizeDataLoadsOverPrefetches(FilteredReadyList);
+          }
+          if (G.ExtendedMathOf) {
+            FilteredReadyList = keepExtendedMathBatch(FilteredReadyList);
           }
 
           FilteredReadyList = getMaxWeightNodes(FilteredReadyList);

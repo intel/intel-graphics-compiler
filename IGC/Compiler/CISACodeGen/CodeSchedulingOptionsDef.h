@@ -124,6 +124,16 @@ DECLARE_SCHEDULING_OPTION(LimitActiveLargeLoads, 32,
                           "Heuristic: Only allow one large load to be active at a time. "
                           "Value is in i32 elements for SIMD16, internally converted to bytes "
                           "(value * 4) and compared against load byte size. 0=disabled")
+DECLARE_SCHEDULING_OPTION(ExtendedMathBatchElements, 16,
+                          "Heuristic: when choosing by MaxWeight, schedule the computations of extended math "
+                          "operands in batches whose math results have this many vector elements, a scalar being "
+                          "one element: once a batch is full, prefer its instructions until its math instructions "
+                          "are scheduled, so that the math of independent computations is not grouped. The value is "
+                          "for SIMD16, for SIMD32 it will be divided by 2. 0 disables")
+DECLARE_SCHEDULING_OPTION(ExtendedMathBatchWindow, 100,
+                          "Heuristic: ExtendedMathBatchElements applies while the batch has a ready instruction "
+                          "whose MaxWeight is at most this much below the highest MaxWeight of the ready "
+                          "instructions")
 DECLARE_SCHEDULING_OPTION(DeferMasksUntilSelectReady, 1,
                           "Heuristic: keep a mask (an i1 value whose users are only select conditions, directly or "
                           "through other masks) off the ready list until one of its selects has its value operands "
