@@ -407,6 +407,8 @@ private:
   // Check if sub can be aliased to Base[Base_ix:size(sub)-1]
   bool aliasInterfere(llvm::Value *Sub, llvm::Value *Base, int Base_ix);
 
+  bool isLoopCarried(llvm::Value *V) const;
+
   // DCC: DeSSA congruent class
   // If any value of V's DCC is an aliaser, return true.
   bool hasAnyDCCAsAliaser(llvm::Value *V) const;

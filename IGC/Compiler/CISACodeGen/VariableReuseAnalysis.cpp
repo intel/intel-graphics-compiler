@@ -643,6 +643,13 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst &I) {
     // case 3: DeSSA CC not empty
     if (aliasInterfere(EEI_nv, vec_nv, iIdx))
       return;
+
+    // Aliasing a loop-carried EEI to a vector makes the whole vector live
+    // across the back edge.
+    // FIXME: Aliasing can still be profitable depending on register pressure
+    // and liveness of each extracts.
+    if (isLoopCarried(EEI_nv))
+      return;
   }
 
   // EEI's offset in vecVal must meet the alignment required by EEI and the
@@ -1499,6 +1506,31 @@ void VariableReuseAnalysis::getAllAliasVals(ValueVectorTy &AliasVals, Value *Ali
       AliasVals.push_back(SV->Aliaser);
     }
   }
+}
+
+// Return true if V's DCC has a phi in a loop header. If V is aliased to a
+// vector, the whole vector stays live around the loop even if only one element
+// of it is needed. This holds whether the vector is defined inside the loop or
+// before it: if the vector were live into the loop anyway, it would interfere
+// with V's phi and aliasInterfere() would reject the alias.
+bool VariableReuseAnalysis::isLoopCarried(Value *V) const {
+  if (m_DeSSA->isSingleValued(V))
+    return false;
+
+  SmallVector<Value *, 16> DCCVals;
+  m_DeSSA->getAllValuesInCongruentClass(V, DCCVals);
+  for (Value *DV : DCCVals) {
+    PHINode *PN = dyn_cast<PHINode>(DV);
+    if (!PN)
+      continue;
+    BasicBlock *H = PN->getParent();
+    // H is a loop header if it dominates one of its predecessors (a latch).
+    for (BasicBlock *Pred : PN->blocks()) {
+      if (m_DT->dominates(H, Pred))
+        return true;
+    }
+  }
+  return false;
 }
 
 // Given two values : Sub and (Base, BaseIdx), check if theses two value
