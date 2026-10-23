@@ -696,6 +696,24 @@ static bool LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL
   return true;
 }
 
+// Packs the bool vector constant C into 32-bit words: element i goes to bit
+// (i % 32) of word (i / 32). Undef elements become 0. Returns false if an
+// element is not a constant integer or undef.
+static bool packBoolVectorConstant(Constant *C, unsigned NumElts, SmallVectorImpl<uint32_t> &Words) {
+  Words.assign((NumElts + 31) / 32, 0);
+  for (unsigned i = 0; i < NumElts; ++i) {
+    Constant *Elt = C->getAggregateElement(i);
+    if (Elt && isa<UndefValue>(Elt))
+      continue;
+    auto *CI = dyn_cast_or_null<ConstantInt>(Elt);
+    if (!CI)
+      return false;
+    if (CI->isOne())
+      Words[i / 32] |= 1u << (i % 32);
+  }
+  return true;
+}
+
 // InstCombine can fold a trunc-to-i1 of an extracted element into a bitcast to
 // a bool vector followed by an extractelement:
 //   %bc = bitcast <8 x i32> %v to <256 x i1>
@@ -707,10 +725,17 @@ static bool LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL
 //   %and     = and i32 %shift, 1
 //   %trunc   = trunc i32 %and to i1
 //
-// Widen constant bool vectors to i8 before extraction:
-//   %b = extractelement <4 x i1> <i1 true, i1 false, i1 false, i1 false>, i32 %index
+// A constant bool vector is a bit mask, so test the bit selected by the index:
+//   %b = extractelement <4 x i1> <i1 true, i1 false, i1 true, i1 false>, i32 %index
 // becomes:
-//   %extract = extractelement <4 x i8> <i8 1, i8 0, i8 0, i8 0>, i32 %index
+//   %shift = lshr i32 5, %index
+//   %and   = and i32 %shift, 1
+//   %b     = icmp ne i32 %and, 0
+// Vectors longer than 32 elements are packed into a vector of 32-bit words; the
+// word (%index >> 5) is extracted and bit (%index & 31) is tested in it.
+// If an element is not a true, false or undef constant, the vector is widened to
+// i8 instead:
+//   %extract = extractelement <4 x i8> <i8 1, i8 0, i8 1, i8 0>, i32 %index
 //   %b = icmp ne i8 %extract, 0
 void Legalization::visitExtractElementInst(ExtractElementInst &I) {
   if (!I.getType()->isIntegerTy(1))
@@ -719,10 +744,24 @@ void Legalization::visitExtractElementInst(ExtractElementInst &I) {
   auto *VecTy = dyn_cast<IGCLLVM::FixedVectorType>(I.getVectorOperandType());
   if (VecTy && isa<Constant>(I.getVectorOperand())) {
     m_builder->SetInsertPoint(&I);
-    auto *WideTy = IGCLLVM::FixedVectorType::get(m_builder->getInt8Ty(), VecTy->getNumElements());
-    Value *WideVec = m_builder->CreateZExt(I.getVectorOperand(), WideTy);
-    Value *Elt = m_builder->CreateExtractElement(WideVec, I.getIndexOperand());
-    Value *Bit = m_builder->CreateICmpNE(Elt, m_builder->getInt8(0));
+    Value *Bit = nullptr;
+    SmallVector<uint32_t, 4> Words;
+    if (packBoolVectorConstant(cast<Constant>(I.getVectorOperand()), VecTy->getNumElements(), Words)) {
+      Value *Idx = m_builder->CreateZExtOrTrunc(I.getIndexOperand(), m_builder->getInt32Ty());
+      Value *Word = m_builder->getInt32(Words[0]);
+      if (Words.size() > 1) {
+        Value *WordIdx = m_builder->CreateLShr(Idx, 5);
+        Word = m_builder->CreateExtractElement(ConstantDataVector::get(I.getContext(), Words), WordIdx);
+        Idx = m_builder->CreateAnd(Idx, 31);
+      }
+      Value *Masked = m_builder->CreateAnd(m_builder->CreateLShr(Word, Idx), 1);
+      Bit = m_builder->CreateICmpNE(Masked, m_builder->getInt32(0));
+    } else {
+      auto *WideTy = IGCLLVM::FixedVectorType::get(m_builder->getInt8Ty(), VecTy->getNumElements());
+      Value *WideVec = m_builder->CreateZExt(I.getVectorOperand(), WideTy);
+      Value *Elt = m_builder->CreateExtractElement(WideVec, I.getIndexOperand());
+      Bit = m_builder->CreateICmpNE(Elt, m_builder->getInt8(0));
+    }
     I.replaceAllUsesWith(Bit);
     m_instructionsToRemove.insert(&I);
     return;
