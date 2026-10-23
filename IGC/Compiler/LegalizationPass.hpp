@@ -98,6 +98,8 @@ protected:
   void removeIfAllUsersRemoved(llvm::Value *V);
   void foldBoolVectorBitCastPairs();
   void PromoteTruncToI1(llvm::TruncInst &I);
+  void scalarizeVectorArithIntrinsic(llvm::IntrinsicInst &I);
+  void replaceOverflowIntrinsicUses(llvm::IntrinsicInst &I, llvm::Value *Res, llvm::Value *IsOverflow);
 
   /// \brief Ensure a function have a unique return instruction.
   void unifyReturnInsts(llvm::Function &F);

@@ -1755,6 +1755,102 @@ void Legalization::visitAlloca(AllocaInst &I) {
   }
 }
 
+// llvm.x.with.overflow returns a struct, where the first element is the operation result,
+// and the second is the overflow flag.
+// Replace each extract with the correct value, and each user of the whole
+// struct with a rebuilt aggregate.
+void Legalization::replaceOverflowIntrinsicUses(IntrinsicInst &I, Value *Res, Value *IsOverflow) {
+  IGCLLVM::IRBuilder<> Builder(&I);
+  SmallVector<User *> Users(I.users());
+  Value *aggregate = nullptr;
+  for (User *U : Users) {
+    ExtractValueInst *extract = dyn_cast<ExtractValueInst>(U);
+    if (!extract) {
+      if (!aggregate) {
+        aggregate = Builder.CreateInsertValue(PoisonValue::get(I.getType()), Res, 0);
+        aggregate = Builder.CreateInsertValue(aggregate, IsOverflow, 1);
+      }
+      U->replaceUsesOfWith(&I, aggregate);
+      continue;
+    }
+
+    ArrayRef<unsigned int> indices = extract->getIndices();
+    if (indices[0] == 0) {
+      extract->replaceAllUsesWith(Res);
+    } else if (indices[0] == 1) {
+      extract->replaceAllUsesWith(IsOverflow);
+    } else {
+      IGC_ASSERT_MESSAGE(0, "Unexpected index when handling llvm.x.with.overflow");
+    }
+
+    m_instructionsToRemove.insert(extract);
+  }
+
+  m_instructionsToRemove.insert(&I);
+}
+
+// Lower vector llvm.x.sat and llvm.x.with.overflow by splitting them into scalar intrinsics, then lowering each of
+// them.
+void Legalization::scalarizeVectorArithIntrinsic(IntrinsicInst &I) {
+  IGCLLVM::IRBuilder<> Builder(&I);
+  Value *Src0 = I.getArgOperand(0);
+  Value *Src1 = I.getArgOperand(1);
+  auto *VecTy = cast<IGCLLVM::FixedVectorType>(Src0->getType());
+  unsigned NumElts = (unsigned)VecTy->getNumElements();
+  bool IsOverflow = isa<StructType>(I.getType());
+
+  Value *Res = PoisonValue::get(VecTy);
+  Value *Overflow =
+      IsOverflow ? PoisonValue::get(IGCLLVM::FixedVectorType::get(Builder.getInt1Ty(), NumElts)) : nullptr;
+  SmallVector<CallInst *, 16> ScalarCalls;
+  SmallVector<Value *, 16> ResLanes;
+  SmallVector<Value *, 16> OverflowLanes;
+  for (unsigned i = 0; i < NumElts; ++i) {
+    Value *Src0Elt = Builder.CreateExtractElement(Src0, i);
+    Value *Src1Elt = Builder.CreateExtractElement(Src1, i);
+    CallInst *ScalarCall =
+        Builder.CreateIntrinsicWithoutFolding(I.getIntrinsicID(), {VecTy->getElementType()}, {Src0Elt, Src1Elt});
+    ScalarCalls.push_back(ScalarCall);
+    if (IsOverflow) {
+      ResLanes.push_back(Builder.CreateExtractValue(ScalarCall, (uint64_t)0));
+      OverflowLanes.push_back(Builder.CreateExtractValue(ScalarCall, (uint64_t)1));
+    } else {
+      ResLanes.push_back(ScalarCall);
+    }
+    Res = Builder.CreateInsertElement(Res, ResLanes.back(), i);
+    if (IsOverflow)
+      Overflow = Builder.CreateInsertElement(Overflow, OverflowLanes.back(), i);
+  }
+
+  // Users extracting a single lane get the scalar value directly. Going through
+  // the insertelement chain would hide patterns such as zext(icmp) from later passes.
+  auto forwardLanes = [this](Value *Vec, ArrayRef<Value *> Lanes) {
+    for (User *U : make_early_inc_range(Vec->users())) {
+      auto *EE = dyn_cast<ExtractElementInst>(U);
+      auto *Idx = EE ? dyn_cast<ConstantInt>(EE->getIndexOperand()) : nullptr;
+      if (!Idx || Idx->getZExtValue() >= Lanes.size())
+        continue;
+      EE->replaceAllUsesWith(Lanes[Idx->getZExtValue()]);
+      m_instructionsToRemove.insert(EE);
+    }
+  };
+
+  if (IsOverflow) {
+    for (User *U : I.users()) {
+      if (auto *EV = dyn_cast<ExtractValueInst>(U))
+        forwardLanes(EV, EV->getIndices()[0] == 0 ? ArrayRef<Value *>(ResLanes) : ArrayRef<Value *>(OverflowLanes));
+    }
+    replaceOverflowIntrinsicUses(I, Res, Overflow);
+  } else {
+    forwardLanes(&I, ResLanes);
+    I.replaceAllUsesWith(Res);
+    I.eraseFromParent();
+  }
+
+  for (CallInst *ScalarCall : ScalarCalls)
+    visit(*ScalarCall);
+}
+
 void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   m_ctx->m_instrTypes.numInsts++;
   IGCLLVM::IRBuilder<> Builder(&I);
@@ -1766,6 +1862,10 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   case Intrinsic::ssub_sat:
   case Intrinsic::uadd_sat:
   case Intrinsic::sadd_sat: {
+    if (I.getType()->isVectorTy()) {
+      scalarizeVectorArithIntrinsic(I);
+      break;
+    }
     llvm::Intrinsic::ID OverflowIntrinID = Intrinsic::not_intrinsic;
     switch (I.getIntrinsicID()) {
     case Intrinsic::usub_sat:
@@ -1839,6 +1939,11 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   case Intrinsic::smul_with_overflow: {
     Value *src0 = I.getArgOperand(0);
     Value *src1 = I.getArgOperand(1);
+
+    if (src0->getType()->isVectorTy()) {
+      scalarizeVectorArithIntrinsic(I);
+      break;
+    }
 
     Instruction *res = nullptr;
     Instruction *isOverflow = nullptr;
@@ -1976,36 +2081,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
     res->setDebugLoc(I.getDebugLoc());
     isOverflow->setDebugLoc(I.getDebugLoc());
 
-    // llvm.x.with.overflow returns a struct, where the first element is the operation result,
-    // and the second is the overflow flag.
-    // Replace each extract with the correct instruction, and each user of the whole
-    // struct with a rebuilt aggregate.
-    SmallVector<User *> Users(I.users());
-    Value *aggregate = nullptr;
-    for (User *U : Users) {
-      ExtractValueInst *extract = dyn_cast<ExtractValueInst>(U);
-      if (!extract) {
-        if (!aggregate) {
-          aggregate = Builder.CreateInsertValue(PoisonValue::get(I.getType()), res, 0);
-          aggregate = Builder.CreateInsertValue(aggregate, isOverflow, 1);
-        }
-        U->replaceUsesOfWith(&I, aggregate);
-        continue;
-      }
-
-      ArrayRef<unsigned int> indices = extract->getIndices();
-      if (indices[0] == 0) {
-        extract->replaceAllUsesWith(res);
-      } else if (indices[0] == 1) {
-        extract->replaceAllUsesWith(isOverflow);
-      } else {
-        IGC_ASSERT_MESSAGE(0, "Unexpected index when handling uadd_with_overflow");
-      }
-
-      m_instructionsToRemove.insert(extract);
-    }
-
-    m_instructionsToRemove.insert(&I);
+    replaceOverflowIntrinsicUses(I, res, isOverflow);
     break;
   }
   case Intrinsic::assume:
