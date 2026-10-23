@@ -22,14 +22,7 @@
 ; CHECK: mov (M1_NM, 8) [[ZERO_1:V.*]](0,0)<1> 0x0:f
 ; CHECK: mov (M1_NM, 8) [[ZERO_2:V.*]](0,0)<1> 0x0:f
 ; CHECK: ([[PRED]]) sel (M1_NM, 8) vectorized_select917(0,0)<1> [[ZERO_1]](0,0)<1;1,0> [[ZERO_2]](0,0)<1;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1068(0,0)<1> [[ARG]](0,0)<0;1,0> vectorized_select917(0,0)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1068(0,1)<1> [[ARG]](0,1)<0;1,0> vectorized_select917(0,1)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1068(0,2)<1> [[ARG]](0,2)<0;1,0> vectorized_select917(0,2)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1068(0,3)<1> [[ARG]](0,3)<0;1,0> vectorized_select917(0,3)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1068(0,4)<1> [[ARG]](0,4)<0;1,0> vectorized_select917(0,4)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1068(0,5)<1> [[ARG]](0,5)<0;1,0> vectorized_select917(0,5)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1068(0,6)<1> [[ARG]](0,6)<0;1,0> vectorized_select917(0,6)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1068(0,7)<1> [[ARG]](0,7)<0;1,0> vectorized_select917(0,7)<0;1,0>
+; CHECK: div (M1_NM, 8) vectorized_binary1068(0,0)<1> [[ARG]](0,0)<1;1,0> vectorized_select917(0,0)<1;1,0>
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"

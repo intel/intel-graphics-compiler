@@ -5246,24 +5246,15 @@ void EmitPass::Shl(const SSource sources[2], const DstModifier &modifier) {
   Binary(EOPCODE_SHL, sources, modifier);
 }
 
-bool isVectorOfOnes(llvm::Value *zero) {
-
-  const auto *constVec = llvm::dyn_cast<llvm::ConstantDataVector>(zero);
-  if (!constVec)
-    return false;
-  if (!constVec->getType()->getElementType()->isFloatTy())
+bool isVectorOfOnes(llvm::Value *V) {
+  const auto *C = llvm::dyn_cast<llvm::Constant>(V);
+  if (!C || !C->getType()->isVectorTy() || !C->getType()->getScalarType()->isFloatTy())
     return false;
 
-  unsigned numElements = constVec->getNumElements();
-  for (unsigned i = 0; i < numElements; i++) {
-    const auto *constFloat = llvm::dyn_cast<llvm::ConstantFP>(constVec->getElementAsConstant(i));
-    if (!constFloat)
-      return false;
-    if (!constFloat->isExactlyValue(1.f))
-      return false;
-  }
-
-  return true;
+  // Newer LLVM may represent a splat as a vector-typed ConstantFP instead of a
+  // ConstantDataVector, getSplatValue handles both
+  const auto *Splat = llvm::dyn_cast_or_null<llvm::ConstantFP>(C->getSplatValue());
+  return Splat && Splat->isExactlyValue(1.f);
 }
 
 void EmitPass::Div(const SSource sources[2], const DstModifier &modifier) {
@@ -5278,6 +5269,19 @@ void EmitPass::Div(const SSource sources[2], const DstModifier &modifier) {
       IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
                               "As of now Vector Emission is only supported for SIMD16");
     unsigned VectorSize = getVectorSize(sources[0].value);
+    bool AllUniform = src[0]->IsUniform() && src[1]->IsUniform() && m_destination->IsUniform();
+    bool CanEmitThisSize = (VectorSize <= numLanes(m_currShader->m_SIMDSize)) && isPowerOf2_32(VectorSize);
+
+    if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
+      m_encoder->SetSrcModifier(0, sources[0].mod);
+      m_encoder->SetSrcModifier(1, sources[1].mod);
+      m_encoder->SetSrcRegion(0, 1, 1, 0);
+      m_encoder->SetSrcRegion(1, 1, 1, 0);
+      m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
+      m_encoder->Div(m_destination, src[0], src[1]);
+      m_encoder->Push();
+      return;
+    }
 
     for (unsigned i = 0; i < VectorSize; ++i) {
       SetSourceModifiers(0, sources[0]);
@@ -5308,15 +5312,27 @@ void EmitPass::Inv(const SSource sources[2], const DstModifier &modifier) {
   if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy() &&
       sources[1].value->getType()->isVectorTy()) {
 
+    CVariable *src[1];
+    // sources[0] was used to check that it contains all 1
+    // that's why we are in INV
+    src[0] = GetSrcVariable(sources[1]);
+
     if (!isTaggedSimpleAluVectorized(m_currentEmitInst))
       IGC_ASSERT_EXIT_MESSAGE(numLanes(m_encoder->GetSimdSize()) == 16,
                               "As of now Vector Emission is only supported for SIMD16");
     unsigned VectorSize = getVectorSize(sources[0].value);
 
-    CVariable *src[1];
-    // sources[0] was used to check that it contains all 1
-    // that's why we are in INV
-    src[0] = GetSrcVariable(sources[1]);
+    bool AllUniform = src[0]->IsUniform() && m_destination->IsUniform();
+    bool CanEmitThisSize = (VectorSize <= numLanes(m_currShader->m_SIMDSize)) && isPowerOf2_32(VectorSize);
+    if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
+      m_encoder->SetSrcModifier(0, sources[1].mod);
+      m_encoder->SetSrcRegion(0, 1, 1, 0);
+      // this will force no_mask and proper uniform SIMD SIZE
+      m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
+      m_encoder->Inv(m_destination, src[0]);
+      m_encoder->Push();
+      return;
+    }
 
     for (unsigned i = 0; i < VectorSize; ++i) {
       SetSourceModifiers(0, sources[1]);

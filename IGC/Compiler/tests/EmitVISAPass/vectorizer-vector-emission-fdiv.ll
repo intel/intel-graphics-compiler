@@ -1,7 +1,7 @@
 ; UNSUPPORTED: system-windows
 ; REQUIRES: regkeys
 
-; RUN: igc_opt -S -dce -platformpvc -rev-id B -has-emulated-64-bit-insts -igc-emit-visa --regkey=DumpVISAASMToConsole=1 --regkey=VectorizerUniformValueVectorizationEnabled=0 -simd-mode 16 < %s | FileCheck %s
+; RUN: igc_opt -S -dce -platformpvc -rev-id B -has-emulated-64-bit-insts -igc-emit-visa --regkey=DumpVISAASMToConsole=1 -simd-mode 16 < %s | FileCheck %s
 
 ; CHECK: .decl vectorized_phi1095 v_type=G type=f num_elts=8 align=dword
 ; CHECK: .decl vectorized_phi1116 v_type=G type=f num_elts=8 align=dword
@@ -9,22 +9,8 @@
 ; CHECK: .decl vector1052 v_type=G type=f num_elts=8 align=dword
 
 
-; CHECK: div (M1_NM, 1) vectorized_binary1096(0,0)<1> vectorized_phi1095(0,0)<0;1,0> vector1029(0,0)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1096(0,1)<1> vectorized_phi1095(0,1)<0;1,0> vector1029(0,1)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1096(0,2)<1> vectorized_phi1095(0,2)<0;1,0> vector1029(0,2)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1096(0,3)<1> vectorized_phi1095(0,3)<0;1,0> vector1029(0,3)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1096(0,4)<1> vectorized_phi1095(0,4)<0;1,0> vector1029(0,4)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1096(0,5)<1> vectorized_phi1095(0,5)<0;1,0> vector1029(0,5)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1096(0,6)<1> vectorized_phi1095(0,6)<0;1,0> vector1029(0,6)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1096(0,7)<1> vectorized_phi1095(0,7)<0;1,0> vector1029(0,7)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1117(0,0)<1> vectorized_phi1116(0,0)<0;1,0> vector1052(0,0)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1117(0,1)<1> vectorized_phi1116(0,1)<0;1,0> vector1052(0,1)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1117(0,2)<1> vectorized_phi1116(0,2)<0;1,0> vector1052(0,2)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1117(0,3)<1> vectorized_phi1116(0,3)<0;1,0> vector1052(0,3)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1117(0,4)<1> vectorized_phi1116(0,4)<0;1,0> vector1052(0,4)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1117(0,5)<1> vectorized_phi1116(0,5)<0;1,0> vector1052(0,5)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1117(0,6)<1> vectorized_phi1116(0,6)<0;1,0> vector1052(0,6)<0;1,0>
-; CHECK: div (M1_NM, 1) vectorized_binary1117(0,7)<1> vectorized_phi1116(0,7)<0;1,0> vector1052(0,7)<0;1,0>
+; CHECK: div (M1_NM, 8) vectorized_binary1096(0,0)<1> vectorized_phi1095(0,0)<1;1,0> vector1029(0,0)<1;1,0>
+; CHECK: div (M1_NM, 8) vectorized_binary1117(0,0)<1> vectorized_phi1116(0,0)<1;1,0> vector1052(0,0)<1;1,0>
 
 source_filename = "reduced.ll"
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
