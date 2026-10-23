@@ -3,12 +3,6 @@ include(${CMAKE_CURRENT_LIST_DIR}/BiFMCConst.cmake)
 
 string (REPLACE " " ";" CL_OPTIONS "${CL_OPTIONS}")
 
-
-option(IGC_OPTION__ENABLE_BF16_BIF "Enables BF16 support in BiF (requires patched Clang)" ON)
-# Clang patches needed for BF16 support can be found here (example for Clang 16):
-# https://github.com/intel/opencl-clang/tree/ocl-open-160/patches/clang
-
-
 # Creates custom command which builds LLVM Bitcode file for built-in functions.
 #
 # igc_bif_build_bc(
