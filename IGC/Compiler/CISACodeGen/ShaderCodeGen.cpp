@@ -1850,6 +1850,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       if (!pContext->m_DriverInfo.WADisableCustomPass()) {
         mpm.add(new CustomUnsafeOptPass());
       }
+      mpm.add(createSubGroupReductionPatternPass());
     } else {
       if (pContext->m_instrTypes.hasMultipleBB) {
         assert(disableGOPT);
