@@ -625,6 +625,7 @@ public:
   void augmentIntfGraph();
 
   const auto &getSortedLiveIntervals() const { return sortedIntervals; }
+  const auto &getOverlapDclsWithFunc() const { return overlapDclsWithFunc; }
 };
 
 // This class stores base matrices used for interference building for graph coloring.

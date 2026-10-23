@@ -352,6 +352,33 @@ void SpillManagerGRF::getOverlappingIntervals(
     }
   }
 
+  // A subroutine body is lexically outside the caller, so the check above
+  // misses a caller variable whose interval spans a call site and a variable
+  // the subroutine may define. The callee may run while the caller variable's
+  // lanes are parked by a divergent goto, so they overlap too.
+  auto isMaydefOf = [this](FuncInfo *func, unsigned id) {
+    auto it = lvInfo_->subroutineMaydef.find(func);
+    return it != lvInfo_->subroutineMaydef.end() && it->second.test(id);
+  };
+  auto dclId = dcl->getRegVar()->getId();
+  for (auto &[func, overlapDcls] : spillIntf_->getAugmentation()
+                                       .getOverlapDclsWithFunc()) {
+    bool dclAcrossCall = overlapDcls.first.count(dclId) > 0;
+    bool dclInCallee = isMaydefOf(func, dclId);
+    if (!dclAcrossCall && !dclInCallee)
+      continue;
+
+    for (auto *otherDcl : spillingIntervals) {
+      if (otherDcl == dcl || dclMask != gra.getAugmentationMask(otherDcl))
+        continue;
+
+      auto otherId = otherDcl->getRegVar()->getId();
+      if ((dclAcrossCall && isMaydefOf(func, otherId)) ||
+          (dclInCallee && overlapDcls.first.count(otherId) > 0))
+        overlappingDcls.insert(otherDcl);
+    }
+  }
+
   intervals.insert(intervals.end(), overlappingDcls.begin(),
                    overlappingDcls.end());
 }
