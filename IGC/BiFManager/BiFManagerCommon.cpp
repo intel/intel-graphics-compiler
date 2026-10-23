@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 #include "BiFManagerCommon.hpp"
 #include <Probe/Assertion.h>
+#include <cstdint>
 #include <map>
 
 using namespace std;
@@ -23,7 +24,20 @@ BiFManagerCommon::BiFManagerCommon(LLVMContext &Context) : Context(Context) {}
 
 BiFManagerCommon::~BiFManagerCommon() {}
 
-size_t BiFManagerCommon::getHash(const std::string &FlagName) { return std::hash<std::string>{}(FlagName); }
+// Stdlib-independent 64-bit FNV-1a. std::hash<std::string> is implementation-
+// defined and differs between libstdc++ (host BiFManager-bin) and libc++ (cross
+// libigc.so runtime): the host tool bakes case <hash>ULL labels into OCLBiFImpl.h
+// while the runtime recomputes a different value, so every builtin lookup missed
+// and no BiF bodies were linked (all __spirv_* undefined). A fixed hash makes the
+// generated case labels and the runtime lookups agree regardless of stdlib.
+size_t BiFManagerCommon::getHash(const std::string &FlagName) {
+  uint64_t h = 1469598103934665603ULL;
+  for (unsigned char c : FlagName) {
+    h ^= static_cast<uint64_t>(c);
+    h *= 1099511628211ULL;
+  }
+  return static_cast<size_t>(h);
+}
 
 CollectBuiltinsPass::CollectBuiltinsPass(TFunctionsVec &neededBuiltinsFunc,
                                          const std::function<bool(llvm::Function *)> &predicate)
