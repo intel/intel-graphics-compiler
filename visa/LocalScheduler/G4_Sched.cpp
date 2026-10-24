@@ -105,8 +105,8 @@ public:
   DepType getBarrier() const { return Barrier; }
   void setBarrier(DepType d) { Barrier = d; }
   static DepType checkBarrier(G4_INST *Inst);
-  bool isBarrier() const {
-    switch (Barrier) {
+  static bool isBarrier(G4_INST *Inst) {
+    switch (checkBarrier(Inst)) {
     case DepType::DEP_LABEL:
     case DepType::CONTROL_FLOW_BARRIER:
     case DepType::INDIRECT_ADDR_BARRIER:
@@ -228,27 +228,12 @@ class preDDD {
 
   // New operands to be added into live ones.
   // This auxiliary vector is built while processing one node.
-  struct NewLiveOp {
-    NewLiveOp(preNode *N, Gen4_Operand_Number OpNum,
-              G4_Declare *Dcl = nullptr)
-        : N(N), OpNum(OpNum), Dcl(Dcl) {}
-    preNode *N;
-    Gen4_Operand_Number OpNum;
-    // If set, track the operand under this declare instead of the operand's
-    // top declare, e.g. a pointee of an indirect operand.
-    G4_Declare *Dcl;
-  };
-  std::vector<NewLiveOp> NewLiveOps;
+  std::vector<std::pair<preNode *, Gen4_Operand_Number>> NewLiveOps;
 
   bool BTIIsRestrict;
 
-  // Used to resolve the variables read by movi's indirect source. When it is
-  // null, movi is treated as a scheduling barrier.
-  const PointsToAnalysis *P2A;
-
 public:
-  preDDD(G4_Kernel &kernel, G4_BB *BB, const PointsToAnalysis *P2A = nullptr)
-      : kernel(kernel), m_BB(BB), P2A(P2A) {
+  preDDD(G4_Kernel &kernel, G4_BB *BB) : kernel(kernel), m_BB(BB) {
     BTIIsRestrict = getOptions()->getOption(vISA_ReorderDPSendToDifferentBti);
   }
   ~preDDD() = default;
@@ -277,18 +262,13 @@ public:
 
   // Each instruction creates live nodes for adding dependency edges.
   struct LiveNode {
-    LiveNode(preNode *N, Gen4_Operand_Number OpNum, bool IsPointee = false)
-        : N(N), OpNum(OpNum), IsPointee(IsPointee) {}
+    LiveNode(preNode *N, Gen4_Operand_Number OpNum) : N(N), OpNum(OpNum) {}
 
     // The DAG node that this node belongs to.
     preNode *N;
 
     // This indicates which operand this node is tracking.
     Gen4_Operand_Number OpNum;
-
-    // True if this node tracks a variable that the indirect operand OpNum
-    // may read, rather than the operand's top declare.
-    bool IsPointee;
 
     // Check if this is a read/write operand.
     bool isWrite() const {
@@ -301,7 +281,6 @@ public:
     friend void swap(LiveNode &a, LiveNode &b) {
       std::swap(a.N, b.N);
       std::swap(a.OpNum, b.OpNum);
-      std::swap(a.IsPointee, b.IsPointee);
     }
   };
 
@@ -337,9 +316,7 @@ private:
   void processBarrier(preNode *curNode, DepType Dep);
   void processSend(preNode *curNode);
   void addSrcOpndDep(preNode *curNode, G4_Declare *dcl,
-                     Gen4_Operand_Number OpNum,
-                     G4_Declare *LiveDcl = nullptr);
-  const REGVAR_VECTOR *getMoviPointees(G4_INST *Inst) const;
+                     Gen4_Operand_Number OpNum);
   void processReadWrite(preNode *curNode);
   void prune();
 };
@@ -391,10 +368,6 @@ struct RegisterPressure {
   bool isLiveOut(G4_BB *bb, G4_Declare *Dcl) const {
     G4_RegVar *V = Dcl->getRegVar();
     return liveness->isLiveAtExit(bb, V->getId());
-  }
-
-  const PointsToAnalysis *getPointsToAnalysis() const {
-    return &liveness->getPointsToAnalysis();
   }
 
   void recompute(G4_BB *BB) { rpe->runBB(BB); }
@@ -713,7 +686,7 @@ bool preRA_Scheduler::run(unsigned &KernelPressure) {
     }
 
     SCHED_DUMP(rp.dump(bb, "Before scheduling, "));
-    preDDD ddd(kernel, bb, rp.getPointsToAnalysis());
+    preDDD ddd(kernel, bb);
     BB_Scheduler S(kernel, ddd, rp, config, *LT);
 
     Changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
@@ -786,7 +759,7 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
 
     // Schedule:
     SCHED_DUMP(rp.dump(bb, "Before scheduling for pressure reduction, "));
-    preDDD ddd(kernel, bb, rp.getPointsToAnalysis());
+    preDDD ddd(kernel, bb);
     BB_Scheduler S(kernel, ddd, rp, config, *LT);
     unsigned BBRP = rp.getPressure(bb);
     Changed |= S.scheduleBlockForPressure(BBRP, RPReductionThreshold);
@@ -834,7 +807,7 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
 
     // Schedule:
     SCHED_DUMP(rp.dump(bb, "Before scheduling for latency hiding, "));
-    preDDD ddd(kernel, bb, rp.getPointsToAnalysis());
+    preDDD ddd(kernel, bb);
     BB_Scheduler S(kernel, ddd, rp, config, *LT);
     unsigned BBRP = rp.getPressure(bb);
 
@@ -2294,7 +2267,7 @@ void BB_Scheduler::relocatePseudoKills() {
   for (auto N : ddd.getNodes()) {
     G4_INST *Inst = N->getInst();
     // All dangling pseudo-kills shall be placed before a barrier.
-    if (N->isBarrier()) {
+    if (preNode::isBarrier(Inst)) {
       if (LastBarrier && !KillsWithoutUse.empty()) {
         LocMap[LastBarrier].swap(KillsWithoutUse);
         vASSERT(KillsWithoutUse.empty());
@@ -2479,11 +2452,6 @@ void preDDD::buildGraph() {
   for (unsigned i = 0; I != E; ++I) {
     preNode *N = new (preNodeAllocator) preNode(*I, i++);
     SNodes.push_back(N);
-    // movi is not a barrier if the variables it reads indirectly are known.
-    // Its dependencies on them are added in processReadWrite.
-    if (N->getBarrier() == DepType::INDIRECT_ADDR_BARRIER &&
-        getMoviPointees(*I))
-      N->setBarrier(CheckBarrier(*I));
     addNodeToGraph(N);
   }
 
@@ -2515,16 +2483,11 @@ void preDDD::addNodeToGraph(preNode *N) {
   // add X X 1
   // add Y X 2
   for (auto &Item : NewLiveOps) {
-    preNode *N = Item.N;
+    preNode *N = std::get<0>(Item);
     G4_INST *inst = N->getInst();
-    Gen4_Operand_Number OpNum = Item.OpNum;
+    Gen4_Operand_Number OpNum = std::get<1>(Item);
     G4_Operand *Opnd = inst->getOperand(OpNum);
     vASSERT(Opnd != nullptr);
-    if (Item.Dcl) {
-      // A pointee of an indirect operand.
-      LiveNodes[Item.Dcl].emplace_back(N, OpNum, /*IsPointee*/ true);
-      continue;
-    }
     G4_Declare *Dcl = Opnd->getTopDcl();
     if (inst->isPseudoAddrMovIntrinsic() &&
         OpNum != Gen4_Operand_Number::Opnd_dst) {
@@ -2642,11 +2605,6 @@ getDepAndRel(G4_Operand *Opnd, const preDDD::LiveNode &LN, DepType Dep) {
   G4_Operand *Other = LN.N->getInst()->getOperand(LN.OpNum);
   vASSERT(Other != nullptr);
 
-  // The live node reads a pointee of its indirect operand. It may access any
-  // part of the pointee, so do not rely on comparing the operands.
-  if (LN.IsPointee)
-    return std::make_pair(Dep, G4_CmpRelation::Rel_interfere);
-
   if (Other) {
     const IR_Builder &builder = LN.N->getInst()->getBuilder();
     if (Opnd->isDstRegRegion())
@@ -2693,10 +2651,8 @@ getDepAndRel(G4_Operand *Opnd, const preDDD::LiveNode &LN, DepType Dep) {
 
 //Add the dependence edge for source operand
 //Also, add the node to the active live list
-//If LiveDcl is set, Dcl is a pointee of the indirect operand OpNum and the
-//operand is tracked under it.
 void preDDD::addSrcOpndDep(preNode *curNode, G4_Declare *Dcl,
-                           Gen4_Operand_Number OpNum, G4_Declare *LiveDcl) {
+                           Gen4_Operand_Number OpNum) {
   G4_Operand *opnd = curNode->getInst()->getOperand(OpNum);
 
   if (Dcl) {
@@ -2710,18 +2666,11 @@ void preDDD::addSrcOpndDep(preNode *curNode, G4_Declare *Dcl,
       DepType Dep = getDep(opnd, liveNode);
       if (Dep == DepType::NODEP)
         continue;
-      // An indirect read may access any part of the pointee.
       std::pair<DepType, G4_CmpRelation> DepRel =
-          LiveDcl ? std::make_pair(Dep, G4_CmpRelation::Rel_interfere)
-                  : getDepAndRel(opnd, liveNode, Dep);
+          getDepAndRel(opnd, liveNode, Dep);
       if (DepRel.first != DepType::NODEP)
         addEdge(curNode, liveNode.N, DepRel.first);
     }
-  }
-
-  if (LiveDcl) {
-    NewLiveOps.emplace_back(curNode, OpNum, LiveDcl);
-    return;
   }
 
   // If this is a physically allocated regvar, then check dependency on the
@@ -2829,59 +2778,7 @@ void preDDD::processReadWrite(preNode *curNode) {
       vASSERT(Dcl || opnd->isPhysicallyAllocatedRegVar());
       addSrcOpndDep(curNode, Dcl, OpNum);
     }
-
-    // movi also reads the variables its address may point to. The address
-    // register itself is handled above as src0's top declare.
-    if (const REGVAR_VECTOR *Pointees = getMoviPointees(Inst)) {
-      for (const pointInfo &PI : *Pointees) {
-        G4_Declare *Dcl = PI.var->getDeclare()->getRootDeclare();
-        addSrcOpndDep(curNode, Dcl, Gen4_Operand_Number::Opnd_src0, Dcl);
-      }
-    }
   }
-}
-
-// Return the variables that movi may read through its indirect source, or
-// nullptr if they cannot be determined precisely.
-const REGVAR_VECTOR *preDDD::getMoviPointees(G4_INST *Inst) const {
-  if (!P2A || Inst->opcode() != G4_movi)
-    return nullptr;
-
-  // Only src0 may be indirect.
-  G4_DstRegRegion *Dst = Inst->getDst();
-  if (Dst && Dst->isIndirect())
-    return nullptr;
-  for (auto OpNum : {Gen4_Operand_Number::Opnd_src1,
-                     Gen4_Operand_Number::Opnd_src2}) {
-    G4_Operand *Opnd = Inst->getOperand(OpNum);
-    if (Opnd && Opnd->isIndirect())
-      return nullptr;
-  }
-
-  G4_Operand *Src0 = Inst->getSrc(0);
-  if (!Src0 || !Src0->isSrcRegRegion() ||
-      Src0->asSrcRegRegion()->getRegAccess() != IndirGRF)
-    return nullptr;
-
-  // A physically assigned address register, e.g. a0.2, may be written
-  // without updating its points-to set.
-  G4_Declare *AddrDcl = Src0->getTopDcl();
-  if (!AddrDcl || AddrDcl->getRegFile() != G4_ADDRESS ||
-      AddrDcl->getRegVar()->isPhyRegAssigned())
-    return nullptr;
-
-  const REGVAR_VECTOR *Pointees = P2A->getAllInPointsTo(AddrDcl->getRegVar());
-  if (!Pointees || Pointees->empty())
-    return nullptr;
-
-  // Pointees are tracked by declare. A physically assigned one may also be
-  // accessed through another declare assigned to the same register.
-  for (const pointInfo &PI : *Pointees) {
-    G4_Declare *Dcl = PI.var->getDeclare()->getRootDeclare();
-    if (Dcl->getRegVar()->isPhyRegAssigned())
-      return nullptr;
-  }
-  return Pointees;
 }
 
 void preDDD::processSend(preNode *curNode) {
