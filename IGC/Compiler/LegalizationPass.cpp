@@ -94,6 +94,7 @@ bool Legalization::runOnFunction(Function &F) {
   m_ctx->m_instrTypes.numInsts = 0;
 
   visit(F);
+  foldBoolVectorBitCastPairs();
 
   for (auto I : m_instructionsToRemove) {
     I->eraseFromParent();
@@ -714,6 +715,42 @@ static bool packBoolVectorConstant(Constant *C, unsigned NumElts, SmallVectorImp
   return true;
 }
 
+static IGCLLVM::FixedVectorType *getBoolVectorByteType(Type *Ty) {
+  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+  if (!VTy || !VTy->getElementType()->isIntegerTy(1) || VTy->getNumElements() % 8 != 0)
+    return nullptr;
+  return IGCLLVM::FixedVectorType::get(Type::getInt8Ty(Ty->getContext()), VTy->getNumElements() / 8);
+}
+
+// An incoming legalized after its phi leaves
+//   bitcast (bitcast X to <N x i1>) to <M x i8>
+// The emitter cannot alias a bool vector, so bitcast X to bytes directly.
+void Legalization::foldBoolVectorBitCastPairs() {
+  for (BitCastInst *Outer : m_boolVectorPhiIncomings) {
+    auto *Inner = dyn_cast<BitCastInst>(Outer->getOperand(0));
+    if (!Inner || !Inner->getDestTy()->isIntOrIntVectorTy(1))
+      continue;
+    Value *Src = Inner->getOperand(0);
+    if (Src->getType() != Outer->getType()) {
+      m_builder->SetInsertPoint(Outer);
+      Src = m_builder->CreateBitCast(Src, Outer->getType());
+    }
+    Outer->replaceAllUsesWith(Src);
+    m_instructionsToRemove.insert(Outer);
+    removeIfAllUsersRemoved(Inner);
+  }
+  m_boolVectorPhiIncomings.clear();
+}
+
+void Legalization::removeIfAllUsersRemoved(Value *V) {
+  auto *I = dyn_cast<Instruction>(V);
+  if (I && llvm::all_of(I->users(), [&](User *U) {
+        auto *UI = dyn_cast<Instruction>(U);
+        return UI && m_instructionsToRemove.count(UI);
+      }))
+    m_instructionsToRemove.insert(I);
+}
+
 // InstCombine can fold a trunc-to-i1 of an extracted element into a bitcast to
 // a bool vector followed by an extractelement:
 //   %bc = bitcast <8 x i32> %v to <256 x i1>
@@ -795,13 +832,7 @@ void Legalization::visitExtractElementInst(ExtractElementInst &I) {
   Value *bit = m_builder->CreateTrunc(elt, I.getType());
   I.replaceAllUsesWith(bit);
   m_instructionsToRemove.insert(&I);
-
-  // Drop only once all its extractelement users are scheduled for removal.
-  if (llvm::all_of(BC->users(), [&](User *U) {
-        auto *Inst = dyn_cast<Instruction>(U);
-        return Inst && m_instructionsToRemove.count(Inst);
-      }))
-    m_instructionsToRemove.insert(BC);
+  removeIfAllUsersRemoved(BC);
 }
 
 void Legalization::visitBitCastInst(llvm::BitCastInst &I) {
@@ -1004,6 +1035,20 @@ void Legalization::visitPHINode(PHINode &phi) {
     boolean->setDebugLoc(phi.getDebugLoc());
     phi.replaceAllUsesWith(boolean);
     phi.eraseFromParent();
+  } else if (auto *ByteVecTy = getBoolVectorByteType(phi.getType())) {
+    // Merge bytes, so visitExtractElementInst lowers the extracts from the bitcast.
+    PHINode *NewPhi = PHINode::Create(ByteVecTy, phi.getNumIncomingValues(), "", IGCLLVM::insertPosition(&phi));
+    NewPhi->setDebugLoc(phi.getDebugLoc());
+    for (unsigned i = 0; i < phi.getNumIncomingValues(); ++i) {
+      m_builder->SetInsertPoint(phi.getIncomingBlock(i)->getTerminator());
+      Value *In = m_builder->CreateBitCast(phi.getIncomingValue(i), ByteVecTy);
+      if (auto *BC = dyn_cast<BitCastInst>(In))
+        m_boolVectorPhiIncomings.push_back(BC);
+      NewPhi->addIncoming(In, phi.getIncomingBlock(i));
+    }
+    m_builder->SetInsertPoint(IGCLLVM::getFirstNonPHI(phi.getParent()));
+    phi.replaceAllUsesWith(m_builder->CreateBitCast(NewPhi, phi.getType()));
+    m_instructionsToRemove.insert(&phi);
   }
 }
 
@@ -1382,15 +1427,14 @@ void Legalization::visitLoadInst(LoadInst &I) {
 
   // InstCombine folds a bitcast to a bool vector into the load. Load bytes instead,
   // so visitExtractElementInst lowers the extracts from the bitcast.
-  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(I.getType());
-  if (!VTy || !VTy->getElementType()->isIntegerTy(1) || VTy->getNumElements() % 8 != 0)
+  auto *ByteVecTy = getBoolVectorByteType(I.getType());
+  if (!ByteVecTy)
     return;
   m_builder->SetInsertPoint(&I);
-  auto *ByteVecTy = IGCLLVM::FixedVectorType::get(m_builder->getInt8Ty(), VTy->getNumElements() / 8);
   Value *BytePtr =
       m_builder->CreateBitCast(I.getPointerOperand(), IGCLLVM::PointerType::get(ByteVecTy, I.getPointerAddressSpace()));
   LoadInst *NewLoad = IGC::cloneLoad(&I, ByteVecTy, BytePtr);
-  I.replaceAllUsesWith(m_builder->CreateBitCast(NewLoad, VTy));
+  I.replaceAllUsesWith(m_builder->CreateBitCast(NewLoad, I.getType()));
   m_instructionsToRemove.insert(&I);
 }
 

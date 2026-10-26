@@ -43,6 +43,7 @@ private:
 
   const llvm::DataLayout *m_DL;
   InstructionsToRemoveSet m_instructionsToRemove;
+  llvm::SmallVector<llvm::BitCastInst *, 8> m_boolVectorPhiIncomings;
   llvm::IRBuilder<> *m_builder = nullptr;
   IGC::CodeGenContext *m_ctx = nullptr;
 
@@ -94,6 +95,8 @@ protected:
   void RecursivelyChangePointerType(llvm::Instruction *oldPtr, llvm::Type *Ty, llvm::Instruction *newPtr);
   void PromoteFp16ToFp32OnGenSampleCall(llvm::CallInst &I);
   void PromoteInsertElement(llvm::Value *I, llvm::Value *newVec);
+  void removeIfAllUsersRemoved(llvm::Value *V);
+  void foldBoolVectorBitCastPairs();
   void PromoteTruncToI1(llvm::TruncInst &I);
 
   /// \brief Ensure a function have a unique return instruction.
