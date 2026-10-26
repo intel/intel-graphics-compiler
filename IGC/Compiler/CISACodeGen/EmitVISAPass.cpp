@@ -18943,9 +18943,16 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
 
   CVariable *gatherDstAlias = m_currShader->GetNewAlias(gatherDst, Dest->GetType(), 0, 0);
 
+  // A uniform load into a non-uniform Dest means the predicate is divergent,
+  // so each lane has to select between the loaded value and its merge value.
+  bool mergeInDest = mergeVal && doUniformLoad && !Dest->IsUniform();
+
   // Copy merge value to gatherDst now, to avoid predicated copy to original
   // destination later
-  if (mergeVal) {
+  if (mergeInDest) {
+    m_encoder->Copy(Dest, mergeVal);
+    m_encoder->Push();
+  } else if (mergeVal) {
     if (!doUniformLoad) {
       uint32_t hStride = (EltBytes == 1) ? 4 : 2;
       m_encoder->SetDstRegion(hStride);
@@ -18982,8 +18989,11 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
                    finalPredicate = inputPredicate;
                  }
 
-                 if (doUniformLoad)
+                 if (doUniformLoad) {
                    m_encoder->SetNoMask();
+                   if (inputPredicate)
+                     m_encoder->SetPredicateMode(EPRED_ANY);
+                 }
 
                  m_encoder->SetPredicate(finalPredicate);
 
@@ -19047,7 +19057,7 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
   uint32_t vStride = doUniformLoad ? 0 : ((EltBytes == 1) ? 4 : 2);
   m_encoder->SetSrcRegion(0, vStride, 1, 0);
   // set predicate for copy, only if did not initialize gatherDst with mergeVal
-  if (!mergeVal)
+  if (!mergeVal || mergeInDest)
     m_encoder->SetPredicate(inputPredicate);
   m_encoder->Copy(Dest, gatherDstAlias);
   m_encoder->Push();
