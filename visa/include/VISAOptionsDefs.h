@@ -146,11 +146,13 @@ DEF_VISA_OPTION(vISA_MergeScalarLRMaxSpan, ET_INT32, "-mergeScalarLRMaxSpan",
                 "USAGE: -mergeScalarLRMaxSpan <numInsts>\n"
                 "Reject a MergeScalar bundle when the merged variable's "
                 "approximate live range would be longer than this many "
-                "instructions. A variable live that long is loop-carried or "
+                "instructions and merging would also extend the members' own "
+                "live ranges noticeably (more than 1/8 of this value in "
+                "total). A variable live that long is loop-carried or "
                 "otherwise structural, and coalescing a short-lived scalar "
                 "into it inflates register pressure everywhere. 0 disables the "
                 "check.",
-                1500)
+                1550)
 DEF_VISA_OPTION(vISA_EnableMACOpt, ET_BOOL, "-nomac", UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableDCE, ET_BOOL_TRUE, "-dce", UNUSED, false)
 DEF_VISA_OPTION(vISA_DisableleHFOpt, ET_BOOL, "-disableHFOpt", UNUSED, false)

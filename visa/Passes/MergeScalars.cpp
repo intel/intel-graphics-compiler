@@ -147,14 +147,36 @@ static G4_Declare *getInputDeclare(IR_Builder &builder,
 // member becomes live over the union of the group's ranges. A simple
 // length-based heuristic decides profitability: too long an extension makes
 // the variable cross a high register pressure region and spill. If any
-// group's merged range exceeds vISA_MergeScalarLRMaxSpan (1500 instructions
-// by default, 0 disables), the whole bundle is rejected.
+// group's merged range exceeds vISA_MergeScalarLRMaxSpan (1550 instructions
+// by default, 0 disables) AND merging extends the members' own live ranges by
+// more than 1/8 of that, the whole bundle is rejected. On platforms that
+// require src/dst alignment for non-scalar float/64b instructions, a merged
+// range above the limit is rejected regardless of the extension.
 bool BUNDLE_INFO::isLiveRangeProfitable(const IR_Builder &builder,
                                         ScalarLiveRangeApprox &lra) const {
+  // Total extension allowed for a group is maxSpan / MaxExtensionDivisor.
+  constexpr uint32_t MaxExtensionDivisor = 8;
+
   const uint32_t maxSpan = builder.getuint32Option(vISA_MergeScalarLRMaxSpan);
   if (maxSpan == 0)
     return true;
   const bool trace = builder.getOption(vISA_MergeScalarTrace);
+
+  // Float and 64b pipe instructions require every non-scalar src to be aligned
+  // to dst on these platforms, while SIMD1 operands are exempt. Once merged,
+  // the instruction is no longer SIMD1 and conformity has to either align the
+  // operands to GRF or insert movs, so a long-lived merged variable on such
+  // an instruction is more likely to hurt RA than help.
+  bool floatOr64bAlignRestricted = false;
+  if (!builder.supportFloatOr64bRegioning()) {
+    const G4_INST *first = inst[0];
+    auto isFloatOr64bTy = [](G4_Type ty) {
+      return IS_TYPE_FLOAT_ALL(ty) || TypeSize(ty) >= 8;
+    };
+    floatOr64bAlignRestricted = isFloatOr64bTy(first->getDst()->getType());
+    for (int i = 0; i < first->getNumSrc(); ++i)
+      floatOr64bAlignRestricted |= isFloatOr64bTy(first->getSrc(i)->getType());
+  }
 
   // Operand positions that will produce a merged variable; -1 is the dst.
   std::vector<int> groups;
@@ -202,6 +224,11 @@ bool BUNDLE_INFO::isLiveRangeProfitable(const IR_Builder &builder,
       } else {
         std::cout << " merged range [" << merged.start << ", " << merged.end
                   << "] len=" << merged.length() << "\n";
+        for (auto dcl : members) {
+          const auto &s = lra.getSpan(dcl);
+          std::cout << "      member " << dcl->getName() << " [" << s.start
+                    << ", " << s.end << "] len=" << s.length() << "\n";
+        }
       }
     }
 
@@ -210,13 +237,35 @@ bool BUNDLE_INFO::isLiveRangeProfitable(const IR_Builder &builder,
 
     const uint32_t mergedLen = merged.length();
 
-    // Reject if merged live-range length exceeds heuristic value.
-    if (mergedLen > maxSpan) {
+    // A long merged range is only harmful if merging makes the members live
+    // noticeably longer than they already are. Members that are already live
+    // across (nearly) the whole merged range add almost no pressure, so only
+    // reject when the total extension is significant.
+    uint64_t extension = 0;
+    for (auto dcl : members)
+      extension += mergedLen - lra.getSpan(dcl).length();
+    const uint64_t maxExtension = maxSpan / MaxExtensionDivisor;
+
+    if (mergedLen > maxSpan && floatOr64bAlignRestricted) {
       if (trace)
         std::cout << "    -> REJECT bundle: merged range of " << mergedLen
-                  << " instructions is above the maxSpan " << maxSpan << "\n";
+                  << " instructions is above the maxSpan " << maxSpan
+                  << " and the float/64b pipe requires src/dst alignment\n";
       return false;
     }
+
+    if (mergedLen > maxSpan && extension > maxExtension) {
+      if (trace)
+        std::cout << "    -> REJECT bundle: merged range of " << mergedLen
+                  << " instructions is above the maxSpan " << maxSpan
+                  << " and extends the members by " << extension
+                  << " instructions (max " << maxExtension << ")\n";
+      return false;
+    }
+    if (trace && mergedLen > maxSpan)
+      std::cout << "    merged range is above maxSpan but extends the members "
+                   "by only "
+                << extension << " instructions (max " << maxExtension << ")\n";
   }
 
   return true;
