@@ -2756,6 +2756,12 @@ bool IGC::expandFDIVInstructions(llvm::Function &F, ShaderType ShaderTy) {
       IRBuilder<> Builder(Inst);
       Builder.setFastMathFlags(Inst->getFastMathFlags());
 
+      // Passing ninf FMF to rcp(y) will result in poison value,
+      // when input y == +/- 0.0, while passing ninf to fdiv x, y
+      // won't return poison for y == +/- 0.0 if x == NaN or +/- 0.0.
+      FastMathFlags RcpFMF = Inst->getFastMathFlags();
+      RcpFMF.setNoInfs(false);
+
       auto &Ctx = Inst->getContext();
       Value *X = Inst->getOperand(0);
       Value *Y = Inst->getOperand(1);
@@ -2768,6 +2774,8 @@ bool IGC::expandFDIVInstructions(llvm::Function &F, ShaderType ShaderTy) {
           Val.convert((Inst->getType()->isHalfTy()) ? APFloat::IEEEhalf() : APFloat::BFloat(), APFloat::rmTowardZero,
                       &ignored);
           ConstantFP *C1 = ConstantFP::get(Ctx, Val);
+          IRBuilder<>::FastMathFlagGuard FMFGuard(Builder);
+          Builder.setFastMathFlags(RcpFMF);
           Y = Builder.CreateFDiv(C1, Y);
           V = Builder.CreateFMul(Y, X);
         } else {
@@ -2787,6 +2795,8 @@ bool IGC::expandFDIVInstructions(llvm::Function &F, ShaderType ShaderTy) {
           V = Builder.CreateFPTrunc(V, Inst->getType());
         }
       } else if (Inst->hasAllowReciprocal() || needsNoScaling(Y)) {
+        IRBuilder<>::FastMathFlagGuard FMFGuard(Builder);
+        Builder.setFastMathFlags(RcpFMF);
         Y = Builder.CreateFDiv(ConstantFP::get(Ctx, APFloat(1.0f)), Y);
         V = Builder.CreateFMul(Y, X);
       } else {
@@ -2804,8 +2814,12 @@ bool IGC::expandFDIVInstructions(llvm::Function &F, ShaderType ShaderTy) {
 
         // Compute rcp(y * S) * x * S
         Value *ScaledY = Builder.CreateFMul(Y, Scale);
-        ScaledY = Builder.CreateFDiv(C1, ScaledY);
-        V = Builder.CreateFMul(ScaledY, X);
+        {
+          IRBuilder<>::FastMathFlagGuard FMFGuard(Builder);
+          Builder.setFastMathFlags(RcpFMF);
+          ScaledY = Builder.CreateFDiv(C1, ScaledY);
+          V = Builder.CreateFMul(ScaledY, X);
+        }
         V = Builder.CreateFMul(V, Scale);
 
         // In case of OpenCL kernels, create comparisons to check if X or Y is +/-0, +/-Inf, +/-NaN,
