@@ -219,6 +219,8 @@ Value *PromoteSubByte::castTo(Value *value, Type *desiredType, IRBuilder<> &buil
     return convertI8ToI1(value, builder);
   } else if (isIntegerTy(value, 1) && desiredType == getOrCreatePromotedType(value->getType())) {
     return convertI1ToI8(value, builder);
+  } else if (value->getType()->isIntegerTy() && desiredType->isIntegerTy()) {
+    return builder.CreateZExtOrTrunc(value, desiredType);
   }
 
   return builder.CreateBitCast(value, desiredType);
@@ -802,6 +804,17 @@ Value *PromoteSubByte::promoteBitCast(BitCastInst *bitcast) {
     if (IGCLLVM::isOpaquePointerTy(newType))
       return getOrCreatePromotedValue(bitcast->getOperand(0));
     return bitcast->getOperand(0);
+  }
+
+  auto promotionChangesWidth = [this](Type *type) {
+    return type->getPrimitiveSizeInBits() != getOrCreatePromotedType(type)->getPrimitiveSizeInBits();
+  };
+  // A bitcast reinterprets bits, so it must see the original layout, not the widened one.
+  if (promotionChangesWidth(bitcast->getSrcTy()) || promotionChangesWidth(bitcast->getDestTy())) {
+    IRBuilder<> builder(bitcast);
+    builder.SetCurrentDebugLocation(bitcast->getDebugLoc());
+    auto operand = castTo(getOrCreatePromotedValue(bitcast->getOperand(0)), bitcast->getSrcTy(), builder);
+    return castTo(builder.CreateBitCast(operand, bitcast->getDestTy()), newType, builder);
   }
 
   auto newBitcast = IGCLLVM::createBitCastInst(getOrCreatePromotedValue(bitcast->getOperand(0)),
