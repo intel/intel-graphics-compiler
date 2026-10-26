@@ -13,7 +13,7 @@
 ; that prevents dce from removing it we must find it, vectorizer does not clean them up
 ; CHECK-NOT: llvm.genx.GenISA.WaveBroadcast.f32
 
-; CHECK: [[SRC:%.*]] = call float @llvm.exp2.f32(float 0.000000e+00)
+; CHECK: [[SRC:%.*]] = call float @llvm.exp2.f32(float %lidf)
 ; CHECK-NOT: llvm.genx.GenISA.WaveBroadcast.f32
 ; CHECK: call <8 x float> @llvm.genx.GenISA.JointWaveBroadcast.v8f32.f32.v8i32(float [[SRC]], <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>, i32 0)
 ; CHECK: call <8 x float> @llvm.genx.GenISA.JointWaveBroadcast.v8f32.f32.v8i32(float [[SRC]], <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>, i32 0)
@@ -34,7 +34,9 @@ bb:
 loop:                                            ; preds = %bb2221, %bb
   %tmp235 = phi <8 x float> [ zeroinitializer, %bb ], [ %tmp1843, %loop ]
   %tmp236 = phi <8 x float> [ zeroinitializer, %bb ], [ %tmp1842, %loop ]
-  %tmp658 = call float @llvm.exp2.f32(float 0.000000e+00)
+  %lid = call i16 @llvm.genx.GenISA.simdLaneId()
+  %lidf = uitofp i16 %lid to float
+  %tmp658 = call float @llvm.exp2.f32(float %lidf)
   %tmp1634 = call float @llvm.genx.GenISA.WaveBroadcast.f32(float %tmp658, i32 0, i32 0)
   %tmp1635 = extractelement <8 x float> %tmp235, i64 0
   %tmp1636 = fmul float %tmp1635, %tmp1634
@@ -111,6 +113,7 @@ loop:                                            ; preds = %bb2221, %bb
 declare float @llvm.genx.GenISA.WaveBroadcast.f32(float, i32, i32)
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v16i16(<8 x float>, <8 x i16>, <16 x i16>, i32, i32, i32, i32, i1)
 declare float @llvm.exp2.f32(float)
+declare i16 @llvm.genx.GenISA.simdLaneId()
 
 !igc.functions = !{!0}
 

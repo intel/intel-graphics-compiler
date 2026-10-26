@@ -29,7 +29,9 @@ bb:
 loop:                                             ; preds = %loop, %bb
   %tmp235 = phi <8 x float> [ zeroinitializer, %bb ], [ %tmp1843, %loop ]
   %tmp236 = phi <8 x float> [ zeroinitializer, %bb ], [ %tmp1842, %loop ]
-  %tmp658 = call float @llvm.exp2.f32(float 0.000000e+00)
+  %lid = call i16 @llvm.genx.GenISA.simdLaneId()
+  %lidf = uitofp i16 %lid to float
+  %tmp658 = call float @llvm.exp2.f32(float %lidf)
 
   ; Group A: lanes 0, 2, 4, 6, 8, 10, 12, 14  (step 2 -- not sequential)
   %tmp1634 = call float @llvm.genx.GenISA.WaveBroadcast.f32(float %tmp658, i32 0, i32 0)
@@ -110,6 +112,7 @@ loop:                                             ; preds = %loop, %bb
 declare float @llvm.genx.GenISA.WaveBroadcast.f32(float, i32, i32)
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v16i16(<8 x float>, <8 x i16>, <16 x i16>, i32, i32, i32, i32, i1)
 declare float @llvm.exp2.f32(float)
+declare i16 @llvm.genx.GenISA.simdLaneId()
 
 !igc.functions = !{!0}
 

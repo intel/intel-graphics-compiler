@@ -270,6 +270,8 @@ bool isGenIntrinsicSafe(Instruction *I) {
   bool Result = (GenIntrinsicID == llvm::GenISAIntrinsic::GenISA_WaveAll) && IGC_GET_FLAG_VALUE(VectorizerAllowWAVEALL);
   Result |= (GenIntrinsicID == llvm::GenISAIntrinsic::GenISA_WaveBroadcast) &&
             IGC_GET_FLAG_VALUE(VectorizerAllowWAVEBROADCAST);
+  Result |= (GenIntrinsicID == llvm::GenISAIntrinsic::GenISA_WaveShuffleIndex) &&
+            IGC_GET_FLAG_VALUE(VectorizerAllowWAVEBROADCAST);
   return Result;
 }
 
@@ -935,6 +937,8 @@ bool IGCVectorizer::handleCastInstruction(VecArr &Slice) {
   return true;
 }
 
+// we can emit waveshuffle as jointwavebroadcast ONLY if lane index is a constant
+// it's indirectly checked at getConsantValueAsInt
 bool IGCVectorizer::handleWaveBroadcast(VecArr &Slice) {
 
   if (!isGenIntrinsicSafe(Slice.front()))
@@ -944,27 +948,38 @@ bool IGCVectorizer::handleWaveBroadcast(VecArr &Slice) {
   if (checkPrevVectorization(Slice, PrevVectorization))
     return true;
 
-  auto First = llvm::cast<WaveBroadcastIntrinsic>(Slice.front());
-  unsigned int ExpectedLane = getConstantValueAsInt(First->getLane());
+  auto First = llvm::cast<GenIntrinsicInst>(Slice.front());
+
+  auto FirstSrc = First->getOperand(0);
+  auto FirstLane = First->getOperand(1);
+  auto FirstHelperLane = First->getOperand(2);
+
+  // SanityCheck: if SRC of wavebroadcast or shuffleindex is uniform,
+  // we got the incorrect IR, something is horribly wrong, just bail
+  if (WI->isUniform(FirstSrc))
+    return false;
+
+  unsigned int ExpectedLane = getConstantValueAsInt(FirstLane);
   for (unsigned int i = 0; i < Slice.size(); ++i) {
 
-    auto Intrinsic = llvm::dyn_cast<WaveBroadcastIntrinsic>(Slice[i]);
-    if (!Intrinsic)
+    // with constant lanes WaveShuffleIndex is equivalent to WaveBroadcast
+    auto Intrinsic = llvm::dyn_cast<GenIntrinsicInst>(Slice[i]);
+    if (!Intrinsic || (Intrinsic->getIntrinsicID() != GenISAIntrinsic::GenISA_WaveBroadcast &&
+                       Intrinsic->getIntrinsicID() != GenISAIntrinsic::GenISA_WaveShuffleIndex))
       return false;
 
-    if (First->getSrc() != Intrinsic->getSrc()) {
+    if (FirstSrc != Intrinsic->getOperand(0)) {
       PRINT_LOG_NL("Source operand differ between wavebroadcasts inside the slice");
       return false;
     }
 
-    unsigned int HelperLane = getConstantValueAsInt(Intrinsic->getHelperLane());
+    unsigned int HelperLane = getConstantValueAsInt(Intrinsic->getOperand(2));
     if (HelperLane != 0) {
       PRINT_LOG_NL("Helper lane is not naive, we expect 0 across all slice");
       return false;
     }
 
-    unsigned int Index = getConstantValueAsInt(Intrinsic->getLane());
-
+    unsigned int Index = getConstantValueAsInt(Intrinsic->getOperand(1));
     if (Index >= SIMDSize) {
       PRINT_LOG_NL("Index is OOB for simd line, probably intrinsic is invalid, do not vectorize");
       return false;
@@ -978,15 +993,15 @@ bool IGCVectorizer::handleWaveBroadcast(VecArr &Slice) {
   }
 
   VecVal Operands;
-  Operands.push_back(First->getSrc());
+  Operands.push_back(FirstSrc);
   if (!collectOperandsForVectorization(1, 2, First, Slice, Operands))
     return false;
-  Operands.push_back(First->getHelperLane());
+  Operands.push_back(FirstHelperLane);
 
   Instruction *InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);
   llvm::VectorType *VectorType = llvm::FixedVectorType::get(First->getType(), Slice.size());
   auto IntrinsicID = GenISAIntrinsic::GenISA_JointWaveBroadcast;
-  llvm::Type *OverloadedType[] = {VectorType, First->getSrc()->getType(), Operands[1]->getType()};
+  llvm::Type *OverloadedType[] = {VectorType, FirstSrc->getType(), Operands[1]->getType()};
   auto *Decl = GenISAIntrinsic::getDeclaration(M, IntrinsicID, OverloadedType);
   PRINT_DECL_NL(Decl);
   auto *CreatedInst = llvm::CallInst::Create(Decl, Operands);
@@ -999,6 +1014,8 @@ bool IGCVectorizer::handleWaveBroadcast(VecArr &Slice) {
   PRINT_LOG("Intrinsic instruction created: ");
   PRINT_INST_NL(CreatedInst);
 
+  // added again with fix inside wi_analysis
+  replaceSliceInstructionsWithExtract(Slice, CreatedInst);
   remapSliceToVector(Slice, CreatedInst, PrevVectorization);
 
   return true;
@@ -1165,6 +1182,7 @@ bool IGCVectorizer::handleGenIntrinsic(VecArr &Slice) {
   auto Opcode = llvm::cast<GenIntrinsicInst>(Slice.front())->getIntrinsicID();
   switch (Opcode) {
   case llvm::GenISAIntrinsic::GenISA_WaveBroadcast:
+  case llvm::GenISAIntrinsic::GenISA_WaveShuffleIndex:
     if (!handleWaveBroadcast(Slice))
       return false;
     break;

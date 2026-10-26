@@ -1527,6 +1527,10 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
     return WIAnalysis::UNIFORM_THREAD;
   }
 
+  if (GII_id == GenISAIntrinsic::GenISA_JointWaveBroadcast) {
+    return WIAnalysis::UNIFORM_THREAD;
+  }
+
   if (IsMathIntrinsic(intrinsic_name) || intrinsic_name == llvm_input || intrinsic_name == llvm_sgv ||
       intrinsic_name == llvm_shaderinputvec || intrinsic_name == llvm_getbufferptr ||
       intrinsic_name == llvm_runtimeValue || intrinsic_name == llvm_getMessagePhaseX ||

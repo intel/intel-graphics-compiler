@@ -16,9 +16,9 @@
 ;
 ; CHECK-NOT: llvm.genx.GenISA.WaveBroadcast.f32
 
-; CHECK: [[SRC_A:%.*]] = call float @llvm.exp2.f32(float 0.000000e+00)
+; CHECK: [[SRC_A:%.*]] = call float @llvm.exp2.f32(float %lidf)
 ; CHECK: call <8 x float> @llvm.genx.GenISA.JointWaveBroadcast.v8f32.f32.v8i32(float [[SRC_A]], <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>, i32 0)
-; CHECK: [[SRC_B:%.*]] = call float @llvm.exp2.f32(float 1.000000e+00)
+; CHECK: [[SRC_B:%.*]] = call float @llvm.exp2.f32(float %lidf1)
 ; CHECK: call <8 x float> @llvm.genx.GenISA.JointWaveBroadcast.v8f32.f32.v8i32(float [[SRC_B]], <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>, i32 0)
 ; CHECK-NOT: llvm.genx.GenISA.WaveBroadcast.f32
 
@@ -38,8 +38,10 @@ loop:                                             ; preds = %loop, %bb
   %acc_a = phi <8 x float> [ zeroinitializer, %bb ], [ %res_b, %loop ]
   %acc_b = phi <8 x float> [ zeroinitializer, %bb ], [ %res_a, %loop ]
 
-  ; ---- Group A: source = exp2(0.0), lanes 0-7 ----
-  %src_a = call float @llvm.exp2.f32(float 0.000000e+00)
+  ; ---- Group A: source = exp2(lane id), lanes 0-7 ----
+  %lid = call i16 @llvm.genx.GenISA.simdLaneId()
+  %lidf = uitofp i16 %lid to float
+  %src_a = call float @llvm.exp2.f32(float %lidf)
   %a0 = call float @llvm.genx.GenISA.WaveBroadcast.f32(float %src_a, i32 0, i32 0)
   %ea0 = extractelement <8 x float> %acc_a, i64 0
   %ma0 = fmul float %ea0, %a0
@@ -73,8 +75,9 @@ loop:                                             ; preds = %loop, %bb
   %ma7 = fmul float %ea7, %a7
   %va7 = insertelement <8 x float> %va6, float %ma7, i64 7
 
-  ; ---- Group B: source = exp2(1.0), lanes 0-7 (same lane range, different src) ----
-  %src_b = call float @llvm.exp2.f32(float 1.000000e+00)
+  ; ---- Group B: source = exp2(lane id + 1), lanes 0-7 (same lane range, different src) ----
+  %lidf1 = fadd float %lidf, 1.000000e+00
+  %src_b = call float @llvm.exp2.f32(float %lidf1)
   %b0 = call float @llvm.genx.GenISA.WaveBroadcast.f32(float %src_b, i32 0, i32 0)
   %eb0 = extractelement <8 x float> %acc_b, i64 0
   %mb0 = fmul float %eb0, %b0
@@ -117,6 +120,7 @@ loop:                                             ; preds = %loop, %bb
 declare float @llvm.genx.GenISA.WaveBroadcast.f32(float, i32, i32)
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v16i16(<8 x float>, <8 x i16>, <16 x i16>, i32, i32, i32, i32, i1)
 declare float @llvm.exp2.f32(float)
+declare i16 @llvm.genx.GenISA.simdLaneId()
 
 !igc.functions = !{!0}
 

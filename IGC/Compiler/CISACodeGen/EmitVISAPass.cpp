@@ -4898,7 +4898,7 @@ void EmitPass::Sub(const SSource sources[2], const DstModifier &modifier) {
 
     bool AllUniform = src[0]->IsUniform() && src[1]->IsUniform() && m_destination->IsUniform();
 
-    bool CanEmitThisSize = VectorSize <= 16;
+    bool CanEmitThisSize = (VectorSize <= 16) && isPowerOf2_32(VectorSize);
 
     if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform) {
       if (CanEmitThisSize) {
@@ -5022,7 +5022,7 @@ void EmitPass::Add(const SSource sources[2], const DstModifier &modifier) {
     unsigned VectorSize = getVectorSize(sources[0].value);
     IGC_ASSERT_MESSAGE(VectorSize == getVectorSize(sources[1].value), "operands must have same vector types");
 
-    bool CanEmitThisSize = VectorSize <= numLanes(m_currShader->m_SIMDSize);
+    bool CanEmitThisSize = (VectorSize <= numLanes(m_currShader->m_SIMDSize)) && isPowerOf2_32(VectorSize);
 
     if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform) {
       if (CanEmitThisSize) {
@@ -5108,7 +5108,7 @@ void EmitPass::Mul(const SSource sources[2], const DstModifier &modifier) {
     // cannot emit 16 SIMD if SIMD SIZE is set to 8, but can emit 4
     // simple ALU instructions has the same possible width as SIMD, "math"
     // pipeline instructions has reduced width
-    bool CanEmitThisSize = VectorSize <= SIMDSize;
+    bool CanEmitThisSize = (VectorSize <= SIMDSize) && isPowerOf2_32(VectorSize);
 
     if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform) {
       if (CanEmitThisSize) {
@@ -5197,7 +5197,7 @@ void EmitPass::Shl(const SSource sources[2], const DstModifier &modifier) {
     unsigned VectorSize = getVectorSize(sources[0].value);
     IGC_ASSERT_MESSAGE(VectorSize == getVectorSize(sources[1].value), "operands must have same vector types");
 
-    bool CanEmitThisSize = VectorSize <= numLanes(m_currShader->m_SIMDSize);
+    bool CanEmitThisSize = (VectorSize <= numLanes(m_currShader->m_SIMDSize)) && isPowerOf2_32(VectorSize);
 
     if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform) {
       if (CanEmitThisSize) {
@@ -5385,7 +5385,7 @@ void EmitPass::MaxNum(const SSource sources[2], const DstModifier &modifier) {
     // is set to 16, but can emit 2, 4, 8, 16
     // simple ALU instruction has the same possible width as SIMD, "math"
     // pipeline instruction has reduced width
-    bool CanEmitThisSize = VectorSize <= numLanes(m_currShader->m_SIMDSize);
+    bool CanEmitThisSize = (VectorSize <= numLanes(m_currShader->m_SIMDSize)) && isPowerOf2_32(VectorSize);
 
     if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
       m_encoder->SetSrcModifier(0, sources[0].mod);
@@ -5439,8 +5439,8 @@ void EmitPass::Exp2(const SSource sources[2], const DstModifier &modifier) {
     CVariable *src[1];
     src[0] = GetSrcVariable(sources[0]);
     bool AllUniform = src[0]->IsUniform() && m_destination->IsUniform();
-
-    if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && VectorSize <= 16) {
+    bool CanEmitThisSize = (VectorSize <= numLanes(m_currShader->m_SIMDSize)) && isPowerOf2_32(VectorSize);
+    if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
       m_encoder->SetSrcModifier(0, sources[0].mod);
       m_encoder->SetSrcRegion(0, 1, 1, 0);
       m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
@@ -5479,7 +5479,7 @@ void EmitPass::VectorMad(const SSource sources[3], const DstModifier &modifier) 
   // cannot emit 16 SIMD if SIMD SIZE is set to 8, but can emit 4
   // simple ALU instructions has the same possible width as SIMD, "math"
   // pipeline instructions has reduced width
-  bool CanEmitThisSize = VectorSize <= numLanes(m_currShader->m_SIMDSize);
+  bool CanEmitThisSize = (VectorSize <= numLanes(m_currShader->m_SIMDSize)) && isPowerOf2_32(VectorSize);
 
   if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
     // MatchFMad moves the negation of an fsub to one of the sources.
@@ -5605,7 +5605,7 @@ void EmitPass::VectorCMP(llvm::CmpInst::Predicate pred, const SSource sources[2]
   // cannot emit 16 SIMD if SIMD SIZE is set to 8, but can emit 4
   // simple ALU instructions has the same possible width as SIMD, "math"
   // pipeline instructions has reduced width
-  bool CanEmitThisSize = VectorSize <= SIMDSize;
+  bool CanEmitThisSize = (VectorSize <= SIMDSize) && isPowerOf2_32(VectorSize);
 
   if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
     m_encoder->SetSrcRegion(0, 1, 1, 0);
@@ -5841,7 +5841,7 @@ void EmitPass::VectorSelect(const SSource sources[3], const DstModifier &modifie
   // cannot emit 16 SIMD if SIMD SIZE is set to 8, but can emit 4
   // simple ALU instructions has the same possible width as SIMD, "math"
   // pipeline instructions has reduced width
-  bool CanEmitThisSize = VectorSize <= SIMDSize;
+  bool CanEmitThisSize = (VectorSize <= SIMDSize) && isPowerOf2_32(VectorSize);
 
   m_encoder->SetDstModifier(modifier);
   if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
@@ -6405,10 +6405,27 @@ void EmitPass::emitJointWaveBroadcast(llvm::Instruction *inst) {
       IGC_ASSERT_EXIT_MESSAGE(0, "joint wave broadcast: not supported sequence of indices");
   }
 
-  auto NewAlias = m_currShader->GetNewAlias(Src, Src->GetType(), LeftIndex * Src->GetElemSize(), NumElem, true);
-  m_currShader->UpdateSymbolMap(inst, NewAlias);
-  m_destination = NewAlias;
-  return;
+  if (!isCoalescedValue(Intr->getSrc(), m_deSSA, m_CE, m_VRA) && !isCoalescedValue(inst, m_deSSA, m_CE, m_VRA)) {
+    auto NewAlias = m_currShader->GetNewAlias(Src, Src->GetType(), LeftIndex * Src->GetElemSize(), NumElem, true);
+    m_currShader->UpdateSymbolMap(inst, NewAlias);
+    m_destination = NewAlias;
+    return;
+  }
+
+  SmallVector<uint32_t, 16> execsizeSeq;
+  splitIntoPowerOfTwo(execsizeSeq, NumElem, numLanes(SIMD));
+  for (unsigned i = 0; i < execsizeSeq.size(); i += 2) {
+    uint32_t execSize = execsizeSeq[i];
+    uint32_t offset = execsizeSeq[i + 1];
+
+    m_encoder->SetNoMask();
+    m_encoder->SetUniformSIMDSize(lanesToSIMDMode(execSize));
+    m_encoder->SetSrcRegion(0, 1, 1, 0);
+    m_encoder->SetSrcSubReg(0, LeftIndex + offset);
+    m_encoder->SetDstSubReg(offset);
+    m_encoder->Copy(m_destination, Src);
+    m_encoder->Push();
+  }
 }
 
 /// Emits VISA instructions for SIMD_SHUFFLE.
