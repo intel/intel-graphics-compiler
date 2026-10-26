@@ -417,6 +417,18 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
     return false;
   };
 
+  // The programUndefinedIfPoison check of canReuseInstruction, extended to the
+  // GenISA memory accesses LLVM doesn't know are UB on a poison address.
+  auto IsAccessedUnconditionally = [](GetElementPtrInst *GEP) {
+    for (auto *U : GEP->users()) {
+      auto *I = dyn_cast<Instruction>(U);
+      if (I && I->getParent() == GEP->getParent() && GetBufferOperand(I) == GEP &&
+          isGuaranteedToTransferExecutionToSuccessor(GEP->getIterator(), I->getIterator()))
+        return true;
+    }
+    return false;
+  };
+
   // Reusable bases, with the instructions to drop poison-generating flags from
   // only if the base is actually reused.
   DenseMap<GetElementPtrInst *, SmallVector<Instruction *, 4>> ReusableBases;
@@ -489,7 +501,8 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
       // Rebasing must not add poison: GEP would inherit all of its base's sources.
       SmallPtrSet<const Value *, 8> BasePoisonSources;
       IGCLLVM::getPoisonGeneratingValues(*SE, BasePoisonSources, EI->Idx);
-      if (!set_is_subset(BasePoisonSources, GEPPoisonSources))
+      bool NoPoisonAdded = set_is_subset(BasePoisonSources, GEPPoisonSources);
+      if (!NoPoisonAdded)
         continue;
 
       auto *Diff = SE->getMinusSCEV(E, EI->Idx);
@@ -512,11 +525,17 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
     // A GEP may be poison where it is unused, e.g. after speculation, while SCEV
     // equates it with a non-poison expression (as in StraightLineStrengthReduce).
     SmallVector<Instruction *, 4> DropPoisonGeneratingInsts;
-    bool IRAsDefinedAsSCEV = IGCLLVM::canReuseInstruction(*SE, SE->getSCEV(GEP), GEP, DropPoisonGeneratingInsts);
-    // Looking through the extension above relies on this flag, so keep it.
-    bool KeepsExtNoWrapFlag = !is_contained(DropPoisonGeneratingInsts, ExtNoWrapOp);
-    if (IRAsDefinedAsSCEV && KeepsExtNoWrapFlag)
-      ReusableBases[GEP] = std::move(DropPoisonGeneratingInsts);
+    if (IsAccessedUnconditionally(GEP)) {
+      // The access always runs after GEP, so GEP being poison is UB anyway: its
+      // flags hold and none need dropping.
+      ReusableBases.try_emplace(GEP);
+    } else {
+      bool IRAsDefinedAsSCEV = IGCLLVM::canReuseInstruction(*SE, SE->getSCEV(GEP), GEP, DropPoisonGeneratingInsts);
+      // Looking through the extension above relies on this flag, so keep it.
+      bool KeepsExtNoWrapFlag = !is_contained(DropPoisonGeneratingInsts, ExtNoWrapOp);
+      if (IRAsDefinedAsSCEV && KeepsExtNoWrapFlag)
+        ReusableBases[GEP] = std::move(DropPoisonGeneratingInsts);
+    }
     // Not found, add this GEP as a potential base expr.
     if (!Offset) {
       Exprs.emplace_back(PointerExpr{GEP, E, nullptr, nullptr});

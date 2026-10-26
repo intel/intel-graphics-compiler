@@ -100,7 +100,53 @@ define spir_kernel void @base_index_through_other_bucket(ptr addrspace(1) %src, 
   ret void
 }
 
-!igc.functions = !{!0, !3, !4, !5, !6}
+; A block read from %base is UB if %base is poison: rebase on it despite its flags.
+; CHECK-LABEL: @block_read_base(
+; CHECK: getelementptr inbounds i16, ptr addrspace(1) %base, i64 1
+define spir_kernel void @block_read_base(ptr addrspace(1) %src, i32 %x) {
+  %base.idx = add nsw i32 %x, 1
+  %base.idx.64 = sext i32 %base.idx to i64
+  %base = getelementptr inbounds i16, ptr addrspace(1) %src, i64 %base.idx.64
+  %base.v = call i16 @llvm.genx.GenISA.simdBlockRead.i16.p1(ptr addrspace(1) %base)
+  %derived.idx = add nsw i32 %x, 2
+  %derived.idx.64 = sext i32 %derived.idx to i64
+  %derived = getelementptr inbounds i16, ptr addrspace(1) %src, i64 %derived.idx.64
+  %derived.v = call i16 @llvm.genx.GenISA.simdBlockRead.i16.p1(ptr addrspace(1) %derived)
+  ret void
+}
+
+; %base is read only when selected, so it may be poison where %derived is read.
+; CHECK-LABEL: @selected_block_read_base(
+; CHECK: %derived = getelementptr inbounds i16, ptr addrspace(1) %src, i64 %derived.idx.64
+define spir_kernel void @selected_block_read_base(ptr addrspace(1) %src, i32 %x, i1 %use.base) {
+  %base.idx = add nsw i32 %x, 1
+  %base.idx.64 = sext i32 %base.idx to i64
+  %base = getelementptr inbounds i16, ptr addrspace(1) %src, i64 %base.idx.64
+  %derived.idx = add nsw i32 %x, 2
+  %derived.idx.64 = sext i32 %derived.idx to i64
+  %derived = getelementptr inbounds i16, ptr addrspace(1) %src, i64 %derived.idx.64
+  %ptr = select i1 %use.base, ptr addrspace(1) %base, ptr addrspace(1) %derived
+  %v = call i16 @llvm.genx.GenISA.simdBlockRead.i16.p1(ptr addrspace(1) %ptr)
+  ret void
+}
+
+; A prefetch of a poison address is not UB, so %base stays unusable as a base.
+; CHECK-LABEL: @prefetched_base(
+; CHECK: %prefetched = getelementptr inbounds float, ptr addrspace(1) %src, i64 %prefetched.idx
+define spir_kernel void @prefetched_base(ptr addrspace(1) %src, i64 %x) {
+  %base.idx = or disjoint i64 %x, 1
+  %base = getelementptr inbounds float, ptr addrspace(1) %src, i64 %base.idx
+  call void @llvm.genx.GenISA.LSCSimdBlockPrefetch.p1(ptr addrspace(1) %base, i32 2, i32 1, i32 0)
+  %prefetched.idx = add i64 %x, 2
+  %prefetched = getelementptr inbounds float, ptr addrspace(1) %src, i64 %prefetched.idx
+  call void @llvm.genx.GenISA.LSCSimdBlockPrefetch.p1(ptr addrspace(1) %prefetched, i32 2, i32 1, i32 0)
+  ret void
+}
+
+declare i16 @llvm.genx.GenISA.simdBlockRead.i16.p1(ptr addrspace(1))
+declare void @llvm.genx.GenISA.LSCSimdBlockPrefetch.p1(ptr addrspace(1), i32, i32, i32)
+
+!igc.functions = !{!0, !3, !4, !5, !6, !7, !8, !9}
 !0 = !{ptr @disjoint_or_base, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
@@ -108,3 +154,6 @@ define spir_kernel void @base_index_through_other_bucket(ptr addrspace(1) %src, 
 !4 = !{ptr @extended_index_base, !1}
 !5 = !{ptr @poison_only_in_base, !1}
 !6 = !{ptr @base_index_through_other_bucket, !1}
+!7 = !{ptr @block_read_base, !1}
+!8 = !{ptr @selected_block_read_base, !1}
+!9 = !{ptr @prefetched_base, !1}
