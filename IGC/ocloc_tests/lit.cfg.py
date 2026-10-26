@@ -167,3 +167,8 @@ if config.debug_build:
 if getattr(config, 'release_build', False):
   config.available_features.add('release')
 
+if 'system-windows' in config.available_features:
+  config.substitutions.append(('%DUMP_PROC_DIR%', '*/'))
+else:
+  config.substitutions.append(('%DUMP_PROC_DIR%', ''))
+

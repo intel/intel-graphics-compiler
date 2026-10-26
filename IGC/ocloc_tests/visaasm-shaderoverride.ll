@@ -22,7 +22,7 @@
 // RUN: ocloc compile -device bmg -file %t/original.bc -llvm_input -options "-igc_opts 'EnableOpaquePointersBackend=1, VISAOptions=-asmToConsole'" | FileCheck %s
 
 // So that we don't try to override using binary or llvm-ir
-// RUN: cp %t.dump_dir/*.visaasm %t.override_dir/
+// RUN: cp %t.dump_dir/%DUMP_PROC_DIR%*.visaasm %t.override_dir/
 
 // Override:
 // RUN: env IGC_EnableKernelNamesBasedHash=1 IGC_ShaderOverride=1 \
@@ -37,7 +37,7 @@
 // CHECK: store.ugm.{{.*}} [{{.*}}]     [[REG]]:1
 
 // Check log for overriden shader location
-// OVERRIDE-LOG-CHECK: OVERRIDEN: {{.*}}overriden_dir/OCL_{{.*}}.visaasm
+// OVERRIDE-LOG-CHECK: OVERRIDEN: {{.*}}overriden_dir{{[/\\].*}}OCL_{{.*}}.visaasm
 
 //--- original.ll
 define spir_kernel void @shader_override_visaasm(ptr addrspace(1) align 4 %out) {
