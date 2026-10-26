@@ -4901,6 +4901,7 @@ void EmitPass::Sub(const SSource sources[2], const DstModifier &modifier) {
 
     if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform) {
       if (CanEmitThisSize) {
+        m_encoder->SetSrcModifier(0, sources[0].mod);
         m_encoder->SetSrcModifier(1, mod1);
         m_encoder->SetSrcRegion(0, 1, 1, 0);
         m_encoder->SetSrcRegion(1, 1, 1, 0);
@@ -4919,6 +4920,7 @@ void EmitPass::Sub(const SSource sources[2], const DstModifier &modifier) {
           uint32_t offset = execsizeSeq[i + 1];
 
           m_encoder->SetNoMask();
+          m_encoder->SetSrcModifier(0, sources[0].mod);
           m_encoder->SetSrcModifier(1, mod1);
           m_encoder->SetSrcRegion(0, 1, 1, 0);
           m_encoder->SetSrcRegion(1, 1, 1, 0);
@@ -5023,6 +5025,8 @@ void EmitPass::Add(const SSource sources[2], const DstModifier &modifier) {
 
     if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform) {
       if (CanEmitThisSize) {
+        m_encoder->SetSrcModifier(0, sources[0].mod);
+        m_encoder->SetSrcModifier(1, sources[1].mod);
         m_encoder->SetSrcRegion(0, 1, 1, 0);
         m_encoder->SetSrcRegion(1, 1, 1, 0);
         m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
@@ -5040,6 +5044,8 @@ void EmitPass::Add(const SSource sources[2], const DstModifier &modifier) {
           uint32_t offset = execsizeSeq[i + 1];
 
           m_encoder->SetNoMask();
+          m_encoder->SetSrcModifier(0, sources[0].mod);
+          m_encoder->SetSrcModifier(1, sources[1].mod);
           m_encoder->SetSrcRegion(0, 1, 1, 0);
           m_encoder->SetSrcRegion(1, 1, 1, 0);
           m_encoder->SetUniformSIMDSize(lanesToSIMDMode(execSize));
@@ -5105,6 +5111,8 @@ void EmitPass::Mul(const SSource sources[2], const DstModifier &modifier) {
 
     if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform) {
       if (CanEmitThisSize) {
+        m_encoder->SetSrcModifier(0, sources[0].mod);
+        m_encoder->SetSrcModifier(1, sources[1].mod);
         m_encoder->SetSrcRegion(0, 1, 1, 0);
         m_encoder->SetSrcRegion(1, 1, 1, 0);
         m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
@@ -5122,6 +5130,8 @@ void EmitPass::Mul(const SSource sources[2], const DstModifier &modifier) {
           uint32_t offset = execsizeSeq[i + 1];
 
           m_encoder->SetNoMask();
+          m_encoder->SetSrcModifier(0, sources[0].mod);
+          m_encoder->SetSrcModifier(1, sources[1].mod);
           m_encoder->SetSrcRegion(0, 1, 1, 0);
           m_encoder->SetSrcRegion(1, 1, 1, 0);
           m_encoder->SetUniformSIMDSize(lanesToSIMDMode(execSize));
@@ -5190,6 +5200,8 @@ void EmitPass::Shl(const SSource sources[2], const DstModifier &modifier) {
 
     if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform) {
       if (CanEmitThisSize) {
+        m_encoder->SetSrcModifier(0, sources[0].mod);
+        m_encoder->SetSrcModifier(1, sources[1].mod);
         m_encoder->SetSrcRegion(0, 1, 1, 0);
         m_encoder->SetSrcRegion(1, 1, 1, 0);
         m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
@@ -5207,6 +5219,8 @@ void EmitPass::Shl(const SSource sources[2], const DstModifier &modifier) {
           uint32_t offset = execsizeSeq[i + 1];
 
           m_encoder->SetNoMask();
+          m_encoder->SetSrcModifier(0, sources[0].mod);
+          m_encoder->SetSrcModifier(1, sources[1].mod);
           m_encoder->SetSrcRegion(0, 1, 1, 0);
           m_encoder->SetSrcRegion(1, 1, 1, 0);
           m_encoder->SetUniformSIMDSize(lanesToSIMDMode(execSize));
@@ -5373,6 +5387,8 @@ void EmitPass::MaxNum(const SSource sources[2], const DstModifier &modifier) {
     bool CanEmitThisSize = VectorSize <= numLanes(m_currShader->m_SIMDSize);
 
     if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
+      m_encoder->SetSrcModifier(0, sources[0].mod);
+      m_encoder->SetSrcModifier(1, sources[1].mod);
       m_encoder->SetSrcRegion(0, 1, 1, 0);
       m_encoder->SetSrcRegion(1, 1, 1, 0);
       m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
@@ -5424,6 +5440,7 @@ void EmitPass::Exp2(const SSource sources[2], const DstModifier &modifier) {
     bool AllUniform = src[0]->IsUniform() && m_destination->IsUniform();
 
     if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && VectorSize <= 16) {
+      m_encoder->SetSrcModifier(0, sources[0].mod);
       m_encoder->SetSrcRegion(0, 1, 1, 0);
       m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
       m_encoder->Exp(m_destination, src[0]);
@@ -5464,6 +5481,10 @@ void EmitPass::VectorMad(const SSource sources[3], const DstModifier &modifier) 
   bool CanEmitThisSize = VectorSize <= numLanes(m_currShader->m_SIMDSize);
 
   if (IGC_IS_FLAG_ENABLED(VectorizerUniformValueVectorizationEnabled) && AllUniform && CanEmitThisSize) {
+    // MatchFMad moves the negation of an fsub to one of the sources.
+    m_encoder->SetSrcModifier(0, sources[0].mod);
+    m_encoder->SetSrcModifier(1, sources[1].mod);
+    m_encoder->SetSrcModifier(2, sources[2].mod);
     // regioning must be updated by hand, DO NOT COPY for fptrunc
     m_encoder->SetSrcRegion(0, 1, 1, 0);
     m_encoder->SetSrcRegion(1, 1, 1, 0);
