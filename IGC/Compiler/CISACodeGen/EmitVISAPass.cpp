@@ -6975,12 +6975,29 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
   CVariable *pCurrentData = GetSymbol(inst->getOperand(0));
   CVariable *pNextData = GetSymbol(inst->getOperand(1));
   CVariable *pDelta = m_currShader->GetSymbol(inst->getOperand(2));
+  Value *CurrentOp = inst->getOperand(0);
+  Value *NextOp = inst->getOperand(1);
+  auto width = numLanes(m_SimdMode);
 
   // temp size is the sum of src0 and src1
   uint16_t nbElements = numLanes(m_SimdMode) * 2;
 
+  // Lane id + delta is in range below 2 * max sub-group size (SPV_INTEL_subgroups
+  // OpSubgroupShuffleDownINTEL), and shuffle up passes a wrapped negative delta.
+  // Past the SIMD size the region reads next, then current: swap them to keep it
+  // inside the combined data.
+  if (pDelta->IsImmediate()) {
+    uint64_t WrappedDelta = pDelta->GetImmediateValue() & (nbElements - 1);
+    if (WrappedDelta > width) {
+      std::swap(CurrentOp, NextOp);
+      std::swap(pCurrentData, pNextData);
+      WrappedDelta -= width;
+    }
+    pDelta = m_currShader->ImmToVariable(WrappedDelta, pDelta->GetType());
+  }
+
   // Join current and Next Data
-  SBasicBlock::SimdShuffleDownSrcTy srcPair(inst->getOperand(0), inst->getOperand(1));
+  SBasicBlock::SimdShuffleDownSrcTy srcPair(CurrentOp, NextOp);
   SBasicBlock *pCurrBlk = getCurrentBlock();
   CVariable *pCombinedData = pCurrBlk ? pCurrBlk->m_simdShuffleDownSrc[srcPair] : nullptr;
   if (pCombinedData == nullptr) {
@@ -7023,7 +7040,6 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
 
   SIMDMode simdMode = m_currShader->m_Platform->getMinDispatchMode();
   auto nativeExecSize = numLanes(simdMode);
-  auto width = numLanes(m_SimdMode);
   if (useDirectAddressing && nativeExecSize * 2 >= width) {
     const uint dataIndex = pDelta->GetImmediateValue() % nbElements;
     int tripCount = width <= nativeExecSize ? 1 : 2;
