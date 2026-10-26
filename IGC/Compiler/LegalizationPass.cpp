@@ -2779,7 +2779,10 @@ bool IGC::expandFDIVInstructions(llvm::Function &F, ShaderType ShaderTy) {
           V = Builder.CreateFDiv(X, Y);
           // Iterator at the begining of the loop is already at the next instruction,
           // so we want to set it back to handle this fdiv as normal one.
-          Iter = BasicBlock::iterator(dyn_cast<Instruction>(V));
+          // If both operands are constants, IRBuilder folds the fdiv into a constant
+          // and there is nothing left to expand.
+          if (auto *FDivInst = dyn_cast<Instruction>(V))
+            Iter = FDivInst->getIterator();
 
           V = Builder.CreateFPTrunc(V, Inst->getType());
         }

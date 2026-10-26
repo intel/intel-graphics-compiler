@@ -106,18 +106,25 @@ define float @test_fadd_flags(float %src1, float %src2) {
   ret float %1
 }
 
+define half @test_fdiv_const() {
+  ; CHECK: ret half {{(0xHFFFF|-nan\(0x1FF\))}}
+  %1 = fdiv half 0xHFFFF, 0xHFFFF
+  ret half %1
+}
+
 declare float @llvm.genx.GenISA.FPBinaryOperator.f32(float, float, i32)
 declare half @llvm.genx.GenISA.FPBinaryOperator.f16(half, half, i32)
 declare bfloat @llvm.genx.GenISA.FPBinaryOperator.bf16(bfloat, bfloat, i32)
 declare double @llvm.genx.GenISA.FPBinaryOperator.f64(double, double, i32)
 
-!igc.functions = !{!0, !1, !2, !3, !4, !5, !6, !7}
-!0 = !{float (float, float)* @test_fadd, !8}
-!1 = !{float (float, float)* @test_fsub, !8}
-!2 = !{float (float, float)* @test_fmul, !8}
-!3 = !{float (float, float)* @test_fdiv, !8}
-!4 = !{half (half, half)* @test_fadd_half, !8}
-!5 = !{bfloat (bfloat, bfloat)* @test_fadd_bfloat, !8}
-!6 = !{double (double, double)* @test_fadd_double, !8}
-!7 = !{float (float, float)* @test_fadd_flags, !8}
-!8 = !{}
+!igc.functions = !{!0, !1, !2, !3, !4, !5, !6, !7, !8}
+!0 = !{float (float, float)* @test_fadd, !9}
+!1 = !{float (float, float)* @test_fsub, !9}
+!2 = !{float (float, float)* @test_fmul, !9}
+!3 = !{float (float, float)* @test_fdiv, !9}
+!4 = !{half (half, half)* @test_fadd_half, !9}
+!5 = !{bfloat (bfloat, bfloat)* @test_fadd_bfloat, !9}
+!6 = !{double (double, double)* @test_fadd_double, !9}
+!7 = !{float (float, float)* @test_fadd_flags, !9}
+!8 = !{half ()* @test_fdiv_const, !9}
+!9 = !{}
