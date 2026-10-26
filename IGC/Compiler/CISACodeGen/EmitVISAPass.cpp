@@ -19330,20 +19330,13 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr, Value *uniformBa
   bool isDestReplacedWithMerge = false;
   CVariable *mergeVar = nullptr;
   if (predicatedLoad) {
-    // find instruction after predicated load in BB
-    auto instIt = std::find_if(inst->getParent()->begin(), inst->getParent()->end(),
-                               [inst](Instruction &I) { return &I == inst; });
-    IGC_ASSERT(instIt != inst->getParent()->end());
-    instIt++;
-    IGC_ASSERT(instIt != inst->getParent()->end());
-
     Value *mergeVal = inst->getOperand(3);
     LiveVars *pLV = m_deSSA->getLiveVars();
     mergeVar = GetSymbol(mergeVal);
     auto isAliased = [&](CVariable *cv, Value *v) {
       return cv->GetAlias() != nullptr || (m_VRA && m_VRA->isAliasedValue(v));
     };
-    if (!isa<Constant>(mergeVal) && !pLV->isLiveAt(mergeVal, &*instIt) && !mergeVar->IsImmediate() &&
+    if (!isa<Constant>(mergeVal) && !pLV->isLiveAt(mergeVal, inst) && !mergeVar->IsImmediate() &&
         mergeVar->GetNumberElement() == m_destination->GetNumberElement() &&
         mergeVar->GetType() == m_destination->GetType() && mergeVar->GetAlign() == m_destination->GetAlign() &&
         mergeVar->IsUniform() == m_destination->IsUniform() && !isAliased(m_destination, inst) &&
