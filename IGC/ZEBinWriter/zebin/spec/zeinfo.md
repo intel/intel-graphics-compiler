@@ -134,7 +134,7 @@ If an attribute is **Required**, it must be present in execution_env. If it's **
 | Attribute | Type | Required/Optional | Default | Description |
 | ------ | ------ |  ------ | ------ | ------ |
 | barrier_count | int32 | Optional | 0 | Number of barriers |
-| cross_thread_load_size | int32 | Optional | 0 | Size in bytes of the cross-thread data that the prologue loads into registers. Arguments above this size are not loaded into registers; the kernel reads them from the memory. 0 means all cross-thread data is loaded into registers (legacy path).  |
+| cross_thread_load_size | int32 | Optional | 0 | End offset in bytes of the payload data that is already in GRFs at kernel entry, counted from the start of the payload (inline data included), like the offsets in payload_arguments. Payload arguments at or above this offset are loaded from memory by the kernel where they are used. 0 means the whole payload is in GRFs at kernel entry. |
 | disable_mid_thread_preemption | bool | Optional | false | |
 | grf_count | int32 | Required | | |
 | has_4gb_buffers | bool | Optional | false | Compiled for greater than 4GB buffers |
