@@ -4472,8 +4472,8 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   // the heuristic will likely need an update as well
   unsigned int SIMD = IGC::getSIMDSize(modMD, m_program->entry);
   bool MDPresent = funcMDIter != modMD->FuncMD.end();
-  unsigned int bestGuessSimd = MDPresent ? funcMDIter->second.bestGuessSimd : 0;
-  SIMD = SIMD ? SIMD : bestGuessSimd;
+  if (!SIMD && MDPresent)
+    SIMD = IGC::pressureThresholdSIMDLanes(context, m_program->entry);
   unsigned int RegPressure =
       (MDPresent) ? (funcMDIter->second.maxRegUniformPressure + funcMDIter->second.maxRegNonUniformPressure * SIMD) : 0;
 

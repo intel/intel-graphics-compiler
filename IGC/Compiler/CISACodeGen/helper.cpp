@@ -2363,6 +2363,16 @@ bool hasFixedSIMDSize(const CodeGenContext *CTX, const llvm::Function *F, GenXFu
   return fixedSIMDSize(CTX, F, FGA) != SIMDMode::UNKNOWN;
 }
 
+unsigned pressureThresholdSIMDLanes(const CodeGenContext *CTX, const llvm::Function *F,
+                                    GenXFunctionGroupAnalysis *FGA) {
+  if (IGC_GET_FLAG_VALUE(AllowSIMD16DropForXE2Plus) && (CTX->platform.isCoreXE2() || CTX->platform.isCoreXE3()) &&
+      !hasFixedSIMDSize(CTX, F, FGA))
+    return numLanes(SIMDMode::SIMD16);
+  const auto &FuncMD = CTX->getModuleMetaData()->FuncMD;
+  auto It = FuncMD.find(const_cast<llvm::Function *>(F));
+  return It != FuncMD.end() ? It->second.bestGuessSimd : 0;
+}
+
 static constexpr uint32_t LargePrivateMemoryKernelThresholdBytes = 5000;
 static constexpr uint32_t LargePrivateMemoryKernelSimd16LowThreshold = 96;
 

@@ -417,7 +417,8 @@ unsigned int EmitPass::getMaxRegPressureInFunctionGroup(llvm::Function *F) {
     auto it = modMD->FuncMD.find(F);
     if (it != modMD->FuncMD.end())
       // #TODO: heuristic must be fixed to use proper SIMD
-      MaxPressure = (it->second.maxRegUniformPressure + it->second.maxRegNonUniformPressure * it->second.bestGuessSimd);
+      MaxPressure = (it->second.maxRegUniformPressure +
+                     it->second.maxRegNonUniformPressure * IGC::pressureThresholdSIMDLanes(m_pCtx, F));
 
     unsigned RegSize = m_pCtx->platform.getGRFSize();
     unsigned MaxRegPressure = llvm::divideCeil(MaxPressure, RegSize);
@@ -436,7 +437,8 @@ unsigned int EmitPass::getMaxRegPressureInFunctionGroup(llvm::Function *F) {
 
     unsigned int RegPressure =
         // #TODO: heuristic must be fixed to use proper SIMD
-        (fit->second.maxRegUniformPressure + fit->second.maxRegNonUniformPressure * fit->second.bestGuessSimd);
+        (fit->second.maxRegUniformPressure +
+         fit->second.maxRegNonUniformPressure * IGC::pressureThresholdSIMDLanes(m_pCtx, PtrF, m_FGA));
     MaxPressure = std::max(MaxPressure, RegPressure);
   }
   unsigned RegSize = m_pCtx->platform.getGRFSize();
