@@ -29,6 +29,10 @@ float __attribute__((overloadable)) __spirv_ocl_log( float x )
     {
         result = __spirv_ocl_native_log(x);
     }
+    else if (BIF_FLAG_CTRL_GET(HasAccurateLog2) && (x < 0.5f || x >= 1.5f))
+    {
+        result = __spirv_ocl_native_log2(x) * M_LN2_F;
+    }
     //  Denorm checking is to work-around a llvm issue that demote
     //  "(float) x > 0.0f"  to " (half)x > (half)0.0f" (log(half).
     //  This causes the inaccurate result with -cl-denorms-are-zero.
@@ -114,6 +118,12 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log, double, double, f64 )
 
 INLINE half __attribute__((overloadable)) __spirv_ocl_log( half x )
 {
+    if (BIF_FLAG_CTRL_GET(HasAccurateLog2))
+    {
+        // Scale in single precision; scaling in half precision gives up to
+        // 1.7 ulp of error instead of 0.5 ulp.
+        return (half)(__spirv_ocl_native_log2((float)x) * M_LN2_F);
+    }
     return (half)__spirv_ocl_log((float)x);
 }
 

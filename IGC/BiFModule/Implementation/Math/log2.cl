@@ -60,6 +60,10 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log2, double, double, f64 )
 
 INLINE half __attribute__((overloadable)) __spirv_ocl_log2( half x )
 {
+    if (BIF_FLAG_CTRL_GET(HasAccurateLog2))
+    {
+        return __spirv_ocl_native_log2(x);
+    }
     return __spirv_ocl_log2((float)x);
 }
 
