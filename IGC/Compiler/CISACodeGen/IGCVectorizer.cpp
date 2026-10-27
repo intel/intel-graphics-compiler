@@ -408,7 +408,7 @@ bool IGCVectorizer::handlePHI(VecArr &Slice) {
       Instruction *InsertPoint = getInsertPointForVector(ForVector, EmptySet);
       if (!InsertPoint)
         return false;
-      auto CreatedVec = createVector(ForVector, IGCLLVM::getNextNonDebugInstruction(InsertPoint));
+      auto CreatedVec = createVector(ForVector, InsertPoint);
       PRINT_INST_NL(CreatedVec);
       Operands.push_back(CreatedVec);
     } else {
@@ -454,6 +454,9 @@ bool IGCVectorizer::handleInsertElement(VecArr &Slice) {
   return true;
 }
 
+// Arr --> instructions that needs to be inserted into the vector
+// InsertPoint must be AFTER the last one
+// Slice is a consumer of Arr's so vector must be ready by the FIRST ONE
 Instruction *IGCVectorizer::getInsertPointForVector(VecArr &Arr, VecArr &Slice) {
 
   Instruction *Cmp = Arr.front();
@@ -466,23 +469,20 @@ Instruction *IGCVectorizer::getInsertPointForVector(VecArr &Arr, VecArr &Slice) 
 
   if (!SameBB && !OneUse)
     return nullptr;
-
+  bool NotHandled = Slice.empty() || llvm::isa<PHINode>(Slice.front());
   Instruction *InsertPoint = nullptr;
   // if it has one use, it must be our slice
   if (!SameBB && OneUse) {
-    if (Slice.empty())
+    if (NotHandled)
       return nullptr;
     InsertPoint = getMinPoint(Slice);
   } else {
-    InsertPoint = getMaxPoint(Arr);
+    InsertPoint = IGCLLVM::getNextNonDebugInstruction(getMaxPoint(Arr));
   }
 
   // if insert point is PHI, shift it to the first nonPHI to be safe
   if (llvm::isa<llvm::PHINode>(InsertPoint))
     InsertPoint = IGCLLVM::getFirstNonPHI(InsertPoint->getParent());
-  if (InsertPoint->isTerminator())
-    InsertPoint = IGCLLVM::getPrevNonDebugInstruction(InsertPoint);
-
   return InsertPoint;
 }
 
@@ -597,12 +597,10 @@ InsertElementInst *IGCVectorizer::createVector(VecArr &Slice, Instruction *Inser
 
 void IGCVectorizer::replaceSliceInstructionsWithExtract(VecArr &Slice, Instruction *CreatedInst, bool Register,
                                                         ReplaceCondition RepCond) {
+  PRINT_LOG_INST_NL("Extracted from: ", CreatedInst);
 
-  PRINT_LOG(" Extracted from: ");
-  PRINT_INST_NL(CreatedInst);
-
-  Instruction *InsertPoint = (llvm::isa<PHINode>(Slice.front())) ? IGCLLVM::getFirstNonPHI(CreatedInst->getParent())
-                                                                 : IGCLLVM::getNextNonDebugInstruction(CreatedInst);
+  Instruction *InsertPoint = (llvm::isa<PHINode>(CreatedInst)) ? IGCLLVM::getFirstNonPHI(CreatedInst->getParent())
+                                                               : IGCLLVM::getNextNonDebugInstruction(CreatedInst);
 
   for (size_t i = 0; i < Slice.size(); i++) {
 
@@ -1172,7 +1170,7 @@ bool IGCVectorizer::handleExtractElement(VecArr &Slice) {
     PRINT_LOG_NL("Couldn't find insert point");
     return false;
   }
-  auto ExtractInterface = createVector(Slice, IGCLLVM::getNextNonDebugInstruction(InsertPoint));
+  auto ExtractInterface = createVector(Slice, InsertPoint);
   PRINT_LOG_INST_NL("extract interface is used: ", ExtractInterface);
   return true;
 }
@@ -1406,7 +1404,7 @@ Value *IGCVectorizer::vectorizeSlice(VecArr &Slice, unsigned int OperNum) {
       PRINT_LOG_NL("Couldn't find insert point");
       return nullptr;
     }
-    NewVector = createVector(NotVectorizedInstruction, IGCLLVM::getNextNonDebugInstruction(InsertPoint));
+    NewVector = createVector(NotVectorizedInstruction, InsertPoint);
     PRINT_LOG("New vector created: ");
     PRINT_INST_NL(NewVector);
   }
@@ -1805,7 +1803,7 @@ Instruction *IGCVectorizer::createVirtualNode(VecArr &WorkSet) {
     WorkSet.clear();
     return nullptr;
   }
-  auto Slice = createVector(WorkSet, IGCLLVM::getNextNonDebugInstruction(InsertPoint), false);
+  auto Slice = createVector(WorkSet, InsertPoint, false);
 
   auto RepCondVirtualNodeFormation = [](Use &U) {
     if (llvm::isa<InsertElementInst>(U.getUser()))
@@ -1967,6 +1965,9 @@ void IGCVectorizer::processSeed(VecArr &ToProcess) {
 
   VecOfSlices SliceChain;
   SliceChain.reserve(256);
+  // multi-use and degenerate seeds are dropped from ToProcess,
+  // so they don't vote for PreferredVectorSize
+  VecArr Accepted;
   for (unsigned int Ind = 0; Ind < ToProcess.size(); ++Ind) {
 
     unsigned int Index = IGC_GET_FLAG_VALUE(VectorizerList);
@@ -1992,6 +1993,10 @@ void IGCVectorizer::processSeed(VecArr &ToProcess) {
       continue;
     }
 
+    // degenerate and more than one use inserts are
+    // not allowed to vote for PreferredVectorSize
+    Accepted.push_back(FinalInsert);
+
     if (SliceOfInserts.size() != getVectorSize(FinalInsert)) {
       PRINT_LOG_NL("partial insert -> rejected");
       continue;
@@ -2004,6 +2009,7 @@ void IGCVectorizer::processSeed(VecArr &ToProcess) {
     processChain(FinalInsert, SliceChain);
     PRINT_LOG("\n\n");
   }
+  ToProcess = std::move(Accepted);
 }
 
 bool IGCVectorizer::runOnFunction(llvm::Function &F) {
@@ -2047,12 +2053,24 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
   writeLog();
 
   // we need Preferred Vector Size to form Virtual Seeds
-  PreferredVectorSize = getVectorSize(ToProcess.front());
+  std::unordered_map<unsigned int, unsigned int> VectorWidthMap;
   for (auto &El : ToProcess)
-    PreferredVectorSize = PreferredVectorSize == getVectorSize(El) ? PreferredVectorSize : 0;
+    VectorWidthMap[getVectorSize(El)] += 1;
 
-  // if it's 0 the seeds have different widths, if it's 1 this is a degenerate
-  // pattern -- in both cases we don't attempt virtual seed formation
+  // pick the most popular width, on a tie the wider one wins, so the result
+  // doesn't depend on the map iteration order
+  PreferredVectorSize = 1;
+  unsigned int Popularity = 0;
+  for (auto &El : VectorWidthMap) {
+    bool TieBreaker = (Popularity == El.second) && (PreferredVectorSize < El.first);
+    if (Popularity < El.second || TieBreaker) {
+      PreferredVectorSize = El.first;
+      Popularity = El.second;
+    }
+  }
+
+  // if the most popular width is 1 this is a degenerate pattern
+  // and we don't attempt virtual seed formation
   if (IGC_IS_FLAG_ENABLED(VectorizerEnableVirtualSeeds) && PreferredVectorSize && PreferredVectorSize != 1) {
     PRINT_LOG_NL("Preferred Vec Size: " << PreferredVectorSize);
 

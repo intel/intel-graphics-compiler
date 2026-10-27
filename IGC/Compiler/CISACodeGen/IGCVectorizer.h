@@ -93,6 +93,7 @@ private:
 
   bool checkSlice(VecArr &Slice, InsertElementInst *Final);
 
+  // processes the seeds, drops multi-use and degenerate seeds from ToProcess
   void processSeed(VecArr &ToProcess);
   bool processChain(InsertElementInst *FinalInsert, VecOfSlices &SlChain);
   void clusterInsertElement(InsertElementInst *Insert, VecArr &SliceOfInserts);
