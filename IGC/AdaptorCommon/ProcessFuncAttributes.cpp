@@ -622,6 +622,14 @@ bool ProcessFuncAttributes::run(Module &M, CodeGenContext *Ctx, IGCMD::MetaDataU
       continue;
     }
 
+    auto FuncMDIt = modMD->FuncMD.find(F);
+    if (FuncMDIt != modMD->FuncMD.end()) {
+      auto &[_, FuncMD] = *FuncMDIt;
+      if (FuncMD.functionType == FunctionTypeMD::KernelFunction) {
+        FuncMD.postTrimKernelSize = efs.getExpandedSize(F);
+      }
+    }
+
     // Do not reset it for critical section builtins
     if (F->hasFnAttribute("KMPLOCK")) {
       continue;

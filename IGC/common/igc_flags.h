@@ -1972,6 +1972,8 @@ DECLARE_IGC_REGKEY(
     DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, FastSpill, false,
                    "fast spill code gen. This may produce worse equality code for the spilling shader", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(DWORD, FastSpillKernelSizeThreshold, 460000,
+                   "Instruction threshold for enabling fasterRA on OpenCL kernels", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, EmulationFunctionControl, 0,
                    "FunctionControl on some DP emulation functions. It has the same value as FunctionControl.", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, InlinedEmulationThreshold, 125000, "Inlined instruction threshold for enabling subroutines",

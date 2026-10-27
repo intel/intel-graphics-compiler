@@ -413,6 +413,9 @@ enum class ShaderTypeMD
         bool hasNonKernelArgStore = false;
         bool hasNonKernelArgAtomic = false;
 
+        // Expanded kernel size (in instructions) after function trimming
+        uint32_t postTrimKernelSize = 0;
+
         std::vector<std::string> UserAnnotations{};
 
         std::vector<int32_t> m_OpenCLArgAddressSpaces{};

@@ -3966,7 +3966,18 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_replaceIndirectCallWithJmpi, true);
   }
 
-  if (IGC_IS_FLAG_ENABLED(FastSpill)) {
+  auto isLargeOCLKernel = [&]() {
+    if (context->type == ShaderType::OPENCL_SHADER) {
+      auto *F = m_program->GetParent()->getLLVMFunction();
+      auto &FuncMD = context->getModuleMetaData()->FuncMD;
+      auto It = FuncMD.find(F);
+      if (It != FuncMD.end()) {
+        return It->second.postTrimKernelSize > IGC_GET_FLAG_VALUE(FastSpillKernelSizeThreshold);
+      }
+    }
+    return false;
+  };
+  if (IGC_IS_FLAG_ENABLED(FastSpill) || isLargeOCLKernel()) {
     SaveOption(vISA_FastSpill, true);
   }
 
