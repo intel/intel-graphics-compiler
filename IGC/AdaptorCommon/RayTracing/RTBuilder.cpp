@@ -614,6 +614,383 @@ static BasicBlock *getUnsetPhiBlock(PHINode *PN) {
   return nullptr;
 }
 
+static std::pair<uint32_t, uint32_t> getRayInfoKindAndDim(const Instruction *I) {
+  if (auto *RQ = dyn_cast<RayQueryInfoIntrinsic>(I))
+    return {RQ->getInfoKind(), RQ->getDim()};
+  IGC_ASSERT_MESSAGE(0, "Unsupported ray-info intrinsic type");
+  return {0, 0};
+}
+
+static Value *coerceRayInfoValueType(RTBuilder *B, Value *RayInfo, Type *ExpectedType) {
+  if (RayInfo->getType() == ExpectedType)
+    return RayInfo;
+
+  if (ExpectedType->isIntegerTy(1) && RayInfo->getType()->isIntegerTy())
+    return B->CreateICmpNE(RayInfo, ConstantInt::get(RayInfo->getType(), 0), VALUE_NAME_RI("ray.info.i1"));
+
+  if (ExpectedType->isIntegerTy() && RayInfo->getType()->isIntegerTy())
+    return B->CreateZExtOrTrunc(RayInfo, ExpectedType, VALUE_NAME_RI("ray.info.int"));
+
+  IGC_ASSERT_MESSAGE(false, "Unexpected ray info type mismatch");
+  return RayInfo;
+}
+
+template <typename LowerFn>
+static Value *lowerWithOptionalLeafValidation(RTBuilder *B, RTBuilder::StackPointerVal *perLaneStackPtr, Instruction *I,
+                                              Value *ShaderTy, bool checkInstanceLeafPtr, LowerFn &&lowerFn) {
+  // This guard is about hit validity, not shader-kind constness:
+  // committed can be invalid (valid==0), and candidate can carry NODE_TYPE_INVALID.
+  if (!(checkInstanceLeafPtr && IGC_IS_FLAG_ENABLED(ForceRTCheckInstanceLeafPtr)))
+    return lowerFn(I);
+
+  auto [ValidBB, PN] = B->validateInstanceLeafPtr(
+      perLaneStackPtr, I, B->CreateICmpEQ(ShaderTy, B->getInt32(CallableShaderTypeMD::ClosestHit)));
+  Instruction *validInsert = ValidBB->getTerminator();
+  B->SetInsertPoint(validInsert);
+  Value *validValue = lowerFn(validInsert);
+  BasicBlock *incomingBB = getUnsetPhiBlock(PN);
+  IGC_ASSERT_MESSAGE(incomingBB, "Cannot determine validated incoming block for leaf-check PHI");
+  IGC_ASSERT_MESSAGE(validValue->getType() == PN->getType(), "Validated value type does not match leaf-check PHI");
+  PN->addIncoming(validValue, incomingBB);
+  B->SetInsertPoint(I);
+  return PN;
+}
+
+Value *RTBuilder::lowerNonIndexRayInfoFromStack(RTBuilder::StackPointerVal *perLaneStackPtr, Instruction *I,
+                                                Value *ShaderTy, bool allowMotionBlurInfo) {
+  auto [InfoKind, Dim] = getRayInfoKindAndDim(I);
+  IGC_ASSERT_MESSAGE(InfoKind != PRIMITIVE_INDEX && InfoKind != GEOMETRY_INDEX,
+                     "Index queries must be lowered by lowerIndexFromStack");
+  bool IsRayQuery = isa<RayQueryInfoIntrinsic>(I);
+  auto lowerInfo = [&](Instruction *InsertPoint) -> Value * {
+    Value *Hit = getHitFromStackByShaderType(perLaneStackPtr, ShaderTy, false);
+    Value *Ray = getRayAddress(perLaneStackPtr);
+    if (InfoKind == RAY_MASK)
+      return getShaderRayMask(Ray);
+    return getShaderInfo(Hit, Ray, InfoKind, Dim, ShaderTy);
+  };
+
+  if (InfoKind == OBJ_RAY_ORG || InfoKind == OBJ_RAY_DIR) {
+    // AnyHit/Intersection consume the object ray already stored by traversal.
+    // Only ClosestHit/Traversal reconstruct it from the world ray.
+    auto *IP = &*GetInsertPoint();
+    auto *OldBB = IP->getParent();
+    auto *MergeBB = SplitBlock(OldBB, IP);
+    auto *TransformBB = BasicBlock::Create(Context, VALUE_NAME_RI("object.transform"), IP->getFunction(), MergeBB);
+    SetInsertPoint(TransformBB);
+    auto *TransformExit = CreateBr(MergeBB);
+    SetInsertPoint(TransformExit);
+    auto *Query = I->clone();
+    Insert(Query);
+    SetInsertPoint(Query);
+    Value *Transformed = lowerWithOptionalLeafValidation(this, perLaneStackPtr, Query, ShaderTy, IsRayQuery, lowerInfo);
+    Query->eraseFromParent();
+
+    auto *MissBB = BasicBlock::Create(Context, VALUE_NAME_RI("object.miss"), IP->getFunction(), MergeBB);
+    SetInsertPoint(MissBB);
+    auto *MissExit = CreateBr(MergeBB);
+    SetInsertPoint(MissExit);
+    Value *World = getShaderInfo(nullptr, getRayAddress(perLaneStackPtr),
+                                 InfoKind == OBJ_RAY_ORG ? WORLD_RAY_ORG : WORLD_RAY_DIR, Dim, ShaderTy);
+
+    auto *ObjectBB = BasicBlock::Create(Context, VALUE_NAME_RI("object.stored"), IP->getFunction(), MergeBB);
+    SetInsertPoint(ObjectBB);
+    auto *ObjectExit = CreateBr(MergeBB);
+    SetInsertPoint(ObjectExit);
+    Value *Object = InfoKind == OBJ_RAY_ORG ? getMemRayOrig(perLaneStackPtr, Dim, BOTTOM_LEVEL_BVH)
+                                            : getMemRayDir(perLaneStackPtr, Dim, BOTTOM_LEVEL_BVH);
+
+    OldBB->getTerminator()->eraseFromParent();
+    SetInsertPoint(OldBB);
+    auto *Switch = CreateSwitch(ShaderTy, ObjectBB);
+    Switch->addCase(getInt32(Miss), MissBB);
+    Switch->addCase(getInt32(ClosestHit), TransformBB);
+    SetInsertPoint(IP);
+    auto *Result = CreatePHI(Transformed->getType(), 3);
+    Result->addIncoming(Transformed, TransformExit->getParent());
+    Result->addIncoming(World, MissExit->getParent());
+    Result->addIncoming(Object, ObjectExit->getParent());
+    return Result;
+  }
+
+  bool NeedsValidation = InfoKind == INSTANCE_ID || InfoKind == INSTANCE_INDEX || InfoKind == OBJECT_TO_WORLD ||
+                         InfoKind == WORLD_TO_OBJECT;
+  Value *Info =
+      lowerWithOptionalLeafValidation(this, perLaneStackPtr, I, ShaderTy, IsRayQuery && NeedsValidation, lowerInfo);
+  return coerceRayInfoValueType(this, Info, I->getType());
+}
+
+Value *RTBuilder::lowerIndexFromStack(RTBuilder::StackPointerVal *perLaneStackPtr, Instruction *I, uint32_t InfoKind,
+                                      Value *ShaderTy, bool checkInstanceLeafPtr, Value *KnownLeafType) {
+  IGC_ASSERT_MESSAGE(InfoKind == PRIMITIVE_INDEX || InfoKind == GEOMETRY_INDEX, "Unsupported index query kind");
+  auto lowerIndex = [&](Instruction *) -> Value * {
+    Value *Hit = getHitFromStackByShaderType(perLaneStackPtr, ShaderTy, false);
+    return lowerIndexFromHit(Hit, InfoKind, ShaderTy, KnownLeafType);
+  };
+  return lowerWithOptionalLeafValidation(this, perLaneStackPtr, I, ShaderTy, checkInstanceLeafPtr, lowerIndex);
+}
+
+Value *RTBuilder::lowerIndexFromHit(Value *Hit, uint32_t InfoKind, Value *ShaderTy, Value *KnownLeafType) {
+  IGC_ASSERT_MESSAGE(InfoKind == PRIMITIVE_INDEX || InfoKind == GEOMETRY_INDEX, "Unsupported index query kind");
+  // Hit memory does not encode AnyHit vs ClosestHit stage; the caller provides
+  // the shader context (or a generic hit/miss kind) explicitly.
+  Value *index = InfoKind == PRIMITIVE_INDEX ? getPrimitiveIndexFromHit(Hit, ShaderTy, KnownLeafType)
+                                             : getGeometryIndexFromHit(Hit, ShaderTy, KnownLeafType);
+  IGC_ASSERT_MESSAGE(index, "Hit-based index lowering returned null");
+  return index;
+}
+
+Value *RTBuilder::getHitFromStackByShaderType(RTBuilder::StackPointerVal *perLaneStackPtr, Value *ShaderTy,
+                                              bool includeMissNull) {
+  auto getNullHit = [&]() -> Value * {
+    Type *hitTy = nullptr;
+    switch (getMemoryStyle()) {
+#define STYLE(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    hitTy = _gettype_MemHit_##X(*Ctx.getModule());                                                                     \
+    break;
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT_MESSAGE(hitTy, "Failed to resolve MemHit type for null-hit pointer");
+    uint32_t addrSpace = perLaneStackPtr->getType()->getPointerAddressSpace();
+    return ConstantPointerNull::get(IGCLLVM::PointerType::get(hitTy, addrSpace));
+  };
+
+  if (auto *knownShaderType = dyn_cast<ConstantInt>(ShaderTy)) {
+    auto shaderKind = static_cast<CallableShaderTypeMD>(knownShaderType->getZExtValue());
+    if (shaderKind == CallableShaderTypeMD::Miss)
+      return includeMissNull ? getNullHit() : getHitAddress(perLaneStackPtr, false);
+    if (shaderKind == CallableShaderTypeMD::ClosestHit)
+      return getHitAddress(perLaneStackPtr, true);
+    return getHitAddress(perLaneStackPtr, false);
+  }
+
+  Value *committedHit = getHitAddress(perLaneStackPtr, true);
+  Value *potentialHit = getHitAddress(perLaneStackPtr, false);
+
+  Value *isClosestHit = CreateICmpEQ(ShaderTy, getInt32(CallableShaderTypeMD::ClosestHit));
+  Value *selectedHit = CreateSelect(isClosestHit, committedHit, potentialHit, VALUE_NAME("memoryQueryHit"));
+  if (!includeMissNull)
+    return selectedHit;
+
+  Value *isMiss = CreateICmpEQ(ShaderTy, getInt32(CallableShaderTypeMD::Miss));
+  return CreateSelect(isMiss, getNullHit(), selectedHit, VALUE_NAME("memoryQueryHitWithMiss"));
+}
+
+Value *RTBuilder::getPrimitiveIndexFromHit(Value *Hit, Value *ShaderTy, Value *KnownLeafType) {
+  Hit = castHitPointer(Hit);
+  Value *cachedLeafType = KnownLeafType;
+  auto getLeafTypeOnDemand = [&]() -> Value * {
+    if (cachedLeafType == nullptr)
+      cachedLeafType = getLeafType(Hit);
+    return cachedLeafType;
+  };
+
+
+  // Fallback to IGC implementation. If UMD does not provide BIF for
+  // getPrimitiveIndex, use the IGC version. It is added for compatibility
+  // with UMDs without support for BIFs delivery.
+  Value *leafType = getLeafTypeOnDemand();
+  switch (getMemoryStyle()) {
+#define STYLE(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    return _getPrimitiveIndexFromHit_##X(Hit, leafType, ShaderTy, VALUE_NAME_RI("primitiveIndex"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+  }
+  IGC_ASSERT(0);
+  return nullptr;
+}
+
+Value *RTBuilder::getGeometryIndexFromHit(Value *Hit, Value *ShaderTy, Value *KnownLeafType) {
+  Hit = castHitPointer(Hit);
+  Value *cachedLeafType = KnownLeafType;
+  auto getLeafTypeOnDemand = [&]() -> Value * {
+    if (cachedLeafType == nullptr)
+      cachedLeafType = getLeafType(Hit);
+    return cachedLeafType;
+  };
+
+
+  // Fallback to IGC implementation. If UMD does not provide BIF for
+  // getGeometryIndex, use the IGC version. It is added for compatibility
+  // with UMDs without support for passing BIFs delivery.
+  Value *leafType = getLeafTypeOnDemand();
+  switch (getMemoryStyle()) {
+#define STYLE(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    return _getGeometryIndexFromHit_##X(Hit, leafType, ShaderTy, VALUE_NAME_RI("geometryIndex"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+  }
+  IGC_ASSERT(0);
+  return nullptr;
+}
+
+Type *RTBuilder::getMemRayTy() const {
+  switch (getMemoryStyle()) {
+#define STYLE(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    return _gettype_MemRay_##X(*Ctx.getModule());
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+  }
+  IGC_ASSERT_UNREACHABLE();
+  return {};
+}
+
+Value *RTBuilder::getRayAddress(StackPointerVal *Stack) {
+  switch (getMemoryStyle()) {
+#define STYLE(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    return _getRayAddress_##X(Stack);
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+  }
+  IGC_ASSERT_UNREACHABLE();
+  return {};
+}
+
+Value *RTBuilder::getShaderInfo(Value *Hit, Value *Ray, uint32_t InfoKind, unsigned Dim, Value *ShaderType) {
+  // The selected recipe may leave an input unused (e.g. no hit for a miss).
+  // Keep placeholders in the supplied field's address space: reflection may
+  // select field pointers before dead branches are folded away.
+  Value *Storage = Hit ? Hit : Ray;
+  unsigned AddressSpace = Storage ? Storage->getType()->getPointerAddressSpace() : ADDRESS_SPACE_PRIVATE;
+  if (!Hit)
+    Hit = PoisonValue::get(IGCLLVM::getInt8PtrTy(*this, AddressSpace));
+  if (!Ray)
+    Ray = PoisonValue::get(IGCLLVM::getInt8PtrTy(*this, AddressSpace));
+  Hit = castHitPointer(Hit);
+  Ray = CreateBitCast(Ray, IGCLLVM::PointerType::get(getFloatTy(), Ray->getType()->getPointerAddressSpace()));
+  if (InfoKind == BARYCENTRICS)
+    return getShaderBarycentric(Hit, Dim);
+
+  switch (getMemoryStyle()) {
+#define STYLE(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    switch (InfoKind) {                                                                                                \
+    case WORLD_RAY_ORG:                                                                                                \
+      return _getShaderWorldRayOrig_##X(Hit, Ray, VAdapt{*this, Dim}, ShaderType);                                     \
+    case WORLD_RAY_DIR:                                                                                                \
+      return _getShaderWorldRayDir_##X(Hit, Ray, VAdapt{*this, Dim}, ShaderType);                                      \
+    case OBJ_RAY_ORG:                                                                                                  \
+      return _getShaderObjRayOrig_##X(Hit, Ray, VAdapt{*this, Dim}, ShaderType);                                       \
+    case OBJ_RAY_DIR:                                                                                                  \
+      return _getShaderObjRayDir_##X(Hit, Ray, VAdapt{*this, Dim}, ShaderType);                                        \
+    case RAY_T_MIN:                                                                                                    \
+      return _getShaderRayTMin_##X(Hit, Ray, VAdapt{*this, Dim}, ShaderType);                                          \
+    case RAY_T_CURRENT:                                                                                                \
+      return _getShaderRayTCurrent_##X(Hit, Ray, VAdapt{*this, Dim}, ShaderType);                                      \
+    case OBJECT_TO_WORLD:                                                                                              \
+      return _getShaderObjToWorld_##X(Hit, Ray, VAdapt{*this, Dim}, ShaderType);                                       \
+    case WORLD_TO_OBJECT:                                                                                              \
+      return _getShaderWorldToObj_##X(Hit, Ray, VAdapt{*this, Dim}, ShaderType);                                       \
+    case INSTANCE_ID:                                                                                                  \
+      return _getShaderInstanceID_##X(Hit, ShaderType);                                                                \
+    case INSTANCE_INDEX:                                                                                               \
+      return _getShaderInstanceIndex_##X(Hit, ShaderType);                                                             \
+    case INST_CONTRIBUTION_TO_HITGROUP_INDEX:                                                                          \
+      return _getShaderInstanceContribution_##X(Hit, ShaderType);                                                      \
+    case TRIANGLE_FRONT_FACE:                                                                                          \
+      return _getShaderFrontFace_##X(Hit, ShaderType);                                                                 \
+    case CANDIDATE_PROCEDURAL_PRIM_NON_OPAQUE:                                                                         \
+      return _getShaderProceduralNonOpaque_##X(Hit, ShaderType);                                                       \
+    default:                                                                                                           \
+      IGC_ASSERT_UNREACHABLE();                                                                                        \
+      return {};                                                                                                       \
+    }
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+  }
+  IGC_ASSERT_UNREACHABLE();
+  return {};
+}
+
+Value *RTBuilder::getShaderRayMask(Value *Ray) {
+  IGC_ASSERT(Ray);
+  Ray = CreateBitCast(Ray, IGCLLVM::PointerType::get(getMemRayTy(), Ray->getType()->getPointerAddressSpace()));
+  switch (getMemoryStyle()) {
+#define STYLE(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    return _getShaderRayMask_##X(Ray);
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+  }
+  IGC_ASSERT_UNREACHABLE();
+  return {};
+}
+
+Value *RTBuilder::castHitPointer(Value *Hit) {
+  IGC_ASSERT(Hit);
+  Type *Ty = nullptr;
+  switch (getMemoryStyle()) {
+#define STYLE(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    Ty = _gettype_MemHit_##X(*Ctx.getModule());                                                                        \
+    break;
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+  }
+  return CreateBitCast(Hit, IGCLLVM::PointerType::get(Ty, Hit->getType()->getPointerAddressSpace()));
+}
+
+Value *RTBuilder::getLeafType(Value *Hit) {
+  Hit = castHitPointer(Hit);
+  switch (getMemoryStyle()) {
+#define STYLE(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    return _getShaderLeafType_##X(Hit);
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+  }
+  IGC_ASSERT_UNREACHABLE();
+  return {};
+}
+
+Value *RTBuilder::getShaderBarycentric(Value *Hit, unsigned Dim) {
+  Hit = castHitPointer(Hit);
+  IGC_ASSERT(Dim < 2);
+  switch (getMemoryStyle()) {
+#define STYLE(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    return _getShaderBarycentric_##X(Hit, VAdapt{*this, Dim});
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+  }
+  IGC_ASSERT_UNREACHABLE();
+  return {};
+}
+
+template <typename StackPointerValT, typename RayInfoIntrinsicT>
+Value *RTBuilder::lowerRayInfoFromMemory(StackPointerValT *perLaneStackPtr, RayInfoIntrinsicT *I, Value *shaderType,
+                                         Value *isProcedural, bool allowMotionBlurInfo) {
+  auto infoKind = I->getInfoKind();
+  if (infoKind == RAY_FLAGS)
+    return CreateZExt(getRayFlags(perLaneStackPtr), I->getType());
+
+  IGC_ASSERT_MESSAGE(perLaneStackPtr, "Stack pointer is required for stack-backed ray info lowering");
+
+  if (infoKind == PRIMITIVE_INDEX || infoKind == GEOMETRY_INDEX) {
+    Value *knownLeafType = nullptr;
+    if (isProcedural) {
+      knownLeafType = CreateSelect(isProcedural, getInt32(NODE_TYPE_PROCEDURAL), getInt32(NODE_TYPE_QUAD));
+    } else {
+      knownLeafType =
+          getLeafType(perLaneStackPtr, CreateICmpEQ(shaderType, getInt32(CallableShaderTypeMD::ClosestHit)));
+    }
+    return lowerIndexFromStack(perLaneStackPtr, I, infoKind, shaderType,
+                               std::is_same_v<RayInfoIntrinsicT, RayQueryInfoIntrinsic>, knownLeafType);
+  }
+
+  return lowerNonIndexRayInfoFromStack(perLaneStackPtr, I, shaderType, allowMotionBlurInfo);
+}
+
+template Value *RTBuilder::lowerRayInfoFromMemory<RTBuilder::SyncStackPointerVal, RayQueryInfoIntrinsic>(
+    RTBuilder::SyncStackPointerVal *, RayQueryInfoIntrinsic *, Value *, std::optional<bool>, bool);
+
+
 // If MemHit is invalid (below if case), workload might still try to access data with InstanceLeafPtr which is not set
 // and is a dangling pointer. Even though this workload behavior is against API spec, but we should not "crash".
 // To avoid this crash, we check if the data request is invalid here, if it's invalid, we return an invalid data
@@ -2121,6 +2498,7 @@ Value *RTBuilder::lowerRayInfo(StackPointerValT *perLaneStackPtr, RayInfoIntrins
 
   return info;
 }
+
 template Value *RTBuilder::lowerRayInfo<RTBuilder::SyncStackPointerVal, RayQueryInfoIntrinsic>(
     RTBuilder::SyncStackPointerVal *, RayQueryInfoIntrinsic *, Value *, std::optional<bool>);
 

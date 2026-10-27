@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #endif // _WIN32
 
 #include "ConstantsEnums.h"
+#include "Compiler/CodeGenPublicEnums.h"
 #include "RTStackFormat.h"
 #include "../../common/RaytracingShaderTypes.h"
 #include "BuilderUtils.h"
@@ -1356,3 +1357,188 @@ IMPL RTSAS void *_getHitAddress(RTSAS RTStack2<GenT> *__restrict__ HWStackPtr, b
 }
 IMPL_ALL_2ARG(_getHitAddress, HWStackPtr, Committed)
 
+#define STYLE(X)                                                                                                       \
+  TYPEOF MemHit<X> _gettype_MemHit_##X() { return {}; }                                                                \
+  TYPEOF MemRay<X> _gettype_MemRay_##X() { return {}; }
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+
+template <typename GenT> IMPL uint64_t readShaderPrimLeaf(RTSAS MemHit<GenT> *Hit) {
+  return uint64_t(Hit->primLeafPtr) * LeafSize;
+}
+template <> uint64_t readShaderPrimLeaf(RTSAS MemHit<Xe> *Hit) {
+  return hook::bi::canonizePointer(uint64_t(Hit->primLeafPtr) * LeafSize);
+}
+template <typename GenT>
+IMPL auto readShaderInstanceLeaf(RTSAS MemHit<GenT> *Hit, CallableShaderTypeMD ShaderTy = AnyHit) {
+  uint64_t LeafPtr = Hit->instLeafPtr;
+  return (GAS InstanceLeaf<GenT> *)(LeafPtr * LeafSize);
+}
+template <> auto readShaderInstanceLeaf(RTSAS MemHit<Xe> *Hit, CallableShaderTypeMD ShaderTy) {
+  uint64_t LeafPtr = Hit->instLeafPtr;
+  return (GAS InstanceLeaf<Xe> *)hook::bi::canonizePointer(LeafPtr * LeafSize);
+}
+
+template <typename GenT> IMPL uint32_t _getShaderLeafType(RTSAS MemHit<GenT> *Hit) { return Hit->leafType; }
+IMPL_ALL_1ARG(_getShaderLeafType, Hit)
+
+template <typename GenT> IMPL float _getShaderBarycentric(RTSAS MemHit<GenT> *Hit, uint32_t Dim) {
+  return (Dim == 0 ? Hit->u : Hit->v) * (1.0f / 0x00ffffff);
+}
+template <> float _getShaderBarycentric(RTSAS MemHit<Xe> *Hit, uint32_t Dim) { return Dim == 0 ? Hit->u : Hit->v; }
+IMPL_ALL_2ARG(_getShaderBarycentric, Hit, Dim)
+
+template <typename GenT> IMPL uint32_t _getShaderRayMask(RTSAS MemRay<GenT> *Ray) { return Ray->rayMask; }
+IMPL_ALL_1ARG(_getShaderRayMask, Ray)
+
+template <typename GenT>
+IMPL float _getShaderFloatInfo(RTSAS MemHit<GenT> *Hit, RTSAS float *Ray, uint32_t Kind, uint32_t Dim,
+                               CallableShaderTypeMD ShaderTy) {
+  switch (Kind) {
+  case WORLD_RAY_ORG:
+    return Ray[Dim];
+  case WORLD_RAY_DIR:
+    return Ray[3 + Dim];
+  case RAY_T_MIN:
+    return Ray[6];
+  case RAY_T_CURRENT:
+    return ShaderTy == Miss ? Ray[7] : Hit->t;
+  case BARYCENTRICS:
+    return _getShaderBarycentric(Hit, Dim);
+  case OBJ_RAY_ORG:
+  case OBJ_RAY_DIR: {
+    bool IsOrigin = Kind == OBJ_RAY_ORG;
+    if (ShaderTy == Miss)
+      return Ray[(IsOrigin ? 0 : 3) + Dim];
+    auto *Instance = readShaderInstanceLeaf(Hit, ShaderTy);
+    auto *Matrix = &Instance->part0.world2obj_vx[0];
+    float Result = IsOrigin ? Instance->part1.world2obj_p[Dim] : 0.0f;
+#pragma unroll
+    for (uint32_t I = 0; I < 3; ++I)
+      Result += Matrix[Dim + I * 3] * Ray[(IsOrigin ? 0 : 3) + I];
+    return Result;
+  }
+  case OBJECT_TO_WORLD:
+  case WORLD_TO_OBJECT: {
+    if (!isHitShader(ShaderTy))
+      return Dim % 4 == 0 ? 1.0f : 0.0f;
+    auto *Instance = readShaderInstanceLeaf(Hit, ShaderTy);
+    if (Dim >= 9)
+      return Kind == OBJECT_TO_WORLD ? Instance->part0.obj2world_p[Dim - 9] : Instance->part1.world2obj_p[Dim - 9];
+    return Kind == OBJECT_TO_WORLD ? Instance->part1.obj2world_vx[Dim] : Instance->part0.world2obj_vx[Dim];
+  }
+  default:
+    return 0.0f; // caller selects only the float-valued RayInfo cases
+  }
+}
+
+template <typename GenT>
+IMPL uint32_t _getShaderIntInfo(RTSAS MemHit<GenT> *Hit, uint32_t Kind, CallableShaderTypeMD ShaderTy) {
+  switch (Kind) {
+  case INSTANCE_ID:
+    return isHitShader(ShaderTy) ? readShaderInstanceLeaf(Hit, ShaderTy)->part1.instanceID : 0;
+  case INSTANCE_INDEX:
+    return isHitShader(ShaderTy) ? readShaderInstanceLeaf(Hit, ShaderTy)->part1.instanceIndex : 0;
+  case INST_CONTRIBUTION_TO_HITGROUP_INDEX:
+    return readShaderInstanceLeaf(Hit, ShaderTy)->part0.instanceContributionToHitGroupIndex;
+  case TRIANGLE_FRONT_FACE:
+    return Hit->frontFace;
+  case CANDIDATE_PROCEDURAL_PRIM_NON_OPAQUE:
+    return !Hit->frontFace;
+  default:
+    return 0; // caller selects only the integer-valued hit-info cases
+  }
+}
+
+// Resolve the query kind before IRBuilder generation. Each accessor emits only
+// its own field/transform computation, including any required miss guard.
+#define SHADER_FLOAT_INFO(Name, Kind)                                                                                  \
+  template <typename GenT>                                                                                             \
+  IMPL float Name(RTSAS MemHit<GenT> *Hit, RTSAS float *Ray, uint32_t Dim, CallableShaderTypeMD ShaderTy) {            \
+    return _getShaderFloatInfo(Hit, Ray, Kind, Dim, ShaderTy);                                                         \
+  }                                                                                                                    \
+  IMPL_ALL_4ARG(Name, Hit, Ray, Dim, ShaderTy)
+SHADER_FLOAT_INFO(_getShaderWorldRayOrig, WORLD_RAY_ORG)
+SHADER_FLOAT_INFO(_getShaderWorldRayDir, WORLD_RAY_DIR)
+SHADER_FLOAT_INFO(_getShaderObjRayOrig, OBJ_RAY_ORG)
+SHADER_FLOAT_INFO(_getShaderObjRayDir, OBJ_RAY_DIR)
+SHADER_FLOAT_INFO(_getShaderRayTMin, RAY_T_MIN)
+SHADER_FLOAT_INFO(_getShaderRayTCurrent, RAY_T_CURRENT)
+SHADER_FLOAT_INFO(_getShaderObjToWorld, OBJECT_TO_WORLD)
+SHADER_FLOAT_INFO(_getShaderWorldToObj, WORLD_TO_OBJECT)
+#undef SHADER_FLOAT_INFO
+
+#define SHADER_INT_INFO(Name, Kind)                                                                                    \
+  template <typename GenT> IMPL uint32_t Name(RTSAS MemHit<GenT> *Hit, CallableShaderTypeMD ShaderTy) {                \
+    return _getShaderIntInfo(Hit, Kind, ShaderTy);                                                                     \
+  }                                                                                                                    \
+  IMPL_ALL_2ARG(Name, Hit, ShaderTy)
+SHADER_INT_INFO(_getShaderInstanceID, INSTANCE_ID)
+SHADER_INT_INFO(_getShaderInstanceIndex, INSTANCE_INDEX)
+SHADER_INT_INFO(_getShaderInstanceContribution, INST_CONTRIBUTION_TO_HITGROUP_INDEX)
+SHADER_INT_INFO(_getShaderFrontFace, TRIANGLE_FRONT_FACE)
+SHADER_INT_INFO(_getShaderProceduralNonOpaque, CANDIDATE_PROCEDURAL_PRIM_NON_OPAQUE)
+#undef SHADER_INT_INFO
+
+template <typename GenT>
+IMPL uint32_t _getPrimitiveIndexFromHit(RTSAS MemHit<GenT> *Hit, uint32_t leafType, CallableShaderTypeMD ShaderTy) {
+  // this function can be called when the stack does not encode a valid hit
+  // in that case we should avoid dereferencing the instance leaf ptr
+  // and return 0
+  if (!isHitShader(ShaderTy))
+    return 0;
+
+  uint64_t LeafPtr = readShaderPrimLeaf(Hit);
+
+  // We are interested in only the LSB of leafType
+  // because we only check if type is procedural.
+  // This is required for RayQueryReturnOptimization, where only 1
+  // bit describes the type of committed geometry.
+
+  static_assert(((NODE_TYPE_PROCEDURAL & 1) == 1) && ((NODE_TYPE_QUAD & 1) == 0) && ((NODE_TYPE_MESHLET & 1) == 0),
+                "optimized CommittedStatus broken");
+
+  uint32_t primLeafIndex = Hit->primLeafIndex;
+
+  uint32_t primIndexDelta = Hit->primIndexDelta;
+
+  if ((leafType & 1) == (NODE_TYPE_PROCEDURAL & 1)) {
+    auto *ProcLeafPtr = (GAS ProceduralLeaf<GenT> *)LeafPtr;
+    return ProcLeafPtr->_primIndex[primLeafIndex];
+  } else {
+    auto *QuadLeafPtr = (GAS QuadLeaf<GenT> *)LeafPtr;
+    return QuadLeafPtr->primIndex0 + primIndexDelta;
+  }
+}
+IMPL_ALL_3ARG(_getPrimitiveIndexFromHit, Hit, leafType, ShaderTy)
+
+template <typename GenT>
+IMPL uint32_t _getGeometryIndexFromHit(RTSAS MemHit<GenT> *Hit, uint32_t leafType, CallableShaderTypeMD ShaderTy) {
+  // this function can be called when the stack does not encode a valid hit
+  // in that case we should avoid dereferencing the instance leaf ptr
+  // and return 0
+  if (!isHitShader(ShaderTy))
+    return 0;
+
+  uint64_t LeafPtr = readShaderPrimLeaf(Hit);
+
+  // We are interested in only the LSB of leafType
+  // because we only check if type is procedural.
+  // This is required for RayQueryReturnOptimization, where only 1
+  // bit describes the type of committed geometry.
+
+  static_assert(((NODE_TYPE_PROCEDURAL & 1) == 1) && ((NODE_TYPE_QUAD & 1) == 0) && ((NODE_TYPE_MESHLET & 1) == 0),
+                "optimized CommittedStatus broken");
+
+  if ((leafType & 1) == (NODE_TYPE_PROCEDURAL & 1)) {
+    auto *ProcLeafPtr = (GAS ProceduralLeaf<GenT> *)LeafPtr;
+    return ProcLeafPtr->leafDesc.geomIndex;
+  } else {
+    auto *QuadLeafPtr = (GAS QuadLeaf<GenT> *)LeafPtr;
+    return QuadLeafPtr->leafDesc.geomIndex;
+  }
+}
+IMPL_ALL_3ARG(_getGeometryIndexFromHit, Hit, leafType, ShaderTy)
+
+template <typename GenT> IMPL auto _getRayAddress(RTSAS RTStack2<GenT> *Stack) { return &Stack->ray0; }
+IMPL_ALL_1ARG(_getRayAddress, Stack)

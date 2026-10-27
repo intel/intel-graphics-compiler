@@ -397,6 +397,19 @@ private:
   Value *getPrimitiveIndex(StackPointerVal *perLaneStackPtr, Value *leafType, Value *ShaderTy);
   Value *getInstanceIndex(StackPointerVal *perLaneStackPtr, Value *ShaderTy);
   Value *getInstanceID(StackPointerVal *perLaneStackPtr, Value *ShaderTy);
+  Value *lowerNonIndexRayInfoFromStack(StackPointerVal *perLaneStackPtr, Instruction *I, Value *ShaderTy,
+                                       bool allowMotionBlurInfo);
+  Value *lowerIndexFromStack(StackPointerVal *perLaneStackPtr, Instruction *I, uint32_t InfoKind, Value *ShaderType,
+                             bool checkInstanceLeafPtr, Value *KnownLeafType = nullptr);
+  Value *lowerIndexFromHit(Value *Hit, uint32_t InfoKind, Value *ShaderType, Value *KnownLeafType = nullptr);
+  Value *getHitFromStackByShaderType(StackPointerVal *perLaneStackPtr, Value *ShaderType, bool includeMissNull = true);
+  Value *getPrimitiveIndexFromHit(Value *Hit, Value *ShaderType, Value *KnownLeafType = nullptr);
+  Value *getGeometryIndexFromHit(Value *Hit, Value *ShaderType, Value *KnownLeafType = nullptr);
+  Value *getLeafType(Value *Hit);
+  Value *castHitPointer(Value *Hit);
+  Value *getShaderRayMask(Value *Ray);
+  Value *getShaderBarycentric(Value *Hit, unsigned Dim);
+  Value *getShaderInfo(Value *Hit, Value *Ray, uint32_t InfoKind, unsigned Dim, Value *ShaderType);
   Value *TransformWorldToObject(StackPointerVal *StackPointerVal, unsigned int dim, bool isOrigin, Value *ShaderTy,
                                 Instruction *I, bool checkInstanceLeafPtr);
 
@@ -458,6 +471,8 @@ public:
   void commitProceduralPrimitiveHit(SyncStackPointerVal *SMStackPtr, Value *THit);
 
   Value *getHitAddress(StackPointerVal *StackPtr, bool Committed);
+  Type *getMemRayTy() const;
+  Value *getRayAddress(StackPointerVal *Stack);
   template <typename StackPointerValT, typename RayInfoIntrinsicT>
   Value *lowerRayInfo(StackPointerValT *perLaneStackPtr, RayInfoIntrinsicT *I, Value *shaderType,
                       std::optional<bool> isProcedural) {
@@ -466,6 +481,18 @@ public:
 
   template <typename StackPointerValT, typename RayInfoIntrinsicT>
   Value *lowerRayInfo(StackPointerValT *perLaneStackPtr, RayInfoIntrinsicT *I, Value *shaderType, Value *isProcedural);
+
+  template <typename StackPointerValT, typename RayInfoIntrinsicT>
+  Value *lowerRayInfoFromMemory(StackPointerValT *perLaneStackPtr, RayInfoIntrinsicT *I, Value *shaderType,
+                                std::optional<bool> isProcedural, bool allowMotionBlurInfo = false) {
+    return lowerRayInfoFromMemory(perLaneStackPtr, I, shaderType,
+                                  isProcedural.has_value() ? getInt1(*isProcedural) : nullptr, allowMotionBlurInfo);
+  }
+
+  template <typename StackPointerValT, typename RayInfoIntrinsicT>
+  Value *lowerRayInfoFromMemory(StackPointerValT *perLaneStackPtr, RayInfoIntrinsicT *I, Value *shaderType,
+                                Value *isProcedural, bool allowMotionBlurInfo = false);
+
 
 
 };

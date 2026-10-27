@@ -20,12 +20,14 @@ set(RTSTACK_INCLUDE_DIRS
     ${RT_ROOT_FOLDER}
     ${RT_SOURCE_FOLDER}
     ${IRBUILDER_GENERATOR_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../..
 )
 
 # Set up dependencies - the reflection.cpp file and any headers it includes
 set(RTSTACK_DEPENDENCIES
     ${REFLECTION_SOURCE}
     ${YAML_DESC_PATH}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../Compiler/CodeGenPublicEnums.h
     # Add any header files that reflection.cpp depends on
 )
 
