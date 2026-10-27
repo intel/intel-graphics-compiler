@@ -636,6 +636,21 @@ static unsigned computeAdjustedKernelPressure(RegisterPressure &rp,
   return adjustedMax;
 }
 
+// Predict whether preRA scheduler can reduce kernel pressure enough to justify
+// a reduction in VRT.
+static unsigned getRPReductionThresholdForGRFSelection(RegisterPressure &rp,
+                                                       G4_Kernel &kernel,
+                                                       unsigned SelPressure) {
+  unsigned Threshold = getRPReductionThreshold(kernel);
+  unsigned SpillBonusInGRFs = kernel.getOption(vISA_BlockLevelSpillAllowed)
+                                  ? computeAdjustedKernelPressure(rp, kernel)
+                                  : 0;
+  unsigned Reach = kernel.predictSmallerGRFReach(SelPressure, SpillBonusInGRFs);
+  if (Reach == 0 || SelPressure <= Reach)
+    return Threshold;
+  return std::min(Threshold, Reach);
+}
+
 preRA_Scheduler::preRA_Scheduler(G4_Kernel &k) : kernel(k) {}
 
 preRA_Scheduler::~preRA_Scheduler() {}
@@ -733,7 +748,8 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
   // Snapshotted alongside KernelPressure at every point where that is
   // refreshed, so GRF selection sees a value taken at the same time.
   unsigned SelPressure = rp.getMaxRPForGRFSelection();
-  unsigned RPReductionThreshold = getRPReductionThreshold(kernel);
+  unsigned RPReductionThreshold =
+      getRPReductionThresholdForGRFSelection(rp, kernel, SelPressure);
   auto LT = LatencyTable::createLatencyTable(*kernel.fg.builder);
 
   // Schedule for reg pressure reduction if needed

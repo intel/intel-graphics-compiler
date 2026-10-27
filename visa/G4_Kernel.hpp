@@ -808,6 +808,14 @@ public:
   bool updateKernelToSmallerGRF();
   bool canUpdateKernelToLargerGRF();
   bool updateKernelToLargerGRF();
+  // Predict, without changing the kernel, the GRF mode that
+  // updateKernelByRegPressure(regPressure) would select. If that mode is
+  // smaller than the current one, return the highest pressure it can absorb
+  // (its GRF count plus its base spill allowance); otherwise return 0.
+  // spillBonusInGRFs is the block-level spill bonus the real selection will
+  // use. It is applied when predicting the mode, not when computing the reach.
+  unsigned predictSmallerGRFReach(unsigned regPressure,
+                                  unsigned spillBonusInGRFs);
   void updateKernelByRegPressure(unsigned regPressure,
                                  bool forceGRFModeUp = false);
   bool updateKernelFromNumGRFAttr();
@@ -903,6 +911,7 @@ public:
   bool isLocalSheduleable() const { return isLocalSchedulable; }
   void setLocalSheduleable(bool value) { isLocalSchedulable = value; }
   unsigned getLargestInputRegister();
+  unsigned getLargestInputRegForGRFSelection();
 
   // Use the wrapper in G4_INST* instead of calling these directly.
   G4_SrcRegRegion *getImplicitAccSrc(G4_INST *inst) const {

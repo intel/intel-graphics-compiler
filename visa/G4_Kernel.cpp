@@ -781,14 +781,36 @@ bool G4_Kernel::updateKernelToLargerGRF() {
 //
 // Updates kernel's related structures based on register pressure
 //
-void G4_Kernel::updateKernelByRegPressure(unsigned regPressure,
-                                          bool forceGRFModeUp) {
+unsigned G4_Kernel::getLargestInputRegForGRFSelection() {
   unsigned largestInputReg = getLargestInputRegister();
   if (m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_MaxRegThreadDispatch)) {
     unsigned maxRegPayloadDispatch = m_kernelAttrs->getInt32KernelAttr(
         Attributes::ATTR_MaxRegThreadDispatch);
     largestInputReg = std::max(largestInputReg, maxRegPayloadDispatch);
   }
+  return largestInputReg;
+}
+
+unsigned G4_Kernel::predictSmallerGRFReach(unsigned regPressure,
+                                           unsigned spillBonusInGRFs) {
+  // Work on a copy so the kernel's real GRF mode is left untouched.
+  GRFMode probe = grfMode;
+  probe.setSpillThresholdBonusInGRFs(spillBonusInGRFs);
+  unsigned predictedGRF = probe.setModeByRegPressure(
+      regPressure, getLargestInputRegForGRFSelection(), false);
+  if (predictedGRF >= numRegTotal)
+    return 0;
+  // setModeByRegPressure leaves the probe at the predicted mode. The bonus
+  // only decides which mode is picked: spills it allows are acceptable, but
+  // they are no reason to skip pressure reduction when scheduling can remove
+  // them, so leave it out of the reach.
+  probe.setSpillThresholdBonusInGRFs(0);
+  return predictedGRF + probe.getSpillThreshold() / getGRFSize();
+}
+
+void G4_Kernel::updateKernelByRegPressure(unsigned regPressure,
+                                          bool forceGRFModeUp) {
+  unsigned largestInputReg = getLargestInputRegForGRFSelection();
 
   unsigned newGRF = grfMode.setModeByRegPressure(
       regPressure, largestInputReg, forceGRFModeUp);
