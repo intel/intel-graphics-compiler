@@ -48,14 +48,15 @@ void __basic_rtstack_init(
     MemHit_setValid(commitedHit, 0);
     MemHit_setDone(commitedHit, 0);
 
-    MemHit* potentialHit = get_rt_stack_hit(rtStack, intel_hit_type_potential_hit);
-    MemHit_clearUV(potentialHit);
-    potentialHit->t = INFINITY;
-    potentialHit->data0 = 0;
-    // As in intel_ray_query_start_traversal.  TRACE_RAY_INITIAL does not clear
-    // these bits, so the candidate they describe survives to the first commit.
+    // The potential hit only fed the memory based traversal-done check, which
+    // the ray query return value replaces.  The hardware writes it before
+    // reporting a candidate, so it needs no initialization then.
     if (!BIF_FLAG_CTRL_GET(IsRayQueryReturnOptimizationEnabled))
     {
+        MemHit* potentialHit = get_rt_stack_hit(rtStack, intel_hit_type_potential_hit);
+        MemHit_clearUV(potentialHit);
+        potentialHit->t = INFINITY;
+        potentialHit->data0 = 0;
         MemHit_setValid(potentialHit, 1);
         MemHit_setDone(potentialHit, 1);
     }
@@ -149,6 +150,17 @@ void intel_ray_query_forward_ray(
     );
 }
 
+static INLINE bool
+__intel_is_traversal_done_value(intel_ray_query_t rayquery, MemHit* potentialHit);
+
+
+// RayQueryReturnData of a finished traversal that committed the current
+// candidate: PROCEED_FURTHER clear, COMMITTED_STATUS = CANDIDATE_TYPE + 1.
+static INLINE uintptr_t __intel_committed_status_value(intel_ray_query_t rayquery)
+{
+    uintptr_t status = (uintptr_t)__builtin_IB_intel_query_rt_fence(rayquery);
+    return (((status >> 3) & 0x1) + 1) << 1;
+}
 
 void intel_ray_query_commit_potential_hit(intel_ray_query_t rayquery)
 {
@@ -166,9 +178,15 @@ void intel_ray_query_commit_potential_hit(intel_ray_query_t rayquery)
         MemHit_setValid(commitedHit, 1);
 
 
+        // No dispatch follows, so report what the hardware would: traversal
+        // done, with the candidate committed.
+        rtfence_t fence = NULL;
+        if (BIF_FLAG_CTRL_GET(IsRayQueryReturnOptimizationEnabled))
+            fence = (rtfence_t)__intel_committed_status_value(rayquery);
+
         __builtin_IB_intel_update_ray_query(
             rayquery,
-            NULL,
+            fence,
             __builtin_IB_intel_query_rt_globals(rayquery),
             rtStack,
             TRACE_RAY_DONE,
@@ -240,7 +258,11 @@ void intel_ray_query_sync(intel_ray_query_t rayquery)
 
     global void* rtStack = __builtin_IB_intel_query_rt_stack(rayquery);
     MemHit* potentialHit = get_rt_stack_hit(rtStack, intel_hit_type_potential_hit);
-    uint bvh_level = MemHit_getBvhLevel(potentialHit);
+    bool    isDone       = __intel_is_traversal_done_value(rayquery, potentialHit);
+    // The level only matters for continuing traversal, and the hardware writes
+    // the potential hit only when it reports a candidate, so do not touch a
+    // potential hit that may never have been written.
+    uint bvh_level = isDone ? 0 : MemHit_getBvhLevel(potentialHit);
 
      __builtin_IB_intel_update_ray_query(
         rayquery,
@@ -508,6 +530,12 @@ bool intel_is_traversal_done(intel_ray_query_t rayquery)
 // if traversal is done one can test for the presence of a committed hit to either invoke miss or closest hit shader
 bool intel_has_committed_hit(intel_ray_query_t rayquery)
 {
+    if (BIF_FLAG_CTRL_GET(IsRayQueryReturnOptimizationEnabled))
+    {
+        uintptr_t fenceInt = (uintptr_t)__builtin_IB_intel_query_rt_fence(rayquery);
+        return ((fenceInt >> 1) & 0x3) != 0;
+    }
+
     return MemHit_getValid(get_query_hit(rayquery, intel_hit_type_committed_hit));
 }
 
