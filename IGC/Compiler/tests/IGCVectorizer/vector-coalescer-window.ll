@@ -16,8 +16,8 @@
 ; CHECK:  %coalesced_input = shufflevector <8 x float> %tmp, <8 x float> %tmp46, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 ; CHECK:  %coalesced_input1 = shufflevector <8 x float> %arg10, <8 x float> %tmp63, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 ; CHECK:  %coalesced_intrinsic = call <16 x float> @llvm.maxnum.v16f32(<16 x float> %coalesced_input, <16 x float> %coalesced_input1)
-; CHECK:  %coalesced_output2 = shufflevector <16 x float> %coalesced_intrinsic, <16 x float> undef, <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 ; CHECK:  %coalesced_output = shufflevector <16 x float> %coalesced_intrinsic, <16 x float> undef, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
+; CHECK:  %coalesced_output2 = shufflevector <16 x float> %coalesced_intrinsic, <16 x float> undef, <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 ; CHECK:  call <8 x float> @llvm.maxnum.v8f32(<8 x float> %coalesced_output2
 
 

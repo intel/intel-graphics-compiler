@@ -14,10 +14,10 @@
 ; CHECK: [[IN_0:%.*]] = shufflevector <8 x float> %tmp, <8 x float> %tmp17, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 ; CHECK: [[IN_1:%.*]] = shufflevector <8 x float> %tmp34, <8 x float> %tmp38, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 ; CHECK: [[INTR_0:%.*]] = call <16 x float> @llvm.maxnum.v16f32(<16 x float> [[IN_0]], <16 x float> [[IN_1]])
-; CHECK-PRE22: shufflevector <16 x float> [[INTR_0]], <16 x float> undef, <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
-; CHECK-LLVM22: shufflevector <16 x float> [[INTR_0]], <16 x float> poison, <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 ; CHECK-PRE22: shufflevector <16 x float> [[INTR_0]], <16 x float> undef, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
 ; CHECK-LLVM22: shufflevector <16 x float> [[INTR_0]], <16 x float> poison, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
+; CHECK-PRE22: shufflevector <16 x float> [[INTR_0]], <16 x float> undef, <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
+; CHECK-LLVM22: shufflevector <16 x float> [[INTR_0]], <16 x float> poison, <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 ; CHECK: [[IN_2:%.*]] = shufflevector <8 x float> %tmp, <8 x float> %tmp17, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 ; CHECK: [[BIN_0:%.*]] = fsub <16 x float> [[IN_2]], [[INTR_0]]
 ; CHECK: call <16 x float> @llvm.exp2.v16f32(<16 x float> [[BIN_0]])

@@ -2084,6 +2084,59 @@ IGCVectorCoalescer::IGCVectorCoalescer() : FunctionPass(ID) {
   initializeIGCVectorCoalescerPass(*PassRegistry::getPassRegistry());
 };
 
+static Value *getSubvectorSource(Value *Op, int &Start) {
+  if (!llvm::isa<IGCLLVM::FixedVectorType>(Op->getType()))
+    return nullptr;
+  unsigned int N = getVectorSize(Op);
+
+  if (auto *Shuffle = llvm::dyn_cast<ShuffleVectorInst>(Op)) {
+    if (!Shuffle->isExtractSubvectorMask(Start))
+      return nullptr;
+    // the mask may select from either operand, Start is relative to that one
+    int NumSrc = getVectorSize(Shuffle->getOperand(0));
+    ArrayRef<int> Mask = Shuffle->getShuffleMask();
+    int FirstLane = *llvm::find_if(Mask, [](int M) { return M >= 0; });
+    return Shuffle->getOperand(FirstLane < NumSrc ? 0 : 1);
+  }
+
+  Value *Src = nullptr;
+  for (unsigned int Lane = N; Lane-- > 0;) {
+    auto *Insert = llvm::dyn_cast<InsertElementInst>(Op);
+    auto *Extract = Insert ? llvm::dyn_cast<ExtractElementInst>(Insert->getOperand(1)) : nullptr;
+    auto *InsertIndex = Insert ? llvm::dyn_cast<ConstantInt>(Insert->getOperand(2)) : nullptr;
+    auto *ExtractIndex = Extract ? llvm::dyn_cast<ConstantInt>(Extract->getIndexOperand()) : nullptr;
+    // indices may be wider than 64 bits or out of range (poison),
+    // getLimitedValue() saturates instead of asserting
+    if (!InsertIndex || !ExtractIndex || InsertIndex->getLimitedValue() != Lane ||
+        ExtractIndex->getLimitedValue() >= getVectorSize(Extract->getVectorOperand()))
+      return nullptr;
+    int LaneStart = (int)ExtractIndex->getLimitedValue() - (int)Lane;
+    if (LaneStart < 0 || (Src && (Src != Extract->getVectorOperand() || LaneStart != Start)))
+      return nullptr;
+    Src = Extract->getVectorOperand();
+    Start = LaneStart;
+    Op = Insert->getOperand(0);
+  }
+
+  if (!llvm::isa<UndefValue>(Op) || Start + N > getVectorSize(Src))
+    return nullptr;
+  return Src;
+}
+
+// true if First and Second are adjacent lanes of the same vector, in this order
+static bool isContiguousPair(Value *First, Value *Second) {
+  int Start = 0, SecondStart = 0;
+  Value *Src = getSubvectorSource(First, Start);
+  return Src && Src == getSubvectorSource(Second, SecondStart) && SecondStart == Start + (int)getVectorSize(First);
+}
+
+static unsigned int countContiguousOperands(Instruction *First, Instruction *Second, unsigned int NumOperands) {
+  unsigned int Score = 0;
+  for (unsigned int OpNum = 0; OpNum < NumOperands; ++OpNum)
+    Score += isContiguousPair(First->getOperand(OpNum), Second->getOperand(OpNum));
+  return Score;
+}
+
 void IGCVectorCoalescer::mergeHorizontalSlice(VecArr &Slice) {
 
   Instruction *First = Slice.front();
@@ -2093,6 +2146,17 @@ void IGCVectorCoalescer::mergeHorizontalSlice(VecArr &Slice) {
   // when vector size exceeds the SIMDSize, so we dont want that
   if (VectorSize > SIMDSize)
     return;
+
+  // both orders of the halves are correct, pick the one where more operands
+  // are taken from one vector as is, keep program order otherwise
+  unsigned int NumOperands =
+      llvm::isa<CallInst>(First) ? llvm::cast<CallInst>(First)->arg_size() : First->getNumOperands();
+  if (Slice.size() == 2 && countContiguousOperands(Slice[1], Slice[0], NumOperands) >
+                               countContiguousOperands(Slice[0], Slice[1], NumOperands)) {
+    PRINT_LOG_NL("ROTATE!");
+    std::swap(Slice[0], Slice[1]);
+    First = Slice.front();
+  }
 
   PRINT_DS("to be merged: ", Slice);
   if (llvm::isa<GenIntrinsicInst>(First)) {
@@ -2123,7 +2187,7 @@ void IGCVectorCoalescer::ShuffleIn(VecArr &Slice, unsigned StartIndex, unsigned 
       }
 
       auto ShuffleVector = new llvm::ShuffleVectorInst(Seed, OperandsToCoalesce[index], Mask, "coalesced_input");
-      IGCLLVM::insertBefore(ShuffleVector, Slice.front());
+      IGCLLVM::insertBefore(ShuffleVector, getMinPoint(Slice));
       Seed = ShuffleVector;
       PRINT_INST_NL(ShuffleVector);
     }
@@ -2136,6 +2200,9 @@ void IGCVectorCoalescer::ShuffleOut(VecArr &Slice, Instruction *WideInstruction)
   unsigned int VectorSize = getVectorSize(Slice.front());
   unsigned int WideVectorSize = getVectorSize(WideInstruction);
   unsigned int StartIndex = 0;
+  // each output goes right after the previous one, ahead of any debug records
+  // that refer to the replaced values
+  Instruction *InsertPoint = WideInstruction;
 
   for (auto &El : Slice) {
 
@@ -2155,7 +2222,8 @@ void IGCVectorCoalescer::ShuffleOut(VecArr &Slice, Instruction *WideInstruction)
     PRINT_INST_NL(UndefVector);
 
     auto ShuffleVector = new llvm::ShuffleVectorInst(WideInstruction, UndefVector, Mask, "coalesced_output");
-    ShuffleVector->insertAfter(WideInstruction);
+    ShuffleVector->insertAfter(InsertPoint);
+    InsertPoint = ShuffleVector;
     PRINT_INST_NL(ShuffleVector);
     El->replaceAllUsesWith(ShuffleVector);
   }
@@ -2175,7 +2243,7 @@ void IGCVectorCoalescer::mergeHorizontalSliceIntrinsic(VecArr &Slice) {
 
   CreatedInst->setName("coalesced_intrinsic");
   CreatedInst->setDebugLoc(Slice.front()->getDebugLoc());
-  CreatedInst->insertAfter(Slice.front());
+  CreatedInst->insertAfter(getMinPoint(Slice));
   PRINT_INST_NL(CreatedInst);
 
   ShuffleOut(Slice, CreatedInst);
@@ -2188,10 +2256,13 @@ void IGCVectorCoalescer::mergeHorizontalSliceBinary(VecArr &Slice) {
 
   auto BinaryOpcode = llvm::cast<BinaryOperator>(Slice.front())->getOpcode();
   auto *CreatedInst = BinaryOperator::CreateWithCopiedFlags(BinaryOpcode, Operands[0], Operands[1], Slice.front());
+  // use the most restrictive version
+  for (auto *I : Slice)
+    CreatedInst->andIRFlags(I);
 
   CreatedInst->setName("coalesced_binary");
   CreatedInst->setDebugLoc(Slice.front()->getDebugLoc());
-  CreatedInst->insertAfter(Slice.front());
+  CreatedInst->insertAfter(getMinPoint(Slice));
   PRINT_INST_NL(CreatedInst);
 
   ShuffleOut(Slice, CreatedInst);
@@ -2265,6 +2336,7 @@ bool IGCVectorCoalescer::runOnFunction(llvm::Function &F) {
       if (!WI->isUniform(&Inst))
         continue;
 
+      PRINT_INST_NL((&Inst));
       // we want only llvm intrinsics right now
       if (isIntrinsicSafe(&Inst)) {
         unsigned int IntrinsicID = cast<IntrinsicInst>(&Inst)->getIntrinsicID();
