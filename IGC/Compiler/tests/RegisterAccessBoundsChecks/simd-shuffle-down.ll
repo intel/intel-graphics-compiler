@@ -6,7 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; Test that the pass added runtime checks for potentially OOB subgroup shuffle
+; Test that the pass leaves subgroup shuffle down unchanged: its in-range
+; index depends on the lane id, so the emitter bounds it, as checked in
+; ocloc_tests/optimizations/shuffle-down-and-up-bounds-checks.ll.
 ; RUN: igc_opt --opaque-pointers %s -S  --igc-register-access-bounds-checks | FileCheck %s
 ;
 
@@ -16,11 +18,9 @@ Label-0:
   ret i32 %ret
 }
 ; CHECK-LABEL: define i32 @f0
-; CHECK:        [[SIMD_SIZE:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.simdSize()
-; CHECK-NEXT:   [[SIMD_MASK:%[A-z0-9]*]] = sub i32 [[SIMD_SIZE:%[A-z0-9]*]], 1
-; CHECK-NEXT:   [[DELTA:%[A-z0-9]*]] = and i32 %delta, [[SIMD_MASK]]
-; CHECK-NEXT:   [[RET:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.simdShuffleDown.i32(i32 %data, i32 %next, i32 [[DELTA]])
-; CHECK-NEXT:   ret i32 [[RET]]
+; CHECK-NEXT:  Label-0:
+; CHECK-NEXT:    %ret = call i32 @llvm.genx.GenISA.simdShuffleDown.i32(i32 %data, i32 %next, i32 %delta)
+; CHECK-NEXT:    ret i32 %ret
 declare i32 @llvm.genx.GenISA.simdShuffleDown.i32(i32, i32, i32)
 
 

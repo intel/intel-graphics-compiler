@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "DeSSA.hpp"
 #include "messageEncoding.hpp"
 #include "PayloadMapping.hpp"
+#include "RegisterAccessBoundsChecks.hpp"
 #include "VectorProcess.hpp"
 #include "ShaderCodeGen.hpp"
 #include "MemOpt.h" // helper functions related struct value.
@@ -7015,6 +7016,10 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
     pDelta = m_currShader->ImmToVariable(WrappedDelta, pDelta->GetType());
   }
 
+  // Wrapping a variable lane id + delta to that size likewise keeps every
+  // in-range lane.
+  const bool WrapShuffleIdx = needsRegisterAccessBoundsChecks(*m_currShader->GetContext());
+
   // Join current and Next Data
   SBasicBlock::SimdShuffleDownSrcTy srcPair(CurrentOp, NextOp);
   SBasicBlock *pCurrBlk = getCurrentBlock();
@@ -7145,6 +7150,13 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
     CVariable *pCurrentShuffleIdx = m_currShader->GetNewAlias(
         pShuffleIdx, pShuffleIdx->GetType(), offset * m_encoder->GetCISADataTypeSize(pShuffleIdx->GetType()),
         numLanes(m_encoder->GetSimdSize()));
+
+    if (WrapShuffleIdx) {
+      m_encoder->SetSimdSize(m_encoder->GetSimdSize());
+      m_encoder->SetNoMask();
+      m_encoder->And(pCurrentShuffleIdx, pCurrentShuffleIdx, m_currShader->ImmToVariable(nbElements - 1, ISA_TYPE_UD));
+      m_encoder->Push();
+    }
 
     m_encoder->SetSimdSize(m_encoder->GetSimdSize());
     m_encoder->SetDstSubReg(offset);

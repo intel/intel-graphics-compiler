@@ -14,6 +14,10 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
+class CodeGenContext;
+
+bool needsRegisterAccessBoundsChecks(const CodeGenContext &Ctx);
+
 void initializeRegisterAccessBoundsChecksPass(llvm::PassRegistry &);
 llvm::Pass *createRegisterAccessBoundsChecks();
 } // namespace IGC

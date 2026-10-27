@@ -141,8 +141,6 @@ inline Value *GetIndexOperand(GenIntrinsicInst *intr) {
   case GenISAIntrinsic::GenISA_WaveBroadcast:
   case GenISAIntrinsic::GenISA_WaveShuffleIndex:
     return intr->getOperand(1);
-  case GenISAIntrinsic::GenISA_simdShuffleDown:
-    return intr->getOperand(2);
   default:
     IGC_ASSERT_MESSAGE(0, "Subgroup shuffle intrinsic expected");
     return nullptr;
@@ -156,9 +154,6 @@ inline void SetIndexOperand(GenIntrinsicInst *intr, Value *index) {
   case GenISAIntrinsic::GenISA_WaveShuffleIndex:
     intr->setOperand(1, index);
     break;
-  case GenISAIntrinsic::GenISA_simdShuffleDown:
-    intr->setOperand(2, index);
-    break;
   default:
     IGC_ASSERT_MESSAGE(0, "Subgroup shuffle intrinsic expected");
   }
@@ -169,10 +164,10 @@ inline bool IsSubgroupShuffleIntrinsic(const Instruction *I) {
   if (!GII) {
     return false;
   }
+  // Shuffle down is bounded by EmitPass, as its in-range index includes the lane id.
   switch (GII->getIntrinsicID()) {
   case GenISAIntrinsic::GenISA_WaveBroadcast:
   case GenISAIntrinsic::GenISA_WaveShuffleIndex:
-  case GenISAIntrinsic::GenISA_simdShuffleDown:
     return true;
   default:
     return false;
@@ -408,6 +403,10 @@ bool RegisterAccessBoundsChecks::runOnFunction(Function &F) {
     }
   }
   return modified;
+}
+
+bool needsRegisterAccessBoundsChecks(const CodeGenContext &Ctx) {
+  return !Ctx.platform.supportsOutOfBoundsGrfAccess() && Ctx.m_DriverInfo.needsRegisterAccessBoundsChecks();
 }
 
 Pass *createRegisterAccessBoundsChecks() { return new RegisterAccessBoundsChecks(); }
