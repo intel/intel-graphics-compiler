@@ -5,11 +5,14 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: opaque-ptr-fix, regkeys
+; REQUIRES: regkeys
 ;
-; RUN: igc_opt --typed-pointers -simd-mode 8 -platformdg2 -igc-emit-visa -regkey DumpVISAASMToConsole < %s | FileCheck %s -check-prefixes=CHECK-BOTH,CHECK-RGBA
-; RUN: igc_opt --typed-pointers -simd-mode 8 -platformdg2 -igc-emit-visa -regkey HandlePhiNodeInChannelPrune=1 -regkey DumpVISAASMToConsole < %s | FileCheck %s -check-prefixes=CHECK-BOTH,CHECK-ONLYR
-; RUN: igc_opt --typed-pointers -simd-mode 8 -platformdg2 -igc-emit-visa -regkey HandlePhiNodeInChannelPrune=1 -regkey EnableDeSSA=0 -regkey DumpVISAASMToConsole < %s | FileCheck %s -check-prefixes=CHECK-BOTH,CHECK-NOCOALESCE_ONLYR
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -simd-mode 8 -platformdg2 -igc-emit-visa -regkey DumpVISAASMToConsole < %s | FileCheck %s -check-prefixes=CHECK-BOTH,CHECK-RGBA %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -simd-mode 8 -platformdg2 -igc-emit-visa -regkey DumpVISAASMToConsole < %s | FileCheck %s -check-prefixes=CHECK-BOTH,CHECK-RGBA %}
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -simd-mode 8 -platformdg2 -igc-emit-visa -regkey HandlePhiNodeInChannelPrune=1 -regkey DumpVISAASMToConsole < %s | FileCheck %s -check-prefixes=CHECK-BOTH,CHECK-ONLYR %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -simd-mode 8 -platformdg2 -igc-emit-visa -regkey HandlePhiNodeInChannelPrune=1 -regkey DumpVISAASMToConsole < %s | FileCheck %s -check-prefixes=CHECK-BOTH,CHECK-ONLYR %}
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -simd-mode 8 -platformdg2 -igc-emit-visa -regkey HandlePhiNodeInChannelPrune=1 -regkey EnableDeSSA=0 -regkey DumpVISAASMToConsole < %s | FileCheck %s -check-prefixes=CHECK-BOTH,CHECK-NOCOALESCE_ONLYR %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -simd-mode 8 -platformdg2 -igc-emit-visa -regkey HandlePhiNodeInChannelPrune=1 -regkey EnableDeSSA=0 -regkey DumpVISAASMToConsole < %s | FileCheck %s -check-prefixes=CHECK-BOTH,CHECK-NOCOALESCE_ONLYR %}
 ; ------------------------------------------------
 ; EmitVISAPass
 ; ------------------------------------------------
@@ -23,7 +26,7 @@
 
 define spir_kernel void @test0(i32 addrspace(1)* %res32, <4 x float> addrspace(1)* %resf) {
 entry0:
-  %sample0 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32(float 1.0, float 2.0, float 3.0, float 4.0, float 5.0, float 6.0, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 0, i32 0, i32 0)
+  %sample0 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p1i32.p1i32.p1i32(float 1.0, float 2.0, float 3.0, float 4.0, float 5.0, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 0, i32 0, i32 0)
   %eeSample0 = extractelement <4 x float> %sample0, i32 0
   %v00 = insertelement <4 x float> undef, float %eeSample0, i32 0
   %v01 = insertelement <4 x float> %v00, float 0.0, i32 1
@@ -49,11 +52,11 @@ define spir_kernel void @test1(i32 addrspace(1)* %res32, <4 x float> addrspace(1
 entry:
   %res32_val = load i32, i32 addrspace(1)* %res32
   %cmp2 = icmp eq i32 %res32_val, 0
-  %sample1 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32(float 1.0, float 2.0, float 3.0, float 4.0, float 5.0, float 6.0, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 0, i32 0, i32 0)
+  %sample1 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p1i32.p1i32.p1i32(float 1.0, float 2.0, float 3.0, float 4.0, float 5.0, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 0, i32 0, i32 0)
   br i1 %cmp2, label %BB0, label %BB1
 
 BB0:
-  %sample2 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32(float 5.0, float 6.0, float 7.0, float 8.0, float 9.0, float 10.0, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 0, i32 0, i32 0)
+  %sample2 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p1i32.p1i32.p1i32(float 5.0, float 6.0, float 7.0, float 8.0, float 9.0, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 0, i32 0, i32 0)
   br label %BB1
 
 BB1:
@@ -88,11 +91,11 @@ define spir_kernel void @test2(i32 addrspace(1)* %res32, <4 x float> addrspace(1
 entry2:
   %res32_val2 = load i32, i32 addrspace(1)* %res32
   %cmp22 = icmp eq i32 %res32_val2, 0
-  %sample3 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32(float 1.0, float 2.0, float 3.0, float 4.0, float 5.0, float 6.0, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 0, i32 0, i32 0)
+  %sample3 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p1i32.p1i32.p1i32(float 1.0, float 2.0, float 3.0, float 4.0, float 5.0, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 0, i32 0, i32 0)
   br i1 %cmp22, label %BB02, label %BB12
 
 BB02:
-  %sample4 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32(float 5.0, float 6.0, float 7.0, float 8.0, float 9.0, float 10.0, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 0, i32 0, i32 0)
+  %sample4 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p1i32.p1i32.p1i32(float 5.0, float 6.0, float 7.0, float 8.0, float 9.0, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 0, i32 0, i32 0)
   br label %BB12
 
 BB12:
@@ -121,7 +124,7 @@ BB12:
 
 define spir_kernel void @test_cycle(i32 addrspace(1)* %res32, <4 x float> addrspace(1)* %resf) {
 entry:
-  %sampleA = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32(    float 1.0, float 2.0, float 3.0, float 4.0, float 5.0, float 6.0,    i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32,    i32 0, i32 0, i32 0)
+  %sampleA = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p1i32.p1i32.p1i32(float 1.0, float 2.0, float 3.0, float 4.0, float 5.0, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 0, i32 0, i32 0)
   br label %loop.start
 
 loop.start:
@@ -133,7 +136,7 @@ loop.start:
 
 loop.if.then:
   %i_float = sitofp i32 %i to float
-  %sampleB = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32( float %i_float, float 8.0, float 9.0, float 10.0, float 11.0, float 12.0,    i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32,    i32 0, i32 0, i32 0)
+  %sampleB = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p1i32.p1i32.p1i32(float %i_float, float 8.0, float 9.0, float 10.0, float 11.0, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 addrspace(1)* %res32, i32 0, i32 0, i32 0)
   br label %loop.if.merge
 
 loop.if.merge:
@@ -157,7 +160,7 @@ exit:
 
 
 
-declare <4 x float> @llvm.genx.GenISA.sampleptr.v4f32(float, float, float, float, float, float, i32 addrspace(1)*, i32 addrspace(1)*, i32 addrspace(1)*, i32, i32, i32)
+declare <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p1i32.p1i32.p1i32(float, float, float, float, float, i32 addrspace(1)*, i32 addrspace(1)*, i32 addrspace(1)*, i32, i32, i32)
 declare float @llvm.maxnum.f32(float, float)
 !IGCMetadata = !{!0}
 !igc.functions = !{!21, !30, !37, !44}

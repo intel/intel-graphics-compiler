@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -debugify -annotate_uniform_allocas -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -debugify -annotate_uniform_allocas -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -debugify -annotate_uniform_allocas -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; AnnotateUniformAllocas
 ; ------------------------------------------------
@@ -22,8 +22,10 @@ define void @test(i32 %a) {
 ; CHECK-LABEL: @test(
 ; CHECK:    [[TMP1:%.*]] = alloca i32, align 4, {{.*}} !uniform [[TRUE_MD:![0-9]*]], !UseAssumeUniform [[TRUE_MD]]
 ; CHECK:    [[TMP2:%.*]] = alloca i32, align 4, {{.*}} !uniform [[TRUE_MD]]
-; CHECK:    store i32 [[A:%.*]], i32* [[TMP1]]
-; CHECK:    store i32 13, i32* [[TMP2]]
+; CHECK-TYPED:    store i32 [[A:%.*]], i32* [[TMP1]]
+; CHECK-OPAQUE:    store i32 [[A:%.*]], ptr [[TMP1]]
+; CHECK-TYPED:    store i32 13, i32* [[TMP2]]
+; CHECK-OPAQUE:    store i32 13, ptr [[TMP2]]
 ; CHECK:    ret void
 ;
   %1 = alloca i32, align 4

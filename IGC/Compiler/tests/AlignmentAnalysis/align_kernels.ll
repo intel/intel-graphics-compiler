@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: opaque-ptr-fix
 ; RUN: igc_opt --opaque-pointers -igc-fix-alignment -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
@@ -14,7 +13,7 @@ target triple = "igil_32_GEN12"
 
 ; Function Attrs: alwaysinline nounwind
 ; CHECK: @regular
-define void @regular(i8 addrspace(1)* %src, <4 x i8> addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
+define void @regular(i8 addrspace(1)* %src, <4 x i8> addrspace(1)* align 4 %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
 entry:
   %scalar = extractelement <8 x i32> %payloadHeader, i32 0
   %groupId = extractelement <8 x i32> %r0, i32 1
@@ -55,7 +54,7 @@ entry:
 
 ; Function Attrs: alwaysinline nounwind
 ; CHECK: @virtload
-define void @virtload(i8 addrspace(1)* %src, <4 x i8> addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
+define void @virtload(i8 addrspace(1)* %src, <4 x i8> addrspace(1)* align 4 %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
 entry:
   %scalar = extractelement <8 x i32> %payloadHeader, i32 0
   %groupId = extractelement <8 x i32> %r0, i32 1
@@ -78,7 +77,7 @@ entry:
 
 ; Function Attrs: alwaysinline nounwind
 ; CHECK: @illegal
-define void @illegal(i8 addrspace(1)* %src, <4 x i8> addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
+define void @illegal(i8 addrspace(1)* %src, <4 x i8> addrspace(1)* align 4 %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
 entry:
   %scalar = extractelement <8 x i32> %payloadHeader, i32 0
   %groupId = extractelement <8 x i32> %r0, i32 1
@@ -101,7 +100,7 @@ entry:
 
 ; Function Attrs: alwaysinline nounwind
 ; CHECK: @virtload_aligned
-define void @virtload_aligned(<4 x i8> addrspace(1)* %src, <4 x i8> addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
+define void @virtload_aligned(<4 x i8> addrspace(1)* align 4 %src, <4 x i8> addrspace(1)* align 4 %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
 entry:
   %scalar = extractelement <8 x i32> %payloadHeader, i32 0
   %groupId = extractelement <8 x i32> %r0, i32 1
@@ -126,7 +125,7 @@ entry:
 
 ; Function Attrs: alwaysinline nounwind
 ; CHECK: @aligned
-define void @aligned(<4 x i8> addrspace(1)* %src, <4 x i8> addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
+define void @aligned(<4 x i8> addrspace(1)* align 4 %src, <4 x i8> addrspace(1)* align 4 %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
 entry:
   %scalar = extractelement <8 x i32> %payloadHeader, i32 0
   %groupId = extractelement <8 x i32> %r0, i32 1
@@ -147,7 +146,7 @@ entry:
 }
 
 ; CHECK: @regular_scalarized
-define void @regular_scalarized(i8 addrspace(1)* %src, <4 x i8> addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
+define void @regular_scalarized(i8 addrspace(1)* %src, <4 x i8> addrspace(1)* align 4 %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
 entry:
   %scalar = extractelement <8 x i32> %payloadHeader, i32 0
   %groupId = extractelement <8 x i32> %r0, i32 1

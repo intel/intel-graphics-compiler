@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-hoist-congruent-phi --regkey CodeSinkingMinSize=10 -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-hoist-congruent-phi --regkey CodeSinkingMinSize=10 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-hoist-congruent-phi --regkey CodeSinkingMinSize=10 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; CodeSinking
 ; ------------------------------------------------
@@ -17,7 +17,8 @@
 define float @test(i1 %cond) {
 ; CHECK-LABEL: entry:
 ; %loadB and %subB must be hoisted before %mulA2
-; CHECK-NEXT: [[HOISTEDLOADB:%.*]] = load float, float addrspace(65554)* inttoptr (i32 48 to float addrspace(65554)*), align 16
+; CHECK-TYPED-NEXT: [[HOISTEDLOADB:%.*]] = load float, float addrspace(65554)* inttoptr (i32 48 to float addrspace(65554)*), align 16
+; CHECK-OPAQUE-NEXT: [[HOISTEDLOADB:%.*]] = load float, ptr addrspace(65554) inttoptr (i32 48 to ptr addrspace(65554)), align 16
 ; CHECK-NEXT: [[HOISTEDSUBB:%.*]] = fsub fast float -0.000000e+00, [[HOISTEDLOADB]]
 ; next instruction is not a hoisted instruction
 ; CHECK-NEXT: %mulA2 = fmul fast float [[HOISTEDSUBB]], [[HOISTEDLOADB]]

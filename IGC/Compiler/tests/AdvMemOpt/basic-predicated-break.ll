@@ -6,19 +6,22 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-advmemopt -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-advmemopt -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-advmemopt -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; AdvMemOpt - checks early exit due to memory writes
 ; ------------------------------------------------
 
 ; CHECK-LABEL: @test(
 ; CHECK:       bb:
-; CHECK:         call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[B:%[A-z0-9]*]], i64 4, i1 true, i32 42){{.*}}, !uniform [[TRUE_MD:![0-9]*]]
+; CHECK-TYPED:         call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[B:%[A-z0-9]*]], i64 4, i1 true, i32 42){{.*}}, !uniform [[TRUE_MD:![0-9]*]]
+; CHECK-OPAQUE:         call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0.i32(ptr [[B:%[A-z0-9]*]], i64 4, i1 true, i32 42){{.*}}, !uniform [[TRUE_MD:![0-9]*]]
 ; CHECK-NEXT:    br label %bb1
 ; CHECK:      bb1:
-; CHECK-NEXT:   store i32 0, i32* [[B]], align 4
-; CHECK-NEXT:   call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[B]], i64 4, i1 true, i32 43){{.*}}, !uniform [[TRUE_MD]]
+; CHECK-TYPED-NEXT:   store i32 0, i32* [[B]], align 4
+; CHECK-OPAQUE-NEXT:   store i32 0, ptr [[B]], align 4
+; CHECK-TYPED-NEXT:   call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[B]], i64 4, i1 true, i32 43){{.*}}, !uniform [[TRUE_MD]]
+; CHECK-OPAQUE-NEXT:   call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0.i32(ptr [[B]], i64 4, i1 true, i32 43){{.*}}, !uniform [[TRUE_MD]]
 ; CHECK:        ret void
 
 define void @test(i32 %a, i32* %b) {

@@ -8,8 +8,8 @@
 
 ; FIXME: make this test work without shader type
 ; REQUIRES: regkeys, shader-types
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - --inputcs --regkey OverrideCsWalkOrderEnable=1,OverrideCsWalkOrder=0,OverrideCsTileLayoutEnable=1,OverrideCsTileLayout=0 -igc-constant-coalescing | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - --inputcs --regkey OverrideCsWalkOrderEnable=1,OverrideCsWalkOrder=0,OverrideCsTileLayoutEnable=1,OverrideCsTileLayout=0 -igc-constant-coalescing | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - --inputcs --regkey OverrideCsWalkOrderEnable=1,OverrideCsWalkOrder=0,OverrideCsTileLayoutEnable=1,OverrideCsTileLayout=0 -igc-constant-coalescing | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; This test verifies bindless, uniform (through regkeys) ldraw merging with address calculation passing a phinode
 
@@ -29,7 +29,8 @@ define void @CSMain(<8 x i32> %r0, i8* %privateBase) #0 {
 1:
   %phi = phi i32 [ %BB0_end, %0 ], [ %BB1_end, %1 ]
   %shl = shl i32 %phi, 4
-;CHECK:  [[REGLDRAW0:%[0-9]+]] = call <32 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v32i32.p2621441v4f32(<4 x float> addrspace(2621441)* %t1, i32 %shl, i32 4, i1 false)
+;CHECK-TYPED:  [[REGLDRAW0:%[0-9]+]] = call <32 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v32i32.p2621441v4f32(<4 x float> addrspace(2621441)* %t1, i32 %shl, i32 4, i1 false)
+;CHECK-OPAQUE:  [[REGLDRAW0:%[0-9]+]] = call <32 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v32i32.p2621441(ptr addrspace(2621441) %t1, i32 %shl, i32 4, i1 false)
   %ldraw0_0 = call <4 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v4i32.p2621441v4f32(<4 x float> addrspace(2621441)* %t1, i32 %shl, i32 4, i1 false)
 ;CHECK:  %ext0_0 = extractelement <32 x i32> [[REGLDRAW0]], i64 0
 ;CHECK:  %ext0_1 = extractelement <32 x i32> [[REGLDRAW0]], i64 1
@@ -110,7 +111,8 @@ define void @CSMain(<8 x i32> %r0, i8* %privateBase) #0 {
   %ext0_30 = extractelement <4 x i32> %ldraw0_7, i64 2
   %ext0_31 = extractelement <4 x i32> %ldraw0_7, i64 3
   %or1_0 = or i32 %shl, 128
-;CHECK:  [[REGLDRAW1:%[0-9]+]] = call <32 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v32i32.p2621441v4f32(<4 x float> addrspace(2621441)* %t1, i32 %{{[0-9]+}}, i32 4, i1 false)
+;CHECK-TYPED:  [[REGLDRAW1:%[0-9]+]] = call <32 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v32i32.p2621441v4f32(<4 x float> addrspace(2621441)* %t1, i32 %{{[0-9]+}}, i32 4, i1 false)
+;CHECK-OPAQUE:  [[REGLDRAW1:%[0-9]+]] = call <32 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v32i32.p2621441(ptr addrspace(2621441) %t1, i32 %{{[0-9]+}}, i32 4, i1 false)
   %ldraw1_0 = call <4 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v4i32.p2621441v4f32(<4 x float> addrspace(2621441)* %t1, i32 %or1_0, i32 4, i1 false)
 ;CHECK:  %ext1_0 = extractelement <32 x i32> [[REGLDRAW1]], i64 0
 ;CHECK:  %ext1_1 = extractelement <32 x i32> [[REGLDRAW1]], i64 1

@@ -11,7 +11,6 @@
 ;
 ; FIXME: make this test work without shader type
 ; REQUIRES: regkeys, shader-types
-; UNSUPPORTED: llvm-17-plus
 
 ; RUN: igc_opt --typed-pointers -platformPtl -simd-mode 16 -inputcs -igc-emit-visa -regkey DumpVISAASMToConsole,FuseResourceLoop=0 -S %s 2>&1 | FileCheck %s --check-prefix=CHECK-FRL0
 ; RUN: igc_opt --typed-pointers -platformPtl -simd-mode 16 -inputcs -igc-emit-visa -regkey DumpVISAASMToConsole,FuseResourceLoop=1 -S %s 2>&1 | FileCheck %s --check-prefix=CHECK-FRL1

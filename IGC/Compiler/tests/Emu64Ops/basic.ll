@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; Emu64Ops
 ; ------------------------------------------------
@@ -249,8 +249,9 @@ define void @test_zext(i16 %src1) {
 
 define void @test_load(i64* %a) {
 ; CHECK-LABEL: @test_load(
-; CHECK:    [[TMP1:%.*]] = bitcast i64* [[A:%.*]] to <2 x i32>*
-; CHECK:    [[TMP2:%.*]] = load <2 x i32>, <2 x i32>* [[TMP1]], align 4
+; CHECK-TYPED:    [[TMP1:%.*]] = bitcast i64* [[A:%.*]] to <2 x i32>*
+; CHECK-TYPED:    [[TMP2:%.*]] = load <2 x i32>, <2 x i32>* [[TMP1]], align 4
+; CHECK-OPAQUE:    [[TMP2:%.*]] = load <2 x i32>, ptr [[A:%.*]], align 4
 ; CHECK:    [[TMP3:%.*]] = extractelement <2 x i32> [[TMP2]], i32 0
 ; CHECK:    [[TMP4:%.*]] = extractelement <2 x i32> [[TMP2]], i32 1
 ; CHECK:    [[TMP5:%.*]] = insertelement <2 x i32> undef, i32 [[TMP3]], i32 0
@@ -271,8 +272,9 @@ define void @test_store(i64* %a, i64 %b) {
 ; CHECK:    [[TMP3:%.*]] = extractelement <2 x i32> [[TMP1]], i32 1
 ; CHECK:    [[TMP4:%.*]] = insertelement <2 x i32> undef, i32 [[TMP2]], i32 0
 ; CHECK:    [[TMP5:%.*]] = insertelement <2 x i32> [[TMP4]], i32 [[TMP3]], i32 1
-; CHECK:    [[TMP6:%.*]] = bitcast i64* [[A:%.*]] to <2 x i32>*
-; CHECK:    store <2 x i32> [[TMP5]], <2 x i32>* [[TMP6]], align 4
+; CHECK-TYPED:    [[TMP6:%.*]] = bitcast i64* [[A:%.*]] to <2 x i32>*
+; CHECK-TYPED:    store <2 x i32> [[TMP5]], <2 x i32>* [[TMP6]], align 4
+; CHECK-OPAQUE:    store <2 x i32> [[TMP5]], ptr [[A:%.*]], align 4
 ; CHECK:    ret void
 ;
   store i64 %b, i64* %a, align 4

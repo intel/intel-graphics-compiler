@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -debugify -igc-advmemopt -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -debugify -igc-advmemopt -check-debugify -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -debugify -igc-advmemopt -check-debugify -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; AdvMemOpt
 ; ------------------------------------------------
@@ -23,8 +23,10 @@ define void @test(i32 %a, i32* %b) {
 ; CHECK:    br i1 [[TMP0]], label [[BB:%[A-z0-9]*]], label [[END:%[A-z0-9]*]]
 ; CHECK:  bb:
 ; CHECK:    [[TMP1:%[A-z0-9]*]] = phi i32 [ 0, [[ENTRY:%[A-z0-9]*]] ], [ [[TMP3:%[A-z0-9]*]], [[BB1:%[A-z0-9]*]] ]
-; CHECK:    [[TMP2:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[B:%[A-z0-9]*]], i64 4, i1 true, i32 42){{.*}}, !uniform [[TRUE_MD:![0-9]*]]
-; CHECK:    [[C:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[B]], i64 4, i1 true, i32 42){{.*}}, !uniform [[TRUE_MD]]
+; CHECK-TYPED:    [[TMP2:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[B:%[A-z0-9]*]], i64 4, i1 true, i32 42){{.*}}, !uniform [[TRUE_MD:![0-9]*]]
+; CHECK-OPAQUE:    [[TMP2:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0.i32(ptr [[B:%[A-z0-9]*]], i64 4, i1 true, i32 42){{.*}}, !uniform [[TRUE_MD:![0-9]*]]
+; CHECK-TYPED:    [[C:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[B]], i64 4, i1 true, i32 42){{.*}}, !uniform [[TRUE_MD]]
+; CHECK-OPAQUE:    [[C:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0.i32(ptr [[B]], i64 4, i1 true, i32 42){{.*}}, !uniform [[TRUE_MD]]
 ; CHECK:    br label [[BB1]]
 ; CHECK:  bb1:
 ; CHECK:    [[TMP3]] = add i32 [[TMP1]], [[TMP2]]
@@ -33,7 +35,8 @@ define void @test(i32 %a, i32* %b) {
 ; CHECK:    br i1 [[TMP5]], label [[BB]], label [[END]]
 ; CHECK:  end:
 ; CHECK:    [[TMP6:%[A-z0-9]*]] = phi i32 [ [[A]], [[ENTRY]] ], [ [[TMP4]], [[BB1]] ]
-; CHECK:    call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* [[B]], i32 [[TMP6]], i64 4, i1 true)
+; CHECK-TYPED:    call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* [[B]], i32 [[TMP6]], i64 4, i1 true)
+; CHECK-OPAQUE:    call void @llvm.genx.GenISA.PredicatedStore.p0.i32(ptr [[B]], i32 [[TMP6]], i64 4, i1 true)
 ; CHECK:    ret void
 ;
 entry:

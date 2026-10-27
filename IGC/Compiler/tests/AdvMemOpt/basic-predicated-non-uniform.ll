@@ -6,20 +6,24 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-advmemopt -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-advmemopt -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-advmemopt -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; AdvMemOpt - check that only uniform load will be hoisted
 ; ------------------------------------------------
 
 ; CHECK-LABEL: @test_uniformness(
 ; CHECK:       bb:
-; CHECK:         call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[B:%[A-z0-9]*]], i64 4, i1 true, i32 42){{.*}}
-; CHECK-NEXT:    call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[B]], i64 4, i1 true, i32 43){{.*}}
+; CHECK-TYPED:         call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[B:%[A-z0-9]*]], i64 4, i1 true, i32 42){{.*}}
+; CHECK-OPAQUE:         call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0.i32(ptr [[B:%[A-z0-9]*]], i64 4, i1 true, i32 42){{.*}}
+; CHECK-TYPED-NEXT:    call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[B]], i64 4, i1 true, i32 43){{.*}}
+; CHECK-OPAQUE-NEXT:    call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0.i32(ptr [[B]], i64 4, i1 true, i32 43){{.*}}
 ; CHECK-NEXT:    br label %bb1
 ; CHECK:       bb1:
-; CHECK:         [[ARRAYIDX1:%[A-z0-9]*]] = getelementptr inbounds i32, i32* [[B]], i64
-; CHECK-NEXT:    call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[ARRAYIDX1]], i64 4, i1 true, i32 44){{.*}}
+; CHECK-TYPED:         [[ARRAYIDX1:%[A-z0-9]*]] = getelementptr inbounds i32, i32* [[B]], i64
+; CHECK-OPAQUE:         [[ARRAYIDX1:%[A-z0-9]*]] = getelementptr inbounds i32, ptr [[B]], i64
+; CHECK-TYPED-NEXT:    call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* [[ARRAYIDX1]], i64 4, i1 true, i32 44){{.*}}
+; CHECK-OPAQUE-NEXT:    call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0.i32(ptr [[ARRAYIDX1]], i64 4, i1 true, i32 44){{.*}}
 ; CHECK:         ret void
 
 define spir_kernel void @test_uniformness(i32* %b, i32 %a, float addrspace(1)* %sf, i16 %localIdX, i16 %localIdY, i16 %localIdZ) {

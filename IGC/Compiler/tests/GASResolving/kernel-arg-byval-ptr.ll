@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: regkeys, opaque-ptr-fix
+; REQUIRES: regkeys
 ;
 ; Pointer contained in a by-value kernel struct argument is reconstructed via `inttoptr` as a generic pointer.
 ; With EnableGASKernelByValArgPtrInference the pass transforms it to be global so that generic address space

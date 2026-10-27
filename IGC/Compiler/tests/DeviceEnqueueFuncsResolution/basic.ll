@@ -6,16 +6,18 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --igc-device-enqueue-func-resolution -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --igc-device-enqueue-func-resolution -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --igc-device-enqueue-func-resolution -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; DeviceEnqueueFuncsResolution
 ; ------------------------------------------------
 
 define spir_kernel void @test_device_queue(i8 addrspace(1)* %deviceEnqueueDefaultDeviceQueue) {
 ; CHECK-LABEL: @test_device_queue(
-; CHECK:    [[TMP1:%.*]] = bitcast i8 addrspace(1)* %deviceEnqueueDefaultDeviceQueue to i32 addrspace(1)*
-; CHECK:    call void @use.p1i32(i32 addrspace(1)* [[TMP1]])
+; CHECK-TYPED:    [[TMP1:%.*]] = bitcast i8 addrspace(1)* %deviceEnqueueDefaultDeviceQueue to i32 addrspace(1)*
+; CHECK-OPAQUE:    [[TMP1:%.*]] = bitcast ptr addrspace(1) %deviceEnqueueDefaultDeviceQueue to ptr addrspace(1)
+; CHECK-TYPED:    call void @use.p1i32(i32 addrspace(1)* [[TMP1]])
+; CHECK-OPAQUE:    call void @use.p1i32(ptr addrspace(1) [[TMP1]])
 ; CHECK:    ret void
 ;
   %1 = call i8 addrspace(1)* @__builtin_IB_get_default_device_queue()
@@ -26,8 +28,10 @@ define spir_kernel void @test_device_queue(i8 addrspace(1)* %deviceEnqueueDefaul
 
 define spir_kernel void @test_device_eventpool(i8 addrspace(1)* %deviceEnqueueEventPool) {
 ; CHECK-LABEL: @test_device_eventpool(
-; CHECK:    [[TMP1:%.*]] = bitcast i8 addrspace(1)* %deviceEnqueueEventPool to i32 addrspace(1)*
-; CHECK:    call void @use.p1i32(i32 addrspace(1)* [[TMP1]])
+; CHECK-TYPED:    [[TMP1:%.*]] = bitcast i8 addrspace(1)* %deviceEnqueueEventPool to i32 addrspace(1)*
+; CHECK-OPAQUE:    [[TMP1:%.*]] = bitcast ptr addrspace(1) %deviceEnqueueEventPool to ptr addrspace(1)
+; CHECK-TYPED:    call void @use.p1i32(i32 addrspace(1)* [[TMP1]])
+; CHECK-OPAQUE:    call void @use.p1i32(ptr addrspace(1) [[TMP1]])
 ; CHECK:    ret void
 ;
   %1 = call i8 addrspace(1)* @__builtin_IB_get_event_pool()

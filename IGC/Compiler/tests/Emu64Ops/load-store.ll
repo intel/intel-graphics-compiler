@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --platformdg2 --igc-emu64ops -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --platformdg2 --igc-emu64ops -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --platformdg2 --igc-emu64ops -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; Emu64Ops
 ; ------------------------------------------------
@@ -21,9 +21,11 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 define void @test_ptrs(i16 %src1) {
 ; CHECK-LABEL: @test_ptrs(
 ; CHECK-NEXT:    [[TMP1:%.*]] = zext i16 [[SRC1:%.*]] to i32
-; CHECK-NEXT:    [[TMP2:%.*]] = call i64 addrspace(1)* @llvm.genx.GenISA.pair.to.ptr.p1i64(i32 [[TMP1]], i32 0)
-; CHECK-NEXT:    [[TMP3:%.*]] = bitcast i64 addrspace(1)* [[TMP2]] to <2 x i32> addrspace(1)*
-; CHECK-NEXT:    [[TMP4:%.*]] = load <2 x i32>, <2 x i32> addrspace(1)* [[TMP3]]
+; CHECK-TYPED-NEXT:    [[TMP2:%.*]] = call i64 addrspace(1)* @llvm.genx.GenISA.pair.to.ptr.p1i64(i32 [[TMP1]], i32 0)
+; CHECK-OPAQUE-NEXT:    [[TMP2:%.*]] = call ptr addrspace(1) @llvm.genx.GenISA.pair.to.ptr.p1(i32 [[TMP1]], i32 0)
+; CHECK-TYPED-NEXT:    [[TMP3:%.*]] = bitcast i64 addrspace(1)* [[TMP2]] to <2 x i32> addrspace(1)*
+; CHECK-TYPED-NEXT:    [[TMP4:%.*]] = load <2 x i32>, <2 x i32> addrspace(1)* [[TMP3]]
+; CHECK-OPAQUE-NEXT:    [[TMP4:%.*]] = load <2 x i32>, ptr addrspace(1) [[TMP2]]
 ; CHECK-NEXT:    [[TMP5:%.*]] = extractelement <2 x i32> [[TMP4]], i32 0
 ; CHECK-NEXT:    [[TMP6:%.*]] = extractelement <2 x i32> [[TMP4]], i32 1
 ; CHECK-NEXT:    [[TMP7:%.*]] = insertelement <2 x i32> undef, i32 [[TMP5]], i32 0
@@ -32,8 +34,9 @@ define void @test_ptrs(i16 %src1) {
 ; CHECK-NEXT:    call void @use.i64(i64 [[TMP9]])
 ; CHECK-NEXT:    [[TMP10:%.*]] = insertelement <2 x i32> undef, i32 [[TMP1]], i32 0
 ; CHECK-NEXT:    [[TMP11:%.*]] = insertelement <2 x i32> [[TMP10]], i32 0, i32 1
-; CHECK-NEXT:    [[TMP12:%.*]] = bitcast i64 addrspace(1)* [[TMP2]] to <2 x i32> addrspace(1)*
-; CHECK-NEXT:    store <2 x i32> [[TMP11]], <2 x i32> addrspace(1)* [[TMP12]], align 4
+; CHECK-TYPED-NEXT:    [[TMP12:%.*]] = bitcast i64 addrspace(1)* [[TMP2]] to <2 x i32> addrspace(1)*
+; CHECK-TYPED-NEXT:    store <2 x i32> [[TMP11]], <2 x i32> addrspace(1)* [[TMP12]], align 4
+; CHECK-OPAQUE-NEXT:    store <2 x i32> [[TMP11]], ptr addrspace(1) [[TMP2]], align 4
 ; CHECK-NEXT:    ret void
 ;
   %1 = inttoptr i16 %src1 to i64 addrspace(1)*

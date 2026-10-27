@@ -6,18 +6,22 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --regkey LoopSinkMinSave=1 --regkey LoopSinkMinSaveUniform=3 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-wi-analysis --igc-code-loop-sinking -S %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --regkey LoopSinkMinSave=1 --regkey LoopSinkMinSaveUniform=3 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-wi-analysis --igc-code-loop-sinking -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --regkey LoopSinkMinSave=1 --regkey LoopSinkMinSaveUniform=3 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-wi-analysis --igc-code-loop-sinking -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; We set LoopSinkMinSaveUniform=3, and check that only the case with saving 3 scalars is being sinked, when all the values are uniform
 define spir_kernel void @foo(float addrspace(1)* %in0, float addrspace(1)* %in1, float addrspace(1)* %out0, i32 %count, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
 ; CHECK-LABEL: @foo(
 ; CHECK:  entry:
-; CHECK:    [[ADDR_1:%.*]] = getelementptr float, float addrspace(1)* [[IN0:%.*]], i32 0
-; CHECK:    [[ADDR_2:%.*]] = getelementptr float, float addrspace(1)* [[IN1:%.*]], i32 0
+; CHECK-TYPED:    [[ADDR_1:%.*]] = getelementptr float, float addrspace(1)* [[IN0:%.*]], i32 0
+; CHECK-OPAQUE:    [[ADDR_1:%.*]] = getelementptr float, ptr addrspace(1) [[IN0:%.*]], i32 0
+; CHECK-TYPED:    [[ADDR_2:%.*]] = getelementptr float, float addrspace(1)* [[IN1:%.*]], i32 0
+; CHECK-OPAQUE:    [[ADDR_2:%.*]] = getelementptr float, ptr addrspace(1) [[IN1:%.*]], i32 0
 ; CHECK:    br label [[ENTRY_PREHEADER:%.*]]
 ; CHECK:  entry_preheader:
-; CHECK:    [[L_1:%.*]] = load float, float addrspace(1)* [[ADDR_1]], align 16
-; CHECK:    [[L_2:%.*]] = load float, float addrspace(1)* [[ADDR_2]], align 16
+; CHECK-TYPED:    [[L_1:%.*]] = load float, float addrspace(1)* [[ADDR_1]], align 16
+; CHECK-OPAQUE:    [[L_1:%.*]] = load float, ptr addrspace(1) [[ADDR_1]], align 16
+; CHECK-TYPED:    [[L_2:%.*]] = load float, float addrspace(1)* [[ADDR_2]], align 16
+; CHECK-OPAQUE:    [[L_2:%.*]] = load float, ptr addrspace(1) [[ADDR_2]], align 16
 ; not sinked
 ; CHECK:    [[ADDF2_1:%.*]] = fadd float [[L_2]], 1.000000e+00
 ; CHECK:    [[ADDF2_2:%.*]] = fadd float [[L_2]], 2.000000e+00

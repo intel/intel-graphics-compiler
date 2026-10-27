@@ -6,17 +6,21 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --regkey LoopSinkMinSave=4 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey CodeSinkingMinSize=10 --basic-aa --igc-code-sinking --igc-code-loop-sinking -S %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --regkey LoopSinkMinSave=4 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey CodeSinkingMinSize=10 --basic-aa --igc-code-sinking --igc-code-loop-sinking -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --regkey LoopSinkMinSave=4 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey CodeSinkingMinSize=10 --basic-aa --igc-code-sinking --igc-code-loop-sinking -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 define void @foo(float addrspace(1)* %in0, double addrspace(1)* %in1, float addrspace(1)* noalias %out0, i32 %count, i32 %offsetIn0, i32 %offsetIn2) {
 ; CHECK-LABEL: @foo(
 ; CHECK:       entry:
-; CHECK:         [[ADDR_1:%.*]] = getelementptr float, float addrspace(1)* [[IN0:%.*]], i32 0
-; CHECK:         [[ADDR_3:%.*]] = getelementptr float, float addrspace(1)* [[IN0]], i32 2
+; CHECK-TYPED:         [[ADDR_1:%.*]] = getelementptr float, float addrspace(1)* [[IN0:%.*]], i32 0
+; CHECK-OPAQUE:         [[ADDR_1:%.*]] = getelementptr float, ptr addrspace(1) [[IN0:%.*]], i32 0
+; CHECK-TYPED:         [[ADDR_3:%.*]] = getelementptr float, float addrspace(1)* [[IN0]], i32 2
+; CHECK-OPAQUE:         [[ADDR_3:%.*]] = getelementptr float, ptr addrspace(1) [[IN0]], i32 2
 ; CHECK:         br label [[ENTRY_PREHEADER:%.*]]
 ; CHECK:       entry_preheader:
-; CHECK:         [[L_1:%.*]] = load float, float addrspace(1)* [[ADDR_1]], align 16
-; CHECK:         [[L_3:%.*]] = load float, float addrspace(1)* [[ADDR_3]], align 16
+; CHECK-TYPED:         [[L_1:%.*]] = load float, float addrspace(1)* [[ADDR_1]], align 16
+; CHECK-OPAQUE:         [[L_1:%.*]] = load float, ptr addrspace(1) [[ADDR_1]], align 16
+; CHECK-TYPED:         [[L_3:%.*]] = load float, float addrspace(1)* [[ADDR_3]], align 16
+; CHECK-OPAQUE:         [[L_3:%.*]] = load float, ptr addrspace(1) [[ADDR_3]], align 16
 
 ; this add is not beneficial to sink
 
@@ -37,8 +41,10 @@ define void @foo(float addrspace(1)* %in0, double addrspace(1)* %in1, float addr
 ; CHECK:         [[ADDF_5:%.*]] = fadd float [[L_1]], 5.000000e+00
 ; CHECK:         [[ACC3:%.*]] = fadd float [[ACC2]], [[ADDF_5]]
 ; CHECK:         [[ACC4:%.*]] = fadd float [[ACC2]], [[ADDFF_1]]
-; CHECK:         [[OUT0_SHIFTED:%.*]] = getelementptr float, float addrspace(1)* [[OUT0:%.*]], i32 [[INDEX]]
-; CHECK:         store float [[ACC4]], float addrspace(1)* [[OUT0_SHIFTED]], align 8
+; CHECK-TYPED:         [[OUT0_SHIFTED:%.*]] = getelementptr float, float addrspace(1)* [[OUT0:%.*]], i32 [[INDEX]]
+; CHECK-OPAQUE:         [[OUT0_SHIFTED:%.*]] = getelementptr float, ptr addrspace(1) [[OUT0:%.*]], i32 [[INDEX]]
+; CHECK-TYPED:         store float [[ACC4]], float addrspace(1)* [[OUT0_SHIFTED]], align 8
+; CHECK-OPAQUE:         store float [[ACC4]], ptr addrspace(1) [[OUT0_SHIFTED]], align 8
 ; CHECK:         [[INC]] = add i32 [[INDEX]], 1
 ; CHECK:         [[CMPTMP:%.*]] = icmp ult i32 [[INDEX]], [[COUNT:%.*]]
 ; CHECK:         br i1 [[CMPTMP]], label [[LOOP]], label [[AFTERLOOP:%.*]]

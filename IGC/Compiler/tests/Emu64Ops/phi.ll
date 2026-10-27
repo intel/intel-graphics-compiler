@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; Emu64Ops
 ; ------------------------------------------------
@@ -49,8 +49,9 @@ define void @test_emu64(i64 %a, i64 %b, i64* %dst) {
 ; CHECK: end:
 ; CHECK:    [[TMP24:%[A-z0-9.]*]] = insertelement <2 x i32> undef, i32 [[TMP19]], i32 0
 ; CHECK:    [[TMP25:%[A-z0-9.]*]] = insertelement <2 x i32> [[TMP24]], i32 [[TMP20]], i32 1
-; CHECK:    [[TMP26:%[A-z0-9.]*]] = bitcast i64* [[DST:%[A-z0-9.]*]] to <2 x i32>*
-; CHECK:    store <2 x i32> [[TMP25]], <2 x i32>* [[TMP26]], align 1
+; CHECK-TYPED:    [[TMP26:%[A-z0-9.]*]] = bitcast i64* [[DST:%[A-z0-9.]*]] to <2 x i32>*
+; CHECK-TYPED:    store <2 x i32> [[TMP25]], <2 x i32>* [[TMP26]], align 1
+; CHECK-OPAQUE:    store <2 x i32> [[TMP25]], ptr [[DST:%[A-z0-9.]*]], align 1
 ; CHECK:    ret void
 ;
 entry:

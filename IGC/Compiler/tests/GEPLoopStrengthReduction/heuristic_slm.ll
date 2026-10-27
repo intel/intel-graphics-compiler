@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: opaque-ptr-fix
 ; RUN: igc_opt --opaque-pointers -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
 ;
 ; Collection of tests for heuristic with SLM pointers.
@@ -37,8 +36,8 @@ for.body.lr.ph:                                   ; preds = %entry
 ; CHECK-LABEL: for.body:
 ; CHECK:         %i.02 = phi i32 [ 0, %for.body.lr.ph ], [ %inc, %for.body ]
 ; CHECK:         %idxprom = zext i32 %i.02 to i64
-; CHECK:         %arrayidx = getelementptr inbounds [512 x i32], [512 x i32] addrspace(3)* @tmp0, i64 0, i64 %idxprom
-; CHECK:         store i32 39, i32 addrspace(3)* %arrayidx, align 4
+; CHECK:         %arrayidx = getelementptr inbounds [512 x i32], ptr addrspace(3) @tmp0, i64 0, i64 %idxprom
+; CHECK:         store i32 39, ptr addrspace(3) %arrayidx, align 4
 ; CHECK:         %inc = add nuw nsw i32 %i.02, 1
 ; CHECK:         %cmp = icmp slt i32 %inc, %n
 ; CHECK:         br i1 %cmp, label %for.body, label %for.cond.for.end_crit_edge

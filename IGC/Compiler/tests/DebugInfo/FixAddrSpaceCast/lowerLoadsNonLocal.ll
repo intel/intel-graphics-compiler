@@ -6,9 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --igc-addrspacecast-fix -S %s -o %t.ll
-; RUN: FileCheck %s --input-file=%t.ll
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --igc-addrspacecast-fix -S %s -o %t.opaque.ll %}
+; RUN: %if llvm-16-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE --input-file=%t.opaque.ll %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --igc-addrspacecast-fix -S %s -o %t.typed.ll %}
+; RUN: %if !llvm-17-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-TYPED --input-file=%t.typed.ll %}
 ; ------------------------------------------------
 ; FixAddrSpaceCast
 ; ------------------------------------------------
@@ -17,15 +18,18 @@
 ; ------------------------------------------------
 
 ; CHECK-LABEL: cond.true3442:
-; CHECK: %gep.res = getelementptr inbounds i8, i8 addrspace(4)* %tmp2, i64 %idx.ext.i12415
+; CHECK-TYPED: %gep.res = getelementptr inbounds i8, i8 addrspace(4)* %tmp2, i64 %idx.ext.i12415
+; CHECK-OPAQUE: %gep.res = getelementptr inbounds i8, ptr addrspace(4) %tmp2, i64 %idx.ext.i12415
 ; CHECK: br label %cond.end3465
 
 ; CHECK-LABEL: cond.false3459
-; CHECK:  %addr.res = addrspacecast i8 addrspace(2)* %arrayidx3464 to i8 addrspace(4)*
+; CHECK-TYPED:  %addr.res = addrspacecast i8 addrspace(2)* %arrayidx3464 to i8 addrspace(4)*
+; CHECK-OPAQUE:  %addr.res = addrspacecast ptr addrspace(2) %arrayidx3464 to ptr addrspace(4)
 ; CHECK:  br label %cond.end3465
 
 ; CHECK-LABEL: cond.end3465:
-; CHECK: [[T5:%.*]] = phi i8 addrspace(4)* [ %gep.res, %cond.true3442 ], [ %addr.res, %cond.false3459 ]
+; CHECK-TYPED: [[T5:%.*]] = phi i8 addrspace(4)* [ %gep.res, %cond.true3442 ], [ %addr.res, %cond.false3459 ]
+; CHECK-OPAQUE: [[T5:%.*]] = phi ptr addrspace(4) [ %gep.res, %cond.true3442 ], [ %addr.res, %cond.false3459 ]
 
 define i1 @testFn(i8 addrspace(2)* %arrayidx3464, i8 addrspace(1)* %globalArgs, i64 %idx.ext.i12415) #0 {
 

@@ -6,17 +6,20 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --igc-addrspacecast-fix -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --igc-addrspacecast-fix -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --igc-addrspacecast-fix -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; FixAddrSpaceCast
 ; ------------------------------------------------
 
 define void @test_fixaddr_fix1(i64* %src) {
 ; CHECK-LABEL: @test_fixaddr_fix1(
-; CHECK:    [[DOTFIX1_BITCAST:%.*]] = bitcast i64* %src to i64*
-; CHECK:    [[DOTFIX1_ADDRSPACECAST:%.*]] = addrspacecast i64* [[DOTFIX1_BITCAST]] to i64 addrspace(2)*
-; CHECK:    store i64 13, i64 addrspace(2)* [[DOTFIX1_ADDRSPACECAST]]
+; CHECK-TYPED:    [[DOTFIX1_BITCAST:%.*]] = bitcast i64* %src to i64*
+; CHECK-OPAQUE:    [[DOTFIX1_BITCAST:%.*]] = bitcast ptr %src to ptr{{$}}
+; CHECK-TYPED:    [[DOTFIX1_ADDRSPACECAST:%.*]] = addrspacecast i64* [[DOTFIX1_BITCAST]] to i64 addrspace(2)*
+; CHECK-OPAQUE:    [[DOTFIX1_ADDRSPACECAST:%.*]] = addrspacecast ptr [[DOTFIX1_BITCAST]] to ptr addrspace(2)
+; CHECK-TYPED:    store i64 13, i64 addrspace(2)* [[DOTFIX1_ADDRSPACECAST]]
+; CHECK-OPAQUE:    store i64 13, ptr addrspace(2) [[DOTFIX1_ADDRSPACECAST]]
 ; CHECK:    ret void
 ;
   %1 = ptrtoint i64* %src to i64
@@ -29,10 +32,14 @@ define void @test_fixaddr_fix1(i64* %src) {
 
 define void @test_fixaddr_fix2(i64 addrspace(0)* %src1, i64 addrspace(0)* %src2, i1 %cond) {
 ; CHECK-LABEL: @test_fixaddr_fix2(
-; CHECK:    [[SRC1_FIX2_ADDRSPACECAST:%.*]] = addrspacecast i64* %src1 to i64 addrspace(4)*
-; CHECK:    [[SRC2_FIX2_ADDRSPACECAST:%.*]] = addrspacecast i64* %src2 to i64 addrspace(4)*
-; CHECK:    [[TMP1:%.*]] = select i1 [[COND:%.*]], i64 addrspace(4)* [[SRC1_FIX2_ADDRSPACECAST]], i64 addrspace(4)* [[SRC2_FIX2_ADDRSPACECAST]]
-; CHECK:    store i64 13, i64 addrspace(4)* [[TMP1]]
+; CHECK-TYPED:    [[SRC1_FIX2_ADDRSPACECAST:%.*]] = addrspacecast i64* %src1 to i64 addrspace(4)*
+; CHECK-OPAQUE:    [[SRC1_FIX2_ADDRSPACECAST:%.*]] = addrspacecast ptr %src1 to ptr addrspace(4)
+; CHECK-TYPED:    [[SRC2_FIX2_ADDRSPACECAST:%.*]] = addrspacecast i64* %src2 to i64 addrspace(4)*
+; CHECK-OPAQUE:    [[SRC2_FIX2_ADDRSPACECAST:%.*]] = addrspacecast ptr %src2 to ptr addrspace(4)
+; CHECK-TYPED:    [[TMP1:%.*]] = select i1 [[COND:%.*]], i64 addrspace(4)* [[SRC1_FIX2_ADDRSPACECAST]], i64 addrspace(4)* [[SRC2_FIX2_ADDRSPACECAST]]
+; CHECK-OPAQUE:    [[TMP1:%.*]] = select i1 [[COND:%.*]], ptr addrspace(4) [[SRC1_FIX2_ADDRSPACECAST]], ptr addrspace(4) [[SRC2_FIX2_ADDRSPACECAST]]
+; CHECK-TYPED:    store i64 13, i64 addrspace(4)* [[TMP1]]
+; CHECK-OPAQUE:    store i64 13, ptr addrspace(4) [[TMP1]]
 ; CHECK:    ret void
 ;
   %1 = select i1 %cond, i64 addrspace(0)* %src1, i64 addrspace(0)* %src2

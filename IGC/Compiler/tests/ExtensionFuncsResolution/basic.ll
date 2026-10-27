@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --igc-extension-funcs-resolution -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --igc-extension-funcs-resolution -S < %s | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --igc-extension-funcs-resolution -S < %s | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; ExtensionFuncsResolution
 ; ------------------------------------------------
@@ -56,8 +56,9 @@ define spir_kernel void @test_vme_search(i32 %vmeSearchPathType) {
 
 define spir_kernel void @test_vme_helper(%struct.mce_payload_t* %src1) {
 ; CHECK-LABEL: @test_vme_helper(
-; CHECK:    [[TMP1:%.*]] = bitcast %struct.mce_payload_t* [[SRC1:%.*]] to <4 x i32>*
-; CHECK:    [[TMP2:%.*]] = load <4 x i32>, <4 x i32>* [[TMP1]]
+; CHECK-TYPED:    [[TMP1:%.*]] = bitcast %struct.mce_payload_t* [[SRC1:%.*]] to <4 x i32>*
+; CHECK-TYPED:    [[TMP2:%.*]] = load <4 x i32>, <4 x i32>* [[TMP1]]
+; CHECK-OPAQUE:    [[TMP2:%.*]] = load <4 x i32>, ptr [[SRC1:%.*]]
 ; CHECK:    call void @use.4i32(<4 x i32> [[TMP2]])
 ; CHECK:    ret void
 ;
@@ -69,9 +70,11 @@ define spir_kernel void @test_vme_helper(%struct.mce_payload_t* %src1) {
 define spir_kernel void @test_vme_helper_as(<4 x i32> %src1) {
 ; CHECK-LABEL: @test_vme_helper_as(
 ; CHECK:    [[TMP1:%.*]] = alloca <4 x i32>
-; CHECK:    store <4 x i32> [[SRC1:%.*]], <4 x i32>* [[TMP1]]
-; CHECK:    [[TMP2:%.*]] = bitcast <4 x i32>* [[TMP1]] to %struct.mce_payload_t*
-; CHECK:    call void @use.pstr(%struct.mce_payload_t* [[TMP2]])
+; CHECK-TYPED:    store <4 x i32> [[SRC1:%.*]], <4 x i32>* [[TMP1]]
+; CHECK-OPAQUE:    store <4 x i32> [[SRC1:%.*]], ptr [[TMP1]]
+; CHECK-TYPED:    [[TMP2:%.*]] = bitcast <4 x i32>* [[TMP1]] to %struct.mce_payload_t*
+; CHECK-TYPED:    call void @use.pstr(%struct.mce_payload_t* [[TMP2]])
+; CHECK-OPAQUE:    call void @use.pstr(ptr [[TMP1]])
 ; CHECK:    ret void
 ;
   %1 = call spir_func %struct.mce_payload_t* @__builtin_IB_vme_helper_get_as_avc_mce_payload_t(<4 x i32> %src1)

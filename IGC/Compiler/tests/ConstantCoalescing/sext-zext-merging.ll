@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --igc-constant-coalescing -dce -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --igc-constant-coalescing -dce -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --igc-constant-coalescing -dce -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 
 define void @test_sext_zext(i32 addrspace(2)* %ca, i16 %offset) {
@@ -15,13 +15,18 @@ define void @test_sext_zext(i32 addrspace(2)* %ca, i16 %offset) {
   ; CHECK: [[S1:%.*]] = sext i16 %offset to i32
   ; CHECK: [[Z1:%.*]] = zext i16 %offset to i32
   ; CHECK: [[Z2:%.*]] = add i32 [[Z1]], 4
-  ; CHECK: [[PTR:%.*]] = ptrtoint i32 addrspace(2)* %ca to i32
+  ; CHECK-TYPED: [[PTR:%.*]] = ptrtoint i32 addrspace(2)* %ca to i32
+  ; CHECK-OPAQUE: [[PTR:%.*]] = ptrtoint ptr addrspace(2) %ca to i32
   ; CHECK: [[I1:%.*]] = add i32 [[PTR]], [[S1]]
   ; CHECK: [[I2:%.*]] = add i32 [[PTR]], [[Z2]]
-  ; CHECK: [[PTR1:%.*]] = inttoptr i32 {{%.*}} to <1 x i32> addrspace(2)*
-  ; CHECK: {{%.*}} = load <1 x i32>, <1 x i32> addrspace(2)* [[PTR1]], align 4
-  ; CHECK: [[PTR2:%.*]] = inttoptr i32 {{%.*}} to <1 x i32> addrspace(2)*
-  ; CHECK: {{%.*}} = load <1 x i32>, <1 x i32> addrspace(2)* [[PTR2]], align 4
+  ; CHECK-TYPED: [[PTR1:%.*]] = inttoptr i32 {{%.*}} to <1 x i32> addrspace(2)*
+  ; CHECK-OPAQUE: [[PTR1:%.*]] = inttoptr i32 {{%.*}} to ptr addrspace(2)
+  ; CHECK-TYPED: {{%.*}} = load <1 x i32>, <1 x i32> addrspace(2)* [[PTR1]], align 4
+  ; CHECK-OPAQUE: {{%.*}} = load <1 x i32>, ptr addrspace(2) [[PTR1]], align 4
+  ; CHECK-TYPED: [[PTR2:%.*]] = inttoptr i32 {{%.*}} to <1 x i32> addrspace(2)*
+  ; CHECK-OPAQUE: [[PTR2:%.*]] = inttoptr i32 {{%.*}} to ptr addrspace(2)
+  ; CHECK-TYPED: {{%.*}} = load <1 x i32>, <1 x i32> addrspace(2)* [[PTR2]], align 4
+  ; CHECK-OPAQUE: {{%.*}} = load <1 x i32>, ptr addrspace(2) [[PTR2]], align 4
   %s1 = sext i16 %offset to i32
   %z1 = zext i16 %offset to i32
   %z2 = add i32 %z1, 4
@@ -39,7 +44,8 @@ define void @test_sext_zext(i32 addrspace(2)* %ca, i16 %offset) {
 
 define void @test_zext_coalescing(i32 addrspace(2)* %ca, i16 %offset) {
   ; CHECK-LABEL: @test_zext_coalescing
-  ; CHECK: {{%.*}} = load <2 x i32>, <2 x i32> addrspace(2)* {{%.*}}, align 4
+  ; CHECK-TYPED: {{%.*}} = load <2 x i32>, <2 x i32> addrspace(2)* {{%.*}}, align 4
+  ; CHECK-OPAQUE: {{%.*}} = load <2 x i32>, ptr addrspace(2) {{%.*}}, align 4
   ; CHECK-NOT: load
   %z1 = zext i16 %offset to i32
   %z2 = add i32 %z1, 4

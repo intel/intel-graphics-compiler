@@ -8,10 +8,21 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: igc_opt -debugify --igc-gas-resolve --opaque-pointers -S < %s | FileCheck %s
-; REQUIRES: opaque-ptr-fix
 
 %st = type {ptr addrspace(4)}
 
+; Generic pointer loaded from global memory is resolved to global: the inserted
+; addrspacecasts must carry debug locations.
+; CHECK-LABEL: define ptr addrspace(4) @should_add_addrspacecast_with_metadata(
+; CHECK-SAME: ptr addrspace(1) [[SRC:%.*]]) !dbg {{![0-9]+}} {
+; CHECK: [[TMP2:%.*]] = getelementptr %st, ptr addrspace(1) [[SRC]], i32 0, i32 0, !dbg
+; CHECK: [[POINTER_VALUE:%.*]] = load ptr addrspace(4), ptr addrspace(1) [[TMP2]], align 8, !dbg
+; CHECK: [[TMP3:%.*]] = addrspacecast ptr addrspace(4) [[POINTER_VALUE]] to ptr addrspace(1), !dbg [[CAST_LOC:![0-9]+]]
+; CHECK-NEXT: [[TMP4:%.*]] = addrspacecast ptr addrspace(1) [[TMP3]] to ptr addrspace(4), !dbg [[CAST_LOC]]
+; CHECK: [[POINTER_VALUE2:%.*]] = addrspacecast ptr addrspace(4) [[TMP4]] to ptr addrspace(2), !dbg
+; CHECK: store i32 13, ptr addrspace(1) [[TMP3]], align 4, !dbg
+; CHECK: store i32 14, ptr addrspace(2) [[POINTER_VALUE2]], align 4, !dbg
+; CHECK: ret ptr addrspace(4) [[TMP4]], !dbg
 define ptr addrspace(4) @should_add_addrspacecast_with_metadata(ptr addrspace(1) %src) {
   %1 = inttoptr i32 13 to ptr addrspace(2)
   %2 = addrspacecast ptr addrspace(2) %1 to ptr addrspace(4)

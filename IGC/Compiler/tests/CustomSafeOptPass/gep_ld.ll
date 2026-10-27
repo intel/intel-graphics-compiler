@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-custom-safe-opt -instcombine -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-custom-safe-opt -instcombine -S < %s | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-custom-safe-opt -instcombine -S < %s | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; CustomSafeOptPass: GEP + load
 ; ------------------------------------------------
@@ -27,13 +27,18 @@ define spir_kernel void @eggs(<8 x i32> %arg, <3 x i32> %arg1) #0 {
 ; CHECK-LABEL: define spir_kernel void @eggs(
 ; CHECK-SAME: <8 x i32> [[ARG:%.*]], <3 x i32> [[ARG1:%.*]]){{.*}}{
 ; CHECK:      bb:
-; CHECK-NEXT: [[TMP0:%.*]] = load {{.*}} bitcast ([2 x %struct.quux] addrspace(3)* @global to {{.*}}), align 8
+; CHECK-TYPED-NEXT: [[TMP0:%.*]] = load {{.*}} bitcast ([2 x %struct.quux] addrspace(3)* @global to {{.*}}), align 8
+; CHECK-OPAQUE-NEXT: [[TMP0:%.*]] = load ptr addrspace(3), ptr addrspace(3) @global, align 8
 ; CHECK-NEXT: [[TMP1:%.*]] = load {{.*}}, {{.*}} [[TMP0]], align 8
 ; CHECK-NEXT: [[TMP2:%.*]] = load {{.*}}, {{.*}} [[TMP1]], align 8
-; CHECK-NOT:  getelementptr %struct.quux, %struct.quux addrspace(3)* {{.*}}, i64 0, i32 0
-; CHECK-NEXT: [[TMP3:%.*]] = load %struct.quux addrspace(3)*, %struct.quux addrspace(3)* addrspace(3)* [[TMP2]], align 8
-; CHECK-NEXT: [[GEP:%.*]] = getelementptr %struct.quux, %struct.quux addrspace(3)* [[TMP3]], i64 0, i32 0
-; CHECK-NEXT: store %struct.quux addrspace(3)* [[TMP3]], %struct.quux addrspace(3)* addrspace(3)* [[GEP]], align 8
+; CHECK-TYPED-NOT:  getelementptr %struct.quux, %struct.quux addrspace(3)* {{.*}}, i64 0, i32 0
+; CHECK-OPAQUE-NOT:  getelementptr %struct.quux, ptr addrspace(3) {{.*}}, i64 0, i32 0
+; CHECK-TYPED-NEXT: [[TMP3:%.*]] = load %struct.quux addrspace(3)*, %struct.quux addrspace(3)* addrspace(3)* [[TMP2]], align 8
+; CHECK-OPAQUE-NEXT: [[TMP3:%.*]] = load ptr addrspace(3), ptr addrspace(3) [[TMP2]], align 8
+; CHECK-TYPED-NEXT: [[GEP:%.*]] = getelementptr %struct.quux, %struct.quux addrspace(3)* [[TMP3]], i64 0, i32 0
+; CHECK-TYPED-NEXT: store %struct.quux addrspace(3)* [[TMP3]], %struct.quux addrspace(3)* addrspace(3)* [[GEP]], align 8
+; COM: with opaque pointers the zero-index GEP is folded away, the store uses [[TMP3]] directly
+; CHECK-OPAQUE-NEXT: store ptr addrspace(3) [[TMP3]], ptr addrspace(3) [[TMP3]], align 8
 ; CHECK-NEXT: ret void
 bb:
   %tmp = load %struct.quux addrspace(3)*, %struct.quux addrspace(3)* addrspace(3)* getelementptr inbounds ([2 x %struct.quux], [2 x %struct.quux] addrspace(3)* @global, i64 0, i64 0, i32 0), align 8

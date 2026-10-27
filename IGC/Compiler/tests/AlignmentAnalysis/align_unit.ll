@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: opaque-ptr-fix
 ; RUN: igc_opt --opaque-pointers -igc-fix-alignment -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
@@ -24,7 +23,7 @@ entry:
 }
 
 ; CHECK-LABEL: @param
-define void @param(i8* %byteptr, <4 x i8>* %dwordptr) #0 {
+define void @param(i8* %byteptr, <4 x i8>* align 4 %dwordptr) #0 {
 ; CHECK: load
 ; CHECK: align 1
   %val1 = load i8, i8* %byteptr
@@ -145,7 +144,7 @@ entry:
 }
 
 ; CHECK-LABEL: @muladd
-define void @muladd(i32* %src, i32 %offset)
+define void @muladd(i32* align 4 %src, i32 %offset)
 {
   %int = ptrtoint i32* %src to i32
   %mul = mul i32 %offset, 16
@@ -204,7 +203,7 @@ entry:
 }
 
 ; CHECK-LABEL: @select
-define void @select(<4 x i8>* %char4ptr, <16 x i8>* %char16ptr, i1 %flag) #0 {
+define void @select(<4 x i8>* align 4 %char4ptr, <16 x i8>* align 16 %char16ptr, i1 %flag) #0 {
   %cast = bitcast <4 x i8>* %char4ptr to <16 x i8>*
   %ptr = select i1 %flag, <16 x i8>* %char16ptr, <16 x i8>* %cast
 ; CHECK: load
@@ -214,7 +213,7 @@ define void @select(<4 x i8>* %char4ptr, <16 x i8>* %char16ptr, i1 %flag) #0 {
 }
 
 ; CHECK-LABEL: @loadval
-define void @loadval(<4 x i8>* %src, i32* %offset) #0 {
+define void @loadval(<4 x i8>* align 4 %src, i32* align 4 %offset) #0 {
 ; CHECK: load
 ; CHECK: align 4
   %off = load i32, i32* %offset
@@ -228,7 +227,7 @@ define void @loadval(<4 x i8>* %src, i32* %offset) #0 {
 }
 
 ; CHECK-LABEL: @simplephi
-define void @simplephi(<16 x i8>* %src, i1 %flag) #0 {
+define void @simplephi(<16 x i8>* align 16 %src, i1 %flag) #0 {
   %int = ptrtoint <16 x i8>* %src to i32
   br i1 %flag, label %true, label %false
 
@@ -257,7 +256,7 @@ end:
 }
 
 ; CHECK-LABEL: @loop
-define void @loop(<4 x i8>* %src, i1 %flag) #0 {
+define void @loop(<4 x i8>* align 4 %src, i1 %flag) #0 {
 entry:
   br label %body
 
@@ -282,7 +281,7 @@ end:
 }
 
 ; CHECK-LABEL: @gep1
-define void @gep1(<4 x i8>* %src, i32 %offset) {
+define void @gep1(<4 x i8>* align 4 %src, i32 %offset) {
   %ptr = getelementptr <4 x i8>, <4 x i8>* %src, i32 %offset
 ; CHECK: load
 ; CHECK: align 4
@@ -291,7 +290,7 @@ define void @gep1(<4 x i8>* %src, i32 %offset) {
 }
 
 ; CHECK-LABEL: @gep2
-define void @gep2(<4 x i8>* %src, i32 %offset) {
+define void @gep2(<4 x i8>* align 4 %src, i32 %offset) {
   %bytesrc = bitcast <4 x i8>* %src to i8*
   %ptr = getelementptr i8, i8* %bytesrc, i32 %offset
 ; CHECK: load
@@ -301,7 +300,7 @@ define void @gep2(<4 x i8>* %src, i32 %offset) {
 }
 
 ; CHECK-LABEL: @gep3
-define void @gep3(<4 x i8>* %src) {
+define void @gep3(<4 x i8>* align 4 %src) {
   %bytesrc = bitcast <4 x i8>* %src to i8*
   %ptr = getelementptr i8, i8* %bytesrc, i32 4
 ; CHECK: load

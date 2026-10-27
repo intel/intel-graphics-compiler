@@ -6,9 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-buffer-bounds-checking -igc-add-implicit-args -igc-buffer-bounds-checking-patcher -S %s -o %t.ll
-; RUN: FileCheck %s --input-file=%t.ll
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-buffer-bounds-checking -igc-add-implicit-args -igc-buffer-bounds-checking-patcher -S %s -o %t.opaque.ll %}
+; RUN: %if llvm-16-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE --input-file=%t.opaque.ll %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-buffer-bounds-checking -igc-add-implicit-args -igc-buffer-bounds-checking-patcher -S %s -o %t.typed.ll %}
+; RUN: %if !llvm-17-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-TYPED --input-file=%t.typed.ll %}
 
 define spir_kernel void @kernel(i32 addrspace(1)* %input) nounwind {
   %1 = getelementptr inbounds i32, i32 addrspace(1)* %input, i64 2
@@ -22,8 +23,10 @@ define spir_kernel void @kernel(i32 addrspace(1)* %input) nounwind {
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
 
-; CHECK:          [[BASE_ADDRESS:%[0-9]+]] = ptrtoint i32 addrspace(1)* %input to i64
-; CHECK-NEXT:     [[ADDRESS:%[0-9]+]] = ptrtoint i32 addrspace(1)* %1 to i64
+; CHECK-TYPED:          [[BASE_ADDRESS:%[0-9]+]] = ptrtoint i32 addrspace(1)* %input to i64
+; CHECK-OPAQUE:          [[BASE_ADDRESS:%[0-9]+]] = ptrtoint ptr addrspace(1) %input to i64
+; CHECK-TYPED-NEXT:     [[ADDRESS:%[0-9]+]] = ptrtoint i32 addrspace(1)* %1 to i64
+; CHECK-OPAQUE-NEXT:     [[ADDRESS:%[0-9]+]] = ptrtoint ptr addrspace(1) %1 to i64
 ; CHECK-NEXT:     [[OFFSET:%[0-9]+]] = sub i64 [[ADDRESS]], [[BASE_ADDRESS]]
 ; CHECK-NEXT:     [[BUFFER_SIZE_EQ_ZERO:%[0-9]+]] = icmp eq i64 %bufferSize, 0
 ; CHECK-NEXT:     [[LOWER_BOUND_CHECK:%[0-9]+]] = icmp sge i64 [[OFFSET]], 0
@@ -34,11 +37,13 @@ define spir_kernel void @kernel(i32 addrspace(1)* %input) nounwind {
 ; CHECK-NEXT:     br i1 [[CONDITION]], label %bufferboundschecking.valid, label %bufferboundschecking.invalid
 
 ; CHECK:        bufferboundschecking.valid:
-; CHECK-NEXT:     store i32 [[VALUE:[0-9]+]], i32 addrspace(1)* {{%[0-9]+}}
+; CHECK-TYPED-NEXT:     store i32 [[VALUE:[0-9]+]], i32 addrspace(1)* {{%[0-9]+}}
+; CHECK-OPAQUE-NEXT:     store i32 [[VALUE:[0-9]+]], ptr addrspace(1) {{%[0-9]+}}
 ; CHECK-NEXT:     br label %bufferboundschecking.end
 
 ; CHECK:        bufferboundschecking.invalid:
 ; CHECK:          call spir_func void @__bufferoutofbounds_assert
-; CHECK:          store i32 [[VALUE]], i32 addrspace(1)* null
+; CHECK-TYPED:          store i32 [[VALUE]], i32 addrspace(1)* null
+; CHECK-OPAQUE:          store i32 [[VALUE]], ptr addrspace(1) null
 
 ; CHECK:        declare void @__bufferoutofbounds

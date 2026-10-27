@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: opaque-ptr-fix
 ; RUN: igc_opt --opaque-pointers --igc-gep-loop-strength-reduction -S < %s 2>&1 | FileCheck %s
 ;
 ; SCEV expression is:
@@ -28,18 +27,18 @@ entry:
 ; CHECK:         %2 = add i32 %b, %1
 ; CHECK:         %3 = zext i32 %2 to i64
 ; CHECK:         %4 = add i64 %0, %3
-; CHECK:         %5 = getelementptr i32, i32 addrspace(1)* %p, i64 %4
+; CHECK:         %5 = getelementptr i32, ptr addrspace(1) %p, i64 %4
 ; CHECK:         br label %for.body
 for.body.lr.ph:                                   ; preds = %entry
   br label %for.body
 
 ; CHECK-LABEL: for.body:
-; CHECK:         %6 = phi i32 addrspace(1)* [ %5, %for.body.lr.ph ], [ %7, %for.body ]
+; CHECK:         %6 = phi ptr addrspace(1) [ %5, %for.body.lr.ph ], [ %7, %for.body ]
 ; CHECK:         %i.02 = phi i32 [ 0, %for.body.lr.ph ], [ %inc, %for.body ]
-; CHECK:         store i32 %i.02, i32 addrspace(1)* %6, align 4
+; CHECK:         store i32 %i.02, ptr addrspace(1) %6, align 4
 ; CHECK:         %inc = add nuw nsw i32 %i.02, 1
 ; CHECK:         %cmp = icmp slt i32 %inc, %n
-; CHECK:         %7 = getelementptr i32, i32 addrspace(1)* %6, i64 1
+; CHECK:         %7 = getelementptr i32, ptr addrspace(1) %6, i64 1
 ; CHECK:         br i1 %cmp, label %for.body, label %for.cond.for.end_crit_edge
 for.body:                                         ; preds = %for.body.lr.ph, %for.body
   %i.02 = phi i32 [ 0, %for.body.lr.ph ], [ %inc, %for.body ]

@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -debugify --igc-fp-rounding-mode-coalescing -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -debugify --igc-fp-rounding-mode-coalescing -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -debugify --igc-fp-rounding-mode-coalescing -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; Debug-info related check
 ; CHECK: CheckModuleDebugify: PASS
@@ -20,7 +20,8 @@
 define spir_kernel void @no_dependence_on_rm(double %src1, double %src2, double %src3, double addrspace(1)* %dst, i32 addrspace(1)* %other) {
 entry:
 ; CHECK-LABEL: entry:
-; CHECK:         %tmp1 = load i32, i32 addrspace(1)* %other
+; CHECK-TYPED:         %tmp1 = load i32, i32 addrspace(1)* %other
+; CHECK-OPAQUE:         %tmp1 = load i32, ptr addrspace(1) %other
 ; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %src3)
 ; CHECK:         %tmp2 = add i32 %tmp1, 1
 ; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src3, double %src2, double %src1)
@@ -28,8 +29,10 @@ entry:
 ; CHECK:         %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src3, double %src2)
 ; CHECK:         %result1 = fadd double %fma.rtz.1.result, %fma.rtz.2.result
 ; CHECK:         %result2 = fadd double %result1, %fma.rtz.3.result
-; CHECK:         store double %result2, double addrspace(1)* %dst
-; CHECK:         store i32 %tmp3, i32 addrspace(1)* %other
+; CHECK-TYPED:         store double %result2, double addrspace(1)* %dst
+; CHECK-OPAQUE:         store double %result2, ptr addrspace(1) %dst
+; CHECK-TYPED:         store i32 %tmp3, i32 addrspace(1)* %other
+; CHECK-OPAQUE:         store i32 %tmp3, ptr addrspace(1) %other
 ; CHECK:         ret void
   %tmp1 = load i32, i32 addrspace(1)* %other
   %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %src3)
@@ -52,7 +55,8 @@ entry:
 define spir_kernel void @no_uses_for_fma_rtz(double %src1, double %src2, double %src3, double addrspace(1)* %dst, i32 addrspace(1)* %other) {
 entry:
 ; CHECK-LABEL: entry:
-; CHECK:         %tmp.i32.1 = load i32, i32 addrspace(1)* %other
+; CHECK-TYPED:         %tmp.i32.1 = load i32, i32 addrspace(1)* %other
+; CHECK-OPAQUE:         %tmp.i32.1 = load i32, ptr addrspace(1) %other
 ; CHECK:         %tmp.double.1 = fadd double %src1, %src2
 ; CHECK:         %tmp.double.2 = fadd double %tmp.double.1, %src3
 ; CHECK:         %tmp.i32.2 = add i32 %tmp.i32.1, 1
@@ -65,8 +69,10 @@ entry:
 ; CHECK:         %result1 = fadd double %fma.rtz.1.result, %fma.rtz.2.result
 ; CHECK:         %result2 = fadd double %result1, %fma.rtz.3.result
 ; CHECK:         %result3 = fadd double %result2, %tmp.double.4
-; CHECK:         store double %result3, double addrspace(1)* %dst
-; CHECK:         store i32 %tmp.i32.3, i32 addrspace(1)* %other
+; CHECK-TYPED:         store double %result3, double addrspace(1)* %dst
+; CHECK-OPAQUE:         store double %result3, ptr addrspace(1) %dst
+; CHECK-TYPED:         store i32 %tmp.i32.3, i32 addrspace(1)* %other
+; CHECK-OPAQUE:         store i32 %tmp.i32.3, ptr addrspace(1) %other
 ; CHECK:         ret void
   %tmp.i32.1 = load i32, i32 addrspace(1)* %other
   %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %src3)
@@ -113,7 +119,8 @@ entry:
 ; COM: Finally the unmodified rest.
 ; CHECK:         %result1 = fadd double %fma.rtz.1.result, %fma.rtz.2.result
 ; CHECK:         %result2 = fadd double %result1, %fma.rtz.3.result
-; CHECK:         store double %result2, double addrspace(1)* %dst
+; CHECK-TYPED:         store double %result2, double addrspace(1)* %dst
+; CHECK-OPAQUE:         store double %result2, ptr addrspace(1) %dst
 ; CHECK:         ret void
 
   %fma.rtz.1.arg = fsub double %src1, %src3
@@ -166,7 +173,8 @@ entry:
 ; COM: Finally the unmodified rest.
 ; CHECK:         %result1 = fadd double %fma.rtz.1.result, %fma.rtz.2.result
 ; CHECK:         %result2 = fadd double %result1, %fma.rtz.3.result
-; CHECK:         store double %result2, double addrspace(1)* %dst
+; CHECK-TYPED:         store double %result2, double addrspace(1)* %dst
+; CHECK-OPAQUE:         store double %result2, ptr addrspace(1) %dst
 ; CHECK:         ret void
 
   %fma.rtz.1.arg = fsub double %src1, %src3
@@ -524,7 +532,8 @@ entry:
 ; CHECK:         br i1 %tmp14, label %l1, label %l2
 ; CHECK:       l2:                                               ; preds = %l1
 ; CHECK:         %result = fadd double %fma.rtz.1.result, %fma.rtz.2.result
-; CHECK:         store double %result, double addrspace(1)* %dst
+; CHECK-TYPED:         store double %result, double addrspace(1)* %dst
+; CHECK-OPAQUE:         store double %result, ptr addrspace(1) %dst
 ; CHECK:         ret void
   br label %l1
 
@@ -559,7 +568,8 @@ entry:
 ; CHECK:         %fma.rtz.1.arg = fsub double %src1, %src3
 ; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
 ; CHECK:         %tmp.rtz.1 = fadd double %src1, %fma.rtz.1.result
-; CHECK:         store double %tmp.rtz.1, double addrspace(1)* %dst
+; CHECK-TYPED:         store double %tmp.rtz.1, double addrspace(1)* %dst
+; CHECK-OPAQUE:         store double %tmp.rtz.1, ptr addrspace(1) %dst
 ; CHECK:         %fma.rtz.2.arg = fsub double %src1, %src3
 ; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
 ; CHECK:         ret void

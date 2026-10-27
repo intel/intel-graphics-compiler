@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify --igc-conv-ocl-to-common -S 2>&1 < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify --igc-conv-ocl-to-common -S 2>&1 < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify --igc-conv-ocl-to-common -S 2>&1 < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; BuiltinsConverter
 ; ------------------------------------------------
@@ -26,11 +26,14 @@ define spir_kernel void @test_read_imagef(<4 x float> addrspace(1)* %dst, %openc
 ; CHECK-LABEL: @test_read_imagef(
 ; CHECK:  entry:
 ; CHECK:    [[COORD_ADDR:%.*]] = alloca <2 x i32>, align 8
-; CHECK:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
+; CHECK-TYPED:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP1:%.*]] = load <2 x i32>, ptr [[COORD_ADDR]], align 8
 ; CHECK:    [[COORDX:%.*]] = extractelement <2 x i32> [[TMP1]], i32 0
 ; CHECK:    [[COORDY:%.*]] = extractelement <2 x i32> [[TMP1]], i32 1
-; CHECK:    [[CALL21_I1:%.*]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-; CHECK:    [[CALL21_I2:%.*]] = call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196608f32.p196608f32(i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float addrspace(196608)* undef, float addrspace(196608)* [[CALL21_I1]], i32 0, i32 0, i32 0)
+; CHECK-TYPED:    [[CALL21_I1:%.*]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+; CHECK-OPAQUE:    [[CALL21_I1:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
+; CHECK-TYPED:    [[CALL21_I2:%.*]] = call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196608f32.p196608f32(i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float addrspace(196608)* undef, float addrspace(196608)* [[CALL21_I1]], i32 0, i32 0, i32 0)
+; CHECK-OPAQUE:    [[CALL21_I2:%.*]] = call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196608.p196608(i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, ptr addrspace(196608) undef, ptr addrspace(196608) [[CALL21_I1]], i32 0, i32 0, i32 0)
 ; CHECK:    [[ASTYPE_I54_I:%.*]] = bitcast <4 x float> [[CALL21_I2]] to <4 x i32>
 ;
 entry:
@@ -62,16 +65,23 @@ entry:
 define spir_kernel void @test_read_imagei(<4 x i32> addrspace(1)* %dst, %opencl.image2d_t.read_only addrspace(1)* %img, <2 x i32> %coord, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i32 %bufferOffset) #0 {
 ; CHECK-LABEL: @test_read_imagei(
 ; CHECK:  entry:
-; CHECK:    [[DST_ADDR:%.*]] = alloca <4 x i32> addrspace(1)*, align 8
+; CHECK-TYPED:    [[DST_ADDR:%.*]] = alloca <4 x i32> addrspace(1)*, align 8
+; CHECK-OPAQUE:    [[DST_ADDR:%.*]] = alloca ptr addrspace(1), align 8
 ; CHECK:    [[COORD_ADDR:%.*]] = alloca <2 x i32>, align 8
-; CHECK:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
+; CHECK-TYPED:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP1:%.*]] = load <2 x i32>, ptr [[COORD_ADDR]], align 8
 ; CHECK:    [[COORDX:%.*]] = extractelement <2 x i32> [[TMP1]], i32 0
 ; CHECK:    [[COORDY:%.*]] = extractelement <2 x i32> [[TMP1]], i32 1
-; CHECK:    [[CALL15_I1:%.*]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-; CHECK:    [[CALL15_I2:%.*]] = call <4 x i32> @llvm.genx.GenISA.ldptr.v4i32.p196608f32.p196608f32(i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float addrspace(196608)* undef, float addrspace(196608)* [[CALL15_I1]], i32 0, i32 0, i32 0)
-; CHECK:    [[TMP3:%.*]] = load <4 x i32> addrspace(1)*, <4 x i32> addrspace(1)** [[DST_ADDR]], align 8
-; CHECK:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* [[TMP3]], i64 0
-; CHECK:    store <4 x i32> [[CALL15_I2]], <4 x i32> addrspace(1)* [[ARRAYIDX]], align 16
+; CHECK-TYPED:    [[CALL15_I1:%.*]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+; CHECK-OPAQUE:    [[CALL15_I1:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
+; CHECK-TYPED:    [[CALL15_I2:%.*]] = call <4 x i32> @llvm.genx.GenISA.ldptr.v4i32.p196608f32.p196608f32(i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float addrspace(196608)* undef, float addrspace(196608)* [[CALL15_I1]], i32 0, i32 0, i32 0)
+; CHECK-OPAQUE:    [[CALL15_I2:%.*]] = call <4 x i32> @llvm.genx.GenISA.ldptr.v4i32.p196608.p196608(i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, ptr addrspace(196608) undef, ptr addrspace(196608) [[CALL15_I1]], i32 0, i32 0, i32 0)
+; CHECK-TYPED:    [[TMP3:%.*]] = load <4 x i32> addrspace(1)*, <4 x i32> addrspace(1)** [[DST_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP3:%.*]] = load ptr addrspace(1), ptr [[DST_ADDR]], align 8
+; CHECK-TYPED:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* [[TMP3]], i64 0
+; CHECK-OPAQUE:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x i32>, ptr addrspace(1) [[TMP3]], i64 0
+; CHECK-TYPED:    store <4 x i32> [[CALL15_I2]], <4 x i32> addrspace(1)* [[ARRAYIDX]], align 16
+; CHECK-OPAQUE:    store <4 x i32> [[CALL15_I2]], ptr addrspace(1) [[ARRAYIDX]], align 16
 ;
 entry:
   %dst.addr = alloca <4 x i32> addrspace(1)*, align 8
@@ -96,16 +106,23 @@ entry:
 define spir_kernel void @test_read_imageui(<4 x i32> addrspace(1)* %dst, %opencl.image2d_t.read_only addrspace(1)* %img, <2 x i32> %coord, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i32 %bufferOffset) #0 {
 ; CHECK-LABEL: @test_read_imageui(
 ; CHECK:  entry:
-; CHECK:    [[DST_ADDR:%.*]] = alloca <4 x i32> addrspace(1)*, align 8
+; CHECK-TYPED:    [[DST_ADDR:%.*]] = alloca <4 x i32> addrspace(1)*, align 8
+; CHECK-OPAQUE:    [[DST_ADDR:%.*]] = alloca ptr addrspace(1), align 8
 ; CHECK:    [[COORD_ADDR:%.*]] = alloca <2 x i32>, align 8
-; CHECK:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
+; CHECK-TYPED:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP1:%.*]] = load <2 x i32>, ptr [[COORD_ADDR]], align 8
 ; CHECK:    [[COORDX:%.*]] = extractelement <2 x i32> [[TMP1]], i32 0
 ; CHECK:    [[COORDY:%.*]] = extractelement <2 x i32> [[TMP1]], i32 1
-; CHECK:    [[CALL15_I1:%.*]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-; CHECK:    [[CALL15_I2:%.*]] = call <4 x i32> @llvm.genx.GenISA.ldptr.v4i32.p196608f32.p196608f32(i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float addrspace(196608)* undef, float addrspace(196608)* [[CALL15_I1]], i32 0, i32 0, i32 0)
-; CHECK:    [[TMP3:%.*]] = load <4 x i32> addrspace(1)*, <4 x i32> addrspace(1)** [[DST_ADDR]], align 8
-; CHECK:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* [[TMP3]], i64 0
-; CHECK:    store <4 x i32> [[CALL15_I2]], <4 x i32> addrspace(1)* [[ARRAYIDX]], align 16
+; CHECK-TYPED:    [[CALL15_I1:%.*]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+; CHECK-OPAQUE:    [[CALL15_I1:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
+; CHECK-TYPED:    [[CALL15_I2:%.*]] = call <4 x i32> @llvm.genx.GenISA.ldptr.v4i32.p196608f32.p196608f32(i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float addrspace(196608)* undef, float addrspace(196608)* [[CALL15_I1]], i32 0, i32 0, i32 0)
+; CHECK-OPAQUE:    [[CALL15_I2:%.*]] = call <4 x i32> @llvm.genx.GenISA.ldptr.v4i32.p196608.p196608(i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, ptr addrspace(196608) undef, ptr addrspace(196608) [[CALL15_I1]], i32 0, i32 0, i32 0)
+; CHECK-TYPED:    [[TMP3:%.*]] = load <4 x i32> addrspace(1)*, <4 x i32> addrspace(1)** [[DST_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP3:%.*]] = load ptr addrspace(1), ptr [[DST_ADDR]], align 8
+; CHECK-TYPED:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* [[TMP3]], i64 0
+; CHECK-OPAQUE:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x i32>, ptr addrspace(1) [[TMP3]], i64 0
+; CHECK-TYPED:    store <4 x i32> [[CALL15_I2]], <4 x i32> addrspace(1)* [[ARRAYIDX]], align 16
+; CHECK-OPAQUE:    store <4 x i32> [[CALL15_I2]], ptr addrspace(1) [[ARRAYIDX]], align 16
 ; CHECK:    ret void
 ;
 entry:
@@ -131,14 +148,20 @@ entry:
 define spir_kernel void @test_write_imagef(<4 x float> addrspace(1)* %src, %opencl.image2d_t.write_only addrspace(1)* %img, <2 x i32> %coord, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i32 %bufferOffset) #0 {
 ; CHECK-LABEL: @test_write_imagef(
 ; CHECK-NEXT:  entry:
-; CHECK:    [[SRC_ADDR:%.*]] = alloca <4 x float> addrspace(1)*, align 8
+; CHECK-TYPED:    [[SRC_ADDR:%.*]] = alloca <4 x float> addrspace(1)*, align 8
+; CHECK-OPAQUE:    [[SRC_ADDR:%.*]] = alloca ptr addrspace(1), align 8
 ; CHECK:    [[COORD_ADDR:%.*]] = alloca <2 x i32>, align 8
-; CHECK:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
-; CHECK:    [[TMP2:%.*]] = load <4 x float> addrspace(1)*, <4 x float> addrspace(1)** [[SRC_ADDR]], align 8
-; CHECK:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* [[TMP2]], i64 0
-; CHECK:    [[TMP3:%.*]] = load <4 x float>, <4 x float> addrspace(1)* [[ARRAYIDX]], align 16
+; CHECK-TYPED:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP1:%.*]] = load <2 x i32>, ptr [[COORD_ADDR]], align 8
+; CHECK-TYPED:    [[TMP2:%.*]] = load <4 x float> addrspace(1)*, <4 x float> addrspace(1)** [[SRC_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP2:%.*]] = load ptr addrspace(1), ptr [[SRC_ADDR]], align 8
+; CHECK-TYPED:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* [[TMP2]], i64 0
+; CHECK-OPAQUE:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x float>, ptr addrspace(1) [[TMP2]], i64 0
+; CHECK-TYPED:    [[TMP3:%.*]] = load <4 x float>, <4 x float> addrspace(1)* [[ARRAYIDX]], align 16
+; CHECK-OPAQUE:    [[TMP3:%.*]] = load <4 x float>, ptr addrspace(1) [[ARRAYIDX]], align 16
 ; CHECK:    [[ASTYPE_I:%.*]] = bitcast <4 x float> [[TMP3]] to <4 x i32>
-; CHECK:    [[TMP5:%.*]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+; CHECK-TYPED:    [[TMP5:%.*]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+; CHECK-OPAQUE:    [[TMP5:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
 ; CHECK:    [[COORDX:%.*]] = extractelement <2 x i32> [[TMP1]], i32 0
 ; CHECK:    [[COORDY:%.*]] = extractelement <2 x i32> [[TMP1]], i32 1
 ; CHECK:    [[FLOATCOLOR:%.*]] = bitcast <4 x i32> [[ASTYPE_I]] to <4 x float>
@@ -146,7 +169,8 @@ define spir_kernel void @test_write_imagef(<4 x float> addrspace(1)* %src, %open
 ; CHECK:    [[COLORY:%.*]] = extractelement <4 x float> [[FLOATCOLOR]], i32 1
 ; CHECK:    [[COLORZ:%.*]] = extractelement <4 x float> [[FLOATCOLOR]], i32 2
 ; CHECK:    [[COLORW:%.*]] = extractelement <4 x float> [[FLOATCOLOR]], i32 3
-; CHECK:    call void @llvm.genx.GenISA.typedwrite.p196608f32(float addrspace(196608)* [[TMP5]], i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float [[COLORX]], float [[COLORY]], float [[COLORZ]], float [[COLORW]])
+; CHECK-TYPED:    call void @llvm.genx.GenISA.typedwrite.p196608f32(float addrspace(196608)* [[TMP5]], i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float [[COLORX]], float [[COLORY]], float [[COLORZ]], float [[COLORW]])
+; CHECK-OPAQUE:    call void @llvm.genx.GenISA.typedwrite.p196608(ptr addrspace(196608) [[TMP5]], i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float [[COLORX]], float [[COLORY]], float [[COLORZ]], float [[COLORW]])
 ; CHECK:    ret void
 ;
 entry:
@@ -173,13 +197,19 @@ entry:
 define spir_kernel void @test_write_imagei(<4 x i32> addrspace(1)* %src, %opencl.image2d_t.write_only addrspace(1)* %img, <2 x i32> %coord, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i32 %bufferOffset) #0 {
 ; CHECK-LABEL: @test_write_imagei(
 ; CHECK:  entry:
-; CHECK:    [[SRC_ADDR:%.*]] = alloca <4 x i32> addrspace(1)*, align 8
+; CHECK-TYPED:    [[SRC_ADDR:%.*]] = alloca <4 x i32> addrspace(1)*, align 8
+; CHECK-OPAQUE:    [[SRC_ADDR:%.*]] = alloca ptr addrspace(1), align 8
 ; CHECK:    [[COORD_ADDR:%.*]] = alloca <2 x i32>, align 8
-; CHECK:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
-; CHECK:    [[TMP2:%.*]] = load <4 x i32> addrspace(1)*, <4 x i32> addrspace(1)** [[SRC_ADDR]], align 8
-; CHECK:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* [[TMP2]], i64 0
-; CHECK:    [[TMP3:%.*]] = load <4 x i32>, <4 x i32> addrspace(1)* [[ARRAYIDX]], align 16
-; CHECK:    [[TMP5:%.*]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+; CHECK-TYPED:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP1:%.*]] = load <2 x i32>, ptr [[COORD_ADDR]], align 8
+; CHECK-TYPED:    [[TMP2:%.*]] = load <4 x i32> addrspace(1)*, <4 x i32> addrspace(1)** [[SRC_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP2:%.*]] = load ptr addrspace(1), ptr [[SRC_ADDR]], align 8
+; CHECK-TYPED:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* [[TMP2]], i64 0
+; CHECK-OPAQUE:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x i32>, ptr addrspace(1) [[TMP2]], i64 0
+; CHECK-TYPED:    [[TMP3:%.*]] = load <4 x i32>, <4 x i32> addrspace(1)* [[ARRAYIDX]], align 16
+; CHECK-OPAQUE:    [[TMP3:%.*]] = load <4 x i32>, ptr addrspace(1) [[ARRAYIDX]], align 16
+; CHECK-TYPED:    [[TMP5:%.*]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+; CHECK-OPAQUE:    [[TMP5:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
 ; CHECK:    [[COORDX:%.*]] = extractelement <2 x i32> [[TMP1]], i32 0
 ; CHECK:    [[COORDY:%.*]] = extractelement <2 x i32> [[TMP1]], i32 1
 ; CHECK:    [[FLOATCOLOR:%.*]] = bitcast <4 x i32> [[TMP3]] to <4 x float>
@@ -187,7 +217,8 @@ define spir_kernel void @test_write_imagei(<4 x i32> addrspace(1)* %src, %opencl
 ; CHECK:    [[COLORY:%.*]] = extractelement <4 x float> [[FLOATCOLOR]], i32 1
 ; CHECK:    [[COLORZ:%.*]] = extractelement <4 x float> [[FLOATCOLOR]], i32 2
 ; CHECK:    [[COLORW:%.*]] = extractelement <4 x float> [[FLOATCOLOR]], i32 3
-; CHECK:    call void @llvm.genx.GenISA.typedwrite.p196608f32(float addrspace(196608)* [[TMP5]], i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float [[COLORX]], float [[COLORY]], float [[COLORZ]], float [[COLORW]])
+; CHECK-TYPED:    call void @llvm.genx.GenISA.typedwrite.p196608f32(float addrspace(196608)* [[TMP5]], i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float [[COLORX]], float [[COLORY]], float [[COLORZ]], float [[COLORW]])
+; CHECK-OPAQUE:    call void @llvm.genx.GenISA.typedwrite.p196608(ptr addrspace(196608) [[TMP5]], i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float [[COLORX]], float [[COLORY]], float [[COLORZ]], float [[COLORW]])
 ; CHECK:    ret void
 ;
 entry:
@@ -213,14 +244,20 @@ entry:
 define spir_kernel void @test_write_imageui(<4 x i32> addrspace(1)* %src, %opencl.image2d_t.write_only addrspace(1)* %img, <2 x i32> %coord, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i32 %bufferOffset) #0 {
 ; CHECK-LABEL: @test_write_imageui(
 ; CHECK:  entry:
-; CHECK:    [[SRC_ADDR:%.*]] = alloca <4 x i32> addrspace(1)*, align 8
+; CHECK-TYPED:    [[SRC_ADDR:%.*]] = alloca <4 x i32> addrspace(1)*, align 8
+; CHECK-OPAQUE:    [[SRC_ADDR:%.*]] = alloca ptr addrspace(1), align 8
 ; CHECK:    [[COORD_ADDR:%.*]] = alloca <2 x i32>, align 8
-; CHECK:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
-; CHECK:    [[TMP2:%.*]] = load <4 x i32> addrspace(1)*, <4 x i32> addrspace(1)** [[SRC_ADDR]], align 8
-; CHECK:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* [[TMP2]], i64 0
-; CHECK:    [[TMP3:%.*]] = load <4 x i32>, <4 x i32> addrspace(1)* [[ARRAYIDX]], align 16
+; CHECK-TYPED:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP1:%.*]] = load <2 x i32>, ptr [[COORD_ADDR]], align 8
+; CHECK-TYPED:    [[TMP2:%.*]] = load <4 x i32> addrspace(1)*, <4 x i32> addrspace(1)** [[SRC_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP2:%.*]] = load ptr addrspace(1), ptr [[SRC_ADDR]], align 8
+; CHECK-TYPED:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* [[TMP2]], i64 0
+; CHECK-OPAQUE:    [[ARRAYIDX:%.*]] = getelementptr inbounds <4 x i32>, ptr addrspace(1) [[TMP2]], i64 0
+; CHECK-TYPED:    [[TMP3:%.*]] = load <4 x i32>, <4 x i32> addrspace(1)* [[ARRAYIDX]], align 16
+; CHECK-OPAQUE:    [[TMP3:%.*]] = load <4 x i32>, ptr addrspace(1) [[ARRAYIDX]], align 16
 ; CHECK:    [[TMP4:%.*]] = shufflevector <2 x i32> [[TMP1]], <2 x i32> undef, <4 x i32> <i32 0, i32 1, i32 0, i32 0>
-; CHECK:    [[TMP5:%.*]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+; CHECK-TYPED:    [[TMP5:%.*]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+; CHECK-OPAQUE:    [[TMP5:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
 ; CHECK:    [[COORDX:%.*]] = extractelement <2 x i32> [[TMP1]], i32 0
 ; CHECK:    [[COORDY:%.*]] = extractelement <2 x i32> [[TMP1]], i32 1
 ; CHECK:    [[FLOATCOLOR:%.*]] = bitcast <4 x i32> [[TMP3]] to <4 x float>
@@ -228,7 +265,8 @@ define spir_kernel void @test_write_imageui(<4 x i32> addrspace(1)* %src, %openc
 ; CHECK:    [[COLORY:%.*]] = extractelement <4 x float> [[FLOATCOLOR]], i32 1
 ; CHECK:    [[COLORZ:%.*]] = extractelement <4 x float> [[FLOATCOLOR]], i32 2
 ; CHECK:    [[COLORW:%.*]] = extractelement <4 x float> [[FLOATCOLOR]], i32 3
-; CHECK:    call void @llvm.genx.GenISA.typedwrite.p196608f32(float addrspace(196608)* [[TMP5]], i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float [[COLORX]], float [[COLORY]], float [[COLORZ]], float [[COLORW]])
+; CHECK-TYPED:    call void @llvm.genx.GenISA.typedwrite.p196608f32(float addrspace(196608)* [[TMP5]], i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float [[COLORX]], float [[COLORY]], float [[COLORZ]], float [[COLORW]])
+; CHECK-OPAQUE:    call void @llvm.genx.GenISA.typedwrite.p196608(ptr addrspace(196608) [[TMP5]], i32 [[COORDX]], i32 [[COORDY]], i32 0, i32 0, float [[COLORX]], float [[COLORY]], float [[COLORZ]], float [[COLORW]])
 ; CHECK:    ret void
 ;
 entry:
