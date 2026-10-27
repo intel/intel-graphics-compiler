@@ -50,6 +50,7 @@ static void SetDebugLocBy(Instruction *I, const Instruction *setBy) {
 IGC_INITIALIZE_PASS_BEGIN(ScalarizeFunctionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_END(ScalarizeFunctionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ScalarizeFunctionLPM::ID = 0;
@@ -61,7 +62,8 @@ ScalarizeFunctionLPM::ScalarizeFunctionLPM(IGC::SelectiveScalarizer selectiveMod
 
 bool ScalarizeFunctionLPM::runOnFunction(Function &F) {
   return m_impl.runOnFunction(F, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
-                              &getAnalysis<DominatorTreeWrapperPass>().getDomTree());
+                              &getAnalysis<DominatorTreeWrapperPass>().getDomTree(),
+                              &getAnalysis<LoopInfoWrapperPass>().getLoopInfo());
 }
 
 ScalarizeFunction::ScalarizeFunction(IGC::SelectiveScalarizer selectiveMode) {
@@ -101,9 +103,10 @@ bool ScalarizeFunction::doFinalization(llvm::Module &M) {
   return true;
 }
 
-bool ScalarizeFunction::runOnFunction(Function &F, CodeGenContext *Ctx, DominatorTree *DT) {
+bool ScalarizeFunction::runOnFunction(Function &F, CodeGenContext *Ctx, DominatorTree *DT, LoopInfo *LI) {
   m_pCtx = Ctx;
   m_DT = DT;
+  m_LI = LI;
   CodeGenContext *pCtx = Ctx;
   if (!IGC::ForceAlwaysInline(pCtx)) {
     if (F.isDeclaration())
@@ -126,6 +129,7 @@ bool ScalarizeFunction::runOnFunction(Function &F, CodeGenContext *Ctx, Dominato
   // Prepare data structures for scalarizing a new function
   m_usedVectors.clear();
   m_removedInsts.clear();
+  m_createdExtracts.clear();
   m_SCM.clear();
   releaseAllSCMEntries();
   m_DRL.clear();
@@ -174,6 +178,8 @@ bool ScalarizeFunction::runOnFunction(Function &F, CodeGenContext *Ctx, Dominato
     IGC_ASSERT_MESSAGE((*index)->use_empty(), "Unable to remove used instruction");
     (*index)->eraseFromParent();
   }
+
+  sinkCreatedExtracts();
 
   V_PRINT(scalarizer, "\nCompleted scalarizing function: " << m_currFunc->getName() << "\n");
   return true;
@@ -1150,8 +1156,10 @@ void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value *> &retValu
     // Generate extractElement instructions
     for (unsigned i = 0; i < width; ++i) {
       Value *constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
-      retValues[i + destIdx] = ExtractElementInst::Create(
-          origValue, constIndex, VALUE_NAME(origValue->getName() + ".scalar"), IGCLLVM::insertPosition(locationInst));
+      auto *EE = ExtractElementInst::Create(origValue, constIndex, VALUE_NAME(origValue->getName() + ".scalar"),
+                                            IGCLLVM::insertPosition(locationInst));
+      m_createdExtracts.push_back(EE);
+      retValues[i + destIdx] = EE;
     }
     SCMEntry *newEntry = getSCMEntry(origValue);
     updateSCMEntryWithValues(newEntry, &(retValues[destIdx]), origValue, false);
@@ -1159,6 +1167,37 @@ void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value *> &retValu
 }
 
 void ScalarizeFunction::obtainVectorValueWhichMightBeScalarized(Value *vectorVal) { m_usedVectors.insert(vectorVal); }
+
+void ScalarizeFunction::sinkCreatedExtracts() {
+  // Extracts are placed right after the vector definition. When all users are in a single other block (e.g. a loop
+  // exit), keep them out of the defining block so they don't inflate loop headers seen by LoopRotate.
+  for (ExtractElementInst *EE : llvm::reverse(m_createdExtracts)) {
+    if (m_removedInsts.count(EE) || EE->use_empty())
+      continue;
+    BasicBlock *DefBB = EE->getParent();
+    BasicBlock *UseBB = nullptr;
+    bool CanSink = true;
+    for (User *U : EE->users()) {
+      auto *UI = cast<Instruction>(U);
+      if (isa<PHINode>(UI) || UI->getParent() == DefBB || (UseBB && UI->getParent() != UseBB)) {
+        CanSink = false;
+        break;
+      }
+      UseBB = UI->getParent();
+    }
+    if (!CanSink)
+      continue;
+    // Don't sink into a loop that doesn't contain the definition.
+    Loop *UseLoop = m_LI->getLoopFor(UseBB);
+    if (UseLoop && !UseLoop->contains(DefBB))
+      continue;
+    BasicBlock::iterator InsertPt = UseBB->getFirstInsertionPt();
+    if (InsertPt == UseBB->end())
+      continue;
+    IGCLLVM::moveBefore(EE, &*InsertPt);
+  }
+  m_createdExtracts.clear();
+}
 
 void ScalarizeFunction::resolveVectorValues() {
   auto it = m_usedVectors.begin();
@@ -1354,6 +1393,7 @@ void ScalarizeFunction::resolveDeferredInstructions() {
         Instruction *EE =
             ExtractElementInst::Create(vectorInst, constIndex, VALUE_NAME(vectorInst->getName() + ".scalar"),
                                        IGCLLVM::insertPosition(&(*insertLocation)));
+        m_createdExtracts.push_back(cast<ExtractElementInst>(EE));
         newInsts[i] = EE;
       }
       updateSCMEntryWithValues(currentInstEntry, &(newInsts[0]), vectorInst, false);
@@ -1416,7 +1456,8 @@ llvm::PreservedAnalyses IGC::ScalarizeFunctionNPM::run(llvm::Module &M, llvm::Mo
     if (F.isDeclaration())
       continue;
     DominatorTree &DT = FAM.getResult<llvm::DominatorTreeAnalysis>(F);
-    changed |= impl.runOnFunction(F, ctx, &DT);
+    LoopInfo &LI = FAM.getResult<llvm::LoopAnalysis>(F);
+    changed |= impl.runOnFunction(F, ctx, &DT, &LI);
   }
   impl.doFinalization(M);
   return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();

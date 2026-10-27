@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/Dominators.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/ADT/DenseMap.h>
@@ -62,7 +63,7 @@ enum class SelectiveScalarizer {
 ///  to data received from RuntimeServices.
 
 // Shared implementation. Holds the logic and is used by both the legacy and the new-pass-manager
-// wrappers below; it is not itself an llvm::Pass. The CodeGenContext and DominatorTree are injected
+// wrappers below; it is not itself an llvm::Pass. The CodeGenContext, DominatorTree and LoopInfo are injected
 // by the caller (runOnFunction).
 class ScalarizeFunction : public llvm::InstVisitor<ScalarizeFunction> {
 public:
@@ -74,7 +75,7 @@ public:
   ScalarizeFunction &operator=(const ScalarizeFunction &) = delete;
 
   bool doFinalization(llvm::Module &M);
-  bool runOnFunction(llvm::Function &F, CodeGenContext *Ctx, llvm::DominatorTree *DT);
+  bool runOnFunction(llvm::Function &F, CodeGenContext *Ctx, llvm::DominatorTree *DT, llvm::LoopInfo *LI);
 
   /*! \name Scalarizarion Functions
    *  \{ */
@@ -146,11 +147,15 @@ private:
   /// @brief Resolve deferred insts (Values which were scalarized with dummies)
   void resolveDeferredInstructions();
 
+  /// @brief Move created extracts whose users all live in one other block into that block
+  void sinkCreatedExtracts();
+
   /*! \} */
 
-  /// @brief Injected analyses (CodeGenContext is module-level, DominatorTree is per-function).
+  /// @brief Injected analyses (CodeGenContext is module-level, DominatorTree and LoopInfo are per-function).
   CodeGenContext *m_pCtx = nullptr;
   llvm::DominatorTree *m_DT = nullptr;
+  llvm::LoopInfo *m_LI = nullptr;
 
   /// @brief Pointer to current function's context
   llvm::LLVMContext *m_moduleContext = nullptr;
@@ -161,6 +166,8 @@ private:
 
   /// @brief Set containing all the removed instructions in the function.
   llvm::SmallDenseSet<llvm::Instruction *, ESTIMATED_INST_NUM> m_removedInsts;
+  /// @brief Extracts created to break down vectors that were not scalarized.
+  llvm::SmallVector<llvm::ExtractElementInst *, ESTIMATED_INST_NUM> m_createdExtracts;
   /// @brief Counters for "transpose" statistics
   int m_transposeCtr[llvm::Instruction::OtherOpsEnd];
 
@@ -277,6 +284,7 @@ public:
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<llvm::DominatorTreeWrapperPass>();
+    AU.addRequired<llvm::LoopInfoWrapperPass>();
     AU.setPreservesCFG();
   }
 
