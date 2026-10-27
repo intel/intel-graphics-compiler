@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "Dependencies_G4IR.h"
 #include "../Assertions.h"
+#include "../BuildIR.h"
 #include "../G4_IR.hpp"
 
 using namespace vISA;
@@ -27,6 +28,13 @@ static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2,
     return i->getMsgDesc()->isBarrier() || i->getMsgDesc()->isAtomic();
   };
   if (isBarrierOrAtomic(send1) || isBarrierOrAtomic(send2)) {
+    return MSG_BARRIER;
+  }
+  // Ray tracing messages access memory that is not visible to the dataport
+  // checks below, so no other memory access may be scheduled across them.
+  if (send1->getBuilder().orderRayTracingSends() &&
+      (send1->getMsgDesc()->isRayTracing() ||
+       send2->getMsgDesc()->isRayTracing())) {
     return MSG_BARRIER;
   }
 

@@ -274,6 +274,14 @@ public:
   }
   bool enableBlendToDiscardAndFill() const { return (m_platformInfo.eRenderCoreFamily < IGFX_GEN11_CORE); }
 
+  // vISA does not schedule other sends across a ray tracing send (rta, btd)
+  // and waits for it before the next send, so no software fence or null read
+  // is needed around it.
+  bool hasVISARayTracingSendOrdering() const {
+    return false;
+  }
+
+
   bool needWASlmGlobalOffsetS20() const { return getWATable().Wa_14026265758 != 0; }
 
   bool NeedResetA0forVxHA0() const {

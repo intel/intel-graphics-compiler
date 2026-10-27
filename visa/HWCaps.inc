@@ -1108,4 +1108,10 @@ bool hasSendPredication() const {
 bool needFenceAfterReadSync() const {
   return false;
 }
+
+// No other send is scheduled across a ray tracing send (rta, btd), and SWSB
+// waits for it before the next send.
+bool orderRayTracingSends() const {
+  return false;
+}
 // end HW capabilities

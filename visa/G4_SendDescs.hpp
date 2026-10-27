@@ -337,6 +337,11 @@ public:
   bool isLSC() const;
   bool isSampler() const { return getSFID() == SFID::SAMPLER; }
   bool isGTWY() const {return getSFID() == SFID::GATEWAY;}
+  // Ray tracing messages: rta (TraceRay, RayQueryCheck/Release) and
+  // btd (BindlessThreadDispatch, StackIDRelease).
+  bool isRayTracing() const {
+    return getSFID() == SFID::RTHW || getSFID() == SFID::BTD;
+  }
   //
   virtual bool isSLM() const = 0;
   virtual bool isBTS() const = 0; // BTS stateful

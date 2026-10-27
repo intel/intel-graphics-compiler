@@ -524,6 +524,8 @@ public:
 
   void emitReadTraceRaySync(llvm::GenIntrinsicInst *I);
 
+  void emitRayTracingSWFence();
+
   void emitRayQueryCheckRelease(llvm::GenIntrinsicInst *I, bool RayQueryCheckEnable = false,
                                 bool RayQueryReleaseEnable = false);
 

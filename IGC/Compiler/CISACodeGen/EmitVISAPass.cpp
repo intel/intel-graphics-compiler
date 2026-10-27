@@ -24808,6 +24808,15 @@ void EmitPass::emitInlinedDataValue(llvm::GenIntrinsicInst *I) {
   IGC_ASSERT(m_currShader->GetShaderType() == ShaderType::RAYTRACING_SHADER);
 }
 
+// Software fence around a ray tracing send, so that vISA does not move other
+// sends across it. Not needed when vISA orders ray tracing sends itself.
+void EmitPass::emitRayTracingSWFence() {
+  if (m_currShader->m_Platform->hasVISARayTracingSendOrdering())
+    return;
+  m_encoder->Fence(false, false, false, false, false, false, false, true);
+  m_encoder->Push();
+}
+
 void EmitPass::emitTraceRay(TraceRayIntrinsic *I, bool RayQueryEnable) {
   // If Efficient64b is enabled call dedicated function
   // for emitting TraceRay.
@@ -24818,8 +24827,7 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic *I, bool RayQueryEnable) {
   // We emit a SW fence here to prevent motion of other sends across this
   // send.rta until we have VISA support. An actual fence was previously
   // inserted in the RayTracingShaderLowering pass
-  m_encoder->Fence(false, false, false, false, false, false, false, true);
-  m_encoder->Push();
+  emitRayTracingSWFence();
 
   const uint32_t NumSend =
       (m_currShader->m_SIMDSize == SIMDMode::SIMD32 && !m_currShader->m_Platform->supportRayTracingSIMD32()) ? 2 : 1;
@@ -24935,8 +24943,7 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic *I, bool RayQueryEnable) {
   // scheduled across the send from below.  We should be able to remove this
   // once we have VISA support for raytracing rather than emitting a
   // raw_sends.
-  m_encoder->Fence(false, false, false, false, false, false, false, true);
-  m_encoder->Push();
+  emitRayTracingSWFence();
 }
 
 
@@ -24944,8 +24951,7 @@ void EmitPass::emitTraceRayEff64(TraceRayIntrinsic *instruction, bool rayQueryEn
   // We emit a SW fence here to prevent motion of other sends across this
   // send.rta until we have VISA support. An actual fence was previously
   // inserted in the RayTracingShaderLowering pass.
-  m_encoder->Fence(false, false, false, false, false, false, false, true);
-  m_encoder->Push();
+  emitRayTracingSWFence();
 
   const uint32_t numSend =
       (m_currShader->m_SIMDSize == SIMDMode::SIMD32 && !m_currShader->m_Platform->supportRayTracingSIMD32()) ? 2 : 1;
@@ -25029,22 +25035,23 @@ void EmitPass::emitTraceRayEff64(TraceRayIntrinsic *instruction, bool rayQueryEn
   // scheduled across the send from below.  We should be able to remove this
   // once we have VISA support for raytracing rather than emitting a
   // raw_sends.
-  m_encoder->Fence(false, false, false, false, false, false, false, true);
-  m_encoder->Push();
+  emitRayTracingSWFence();
 }
 
 void EmitPass::emitReadTraceRaySync(llvm::GenIntrinsicInst *I) {
   // Insert a software fence before and after the ReadTraceRaySync so no IO
   // operations get scheduled across it.
-  m_encoder->Fence(false, false, false, false, false, false, false, true);
-  m_encoder->Push();
+  emitRayTracingSWFence();
 
   auto Var = GetSymbol(I->getOperand(0));
   // Complete the full response before reading the RT stack. The null read
   // also prevents scheduling independent stack loads before completion.
-  m_encoder->SetUniformSIMDSize(m_currShader->m_SIMDSize);
-  m_encoder->Cast(m_currShader->GetNULL(), Var);
-  m_encoder->Push();
+  // Not needed when vISA waits for the ray tracing send before the next send.
+  if (!m_currShader->m_Platform->hasVISARayTracingSendOrdering()) {
+    m_encoder->SetUniformSIMDSize(m_currShader->m_SIMDSize);
+    m_encoder->Cast(m_currShader->GetNULL(), Var);
+    m_encoder->Push();
+  }
 
   if (I->getIntrinsicID() == GenISAIntrinsic::GenISA_ReadTraceRaySyncResult && !I->use_empty()) {
     IGC_ASSERT(m_currShader->m_Platform->isRayQueryReturnOptimizationEnabled());
@@ -25057,8 +25064,7 @@ void EmitPass::emitReadTraceRaySync(llvm::GenIntrinsicInst *I) {
     m_encoder->Push();
   }
 
-  m_encoder->Fence(false, false, false, false, false, false, false, true);
-  m_encoder->Push();
+  emitRayTracingSWFence();
 }
 
 void EmitPass::emitRayQueryCheckRelease(GenIntrinsicInst *I, bool RayQueryCheckEnable, bool RayQueryReleaseEnable) {
@@ -25071,8 +25077,7 @@ void EmitPass::emitRayQueryCheckRelease(GenIntrinsicInst *I, bool RayQueryCheckE
   // We emit a SW fence here to prevent motion of other sends across this
   // send.rta until we have VISA support. An actual fence was previously
   // inserted in the RayTracingShaderLowering pass.
-  m_encoder->Fence(false, false, false, false, false, false, false, true);
-  m_encoder->Push();
+  emitRayTracingSWFence();
 
   CVariable *header = m_currShader->GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_UD, EALIGN_GRF, "RTHeader");
 
@@ -25136,8 +25141,7 @@ void EmitPass::emitRayQueryCheckRelease(GenIntrinsicInst *I, bool RayQueryCheckE
   // scheduled across the send from below.  We should be able to remove this
   // once we have VISA support for raytracing rather than emitting a
   // raw_sends.
-  m_encoder->Fence(false, false, false, false, false, false, false, true);
-  m_encoder->Push();
+  emitRayTracingSWFence();
 }
 
 void EmitPass::emitRayQueryCheckReleaseEff64(GenIntrinsicInst *instruction, bool rayQueryCheckEnable,
@@ -25147,8 +25151,7 @@ void EmitPass::emitRayQueryCheckReleaseEff64(GenIntrinsicInst *instruction, bool
   // We emit a SW fence here to prevent motion of other sends across this
   // send.rta until we have VISA support. An actual fence was previously
   // inserted in the RayTracingShaderLowering pass.
-  m_encoder->Fence(false, false, false, false, false, false, false, true);
-  m_encoder->Push();
+  emitRayTracingSWFence();
 
   // Messages to rta unit require GlobalBufferPointer and Paylod.
   // But Check/Release messages do not send any data.
@@ -25193,9 +25196,7 @@ void EmitPass::emitRayQueryCheckReleaseEff64(GenIntrinsicInst *instruction, bool
   // scheduled across the send from below.  We should be able to remove this
   // once we have VISA support for raytracing rather than emitting a
   // raw_sends.
-  m_encoder->Fence(false, false, false, false, false, false, false, true);
-
-  m_encoder->Push();
+  emitRayTracingSWFence();
 }
 
 EmitPass::PreemptionEncoding EmitPass::getEncoderPreemptionMode(EPreemptionMode preemptionMode) {

@@ -3297,7 +3297,11 @@ void SWSB::tokenAllocation() {
       continue;
     }
 
-    if (enableSendTokenReduction && node->succs.empty()) {
+    // Non-EOT ray tracing sends always need a token for the sync that waits on
+    // them in insertTokenSync().
+    if (enableSendTokenReduction && node->succs.empty() &&
+        !(fg.builder->orderRayTracingSends() && inst->isSend() &&
+          !inst->isEOT() && inst->getMsgDesc()->isRayTracing())) {
       continue;
     }
 
@@ -4854,6 +4858,8 @@ void SWSB::insertTokenSync() {
     BitSet srcTokens(totalTokenNum, false);
     unsigned short fenceToken = (unsigned short)-1;
     unsigned short rayQueryCheckToken = (unsigned short)-1;
+    // Token of the last ray tracing send not yet waited on.
+    unsigned short rayTracingToken = (unsigned short)-1;
 
     std::list<G4_INST *>::iterator inst_it(bb->begin()), iInstNext(bb->begin());
     while (iInstNext != bb->end()) {
@@ -4933,7 +4939,20 @@ void SWSB::insertTokenSync() {
         }
       }
 
-      if (fg.builder->getOption(vISA_enableEfficient64b)) {
+      // Wait for the pending ray tracing send to finish before the next send.
+      if (rayTracingToken != (unsigned short)-1 && inst->isSend()) {
+        G4_INST *syncInst = insertSyncInstruction(bb, inst_it);
+        syncInst->setToken(rayTracingToken);
+        syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
+        rayTracingToken = (unsigned short)-1;
+      }
+
+      if (fg.builder->orderRayTracingSends() && inst->isSend() &&
+          inst->getMsgDesc()->isRayTracing()) {
+        // Nothing runs after an EOT send, so there is nothing to wait for.
+        if (!inst->isEOT())
+          rayTracingToken = inst->getSBIDSetToken();
+      } else if (fg.builder->getOption(vISA_enableEfficient64b)) {
         if (inst->isSend() && isSendgRTQueryCheck(inst)) {
           rayQueryCheckToken = inst->getSBIDSetToken();
           if (iInstNext == bb->end()) { // In case the fence instruction is the
@@ -5086,6 +5105,17 @@ void SWSB::insertTokenSync() {
 
       newInstID++;
       node_it++;
+    }
+    // No send after the ray tracing send in this BB: wait at the end of the
+    // BB, before the branch if there is one.
+    if (rayTracingToken != (unsigned short)-1) {
+      INST_LIST_ITER insertIt = bb->end();
+      if (!bb->empty() && bb->back()->isFlowControl()) {
+        insertIt = std::prev(insertIt);
+      }
+      G4_INST *syncInst = insertSyncInstruction(bb, insertIt);
+      syncInst->setToken(rayTracingToken);
+      syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
     }
     if (!bb->isLastInstEOT()) {
       if (!BBVector[bb->getId()]->globalARSendOpndList.empty()) {
