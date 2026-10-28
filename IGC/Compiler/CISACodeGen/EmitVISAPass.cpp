@@ -2706,6 +2706,44 @@ void EmitPass::EmitPackI64Not(const SSource sources[2], const bool isI64Half[2],
   }
 }
 
+// Packs i32 pairs (sources[2j], sources[2j + 1]) into i64 element j with
+// stride-2 moves. See CodeGenPatternMatch::MatchPackPair.
+void EmitPass::EmitPackPair(const SSource sources[], unsigned numHalves, const DstModifier &dstMod) {
+  CVariable *dst = m_currShader->GetNewAlias(m_destination, ISA_TYPE_UD, 0, 0);
+  IGC_ASSERT(!dst->IsUniform());
+
+  // In SIMD32, stride-2 destination regioning spans 4 GRFs, exceeding the
+  // 2-GRF operand limit. Split into two SIMD16 instructions per half.
+  const bool needsSplit = m_SimdMode == SIMDMode::SIMD32;
+  const unsigned numParts = needsSplit ? 2 : 1;
+  const int numberOfLanes = numLanes(m_currShader->m_SIMDSize);
+
+  for (unsigned e = 0; e < numHalves; ++e) {
+    // A half may be a constant (BitCast handles immediates).
+    CVariable *src = m_currShader->BitCast(GetSrcVariable(sources[e]), ISA_TYPE_UD);
+    // A half of an i64 is read with a <2;1,0> region.
+    const bool isI64Half = sources[e].region_set && sources[e].region[0] == 2;
+    for (unsigned part = 0; part < numParts; ++part) {
+      if (!src->IsImmediate())
+        SetSourceModifiers(0, sources[e]);
+      if (needsSplit && part > 0 && !src->IsUniform()) {
+        int base = sources[e].SIMDOffset * numberOfLanes + sources[e].elementOffset;
+        m_encoder->SetSrcSubReg(0, base + (isI64Half ? 32 : 16)); // 16 lanes, stride 2 or 1
+      }
+      if (needsSplit) {
+        m_encoder->SetSimdSize(SIMDMode::SIMD16);
+        m_encoder->SetMask(part == 0 ? EMASK_H1 : EMASK_H2);
+      }
+      // i64 element e / 2 starts at dword (e / 2) * 2 * lanes; lo / hi alternate.
+      m_encoder->SetDstRegion(2);
+      m_encoder->SetDstSubReg(e / 2 * 2 * numberOfLanes + e % 2 + (needsSplit ? part * 32 : 0));
+      m_encoder->SetDstModifier(dstMod);
+      m_encoder->Copy(dst, src);
+      m_encoder->Push();
+    }
+  }
+}
+
 // Packs six 32-bit sources into a single i64 destination by emitting two
 // BFN instructions (one per DWORD half). Each half combines three of the six
 // sources using the corresponding booleanFuncCtrl. Sources that are themselves

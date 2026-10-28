@@ -172,6 +172,7 @@ public:
                    const e_opcode foldedOp[2], const DstModifier &dstMod);
   void EmitPackI64Not(const SSource sources[2], const bool isI64Half[2], const uint32_t extractIdx[2],
                       const DstModifier &dstMod);
+  void EmitPackPair(const SSource sources[], unsigned numHalves, const DstModifier &dstMod);
   void EmitPackBfnI64(const SSource sources[6], const bool isI64Half[6], const uint32_t extractIdx[6],
                       const uint8_t booleanFuncCtrl[2], const DstModifier &dstMod);
   void EmitUnpack4i8(const SSource &source, uint32_t index, bool isUnsigned, const DstModifier &dstMod);

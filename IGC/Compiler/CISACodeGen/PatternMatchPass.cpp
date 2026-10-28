@@ -1527,7 +1527,8 @@ void CodeGenPatternMatch::visitBitCastInst(BitCastInst &I) {
     return;
 
   [[maybe_unused]] bool match = false;
-  match = MatchPackBfnI64(I) || MatchPackI64(I) || MatchRepack4i8(I) || MatchPack4i8(I) || MatchSingleInstruction(I);
+  match = MatchPackBfnI64(I) || MatchPackI64(I) || MatchPackPair(I) || MatchRepack4i8(I) || MatchPack4i8(I) ||
+          MatchSingleInstruction(I);
   IGC_ASSERT_MESSAGE(match, "Unsupported BitCast instruction");
 }
 
@@ -5273,6 +5274,114 @@ bool CodeGenPatternMatch::MatchPackI64(llvm::Instruction &I) {
     }
   }
 
+  AddPattern(pattern);
+  return true;
+}
+
+// Match a plain pack of i32 pairs into i64s:
+//   %dst = bitcast <2m x i32> %v to <m x i64>    (or bitcast <2 x i32> %v to i64)
+// where %v is built by insertelements, e.g. the lowering of
+//   %v = shufflevector <8 x i32> %x, poison, <0, 4, 1, 5, 2, 6, 3, 7>
+// i64 element j is {element 2j, element 2j + 1} of %v. Each element is read
+// where it lives (the inserted value, else the base vector) and written with
+// one stride-2 mov, without building %v first:
+//   mov (M1, 16) dst_0(2j,0)<2> lo      ; = dword 2L of i64 element j
+//   mov (M1, 16) dst_0(2j,1)<2> hi
+// An element of a vector is read in place; an element of a 64-bit vector split
+// by bitcast <m x i64> -> <2m x i32> is read with a <2;1,0> region.
+// A chain of such packs (a register interleave / sub-group transpose written
+// with SubgroupBitcastShuffle) then needs no extra moves.
+bool CodeGenPatternMatch::MatchPackPair(llvm::Instruction &I) {
+  // Skip stride-2 regioning optimization at O0 for better debuggability.
+  if (m_ctx->getModuleMetaData()->compOpt.OptDisable)
+    return false;
+
+  // Stride-2 regioning and SIMD32 split logic assumes 64-byte GRFs.
+  if (m_Platform.getGRFSize() != 64)
+    return false;
+
+  constexpr unsigned MaxHalves = 16;
+  struct PackPairPattern : public Pattern {
+    SSource sources[MaxHalves]; // element 2j: lo of i64 j, element 2j + 1: hi
+    unsigned numHalves;
+    virtual void Emit(EmitPass *pass, const DstModifier &modifier) { pass->EmitPackPair(sources, numHalves, modifier); }
+  };
+
+  // Check: non-uniform bitcast <2m x i32> to i64 / <m x i64>
+  auto *srcVecTy = dyn_cast<IGCLLVM::FixedVectorType>(I.getOperand(0)->getType());
+  if (!I.getType()->getScalarType()->isIntegerTy(64) || !srcVecTy || !srcVecTy->getElementType()->isIntegerTy(32) ||
+      isUniform(&I))
+    return false;
+  const unsigned numHalves = int_cast<unsigned>(srcVecTy->getNumElements());
+  if (numHalves % 2 != 0 || numHalves > MaxHalves)
+    return false;
+
+  // Source for element `idx` of the vector `vec`, read in place. Returns false
+  // if `vec` has no usable layout (constant, uniform, or a cast other than a
+  // 64-bit split).
+  auto getElementSource = [&](Value *vec, unsigned idx, SSource &src) {
+    if (isa<Constant>(vec))
+      return false;
+    if (auto *BC = dyn_cast<BitCastInst>(vec)) {
+      // bitcast i64 / <m x i64> %x -> <2m x i32>: lane L's halves of qword
+      // element k are dwords 2L, 2L + 1 of register pair k of %x.
+      Value *X = BC->getOperand(0);
+      if (!X->getType()->getScalarType()->isIntegerTy(64) || isa<Constant>(X) || isUniform(X) ||
+          BC->getParent() != I.getParent())
+        return false;
+      src = GetSource(X, false, false, IsSourceOfSample(&I));
+      src.region_set = true;
+      src.region[0] = 2;
+      src.region[1] = 1;
+      src.region[2] = 0;
+      src.SIMDOffset = int_cast<int>(idx / 2 * 2);
+      src.elementOffset = int_cast<int>(idx % 2);
+      return true;
+    }
+    if (isa<CastInst>(vec) || isUniform(vec))
+      return false;
+    src = GetSource(vec, false, false, IsSourceOfSample(&I));
+    src.SIMDOffset = int_cast<int>(idx);
+    return true;
+  };
+
+  // Source for an inserted value: fold a constant-index extract.
+  auto getValueSource = [&](Value *V) {
+    SSource src;
+    auto *EEI = dyn_cast<ExtractElementInst>(V);
+    auto *idx = EEI ? dyn_cast<ConstantInt>(EEI->getIndexOperand()) : nullptr;
+    if (idx && EEI->getParent() == I.getParent() && !isUniform(EEI) &&
+        getElementSource(EEI->getVectorOperand(), int_cast<unsigned>(idx->getZExtValue()), src))
+      return src;
+    return GetSource(V, false, false, IsSourceOfSample(&I));
+  };
+
+  // Walk the single-use insertelement chain that builds the bitcast source.
+  // inserted[e]: last value inserted at e; base: what the chain starts from.
+  Value *inserted[MaxHalves] = {};
+  Value *base = I.getOperand(0);
+  bool sawInsert = false;
+  while (auto *IEI = dyn_cast<InsertElementInst>(base)) {
+    auto *idx = dyn_cast<ConstantInt>(IEI->getOperand(2));
+    if (!idx || !IEI->hasOneUse() || IEI->getParent() != I.getParent())
+      break;
+    const unsigned e = int_cast<unsigned>(idx->getZExtValue());
+    if (!inserted[e])
+      inserted[e] = IEI->getOperand(1);
+    base = IEI->getOperand(0);
+    sawInsert = true;
+  }
+  if (!sawInsert)
+    return false;
+
+  PackPairPattern *pattern = new (m_allocator) PackPairPattern();
+  pattern->numHalves = numHalves;
+  for (unsigned e = 0; e < numHalves; ++e) {
+    if (inserted[e])
+      pattern->sources[e] = getValueSource(inserted[e]);
+    else if (!getElementSource(base, e, pattern->sources[e]))
+      return false;
+  }
   AddPattern(pattern);
   return true;
 }

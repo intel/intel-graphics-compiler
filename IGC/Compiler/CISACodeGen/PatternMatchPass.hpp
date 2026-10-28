@@ -213,6 +213,7 @@ public:
   bool MatchImmOffsetLSC(llvm::Instruction &I);
   bool MatchBitwiseI64Halves(llvm::Instruction &I);
   bool MatchPackI64(llvm::Instruction &I);
+  bool MatchPackPair(llvm::Instruction &I);
   bool MatchPackBfnI64(llvm::Instruction &I);
   bool MatchBfn(llvm::Instruction &I);
   bool MatchCmpSelect(llvm::SelectInst &I);
