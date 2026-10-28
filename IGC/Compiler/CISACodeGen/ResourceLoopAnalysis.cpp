@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Debug.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -50,6 +51,18 @@ static bool ValueOnlyUsedByEEI(Value *V) {
     }
   }
   return true;
+}
+
+// Instructions that can never sit inside a resource loop.
+static bool isResourceLoopBarrier(const Instruction *Inst) {
+  return isa<CallInst>(Inst) || Inst->isTerminator() || Inst->mayReadOrWriteMemory();
+}
+
+// An instruction that is not part of a send ends the resource loop that is being built. Shared by
+// ResourceLoopAnalysis and ResourceLoopDecodeSink, so that the sink never builds a run the analysis would split.
+static bool endsResourceLoop(const Instruction *Inst, WIAnalysis *WI) {
+  // avoid uniform in ballot loop, and avoid flag modification
+  return isResourceLoopBarrier(Inst) || WI->isUniform(Inst) || Inst->getType()->getScalarType()->isIntegerTy(1);
 }
 
 // Check if two resource values are semantically equivalent,
@@ -111,26 +124,72 @@ static bool isSameResource(Value *A, Value *B) {
   return false;
 }
 
+// Classify Inst as a lane-varying resource access that can be wrapped in a resource loop.
+// Returns true and fills OpTy/Res/Samp if so.
+static bool classifyLaneVaryingSend(Instruction *Inst, WIAnalysis *WI, unsigned &OpTy, Value *&Res, Value *&Samp) {
+  OpTy = 0;
+  Res = nullptr;
+  Samp = nullptr;
+  // There are more types of lane-varying resource access than what are
+  // listed below. Limited the optimization to get most of performance and
+  // to reduce debugging scope.
+  if (auto *LI = dyn_cast<SamplerLoadIntrinsic>(Inst)) {
+    if (!WI->isUniform(LI->getTextureValue())) {
+      // need extra restrictions:
+      // no half-type because it may need extra op for packing
+      // no return of the number of elements >= 5, that is
+      // sampler-feedback
+      unsigned NumElt = 1;
+      if (auto vecTy = dyn_cast<IGCLLVM::FixedVectorType>(LI->getType())) {
+        NumElt = (unsigned)vecTy->getNumElements();
+      }
+      if (LI->getType()->getScalarSizeInBits() >= 32 && NumElt <= 4) {
+        Res = LI->getTextureValue();
+        OpTy = 3;
+      }
+    }
+  } else if (auto *LI = dyn_cast<LdRawIntrinsic>(Inst)) {
+    if (!WI->isUniform(LI->getResourceValue())) {
+      // need extra restrictions:
+      // no half-type because it may need extra op for packing
+      if (LI->getType()->getScalarSizeInBits() >= 32) {
+        Res = LI->getResourceValue();
+        OpTy = 4;
+      }
+    }
+  }
+  return (Res || Samp) && OpTy;
+}
+
+// The limits on how many sends ResourceLoopAnalysis fuses into one resource loop. Shared with ResourceLoopDecodeSink,
+// so that the sink never prepares a run longer than the analysis accepts. Returns false if this shader is not fused at
+// all.
+static bool getResourceLoopFusionLimits(CodeGenContext *Ctx, unsigned &MaxSends, unsigned &MaxALU, unsigned &MinSize) {
+  if (IGC_IS_FLAG_DISABLED(FuseResourceLoop) || !Ctx->platform.allowFuseResourceLoop(MaxSends, MaxALU, MinSize)) {
+    // not supported or no fuse resource loop needed
+    return false;
+  }
+  // When CS is retried, the previous compilation may have spilled due to register pressure.
+  // In that case, we should not fuse resource loops because it may make register pressure worse and cause more spills.
+  if (Ctx->type == ShaderType::COMPUTE_SHADER && !Ctx->m_retryManager->IsFirstTry()) {
+    return false;
+  }
+  // RAYTRACING_SHADER: at most 2 instructions between two sends of a loop
+  if (Ctx->type == ShaderType::RAYTRACING_SHADER) {
+    MaxALU = 2;
+  }
+  return true;
+}
+
 bool ResourceLoopAnalysis::runOnFunction(Function &F) {
   auto WI = &(getAnalysis<WIAnalysis>());
   CTX = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   LoopMap.clear();
   MergedInstsMap.clear();
 
-  if (IGC_IS_FLAG_DISABLED(FuseResourceLoop) ||
-      !CTX->platform.allowFuseResourceLoop(MaxResourceLoopSize, MaxALUBetweenMemOps, MinFuseResourceLoopSize)) {
-    // should return false if not supported or no fuse resource loop needed
+  // should return false if not supported or no fuse resource loop needed
+  if (!getResourceLoopFusionLimits(CTX, MaxResourceLoopSize, MaxALUBetweenMemOps, MinFuseResourceLoopSize))
     return false;
-  }
-  // When CS is retried, the previous compilation may have spilled due to register pressure.
-  // In that case, we should not fuse resource loops because it may make register pressure worse and cause more spills.
-  if (CTX->type == ShaderType::COMPUTE_SHADER && !CTX->m_retryManager->IsFirstTry()) {
-    return false;
-  }
-  // RAYTRACING_SHADER: MaxResourceLoopSize (2), MaxALUBetweenMemOps(2)
-  if (CTX->type == ShaderType::RAYTRACING_SHADER) {
-    MaxALUBetweenMemOps = 2;
-  }
   for (BasicBlock &BBRef : F) {
     Instruction *currentLoopStart = nullptr;
     BasicBlock *BB = &BBRef;
@@ -157,7 +216,8 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
           auto mergedIt = MergedInstsMap.find(currentLoopStart);
           const size_t mergedCount = (mergedIt != MergedInstsMap.end()) ? mergedIt->second.size() : 0;
           const size_t totalSendCount = 1 + mergedCount; // include loop-start send
-          tooSmall = (totalSendCount < MinFuseResourceLoopSize);
+          const bool prepared = currentLoopStart->getMetadata(ResourceLoopPreparedRunMD) != nullptr;
+          tooSmall = (totalSendCount < (prepared ? std::min(MinFuseResourceLoopSize, 2u) : MinFuseResourceLoopSize));
         }
 
         if (tooSmall) {
@@ -188,34 +248,7 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
       unsigned curOpTy = 0;
       Value *curRes = nullptr;
       Value *curSamp = nullptr;
-      // There are more types of lane-varying resource access than what are
-      // listed below. Limited the optimization to get most of performance and
-      // to reduce debugging scope.
-      if (auto *LI = dyn_cast<SamplerLoadIntrinsic>(I)) {
-        if (!WI->isUniform(LI->getTextureValue())) {
-          // need extra restrictions:
-          // no half-type because it may need extra op for packing
-          // no return of the number of elements >= 5, that is
-          // sampler-feedback
-          unsigned NumElt = 1;
-          if (auto vecTy = dyn_cast<IGCLLVM::FixedVectorType>(LI->getType())) {
-            NumElt = (unsigned)vecTy->getNumElements();
-          }
-          if (LI->getType()->getScalarSizeInBits() >= 32 && NumElt <= 4) {
-            curRes = LI->getTextureValue();
-            curOpTy = 3;
-          }
-        }
-      } else if (auto *LI = dyn_cast<LdRawIntrinsic>(I)) {
-        if (!WI->isUniform(LI->getResourceValue())) {
-          // need extra restrictions:
-          // no half-type because it may need extra op for packing
-          if (LI->getType()->getScalarSizeInBits() >= 32) {
-            curRes = LI->getResourceValue();
-            curOpTy = 4;
-          }
-        }
-      }
+      classifyLaneVaryingSend(I, WI, curOpTy, curRes, curSamp);
       // check data-dependence from mem-ops in the current set
       bool HasDeps = false;
       for (Value *opnd : I->operands()) {
@@ -352,15 +385,7 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
         }
       } else {
         // the other instructions
-        bool LoopEnds = HasDeps;
-        if (isa<CallInst>(I) || I->isTerminator())
-          LoopEnds = true;
-        else if (I->mayReadOrWriteMemory())
-          LoopEnds = true;
-        else if (WI->isUniform(I))
-          LoopEnds = true; // avoid uniform in ballot loop
-        else if (I->getType()->getScalarType()->isIntegerTy(1))
-          LoopEnds = true; // avoid flag modification
+        bool LoopEnds = HasDeps || endsResourceLoop(I, WI);
 
         if (LoopEnds) {
           closeResourceLoop();
@@ -403,4 +428,158 @@ void ResourceLoopAnalysis::printResourceLoops(raw_ostream &OS, Function *F) cons
     }
   }
   OS << "\n";
+}
+
+namespace {
+// See createResourceLoopDecodeSinkPass in the header.
+class ResourceLoopDecodeSink : public FunctionPass {
+public:
+  static char ID;
+  ResourceLoopDecodeSink() : FunctionPass(ID) {
+    initializeResourceLoopDecodeSinkPass(*PassRegistry::getPassRegistry());
+  }
+  StringRef getPassName() const override { return "Resource Loop Decode Sink"; }
+  bool runOnFunction(Function &F) override;
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.setPreservesCFG(); // instructions only move within their block
+    AU.addRequired<WIAnalysis>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+private:
+  bool processBlock(BasicBlock &BB, WIAnalysis *WI, unsigned MaxSends, unsigned MaxALU);
+};
+} // namespace
+
+char ResourceLoopDecodeSink::ID = 0;
+
+#define PASS_FLAG "resource-loop-decode-sink"
+#define PASS_DESCRIPTION "Sink load decode code to let same-resource sends share a resource loop"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(ResourceLoopDecodeSink, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_END(ResourceLoopDecodeSink, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+#undef PASS_FLAG
+#undef PASS_DESCRIPTION
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+
+llvm::FunctionPass *IGC::createResourceLoopDecodeSinkPass() { return new ResourceLoopDecodeSink; }
+
+bool ResourceLoopDecodeSink::runOnFunction(Function &F) {
+  auto *WI = &getAnalysis<WIAnalysis>();
+  auto *CTX = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+  unsigned MaxSends = 0, MaxALU = 0, MinSize = 0;
+  if (!getResourceLoopFusionLimits(CTX, MaxSends, MaxALU, MinSize))
+    return false;
+
+  bool Changed = false;
+  for (BasicBlock &BB : F)
+    Changed |= processBlock(BB, WI, MaxSends, MaxALU);
+  return Changed;
+}
+
+bool ResourceLoopDecodeSink::processBlock(BasicBlock &BB, WIAnalysis *WI, unsigned MaxSends, unsigned MaxALU) {
+  if (MaxSends < 2)
+    return false;
+
+  // sequence number of every instruction, to check the position of uses
+  DenseMap<Instruction *, unsigned> InstOrder;
+  auto renumber = [&]() {
+    InstOrder.clear();
+    unsigned SeqNo = 0;
+    for (auto &I : BB)
+      InstOrder[&I] = SeqNo++;
+  };
+  renumber();
+
+  bool Changed = false;
+  for (auto It = BB.begin(); It != BB.end(); ++It) {
+    unsigned OpTy = 0;
+    Value *Res = nullptr, *Samp = nullptr;
+    if (!classifyLaneVaryingSend(&*It, WI, OpTy, Res, Samp))
+      continue;
+
+    SmallVector<Instruction *, 4> Sends{&*It};
+    SmallPtrSet<Value *, 16> Dependent; // results of the sends and of the code that consumes them
+    Dependent.insert(&*It);
+    SmallVector<Instruction *, 16> Decode;     // dependent code found so far, in program order
+    SmallVector<Instruction *, 4> Independent; // code since the last send that stays in the loop
+
+    for (auto Scan = std::next(It); Scan != BB.end(); ++Scan) {
+      Instruction *J = &*Scan;
+      unsigned JTy = 0;
+      Value *JRes = nullptr, *JSamp = nullptr;
+      bool IsSend = classifyLaneVaryingSend(J, WI, JTy, JRes, JSamp);
+      bool DependsOnSends = any_of(J->operands(), [&](Value *Op) { return Dependent.contains(Op); });
+
+      if (IsSend) {
+        if (JTy != OpTy || !isSameResource(JRes, Res) || !(JSamp == Samp || isSameResource(JSamp, Samp)) ||
+            DependsOnSends)
+          break;
+        // The code staying between two sends has to be used only up to the send
+        // that follows it, as in ResourceLoopAnalysis.
+        bool UsesOk = true;
+        for (Instruction *K : Independent) {
+          for (User *U : K->users()) {
+            auto UIt = InstOrder.find(cast<Instruction>(U));
+            if (UIt == InstOrder.end() || UIt->second > InstOrder[J] || UIt->second <= InstOrder[K] ||
+                Dependent.contains(U))
+              UsesOk = false;
+          }
+        }
+        if (!UsesOk)
+          break;
+        Sends.push_back(J);
+        Dependent.insert(J);
+        Independent.clear();
+        if (Sends.size() == MaxSends)
+          break;
+        continue;
+      }
+
+      // anything that could not be moved down or reordered ends the run
+      if (isResourceLoopBarrier(J) || isa<PHINode>(J))
+        break;
+      if (DependsOnSends) {
+        Decode.push_back(J);
+        Dependent.insert(J);
+      } else {
+        // ResourceLoopAnalysis would end the loop here, so the run could not be fused.
+        if (endsResourceLoop(J, WI))
+          break;
+        Independent.push_back(J);
+        if (Independent.size() > MaxALU)
+          break;
+      }
+    }
+
+    if (Sends.size() < 2)
+      continue;
+
+    // Only the decode code that sits before the last send has to move.
+    Instruction *Last = Sends.back();
+    Instruction *InsertPt = Last->getNextNode();
+    bool Moved = false;
+    for (Instruction *D : Decode) {
+      if (InstOrder[D] > InstOrder[Last])
+        break;
+      IGCLLVM::moveBefore(D, InsertPt);
+      Moved = true;
+    }
+    if (Moved) {
+      Changed = true;
+      renumber();
+      // Tell ResourceLoopAnalysis that this run is prepared, so FuseResourceLoopMinSize does not discard it.
+      // A run that was already adjacent is left alone: FuseResourceLoopMinSize was tuned for those.
+      for (Instruction *S : Sends)
+        S->setMetadata(ResourceLoopPreparedRunMD, MDNode::get(BB.getContext(), {}));
+    }
+    // continue after the last send of the run
+    It = Last->getIterator();
+  }
+  return Changed;
 }

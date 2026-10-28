@@ -365,6 +365,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeTraceRayInlineLoweringPassPass(Registry);
   initializeRayQuerySinkingPassPass(Registry);
   initializeResourceLoopUnrollPass(Registry);
+  initializeResourceLoopDecodeSinkPass(Registry);
   initializeSubgroup2DBlockIoResolutionLPMPass(Registry);
   initializeSpvSubgroupMMAResolutionLPMPass(Registry);
   initializeSpvSubgroupBitcastShuffleResolutionLPMPass(Registry);

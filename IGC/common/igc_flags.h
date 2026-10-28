@@ -1829,6 +1829,11 @@ DECLARE_IGC_REGKEY(DWORD, MaxMemOpsInFuseResourceLoop, 4,
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, FuseResourceLoopMinSize, 3,
                    "Minimum number of sends in a fusion group (groups smaller than this are not fused)", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(
+    bool, SinkResourceLoopDecode, true,
+    "Sink decode code of lane-varying loads below the last same-resource send so the sends can fuse into "
+    "one resource loop",
+    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, ResourceLoopUnrollIteration, 1,
                    "Unroll resource loop iterations (larger than 1): 1 (default) - no sub-iteration", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableResourceLoopUnrollExclusiveLoad, false,

@@ -97,5 +97,15 @@ private:
   unsigned MinFuseResourceLoopSize = 0;
 };
 
+// Metadata ResourceLoopDecodeSink puts on the sends of a run it has prepared for fusion by moving decode code out of
+// it. For such a run ResourceLoopAnalysis relaxes FuseResourceLoopMinSize to two sends: that threshold is tuned for
+// runs that were not prepared, and a prepared run is already free of the decode code that made small runs
+// unprofitable.
+constexpr const char *ResourceLoopPreparedRunMD = "igc.resource.loop.prepared";
+
 llvm::FunctionPass *createResourceLoopAnalysisPass();
+
+// Moves the dependent "decode" code of a lane-varying send (unpack, convert, scale) below the last send of
+// a run of same-resource sends, so that ResourceLoopAnalysis can fuse the run into a single resource loop.
+llvm::FunctionPass *createResourceLoopDecodeSinkPass();
 } // namespace IGC
