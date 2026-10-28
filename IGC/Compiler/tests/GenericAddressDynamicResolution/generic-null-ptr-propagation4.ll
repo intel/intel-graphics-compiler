@@ -7,13 +7,16 @@
 ;============================ end_copyright_notice =============================
 
 ; Check that null check is placed closer to use of alloca even if we have multiple users.
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -igc-generic-null-ptr-propagation | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -igc-generic-null-ptr-propagation | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -igc-generic-null-ptr-propagation | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; CHECK-LABEL: do_work:
-; CHECK-NEXT: [[CAST:%.*]] = addrspacecast i8 addrspace(3)* %local.ptr to i8 addrspace(4)*
-; CHECK-NEXT: [[PRED:%.*]] = icmp ne i8 addrspace(3)* %local.ptr, null
-; CHECK-NEXT: [[SEL:%.*]] = select i1 [[PRED]], i8 addrspace(4)* [[CAST]], i8 addrspace(4)* null
+; CHECK-TYPED-NEXT: [[CAST:%.*]] = addrspacecast i8 addrspace(3)* %local.ptr to i8 addrspace(4)*
+; CHECK-OPAQUE-NEXT: [[CAST:%.*]] = addrspacecast ptr addrspace(3) %local.ptr to ptr addrspace(4)
+; CHECK-TYPED-NEXT: [[PRED:%.*]] = icmp ne i8 addrspace(3)* %local.ptr, null
+; CHECK-OPAQUE-NEXT: [[PRED:%.*]] = icmp ne ptr addrspace(3) %local.ptr, null
+; CHECK-TYPED-NEXT: [[SEL:%.*]] = select i1 [[PRED]], i8 addrspace(4)* [[CAST]], i8 addrspace(4)* null
+; CHECK-OPAQUE-NEXT: [[SEL:%.*]] = select i1 [[PRED]], ptr addrspace(4) [[CAST]], ptr addrspace(4) null
 
 %"class.sycl::_V1::nd_item" = type { i8 }
 

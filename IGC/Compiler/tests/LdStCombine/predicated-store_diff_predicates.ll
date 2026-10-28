@@ -8,11 +8,13 @@
 
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN:   igc_opt --typed-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=1 \
 ; RUN:           -platformbmg \
-; RUN: | FileCheck %s
+; RUN: | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 
  ; Given  store i64 v0,  i64* p
@@ -22,9 +24,12 @@
  ;   due to predicates are different
  ;
  ; CHECK-LABEL: define spir_kernel void @test_two_pointers
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1i64.i64(i64 addrspace(1)* %arrayidx, i64 1, i64 8, i1 true)
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1i64.i64(i64 addrspace(1)* %arrayidx1, i64 2, i64 8, i1 false)
- ; CHECK-NOT: PredicatedStore.p1v2i64.v2i64(<2 x i64>
+ ; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p1i64.i64(i64 addrspace(1)* %arrayidx, i64 1, i64 8, i1 true)
+ ; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p1.i64(ptr addrspace(1) %arrayidx, i64 1, i64 8, i1 true)
+ ; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p1i64.i64(i64 addrspace(1)* %arrayidx1, i64 2, i64 8, i1 false)
+ ; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p1.i64(ptr addrspace(1) %arrayidx1, i64 2, i64 8, i1 false)
+ ; CHECK-TYPED-NOT: PredicatedStore.p1v2i64.v2i64(<2 x i64>
+ ; CHECK-OPAQUE-NOT: PredicatedStore.p1.v2i64(
  ; CHECK: ret void
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"

@@ -9,8 +9,8 @@
 ; This is a second basic test to improve test coverage after support predicated loads/stores in MemOpt and LdStCombine
 ; It verifies non-uniform cases with alignment < 4 and >=4.
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - --basic-aa -igc-memopt -instcombine | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - --basic-aa -igc-memopt -instcombine | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - --basic-aa -igc-memopt -instcombine | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a:64:64-f80:128:128-n8:16:32:64"
 
@@ -34,10 +34,14 @@ entry:
 }
 
 ; CHECK-LABEL: define spir_kernel void @test_uniformness
-; CHECK:   %1 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)* %arrayidx1, i64 2, i1 true, i32 42)
-; CHECK:   %3 = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p1v2i32.v2i32(<2 x i32> addrspace(1)* %2, i64 4, i1 true, <2 x i32> <i32 43, i32 44>)
-; CHECK:   call void @llvm.genx.GenISA.PredicatedStore.p1i32.i32(i32 addrspace(1)* %d, i32 %1, i64 2, i1 true)
-; CHECK:   call void @llvm.genx.GenISA.PredicatedStore.p1v2i32.v2i32(<2 x i32> addrspace(1)* %4, <2 x i32> %3, i64 4, i1 true)
+; CHECK-TYPED:   %1 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)* %arrayidx1, i64 2, i1 true, i32 42)
+; CHECK-OPAQUE:   [[LD1:%.*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1.i32(ptr addrspace(1) %arrayidx1, i64 2, i1 true, i32 42)
+; CHECK-TYPED:   %3 = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p1v2i32.v2i32(<2 x i32> addrspace(1)* %2, i64 4, i1 true, <2 x i32> <i32 43, i32 44>)
+; CHECK-OPAQUE:   [[LD2:%.*]] = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p1.v2i32(ptr addrspace(1) {{(nonnull )?}}%arrayidx2, i64 4, i1 true, <2 x i32> <i32 43, i32 44>)
+; CHECK-TYPED:   call void @llvm.genx.GenISA.PredicatedStore.p1i32.i32(i32 addrspace(1)* %d, i32 %1, i64 2, i1 true)
+; CHECK-OPAQUE:   call void @llvm.genx.GenISA.PredicatedStore.p1.i32(ptr addrspace(1) %d, i32 [[LD1]], i64 2, i1 true)
+; CHECK-TYPED:   call void @llvm.genx.GenISA.PredicatedStore.p1v2i32.v2i32(<2 x i32> addrspace(1)* %4, <2 x i32> %3, i64 4, i1 true)
+; CHECK-OPAQUE:   call void @llvm.genx.GenISA.PredicatedStore.p1.v2i32(ptr addrspace(1) {{(nonnull )?}}%arrayidx4, <2 x i32> [[LD2]], i64 4, i1 true)
 
 ; Function Attrs: nounwind readonly
 declare i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)*, i64, i1, i32) #0

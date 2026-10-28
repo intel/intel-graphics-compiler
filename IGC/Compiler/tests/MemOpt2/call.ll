@@ -6,16 +6,18 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-memopt2 -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-memopt2 -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-memopt2 -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; MemOpt2
 ; ------------------------------------------------
 
 define void @test(i32 addrspace(1)* %addr) {
 ; CHECK-LABEL: @test(
-; CHECK: store i32 2, i32* %alloca, align 4
-; CHECK-NEXT: call i32 addrspace(1)* @callee(i32 addrspace(1)* %addr, i32* %alloca)
+; CHECK-TYPED: store i32 2, i32* %alloca, align 4
+; CHECK-OPAQUE: store i32 2, ptr %alloca, align 4
+; CHECK-TYPED-NEXT: call i32 addrspace(1)* @callee(i32 addrspace(1)* %addr, i32* %alloca)
+; CHECK-OPAQUE-NEXT: call ptr addrspace(1) @callee(ptr addrspace(1) %addr, ptr %alloca)
 
 entry:
   %alloca = alloca i32

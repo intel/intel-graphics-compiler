@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -debugify -mark-readonly-load -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -debugify -mark-readonly-load -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -debugify -mark-readonly-load -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; MarkReadOnlyLoad
 ; ------------------------------------------------
@@ -18,8 +18,10 @@
 
 define void @test(i32 addrspace(2)* %src1, i32* %dst) {
 ; CHECK-LABEL: @test(
-; CHECK:    [[TMP1:%.*]] = load i32, i32 addrspace(2)* %src1,{{.*}} !invariant.load [[NULL_MD:![0-9]*]]
-; CHECK:    store i32 [[TMP1]], i32* %dst
+; CHECK-TYPED:    [[TMP1:%.*]] = load i32, i32 addrspace(2)* %src1,{{.*}} !invariant.load [[NULL_MD:![0-9]*]]
+; CHECK-OPAQUE:    [[TMP1:%.*]] = load i32, ptr addrspace(2) %src1,{{.*}} !invariant.load [[NULL_MD:![0-9]*]]
+; CHECK-TYPED:    store i32 [[TMP1]], i32* %dst
+; CHECK-OPAQUE:    store i32 [[TMP1]], ptr %dst
 ; CHECK:    ret void
 ;
   %1 = load i32, i32 addrspace(2)* %src1

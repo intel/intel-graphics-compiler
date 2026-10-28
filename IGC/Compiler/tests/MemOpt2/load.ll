@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify -igc-memopt2 -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify -igc-memopt2 -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify -igc-memopt2 -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; MemOpt2
 ; ------------------------------------------------
@@ -19,16 +19,24 @@
 define void @test(i32 addrspace(1)* %addr) {
 ; CHECK-LABEL: @test(
 ; CHECK;  entry:
-; CHECK:    [[TMP0:%.*]] = getelementptr i32, i32 addrspace(1)* [[ADDR:%.*]], i32 0
-; CHECK:    [[TMP1:%.*]] = load i32, i32 addrspace(1)* [[TMP0]], align 4
-; CHECK:    [[TMP2:%.*]] = getelementptr i32, i32 addrspace(1)* [[ADDR]], i32 1
-; CHECK:    [[TMP3:%.*]] = load i32, i32 addrspace(1)* [[TMP2]], align 4
-; CHECK:    [[TMP4:%.*]] = load i32, i32 addrspace(1)* [[TMP2]], align 4
+; CHECK-TYPED:    [[TMP0:%.*]] = getelementptr i32, i32 addrspace(1)* [[ADDR:%.*]], i32 0
+; CHECK-OPAQUE:    [[TMP0:%.*]] = getelementptr i32, ptr addrspace(1) [[ADDR:%.*]], i32 0
+; CHECK-TYPED:    [[TMP1:%.*]] = load i32, i32 addrspace(1)* [[TMP0]], align 4
+; CHECK-OPAQUE:    [[TMP1:%.*]] = load i32, ptr addrspace(1) [[TMP0]], align 4
+; CHECK-TYPED:    [[TMP2:%.*]] = getelementptr i32, i32 addrspace(1)* [[ADDR]], i32 1
+; CHECK-OPAQUE:    [[TMP2:%.*]] = getelementptr i32, ptr addrspace(1) [[ADDR]], i32 1
+; CHECK-TYPED:    [[TMP3:%.*]] = load i32, i32 addrspace(1)* [[TMP2]], align 4
+; CHECK-OPAQUE:    [[TMP3:%.*]] = load i32, ptr addrspace(1) [[TMP2]], align 4
+; CHECK-TYPED:    [[TMP4:%.*]] = load i32, i32 addrspace(1)* [[TMP2]], align 4
+; CHECK-OPAQUE:    [[TMP4:%.*]] = load i32, ptr addrspace(1) [[TMP2]], align 4
 ; CHECK:    [[TMP5:%.*]] = add i32 [[TMP3]], 32
 ; CHECK:    [[TMP6:%.*]] = add i32 [[TMP4]], 13
-; CHECK:    store i32 [[TMP1]], i32 addrspace(1)* [[ADDR]], align 4
-; CHECK:    store i32 [[TMP5]], i32 addrspace(1)* [[ADDR]], align 4
-; CHECK:    store i32 [[TMP6]], i32 addrspace(1)* [[ADDR]], align 4
+; CHECK-TYPED:    store i32 [[TMP1]], i32 addrspace(1)* [[ADDR]], align 4
+; CHECK-OPAQUE:    store i32 [[TMP1]], ptr addrspace(1) [[ADDR]], align 4
+; CHECK-TYPED:    store i32 [[TMP5]], i32 addrspace(1)* [[ADDR]], align 4
+; CHECK-OPAQUE:    store i32 [[TMP5]], ptr addrspace(1) [[ADDR]], align 4
+; CHECK-TYPED:    store i32 [[TMP6]], i32 addrspace(1)* [[ADDR]], align 4
+; CHECK-OPAQUE:    store i32 [[TMP6]], ptr addrspace(1) [[ADDR]], align 4
 ; CHECK:    ret void
 ;
 entry:

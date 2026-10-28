@@ -6,9 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-opencl-printf-resolution -igc-serialize-metadata \
-; RUN:   -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-opencl-printf-resolution -igc-serialize-metadata \
+; RUN:   -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-opencl-printf-resolution -igc-serialize-metadata \
+; RUN:   -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; OpenCLPrintfResolution
 ; ------------------------------------------------
@@ -21,8 +22,10 @@
 ; }
 
 ; CHECK: !{!"stringConstants", ![[FORMAT_STR_MD:.*]], ![[STR_MD:.*]]}
-; CHECK: ![[FORMAT_STR_MD]] = !{!"stringConstantsSet[0]", [3 x i8] addrspace(2)* @.str}
-; CHECK: ![[STR_MD]] = !{!"stringConstantsSet[1]", [1 x i8] addrspace(2)* @.str.1}
+; CHECK-TYPED: ![[FORMAT_STR_MD]] = !{!"stringConstantsSet[0]", [3 x i8] addrspace(2)* @.str}
+; CHECK-OPAQUE: ![[FORMAT_STR_MD]] = !{!"stringConstantsSet[0]", ptr addrspace(2) @.str}
+; CHECK-TYPED: ![[STR_MD]] = !{!"stringConstantsSet[1]", [1 x i8] addrspace(2)* @.str.1}
+; CHECK-OPAQUE: ![[STR_MD]] = !{!"stringConstantsSet[1]", ptr addrspace(2) @.str.1}
 
 @.str = internal unnamed_addr addrspace(2) constant [3 x i8] c"%s\00", align 1
 @.str.1 = internal unnamed_addr addrspace(2) constant [1 x i8] zeroinitializer, align 1

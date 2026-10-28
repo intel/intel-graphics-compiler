@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-memopt -remove-red-blockreads | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-memopt -remove-red-blockreads | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-memopt -remove-red-blockreads | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 
 target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a:64:64-f80:128:128-n8:16:32:64"
@@ -24,9 +24,12 @@ entry:
 }
 
 ; CHECK-LABEL: define void @f0
-; CHECK: %0 = inttoptr i64 %i64input to i32 addrspace(1)*
-; CHECK: %1 = inttoptr i64 %i64input to i8 addrspace(1)*
-; CHECK: %2 = call i32 @llvm.genx.GenISA.simdBlockRead.i32.p1i32(i32 addrspace(1)* %0)
+; CHECK-TYPED: %0 = inttoptr i64 %i64input to i32 addrspace(1)*
+; CHECK-OPAQUE: %0 = inttoptr i64 %i64input to ptr addrspace(1)
+; CHECK-TYPED: %1 = inttoptr i64 %i64input to i8 addrspace(1)*
+; CHECK-OPAQUE: %1 = inttoptr i64 %i64input to ptr addrspace(1)
+; CHECK-TYPED: %2 = call i32 @llvm.genx.GenISA.simdBlockRead.i32.p1i32(i32 addrspace(1)* %0)
+; CHECK-OPAQUE: %2 = call i32 @llvm.genx.GenISA.simdBlockRead.i32.p1(ptr addrspace(1) %0)
 ; CHECK: %3 = call i16 @llvm.genx.GenISA.simdLaneId()
 ; CHECK: %4 = zext i16 %3 to i32
 ; CHECK: %5 = lshr i32 %4, 2
@@ -35,8 +38,10 @@ entry:
 ; CHECK: %8 = mul i32 %7, 8
 ; CHECK: %9 = lshr i32 %6, %8
 ; CHECK: %10 = trunc i32 %9 to i8
-; CHECK: store i32 %2, i32 addrspace(1)* %i32addr, align 4
-; CHECK: store i8 %10, i8 addrspace(1)* %i8addr, align 1
+; CHECK-TYPED: store i32 %2, i32 addrspace(1)* %i32addr, align 4
+; CHECK-OPAQUE: store i32 %2, ptr addrspace(1) %i32addr, align 4
+; CHECK-TYPED: store i8 %10, i8 addrspace(1)* %i8addr, align 1
+; CHECK-OPAQUE: store i8 %10, ptr addrspace(1) %i8addr, align 1
 ; CHECK: ret void
 
 
@@ -52,21 +57,35 @@ entry:
 }
 
 ; CHECK-LABEL: define void @f1
-; CHECK: %0 = inttoptr i64 %i64input to i16 addrspace(1)*
-; CHECK: %1 = inttoptr i64 %i64input to i8 addrspace(1)*
-; CHECK: %2 = bitcast i8 addrspace(1)* %1 to i16 addrspace(1)*
-; CHECK: %3 = call i16 @llvm.genx.GenISA.simdBlockRead.i16.p1i16(i16 addrspace(1)* %2)
-; CHECK: %4 = call i16 @llvm.genx.GenISA.simdLaneId()
-; CHECK: %5 = zext i16 %4 to i32
-; CHECK: %6 = lshr i32 %5, 1
-; CHECK: %7 = call i16 @llvm.genx.GenISA.WaveShuffleIndex.i16(i16 %3, i32 %6, i32 0)
-; CHECK: %8 = and i32 %5, 1
-; CHECK: %9 = mul i32 %8, 8
-; CHECK: %10 = trunc i32 %9 to i16
-; CHECK: %11 = lshr i16 %7, %10
-; CHECK: %12 = trunc i16 %11 to i8
-; CHECK: store i16 %3, i16 addrspace(1)* %i16addr, align 2
-; CHECK: store i8 %12, i8 addrspace(1)* %i8addr, align 1
+; CHECK-TYPED: %0 = inttoptr i64 %i64input to i16 addrspace(1)*
+; CHECK-OPAQUE: %0 = inttoptr i64 %i64input to ptr addrspace(1)
+; CHECK-TYPED: %1 = inttoptr i64 %i64input to i8 addrspace(1)*
+; CHECK-OPAQUE: %1 = inttoptr i64 %i64input to ptr addrspace(1)
+; CHECK-TYPED: %2 = bitcast i8 addrspace(1)* %1 to i16 addrspace(1)*
+; CHECK-TYPED: %3 = call i16 @llvm.genx.GenISA.simdBlockRead.i16.p1i16(i16 addrspace(1)* %2)
+; CHECK-OPAQUE: %2 = call i16 @llvm.genx.GenISA.simdBlockRead.i16.p1(ptr addrspace(1) %1)
+; CHECK-TYPED: %4 = call i16 @llvm.genx.GenISA.simdLaneId()
+; CHECK-OPAQUE: %3 = call i16 @llvm.genx.GenISA.simdLaneId()
+; CHECK-TYPED: %5 = zext i16 %4 to i32
+; CHECK-OPAQUE: %4 = zext i16 %3 to i32
+; CHECK-TYPED: %6 = lshr i32 %5, 1
+; CHECK-OPAQUE: %5 = lshr i32 %4, 1
+; CHECK-TYPED: %7 = call i16 @llvm.genx.GenISA.WaveShuffleIndex.i16(i16 %3, i32 %6, i32 0)
+; CHECK-OPAQUE: %6 = call i16 @llvm.genx.GenISA.WaveShuffleIndex.i16(i16 %2, i32 %5, i32 0)
+; CHECK-TYPED: %8 = and i32 %5, 1
+; CHECK-OPAQUE: %7 = and i32 %4, 1
+; CHECK-TYPED: %9 = mul i32 %8, 8
+; CHECK-OPAQUE: %8 = mul i32 %7, 8
+; CHECK-TYPED: %10 = trunc i32 %9 to i16
+; CHECK-OPAQUE: %9 = trunc i32 %8 to i16
+; CHECK-TYPED: %11 = lshr i16 %7, %10
+; CHECK-OPAQUE: %10 = lshr i16 %6, %9
+; CHECK-TYPED: %12 = trunc i16 %11 to i8
+; CHECK-OPAQUE: %11 = trunc i16 %10 to i8
+; CHECK-TYPED: store i16 %3, i16 addrspace(1)* %i16addr, align 2
+; CHECK-OPAQUE: store i16 %2, ptr addrspace(1) %i16addr, align 2
+; CHECK-TYPED: store i8 %12, i8 addrspace(1)* %i8addr, align 1
+; CHECK-OPAQUE: store i8 %11, ptr addrspace(1) %i8addr, align 1
 ; CHECK: ret void
 
 define void @f2(i64 %i64input, i64 addrspace(1)* %i64addr, i8 addrspace(1)* %i8addr) {
@@ -81,28 +100,49 @@ entry:
 }
 
 ; CHECK-LABEL: define void @f2
-; CHECK: %0 = inttoptr i64 %i64input to i64 addrspace(1)*
-; CHECK: %1 = inttoptr i64 %i64input to i8 addrspace(1)*
-; CHECK: %2 = bitcast i8 addrspace(1)* %1 to i64 addrspace(1)*
-; CHECK: %3 = call i64 @llvm.genx.GenISA.simdBlockRead.i64.p1i64(i64 addrspace(1)* %2)
-; CHECK: %4 = call i16 @llvm.genx.GenISA.simdLaneId()
-; CHECK: %5 = zext i16 %4 to i32
-; CHECK: %6 = lshr i32 %5, 4
-; CHECK: %7 = bitcast i64 %3 to <2 x i32>
-; CHECK: %8 = extractelement <2 x i32> %7, i32 0
-; CHECK: %9 = extractelement <2 x i32> %7, i32 1
-; CHECK: %10 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %8, i32 %6, i32 0)
-; CHECK: %11 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %9, i32 %6, i32 0)
-; CHECK: %12 = insertelement <2 x i32> undef, i32 %10, i64 0
-; CHECK: %13 = insertelement <2 x i32> %12, i32 %11, i64 1
-; CHECK: %14 = bitcast <2 x i32> %13 to i64
-; CHECK: %15 = and i32 %5, 7
-; CHECK: %16 = mul i32 %15, 8
-; CHECK: %17 = zext i32 %16 to i64
-; CHECK: %18 = lshr i64 %14, %17
-; CHECK: %19 = trunc i64 %18 to i8
-; CHECK: store i64 %3, i64 addrspace(1)* %i64addr, align 8
-; CHECK: store i8 %19, i8 addrspace(1)* %i8addr, align 1
+; CHECK-TYPED: %0 = inttoptr i64 %i64input to i64 addrspace(1)*
+; CHECK-OPAQUE: %0 = inttoptr i64 %i64input to ptr addrspace(1)
+; CHECK-TYPED: %1 = inttoptr i64 %i64input to i8 addrspace(1)*
+; CHECK-OPAQUE: %1 = inttoptr i64 %i64input to ptr addrspace(1)
+; CHECK-TYPED: %2 = bitcast i8 addrspace(1)* %1 to i64 addrspace(1)*
+; CHECK-TYPED: %3 = call i64 @llvm.genx.GenISA.simdBlockRead.i64.p1i64(i64 addrspace(1)* %2)
+; CHECK-OPAQUE: %2 = call i64 @llvm.genx.GenISA.simdBlockRead.i64.p1(ptr addrspace(1) %1)
+; CHECK-TYPED: %4 = call i16 @llvm.genx.GenISA.simdLaneId()
+; CHECK-OPAQUE: %3 = call i16 @llvm.genx.GenISA.simdLaneId()
+; CHECK-TYPED: %5 = zext i16 %4 to i32
+; CHECK-OPAQUE: %4 = zext i16 %3 to i32
+; CHECK-TYPED: %6 = lshr i32 %5, 4
+; CHECK-OPAQUE: %5 = lshr i32 %4, 4
+; CHECK-TYPED: %7 = bitcast i64 %3 to <2 x i32>
+; CHECK-OPAQUE: %6 = bitcast i64 %2 to <2 x i32>
+; CHECK-TYPED: %8 = extractelement <2 x i32> %7, i32 0
+; CHECK-OPAQUE: %7 = extractelement <2 x i32> %6, i32 0
+; CHECK-TYPED: %9 = extractelement <2 x i32> %7, i32 1
+; CHECK-OPAQUE: %8 = extractelement <2 x i32> %6, i32 1
+; CHECK-TYPED: %10 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %8, i32 %6, i32 0)
+; CHECK-OPAQUE: %9 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %7, i32 %5, i32 0)
+; CHECK-TYPED: %11 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %9, i32 %6, i32 0)
+; CHECK-OPAQUE: %10 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %8, i32 %5, i32 0)
+; CHECK-TYPED: %12 = insertelement <2 x i32> undef, i32 %10, i64 0
+; CHECK-OPAQUE: %11 = insertelement <2 x i32> undef, i32 %9, i64 0
+; CHECK-TYPED: %13 = insertelement <2 x i32> %12, i32 %11, i64 1
+; CHECK-OPAQUE: %12 = insertelement <2 x i32> %11, i32 %10, i64 1
+; CHECK-TYPED: %14 = bitcast <2 x i32> %13 to i64
+; CHECK-OPAQUE: %13 = bitcast <2 x i32> %12 to i64
+; CHECK-TYPED: %15 = and i32 %5, 7
+; CHECK-OPAQUE: %14 = and i32 %4, 7
+; CHECK-TYPED: %16 = mul i32 %15, 8
+; CHECK-OPAQUE: %15 = mul i32 %14, 8
+; CHECK-TYPED: %17 = zext i32 %16 to i64
+; CHECK-OPAQUE: %16 = zext i32 %15 to i64
+; CHECK-TYPED: %18 = lshr i64 %14, %17
+; CHECK-OPAQUE: %17 = lshr i64 %13, %16
+; CHECK-TYPED: %19 = trunc i64 %18 to i8
+; CHECK-OPAQUE: %18 = trunc i64 %17 to i8
+; CHECK-TYPED: store i64 %3, i64 addrspace(1)* %i64addr, align 8
+; CHECK-OPAQUE: store i64 %2, ptr addrspace(1) %i64addr, align 8
+; CHECK-TYPED: store i8 %19, i8 addrspace(1)* %i8addr, align 1
+; CHECK-OPAQUE: store i8 %18, ptr addrspace(1) %i8addr, align 1
 ; CHECK: ret void
 
 define void @f3(i64 %i64input, i16 addrspace(1)* %i16addr, i32 addrspace(1)* %i32addr) {
@@ -119,9 +159,12 @@ entry:
 }
 
 ; CHECK-LABEL: define void @f3
-; CHECK: %0 = inttoptr i64 %i64input to i16 addrspace(1)*
-; CHECK: %1 = inttoptr i64 %i64input to i32 addrspace(1)*
-; CHECK: %2 = call <8 x i16> @llvm.genx.GenISA.simdBlockRead.v8i16.p1i16(i16 addrspace(1)* %0)
+; CHECK-TYPED: %0 = inttoptr i64 %i64input to i16 addrspace(1)*
+; CHECK-OPAQUE: %0 = inttoptr i64 %i64input to ptr addrspace(1)
+; CHECK-TYPED: %1 = inttoptr i64 %i64input to i32 addrspace(1)*
+; CHECK-OPAQUE: %1 = inttoptr i64 %i64input to ptr addrspace(1)
+; CHECK-TYPED: %2 = call <8 x i16> @llvm.genx.GenISA.simdBlockRead.v8i16.p1i16(i16 addrspace(1)* %0)
+; CHECK-OPAQUE: %2 = call <8 x i16> @llvm.genx.GenISA.simdBlockRead.v8i16.p1(ptr addrspace(1) %0)
 ; CHECK: %3 = call i16 @llvm.genx.GenISA.simdLaneId()
 ; CHECK: %4 = zext i16 %3 to i32
 ; CHECK: %5 = extractelement <8 x i16> %2, i32 0
@@ -213,8 +256,10 @@ entry:
 ; CHECK: %91 = insertelement <2 x i32> %82, i32 %90, i64 1
 ; CHECK: %92 = extractelement <8 x i16> %2, i32 3
 ; CHECK: %93 = extractelement <2 x i32> %91, i32 1
-; CHECK: store i16 %92, i16 addrspace(1)* %i16addr, align 2
-; CHECK: store i32 %93, i32 addrspace(1)* %i32addr, align 4
+; CHECK-TYPED: store i16 %92, i16 addrspace(1)* %i16addr, align 2
+; CHECK-OPAQUE: store i16 %92, ptr addrspace(1) %i16addr, align 2
+; CHECK-TYPED: store i32 %93, i32 addrspace(1)* %i32addr, align 4
+; CHECK-OPAQUE: store i32 %93, ptr addrspace(1) %i32addr, align 4
 ; CHECK: ret void
 
 define void @f4(i64 %i64input, i32 addrspace(1)* %i32addr, i8 addrspace(1)* %i8addr) {
@@ -231,9 +276,12 @@ entry:
 }
 
 ; CHECK-LABEL: define void @f4
-; CHECK: %0 = inttoptr i64 %i64input to i32 addrspace(1)*
-; CHECK: %1 = inttoptr i64 %i64input to i8 addrspace(1)*
-; CHECK: %2 = call <2 x i32> @llvm.genx.GenISA.simdBlockRead.v2i32.p1i32(i32 addrspace(1)* %0)
+; CHECK-TYPED: %0 = inttoptr i64 %i64input to i32 addrspace(1)*
+; CHECK-OPAQUE: %0 = inttoptr i64 %i64input to ptr addrspace(1)
+; CHECK-TYPED: %1 = inttoptr i64 %i64input to i8 addrspace(1)*
+; CHECK-OPAQUE: %1 = inttoptr i64 %i64input to ptr addrspace(1)
+; CHECK-TYPED: %2 = call <2 x i32> @llvm.genx.GenISA.simdBlockRead.v2i32.p1i32(i32 addrspace(1)* %0)
+; CHECK-OPAQUE: %2 = call <2 x i32> @llvm.genx.GenISA.simdBlockRead.v2i32.p1(ptr addrspace(1) %0)
 ; CHECK: %3 = call i16 @llvm.genx.GenISA.simdLaneId()
 ; CHECK: %4 = zext i16 %3 to i32
 ; CHECK: %5 = lshr i32 %4, 2
@@ -252,8 +300,10 @@ entry:
 ; CHECK: %18 = insertelement <2 x i8> %14, i8 %17, i32 1
 ; CHECK: %19 = extractelement <2 x i32> %2, i32 0
 ; CHECK: %20 = extractelement <2 x i8> %18, i32 1
-; CHECK: store i32 %19, i32 addrspace(1)* %i32addr, align 4
-; CHECK: store i8 %20, i8 addrspace(1)* %i8addr, align 1
+; CHECK-TYPED: store i32 %19, i32 addrspace(1)* %i32addr, align 4
+; CHECK-OPAQUE: store i32 %19, ptr addrspace(1) %i32addr, align 4
+; CHECK-TYPED: store i8 %20, i8 addrspace(1)* %i8addr, align 1
+; CHECK-OPAQUE: store i8 %20, ptr addrspace(1) %i8addr, align 1
 ; CHECK: ret void
 
 declare i64 @llvm.genx.GenISA.simdBlockRead.i64.p1i64(i64 addrspace(1)*)

@@ -6,8 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
+; REQUIRES: regkeys, shader-types
 ; Default (non-speculative) mode:
 ; RUN: igc_opt -platformbmg --opaque-pointers --regkey EnableInstructionHoistingOptimization=1 -igc-instruction-hoisting-optimization -S -inputps < %s | FileCheck %s --check-prefixes=CHECK,NOSPEC
 ; Speculative mode (hoisting across a conditional branch allowed):

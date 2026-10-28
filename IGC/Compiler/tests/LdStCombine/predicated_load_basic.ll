@@ -8,11 +8,13 @@
 
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN:   igc_opt --typed-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=5 \
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=5 \
 ; RUN:           -platformbmg \
-; RUN: | FileCheck %s
+; RUN: | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=5 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; CHECK-LABEL: target datalayout
 ; %__StructSOALayout_{{.*}} = type <{ %__StructAOSLayout_{{.*}} }>
@@ -52,7 +54,8 @@ entry:
 ; case 1: load i8; load i8; load i8; load i8 --> load i32 --> bitcast to <4 x i8>
 ;
 ; CHECK-LABEL: store i16
-; CHECK: [[T1:%.*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)* %{{.*}}, i32 84148994)
+; CHECK-TYPED: [[T1:%.*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)* %{{.*}}, i32 84148994)
+; CHECK-OPAQUE: [[T1:%.*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1.i32(ptr addrspace(1) %{{.*}}, i32 84148994)
 ; CHECK: bitcast i32 [[T1]] to <4 x i8>
 ;
   %c1.si = bitcast i32 addrspace(1)* %si to i8 addrspace(1)*
@@ -79,7 +82,8 @@ entry:
 ; case 2: load i16; load i16 -> load i32 --> bitcast to <2 x i16>
 ;
 ; CHECK-LABEL: store <4 x i8>
-; CHECK: [[T2:%.*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)* %{{.*}}, i32 196610)
+; CHECK-TYPED: [[T2:%.*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)* %{{.*}}, i32 196610)
+; CHECK-OPAQUE: [[T2:%.*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1.i32(ptr addrspace(1) %{{.*}}, i32 196610)
 ; CHECK: bitcast i32 [[T2]] to <2 x i16>
 ;
 
@@ -135,7 +139,8 @@ entry:
 ; case 5: load i32; load i32; load i64 -> load <4 x i32>
 ;
 ; CHECK-LABEL:  store <2 x i64>
-; CHECK: call <4 x i32> @llvm.genx.GenISA.PredicatedLoad.{{.*}} <4 x i32> <i32 2, i32 3, i32 extractelement (<2 x i32> bitcast (<1 x i64> <i64 4> to <2 x i32>), i32 0), i32 extractelement (<2 x i32> bitcast (<1 x i64> <i64 4> to <2 x i32>), i32 1)>
+; CHECK-TYPED: call <4 x i32> @llvm.genx.GenISA.PredicatedLoad.{{.*}} <4 x i32> <i32 2, i32 3, i32 extractelement (<2 x i32> bitcast (<1 x i64> <i64 4> to <2 x i32>), i32 0), i32 extractelement (<2 x i32> bitcast (<1 x i64> <i64 4> to <2 x i32>), i32 1)>
+; CHECK-OPAQUE: call <4 x i32> @llvm.genx.GenISA.PredicatedLoad.{{.*}} <4 x i32> <i32 2, i32 3, i32 extractelement (<2 x i32> bitcast (<1 x i64> {{<i64 4>|splat \(i64 4\)}} to <2 x i32>), i32 0), i32 extractelement (<2 x i32> bitcast (<1 x i64> {{<i64 4>|splat \(i64 4\)}} to <2 x i32>), i32 1)>
 ;
   %c5.baseidx = add i64 %conv.i.i, 512
   %c5.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c5.baseidx
@@ -165,11 +170,14 @@ entry:
 ;    of anchor load is used instead.
 ;
 ; CHECK-LABEL:  c6.baseidx
-; CHECK:        %c6.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c6.baseidx
-; CHECK:        [[T6_0:%.*]] = bitcast i32 addrspace(1)* %c6.arrayidx to i8 addrspace(1)*
-; CHECK:        [[T6_1:%.*]] = getelementptr inbounds i8, i8 addrspace(1)* [[T6_0]], i64 -4
-; CHECK:        [[T6_2:%.*]] = bitcast i8 addrspace(1)* [[T6_1]] to <2 x i32> addrspace(1)*
-; CHECK:        {{.*}} = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p1v2i32.v2i32(<2 x i32> addrspace(1)* [[T6_2]], i64 4, i1 true, <2 x i32> <i32 6, i32 5>)
+; CHECK-TYPED:        %c6.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c6.baseidx
+; CHECK-OPAQUE:        %c6.arrayidx = getelementptr inbounds i32, ptr addrspace(1) %si, i64 %c6.baseidx
+; CHECK-TYPED:        [[T6_0:%.*]] = bitcast i32 addrspace(1)* %c6.arrayidx to i8 addrspace(1)*
+; CHECK-TYPED:        [[T6_1:%.*]] = getelementptr inbounds i8, i8 addrspace(1)* [[T6_0]], i64 -4
+; CHECK-OPAQUE:        [[T6_1:%.*]] = getelementptr inbounds i8, ptr addrspace(1) %c6.arrayidx, i64 -4
+; CHECK-TYPED:        [[T6_2:%.*]] = bitcast i8 addrspace(1)* [[T6_1]] to <2 x i32> addrspace(1)*
+; CHECK-TYPED:        {{.*}} = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p1v2i32.v2i32(<2 x i32> addrspace(1)* [[T6_2]], i64 4, i1 true, <2 x i32> <i32 6, i32 5>)
+; CHECK-OPAQUE:        {{.*}} = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p1.v2i32(ptr addrspace(1) [[T6_1]], i64 4, i1 true, <2 x i32> <i32 6, i32 5>)
 ;
   %c6.baseidx = add i64 %conv.i.i, 577
   %c6.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c6.baseidx
@@ -187,7 +195,8 @@ entry:
 ; case 7: load i8; load i8; load i16; --> load i32 --> bitcast to struct
 ;
 ; CHECK-LABEL: c7.baseidx
-; CHECK: [[T7:%.*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)* %{{.*}}, i32 262914)
+; CHECK-TYPED: [[T7:%.*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)* %{{.*}}, i32 262914)
+; CHECK-OPAQUE: [[T7:%.*]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1.i32(ptr addrspace(1) %{{.*}}, i32 262914)
 ; CHECK: call %__StructSOALayout_{{.*}} @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_{{.*}}.i32(i32 [[T7]])
 ;
   %c7.baseidx = add i64 %conv.i.i, 1000
@@ -218,11 +227,16 @@ entry:
 ; for which alias analysis does not guarantee that it is not writing to the same memory location.
 ;
 ; CHECK-LABEL: %c8.arrayidx
-; CHECK: call <2 x i8> @llvm.genx.GenISA.PredicatedLoad.v2i8.p1v2i8.v2i8(<2 x i8> addrspace(1)* %{{.*}}, i64 4, i1 true, <2 x i8> <i8 5, i8 6>)
-; CHECK: atomicrmw add i8
-; CHECK: call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %{{.*}}, i64 1, i1 true, i8 7)
-; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1i8.i8
-; CHECK: call <2 x i8> @llvm.genx.GenISA.PredicatedLoad.v2i8.p1v2i8.v2i8(<2 x i8> addrspace(1)* %{{.*}}, i64 1, i1 true, <2 x i8> <i8 8, i8 9>)
+; CHECK-TYPED: call <2 x i8> @llvm.genx.GenISA.PredicatedLoad.v2i8.p1v2i8.v2i8(<2 x i8> addrspace(1)* %{{.*}}, i64 4, i1 true, <2 x i8> <i8 5, i8 6>)
+; CHECK-OPAQUE: call <2 x i8> @llvm.genx.GenISA.PredicatedLoad.v2i8.p1.v2i8(ptr addrspace(1) %{{.*}}, i64 4, i1 true, <2 x i8> <i8 5, i8 6>)
+; CHECK-TYPED: atomicrmw add i8
+; CHECK-OPAQUE: atomicrmw add ptr addrspace(1) {{.*}}, i8 1
+; CHECK-TYPED: call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %{{.*}}, i64 1, i1 true, i8 7)
+; CHECK-OPAQUE: call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1.i8(ptr addrspace(1) %{{.*}}, i64 1, i1 true, i8 7)
+; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p1i8.i8
+; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p1.i8
+; CHECK-TYPED: call <2 x i8> @llvm.genx.GenISA.PredicatedLoad.v2i8.p1v2i8.v2i8(<2 x i8> addrspace(1)* %{{.*}}, i64 1, i1 true, <2 x i8> <i8 8, i8 9>)
+; CHECK-OPAQUE: call <2 x i8> @llvm.genx.GenISA.PredicatedLoad.v2i8.p1.v2i8(ptr addrspace(1) %{{.*}}, i64 1, i1 true, <2 x i8> <i8 8, i8 9>)
 ;
   %c8.si = bitcast i32 addrspace(1)* %si to i8 addrspace(1)*
   %c8.arrayidx = getelementptr inbounds i8, i8 addrspace(1)* %c8.si, i64 %conv.i.i
@@ -260,8 +274,9 @@ entry:
 ;    of anchor load is used instead. Case, when Lead's load address is not an Instruction.
 ;
 ; CHECK-LABEL:  store i32 %c8.e4
-; CHECK:        [[T9:%.*]] = bitcast i32 addrspace(1)* %si to <2 x i32> addrspace(1)*
-; CHECK:        {{.*}} = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p1v2i32.v2i32(<2 x i32> addrspace(1)* [[T9]], i64 4, i1 true, <2 x i32> <i32 6, i32 5>)
+; CHECK-TYPED:        [[T9:%.*]] = bitcast i32 addrspace(1)* %si to <2 x i32> addrspace(1)*
+; CHECK-TYPED:        {{.*}} = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p1v2i32.v2i32(<2 x i32> addrspace(1)* [[T9]], i64 4, i1 true, <2 x i32> <i32 6, i32 5>)
+; CHECK-OPAQUE:        {{.*}} = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p1.v2i32(ptr addrspace(1) %si, i64 4, i1 true, <2 x i32> <i32 6, i32 5>)
 ;
   %c9.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 1
   %c9.0 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)* %c9.arrayidx, i64 4, i1 true, i32 5)

@@ -9,8 +9,8 @@
 ; This test checks printf with phi input.
 ; NB: this only works with the default ZEBin format.
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-opencl-printf-resolution | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-opencl-printf-resolution | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-opencl-printf-resolution | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 @.str.1 = internal unnamed_addr addrspace(2) constant [9 x i8] c"string 1\00"
 @.str.2 = internal unnamed_addr addrspace(2) constant [9 x i8] c"string 2\00"
@@ -50,12 +50,16 @@ exit:
 }
 
 ; CHECK-LABEL: define spir_kernel void @printf_test(
-; CHECK-SAME:      i64 %[[ENUM_VAL:[A-Za-z0-9]+]], i8 addrspace(1)* %printfBuffer)
+; CHECK-TYPED-SAME:      i64 %[[ENUM_VAL:[A-Za-z0-9]+]], i8 addrspace(1)* %printfBuffer)
+; CHECK-OPAQUE-SAME:      i64 %[[ENUM_VAL:[A-Za-z0-9]+]], ptr addrspace(1) %printfBuffer)
 ; CHECK: entry:
-; CHECK-NEXT: %printfBufferPtr = call i8 addrspace(1)* @llvm.genx.GenISA.getPrintfBuffer.p1i8()
+; CHECK-TYPED-NEXT: %printfBufferPtr = call i8 addrspace(1)* @llvm.genx.GenISA.getPrintfBuffer.p1i8()
+; CHECK-OPAQUE-NEXT: %printfBufferPtr = call ptr addrspace(1) @llvm.genx.GenISA.getPrintfBuffer.p1()
 ; CHECK-NEXT: %[[CMP:.+]] = icmp eq i64 %[[ENUM_VAL]], 1
-; CHECK-NEXT: %[[STR1_GEP:.+]] = getelementptr inbounds [9 x i8], [9 x i8] addrspace(2)* @.str.1, i64 0, i64 0
-; CHECK-NEXT: %[[STR2_GEP:.+]] = getelementptr inbounds [9 x i8], [9 x i8] addrspace(2)* @.str.2, i64 0, i64 0
+; CHECK-TYPED-NEXT: %[[STR1_GEP:.+]] = getelementptr inbounds [9 x i8], [9 x i8] addrspace(2)* @.str.1, i64 0, i64 0
+; CHECK-OPAQUE-NEXT: %[[STR1_GEP:.+]] = getelementptr inbounds [9 x i8], ptr addrspace(2) @.str.1, i64 0, i64 0
+; CHECK-TYPED-NEXT: %[[STR2_GEP:.+]] = getelementptr inbounds [9 x i8], [9 x i8] addrspace(2)* @.str.2, i64 0, i64 0
+; CHECK-OPAQUE-NEXT: %[[STR2_GEP:.+]] = getelementptr inbounds [9 x i8], ptr addrspace(2) @.str.2, i64 0, i64 0
 ; CHECK-NEXT: switch i64 %[[ENUM_VAL]], label %printf_bb [
 ; CHECK-NEXT:     i64 0, label %switch_b0
 ; CHECK-NEXT:     i64 1, label %switch_b1
@@ -64,32 +68,41 @@ exit:
 ; CHECK-NEXT:   ]
 ;
 ; CHECK: switch_b0:
-; CHECK-NEXT: %[[STR3_GEP:.+]] = getelementptr inbounds [9 x i8], [9 x i8] addrspace(2)* @.str.3, i64 0, i64 0
+; CHECK-TYPED-NEXT: %[[STR3_GEP:.+]] = getelementptr inbounds [9 x i8], [9 x i8] addrspace(2)* @.str.3, i64 0, i64 0
+; CHECK-OPAQUE-NEXT: %[[STR3_GEP:.+]] = getelementptr inbounds [9 x i8], ptr addrspace(2) @.str.3, i64 0, i64 0
 ; CHECK-NEXT: br label %switch_b2
 ;
 ; CHECK: switch_b1:
-; CHECK-NEXT: %[[STR1_STR2_SEL:.+]] = select i1 %[[CMP]], i8 addrspace(2)* %[[STR1_GEP]], i8 addrspace(2)* %[[STR2_GEP]]
+; CHECK-TYPED-NEXT: %[[STR1_STR2_SEL:.+]] = select i1 %[[CMP]], i8 addrspace(2)* %[[STR1_GEP]], i8 addrspace(2)* %[[STR2_GEP]]
+; CHECK-OPAQUE-NEXT: %[[STR1_STR2_SEL:.+]] = select i1 %[[CMP]], ptr addrspace(2) %[[STR1_GEP]], ptr addrspace(2) %[[STR2_GEP]]
 ; CHECK-NEXT: br label %printf_bb
 ;
 ; CHECK: switch_b2:
-; CHECK-NEXT: %[[STR2_STR3_PHI:.+]] = phi i8 addrspace(2)* [ %[[STR3_GEP]], %switch_b0 ], [ %[[STR2_GEP]], %entry ]
+; CHECK-TYPED-NEXT: %[[STR2_STR3_PHI:.+]] = phi i8 addrspace(2)* [ %[[STR3_GEP]], %switch_b0 ], [ %[[STR2_GEP]], %entry ]
+; CHECK-OPAQUE-NEXT: %[[STR2_STR3_PHI:.+]] = phi ptr addrspace(2) [ %[[STR3_GEP]], %switch_b0 ], [ %[[STR2_GEP]], %entry ]
 ; CHECK-NEXT: br label %printf_bb
 ;
 ; CHECK: printf_bb:
-; CHECK-NEXT: %[[JOIN_PHI:.+]] = phi i8 addrspace(2)* [ %[[STR1_STR2_SEL]], %switch_b1 ], [ %[[STR2_STR3_PHI]], %switch_b2 ], [ %[[STR1_GEP]], %entry ]
-; CHECK-NEXT: %ptrBC = bitcast i8 addrspace(1)* %printfBufferPtr to i32 addrspace(1)*
-; CHECK-NEXT: %write_offset = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* %ptrBC, i32 8)
+; CHECK-TYPED-NEXT: %[[JOIN_PHI:.+]] = phi i8 addrspace(2)* [ %[[STR1_STR2_SEL]], %switch_b1 ], [ %[[STR2_STR3_PHI]], %switch_b2 ], [ %[[STR1_GEP]], %entry ]
+; CHECK-OPAQUE-NEXT: %[[JOIN_PHI:.+]] = phi ptr addrspace(2) [ %[[STR1_STR2_SEL]], %switch_b1 ], [ %[[STR2_STR3_PHI]], %switch_b2 ], [ %[[STR1_GEP]], %entry ]
+; CHECK-TYPED-NEXT: %ptrBC = bitcast i8 addrspace(1)* %printfBufferPtr to i32 addrspace(1)*
+; CHECK-TYPED-NEXT: %write_offset = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* %ptrBC, i32 8)
+; CHECK-OPAQUE-NEXT: %write_offset = call i32 @__builtin_IB_atomic_add_global_i32(ptr addrspace(1) %printfBufferPtr, i32 8)
 ; CHECK-NEXT: %end_offset = add i32 %write_offset, 8
 ; CHECK-NEXT: %[[WRITE_OFFSET_EXT:write_offset.*]] = zext i32 %write_offset to i64
-; CHECK-NEXT: %buffer_ptr = ptrtoint i8 addrspace(1)* %printfBufferPtr to i64
+; CHECK-TYPED-NEXT: %buffer_ptr = ptrtoint i8 addrspace(1)* %printfBufferPtr to i64
+; CHECK-OPAQUE-NEXT: %buffer_ptr = ptrtoint ptr addrspace(1) %printfBufferPtr to i64
 ; CHECK-NEXT: %[[WRITE_OFFSET_ADD:write_offset.*]] = add i64 %buffer_ptr, %[[WRITE_OFFSET_EXT]]
 ; CHECK-NEXT: %[[BUF_CHECK:.+]] = icmp ule i32 %end_offset, 4194304
 ; CHECK-NEXT: br i1 %[[BUF_CHECK]], label %write_offset_true, label %write_offset_false
 ;
 ; CHECK: write_offset_true:
-; CHECK-NEXT: %write_offset_ptr = inttoptr i64 %[[WRITE_OFFSET_ADD]] to i64 addrspace(1)*
-; CHECK-NEXT: %[[PTRCAST:.+]] = ptrtoint i8 addrspace(2)* %[[JOIN_PHI]] to i64
-; CHECK-NEXT: store i64 %[[PTRCAST]], i64 addrspace(1)* %write_offset_ptr, align 4
+; CHECK-TYPED-NEXT: %write_offset_ptr = inttoptr i64 %[[WRITE_OFFSET_ADD]] to i64 addrspace(1)*
+; CHECK-OPAQUE-NEXT: %write_offset_ptr = inttoptr i64 %[[WRITE_OFFSET_ADD]] to ptr addrspace(1)
+; CHECK-TYPED-NEXT: %[[PTRCAST:.+]] = ptrtoint i8 addrspace(2)* %[[JOIN_PHI]] to i64
+; CHECK-OPAQUE-NEXT: %[[PTRCAST:.+]] = ptrtoint ptr addrspace(2) %[[JOIN_PHI]] to i64
+; CHECK-TYPED-NEXT: store i64 %[[PTRCAST]], i64 addrspace(1)* %write_offset_ptr, align 4
+; CHECK-OPAQUE-NEXT: store i64 %[[PTRCAST]], ptr addrspace(1) %write_offset_ptr, align 4
 ; TODO: Fix the extra, unused offset increment (add i64 %[[WRITE_OFFSET_ADD]], 8)
 ;       and make next line CHECK-NEXT
 ; CHECK: br label %bblockJoin
@@ -100,8 +113,10 @@ exit:
 ; CHECK-NEXT: br i1 %[[BUF_CHECK_ERR]], label %write_error_string, label %bblockFalseJoin
 ;
 ; CHECK: write_error_string:
-; CHECK-NEXT: %write_offset_ptr5 = inttoptr i64 %[[WRITE_OFFSET_ADD]] to i32 addrspace(1)*
-; CHECK-NEXT: store i32 -1, i32 addrspace(1)* %write_offset_ptr5, align 4
+; CHECK-TYPED-NEXT: %write_offset_ptr5 = inttoptr i64 %[[WRITE_OFFSET_ADD]] to i32 addrspace(1)*
+; CHECK-OPAQUE-NEXT: %write_offset_ptr5 = inttoptr i64 %[[WRITE_OFFSET_ADD]] to ptr addrspace(1)
+; CHECK-TYPED-NEXT: store i32 -1, i32 addrspace(1)* %write_offset_ptr5, align 4
+; CHECK-OPAQUE-NEXT: store i32 -1, ptr addrspace(1) %write_offset_ptr5, align 4
 ; CHECK-NEXT: br label %bblockFalseJoin
 ;
 ; CHECK: bblockFalseJoin:

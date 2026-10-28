@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -LSC-Cache-Optimization-pass -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -LSC-Cache-Optimization-pass -S < %s | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -LSC-Cache-Optimization-pass -S < %s | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; LSCCacheOptimizationPass
 ; ------------------------------------------------
@@ -16,12 +16,16 @@
 
 ; CHECK: @test(
 ; CHECK:  entry:
-; CHECK:    [[TMP0:%.*]] = call dereferenceable(4) float addrspace(23)* @llvm.genx.GenISA.SWHotZonePtr.p23f32.i32(i32 [[B:%.*]])
-; CHECK:    [[TMP1:%.*]] = load float, float addrspace(23)* [[TMP0]]
-; CHECK:    [[TMP2:%.*]] = bitcast float addrspace(23)* [[TMP0]] to i8 addrspace(23)*
-; CHECK:    [[TMP3:%.*]] = getelementptr i8, i8 addrspace(23)* [[TMP2]], i64 4
-; CHECK:    [[TMP4:%.*]] = bitcast i8 addrspace(23)* [[TMP3]] to <3 x float> addrspace(23)*
-; CHECK:    [[TMP5:%.*]] = load <3 x float>, <3 x float> addrspace(23)* [[TMP4]]
+; CHECK-TYPED:    [[TMP0:%.*]] = call dereferenceable(4) float addrspace(23)* @llvm.genx.GenISA.SWHotZonePtr.p23f32.i32(i32 [[B:%.*]])
+; CHECK-OPAQUE:    [[TMP0:%.*]] = call dereferenceable(4) ptr addrspace(23) @llvm.genx.GenISA.SWHotZonePtr.p23.i32(i32 [[B:%.*]])
+; CHECK-TYPED:    [[TMP1:%.*]] = load float, float addrspace(23)* [[TMP0]]
+; CHECK-OPAQUE:    [[TMP1:%.*]] = load float, ptr addrspace(23) [[TMP0]]
+; CHECK-TYPED:    [[TMP2:%.*]] = bitcast float addrspace(23)* [[TMP0]] to i8 addrspace(23)*
+; CHECK-TYPED:    [[TMP3:%.*]] = getelementptr i8, i8 addrspace(23)* [[TMP2]], i64 4
+; CHECK-OPAQUE:    [[TMP3:%.*]] = getelementptr i8, ptr addrspace(23) [[TMP0]], i64 4
+; CHECK-TYPED:    [[TMP4:%.*]] = bitcast i8 addrspace(23)* [[TMP3]] to <3 x float> addrspace(23)*
+; CHECK-TYPED:    [[TMP5:%.*]] = load <3 x float>, <3 x float> addrspace(23)* [[TMP4]]
+; CHECK-OPAQUE:    [[TMP5:%.*]] = load <3 x float>, ptr addrspace(23) [[TMP3]]
 ; CHECK:    [[TMP6:%.*]] = extractelement <3 x float> [[TMP5]], i64 0
 ; CHECK:    [[TMP7:%.*]] = extractelement <3 x float> [[TMP5]], i64 1
 ; CHECK:    [[TMP8:%.*]] = extractelement <3 x float> [[TMP5]], i64 2
@@ -29,8 +33,9 @@
 ; CHECK:    [[TMP10:%.*]] = insertelement <4 x float> [[TMP9]], float [[TMP6]], i64 1
 ; CHECK:    [[TMP11:%.*]] = insertelement <4 x float> [[TMP10]], float [[TMP7]], i64 2
 ; CHECK:    [[TMP12:%.*]] = insertelement <4 x float> [[TMP11]], float [[TMP8]], i64 3
-; CHECK:    [[TMP13:%.*]] = bitcast float addrspace(23)* [[TMP0]] to <4 x float> addrspace(23)*
-; CHECK:    store <4 x float> [[TMP12]], <4 x float> addrspace(23)* [[TMP13]]
+; CHECK-TYPED:    [[TMP13:%.*]] = bitcast float addrspace(23)* [[TMP0]] to <4 x float> addrspace(23)*
+; CHECK-TYPED:    store <4 x float> [[TMP12]], <4 x float> addrspace(23)* [[TMP13]]
+; CHECK-OPAQUE:    store <4 x float> [[TMP12]], ptr addrspace(23) [[TMP0]]
 ; CHECK:    ret void
 ;
 

@@ -5,9 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-kernel-function-cloning -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-kernel-function-cloning -S < %s | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-kernel-function-cloning -S < %s | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; KernelFunctionCloning
 ; ------------------------------------------------
@@ -48,16 +47,25 @@ entry:
 define spir_kernel void @foo(i32 addrspace(1)* %srcA) #0 {
 ; CHECK-LABEL: @foo(
 ; CHECK:  entry:
-; CHECK:    [[SRCA_ADDR:%.*]] = alloca i32 addrspace(1)*, align 8
+; CHECK-TYPED:    [[SRCA_ADDR:%.*]] = alloca i32 addrspace(1)*, align 8
+; CHECK-OPAQUE:    [[SRCA_ADDR:%.*]] = alloca ptr addrspace(1), align 8
 ; CHECK:    [[SRC:%.*]] = alloca i32, align 4
-; CHECK:    store i32 addrspace(1)* [[SRCA:%.*]], i32 addrspace(1)** [[SRCA_ADDR]], align 8
-; CHECK:    [[TMP0:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[SRCA_ADDR]], align 8
-; CHECK:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP0]], i64 1
-; CHECK:    [[TMP1:%.*]] = load i32, i32 addrspace(1)* [[ARRAYIDX]], align 4
-; CHECK:    store i32 [[TMP1]], i32* [[SRC]], align 4
-; CHECK:    [[TMP2:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[SRCA_ADDR]], align 8
-; CHECK:    [[TMP3:%.*]] = load i32, i32* [[SRC]], align 4
-; CHECK:    call spir_kernel void @bar.1(i32 addrspace(1)* [[TMP2]], i32 [[TMP3]]) #0
+; CHECK-TYPED:    store i32 addrspace(1)* [[SRCA:%.*]], i32 addrspace(1)** [[SRCA_ADDR]], align 8
+; CHECK-OPAQUE:    store ptr addrspace(1) [[SRCA:%.*]], ptr [[SRCA_ADDR]], align 8
+; CHECK-TYPED:    [[TMP0:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[SRCA_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP0:%.*]] = load ptr addrspace(1), ptr [[SRCA_ADDR]], align 8
+; CHECK-TYPED:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP0]], i64 1
+; CHECK-OPAQUE:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, ptr addrspace(1) [[TMP0]], i64 1
+; CHECK-TYPED:    [[TMP1:%.*]] = load i32, i32 addrspace(1)* [[ARRAYIDX]], align 4
+; CHECK-OPAQUE:    [[TMP1:%.*]] = load i32, ptr addrspace(1) [[ARRAYIDX]], align 4
+; CHECK-TYPED:    store i32 [[TMP1]], i32* [[SRC]], align 4
+; CHECK-OPAQUE:    store i32 [[TMP1]], ptr [[SRC]], align 4
+; CHECK-TYPED:    [[TMP2:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[SRCA_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP2:%.*]] = load ptr addrspace(1), ptr [[SRCA_ADDR]], align 8
+; CHECK-TYPED:    [[TMP3:%.*]] = load i32, i32* [[SRC]], align 4
+; CHECK-OPAQUE:    [[TMP3:%.*]] = load i32, ptr [[SRC]], align 4
+; CHECK-TYPED:    call spir_func void @bar.1(i32 addrspace(1)* [[TMP2]], i32 [[TMP3]]) #0
+; CHECK-OPAQUE:    call spir_func void @bar.1(ptr addrspace(1) [[TMP2]], i32 [[TMP3]]) #0
 ; CHECK:    ret void
 ;
 entry:
@@ -70,20 +78,28 @@ entry:
   store i32 %1, i32* %src, align 4
   %2 = load i32 addrspace(1)*, i32 addrspace(1)** %srcA.addr, align 8
   %3 = load i32, i32* %src, align 4
-  call spir_kernel void @bar(i32 addrspace(1)* %2, i32 %3) #0
+  ; spir_func call site: newer LLVM verifiers reject calls with the spir_kernel convention
+  call spir_func void @bar(i32 addrspace(1)* %2, i32 %3) #0
   ret void
 }
 
 ; CHECK-LABEL: define internal spir_kernel void @bar.1(
 ; CHECK:  entry:
-; CHECK:    [[DST_ADDR:%.*]] = alloca i32 addrspace(1)*, align 8
+; CHECK-TYPED:    [[DST_ADDR:%.*]] = alloca i32 addrspace(1)*, align 8
+; CHECK-OPAQUE:    [[DST_ADDR:%.*]] = alloca ptr addrspace(1), align 8
 ; CHECK:    [[SRC_ADDR:%.*]] = alloca i32, align 4
-; CHECK:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR]], align 8
-; CHECK:    store i32 [[SRC:%.*]], i32* [[SRC_ADDR]], align 4
-; CHECK:    [[TMP0:%.*]] = load i32, i32* [[SRC_ADDR]], align 4
-; CHECK:    [[TMP1:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[DST_ADDR]], align 8
-; CHECK:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP1]], i64 0
-; CHECK:    store i32 [[TMP0]], i32 addrspace(1)* [[ARRAYIDX]], align 4
+; CHECK-TYPED:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR]], align 8
+; CHECK-OPAQUE:    store ptr addrspace(1) [[DST:%.*]], ptr [[DST_ADDR]], align 8
+; CHECK-TYPED:    store i32 [[SRC:%.*]], i32* [[SRC_ADDR]], align 4
+; CHECK-OPAQUE:    store i32 [[SRC:%.*]], ptr [[SRC_ADDR]], align 4
+; CHECK-TYPED:    [[TMP0:%.*]] = load i32, i32* [[SRC_ADDR]], align 4
+; CHECK-OPAQUE:    [[TMP0:%.*]] = load i32, ptr [[SRC_ADDR]], align 4
+; CHECK-TYPED:    [[TMP1:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[DST_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP1:%.*]] = load ptr addrspace(1), ptr [[DST_ADDR]], align 8
+; CHECK-TYPED:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP1]], i64 0
+; CHECK-OPAQUE:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, ptr addrspace(1) [[TMP1]], i64 0
+; CHECK-TYPED:    store i32 [[TMP0]], i32 addrspace(1)* [[ARRAYIDX]], align 4
+; CHECK-OPAQUE:    store i32 [[TMP0]], ptr addrspace(1) [[ARRAYIDX]], align 4
 ; CHECK:    ret void
 ;
 

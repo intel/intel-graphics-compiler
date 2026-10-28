@@ -1,5 +1,6 @@
-; REQUIRES: regkeys, !llvm-17-plus
-; RUN: igc_opt -S --typed-pointers --igc-vectorizer -dce --regkey=VectorizerAllowEXP2=0 --regkey=VectorizerEnablePartialVectorization=1 --platformbmg < %s 2>&1 | FileCheck %s
+; REQUIRES: regkeys
+; RUN: %if llvm-16-plus %{ igc_opt -S --opaque-pointers --igc-vectorizer -dce --regkey=VectorizerAllowEXP2=0 --regkey=VectorizerEnablePartialVectorization=1 --platformbmg < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt -S --typed-pointers --igc-vectorizer -dce --regkey=VectorizerAllowEXP2=0 --regkey=VectorizerEnablePartialVectorization=1 --platformbmg < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; CHECK: %vectorized_phi
 ; CHECK: [[vec_insert0:%vector.*]] = insertelement <8 x float> undef,
@@ -14,8 +15,10 @@
 ; CHECK: %vector_extract15 = extractelement <8 x float> %vectorized_binary, i32 0
 ; CHECK: %vector_extract16 = extractelement <8 x float> %vectorized_binary, i32 1
 ; CHECK: call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %vectorized_binary
-; CHECK: store float %vector_extract15, float* null, align 4
-; CHECK: store float %vector_extract16, float* null, align 4
+; CHECK-TYPED: store float %vector_extract15, float* null, align 4
+; CHECK-OPAQUE: store float %vector_extract15, ptr null, align 4
+; CHECK-TYPED: store float %vector_extract16, float* null, align 4
+; CHECK-OPAQUE: store float %vector_extract16, ptr null, align 4
 
 ; ModuleID = 'reduced.ll'
 source_filename = "initial_test.ll"

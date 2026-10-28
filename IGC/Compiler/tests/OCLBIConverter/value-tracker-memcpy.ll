@@ -8,11 +8,11 @@
 
 ; Check if image kernel argument is successfully tracked when it has been stored
 ; in alloca using llvm.memcpy instruction.
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-conv-ocl-to-common -S < %s -o - | FileCheck --check-prefixes=CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-conv-ocl-to-common -S < %s -o - | FileCheck --check-prefixes=CHECK-TYPED %s %}
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-conv-ocl-to-common -S < %s -o - | FileCheck %s
-
-; CHECK: call void @llvm.genx.GenISA.typedwrite.p131073f32(
+; CHECK-TYPED: call void @llvm.genx.GenISA.typedwrite.p131073f32(
+; CHECK-OPAQUE: call void @llvm.genx.GenISA.typedwrite.p131073(
 
 %spirv.Image = type opaque
 

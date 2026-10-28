@@ -6,21 +6,21 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix
-; RUN: igc_opt -igc-joint-matrix-resolution --platformpvc -S 2>&1 < %s | FileCheck %s
+; REQUIRES: llvm-16-plus
+; RUN: igc_opt --opaque-pointers -igc-joint-matrix-resolution --platformpvc -S 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------
 ; JointMatrixFuncsResolutionPass - Verify whether the original function is removed
 ;                                  after resolving function with joint matrix arguments
 ;                                  into new function.
 ; ------------------------------------------------
+; With opaque pointers a joint matrix argument is a target extension type passed
+; by value (a pointer argument carries no matrix type and is not resolved).
 
-; CHECK-NOT: define internal spir_func void @test
-; CHECK: define internal spir_func void @test_resolved
-
-%"struct.sycl::_V1::ext::oneapi::experimental::matrix::joint_matrix" = type { %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* }
-%spirv.JointMatrixINTEL._float_8_16_3_3_2 = type opaque
+; CHECK-NOT: define internal spir_func void @test(
+; CHECK: define internal spir_func void @test_resolved(<8 x float> %m)
+; CHECK-NOT: define internal spir_func void @test(
 
 ;Function Attrs: nounwind
-define internal spir_func void @test(%"struct.sycl::_V1::ext::oneapi::experimental::matrix::joint_matrix" addrspace(4)* nocapture align 8 dereferenceable(8) %m){
+define internal spir_func void @test(target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %m) {
   ret void
 }

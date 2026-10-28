@@ -8,8 +8,8 @@
 
 ; Check 64-bit integer is loaded from unsampled_image_handle array and then casted to bindless image handle.
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-conv-ocl-to-common -S < %s -o - | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-conv-ocl-to-common -S < %s -o - | FileCheck %s --check-prefix=CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-conv-ocl-to-common -S < %s -o - | FileCheck %s --check-prefix=CHECK-TYPED %}
 
 %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle" = type { i64 }
 %"class.sycl::_V1::id" = type { %"class.sycl::_V1::detail::array" }
@@ -17,11 +17,15 @@
 
 define spir_kernel void @image_array(i64 %_arg_numImages, %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle" addrspace(1)* %_arg_imgHandleAcc, %"class.sycl::_V1::id"* byval(%"class.sycl::_V1::id") align 8 %_arg_imgHandleAcc3) {
 entry:
-; CHECK:      [[GEP:%.*]] = getelementptr inbounds %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle", %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle" addrspace(1)* %add.ptr.i, i64 %conv.i
-; CHECK-NEXT: [[CAST:%[0-9]+]] = bitcast %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle" addrspace(1)* [[GEP]] to i64 addrspace(1)*
-; CHECK-NEXT: [[LOAD:%[0-9]+]] = load i64, i64 addrspace(1)* [[CAST]], align 8
-; CHECK:       %bindless_img = inttoptr i32 %4 to float addrspace(393468)*
-; CHECK-NEXT: call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196860f32.p393468f32(i32 %CoordX, i32 %CoordY, i32 0, i32 0, float addrspace(196860)* undef, float addrspace(393468)* %bindless_img, i32 0, i32 0, i32 0)
+; CHECK-TYPED:      [[GEP:%.*]] = getelementptr inbounds %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle", %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle" addrspace(1)* %add.ptr.i, i64 %conv.i
+; CHECK-OPAQUE:      [[GEP:%.*]] = getelementptr inbounds %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle", ptr addrspace(1) %add.ptr.i, i64 %conv.i
+; CHECK-TYPED-NEXT: [[CAST:%[0-9]+]] = bitcast %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle" addrspace(1)* [[GEP]] to i64 addrspace(1)*
+; CHECK-TYPED-NEXT: [[LOAD:%[0-9]+]] = load i64, i64 addrspace(1)* [[CAST]], align 8
+; CHECK-OPAQUE:      [[LOAD:%[0-9]+]] = load i64, ptr addrspace(1) {{%[0-9]+}}, align 8
+; CHECK-TYPED:       %bindless_img = inttoptr i32 %4 to float addrspace(393468)*
+; CHECK-OPAQUE:       %bindless_img = inttoptr i32 %4 to ptr addrspace(393468)
+; CHECK-TYPED-NEXT: call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196860f32.p393468f32(i32 %CoordX, i32 %CoordY, i32 0, i32 0, float addrspace(196860)* undef, float addrspace(393468)* %bindless_img, i32 0, i32 0, i32 0)
+; CHECK-OPAQUE-NEXT: call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196860.p393468(i32 %CoordX, i32 %CoordY, i32 0, i32 0, ptr addrspace(196860) undef, ptr addrspace(393468) %bindless_img, i32 0, i32 0, i32 0)
 
   %0 = bitcast %"class.sycl::_V1::id"* %_arg_imgHandleAcc3 to i64*
   %1 = load i64, i64* %0, align 8

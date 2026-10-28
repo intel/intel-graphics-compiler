@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
 ; Zero-cost promotion: a small array whose every load is preceded, in the same
 ; block, by constant-index stores to all elements. Every function is marked as

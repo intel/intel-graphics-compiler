@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify  -igc-resolve-inline-locals -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify  -igc-resolve-inline-locals -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify  -igc-resolve-inline-locals -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; InlineLocalsResolution
 ; ------------------------------------------------
@@ -35,13 +35,20 @@ define spir_kernel void @test_inline() {
 entry:
 ; CHECK-LABEL: @test_inline(
 ; CHECK:    [[WG:%.*]] = alloca i32, align 4
-; CHECK:    [[MEMPOOLCAST:%.*]] = bitcast [4 x i8] addrspace(3)* @GenSLM.LocalMemPoolOnGetMemPoolPtr to i8 addrspace(3)*
-; CHECK:    [[TMP3:%.*]] = bitcast i8 addrspace(3)* [[MEMPOOLCAST]] to i32 addrspace(3)*
-; CHECK:    store i32 0, i32 addrspace(3)* [[TMP3]], align 4
-; CHECK:    [[TMP5:%.*]] = load i32, i32* [[WG]], align 4
-; CHECK:    [[TMP6:%.*]] = load i32 addrspace(3)*, i32 addrspace(3)* addrspace(3)* @a, align 8
-; CHECK:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i32, i32 addrspace(3)* [[TMP6]], i64 0
-; CHECK:    store i32 [[TMP5]], i32 addrspace(3)* [[ARRAYIDX1]], align 4
+; CHECK-TYPED:    [[MEMPOOLCAST:%.*]] = bitcast [4 x i8] addrspace(3)* @GenSLM.LocalMemPoolOnGetMemPoolPtr to i8 addrspace(3)*
+; CHECK-OPAQUE:    [[MEMPOOLCAST:%.*]] = bitcast ptr addrspace(3) @GenSLM.LocalMemPoolOnGetMemPoolPtr to ptr addrspace(3)
+; CHECK-TYPED:    [[TMP3:%.*]] = bitcast i8 addrspace(3)* [[MEMPOOLCAST]] to i32 addrspace(3)*
+; CHECK-OPAQUE:    [[TMP3:%.*]] = bitcast ptr addrspace(3) [[MEMPOOLCAST]] to ptr addrspace(3)
+; CHECK-TYPED:    store i32 0, i32 addrspace(3)* [[TMP3]], align 4
+; CHECK-OPAQUE:    store i32 0, ptr addrspace(3) [[TMP3]], align 4
+; CHECK-TYPED:    [[TMP5:%.*]] = load i32, i32* [[WG]], align 4
+; CHECK-OPAQUE:    [[TMP5:%.*]] = load i32, ptr [[WG]], align 4
+; CHECK-TYPED:    [[TMP6:%.*]] = load i32 addrspace(3)*, i32 addrspace(3)* addrspace(3)* @a, align 8
+; CHECK-OPAQUE:    [[TMP6:%.*]] = load ptr addrspace(3), ptr addrspace(3) @a, align 8
+; CHECK-TYPED:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i32, i32 addrspace(3)* [[TMP6]], i64 0
+; CHECK-OPAQUE:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i32, ptr addrspace(3) [[TMP6]], i64 0
+; CHECK-TYPED:    store i32 [[TMP5]], i32 addrspace(3)* [[ARRAYIDX1]], align 4
+; CHECK-OPAQUE:    store i32 [[TMP5]], ptr addrspace(3) [[ARRAYIDX1]], align 4
 ; CHECK:    ret void
   %wg = alloca i32, align 4
   %call.i = call spir_func i8 addrspace(3)* @__builtin_IB_AllocLocalMemPool(i1 false, i32 1, i32 4)

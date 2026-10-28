@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-memopt -instcombine | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-memopt -instcombine | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-memopt -instcombine | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; This test is checking whether debug calls are correctly omitted in distance counting.
 ; We should not consider them as "real" instructions, since we want to keep debug and non-debug optimization process identical.
@@ -352,11 +352,14 @@ entry:
 }
 
  ; CHECK-LABEL: define void @f0
- ; CHECK: %0 = bitcast i32* %src to <3 x i32>*
- ; CHECK: %1 = load <3 x i32>, <3 x i32>* %0, align 4
- ; CHECK: call void @llvm.dbg.value
- ; CHECK: %2 = bitcast i32* %dst to <3 x i32>*
- ; CHECK: store <3 x i32> %1, <3 x i32>* %2, align 4
+ ; CHECK-TYPED: %0 = bitcast i32* %src to <3 x i32>*
+ ; CHECK-TYPED: %1 = load <3 x i32>, <3 x i32>* %0, align 4
+ ; CHECK-OPAQUE: [[V1_1:%[0-9]+]] = load <3 x i32>, ptr %src, align 4
+ ; CHECK-TYPED: call void @llvm.dbg.value
+ ; CHECK-OPAQUE: {{call void @llvm.dbg.value|#dbg_value}}
+ ; CHECK-TYPED: %2 = bitcast i32* %dst to <3 x i32>*
+ ; CHECK-TYPED: store <3 x i32> %1, <3 x i32>* %2, align 4
+ ; CHECK-OPAQUE: store <3 x i32> [[V1_1]], ptr %dst, align 4
  ; CHECK: ret void
 
 ; Function Attrs: nofree nosync nounwind readnone speculatable willreturn

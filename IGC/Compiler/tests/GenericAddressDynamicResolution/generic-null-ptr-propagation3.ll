@@ -7,11 +7,12 @@
 ;============================ end_copyright_notice =============================
 
 ; Check that null check is not moved before phi instruction creating invalid IR.
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -igc-generic-null-ptr-propagation | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -igc-generic-null-ptr-propagation | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -igc-generic-null-ptr-propagation | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; CHECK-LABEL: exit:
-; CHECK-NEXT: {{.*}} = phi i8 addrspace(4)* [ {{.*}}, %entry ], [ {{.*}}, %do_work ]
+; CHECK-TYPED-NEXT: {{.*}} = phi i8 addrspace(4)* [ {{.*}}, %entry ], [ {{.*}}, %do_work ]
+; CHECK-OPAQUE-NEXT: {{.*}} = phi ptr addrspace(4) [ {{.*}}, %entry ], [ {{.*}}, %do_work ]
 
 %"class.sycl::_V1::nd_item" = type { i8 }
 

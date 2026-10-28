@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-memopt -instcombine | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-memopt -instcombine | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-memopt -instcombine | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; This test is checking whether debug calls are correctly omitted in distance counting.
 ; We should not consider them as "real" instructions, since we want to keep debug and non-debug optimization process identical.
@@ -352,11 +352,14 @@ entry:
 }
 
  ; CHECK-LABEL: define void @f0
- ; CHECK: %0 = bitcast i32* %src to <3 x i32>*
- ; CHECK: %1 = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0v3i32.v3i32(<3 x i32>* %0, i64 4, i1 true, <3 x i32> <i32 42, i32 43, i32 44>)
- ; CHECK: call void @llvm.dbg.value
- ; CHECK: %2 = bitcast i32* %dst to <3 x i32>*
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p0v3i32.v3i32(<3 x i32>* %2, <3 x i32> %1, i64 4, i1 true)
+ ; CHECK-TYPED: %0 = bitcast i32* %src to <3 x i32>*
+ ; CHECK-TYPED: %1 = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0v3i32.v3i32(<3 x i32>* %0, i64 4, i1 true, <3 x i32> <i32 42, i32 43, i32 44>)
+ ; CHECK-OPAQUE: [[V1_1:%[0-9]+]] = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0.v3i32(ptr %src, i64 4, i1 true, <3 x i32> <i32 42, i32 43, i32 44>)
+ ; CHECK-TYPED: call void @llvm.dbg.value
+ ; CHECK-OPAQUE: {{call void @llvm.dbg.value|#dbg_value}}
+ ; CHECK-TYPED: %2 = bitcast i32* %dst to <3 x i32>*
+ ; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p0v3i32.v3i32(<3 x i32>* %2, <3 x i32> %1, i64 4, i1 true)
+ ; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p0.v3i32(ptr %dst, <3 x i32> [[V1_1]], i64 4, i1 true)
  ; CHECK: ret void
 
 ; Function Attrs: nofree nosync nounwind readnone speculatable willreturn

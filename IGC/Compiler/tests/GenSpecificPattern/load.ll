@@ -6,17 +6,19 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --igc-gen-specific-pattern -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --igc-gen-specific-pattern -S < %s | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --igc-gen-specific-pattern -S < %s | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; GenSpecificPattern: Load pattern transformation
 ; ------------------------------------------------
 
 define void @test_load(<2 x i32> addrspace(1)* %src) {
 ; CHECK-LABEL: @test_load(
-; CHECK:    [[TMP1:%.*]] = bitcast <2 x i32> addrspace(1)* [[SRC:%.*]] to <2 x i32> addrspace(1)* addrspace(1)*
-; CHECK:    [[TMP2:%.*]] = load <2 x i32> addrspace(1)*, <2 x i32> addrspace(1)* addrspace(1)* [[TMP1]], align 64
-; CHECK:    [[TMP7:%.*]] = load <2 x i32>, <2 x i32> addrspace(1)* [[TMP2]], align 64
+; CHECK-TYPED:    [[TMP1:%.*]] = bitcast <2 x i32> addrspace(1)* [[SRC:%.*]] to <2 x i32> addrspace(1)* addrspace(1)*
+; CHECK-TYPED:    [[TMP2:%.*]] = load <2 x i32> addrspace(1)*, <2 x i32> addrspace(1)* addrspace(1)* [[TMP1]], align 64
+; CHECK-OPAQUE:    [[TMP2:%.*]] = load ptr addrspace(1), ptr addrspace(1) [[SRC:%.*]], align 64
+; CHECK-TYPED:    [[TMP7:%.*]] = load <2 x i32>, <2 x i32> addrspace(1)* [[TMP2]], align 64
+; CHECK-OPAQUE:    [[TMP7:%.*]] = load <2 x i32>, ptr addrspace(1) [[TMP2]], align 64
 ; CHECK:    call void @use.2i32(<2 x i32> [[TMP7]])
 ; CHECK-NEXT:    ret void
 ;

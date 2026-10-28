@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
 ; Test SOALayoutChecker bitcast visitor.
 ;

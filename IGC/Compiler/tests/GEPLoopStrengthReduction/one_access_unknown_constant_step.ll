@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: opaque-ptr-fix, regkeys
+; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --regkey=EnableGEPLSRUnknownConstantStep=1 --regkey=EnableGEPLSRMulExpr=0 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-UNKNOWN-ENABLED
 ; RUN: igc_opt --opaque-pointers --regkey=EnableGEPLSRUnknownConstantStep=0 --regkey=EnableGEPLSRMulExpr=0 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-UNKNOWN-DISABLED
 
@@ -22,7 +22,7 @@ entry:
 
 ; CHECK-LABEL: for.body.lr.ph:
 ;
-; CHECK-UNKNOWN-ENABLED:      [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 0
+; CHECK-UNKNOWN-ENABLED:      [[GEP_PHI1:%.*]] = getelementptr i32, ptr addrspace(1) %p, i64 0
 ;
 ; CHECK-UNKNOWN-DISABLED-NOT: gep
 ;
@@ -32,24 +32,24 @@ for.body.lr.ph:                                   ; preds = %entry
 
 ; CHECK-LABEL: for.body:
 ;
-; CHECK-UNKNOWN-ENABLED:      [[GEP:%.*]] = phi i32 addrspace(1)* [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %for.body ]
+; CHECK-UNKNOWN-ENABLED:      [[GEP:%.*]] = phi ptr addrspace(1) [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %for.body ]
 ; CHECK-UNKNOWN-ENABLED:      %i.02 = phi i32 [ 0, %for.body.lr.ph ], [ %inc, %for.body ]
-; CHECK-UNKNOWN-ENABLED-NOT:  getelementptr inbounds i32, i32 addrspace(1)* %p
-; CHECK-UNKNOWN-ENABLED:      [[LOAD:%.*]] = load i32, i32 addrspace(1)* [[GEP]], align 4
+; CHECK-UNKNOWN-ENABLED-NOT:  getelementptr inbounds i32, ptr addrspace(1) %p
+; CHECK-UNKNOWN-ENABLED:      [[LOAD:%.*]] = load i32, ptr addrspace(1) [[GEP]], align 4
 ; CHECK-UNKNOWN-ENABLED:      %add = add nsw i32 [[LOAD]], 1
-; CHECK-UNKNOWN-ENABLED:      store i32 %add, i32 addrspace(1)* [[GEP]], align 4
+; CHECK-UNKNOWN-ENABLED:      store i32 %add, ptr addrspace(1) [[GEP]], align 4
 ; CHECK-UNKNOWN-ENABLED:      %inc = add nuw nsw i32 %i.02, 1
 ; CHECK-UNKNOWN-ENABLED:      %cmp = icmp slt i32 %inc, %n
-; CHECK-UNKNOWN-ENABLED:      [[GEP_PHI2]] = getelementptr i32, i32 addrspace(1)* [[GEP]], i64 %step
+; CHECK-UNKNOWN-ENABLED:      [[GEP_PHI2]] = getelementptr i32, ptr addrspace(1) [[GEP]], i64 %step
 ; CHECK-UNKNOWN-ENABLED:      br i1 %cmp, label %for.body, label %for.cond.for.end_crit_edge
 ;
 ; CHECK-UNKNOWN-DISABLED:     %i.02 = phi i32 [ 0, %for.body.lr.ph ], [ %inc, %for.body ]
 ; CHECK-UNKNOWN-DISABLED:     %idxprom = zext i32 %i.02 to i64
 ; CHECK-UNKNOWN-DISABLED:     %idxprom2 = mul i64 %idxprom, %step
-; CHECK-UNKNOWN-DISABLED:     %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %p, i64 %idxprom2
-; CHECK-UNKNOWN-DISABLED:     %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
+; CHECK-UNKNOWN-DISABLED:     %arrayidx = getelementptr inbounds i32, ptr addrspace(1) %p, i64 %idxprom2
+; CHECK-UNKNOWN-DISABLED:     %0 = load i32, ptr addrspace(1) %arrayidx, align 4
 ; CHECK-UNKNOWN-DISABLED:     %add = add nsw i32 %0, 1
-; CHECK-UNKNOWN-DISABLED:     store i32 %add, i32 addrspace(1)* %arrayidx, align 4
+; CHECK-UNKNOWN-DISABLED:     store i32 %add, ptr addrspace(1) %arrayidx, align 4
 ; CHECK-UNKNOWN-DISABLED:     %inc = add nuw nsw i32 %i.02, 1
 ; CHECK-UNKNOWN-DISABLED:     %cmp = icmp slt i32 %inc, %n
 ; CHECK-UNKNOWN-DISABLED:     br i1 %cmp, label %for.body, label %for.cond.for.end_crit_edge

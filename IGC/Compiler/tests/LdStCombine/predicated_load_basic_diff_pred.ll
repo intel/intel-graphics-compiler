@@ -8,11 +8,13 @@
 
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN:   igc_opt --typed-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=5 \
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=5 \
 ; RUN:           -platformbmg \
-; RUN: | FileCheck %s
+; RUN: | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=5 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
@@ -26,8 +28,10 @@ entry:
 ; no merging due to predicates are different
 ;
 ; CHECK-LABEL: define spir_kernel void @test_basic
-; CHECK: %c0.0 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %c0.arrayidx, i64 4, i1 true, i8 5)
-; CHECK: %c0.1 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %c0.arrayidx.1, i64 1, i1 false, i8 6)
+; CHECK-TYPED: %c0.0 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %c0.arrayidx, i64 4, i1 true, i8 5)
+; CHECK-OPAQUE: %c0.0 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1.i8(ptr addrspace(1) %c0.arrayidx, i64 4, i1 true, i8 5)
+; CHECK-TYPED: %c0.1 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %c0.arrayidx.1, i64 1, i1 false, i8 6)
+; CHECK-OPAQUE: %c0.1 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1.i8(ptr addrspace(1) %c0.arrayidx.1, i64 1, i1 false, i8 6)
 ; CHECK-NOT: <2 x i8> @llvm.genx.GenISA.PredicatedLoad
 ;
   %c0.si = bitcast i32 addrspace(1)* %si to i8 addrspace(1)*

@@ -5,7 +5,6 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: opaque-ptr-fix
 ; RUN: igc_opt --opaque-pointers -igc-resolve-inline-locals -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; InlineLocalsResolution
@@ -52,10 +51,10 @@ entry:
 ; CHECK: ![[IDX1:[0-9]+]] = !{!"localOffsets", ![[IDX2:[0-9]+]], ![[IDX3:[0-9]+]], ![[IDX4:[0-9]+]]}
 ; CHECK: ![[IDX2]] = !{!"localOffsetsVec[0]", ![[IDX5:[0-9]+]], ![[IDX6:[0-9]+]]}
 ; CHECK: ![[IDX5]] = !{!"m_Offset", i32 268435456}
-; CHECK: ![[IDX6]] = !{!"m_Var", [16384 x half] addrspace(3)* @test.Q}
+; CHECK: ![[IDX6]] = !{!"m_Var", ptr addrspace(3) @test.Q}
 ; CHECK: ![[IDX3]] = !{!"localOffsetsVec[1]", ![[IDX7:[0-9]+]], ![[IDX8:[0-9]+]]}
 ; CHECK: ![[IDX7]] = !{!"m_Offset", i32 268468224}
-; CHECK: ![[IDX8]] = !{!"m_Var", [32768 x half] addrspace(3)* @test.S}
+; CHECK: ![[IDX8]] = !{!"m_Var", ptr addrspace(3) @test.S}
 ; CHECK: ![[IDX4]] = !{!"localOffsetsVec[2]", ![[IDX9:[0-9]+]], ![[IDX10:[0-9]+]]}
 ; CHECK: ![[IDX9]] = !{!"m_Offset", i32 268533760}
-; CHECK: ![[IDX10]] = !{!"m_Var", [4096 x float] addrspace(3)* @test.C}
+; CHECK: ![[IDX10]] = !{!"m_Var", ptr addrspace(3) @test.C}

@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - --basic-aa -igc-memopt -instcombine | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - --basic-aa -igc-memopt -instcombine | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - --basic-aa -igc-memopt -instcombine | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a:64:64-f80:128:128-n8:16:32:64"
 
@@ -27,10 +27,12 @@ entry:
 }
 
  ; CHECK-LABEL: define void @f0
- ; CHECK: %0 = bitcast i32* %src to <3 x i32>*
- ; CHECK: %1 = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0v3i32.v3i32(<3 x i32>* %0, i64 4, i1 true, <3 x i32> <i32 42, i32 43, i32 44>)
- ; CHECK: %2 = bitcast i32* %dst to <3 x i32>*
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p0v3i32.v3i32(<3 x i32>* %2, <3 x i32> %1, i64 4, i1 true)
+ ; CHECK-TYPED: %0 = bitcast i32* %src to <3 x i32>*
+ ; CHECK-TYPED: %1 = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0v3i32.v3i32(<3 x i32>* %0, i64 4, i1 true, <3 x i32> <i32 42, i32 43, i32 44>)
+ ; CHECK-OPAQUE: [[V1_1:%[0-9]+]] = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0.v3i32(ptr %src, i64 4, i1 true, <3 x i32> <i32 42, i32 43, i32 44>)
+ ; CHECK-TYPED: %2 = bitcast i32* %dst to <3 x i32>*
+ ; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p0v3i32.v3i32(<3 x i32>* %2, <3 x i32> %1, i64 4, i1 true)
+ ; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p0.v3i32(ptr %dst, <3 x i32> [[V1_1]], i64 4, i1 true)
  ; CHECK: ret void
 
 define void @f0_different_predicates(i32* %dst, i32* %src) {
@@ -51,17 +53,27 @@ entry:
  ; with different predicates, we cannot merge all loads. We cannot merge stores.
 
  ; CHECK-LABEL: define void @f0_different_predicates
- ; CHECK:  %0 = bitcast i32* %src to <3 x i32>*
- ; CHECK:  %1 = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0v3i32.v3i32(<3 x i32>* %0, i64 4, i1 true, <3 x i32> <i32 42, i32 undef, i32 44>)
- ; CHECK:  %2 = extractelement <3 x i32> %1, i64 0
- ; CHECK:  %3 = extractelement <3 x i32> %1, i64 2
- ; CHECK:  %arrayidx1 = getelementptr inbounds i32, i32* %src, i32 1
- ; CHECK:  %4 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* nonnull %arrayidx1, i64 4, i1 false, i32 43)
- ; CHECK:  call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* %dst, i32 %2, i64 4, i1 true)
- ; CHECK:  %arrayidx4 = getelementptr inbounds i32, i32* %dst, i32 1
- ; CHECK:  call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* nonnull %arrayidx4, i32 %4, i64 4, i1 false)
- ; CHECK:  %arrayidx5 = getelementptr inbounds i32, i32* %dst, i32 2
- ; CHECK:  call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* nonnull %arrayidx5, i32 %3, i64 4, i1 true)
+ ; CHECK-TYPED:  %0 = bitcast i32* %src to <3 x i32>*
+ ; CHECK-TYPED:  %1 = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0v3i32.v3i32(<3 x i32>* %0, i64 4, i1 true, <3 x i32> <i32 42, i32 undef, i32 44>)
+ ; CHECK-OPAQUE:  [[V2_1:%[0-9]+]] = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0.v3i32(ptr %src, i64 4, i1 true, <3 x i32> <i32 42, i32 undef, i32 44>)
+ ; CHECK-TYPED:  %2 = extractelement <3 x i32> %1, i64 0
+ ; CHECK-OPAQUE:  [[V2_2:%[0-9]+]] = extractelement <3 x i32> [[V2_1]], i64 0
+ ; CHECK-TYPED:  %3 = extractelement <3 x i32> %1, i64 2
+ ; CHECK-OPAQUE:  [[V2_3:%[0-9]+]] = extractelement <3 x i32> [[V2_1]], i64 2
+ ; CHECK-TYPED:  %arrayidx1 = getelementptr inbounds i32, i32* %src, i32 1
+ ; CHECK-OPAQUE:  %arrayidx1 = getelementptr inbounds {{(nuw )?}}{{(i32, ptr %src, i32 1|i8, ptr %src, i32 4)}}
+ ; CHECK-TYPED:  %4 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* nonnull %arrayidx1, i64 4, i1 false, i32 43)
+ ; CHECK-OPAQUE:  [[V2_4:%[0-9]+]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0.i32(ptr nonnull %arrayidx1, i64 4, i1 false, i32 43)
+ ; CHECK-TYPED:  call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* %dst, i32 %2, i64 4, i1 true)
+ ; CHECK-OPAQUE:  call void @llvm.genx.GenISA.PredicatedStore.p0.i32(ptr %dst, i32 [[V2_2]], i64 4, i1 true)
+ ; CHECK-TYPED:  %arrayidx4 = getelementptr inbounds i32, i32* %dst, i32 1
+ ; CHECK-OPAQUE:  %arrayidx4 = getelementptr inbounds {{(nuw )?}}{{(i32, ptr %dst, i32 1|i8, ptr %dst, i32 4)}}
+ ; CHECK-TYPED:  call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* nonnull %arrayidx4, i32 %4, i64 4, i1 false)
+ ; CHECK-OPAQUE:  call void @llvm.genx.GenISA.PredicatedStore.p0.i32(ptr nonnull %arrayidx4, i32 [[V2_4]], i64 4, i1 false)
+ ; CHECK-TYPED:  %arrayidx5 = getelementptr inbounds i32, i32* %dst, i32 2
+ ; CHECK-OPAQUE:  %arrayidx5 = getelementptr inbounds {{(nuw )?}}{{(i32, ptr %dst, i32 2|i8, ptr %dst, i32 8)}}
+ ; CHECK-TYPED:  call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* nonnull %arrayidx5, i32 %3, i64 4, i1 true)
+ ; CHECK-OPAQUE:  call void @llvm.genx.GenISA.PredicatedStore.p0.i32(ptr nonnull %arrayidx5, i32 [[V2_3]], i64 4, i1 true)
  ; CHECK:  ret void
 
  define void @f1(i32* %dst, i32* %src) {
@@ -83,16 +95,26 @@ entry:
  ; merge loads/stores interleaved.
 
  ; CHECK-LABEL: define void @f1
- ; CHECK: %0 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* %src, i64 4, i1 true, i32 42)
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* %dst, i32 %0, i64 4, i1 true)
- ; CHECK: %arrayidx2 = getelementptr inbounds i32, i32* %src, i32 1
- ; CHECK: %1 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* nonnull %arrayidx2, i64 4, i1 true, i32 43)
- ; CHECK: %arrayidx3 = getelementptr inbounds i32, i32* %dst, i32 1
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* nonnull %arrayidx3, i32 %1, i64 4, i1 true)
- ; CHECK: %arrayidx4 = getelementptr inbounds i32, i32* %src, i32 2
- ; CHECK: %2 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* nonnull %arrayidx4, i64 4, i1 true, i32 44)
- ; CHECK: %arrayidx5 = getelementptr inbounds i32, i32* %dst, i32 2
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* nonnull %arrayidx5, i32 %2, i64 4, i1 true)
+ ; CHECK-TYPED: %0 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* %src, i64 4, i1 true, i32 42)
+ ; CHECK-OPAQUE: [[V3_0:%[0-9]+]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0.i32(ptr %src, i64 4, i1 true, i32 42)
+ ; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* %dst, i32 %0, i64 4, i1 true)
+ ; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p0.i32(ptr %dst, i32 [[V3_0]], i64 4, i1 true)
+ ; CHECK-TYPED: %arrayidx2 = getelementptr inbounds i32, i32* %src, i32 1
+ ; CHECK-OPAQUE: %arrayidx2 = getelementptr inbounds {{(nuw )?}}{{(i32, ptr %src, i32 1|i8, ptr %src, i32 4)}}
+ ; CHECK-TYPED: %1 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* nonnull %arrayidx2, i64 4, i1 true, i32 43)
+ ; CHECK-OPAQUE: [[V3_1:%[0-9]+]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0.i32(ptr nonnull %arrayidx2, i64 4, i1 true, i32 43)
+ ; CHECK-TYPED: %arrayidx3 = getelementptr inbounds i32, i32* %dst, i32 1
+ ; CHECK-OPAQUE: %arrayidx3 = getelementptr inbounds {{(nuw )?}}{{(i32, ptr %dst, i32 1|i8, ptr %dst, i32 4)}}
+ ; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* nonnull %arrayidx3, i32 %1, i64 4, i1 true)
+ ; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p0.i32(ptr nonnull %arrayidx3, i32 [[V3_1]], i64 4, i1 true)
+ ; CHECK-TYPED: %arrayidx4 = getelementptr inbounds i32, i32* %src, i32 2
+ ; CHECK-OPAQUE: %arrayidx4 = getelementptr inbounds {{(nuw )?}}{{(i32, ptr %src, i32 2|i8, ptr %src, i32 8)}}
+ ; CHECK-TYPED: %2 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* nonnull %arrayidx4, i64 4, i1 true, i32 44)
+ ; CHECK-OPAQUE: [[V3_2:%[0-9]+]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0.i32(ptr nonnull %arrayidx4, i64 4, i1 true, i32 44)
+ ; CHECK-TYPED: %arrayidx5 = getelementptr inbounds i32, i32* %dst, i32 2
+ ; CHECK-OPAQUE: %arrayidx5 = getelementptr inbounds {{(nuw )?}}{{(i32, ptr %dst, i32 2|i8, ptr %dst, i32 8)}}
+ ; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* nonnull %arrayidx5, i32 %2, i64 4, i1 true)
+ ; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p0.i32(ptr nonnull %arrayidx5, i32 [[V3_2]], i64 4, i1 true)
  ; CHECK: ret void
 
 
@@ -112,10 +134,12 @@ entry:
  }
 
  ; CHECK-LABEL: define void @f2
- ; CHECK: %0 = bitcast i32* %src to <3 x i32>*
- ; CHECK: %1 = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0v3i32.v3i32(<3 x i32>* %0, i64 4, i1 true, <3 x i32> <i32 42, i32 43, i32 44>)
- ; CHECK: %2 = bitcast i32* %dst to <3 x i32>*
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p0v3i32.v3i32(<3 x i32>* %2, <3 x i32> %1, i64 4, i1 true)
+ ; CHECK-TYPED: %0 = bitcast i32* %src to <3 x i32>*
+ ; CHECK-TYPED: %1 = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0v3i32.v3i32(<3 x i32>* %0, i64 4, i1 true, <3 x i32> <i32 42, i32 43, i32 44>)
+ ; CHECK-OPAQUE: [[V4_1:%[0-9]+]] = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0.v3i32(ptr %src, i64 4, i1 true, <3 x i32> <i32 42, i32 43, i32 44>)
+ ; CHECK-TYPED: %2 = bitcast i32* %dst to <3 x i32>*
+ ; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p0v3i32.v3i32(<3 x i32>* %2, <3 x i32> %1, i64 4, i1 true)
+ ; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p0.v3i32(ptr %dst, <3 x i32> [[V4_1]], i64 4, i1 true)
  ; CHECK: ret void
 
 
@@ -150,13 +174,16 @@ entry:
 
  ; CHECK-LABEL: define void @f3
  ; CHECK: %mul = mul nsw i32 %j, %i
- ; CHECK: %arrayidx = getelementptr inbounds i32, i32* %src, i32 %mul
- ; CHECK: %0 = bitcast i32* %arrayidx to <3 x i32>*
- ; CHECK: %1 = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0v3i32.v3i32(<3 x i32>* %0, i64 4, i1 true, <3 x i32> <i32 42, i32 43, i32 44>)
- ; CHECK: %add1 = add nsw i32 %j, %i
- ; CHECK: %arrayidx4 = getelementptr inbounds i32, i32* %dst, i32 %add1
- ; CHECK: %2 = bitcast i32* %arrayidx4 to <3 x i32>*
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p0v3i32.v3i32(<3 x i32>* %2, <3 x i32> %1, i64 4, i1 true)
+ ; CHECK-TYPED: %arrayidx = getelementptr inbounds i32, i32* %src, i32 %mul
+ ; CHECK-OPAQUE: %arrayidx = getelementptr inbounds {{(i32|\[4 x i8\])}}, ptr %src, i32 %mul
+ ; CHECK-TYPED: %0 = bitcast i32* %arrayidx to <3 x i32>*
+ ; CHECK-TYPED: %1 = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0v3i32.v3i32(<3 x i32>* %0, i64 4, i1 true, <3 x i32> <i32 42, i32 43, i32 44>)
+ ; CHECK-OPAQUE: [[V5_1:%[0-9]+]] = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p0.v3i32(ptr %arrayidx, i64 4, i1 true, <3 x i32> <i32 42, i32 43, i32 44>)
+ ; CHECK-TYPED: %add1 = add nsw i32 %j, %i
+ ; CHECK-TYPED: %arrayidx4 = getelementptr inbounds i32, i32* %dst, i32 %add1
+ ; CHECK-TYPED: %2 = bitcast i32* %arrayidx4 to <3 x i32>*
+ ; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p0v3i32.v3i32(<3 x i32>* %2, <3 x i32> %1, i64 4, i1 true)
+ ; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p0.v3i32(ptr {{%.*}}, <3 x i32> [[V5_1]], i64 4, i1 true)
  ; CHECK: ret void
 
 
@@ -195,20 +222,26 @@ entry:
 
  ; CHECK-LABEL: define void @f4
  ; CHECK: %mul = mul nsw i32 %j, %i
- ; CHECK: %arrayidx = getelementptr inbounds i32, i32* %src, i32 %mul
- ; CHECK: %0 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* %arrayidx, i64 4, i1 true, i32 42)
+ ; CHECK-TYPED: %arrayidx = getelementptr inbounds i32, i32* %src, i32 %mul
+ ; CHECK-OPAQUE: %arrayidx = getelementptr inbounds {{(i32|\[4 x i8\])}}, ptr %src, i32 %mul
+ ; CHECK-TYPED: %0 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32* %arrayidx, i64 4, i1 true, i32 42)
+ ; CHECK-OPAQUE: [[V6_0:%[0-9]+]] = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0.i32(ptr %arrayidx, i64 4, i1 true, i32 42)
  ; CHECK: %add1 = add nsw i32 %j, %i
- ; CHECK: %arrayidx4 = getelementptr inbounds i32, i32* %dst, i32 %add1
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* %arrayidx4, i32 %0, i64 4, i1 true)
+ ; CHECK-TYPED: %arrayidx4 = getelementptr inbounds i32, i32* %dst, i32 %add1
+ ; CHECK-OPAQUE: %arrayidx4 = getelementptr inbounds {{(i32|\[4 x i8\])}}, ptr %dst, i32 %add1
+ ; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p0i32.i32(i32* %arrayidx4, i32 %0, i64 4, i1 true)
+ ; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p0.i32(ptr %arrayidx4, i32 [[V6_0]], i64 4, i1 true)
  ; CHECK: fence seq_cst
- ; CHECK: %add6 = add nsw i32 %mul, 1
- ; CHECK: %arrayidx8 = getelementptr inbounds i32, i32* %src, i32 %add6
- ; CHECK: %1 = bitcast i32* %arrayidx8 to <2 x i32>*
- ; CHECK: %2 = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.{{.*}}(<2 x i32>* %1, i64 4, i1 true, <2 x i32> <i32 43, i32 44>)
- ; CHECK: %add10 = add nsw i32 %add1, 1
- ; CHECK: %arrayidx12 = getelementptr inbounds i32, i32* %dst, i32 %add10
- ; CHECK: %3 = bitcast i32* %arrayidx12 to <2 x i32>*
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.{{.*}}(<2 x i32>* %3, <2 x i32> %2, i64 4, i1 true)
+ ; CHECK-TYPED: %add6 = add nsw i32 %mul, 1
+ ; CHECK-TYPED: %arrayidx8 = getelementptr inbounds i32, i32* %src, i32 %add6
+ ; CHECK-TYPED: %1 = bitcast i32* %arrayidx8 to <2 x i32>*
+ ; CHECK-TYPED: %2 = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.{{.*}}(<2 x i32>* %1, i64 4, i1 true, <2 x i32> <i32 43, i32 44>)
+ ; CHECK-OPAQUE: [[V6_2:%[0-9]+]] = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.{{.*}}(ptr %arrayidx8, i64 4, i1 true, <2 x i32> <i32 43, i32 44>)
+ ; CHECK-TYPED: %add10 = add nsw i32 %add1, 1
+ ; CHECK-TYPED: %arrayidx12 = getelementptr inbounds i32, i32* %dst, i32 %add10
+ ; CHECK-TYPED: %3 = bitcast i32* %arrayidx12 to <2 x i32>*
+ ; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.{{.*}}(<2 x i32>* %3, <2 x i32> %2, i64 4, i1 true)
+ ; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.{{.*}}(ptr %arrayidx12, <2 x i32> [[V6_2]], i64 4, i1 true)
  ; CHECK: ret void
 
 
@@ -232,11 +265,14 @@ entry:
  }
 
  ; CHECK-LABEL: define void @f5
- ; CHECK: %0 = bitcast i32* %src to <4 x i32>*
- ; CHECK: %1 = call <4 x i32> @llvm.genx.GenISA.PredicatedLoad.v4i32.p0v4i32.v4i32(<4 x i32>* %0, i64 4, i1 true, <4 x i32> <i32 42, i32 43, i32 44, i32 45>)
- ; CHECK: %2 = shufflevector <4 x i32> %1, <4 x i32> undef, <4 x i32> <i32 3, i32 2, i32 1, i32 0>
- ; CHECK: %3 = bitcast i32* %dst to <4 x i32>*
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p0v4i32.v4i32(<4 x i32>* %3, <4 x i32> %2, i64 4, i1 true)
+ ; CHECK-TYPED: %0 = bitcast i32* %src to <4 x i32>*
+ ; CHECK-TYPED: %1 = call <4 x i32> @llvm.genx.GenISA.PredicatedLoad.v4i32.p0v4i32.v4i32(<4 x i32>* %0, i64 4, i1 true, <4 x i32> <i32 42, i32 43, i32 44, i32 45>)
+ ; CHECK-OPAQUE: [[V7_1:%[0-9]+]] = call <4 x i32> @llvm.genx.GenISA.PredicatedLoad.v4i32.p0.v4i32(ptr %src, i64 4, i1 true, <4 x i32> <i32 42, i32 43, i32 44, i32 45>)
+ ; CHECK-TYPED: %2 = shufflevector <4 x i32> %1, <4 x i32> undef, <4 x i32> <i32 3, i32 2, i32 1, i32 0>
+ ; CHECK-OPAQUE: [[V7_2:%[0-9]+]] = shufflevector <4 x i32> [[V7_1]], <4 x i32> {{undef|poison}}, <4 x i32> <i32 3, i32 2, i32 1, i32 0>
+ ; CHECK-TYPED: %3 = bitcast i32* %dst to <4 x i32>*
+ ; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p0v4i32.v4i32(<4 x i32>* %3, <4 x i32> %2, i64 4, i1 true)
+ ; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p0.v4i32(ptr %dst, <4 x i32> [[V7_2]], i64 4, i1 true)
  ; CHECK: ret void
 
 ; Function Attrs: nounwind readonly

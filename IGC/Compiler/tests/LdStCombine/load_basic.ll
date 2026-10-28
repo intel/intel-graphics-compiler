@@ -8,11 +8,13 @@
 
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN:   igc_opt --typed-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=5 \
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=5 \
 ; RUN:           -platformbmg \
-; RUN: | FileCheck %s
+; RUN: | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=5 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; CHECK-LABEL: target datalayout
 ; %__StructSOALayout_{{.*}} = type <{ %__StructAOSLayout_{{.*}} }>
@@ -165,11 +167,14 @@ entry:
 ;    of anchor load is used instead.
 ;
 ; CHECK-LABEL:  c6.baseidx
-; CHECK:        %c6.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c6.baseidx
-; CHECK:        [[T6_0:%.*]] = bitcast i32 addrspace(1)* %c6.arrayidx to i8 addrspace(1)*
-; CHECK:        [[T6_1:%.*]] = getelementptr inbounds i8, i8 addrspace(1)* [[T6_0]], i64 -4
-; CHECK:        [[T6_2:%.*]] = bitcast i8 addrspace(1)* [[T6_1]] to <2 x i32> addrspace(1)*
-; CHECK:        {{.*}} = load <2 x i32>, <2 x i32> addrspace(1)* [[T6_2]], align 4
+; CHECK-TYPED:        %c6.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c6.baseidx
+; CHECK-OPAQUE:        %c6.arrayidx = getelementptr inbounds i32, ptr addrspace(1) %si, i64 %c6.baseidx
+; CHECK-TYPED:        [[T6_0:%.*]] = bitcast i32 addrspace(1)* %c6.arrayidx to i8 addrspace(1)*
+; CHECK-TYPED:        [[T6_1:%.*]] = getelementptr inbounds i8, i8 addrspace(1)* [[T6_0]], i64 -4
+; CHECK-OPAQUE:        [[T6_1:%.*]] = getelementptr inbounds i8, ptr addrspace(1) %c6.arrayidx, i64 -4
+; CHECK-TYPED:        [[T6_2:%.*]] = bitcast i8 addrspace(1)* [[T6_1]] to <2 x i32> addrspace(1)*
+; CHECK-TYPED:        {{.*}} = load <2 x i32>, <2 x i32> addrspace(1)* [[T6_2]], align 4
+; CHECK-OPAQUE:        {{.*}} = load <2 x i32>, ptr addrspace(1) [[T6_1]], align 4
 ;
   %c6.baseidx = add i64 %conv.i.i, 577
   %c6.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c6.baseidx

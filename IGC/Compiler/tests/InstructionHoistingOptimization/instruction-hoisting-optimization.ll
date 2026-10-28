@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt -platformbmg --typed-pointers --regkey EnableInstructionHoistingOptimization --igc-instruction-hoisting-optimization -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt -platformbmg --opaque-pointers --regkey EnableInstructionHoistingOptimization --igc-instruction-hoisting-optimization -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt -platformbmg --typed-pointers --regkey EnableInstructionHoistingOptimization --igc-instruction-hoisting-optimization -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; EnableInstructionHoistingOptimization:
 ; ------------------------------------------------
@@ -23,15 +23,20 @@ define void @test() {
 ; CHECK-NEXT:  [[GROUPY:%.*]] = bitcast float [[TMP1]] to i32
 ; CHECK-NEXT:  [[TMP2:%.*]] = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 6)
 ; CHECK-NEXT:  [[TMP3:%.*]] = add i32 [[TMP2]], 128
-; CHECK-NEXT:  [[U0_6:%.*]] = inttoptr i32 [[TMP3]] to %__2D_DIM_Resource.0 addrspace(2490369)*
+; CHECK-TYPED-NEXT:  [[U0_6:%.*]] = inttoptr i32 [[TMP3]] to %__2D_DIM_Resource.0 addrspace(2490369)*
+; CHECK-OPAQUE-NEXT:  [[U0_6:%.*]] = inttoptr i32 [[TMP3]] to ptr addrspace(2490369)
 ; CHECK-NEXT:  [[TMP4:%.*]] = add i32 [[TMP2]], 64
-; CHECK-NEXT:  [[U0_61:%.*]] = inttoptr i32 [[TMP4]] to %__2D_DIM_Resource.0 addrspace(2490368)*
+; CHECK-TYPED-NEXT:  [[U0_61:%.*]] = inttoptr i32 [[TMP4]] to %__2D_DIM_Resource.0 addrspace(2490368)*
+; CHECK-OPAQUE-NEXT:  [[U0_61:%.*]] = inttoptr i32 [[TMP4]] to ptr addrspace(2490368)
 ; CHECK-NEXT:  [[TMP5:%.*]] = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 1)
 ; CHECK-NEXT:  [[TMP6:%.*]] = add i32 [[TMP5]], 384
-; CHECK-NEXT:  [[T0_1:%.*]] = inttoptr i32 [[TMP6]] to <4 x float> addrspace(2621442)*
+; CHECK-TYPED-NEXT:  [[T0_1:%.*]] = inttoptr i32 [[TMP6]] to <4 x float> addrspace(2621442)*
+; CHECK-OPAQUE-NEXT:  [[T0_1:%.*]] = inttoptr i32 [[TMP6]] to ptr addrspace(2621442)
 ; CHECK-NEXT:  [[TMP7:%.*]] = add i32 [[TMP5]], 640
-; CHECK-NEXT:  [[T0_12:%.*]] = inttoptr i32 [[TMP7]] to %__2D_DIM_Resource.0 addrspace(2621446)*
-; CHECK-NEXT:  [[B0_1:%.*]] = inttoptr i32 [[TMP5]] to <4 x float> addrspace(2555904)*
+; CHECK-TYPED-NEXT:  [[T0_12:%.*]] = inttoptr i32 [[TMP7]] to %__2D_DIM_Resource.0 addrspace(2621446)*
+; CHECK-OPAQUE-NEXT:  [[T0_12:%.*]] = inttoptr i32 [[TMP7]] to ptr addrspace(2621446)
+; CHECK-TYPED-NEXT:  [[B0_1:%.*]] = inttoptr i32 [[TMP5]] to <4 x float> addrspace(2555904)*
+; CHECK-OPAQUE-NEXT:  [[B0_1:%.*]] = inttoptr i32 [[TMP5]] to ptr addrspace(2555904)
 ; CHECK-NEXT:  [[TMP8:%.*]] = shl i32 [[GROUPX]], 3
 ; CHECK-NEXT:  [[LOCALIDX3:%.*]] = call i32 @llvm.genx.GenISA.DCL.SystemValue.i32(i32 17)
 ; CHECK-NEXT:  [[THREADIDX:%.*]] = add i32 [[TMP8]], [[LOCALIDX3]]
@@ -45,7 +50,8 @@ define void @test() {
 ; CHECK-NEXT:  [[TMP14:%.*]] = shl i32 [[THREADIDY]], 2
 ; CHECK-NEXT:  [[TMP15:%.*]] = uitofp i32 [[TMP14]] to float
 ; CHECK-NEXT:  [[TMP16:%.*]] = fadd fast float [[TMP15]], 5.000000e-01
-; CHECK-NEXT:  [[TMP17:%.*]] = call fast <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.v4f32.p2555904v4f32(<4 x float> addrspace(2555904)* [[B0_1]], i32 832, i32 4, i1 false)
+; CHECK-TYPED-NEXT:  [[TMP17:%.*]] = call fast <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.v4f32.p2555904v4f32(<4 x float> addrspace(2555904)* [[B0_1]], i32 832, i32 4, i1 false)
+; CHECK-OPAQUE-NEXT:  [[TMP17:%.*]] = call fast <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.v4f32.p2555904(ptr addrspace(2555904) [[B0_1]], i32 832, i32 4, i1 false)
 ; CHECK-NEXT:  [[TMP18:%.*]] = extractelement <4 x float> [[TMP17]], i64 0
 ; CHECK-NEXT:  [[TMP19:%.*]] = extractelement <4 x float> [[TMP17]], i64 1
 ; CHECK-NEXT:  [[TMP20:%.*]] = fmul fast float [[TMP19]], [[TMP16]]
@@ -64,8 +70,10 @@ define void @test() {
 ; CHECK-NEXT:  [[TMP33:%.*]] = uitofp i32 [[TMP13]] to float
 ; CHECK-NEXT:  [[TMP34:%.*]] = fadd fast float [[TMP33]], 5.000000e-01
 ; CHECK-NEXT:  [[TMP35:%.*]] = fmul fast float [[TMP34]], [[TMP18]]
-; CHECK-NEXT:  [[TMP36:%.*]] = call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621446__2D_DIM_Resource.0.p2621446__2D_DIM_Resource.0.p655360v4f32(float 0.000000e+00, float [[TMP35]], float [[TMP20]], float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621446)* undef, %__2D_DIM_Resource.0 addrspace(2621446)* [[T0_12]], <4 x float> addrspace(655360)* null, i32 0, i32 0, i32 0)
-; CHECK-NEXT:  [[TMP37:%.*]] = call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621446__2D_DIM_Resource.0.p2621446__2D_DIM_Resource.0.p655360v4f32(float 0.000000e+00, float [[TMP35]], float [[TMP24]], float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621446)* undef, %__2D_DIM_Resource.0 addrspace(2621446)* [[T0_12]], <4 x float> addrspace(655360)* null, i32 0, i32 0, i32 0)
+; CHECK-TYPED-NEXT:  [[TMP36:%.*]] = call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621446__2D_DIM_Resource.0.p2621446__2D_DIM_Resource.0.p655360v4f32(float 0.000000e+00, float [[TMP35]], float [[TMP20]], float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621446)* undef, %__2D_DIM_Resource.0 addrspace(2621446)* [[T0_12]], <4 x float> addrspace(655360)* null, i32 0, i32 0, i32 0)
+; CHECK-OPAQUE-NEXT:  [[TMP36:%.*]] = call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621446.p2621446.p655360(float 0.000000e+00, float [[TMP35]], float [[TMP20]], float 0.000000e+00, float 0.000000e+00, ptr addrspace(2621446) undef, ptr addrspace(2621446) [[T0_12]], ptr addrspace(655360) null, i32 0, i32 0, i32 0)
+; CHECK-TYPED-NEXT:  [[TMP37:%.*]] = call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621446__2D_DIM_Resource.0.p2621446__2D_DIM_Resource.0.p655360v4f32(float 0.000000e+00, float [[TMP35]], float [[TMP24]], float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621446)* undef, %__2D_DIM_Resource.0 addrspace(2621446)* [[T0_12]], <4 x float> addrspace(655360)* null, i32 0, i32 0, i32 0)
+; CHECK-OPAQUE-NEXT:  [[TMP37:%.*]] = call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621446.p2621446.p655360(float 0.000000e+00, float [[TMP35]], float [[TMP24]], float 0.000000e+00, float 0.000000e+00, ptr addrspace(2621446) undef, ptr addrspace(2621446) [[T0_12]], ptr addrspace(655360) null, i32 0, i32 0, i32 0)
 ; CHECK-NEXT:  [[TMP38:%.*]] = extractelement <4 x float> [[TMP36]], i64 3
 ;
 ; We are done here, as the smpl (%71) is hoisted up at tmp37 after tmp36 and before tmp38

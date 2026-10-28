@@ -6,36 +6,40 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix
+; REQUIRES: llvm-16-plus
 ; RUN: igc_opt --opaque-pointers -platformpvc -igc-joint-matrix-resolution -S %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; JointMatrixFuncsResolutionPass
 ; ------------------------------------------------
+; With opaque pointers the function arguments are plain "ptr" and carry no
+; matrix type, so no function gets a resolved clone (*_resolved). Matrix types
+; and operations are resolved inside the function bodies instead.
 
 %jm = type { target("spirv.JointMatrixINTEL", float, 16, 16, 3, 3, 2) }
 
 ; Test case 1:
 ; function itself does not have arguments to resolve
-; there are instructions before calls of functions, which require resolving
-; function parameters needs resolving and are using values from these instructions
-; there are other instructions after calls of resolved functions which are using result of resolved function
+; allocas of matrix types before the calls are resolved, and the calls still
+; target the original functions because their "ptr" parameters need no resolving
+; the matrix loaded from the call result after the calls is resolved
 define spir_kernel void @main(i32 %a, i32 %b, ptr %dst0) {
-; CHECK: define spir_kernel void @main(i32 %a, i32 %b, ptr %dst0) {
+; CHECK-LABEL: define spir_kernel void @main(i32 %a, i32 %b, ptr %dst0) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <16 x float>
-; CHECK-NEXT:    [[TC1:%.*]] = alloca [[JM_RESOLVED:%.*]]
-; CHECK-NEXT:    [[TC23:%.*]] = alloca [[JM_RESOLVED]]
+; CHECK-NEXT:    [[C:%.*]] = alloca ptr addrspace(2)
+; CHECK-NEXT:    [[TC1:%.*]] = alloca %jm.resolved
+; CHECK-NEXT:    [[TC23:%.*]] = alloca %jm.resolved
 ; CHECK-NEXT:    [[JUSTINT:%.*]] = alloca i32
 ; CHECK-NEXT:    [[JUSTINT2:%.*]] = alloca i32
-; CHECK-NEXT:    call spir_func void @test_resolved(ptr [[TC1]])
-; CHECK-NEXT:    call spir_func void @test2_resolved(ptr [[TC1]], ptr [[TC23]])
-; CHECK-NEXT:    call spir_func void @test3_resolved(ptr [[JUSTINT]], ptr [[JUSTINT2]], ptr [[TC23]])
-; CHECK-NEXT:    call spir_func void @test3_resolved(ptr [[JUSTINT]], ptr [[JUSTINT2]], ptr [[TC23]])
-; CHECK-NEXT:    [[R5:%.*]] = call spir_func ptr @test4_resolved(ptr [[TC1]], ptr [[TC23]], i32 [[A:%.*]], i32 [[B:%.*]])
-; CHECK-NEXT:    [[R29:%.*]] = load <16 x float>, ptr [[R5]]
-; CHECK-NEXT:    store <16 x float> [[R29]], ptr [[TMP1]]
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_generic_pi64_v8i8(ptr [[DST0:%.*]], ptr [[TMP1]], i64 16, i32 0)
-; CHECK-NEXT:    [[TC311:%.*]] = alloca ptr
-; CHECK-NEXT:    store ptr [[R5]], ptr [[TC311]]
+; CHECK-NEXT:    call spir_func void @test(ptr [[TC1]])
+; CHECK-NEXT:    call spir_func void @test2(ptr [[TC1]], ptr [[TC23]])
+; CHECK-NEXT:    call spir_func void @test3(ptr [[JUSTINT]], ptr [[JUSTINT2]], ptr [[TC23]])
+; CHECK-NEXT:    call spir_func void @test3(ptr [[JUSTINT]], ptr [[JUSTINT2]], ptr [[TC23]])
+; CHECK-NEXT:    [[R:%.*]] = call spir_func ptr @test4(ptr [[TC1]], ptr [[TC23]], i32 %a, i32 %b)
+; CHECK-NEXT:    [[R2:%.*]] = load <16 x float>, ptr [[R]]
+; CHECK-NEXT:    store <16 x float> [[R2]], ptr [[TMP1]]
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_generic_pi64_v8i8(ptr %dst0, ptr [[TMP1]], i64 16, i32 0)
+; CHECK-NEXT:    [[TC3:%.*]] = alloca ptr
+; CHECK-NEXT:    store ptr [[R]], ptr [[TC3]]
 ; CHECK-NEXT:    ret void
 ;
   %c = alloca target("spirv.JointMatrixINTEL", float, 16, 16, 3, 3, 2) addrspace(2)*
@@ -59,18 +63,17 @@ define spir_kernel void @main(i32 %a, i32 %b, ptr %dst0) {
 }
 
 ; Test case 2:
-; test that calls inside were resolved correctly when signature was resolved
+; test that matrix operations inside are resolved while the signature stays unchanged
 define spir_func void @test(ptr %this) {
-; CHECK: define spir_func void @test_resolved(ptr %this) {
+; CHECK-LABEL: define spir_func void @test(ptr %this) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[TMP0:%.*]] = alloca <16 x float>
-; CHECK-NEXT:    [[JM_PTR2:%.*]] = alloca ptr
-; CHECK-NEXT:    [[INDEX3:%.*]] = getelementptr ptr, ptr [[JM_PTR2]], i32 5
-; CHECK-NEXT:    store ptr [[THIS:%.*]], ptr [[INDEX3]]
+; CHECK-NEXT:    [[JM_PTR:%.*]] = alloca ptr
+; CHECK-NEXT:    [[INDEX:%.*]] = getelementptr ptr, ptr [[JM_PTR]], i32 5
+; CHECK-NEXT:    store ptr %this, ptr [[INDEX]]
 ; CHECK-NEXT:    [[DST:%.*]] = alloca float
-; CHECK-NEXT:    [[DST0:%.*]] = addrspacecast float* [[DST]] to ptr
-; CHECK-NEXT:    store <16 x float> <float 5.000000e+00, float 5.000000e+00, float 5.000000e+00, float 5.000000e+00, float 5.000000e+00, float 5.000000e+00, float 5.000000e+00, float 5.000000e+00, float 5.000000e+00, float 5.000000e+00, float 5.000000e+00, float 5.000000e+00, float 5.000000e+00, float 5.000000e+00, float 5.000000e+00, float 5.000000e+00>, ptr [[TMP0]]
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_generic_pi64_v8i8(ptr [[DST0]], ptr [[TMP0]], i64 16, i32 0)
+; CHECK-NEXT:    store <16 x float> {{splat \(float 5.000000e\+00\)|<float 5.000000e\+00, .*>}}, ptr [[TMP0]]
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_generic_pi64_v8i8(ptr [[DST]], ptr [[TMP0]], i64 16, i32 0)
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -84,14 +87,14 @@ entry:
 }
 
 ; Test case 3:
-; tests that function with resolved signature which calls function with resolved signature
-; is resolved correctly
+; tests that a function calling another function with "ptr" parameters keeps
+; calling the original function and resolves its local matrix alloca
 define spir_func void @test2(ptr %this, ptr %this2) {
-; CHECK: define spir_func void @test2_resolved(ptr %this, ptr %this2) {
+; CHECK-LABEL: define spir_func void @test2(ptr %this, ptr %this2) {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    call spir_func void @test_resolved(ptr [[THIS:%.*]])
+; CHECK-NEXT:    call spir_func void @test(ptr %this)
 ; CHECK-NEXT:    [[TC:%.*]] = alloca %jm.resolved
-; CHECK-NEXT:    call spir_func void @test_resolved(ptr [[TC]])
+; CHECK-NEXT:    call spir_func void @test(ptr [[TC]])
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -101,18 +104,20 @@ entry:
   ret void
 }
 
-; CHECK: define spir_func void @test3_resolved(ptr %this, ptr %this2, ptr %this3) {
+; Test case 4:
+; functions with only "ptr" parameters keep their signatures
 define spir_func void @test3(ptr %this, ptr %this2, ptr %this3) {
+; CHECK-LABEL: define spir_func void @test3(ptr %this, ptr %this2, ptr %this3) {
 entry:
   ret void
 }
 
 
 define spir_func ptr @test4(ptr %this1, ptr %this2, i32 %a, i32 %b) {
-; CHECK: define spir_func ptr @test4_resolved(ptr %this1, ptr %this2, i32 %a, i32 %b) {
+; CHECK-LABEL: define spir_func ptr @test4(ptr %this1, ptr %this2, i32 %a, i32 %b) {
 ; CHECK:       end:
-; CHECK-NEXT:    [[RETVAL1:%.*]] = phi ptr [ [[THIS1:%.*]], %btrue ], [ [[THIS2:%.*]], %bfalse ]
-; CHECK-NEXT:    ret ptr [[RETVAL1]]
+; CHECK-NEXT:    [[RETVAL:%.*]] = phi ptr [ %this1, %btrue ], [ %this2, %bfalse ]
+; CHECK-NEXT:    ret ptr [[RETVAL]]
 ;
 entry:
   %0 = icmp sgt i32 %a, %b

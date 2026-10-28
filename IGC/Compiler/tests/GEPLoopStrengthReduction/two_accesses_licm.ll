@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: opaque-ptr-fix
 ; RUN: igc_opt --opaque-pointers -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
 ;
 ; Input:
@@ -35,7 +34,7 @@ entry:
 ; CHECK-LABEL: for.body.lr.ph:
 ; CHECK:         [[ADD:%.*]] = add i32 %delta, 2
 ; CHECK:         [[SEXT:%.*]] = sext i32 [[ADD]] to i64
-; CHECK:         [[GEP1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[SEXT]]
+; CHECK:         [[GEP1:%.*]] = getelementptr i32, ptr addrspace(1) %p, i64 [[SEXT]]
 ; CHECK:         br label %for.body
 for.body.lr.ph:                                   ; preds = %entry
   br label %for.body
@@ -44,11 +43,11 @@ for.body.lr.ph:                                   ; preds = %entry
 ; CHECK:         %i.02 = phi i32 [ 0, %for.body.lr.ph ], [ %add4, %for.body ]
 ; CHECK-NOT:     add{.*}{i32|i64}
 ; CHECK-NOT:     sext
-; CHECK:         store i32 %i.02, i32 addrspace(1)* [[GEP1]], align 4
+; CHECK:         store i32 %i.02, ptr addrspace(1) [[GEP1]], align 4
 ; CHECK-NOT:     add{.*}{i32|i64}
 ; CHECK-NOT:     sext
-; CHECK:         [[GEP2:%.*]] = getelementptr i32, i32 addrspace(1)* [[GEP1]], i64 2
-; CHECK:         store i32 %i.02, i32 addrspace(1)* [[GEP2]], align 4
+; CHECK:         [[GEP2:%.*]] = getelementptr i32, ptr addrspace(1) [[GEP1]], i64 2
+; CHECK:         store i32 %i.02, ptr addrspace(1) [[GEP2]], align 4
 ; CHECK:         %add4 = add nuw nsw i32 %i.02, 2
 ; CHECK:         %cmp = icmp slt i32 %add4, %n
 ; CHECK:         br i1 %cmp, label %for.body, label %for.cond.for.end_crit_edge

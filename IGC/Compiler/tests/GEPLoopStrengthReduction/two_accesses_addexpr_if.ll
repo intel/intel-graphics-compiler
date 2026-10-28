@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: opaque-ptr-fix
 ; RUN: igc_opt --opaque-pointers -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
 ;
 ; Loop in pseudo-code:
@@ -37,13 +36,13 @@ entry:
 ; CHECK-LABEL: for.body.lr.ph:
 ; CHECK:         [[ADD:%.*]] = add i32 {{%.*}}, 32
 ; CHECK:         [[SEXT:%.*]] = sext i32 [[ADD]] to i64
-; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[SEXT]]
+; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, ptr addrspace(1) %p, i64 [[SEXT]]
 ; CHECK:         br label %for.body
 for.body.lr.ph:                                   ; preds = %entry
   br label %for.body
 
 ; CHECK-LABEL: for.body:
-; CHECK:         [[GEP0:%.*]] = phi i32 addrspace(1)* [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %cond.continue ]
+; CHECK:         [[GEP0:%.*]] = phi ptr addrspace(1) [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %cond.continue ]
 ; CHECK:         %i.034 = phi i32 [ 0, %for.body.lr.ph ], [ %add10, %cond.continue ]
 ; CHECK:         %cmp44 = icmp slt i32 %i.034, %c
 ; CHECK:         br i1 %cmp44, label %cond.1, label %cond.continue
@@ -54,8 +53,8 @@ for.body:                                         ; preds = %for.body.lr.ph, %co
   br i1 %cmp44, label %cond.1, label %cond.continue
 
 ; CHECK-LABEL: cond.1:
-; CHECK:         [[GEP1:%.*]] = getelementptr i32, i32 addrspace(1)* [[GEP0]], i64 -64
-; CHECK:         load i32, i32 addrspace(1)* [[GEP1]], align 4
+; CHECK:         [[GEP1:%.*]] = getelementptr i32, ptr addrspace(1) [[GEP0]], i64 -64
+; CHECK:         load i32, ptr addrspace(1) [[GEP1]], align 4
 ; CHECK:         br label %cond.continue
 cond.1:                                         ; preds = %for.body
   %sub4 = add nsw i32 %add, -32
@@ -65,10 +64,10 @@ cond.1:                                         ; preds = %for.body
   br label %cond.continue
 
 ; CHECK-LABEL: cond.continue:
-; CHECK:         load i32, i32 addrspace(1)* [[GEP0]], align 4
+; CHECK:         load i32, ptr addrspace(1) [[GEP0]], align 4
 ; CHECK:         %add10 = add nuw nsw i32 %i.034, 32
 ; CHECK:         %cmp = icmp slt i32 %add10, %sub
-; CHECK:         [[GEP_PHI2]] = getelementptr i32, i32 addrspace(1)* [[GEP0]], i64 32
+; CHECK:         [[GEP_PHI2]] = getelementptr i32, ptr addrspace(1) [[GEP0]], i64 32
 ; CHECK:         br i1 %cmp, label %for.body, label %for.cond.for.end_crit_edge
 cond.continue:                                  ; preds = %for.body, %cond.1
   %add2 = add nsw i32 %add, 32
@@ -103,15 +102,15 @@ entry:
 ; CHECK-LABEL: for.body.lr.ph:
 ; CHECK:         [[ADD:%.*]] = add i32 {{%.*}}, 32
 ; CHECK:         [[SEXT:%.*]] = sext i32 [[ADD]] to i64
-; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[SEXT]]
+; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, ptr addrspace(1) %p, i64 [[SEXT]]
 ; CHECK:         br label %for.body
 for.body.lr.ph:                                   ; preds = %entry
   br label %for.body
 
 ; CHECK-LABEL: for.body:
-; CHECK:         [[GEP0:%.*]] = phi i32 addrspace(1)* [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %cond.continue ]
+; CHECK:         [[GEP0:%.*]] = phi ptr addrspace(1) [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %cond.continue ]
 ; CHECK:         %i.034 = phi i32 [ 0, %for.body.lr.ph ], [ %add10, %cond.continue ]
-; CHECK:         [[GEP1:%.*]] = getelementptr i32, i32 addrspace(1)* [[GEP0]], i64 -64
+; CHECK:         [[GEP1:%.*]] = getelementptr i32, ptr addrspace(1) [[GEP0]], i64 -64
 ; CHECK:         %cmp44 = icmp slt i32 %i.034, %c
 ; CHECK:         br i1 %cmp44, label %cond.1, label %cond.continue
 for.body:                                         ; preds = %for.body.lr.ph, %cond.continue
@@ -124,17 +123,17 @@ for.body:                                         ; preds = %for.body.lr.ph, %co
   br i1 %cmp44, label %cond.1, label %cond.continue
 
 ; CHECK-LABEL: cond.1:
-; CHECK:         load i32, i32 addrspace(1)* [[GEP1]], align 4
+; CHECK:         load i32, ptr addrspace(1) [[GEP1]], align 4
 ; CHECK:         br label %cond.continue
 cond.1:                                         ; preds = %for.body
   %0 = load i32, i32 addrspace(1)* %arrayidx6, align 4
   br label %cond.continue
 
 ; CHECK-LABEL: cond.continue:
-; CHECK:         load i32, i32 addrspace(1)* [[GEP0]], align 4
+; CHECK:         load i32, ptr addrspace(1) [[GEP0]], align 4
 ; CHECK:         %add10 = add nuw nsw i32 %i.034, 32
 ; CHECK:         %cmp = icmp slt i32 %add10, %sub
-; CHECK:         [[GEP_PHI2]] = getelementptr i32, i32 addrspace(1)* [[GEP0]], i64 32
+; CHECK:         [[GEP_PHI2]] = getelementptr i32, ptr addrspace(1) [[GEP0]], i64 32
 ; CHECK:         br i1 %cmp, label %for.body, label %for.cond.for.end_crit_edge
 cond.continue:                                  ; preds = %for.body, %cond.1
   %add2 = add nsw i32 %add, 32

@@ -33,7 +33,7 @@ define internal spir_func i8 addrspace(1)* @_Z41__spirv_GenericCastToPtrExplicit
 }
 
 ; CHECK-LABEL: testFn
-; CHECK-NOT: %result = call spir_func i8 addrspace(1)* @_Z41__spirv_GenericCastToPtrExplicit_ToGlobalPU3AS4ci(i8 addrspace(4)* %ptr, i32 0)
+; CHECK-NOT: %result = call spir_func {{i8 addrspace\(1\)\*|ptr addrspace\(1\)}} @_Z41__spirv_GenericCastToPtrExplicit_ToGlobalPU3AS4ci({{i8 addrspace\(4\)\*|ptr addrspace\(4\)}} %ptr, i32 0)
 ; CHECK: %generic_cast_to_ptr = addrspacecast [[PTR:.*]] addrspace(4){{.*}} %ptr to [[PTR]] addrspace(1){{.*}}
 ; CHECK: call spir_func void @testExternFn([[PTR]] addrspace(1){{.*}} %generic_cast_to_ptr)
 define spir_kernel void @testFn() {

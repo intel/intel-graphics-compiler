@@ -5,8 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-
-; REQUIRES: opaque-ptr-fix
+; REQUIRES: llvm-18-plus
+; "or disjoint" (LLVM 18+) marks %add as an add; with a plain "or" the second GEP is not reduced on LLVM 22.
 ; RUN: igc_opt --opaque-pointers -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
 ;
 ; Input:
@@ -41,32 +41,32 @@ entry:
   br i1 %cmp1, label %for.body.lr.ph, label %for.end
 
 ; CHECK-LABEL: for.body.lr.ph:
-; CHECK:         [[GEP_PHI1:%.*]] = getelementptr %struct.Foo, %struct.Foo addrspace(1)* %p, i64 0, i32 0, i64 0
+; CHECK:         [[GEP_PHI1:%.*]] = getelementptr %struct.Foo, ptr addrspace(1) %p, i64 0, i32 0, i64 0
 ; CHECK:         br label %for.body
 for.body.lr.ph:                                   ; preds = %entry
   br label %for.body
 
 ; CHECK-LABEL: for.body:
-; CHECK:         [[GEP0:%.*]] = phi i32 addrspace(1)* [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %for.body ]
+; CHECK:         [[GEP0:%.*]] = phi ptr addrspace(1) [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %for.body ]
 ; CHECK:         %i.02 = phi i32 [ 0, %for.body.lr.ph ], [ %add4, %for.body ]
 ; CHECK-NOT:     zext
-; CHECK-NOT:     getelementptr inbounds %struct.Foo, %struct.Foo addrspace(1)* %p
-; CHECK:         [[LOAD:%.*]] = load i32, i32 addrspace(1)* [[GEP0]], align 4
+; CHECK-NOT:     getelementptr inbounds %struct.Foo, ptr addrspace(1) %p
+; CHECK:         [[LOAD:%.*]] = load i32, ptr addrspace(1) [[GEP0]], align 4
 ; CHECK-NOT:     or {i32|i64}
 ; CHECK-NOT:     zext
-; CHECK-NOT:     getelementptr inbounds %struct.Foo, %struct.Foo addrspace(1)* %p
-; CHECK:         [[GEP1:%.*]] = getelementptr i32, i32 addrspace(1)* [[GEP0]], i64 1
-; CHECK:         store i32 [[LOAD]], i32 addrspace(1)* [[GEP1]], align 4
+; CHECK-NOT:     getelementptr inbounds %struct.Foo, ptr addrspace(1) %p
+; CHECK:         [[GEP1:%.*]] = getelementptr i32, ptr addrspace(1) [[GEP0]], i64 1
+; CHECK:         store i32 [[LOAD]], ptr addrspace(1) [[GEP1]], align 4
 ; CHECK:         %add4 = add nuw nsw i32 %i.02, 2
 ; CHECK:         %cmp = icmp slt i32 %add4, %n
-; CHECK:         [[GEP_PHI2]] = getelementptr i32, i32 addrspace(1)* [[GEP0]], i64 2
+; CHECK:         [[GEP_PHI2]] = getelementptr i32, ptr addrspace(1) [[GEP0]], i64 2
 ; CHECK:         br i1 %cmp, label %for.body, label %for.cond.for.end_crit_edge
 for.body:                                         ; preds = %for.body.lr.ph, %for.body
   %i.02 = phi i32 [ 0, %for.body.lr.ph ], [ %add4, %for.body ]
   %idxprom = zext i32 %i.02 to i64
   %arrayidx = getelementptr inbounds %struct.Foo, %struct.Foo addrspace(1)* %p, i64 0, i32 0, i64 %idxprom
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
-  %add = or i32 %i.02, 1
+  %add = or disjoint i32 %i.02, 1
   %idxprom2 = zext i32 %add to i64
   %arrayidx3 = getelementptr inbounds %struct.Foo, %struct.Foo addrspace(1)* %p, i64 0, i32 0, i64 %idxprom2
   store i32 %0, i32 addrspace(1)* %arrayidx3, align 4

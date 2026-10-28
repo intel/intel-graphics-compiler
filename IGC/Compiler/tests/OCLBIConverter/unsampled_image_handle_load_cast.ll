@@ -7,18 +7,21 @@
 ;============================ end_copyright_notice =============================
 
 ; Check 64-bit integer is loaded from unsampled_image_handle and then casted to bindless image handle.
-
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-conv-ocl-to-common -S < %s -o - | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-conv-ocl-to-common -S < %s -o - | FileCheck --check-prefixes=CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-conv-ocl-to-common -S < %s -o - | FileCheck --check-prefixes=CHECK-TYPED %s %}
 
 %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle" = type { i64 }
 
 define spir_kernel void @image_read(%"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle"* %_arg_imgHandle1) {
 entry:
-; CHECK:      [[BC:%[0-9]+]] = bitcast %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle"* %_arg_imgHandle1 to i64*
-; CHECK-NEXT: [[LOAD:%[0-9]+]] = load i64, i64* [[BC]], align 8
-; CHECK:      %bindless_img = inttoptr i32 %2 to float addrspace(393468)*
-; CHECK-NEXT: call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196860f32.p393468f32(i32 %CoordX, i32 %CoordY, i32 0, i32 0, float addrspace(196860)* undef, float addrspace(393468)* %bindless_img, i32 0, i32 0, i32 0)
+; CHECK-TYPED:      [[BC:%[0-9]+]] = bitcast %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle"* %_arg_imgHandle1 to i64*
+; CHECK-OPAQUE:      [[BC:%[0-9]+]] = bitcast ptr %_arg_imgHandle1 to ptr{{$}}
+; CHECK-TYPED-NEXT: [[LOAD:%[0-9]+]] = load i64, i64* [[BC]], align 8
+; CHECK-OPAQUE-NEXT: [[LOAD:%[0-9]+]] = load i64, ptr [[BC]], align 8
+; CHECK-TYPED:      %bindless_img = inttoptr i32 %2 to float addrspace(393468)*
+; CHECK-OPAQUE:      %bindless_img = inttoptr i32 %2 to ptr addrspace(393468)
+; CHECK-TYPED-NEXT: call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196860f32.p393468f32(i32 %CoordX, i32 %CoordY, i32 0, i32 0, float addrspace(196860)* undef, float addrspace(393468)* %bindless_img, i32 0, i32 0, i32 0)
+; CHECK-OPAQUE-NEXT: call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196860.p393468(i32 %CoordX, i32 %CoordY, i32 0, i32 0, ptr addrspace(196860) undef, ptr addrspace(393468) %bindless_img, i32 0, i32 0, i32 0)
 
   %0 = bitcast %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle"* %_arg_imgHandle1 to i64*
   %1 = load i64, i64* %0, align 8

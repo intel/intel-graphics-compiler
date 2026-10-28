@@ -8,7 +8,7 @@
 ;
 ; ------------------------------------------------
 ;
-; REQUIRES: opaque-ptr-fix, regkeys
+; REQUIRES: regkeys
 ;
 ; RUN: igc_opt --opaque-pointers -platformpvc --igc-gep-lowering -regkey=EnableGEPSimplification=1,TestGEPSimplification=1 -S %s  | FileCheck %s
 ; ------------------------------------------------
@@ -28,10 +28,10 @@ define spir_kernel void @test_gep(i32 addrspace(1)* %dst, i32 addrspace(1)* %src
 ; case 1 : gep's id is sext/zext
 ;
 ; CHECK-LABEL: case1:
-; CHECK: [[C1T0:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* %src, i64 %{{.*}}
-; CHECK-NOT: {{.*}} = getelementptr inbounds i32, i32 addrspace(1)* [[C1T0]], i64 4
-; CHECK-NOT: {{.*}} = getelementptr inbounds i32, i32 addrspace(1)* [[C1T0]], i64 8
-; CHECK-NOT: {{.*}} = getelementptr inbounds i32, i32 addrspace(1)* [[C1T0]], i64 12
+; CHECK: [[C1T0:%.*]] = getelementptr inbounds i32, ptr addrspace(1) %src, i64 %{{.*}}
+; CHECK-NOT: {{.*}} = getelementptr inbounds i32, ptr addrspace(1) [[C1T0]], i64 4
+; CHECK-NOT: {{.*}} = getelementptr inbounds i32, ptr addrspace(1) [[C1T0]], i64 8
+; CHECK-NOT: {{.*}} = getelementptr inbounds i32, ptr addrspace(1) [[C1T0]], i64 12
 ;
 case1:
   %simdLaneId16 = call i16 @llvm.genx.GenISA.simdLaneId()

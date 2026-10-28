@@ -6,9 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -platformdg1 -igc-priv-mem-to-reg 2>&1 | FileCheck -check-prefix=CHECK-DG1 %s
-; RUN: igc_opt --typed-pointers %s -S -o - -platformdg2 -igc-priv-mem-to-reg 2>&1 | FileCheck -check-prefix=CHECK-DG2 %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -platformdg2 -igc-priv-mem-to-reg 2>&1 | FileCheck %s --check-prefixes=CHECK-DG2,CHECK-DG2-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -platformdg2 -igc-priv-mem-to-reg 2>&1 | FileCheck %s --check-prefixes=CHECK-DG2,CHECK-DG2-TYPED %}
 ; ------------------------------------------------
 ; LowerGEPForPrivMem
 ; ------------------------------------------------
@@ -30,7 +30,8 @@ define spir_kernel void @WaveletDenoise(<4 x i8> addrspace(1)* %srcImage, <4 x i
 ; CHECK-DG2-NEXT:    [[STAGE:%.*]] = alloca [16 x <4 x i8>]
 ; CHECK-DG2-NEXT:    [[TMP0:%.*]] = alloca <16 x float>
 ; CHECK-DG2-NEXT:    [[TMP1:%.*]] = alloca <16 x float>
-; CHECK-DG2:         [[I5:%.*]] = getelementptr inbounds [16 x <4 x i8>], [16 x <4 x i8>]* [[STAGE]]
+; CHECK-DG2-TYPED:         [[I5:%.*]] = getelementptr inbounds [16 x <4 x i8>], [16 x <4 x i8>]* [[STAGE]]
+; CHECK-DG2-OPAQUE:         [[I5:%.*]] = getelementptr inbounds [16 x <4 x i8>], ptr [[STAGE]]
 
 entry:
   %i = extractelement <3 x i32> %localSize, i64 0

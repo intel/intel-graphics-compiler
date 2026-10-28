@@ -36,11 +36,13 @@
 ; The barrier stops combining from going accross it. As result, two stores are generated.
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN:   igc_opt --typed-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=1 \
 ; RUN:           -platformbmg \
-; RUN: | FileCheck %s
+; RUN: | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ;
 ; CHECK-LABEL: target datalayout
@@ -48,12 +50,14 @@
 ; CHECK: %__StructSOALayout_ = type <{ i32, %__StructAOSLayout_ }>
 ; CHECK: %__StructAOSLayout_ = type <{ i16, i16 }>
 ; CHECK-LABEL: define spir_kernel void @test_fence_st
-; CHECK: store i32 134480385, i32 addrspace(3)* %{{.*}}, align 4
+; CHECK-TYPED: store i32 134480385, i32 addrspace(3)* %{{.*}}, align 4
+; CHECK-OPAQUE: store i32 134480385, ptr addrspace(3) %{{.*}}, align 4
 ; CHECK-LABEL: call void @llvm.genx.GenISA.memoryfence
 ; CHECK: [[STMP1:%.*]] = insertvalue %__StructSOALayout_ <{ i32 1052672, %__StructAOSLayout_ undef }>, i16 %{{.}}, 1, 0
 ; CHECK: [[STMP2:%.*]] = insertvalue %__StructSOALayout_ [[STMP1]], i16 %{{.*}}, 1, 1
 ; CHECK: [[STMP3:%.*]] = call <2 x i32> @llvm.genx.GenISA.bitcastfromstruct.v2i32.__StructSOALayout_(%__StructSOALayout_ [[STMP2]])
-; CHECK: store <2 x i32> [[STMP3]], <2 x i32> addrspace(3)* %{{.*}}, align 4
+; CHECK-TYPED: store <2 x i32> [[STMP3]], <2 x i32> addrspace(3)* %{{.*}}, align 4
+; CHECK-OPAQUE: store <2 x i32> [[STMP3]], ptr addrspace(3) %{{.*}}, align 4
 ; CHECK: ret void
 
 

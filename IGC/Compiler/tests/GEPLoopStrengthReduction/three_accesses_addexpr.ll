@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: opaque-ptr-fix
 ; RUN: igc_opt --opaque-pointers -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
 ;
 ; Example from GSD-4652. Optimize function:
@@ -47,23 +46,23 @@ entry:
 
 ; CHECK-LABEL: for.body.lr.ph:
 ; CHECK:         [[SEXT:%.*]] = sext i32 %add4.i.i.i to i64
-; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[SEXT]]
+; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, ptr addrspace(1) %p, i64 [[SEXT]]
 ; CHECK:         br label %for.body
 for.body.lr.ph:                                   ; preds = %entry
   br label %for.body
 
 ; CHECK-LABEL: for.body:
-; CHECK:         [[GEP0:%.*]] = phi i32 addrspace(1)* [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %for.body ]
+; CHECK:         [[GEP0:%.*]] = phi ptr addrspace(1) [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %for.body ]
 ; CHECK:         %i.034 = phi i32 [ 32, %for.body.lr.ph ], [ %add10, %for.body ]
-; CHECK:         [[GEP64:%.*]] = getelementptr i32, i32 addrspace(1)* [[GEP0]], i64 64
-; CHECK:         [[LOAD64:%.*]] = load i32, i32 addrspace(1)* [[GEP64]], align 4
-; CHECK:         [[LOAD0:%.*]] = load i32, i32 addrspace(1)* [[GEP0]], align 4
+; CHECK:         [[GEP64:%.*]] = getelementptr i32, ptr addrspace(1) [[GEP0]], i64 64
+; CHECK:         [[LOAD64:%.*]] = load i32, ptr addrspace(1) [[GEP64]], align 4
+; CHECK:         [[LOAD0:%.*]] = load i32, ptr addrspace(1) [[GEP0]], align 4
 ; CHECK:         [[MUL:%.*]] = mul nsw i32 [[LOAD64]], [[LOAD0]]
-; CHECK:         [[GEP32:%.*]] = getelementptr i32, i32 addrspace(1)* [[GEP0]], i64 32
-; CHECK:         store i32 [[MUL]], i32 addrspace(1)* [[GEP32]], align 4
+; CHECK:         [[GEP32:%.*]] = getelementptr i32, ptr addrspace(1) [[GEP0]], i64 32
+; CHECK:         store i32 [[MUL]], ptr addrspace(1) [[GEP32]], align 4
 ; CHECK:         %add10 = add nuw nsw i32 %i.034, 32
 ; CHECK:         %cmp = icmp slt i32 %add10, %sub
-; CHECK:         [[GEP_PHI2]] = getelementptr i32, i32 addrspace(1)* [[GEP0]], i64 32
+; CHECK:         [[GEP_PHI2]] = getelementptr i32, ptr addrspace(1) [[GEP0]], i64 32
 ; CHECK:         br i1 %cmp, label %for.body, label %for.cond.for.end_crit_edge
 for.body:                                         ; preds = %for.body.lr.ph, %for.body
   %i.034 = phi i32 [ 32, %for.body.lr.ph ], [ %add10, %for.body ]

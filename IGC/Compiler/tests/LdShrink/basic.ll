@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify -igc-ldshrink -dce -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify -igc-ldshrink -dce -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify -igc-ldshrink -dce -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; LdShrink
 ; ------------------------------------------------
@@ -20,10 +20,13 @@
 
 define void @test(<16 x i32>* %src, i32* %dst) {
 ; CHECK-LABEL: @test(
-; CHECK:    [[TMP1:%.*]] = bitcast <16 x i32>* [[SRC:%.*]] to i32*
-; CHECK:    [[TMP2:%.*]] = getelementptr inbounds i32, i32* [[TMP1]], i32 13
-; CHECK:    [[TMP3:%.*]] = load i32, i32* [[TMP2]], align 4
-; CHECK:    store i32 [[TMP3]], i32* [[DST:%.*]], align 4
+; CHECK-TYPED:    [[TMP1:%.*]] = bitcast <16 x i32>* [[SRC:%.*]] to i32*
+; CHECK-TYPED:    [[TMP2:%.*]] = getelementptr inbounds i32, i32* [[TMP1]], i32 13
+; CHECK-OPAQUE:    [[TMP2:%.*]] = getelementptr inbounds i32, ptr [[SRC:%.*]], i32 13
+; CHECK-TYPED:    [[TMP3:%.*]] = load i32, i32* [[TMP2]], align 4
+; CHECK-OPAQUE:    [[TMP3:%.*]] = load i32, ptr [[TMP2]], align 4
+; CHECK-TYPED:    store i32 [[TMP3]], i32* [[DST:%.*]], align 4
+; CHECK-OPAQUE:    store i32 [[TMP3]], ptr [[DST:%.*]], align 4
 ; CHECK:    ret void
 ;
   %1 = load <16 x i32>, <16 x i32>* %src, align 64

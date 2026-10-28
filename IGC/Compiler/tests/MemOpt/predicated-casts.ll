@@ -8,8 +8,8 @@
 
 ; This test verifies all different branches of createBitOrPointerCast utility function.
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - --basic-aa -igc-memopt | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - --basic-aa -igc-memopt | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - --basic-aa -igc-memopt | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a:64:64-f80:128:128-n8:16:32:64"
 
@@ -30,11 +30,15 @@ declare i16 addrspace(4)* @llvm.genx.GenISA.PredicatedLoad.p4i16.p4p4i16.p4i16(i
 declare i32 addrspace(1)* @llvm.genx.GenISA.PredicatedLoad.p1i32.p1p4i32.p1i32(i32 addrspace(1)**, i64, i1, i32 addrspace(1)*) #0
 
  ; CHECK-LABEL: define void @f0
- ; CHECK: %2 = bitcast i16 addrspace(4)* %j to i32 addrspace(4)*
- ; CHECK: %3 = insertelement <3 x i32 addrspace(4)*> %1, i32 addrspace(4)* %2, i32 1
- ; CHECK: %4 = addrspacecast i32 addrspace(1)* %k to i32 addrspace(4)*
- ; CHECK: %5 = insertelement <3 x i32 addrspace(4)*> %3, i32 addrspace(4)* %4, i32 2
- ; CHECK: %6 = call <3 x i32 addrspace(4)*> @llvm.genx.GenISA.PredicatedLoad.v3p4i32.p0v3p4i32.v3p4i32(<3 x i32 addrspace(4)*>* %0, i64 8, i1 true, <3 x i32 addrspace(4)*> %5)
+ ; CHECK-TYPED: %2 = bitcast i16 addrspace(4)* %j to i32 addrspace(4)*
+ ; CHECK-TYPED: %3 = insertelement <3 x i32 addrspace(4)*> %1, i32 addrspace(4)* %2, i32 1
+ ; CHECK-OPAQUE: %1 = insertelement <3 x ptr addrspace(4)> %0, ptr addrspace(4) %j, i32 1
+ ; CHECK-TYPED: %4 = addrspacecast i32 addrspace(1)* %k to i32 addrspace(4)*
+ ; CHECK-OPAQUE: %2 = addrspacecast ptr addrspace(1) %k to ptr addrspace(4)
+ ; CHECK-TYPED: %5 = insertelement <3 x i32 addrspace(4)*> %3, i32 addrspace(4)* %4, i32 2
+ ; CHECK-OPAQUE: %3 = insertelement <3 x ptr addrspace(4)> %1, ptr addrspace(4) %2, i32 2
+ ; CHECK-TYPED: %6 = call <3 x i32 addrspace(4)*> @llvm.genx.GenISA.PredicatedLoad.v3p4i32.p0v3p4i32.v3p4i32(<3 x i32 addrspace(4)*>* %0, i64 8, i1 true, <3 x i32 addrspace(4)*> %5)
+ ; CHECK-OPAQUE: %4 = call <3 x ptr addrspace(4)> @llvm.genx.GenISA.PredicatedLoad.v3p4.p0.v3p4(ptr %src, i64 8, i1 true, <3 x ptr addrspace(4)> %3)
  ; CHECK: ret void
 
 define void @f1(float* %src, i32* %a, <1 x i32> %b) {
@@ -54,19 +58,32 @@ declare i32* @llvm.genx.GenISA.PredicatedLoad.p0i32.p0p0i32.i32(i32**, i64, i1, 
 declare <1 x i32> @llvm.genx.GenISA.PredicatedLoad.v1i32.p0v1i32.v1i32(<1 x i32>*, i64, i1, <1 x i32>) #0
 
 ; CHECK-LABEL: define void @f1
-; CHECK: %1 = ptrtoint i32* %a to i32
-; CHECK: %2 = bitcast i32 %1 to float
-; CHECK: %3 = insertelement <3 x float> <float 4.200000e+01, float undef, float undef>, float %2, i32 1
-; CHECK: %4 = bitcast <1 x i32> %b to float
-; CHECK: %5 = insertelement <3 x float> %3, float %4, i32 2
-; CHECK: %6 = call <3 x float> @llvm.genx.GenISA.PredicatedLoad.v3f32.p0v3f32.v3f32(<3 x float>* %0, i64 4, i1 true, <3 x float> %5)
-; CHECK: %7 = extractelement <3 x float> %6, i32 0
-; CHECK: %8 = extractelement <3 x float> %6, i32 1
-; CHECK: %9 = bitcast float %8 to i32
-; CHECK: %10 = inttoptr i32 %9 to i32*
-; CHECK: %11 = extractelement <3 x float> %6, i32 2
-; CHECK: %12 = bitcast float %11 to i32
-; CHECK: %13 = insertelement <1 x i32> undef, i32 %12, i32 0
+; CHECK-TYPED: %1 = ptrtoint i32* %a to i32
+; CHECK-OPAQUE: %0 = ptrtoint ptr %a to i32
+; CHECK-TYPED: %2 = bitcast i32 %1 to float
+; CHECK-OPAQUE: %1 = bitcast i32 %0 to float
+; CHECK-TYPED: %3 = insertelement <3 x float> <float 4.200000e+01, float undef, float undef>, float %2, i32 1
+; CHECK-OPAQUE: %2 = insertelement <3 x float> <float 4.200000e+01, float undef, float undef>, float %1, i32 1
+; CHECK-TYPED: %4 = bitcast <1 x i32> %b to float
+; CHECK-OPAQUE: %3 = bitcast <1 x i32> %b to float
+; CHECK-TYPED: %5 = insertelement <3 x float> %3, float %4, i32 2
+; CHECK-OPAQUE: %4 = insertelement <3 x float> %2, float %3, i32 2
+; CHECK-TYPED: %6 = call <3 x float> @llvm.genx.GenISA.PredicatedLoad.v3f32.p0v3f32.v3f32(<3 x float>* %0, i64 4, i1 true, <3 x float> %5)
+; CHECK-OPAQUE: %5 = call <3 x float> @llvm.genx.GenISA.PredicatedLoad.v3f32.p0.v3f32(ptr %src, i64 4, i1 true, <3 x float> %4)
+; CHECK-TYPED: %7 = extractelement <3 x float> %6, i32 0
+; CHECK-OPAQUE: %6 = extractelement <3 x float> %5, i32 0
+; CHECK-TYPED: %8 = extractelement <3 x float> %6, i32 1
+; CHECK-OPAQUE: %7 = extractelement <3 x float> %5, i32 1
+; CHECK-TYPED: %9 = bitcast float %8 to i32
+; CHECK-OPAQUE: %8 = bitcast float %7 to i32
+; CHECK-TYPED: %10 = inttoptr i32 %9 to i32*
+; CHECK-OPAQUE: %9 = inttoptr i32 %8 to ptr{{$}}
+; CHECK-TYPED: %11 = extractelement <3 x float> %6, i32 2
+; CHECK-OPAQUE: %10 = extractelement <3 x float> %5, i32 2
+; CHECK-TYPED: %12 = bitcast float %11 to i32
+; CHECK-OPAQUE: %11 = bitcast float %10 to i32
+; CHECK-TYPED: %13 = insertelement <1 x i32> undef, i32 %12, i32 0
+; CHECK-OPAQUE: %12 = insertelement <1 x i32> undef, i32 %11, i32 0
 ; CHECK: ret void
 
 define void @f2(i32* %src, i32* %a) {
@@ -81,13 +98,19 @@ entry:
 declare i32 @llvm.genx.GenISA.PredicatedLoad.i32.p0i32.i32(i32*, i64, i1, i32) #0
 
 ; CHECK-LABEL: define void @f2
-; CHECK: %0 = bitcast i32* %src to <2 x i32>*
-; CHECK: %1 = ptrtoint i32* %a to i32
-; CHECK: %2 = insertelement <2 x i32> <i32 42, i32 undef>, i32 %1, i32 1
-; CHECK: %3 = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p0v2i32.v2i32(<2 x i32>* %0, i64 4, i1 true, <2 x i32> %2)
-; CHECK: %4 = extractelement <2 x i32> %3, i32 0
-; CHECK: %5 = extractelement <2 x i32> %3, i32 1
-; CHECK: %6 = inttoptr i32 %5 to i32*
+; CHECK-TYPED: %0 = bitcast i32* %src to <2 x i32>*
+; CHECK-TYPED: %1 = ptrtoint i32* %a to i32
+; CHECK-OPAQUE: %0 = ptrtoint ptr %a to i32
+; CHECK-TYPED: %2 = insertelement <2 x i32> <i32 42, i32 undef>, i32 %1, i32 1
+; CHECK-OPAQUE: %1 = insertelement <2 x i32> <i32 42, i32 undef>, i32 %0, i32 1
+; CHECK-TYPED: %3 = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p0v2i32.v2i32(<2 x i32>* %0, i64 4, i1 true, <2 x i32> %2)
+; CHECK-OPAQUE: %2 = call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p0.v2i32(ptr %src, i64 4, i1 true, <2 x i32> %1)
+; CHECK-TYPED: %4 = extractelement <2 x i32> %3, i32 0
+; CHECK-OPAQUE: %3 = extractelement <2 x i32> %2, i32 0
+; CHECK-TYPED: %5 = extractelement <2 x i32> %3, i32 1
+; CHECK-OPAQUE: %4 = extractelement <2 x i32> %2, i32 1
+; CHECK-TYPED: %6 = inttoptr i32 %5 to i32*
+; CHECK-OPAQUE: %5 = inttoptr i32 %4 to ptr{{$}}
 ; CHECK: ret void
 
 attributes #0 = { nounwind readonly }

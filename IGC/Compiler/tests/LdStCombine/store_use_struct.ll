@@ -7,11 +7,13 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN:   igc_opt --typed-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=1 \
 ; RUN:           -platformbmg \
-; RUN: | FileCheck %s
+; RUN: | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
@@ -28,8 +30,9 @@ target triple = "spir64-unknown-unknown"
  ; CHECK: [[ST4:%.*]] = insertvalue %__StructSOALayout_ [[ST3]], i8 5, 3, 1
  ; CHECK: [[ST5:%.*]] = insertvalue %__StructSOALayout_ [[ST4]], i8 %{{.*}}, 3, 2
  ; CHECK: [[STOREVAL:%.*]] = call <4 x i32> @llvm.genx.GenISA.bitcastfromstruct.{{.*}}(%__StructSOALayout_ [[ST5]])
- ; CHECK: [[ADDR:%.*]] = bitcast <2 x float> addrspace(1)* %{{.*}} to <4 x i32> addrspace(1)*
- ; CHECK: store <4 x i32> [[STOREVAL]], <4 x i32> addrspace(1)* [[ADDR]], align 8
+ ; CHECK-TYPED: [[ADDR:%.*]] = bitcast <2 x float> addrspace(1)* %{{.*}} to <4 x i32> addrspace(1)*
+ ; CHECK-TYPED: store <4 x i32> [[STOREVAL]], <4 x i32> addrspace(1)* [[ADDR]], align 8
+ ; CHECK-OPAQUE: store <4 x i32> [[STOREVAL]], ptr addrspace(1) %{{.*}}, align 8
  ; CHECK: ret void
 
 %struct.dw1_t = type { <2 x float>, i32, i8, i8, i8, i8 }

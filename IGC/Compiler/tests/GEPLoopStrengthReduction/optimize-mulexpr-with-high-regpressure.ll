@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --regkey=EnableGEPLSRMulExpr=1 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --regkey=EnableGEPLSRMulExpr=1 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --regkey=EnableGEPLSRMulExpr=1 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; Reduced index is expressed with SCEVMulExpr.
 
@@ -29,32 +29,39 @@ entry:
 ; CHECK-LABEL: for.body.lr.ph:
 ; Check that GepLSR was applied to the gep index where i64 multiplication was used.
 ; CHECK:         [[MULL:%.*]] = mul i64 %multiplier, 44
-; CHECK:         [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[MULL]]
+; CHECK-TYPED:         [[GEP_PHI1:%.*]] = getelementptr i32, i32 addrspace(1)* %p, i64 [[MULL]]
+; CHECK-OPAQUE:         [[GEP_PHI1:%.*]] = getelementptr i32, ptr addrspace(1) %p, i64 [[MULL]]
 ; CHECK:         [[STEP:%.*]] = shl i64 %multiplier, 1
 
 ; Check that GepLSR was NOT applied to the gep index where NO i64 multiplication was used.
 ; CHECK-NOT:     add i32 %k, -69
-; CHECK-NOT:     getelementptr i32, i32 addrspace(1)* %t
+; CHECK-TYPED-NOT:     getelementptr i32, i32 addrspace(1)* %t
+; CHECK-OPAQUE-NOT:     getelementptr i32, ptr addrspace(1) %t
 for.body.lr.ph:                                   ; preds = %entry
   br label %for.body
 
 ; CHECK-LABEL: for.body:
 
 ; Check that GepLSR was applied to the gep index where i64 multiplication was used.
-; CHECK:         [[GEP:%.*]] = phi i32 addrspace(1)* [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %for.body ]
+; CHECK-TYPED:         [[GEP:%.*]] = phi i32 addrspace(1)* [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %for.body ]
+; CHECK-OPAQUE:         [[GEP:%.*]] = phi ptr addrspace(1) [ [[GEP_PHI1]], %for.body.lr.ph ], [ [[GEP_PHI2:%.*]], %for.body ]
 ; CHECK:         %i.02 = phi i32 [ 39, %for.body.lr.ph ], [ %inc, %for.body ]
-; CHECK:         store i32 11, i32 addrspace(1)* [[GEP]], align 4
+; CHECK-TYPED:         store i32 11, i32 addrspace(1)* [[GEP]], align 4
+; CHECK-OPAQUE:         store i32 11, ptr addrspace(1) [[GEP]], align 4
 
 ; Check that GepLSR was NOT applied to the gep index where NO i64 multiplication was used.
-; CHECK-NOT:     getelementptr i32, i32 addrspace(1)* [[VAR:.*]], i64 -2
+; CHECK-TYPED-NOT:     getelementptr i32, i32 addrspace(1)* [[VAR:.*]], i64 -2
+; CHECK-OPAQUE-NOT:     getelementptr i32, ptr addrspace(1) [[VAR:.*]], i64 -2
 ; CHECK:         %add1 = add nsw i32 %i.02, 30
 ; CHECK:         %sub1 = sub nsw i32 %k, %add1
 ; CHECK:         %idxprom1 = zext i32 %sub1 to i64
-; CHECK:         %arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %t, i64 %idxprom1
+; CHECK-TYPED:         %arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %t, i64 %idxprom1
+; CHECK-OPAQUE:         %arrayidx1 = getelementptr inbounds i32, ptr addrspace(1) %t, i64 %idxprom1
 
 ; CHECK:         %inc = add nuw nsw i32 %i.02, 2
 ; CHECK:         %cmp = icmp slt i32 %inc, %n
-; CHECK:         [[GEP_PHI2]] = getelementptr i32, i32 addrspace(1)* [[GEP]], i64 [[STEP]]
+; CHECK-TYPED:         [[GEP_PHI2]] = getelementptr i32, i32 addrspace(1)* [[GEP]], i64 [[STEP]]
+; CHECK-OPAQUE:         [[GEP_PHI2]] = getelementptr i32, ptr addrspace(1) [[GEP]], i64 [[STEP]]
 ; CHECK:         br i1 %cmp, label %for.body, label %for.cond.for.end_crit_edge
 for.body:                                         ; preds = %for.body.lr.ph, %for.body
   %i.02 = phi i32 [ 39, %for.body.lr.ph ], [ %inc, %for.body ]

@@ -6,23 +6,25 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix
+; REQUIRES: llvm-16-plus
 ; RUN: igc_opt --opaque-pointers -igc-joint-matrix-resolution --platformpvc -S 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------
 ; JointMatrixFuncsResolutionPass
 ; ------------------------------------------------
 
-declare spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4flliil(float addrspace(3)*, i64, i64, i32, i32, i64)
+declare spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4flliil(ptr addrspace(3), i64, i64, i32, i32, i64)
 
-define spir_kernel void @matrix_prefetch(float addrspace(3)* %src) {
+define spir_kernel void @matrix_prefetch(ptr addrspace(3) %src) {
 ; CHECK-LABEL: define spir_kernel void @matrix_prefetch(
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4flliil(float addrspace(3)* %src, i64 8, i64 16, i32 1, i32 0, i64 64)
+  ; COM: on opaque pointers the pass infers the element type from the GEP
+  %ptr = getelementptr inbounds float, ptr addrspace(3) %src, i64 0
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4flliil(ptr addrspace(3) %ptr, i64 8, i64 16, i32 1, i32 0, i64 64)
   ret void
-; CHECK: error: Unsupported address space. Matrix prefetch supports generic and global pointers
+; CHECK: error: in kernel 'matrix_prefetch': Unsupported address space. Matrix prefetch supports generic and global pointers
 }
 
 !igc.functions = !{!0}
-!0 = !{void (float addrspace(3)*)* @matrix_prefetch, !1}
+!0 = !{ptr @matrix_prefetch, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}

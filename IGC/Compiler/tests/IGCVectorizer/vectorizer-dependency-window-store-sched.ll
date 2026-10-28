@@ -1,5 +1,6 @@
-; REQUIRES: regkeys, !llvm-17-plus
-; RUN: igc_opt -S --typed-pointers --igc-vectorizer -dce --regkey=VectorizerAllowSelect=1 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerDepWindowMultiplier=6 --platformbmg < %s 2>&1 | FileCheck %s
+; REQUIRES: regkeys
+; RUN: %if llvm-16-plus %{ igc_opt -S --opaque-pointers --igc-vectorizer -dce --regkey=VectorizerAllowSelect=1 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerDepWindowMultiplier=6 --platformbmg < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt -S --typed-pointers --igc-vectorizer -dce --regkey=VectorizerAllowSelect=1 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerDepWindowMultiplier=6 --platformbmg < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; CHECK: [[dpas_0:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32
 ; CHECK: [[extract_0_0:%.*]] = extractelement <8 x float> [[dpas_0]], i64 0
@@ -21,7 +22,7 @@
 ; CHECK: [[vector_0_6:%.*]] = insertelement <8 x float> [[vector_0_5]], float [[fmul_0_4]], i32 6
 ; CHECK: [[vector_0_7:%.*]] = insertelement <8 x float> [[vector_0_6]], float [[fmul_0_5]], i32 7
 
-; CHECK: [[vec_bin_0:%.*]] = fmul <8 x float> [[vector_0_7]], <float 1.250000e-01, float 1.250000e-01, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000>
+; CHECK: [[vec_bin_0:%.*]] = fmul <8 x float> [[vector_0_7]], <float 1.250000e-01, float 1.250000e-01, float {{(0x3FF7154760000000|f0x3FB8AA3B)}}, float {{(0x3FF7154760000000|f0x3FB8AA3B)}}, float {{(0x3FF7154760000000|f0x3FB8AA3B)}}, float {{(0x3FF7154760000000|f0x3FB8AA3B)}}, float {{(0x3FF7154760000000|f0x3FB8AA3B)}}, float {{(0x3FF7154760000000|f0x3FB8AA3B)}}>
 
 ; CHECK: [[vec_extract_0_0:%.*]] = extractelement <8 x float> %vectorized_binary, i32 0
 ; CHECK: [[vec_extract_0_1:%.*]] = extractelement <8 x float> %vectorized_binary, i32 1
@@ -32,15 +33,16 @@
 ; CHECK: [[vec_extract_0_6:%.*]] = extractelement <8 x float> %vectorized_binary, i32 6
 ; CHECK: [[vec_extract_0_7:%.*]] = extractelement <8 x float> %vectorized_binary, i32 7
 
-; CHECK: store float [[vec_extract_0_1]], float* null, align 4
-; CHECK: select i1 {{.*}}, float 0xFFF0000000000000, float [[vec_extract_0_0]]
-; CHECK: select i1 {{.*}}, float 0xFFF0000000000000, float [[vec_extract_0_1]]
-; CHECK: select i1 {{.*}}, float 0xFFF0000000000000, float [[vec_extract_0_2]]
-; CHECK: select i1 {{.*}}, float 0xFFF0000000000000, float [[vec_extract_0_3]]
-; CHECK: select i1 {{.*}}, float 0xFFF0000000000000, float [[vec_extract_0_4]]
-; CHECK: select i1 {{.*}}, float 0xFFF0000000000000, float [[vec_extract_0_5]]
-; CHECK: select i1 {{.*}}, float 0xFFF0000000000000, float [[vec_extract_0_6]]
-; CHECK: select i1 {{.*}}, float 0xFFF0000000000000, float [[vec_extract_0_7]]
+; CHECK-TYPED: store float [[vec_extract_0_1]], float* null, align 4
+; CHECK-OPAQUE: store float [[vec_extract_0_1]], ptr null, align 4
+; CHECK: select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}, float [[vec_extract_0_0]]
+; CHECK: select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}, float [[vec_extract_0_1]]
+; CHECK: select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}, float [[vec_extract_0_2]]
+; CHECK: select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}, float [[vec_extract_0_3]]
+; CHECK: select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}, float [[vec_extract_0_4]]
+; CHECK: select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}, float [[vec_extract_0_5]]
+; CHECK: select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}, float [[vec_extract_0_6]]
+; CHECK: select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}, float [[vec_extract_0_7]]
 
 ; ModuleID = 'WINDOW_RESCHED.ll'
 source_filename = "initial.ll"

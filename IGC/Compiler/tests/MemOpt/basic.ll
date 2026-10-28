@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - --basic-aa -igc-memopt -instcombine | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - --basic-aa -igc-memopt -instcombine | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - --basic-aa -igc-memopt -instcombine | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a:64:64-f80:128:128-n8:16:32:64"
 
@@ -27,10 +27,12 @@ entry:
 }
 
  ; CHECK-LABEL: define void @f0
- ; CHECK: %0 = bitcast i32* %src to <3 x i32>*
- ; CHECK: %1 = load <3 x i32>, <3 x i32>* %0, align 4
- ; CHECK: %2 = bitcast i32* %dst to <3 x i32>*
- ; CHECK: store <3 x i32> %1, <3 x i32>* %2, align 4
+ ; CHECK-TYPED: %0 = bitcast i32* %src to <3 x i32>*
+ ; CHECK-TYPED: %1 = load <3 x i32>, <3 x i32>* %0, align 4
+ ; CHECK-OPAQUE: [[V1_1:%[0-9]+]] = load <3 x i32>, ptr %src, align 4
+ ; CHECK-TYPED: %2 = bitcast i32* %dst to <3 x i32>*
+ ; CHECK-TYPED: store <3 x i32> %1, <3 x i32>* %2, align 4
+ ; CHECK-OPAQUE: store <3 x i32> [[V1_1]], ptr %dst, align 4
  ; CHECK: ret void
 
 
@@ -53,16 +55,26 @@ entry:
  ; merge loads/stores interleaved.
 
  ; CHECK-LABEL: define void @f1
- ; CHECK: %0 = load i32, i32* %src, align 4
- ; CHECK: store i32 %0, i32* %dst, align 4
- ; CHECK: %arrayidx2 = getelementptr inbounds i32, i32* %src, i32 1
- ; CHECK: %1 = load i32, i32* %arrayidx2, align 4
- ; CHECK: %arrayidx3 = getelementptr inbounds i32, i32* %dst, i32 1
- ; CHECK: store i32 %1, i32* %arrayidx3, align 4
- ; CHECK: %arrayidx4 = getelementptr inbounds i32, i32* %src, i32 2
- ; CHECK: %2 = load i32, i32* %arrayidx4, align 4
- ; CHECK: %arrayidx5 = getelementptr inbounds i32, i32* %dst, i32 2
- ; CHECK: store i32 %2, i32* %arrayidx5, align 4
+ ; CHECK-TYPED: %0 = load i32, i32* %src, align 4
+ ; CHECK-OPAQUE: [[V2_0:%[0-9]+]] = load i32, ptr %src, align 4
+ ; CHECK-TYPED: store i32 %0, i32* %dst, align 4
+ ; CHECK-OPAQUE: store i32 [[V2_0]], ptr %dst, align 4
+ ; CHECK-TYPED: %arrayidx2 = getelementptr inbounds i32, i32* %src, i32 1
+ ; CHECK-OPAQUE: %arrayidx2 = getelementptr inbounds {{(nuw )?}}{{(i32, ptr %src, i32 1|i8, ptr %src, i32 4)}}
+ ; CHECK-TYPED: %1 = load i32, i32* %arrayidx2, align 4
+ ; CHECK-OPAQUE: [[V2_1:%[0-9]+]] = load i32, ptr %arrayidx2, align 4
+ ; CHECK-TYPED: %arrayidx3 = getelementptr inbounds i32, i32* %dst, i32 1
+ ; CHECK-OPAQUE: %arrayidx3 = getelementptr inbounds {{(nuw )?}}{{(i32, ptr %dst, i32 1|i8, ptr %dst, i32 4)}}
+ ; CHECK-TYPED: store i32 %1, i32* %arrayidx3, align 4
+ ; CHECK-OPAQUE: store i32 [[V2_1]], ptr %arrayidx3, align 4
+ ; CHECK-TYPED: %arrayidx4 = getelementptr inbounds i32, i32* %src, i32 2
+ ; CHECK-OPAQUE: %arrayidx4 = getelementptr inbounds {{(nuw )?}}{{(i32, ptr %src, i32 2|i8, ptr %src, i32 8)}}
+ ; CHECK-TYPED: %2 = load i32, i32* %arrayidx4, align 4
+ ; CHECK-OPAQUE: [[V2_2:%[0-9]+]] = load i32, ptr %arrayidx4, align 4
+ ; CHECK-TYPED: %arrayidx5 = getelementptr inbounds i32, i32* %dst, i32 2
+ ; CHECK-OPAQUE: %arrayidx5 = getelementptr inbounds {{(nuw )?}}{{(i32, ptr %dst, i32 2|i8, ptr %dst, i32 8)}}
+ ; CHECK-TYPED: store i32 %2, i32* %arrayidx5, align 4
+ ; CHECK-OPAQUE: store i32 [[V2_2]], ptr %arrayidx5, align 4
  ; CHECK: ret void
 
 
@@ -82,10 +94,12 @@ entry:
  }
 
  ; CHECK-LABEL: define void @f2
- ; CHECK: %0 = bitcast i32* %src to <3 x i32>*
- ; CHECK: %1 = load <3 x i32>, <3 x i32>* %0, align 4
- ; CHECK: %2 = bitcast i32* %dst to <3 x i32>*
- ; CHECK: store <3 x i32> %1, <3 x i32>* %2, align 4
+ ; CHECK-TYPED: %0 = bitcast i32* %src to <3 x i32>*
+ ; CHECK-TYPED: %1 = load <3 x i32>, <3 x i32>* %0, align 4
+ ; CHECK-OPAQUE: [[V3_1:%[0-9]+]] = load <3 x i32>, ptr %src, align 4
+ ; CHECK-TYPED: %2 = bitcast i32* %dst to <3 x i32>*
+ ; CHECK-TYPED: store <3 x i32> %1, <3 x i32>* %2, align 4
+ ; CHECK-OPAQUE: store <3 x i32> [[V3_1]], ptr %dst, align 4
  ; CHECK: ret void
 
 
@@ -120,13 +134,16 @@ entry:
 
  ; CHECK-LABEL: define void @f3
  ; CHECK: %mul = mul nsw i32 %j, %i
- ; CHECK: %arrayidx = getelementptr inbounds i32, i32* %src, i32 %mul
- ; CHECK: %0 = bitcast i32* %arrayidx to <3 x i32>*
- ; CHECK: %1 = load <3 x i32>, <3 x i32>* %0, align 4
- ; CHECK: %add1 = add nsw i32 %j, %i
- ; CHECK: %arrayidx4 = getelementptr inbounds i32, i32* %dst, i32 %add1
- ; CHECK: %2 = bitcast i32* %arrayidx4 to <3 x i32>*
- ; CHECK: store <3 x i32> %1, <3 x i32>* %2, align 4
+ ; CHECK-TYPED: %arrayidx = getelementptr inbounds i32, i32* %src, i32 %mul
+ ; CHECK-OPAQUE: %arrayidx = getelementptr inbounds {{(i32|\[4 x i8\])}}, ptr %src, i32 %mul
+ ; CHECK-TYPED: %0 = bitcast i32* %arrayidx to <3 x i32>*
+ ; CHECK-TYPED: %1 = load <3 x i32>, <3 x i32>* %0, align 4
+ ; CHECK-OPAQUE: [[V4_1:%[0-9]+]] = load <3 x i32>, ptr %arrayidx, align 4
+ ; CHECK-TYPED: %add1 = add nsw i32 %j, %i
+ ; CHECK-TYPED: %arrayidx4 = getelementptr inbounds i32, i32* %dst, i32 %add1
+ ; CHECK-TYPED: %2 = bitcast i32* %arrayidx4 to <3 x i32>*
+ ; CHECK-TYPED: store <3 x i32> %1, <3 x i32>* %2, align 4
+ ; CHECK-OPAQUE: store <3 x i32> [[V4_1]], ptr {{%.*}}, align 4
  ; CHECK: ret void
 
 
@@ -165,20 +182,26 @@ entry:
 
  ; CHECK-LABEL: define void @f4
  ; CHECK: %mul = mul nsw i32 %j, %i
- ; CHECK: %arrayidx = getelementptr inbounds i32, i32* %src, i32 %mul
- ; CHECK: %0 = load i32, i32* %arrayidx, align 4
+ ; CHECK-TYPED: %arrayidx = getelementptr inbounds i32, i32* %src, i32 %mul
+ ; CHECK-OPAQUE: %arrayidx = getelementptr inbounds {{(i32|\[4 x i8\])}}, ptr %src, i32 %mul
+ ; CHECK-TYPED: %0 = load i32, i32* %arrayidx, align 4
+ ; CHECK-OPAQUE: [[V5_0:%[0-9]+]] = load i32, ptr %arrayidx, align 4
  ; CHECK: %add1 = add nsw i32 %j, %i
- ; CHECK: %arrayidx4 = getelementptr inbounds i32, i32* %dst, i32 %add1
- ; CHECK: store i32 %0, i32* %arrayidx4, align 4
+ ; CHECK-TYPED: %arrayidx4 = getelementptr inbounds i32, i32* %dst, i32 %add1
+ ; CHECK-OPAQUE: %arrayidx4 = getelementptr inbounds {{(i32|\[4 x i8\])}}, ptr %dst, i32 %add1
+ ; CHECK-TYPED: store i32 %0, i32* %arrayidx4, align 4
+ ; CHECK-OPAQUE: store i32 [[V5_0]], ptr %arrayidx4, align 4
  ; CHECK: fence seq_cst
- ; CHECK: %add6 = add nsw i32 %mul, 1
- ; CHECK: %arrayidx8 = getelementptr inbounds i32, i32* %src, i32 %add6
- ; CHECK: %1 = bitcast i32* %arrayidx8 to [[i64_TYPE:i64|<2 x i32>]]*
- ; CHECK: %2 = load [[i64_TYPE]], [[i64_TYPE]]* %1, align 4
- ; CHECK: %add10 = add nsw i32 %add1, 1
- ; CHECK: %arrayidx12 = getelementptr inbounds i32, i32* %dst, i32 %add10
- ; CHECK: %3 = bitcast i32* %arrayidx12 to [[i64_TYPE]]*
- ; CHECK: store [[i64_TYPE]] %2, [[i64_TYPE]]* %3, align 4
+ ; CHECK-TYPED: %add6 = add nsw i32 %mul, 1
+ ; CHECK-TYPED: %arrayidx8 = getelementptr inbounds i32, i32* %src, i32 %add6
+ ; CHECK-TYPED: %1 = bitcast i32* %arrayidx8 to [[i64_TYPE:i64|<2 x i32>]]*
+ ; CHECK-TYPED: %2 = load [[i64_TYPE]], [[i64_TYPE]]* %1, align 4
+ ; CHECK-OPAQUE: [[V5_2:%[0-9]+]] = load [[i64_TYPE:i64|<2 x i32>]], ptr %arrayidx8, align 4
+ ; CHECK-TYPED: %add10 = add nsw i32 %add1, 1
+ ; CHECK-TYPED: %arrayidx12 = getelementptr inbounds i32, i32* %dst, i32 %add10
+ ; CHECK-TYPED: %3 = bitcast i32* %arrayidx12 to [[i64_TYPE]]*
+ ; CHECK-TYPED: store [[i64_TYPE]] %2, [[i64_TYPE]]* %3, align 4
+ ; CHECK-OPAQUE: store [[i64_TYPE]] [[V5_2]], ptr %arrayidx12, align 4
  ; CHECK: ret void
 
 
@@ -202,11 +225,14 @@ entry:
  }
 
  ; CHECK-LABEL: define void @f5
- ; CHECK: %0 = bitcast i32* %src to <4 x i32>*
- ; CHECK: %1 = load <4 x i32>, <4 x i32>* %0, align 4
- ; CHECK: %2 = shufflevector <4 x i32> %1, <4 x i32> undef, <4 x i32> <i32 3, i32 2, i32 1, i32 0>
- ; CHECK: %3 = bitcast i32* %dst to <4 x i32>*
- ; CHECK: store <4 x i32> %2, <4 x i32>* %3, align 4
+ ; CHECK-TYPED: %0 = bitcast i32* %src to <4 x i32>*
+ ; CHECK-TYPED: %1 = load <4 x i32>, <4 x i32>* %0, align 4
+ ; CHECK-OPAQUE: [[V6_1:%[0-9]+]] = load <4 x i32>, ptr %src, align 4
+ ; CHECK-TYPED: %2 = shufflevector <4 x i32> %1, <4 x i32> undef, <4 x i32> <i32 3, i32 2, i32 1, i32 0>
+ ; CHECK-OPAQUE: [[V6_2:%[0-9]+]] = shufflevector <4 x i32> [[V6_1]], <4 x i32> {{undef|poison}}, <4 x i32> <i32 3, i32 2, i32 1, i32 0>
+ ; CHECK-TYPED: %3 = bitcast i32* %dst to <4 x i32>*
+ ; CHECK-TYPED: store <4 x i32> %2, <4 x i32>* %3, align 4
+ ; CHECK-OPAQUE: store <4 x i32> [[V6_2]], ptr %dst, align 4
  ; CHECK: ret void
 
 !igc.functions = !{!0, !3, !4, !5, !6, !7}

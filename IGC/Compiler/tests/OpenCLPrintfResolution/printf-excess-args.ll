@@ -6,9 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN: igc_opt --typed-pointers -igc-opencl-printf-resolution -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-opencl-printf-resolution -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-opencl-printf-resolution -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; OpenCLPrintfResolution
 ; ------------------------------------------------
@@ -27,22 +27,29 @@ declare spir_func signext i8 @modify_char()
 define spir_kernel void @test_printf_excess_arguments(i8 addrspace(1)* %output) {
 entry:
 ; CHECK-LABEL: @test_printf_excess_arguments(
-; CHECK:    [[PB:%[A-z0-9]*]] = call i8 addrspace(1)* @llvm.genx.GenISA.getPrintfBuffer.p1i8()
+; CHECK-TYPED:    [[PB:%[A-z0-9]*]] = call i8 addrspace(1)* @llvm.genx.GenISA.getPrintfBuffer.p1i8()
+; CHECK-OPAQUE:    [[PB:%[A-z0-9]*]] = call ptr addrspace(1) @llvm.genx.GenISA.getPrintfBuffer.p1()
 ; The side-effecting excess argument is still evaluated.
 ; CHECK:    [[C:%[A-z0-9]*]] = call spir_func signext i8 @modify_char()
-; CHECK:    [[FMT:%[A-z0-9]*]] = getelementptr inbounds [28 x i8], [28 x i8] addrspace(2)* @.str, i64 0, i64 0
-; CHECK:    [[PTRBC:%[A-z0-9]*]] = bitcast i8 addrspace(1)* [[PB]] to i32 addrspace(1)*
+; CHECK-TYPED:    [[FMT:%[A-z0-9]*]] = getelementptr inbounds [28 x i8], [28 x i8] addrspace(2)* @.str, i64 0, i64 0
+; CHECK-OPAQUE:    [[FMT:%[A-z0-9]*]] = getelementptr inbounds [28 x i8], ptr addrspace(2) @.str, i64 0, i64 0
+; CHECK-TYPED:    [[PTRBC:%[A-z0-9]*]] = bitcast i8 addrspace(1)* [[PB]] to i32 addrspace(1)*
 ; Only the format-string pointer is reserved (8 bytes); both excess arguments are dropped.
-; CHECK:    call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* [[PTRBC]], i32 8)
+; CHECK-TYPED:    call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* [[PTRBC]], i32 8)
+; CHECK-OPAQUE:    call i32 @__builtin_IB_atomic_add_global_i32(ptr addrspace(1) [[PB]], i32 8)
 ; CHECK:  write_offset_true:
-; CHECK:    [[WOPTR:%[A-z0-9]*]] = inttoptr i64 {{.*}} to i64 addrspace(1)*
-; CHECK:    [[FMTINT:%[A-z0-9]*]] = ptrtoint i8 addrspace(2)* [[FMT]] to i64
-; CHECK:    store i64 [[FMTINT]], i64 addrspace(1)* [[WOPTR]], align 4
+; CHECK-TYPED:    [[WOPTR:%[A-z0-9]*]] = inttoptr i64 {{.*}} to i64 addrspace(1)*
+; CHECK-OPAQUE:    [[WOPTR:%[A-z0-9]*]] = inttoptr i64 {{.*}} to ptr addrspace(1)
+; CHECK-TYPED:    [[FMTINT:%[A-z0-9]*]] = ptrtoint i8 addrspace(2)* [[FMT]] to i64
+; CHECK-OPAQUE:    [[FMTINT:%[A-z0-9]*]] = ptrtoint ptr addrspace(2) [[FMT]] to i64
+; CHECK-TYPED:    store i64 [[FMTINT]], i64 addrspace(1)* [[WOPTR]], align 4
+; CHECK-OPAQUE:    store i64 [[FMTINT]], ptr addrspace(1) [[WOPTR]], align 4
 ; The format pointer is the only value written before the block terminates.
 ; CHECK-NOT: store
 ; CHECK:    br label
 ; The evaluated excess argument is still consumed after the printf.
-; CHECK:    store i8 [[C]], i8 addrspace(1)* %output
+; CHECK-TYPED:    store i8 [[C]], i8 addrspace(1)* %output
+; CHECK-OPAQUE:    store i8 [[C]], ptr addrspace(1) %output
 ;
   %call1 = call spir_func signext i8 @modify_char()
   %conv2 = sext i8 %call1 to i32
