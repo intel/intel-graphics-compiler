@@ -7740,7 +7740,11 @@ void Optimizer::mergeScalarInst() {
   int numRejectedBundles = 0;
 
   const bool trace = builder.getOption(vISA_MergeScalarTrace);
-  const uint32_t maxSpan = builder.getuint32Option(vISA_MergeScalarLRMaxSpan);
+  // The live-range guard is tuned for 3D; CM kernels always merge.
+  const bool isCM =
+      kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM;
+  const uint32_t maxSpan =
+      isCM ? 0 : builder.getuint32Option(vISA_MergeScalarLRMaxSpan);
 
   if (trace) {
     std::cout << "=== MergeScalar live-range guard ===\n";
