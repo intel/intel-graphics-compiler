@@ -2354,7 +2354,7 @@ bool GlobalRA::canIncreaseGRF(unsigned spillSize, bool infCostSpilled,
   //    accepts (see above); the fill cost heuristic does not veto it
   bool heldConfigSpills = heldConfigSpillNeedsStepUp(spillSize);
   RA_TRACE(std::cout << "\t--canIncreaseGRF: numGRF=" << kernel.getNumRegTotal()
-                     << " spillSize=" << spillSize
+                     << " spillSizeEst=" << spillSize
                      << " threshold=" << kernel.grfMode.getSpillThreshold()
                      << " tooExpensive=" << spillTooExpensive
                      << " infCost=" << infCostSpilled << " largerSameThreads="
@@ -12343,6 +12343,7 @@ GlobalRA::abortOnSpill(unsigned int GRFSpillFillCount, unsigned int spillSize,
 }
 
 unsigned GlobalRA::computeSpillSize(std::list<LSLiveRange *> &spilledLRs) {
+  // TODO: Should we treat GRF aligned spills specially?
   unsigned spillSize = 0;
   for (auto lr : spilledLRs) {
     spillSize += lr->getTopDcl()->getByteSize();
@@ -12353,7 +12354,14 @@ unsigned GlobalRA::computeSpillSize(std::list<LSLiveRange *> &spilledLRs) {
 unsigned GlobalRA::computeSpillSize(const LIVERANGE_LIST &spilledLRs) {
   unsigned spillSize = 0;
   for (auto lr : spilledLRs) {
-    spillSize += lr->getDcl()->getByteSize();
+    auto varSize = lr->getDcl()->getByteSize();
+    if (varSize < kernel.getGRFSize()) {
+      bool IsGRFAligned =
+          (lr->getDcl()->getSubRegAlign() == kernel.getGRFAlign());
+      if (IsGRFAligned)
+        varSize = kernel.getGRFSize();
+    }
+    spillSize += varSize;
   }
   return spillSize;
 }
