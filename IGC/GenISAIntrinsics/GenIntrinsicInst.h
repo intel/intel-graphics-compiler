@@ -1353,17 +1353,6 @@ public:
   Value *getStackAddressBase() const { return getOperand(3); }
   Value *getPredicate() const { return getOperand(4); }
 };
-class PostProcessRayQueryReturn : public GenIntrinsicInst {
-public:
-  static inline bool classof(const GenIntrinsicInst *I) {
-    GenISAIntrinsic::ID ID = I->getIntrinsicID();
-    return ID == GenISAIntrinsic::GenISA_PostProcessRayQueryReturn;
-  }
-
-  static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
-
-  Value *getRayQueryReturnValue() const { return getOperand(0); }
-};
 
 class TraceRayIntrinsic : public GenIntrinsicInst {
 public:

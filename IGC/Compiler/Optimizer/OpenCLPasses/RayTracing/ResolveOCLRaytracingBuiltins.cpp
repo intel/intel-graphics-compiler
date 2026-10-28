@@ -49,8 +49,7 @@ std::map<std::string, std::function<void(ResolveOCLRaytracingBuiltins *, CallIns
     {"__builtin_IB_intel_get_rt_global_buffer",          &ResolveOCLRaytracingBuiltins::handleGetRTGlobalBuffer     },
     // clang-format on
     {"__builtin_IB_intel_set_traversal_done_fail", &ResolveOCLRaytracingBuiltins::handleTraversalDoneFail},
-    // clang-format off
-    {"__builtin_IB_post_process_ray_query_return", &ResolveOCLRaytracingBuiltins::handlePostProcessRayQueryReturn},
+// clang-format off
 
     // Handling for builtins operating on intel_ray_query_t from intel_rt_production extension
       {"__builtin_IB_intel_init_ray_query",                &ResolveOCLRaytracingBuiltins::handleInitRayQuery          },
@@ -316,6 +315,7 @@ The Trace Ray Control argument is an enumerant controlling the RT HW.
 
 The compiler will implement this function by assembling the inputs into a RT message.
 The return value of this function is a sync object which will be used by the kernel to synchronize the RT message.
+With the ray query return optimization it is also the RayQueryReturnData of the traversal.
 */
 void ResolveOCLRaytracingBuiltins::handleDispatchTraceRayQuery(CallInst &callInst) {
   m_builder->SetInsertPoint(&callInst);
@@ -340,9 +340,16 @@ void ResolveOCLRaytracingBuiltins::handleDispatchTraceRayQuery(CallInst &callIns
   // [27:16] stack_id.
   // for RayQuery this is not used, leave it as 0.
 
-  // The return value from this TraceRay with RayQueryEnable is a dummy register, which is used
-  // to sync this message via scoreboard.
+  // The return value is used to sync this message via scoreboard. With the
+  // return optimization it also carries the traversal status. RT writeback
+  // ignores the execution mask, so only a masked copy of it may reach the ray
+  // query: once the raw response is merged with lanes that did not dispatch,
+  // DeSSA may coalesce it with the fence PHI and the next dispatch overwrites
+  // their status. The copy also unpacks the packed status, which a per-lane
+  // copy of the raw response would scramble.
   Value *fenceValue = m_builder->createSyncTraceRay(bvhLevel, traceRayCtrl);
+  if (m_pCtx->platform.isRayQueryReturnOptimizationEnabled())
+    fenceValue = m_builder->createReadSyncTraceRayResult(fenceValue);
   fenceValue = m_builder->CreateIntToPtr(fenceValue, callInst.getType());
   if (m_pCtx->platform.RTFenceWAforBkModeEnabled()) {
     m_builder->CreateLSCFence(LSC_UGM, LSC_SCOPE_GPU, LSC_FENCE_OP_EVICT);
@@ -529,14 +536,6 @@ void ResolveOCLRaytracingBuiltins::handleQuery(llvm::CallInst &callInst) {
 }
 
 
-void ResolveOCLRaytracingBuiltins::handlePostProcessRayQueryReturn(llvm::CallInst &callInst) {
-  m_builder->SetInsertPoint(&callInst);
-  auto fence = m_builder->CreatePtrToInt(callInst.getOperand(0), m_builder->getInt32Ty());
-  Value *intrinsicCall = getIntrinsicValue(GenISAIntrinsic::GenISA_PostProcessRayQueryReturn, fence);
-  Value *castedIntrinsicCall = m_builder->CreateIntToPtr(intrinsicCall, callInst.getType());
-  callInst.replaceAllUsesWith(castedIntrinsicCall);
-  callInst.eraseFromParent();
-}
 // ---- Helper functions ----
 
 Value *ResolveOCLRaytracingBuiltins::getIntrinsicValue(GenISAIntrinsic::ID intrinsicId, ArrayRef<Value *> args) {

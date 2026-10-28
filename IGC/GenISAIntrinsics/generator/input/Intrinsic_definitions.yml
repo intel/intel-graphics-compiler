@@ -13170,19 +13170,6 @@ intrinsics:
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
-        name: "GenISA_PostProcessRayQueryReturn"
-        comment: "Raytracing: Execute post processing on RayQuery Return data"
-        return_definition: !<ReturnDefinition>
-            type_definition: *i32
-            comment: ""
-        arguments:
-            - !<ArgumentDefinition>
-                name: Arg0
-                type_definition: *i32
-                comment: "RayQuery Return data"
-        attributes:
-            - !AttributeID "NoUnwind"
-    - !<IntrinsicDefinition>
         name: "GenISA_WideSMulHi"
         comment: "Perform 64bx64b wide signed multiplication and return hi 64b result"
         return_definition: !<ReturnDefinition>

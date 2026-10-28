@@ -10262,9 +10262,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_ExtendedCacheControl:
     emitExtendedCacheControl(cast<ExtendedCacheControl>(inst));
     break;
-  case GenISAIntrinsic::GenISA_PostProcessRayQueryReturn:
-    emitPostProcessRayQueryReturn(cast<PostProcessRayQueryReturn>(inst));
-    break;
   case GenISAIntrinsic::GenISA_GetShaderRecordPtr:
     emitGetShaderRecordPtr(cast<GetShaderRecordPtrIntrinsic>(inst));
     break;
@@ -25283,27 +25280,6 @@ void EmitPass::emitExtendedCacheControl(ExtendedCacheControl *I) {
   m_encoder->ExtendedCacheControl(cacheControlPolicy, cacheControlOperation, cacheControlSize, cacheLineAddresses,
                                   addressSpace);
 
-  m_encoder->Push();
-}
-
-void EmitPass::emitPostProcessRayQueryReturn(llvm::PostProcessRayQueryReturn *I) {
-  IGC_ASSERT_MESSAGE(m_currShader->m_Platform->isRayQueryReturnOptimizationPackedStatusEnabled(),
-                     "PostProcessRayQueryReturn can be used only if RayQuery "
-                     "return optimization packed status is enabled.");
-
-  IGC_ASSERT_MESSAGE(m_currShader->m_Platform->supportRayTracingSIMD32(),
-                     "PostProcessRayQueryReturn can be used only on platforms "
-                     "with RayTracing in SIMD32 support.");
-
-  CVariable *rayQueryReturnValue = GetSymbol(I->getRayQueryReturnValue());
-
-  const uint16_t numElems = (m_currShader->m_SIMDSize == SIMDMode::SIMD32) ? 32 : 16;
-
-  if (!rayQueryReturnValue->IsImmediate()) {
-    rayQueryReturnValue = m_currShader->GetNewAlias(rayQueryReturnValue, VISA_Type::ISA_TYPE_UW, 0, numElems);
-  }
-
-  m_encoder->Cast(m_destination, rayQueryReturnValue);
   m_encoder->Push();
 }
 

@@ -50,7 +50,6 @@ public:
   void handleUpdateRayQuery(llvm::CallInst &callInst);
   void handleQuery(llvm::CallInst &callInst);
   void handleTraversalDoneFail(llvm::CallInst &callInst);
-  void handlePostProcessRayQueryReturn(llvm::CallInst &callInst);
 
 private:
   CodeGenContext *m_pCtx = nullptr;

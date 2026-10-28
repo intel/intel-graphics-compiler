@@ -57,20 +57,16 @@ private:
 char RayTracingShaderLowering::ID = 0;
 
 static void createTraceRaySyncGlobalPointerLoop(RTBuilder &RTB, TraceRaySyncIntrinsic *traceRay) {
-  // Collect the completion and optional status-unpacking operations associated
-  // with TraceRaySync so they execute within each lane group before result merging.
-  // Consumers after the loop must use the merged result of these operations.
+  // Collect the completion operation associated with TraceRaySync so it
+  // executes within each lane group before result merging. Consumers after the
+  // loop must use the merged result of this operation.
   GenIntrinsicInst *readTraceRaySync = nullptr;
-  GenIntrinsicInst *postProcessRayQueryReturn = nullptr;
   for (auto *user : traceRay->users()) {
     auto *GII = dyn_cast<GenIntrinsicInst>(user);
     if (GII && (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ReadTraceRaySync ||
                 GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ReadTraceRaySyncResult)) {
       IGC_ASSERT_MESSAGE(!readTraceRaySync, "Expected a single ReadTraceRaySync user");
       readTraceRaySync = GII;
-    } else if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_PostProcessRayQueryReturn) {
-      IGC_ASSERT_MESSAGE(!postProcessRayQueryReturn, "Expected a single PostProcessRayQueryReturn user");
-      postProcessRayQueryReturn = GII;
     }
   }
   IGC_ASSERT_MESSAGE(readTraceRaySync, "Missing ReadTraceRaySync user");
@@ -93,25 +89,13 @@ static void createTraceRaySyncGlobalPointerLoop(RTBuilder &RTB, TraceRaySyncIntr
         }
         readTraceRaySync->setArgOperand(0, clonedTraceRay);
         readTraceRaySync->moveAfter(clonedTraceRay);
-        if (!postProcessRayQueryReturn)
-          return static_cast<Value *>(clonedTraceRay);
-
-        // Packed responses contain 16-bit lane statuses despite the i32 IR
-        // type. Unpack inside the group before the ordinary i32 PHI/select
-        // merge; merging the raw response would use the wrong lane layout.
-        auto *normalizedResult = cast<CallInst>(RTB.Insert(postProcessRayQueryReturn->clone()));
-        normalizedResult->setArgOperand(0, clonedTraceRay);
-        normalizedResult->moveAfter(readTraceRaySync);
-        return static_cast<Value *>(normalizedResult);
+        return static_cast<Value *>(clonedTraceRay);
       },
       VALUE_NAME("RayQueryGlobalPointer"));
 
   if (readTraceRaySync->getIntrinsicID() == GenISAIntrinsic::GenISA_ReadTraceRaySyncResult) {
     readTraceRaySync->replaceAllUsesWith(result);
     readTraceRaySync->eraseFromParent();
-  } else if (postProcessRayQueryReturn) {
-    postProcessRayQueryReturn->replaceAllUsesWith(result);
-    postProcessRayQueryReturn->eraseFromParent();
   } else {
     traceRay->replaceAllUsesWith(result);
   }

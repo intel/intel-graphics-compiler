@@ -223,8 +223,6 @@ void intel_ray_query_start_traversal(intel_ray_query_t rayquery)
     rtfence_t fence = __builtin_IB_intel_dispatch_trace_ray_query(
         dispatchGlobalsPtr, bvh_level, ctrl);
 
-    if (BIF_FLAG_CTRL_GET(IsRayQueryReturnOptimizationPackedStatusEnabled))
-        fence = __builtin_IB_post_process_ray_query_return(fence);
     __builtin_IB_intel_update_ray_query(
         rayquery,
         fence,

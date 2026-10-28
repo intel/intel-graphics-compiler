@@ -536,7 +536,6 @@ public:
 
 
   void emitExtendedCacheControl(llvm::ExtendedCacheControl *I);
-  void emitPostProcessRayQueryReturn(llvm::PostProcessRayQueryReturn *I);
   void emitGetShaderRecordPtr(llvm::GetShaderRecordPtrIntrinsic *I);
   void emitGlobalBufferPtr(llvm::GenIntrinsicInst *I);
   void emitLocalBufferPtr(llvm::GenIntrinsicInst *I);
