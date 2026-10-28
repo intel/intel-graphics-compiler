@@ -23,10 +23,14 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/FormattedStream.h>
+#include <llvm/Support/MathExtras.h>
+#include <llvm/Support/KnownBits.h>
+#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/ModuleSlotTracker.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 #include <functional>
 #include <string>
@@ -289,6 +293,8 @@ void WIAnalysisRunner::init(llvm::Function *F, llvm::LoopInfo *LI, llvm::Dominat
   m_localIDxUniform = false;
   m_localIDyUniform = false;
   m_localIDzUniform = false;
+  m_localIdXLaneBits.reset();
+  m_localIdXArg = nullptr;
 
   m_hoistEnabledForFunction = -1;
 }
@@ -320,6 +326,8 @@ bool WIAnalysisRunner::run() {
   updateArgsDependency(&F);
 
   if (!IGC_IS_FLAG_ENABLED(DisableUniformAnalysis)) {
+    propagateLocalIdXLaneBits(F);
+
     // Compute the  first iteration of the WI-dep according to ordering
     // instructions this ordering is generally good (as it ususally correlates
     // well with dominance).
@@ -377,6 +385,9 @@ bool WIAnalysisRunner::run() {
   if (PrintWiaCheck) {
     print(ods());
   }
+  // The instructions may be changed or erased after the analysis.
+  m_laneBits.clear();
+  m_laneUniformInsts.clear();
   return false;
 }
 
@@ -515,6 +526,9 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function *pF) {
       // todo: may improve it to have UNIFORM_WORKGROUP
       dependency = WIAnalysis::UNIFORM_THREAD;
     }
+    if (iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_X) {
+      m_localIdXArg = &(*ai);
+    }
 
     incUpdateDepend(&(*ai), dependency);
   }
@@ -597,7 +611,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::getCFDependency(const BasicBlock *BB)
 
   WIAnalysis::WIDependancy dep = WIAnalysis::UNIFORM_GLOBAL;
   for (auto *BI : II->second) {
-    auto newDep = whichDepend(BI);
+    // Not whichDepend: this is also queried while the analysis runs.
+    auto newDep = m_depMap.GetAttributeWithoutCreating(BI);
+    IGC_ASSERT(newDep != m_depMap.end());
     if (depRank(dep) < depRank(newDep))
       dep = newDep;
   }
@@ -968,6 +984,27 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst *inst) {
 
     for (BasicBlock::iterator I = def_blk->begin(), E = def_blk->end(); I != E; ++I) {
       Instruction *defi = &(*I);
+      // Lane-bit uniformity also depends on the control flow (firstLaneHoldsOperands), which the
+      // operand-driven worklist does not track: the operands stay RANDOM when a branch turns
+      // divergent, so nothing else would revisit these instructions.
+      if (m_laneBits.count(defi)) {
+        auto recheck = [&](const Instruction *LI) {
+          if (!m_laneUniformInsts.count(LI)) {
+            return;
+          }
+          // The rule only takes uniformity away, so only the currently uniform ones can change.
+          const WIAnalysis::WIDependancy Dep = m_depMap.GetAttributeWithoutCreating(LI);
+          if (Dep != m_depMap.end() && WIAnalysis::isDepUniform(Dep)) {
+            m_pChangedNew->push_back(LI);
+          }
+        };
+        // defi's own block is now divergent.
+        recheck(defi);
+        // An operand of these users is now defined under divergent control flow.
+        for (const User *U : defi->users()) {
+          recheck(cast<Instruction>(U));
+        }
+      }
       const WIAnalysis::WIDependancy defDep = m_depMap.GetAttributeWithoutCreating(defi);
       if (defDep != m_depMap.end() && depRank(defDep) >= depRank(instDep)) {
         // defi is already weaker than or equal to inst (br), do nothing.
@@ -1410,6 +1447,221 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep_simple(const Instructio
 
 WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const LoadInst *inst) { return calculate_dep_simple(inst); }
 
+std::optional<uint64_t> WIAnalysisRunner::getOperandLaneBits(const Value *V) {
+  const auto *Ty = dyn_cast<IntegerType>(V->getType());
+  if (!Ty || Ty->getBitWidth() > 64) {
+    return std::nullopt;
+  }
+  if (isa<ConstantInt>(V)) {
+    return 0;
+  }
+  if (V == m_localIdXArg) {
+    return *m_localIdXLaneBits & maskTrailingOnes<uint64_t>(Ty->getBitWidth());
+  }
+  if (const auto *Arg = dyn_cast<Argument>(V)) {
+    // The dependency of an argument is set before the analysis and does not change.
+    if (hasDependency(Arg) && WIAnalysis::isDepUniform(getDependency(Arg))) {
+      return 0;
+    }
+    return std::nullopt;
+  }
+  auto It = m_laneBits.find(V);
+  return It != m_laneBits.end() ? std::optional<uint64_t>(It->second) : std::nullopt;
+}
+
+void WIAnalysisRunner::propagateLocalIdXLaneBits(const Function &F) {
+  m_laneBits.clear();
+  m_laneUniformInsts.clear();
+  if (!m_localIdXLaneBits) {
+    return;
+  }
+  // The values are pure functions of the lane, so the bits do not depend on control flow. Whether
+  // the first lane holds the operands at a use is checked in firstLaneHoldsOperands.
+  auto TryAdd = [&](const Instruction *I, SmallVectorImpl<const Value *> &Worklist) {
+    if (m_laneBits.count(I)) {
+      return;
+    }
+    const std::optional<uint64_t> Bits = computeLaneBits(I);
+    if (!Bits) {
+      return;
+    }
+    if (*Bits == 0) {
+      m_laneUniformInsts.insert(I);
+    }
+    m_laneBits[I] = *Bits;
+    Worklist.push_back(I);
+  };
+  SmallVector<const Value *, 32> Worklist;
+  if (m_localIdXArg) {
+    Worklist.push_back(m_localIdXArg);
+  }
+  if (const Function *GetLocalIdX =
+          F.getParent()->getFunction(GenISAIntrinsic::getName(GenISAIntrinsic::GenISA_getLocalID_X))) {
+    for (const User *U : GetLocalIdX->users()) {
+      if (const auto *I = dyn_cast<Instruction>(U); I && I->getFunction() == &F) {
+        TryAdd(I, Worklist);
+      }
+    }
+  }
+  if (Worklist.empty()) {
+    return;
+  }
+  // Values computed only from uniform arguments and constants have no variant bits.
+  for (const Argument &Arg : F.args()) {
+    if (&Arg != m_localIdXArg && Arg.getType()->isIntegerTy() && getOperandLaneBits(&Arg) == 0u) {
+      Worklist.push_back(&Arg);
+    }
+  }
+  // An instruction is added once the bits of all its operands are known, so its bits are final.
+  while (!Worklist.empty()) {
+    const Value *V = Worklist.pop_back_val();
+    for (const User *U : V->users()) {
+      if (const auto *I = dyn_cast<Instruction>(U)) {
+        TryAdd(I, Worklist);
+      }
+    }
+  }
+}
+
+bool WIAnalysisRunner::firstLaneHoldsOperands(const Instruction *I) {
+  // The first lane is active at the entry, so it is active in every block that no divergent
+  // branch controls.
+  auto isDivergent = [&](const BasicBlock *BB) { return !WIAnalysis::isDepUniform(getCFDependency(BB)); };
+  // A uniform instruction reads its nonuniform operands from the first lane with no mask. If that
+  // lane is inactive here, DeSSA may have coalesced an operand with a value written to it in a
+  // sibling divergent block.
+  if (isDivergent(I->getParent())) {
+    return false;
+  }
+  for (const Value *Op : I->operands()) {
+    const auto *OpI = dyn_cast<Instruction>(Op);
+    if (OpI && !WIAnalysis::isDepUniform(getDependency(OpI)) && isDivergent(OpI->getParent())) {
+      return false;
+    }
+  }
+  return true;
+}
+
+std::optional<uint64_t> WIAnalysisRunner::computeLaneBits(const Instruction *I) {
+  const auto *Ty = dyn_cast<IntegerType>(I->getType());
+  if (!m_localIdXLaneBits || !Ty || Ty->getBitWidth() > 64) {
+    return std::nullopt;
+  }
+  const unsigned Width = Ty->getBitWidth();
+  const uint64_t WidthMask = maskTrailingOnes<uint64_t>(Width);
+  if (const auto *GII = dyn_cast<GenIntrinsicInst>(I)) {
+    return GII->getIntrinsicID() == GenISAIntrinsic::GenISA_getLocalID_X
+               ? std::optional<uint64_t>(*m_localIdXLaneBits & WidthMask)
+               : std::nullopt;
+  }
+
+  switch (I->getOpcode()) {
+  case Instruction::ZExt:
+  case Instruction::SExt:
+  case Instruction::Trunc:
+  case Instruction::Shl:
+  case Instruction::LShr:
+  case Instruction::AShr:
+  case Instruction::And:
+  case Instruction::Or:
+  case Instruction::Xor:
+  case Instruction::Add:
+  case Instruction::Sub:
+  case Instruction::Mul:
+  case Instruction::UDiv:
+  case Instruction::URem:
+    break;
+  default:
+    return std::nullopt;
+  }
+  // The bits of all operands must be known.
+  const std::optional<uint64_t> B0 = getOperandLaneBits(I->getOperand(0));
+  const std::optional<uint64_t> B1 =
+      I->getNumOperands() > 1 ? getOperandLaneBits(I->getOperand(1)) : std::optional<uint64_t>(0);
+  if (!B0 || !B1) {
+    return std::nullopt;
+  }
+  const auto *CI = I->getNumOperands() > 1 ? dyn_cast<ConstantInt>(I->getOperand(1)) : nullptr;
+  const uint64_t C = CI ? CI->getZExtValue() : 0;
+  // The result may differ from the lowest variant bit up, because of carries and borrows.
+  auto smearUp = [&](uint64_t Bits) -> uint64_t {
+    Bits &= WidthMask;
+    return Bits == 0 ? 0 : (WidthMask << IGCLLVM::countr_zero(Bits)) & WidthMask;
+  };
+
+  switch (I->getOpcode()) {
+  case Instruction::ZExt:
+    return *B0;
+  case Instruction::Trunc:
+    return *B0 & WidthMask;
+  case Instruction::SExt: {
+    // A variable sign bit makes all the bits above it variable.
+    const unsigned SrcWidth = I->getOperand(0)->getType()->getIntegerBitWidth();
+    return ((*B0 >> (SrcWidth - 1)) & 1) ? (*B0 | (WidthMask << (SrcWidth - 1))) & WidthMask : *B0;
+  }
+  case Instruction::Shl:
+  case Instruction::LShr:
+  case Instruction::AShr: {
+    if (!CI || C >= Width) {
+      return std::nullopt;
+    }
+    if (I->getOpcode() == Instruction::Shl) {
+      return (*B0 << C) & WidthMask;
+    }
+    uint64_t Bits = *B0 >> C;
+    // A variable sign bit is shifted into the high bits.
+    if (I->getOpcode() == Instruction::AShr && C != 0 && ((*B0 >> (Width - 1)) & 1)) {
+      Bits |= (WidthMask << (Width - C)) & WidthMask;
+    }
+    return Bits;
+  }
+  case Instruction::And:
+    // Only the bits that a constant mask keeps.
+    return CI ? *B0 & C : *B0 | *B1;
+  case Instruction::Or:
+    // The bits that a constant mask sets are the same in all lanes.
+    return CI ? *B0 & ~C & WidthMask : *B0 | *B1;
+  case Instruction::Xor:
+    return *B0 | *B1;
+  case Instruction::Add:
+  case Instruction::Sub: {
+    // When U has no variant bits and at least as many known trailing zeros as the bit length of
+    // the variant bits of x, x + U and x - U carry or borrow nothing out of those bits, so the
+    // result has the variant bits of x. U - x borrows unless the low bits of x are zero.
+    auto isAligned = [&](unsigned UniformNo, uint64_t VariantBits) {
+      const DataLayout &DL = I->getModule()->getDataLayout();
+      return computeKnownBits(I->getOperand(UniformNo), DL).countMinTrailingZeros() > Log2_64(VariantBits);
+    };
+    if (*B0 != 0 && *B1 == 0 && isAligned(1, *B0)) {
+      return *B0;
+    }
+    if (I->getOpcode() == Instruction::Add && *B0 == 0 && *B1 != 0 && isAligned(0, *B1)) {
+      return *B1;
+    }
+    return smearUp(*B0 | *B1);
+  }
+  case Instruction::Mul:
+    if (!CI) {
+      return *B0 == 0 && *B1 == 0 ? std::optional<uint64_t>(0) : std::nullopt;
+    }
+    if (C == 0 || *B0 == 0) {
+      return 0;
+    }
+    if (isPowerOf2_64(C)) {
+      return (*B0 << Log2_64(C)) & WidthMask;
+    }
+    return smearUp(*B0 << IGCLLVM::countr_zero(C));
+  case Instruction::UDiv:
+  case Instruction::URem:
+    if (!CI || !isPowerOf2_64(C)) {
+      return *B0 == 0 && *B1 == 0 ? std::optional<uint64_t>(0) : std::nullopt;
+    }
+    return I->getOpcode() == Instruction::UDiv ? *B0 >> Log2_64(C) : *B0 & (C - 1);
+  default:
+    return std::nullopt;
+  }
+}
+
 WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const BinaryOperator *inst) {
   // Calculate the dependency type for each of the operands
   Value *op0 = inst->getOperand(0);
@@ -1425,6 +1677,12 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const BinaryOperator *i
   WIAnalysis::WIDependancy dep = select_conversion[dep0][dep1];
   if (WIAnalysis::isDepUniform(dep)) {
     return dep;
+  }
+
+  // The lanes of a thread differ only in the low bits of local id X. A value that depends on
+  // none of them is uniform.
+  if (m_laneUniformInsts.count(inst) && firstLaneHoldsOperands(inst)) {
+    return WIAnalysis::UNIFORM_THREAD;
   }
 
   // FIXME:: assumes that the X value does not cross the +/- border - risky !!!
@@ -2333,6 +2591,14 @@ void WIAnalysisRunner::checkLocalIdUniform(Function *F, bool &IsLxUniform, bool 
   } else if (X > 0 && Y > 0 && (XxY % simdSize) == 0) {
     // X*Y is multiple of simdSize
     IsLzUniform = true;
+  }
+
+  // In a 1-D work-group, lane i of thread t has the local id x = t * simdSize + i. So only the
+  // low log2(simdSize) bits of x differ between the lanes, and x < X clears the bits above those
+  // of X - 1. This also holds for the smaller edge work-groups that OpenCL 2.0+ may run without
+  // uniform work-groups.
+  if (WO_0 == 0 && WO_1 == 1 && WO_2 == 2 && X > 0 && Y == 1 && Z == 1 && iSTD::IsPowerOfTwo(simdSize)) {
+    m_localIdXLaneBits = (simdSize - 1) & (llvm::NextPowerOf2(X - 1) - 1);
   }
 }
 

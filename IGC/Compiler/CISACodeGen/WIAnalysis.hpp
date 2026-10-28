@@ -29,6 +29,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/PostDominators.h>
 #include "common/LLVMWarningsPop.hpp"
+
+#include <optional>
 #include <llvmWrapper/IR/InstrTypes.h>
 
 #include <vector>
@@ -277,6 +279,22 @@ private:
 
   void CS_checkLocalIDs(llvm::Function *F);
 
+  /// @brief Records in m_laneBits the bits that may differ between the lanes of a thread for the
+  /// values computed by integer arithmetic from local id X, constants and uniform arguments, and
+  /// in m_laneUniformInsts the instructions computed from them that have no such bits.
+  void propagateLocalIdXLaneBits(const llvm::Function &F);
+
+  /// @brief The bits of I that may differ between the lanes of a thread, computed from the bits
+  /// of its operands, if they are all known.
+  std::optional<uint64_t> computeLaneBits(const llvm::Instruction *I);
+
+  /// @brief The bits of V that may differ between the lanes of a thread, if known.
+  std::optional<uint64_t> getOperandLaneBits(const llvm::Value *V);
+
+  /// @brief Whether the first lane holds every nonuniform operand of I at I, i.e. no divergent
+  /// branch found so far controls the block of I or the blocks of those operands.
+  bool firstLaneHoldsOperands(const llvm::Instruction *I);
+
 private:
   /// The WIAnalysis follows pointer arithmetic
   ///  and Index arithmetic when calculating dependency
@@ -360,6 +378,17 @@ private:
   bool m_localIDxUniform = false;
   bool m_localIDyUniform = false;
   bool m_localIDzUniform = false;
+
+  // Bits of local id X that may differ between the lanes of a thread, when known.
+  std::optional<uint64_t> m_localIdXLaneBits;
+  // The implicit argument holding local id X.
+  const llvm::Argument *m_localIdXArg = nullptr;
+  // Bits that may differ between the lanes of a thread, for the values computed from local id X.
+  // Only valid during run().
+  llvm::DenseMap<const llvm::Value *, uint64_t> m_laneBits;
+  // Instructions in m_laneBits with no bits that differ between the lanes of a thread. Only valid
+  // during run().
+  llvm::DenseSet<const llvm::Instruction *> m_laneUniformInsts;
 };
 
 /// @brief Work Item Analysis class used to provide information on
