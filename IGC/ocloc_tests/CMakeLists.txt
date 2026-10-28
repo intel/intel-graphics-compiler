@@ -133,11 +133,11 @@ igc_configure_lit_site_cfg(
   ${IGC_OCLOC_TEST_SOURCE_DIR}/lit.cfg.py
   )
 
-file(GLOB_RECURSE _tests "${IGC_OCLOC_TEST_SOURCE_DIR}/*.cl" "${IGC_OCLOC_TEST_SOURCE_DIR}/*.cpp" "${IGC_OCLOC_TEST_SOURCE_DIR}/*.ll" "${IGC_OCLOC_TEST_SOURCE_DIR}/*.spv-test")
+file(GLOB_RECURSE _tests CONFIGURE_DEPENDS "${IGC_OCLOC_TEST_SOURCE_DIR}/*.cl" "${IGC_OCLOC_TEST_SOURCE_DIR}/*.cpp" "${IGC_OCLOC_TEST_SOURCE_DIR}/*.ll" "${IGC_OCLOC_TEST_SOURCE_DIR}/*.spvasm" "${IGC_OCLOC_TEST_SOURCE_DIR}/*.spv-test")
 
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
   igc_add_lit_target(check-ocloc "${IGC_OCLOC_TEST_BINARY_DIR}" "Running the offline compilation tests"
-    DEPENDS ${IGC_OCLOC_TEST_DEPENDS} ${_tests}
+    DEPENDS ${IGC_OCLOC_TEST_DEPENDS} ${_tests} ${IGC_OCLOC_TEST_SOURCE_DIR}/lit.cfg.py
     SOURCES ${_tests} ${IGC_OCLOC_TEST_SOURCE_DIR}/lit.cfg.py
     )
 else()
@@ -155,7 +155,7 @@ if(TARGET igc-clang-lib AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
     "Running the offline compilation tests with IGC_LibClangOverride=igc-clang"
     EXTRA --param igc_libclang_override=igc-clang
           --param test_output_subdir=test_output_igc_clang
-    DEPENDS ${IGC_OCLOC_TEST_DEPENDS} ${_tests}
+    DEPENDS ${IGC_OCLOC_TEST_DEPENDS} ${_tests} ${IGC_OCLOC_TEST_SOURCE_DIR}/lit.cfg.py
     SOURCES ${_tests} ${IGC_OCLOC_TEST_SOURCE_DIR}/lit.cfg.py
     )
 

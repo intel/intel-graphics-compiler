@@ -41,12 +41,12 @@ if(LLVM_ON_UNIX)
   endif()
 endif()
 
-file(GLOB_RECURSE _tests "${VC_TEST_SOURCE_DIR}/*.ll" "${VC_TEST_SOURCE_DIR}/*.s")
+file(GLOB_RECURSE _tests CONFIGURE_DEPENDS "${VC_TEST_SOURCE_DIR}/*.ll" "${VC_TEST_SOURCE_DIR}/*.s")
 
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
   igc_add_lit_target(check-vc "${VC_TEST_BINARY_DIR}" "Running the vc-opt regression tests"
     EXTRA "--config-prefix=vc.lit" ""
-    DEPENDS ${TEST_DEPS} ${_tests}
+    DEPENDS ${TEST_DEPS} ${_tests} ${VC_TEST_SOURCE_DIR}/lit.cfg.py
     SOURCES ${_tests} ${VC_TEST_SOURCE_DIR}/lit.cfg.py
     )
 else()

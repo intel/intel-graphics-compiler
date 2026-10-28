@@ -46,7 +46,7 @@ file(GLOB_RECURSE _tests CONFIGURE_DEPENDS "${INTERFACE_TEST_SOURCE_DIR}/*.test"
 # Create a lit target
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
   igc_add_lit_target(check-interfaces "${INTERFACE_TEST_BINARY_DIR}" "Running the NEO-IGC interface tests"
-    DEPENDS ${INTERFACE_TEST_DEPENDS} ${_tests}
+    DEPENDS ${INTERFACE_TEST_DEPENDS} ${_tests} ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
     SOURCES ${_tests} ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
     )
 else()

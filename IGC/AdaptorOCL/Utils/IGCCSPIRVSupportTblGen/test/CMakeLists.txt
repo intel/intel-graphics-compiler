@@ -29,12 +29,12 @@ set(SPIRV_TBLGEN_TEST_DEPENDS
   igcc-spirv-support-tblgen
   )
 
-file(GLOB_RECURSE _tests "${SPIRV_TBLGEN_TEST_SOURCE_DIR}/*.td")
+file(GLOB_RECURSE _tests CONFIGURE_DEPENDS "${SPIRV_TBLGEN_TEST_SOURCE_DIR}/*.td")
 
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
   igc_add_lit_target(check-spirv-tblgen "${SPIRV_TBLGEN_TEST_BINARY_DIR}"
     "Running the SPIR-V extension support tblgen regression tests"
-    DEPENDS ${SPIRV_TBLGEN_TEST_DEPENDS} ${_tests}
+    DEPENDS ${SPIRV_TBLGEN_TEST_DEPENDS} ${_tests} ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
     SOURCES ${_tests} ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
     )
 else()

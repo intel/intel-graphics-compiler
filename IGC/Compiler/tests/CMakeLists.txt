@@ -49,9 +49,9 @@ set(IGC_LIT_TEST_DEPENDS
 # 1) the path to tests must be consistent with config.test_source_root
 # 2) the suffix must be consistent with config.suffixes
 # The consistency can be achived by calling a process which returns the list of tests.
-file(GLOB_RECURSE _tests "${IGC_TEST_SOURCE_DIR}/*.ll")
+file(GLOB_RECURSE _tests CONFIGURE_DEPENDS "${IGC_TEST_SOURCE_DIR}/*.ll")
 file(GLOB_RECURSE _site_config_files "${CMAKE_CURRENT_BINARY_DIR}/*/lit.site.cfg.py")
-file(GLOB_RECURSE _local_config_files "${CMAKE_CURRENT_SOURCE_DIR}/*/lit.local.cfg")
+file(GLOB_RECURSE _local_config_files CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*/lit.local.cfg")
 
 # This will create a target called `check-igc`, which will run all tests from
 # IGC/Compiler/tests directory. The tests will be run on files in the source
@@ -59,7 +59,7 @@ file(GLOB_RECURSE _local_config_files "${CMAKE_CURRENT_SOURCE_DIR}/*/lit.local.c
 # for copying them.
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
   igc_add_lit_target(check-igc "${IGC_TEST_BINARY_DIR}" "Running the IGC LIT tests"
-    DEPENDS ${IGC_LIT_TEST_DEPENDS} ${_tests} ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in ${IGC_LIT_CONFIG_FILE}
+    DEPENDS ${IGC_LIT_TEST_DEPENDS} ${_tests} ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in ${IGC_LIT_CONFIG_FILE} ${_local_config_files}
     SOURCES ${_tests} ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in ${_site_config_files} ${_local_config_files}
     )
 else()
