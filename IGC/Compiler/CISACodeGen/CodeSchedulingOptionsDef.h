@@ -151,6 +151,11 @@ DECLARE_SCHEDULING_OPTION(LimitOpenMasksAtLowRP, 1,
 DECLARE_SCHEDULING_OPTION(PairDPASForFwd, 1,
                           "Heuristic: on platforms with DPAS forwarding, schedule the 1st, 3rd, ... DPAS of an "
                           "accumulation chain directly before the next DPAS of the chain (0/1)")
+DECLARE_SCHEDULING_OPTION(PrioritizeDPASOperandConversions, 1,
+                          "Heuristic: when MaxWeight chooses a DPAS, first schedule the ready conversions (fptrunc, "
+                          "float to bf16) whose result is only an A or B operand of DPAS instructions of the block, "
+                          "unless that makes the register pressure high, so that consecutive DPAS operands are live "
+                          "together and get different registers (0/1)")
 
 // RP management control options
 DECLARE_SCHEDULING_OPTION(GreedyRPThresholdDelta, 20, "Threshold delta for greedy register pressure scheduling")

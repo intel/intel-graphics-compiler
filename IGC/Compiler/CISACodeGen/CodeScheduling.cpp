@@ -91,6 +91,9 @@ static bool holdsFlagRegister(const Instruction *I) {
   return llvm::any_of(I->users(), [&](const User *U) { return !isFoldedCompareUse(I, U); });
 }
 
+// Every DPAS intrinsic that isDPAS accepts takes the accumulator as operand 0.
+static constexpr unsigned DPASAccumulatorOperand = 0;
+
 // vISA forwards the result of a dpas.8x8 ({Fwd}) to the next DPAS when that
 // DPAS accumulates onto it with the same precisions and the accumulator is
 // 32-bit. This checks the part of the rule that the IR decides.
@@ -1887,7 +1890,7 @@ private:
         if (!isDPAS(Node.I))
           continue;
 
-        Value *FirstOp = Node.I->getOperand(0);
+        Value *FirstOp = Node.I->getOperand(DPASAccumulatorOperand);
         auto *FirstOpI = dyn_cast<Instruction>(FirstOp);
         bool IsHead = isa<UndefValue, ConstantAggregateZero>(FirstOp) || !FirstOpI || !isDPAS(FirstOpI) ||
                       FirstOpI->getParent() != BB;
@@ -2015,7 +2018,7 @@ private:
         for (Instruction &I : *BB) {
           if (!isDPAS(&I))
             continue;
-          auto *Accumulator = dyn_cast<Instruction>(I.getOperand(0));
+          auto *Accumulator = dyn_cast<Instruction>(I.getOperand(DPASAccumulatorOperand));
           auto It = Accumulator ? ChainPosition.find(Accumulator) : ChainPosition.end();
           bool Continues =
               It != ChainPosition.end() && Accumulator->hasOneUse() && canForwardDPASResult(Accumulator, &I);
@@ -3059,7 +3062,7 @@ private:
               [[maybe_unused]] bool OneOpIsDPAS = false;
               bool FirstOpIsZero = false;
 
-              auto *FirstOp = dyn_cast<Constant>(I->getOperand(0));
+              auto *FirstOp = dyn_cast<Constant>(I->getOperand(DPASAccumulatorOperand));
               if (FirstOp && (isa<UndefValue>(FirstOp) || FirstOp->isNullValue())) {
                 FirstOpIsZero = true;
               }
@@ -3351,6 +3354,58 @@ private:
                                                                          << " computations, keeping "
                                                                          << BatchNodes.size() << " instructions\n");
           Nodes = std::move(BatchNodes);
+        }
+        return Nodes;
+      };
+
+      // A conversion whose result is only an A or B operand of DPAS
+      // instructions gets its MaxWeight from the first of these DPAS. When
+      // that DPAS continues a DPAS chain, MaxWeight schedules the conversion
+      // just before it, after the DPAS that read the previous operand, and
+      // the register allocator can give both operands the same registers. The
+      // conversion then waits until the earlier DPAS has read them
+      // ({$N.src}), and the post-RA scheduler cannot move it out from between
+      // the two DPAS, so it ends the DPAS sequence that vISA issues back to
+      // back.
+      //
+      // When MaxWeight chooses a DPAS, schedule the ready conversions before
+      // it, unless that makes the register pressure high: each converted
+      // operand is then live while the previous operand is still read. Not as
+      // soon as a conversion is ready: that makes the DPAS that read it ready
+      // earlier, and their MaxWeight then puts them before instructions that
+      // would otherwise run first, such as the ones that compute the next
+      // converted operands.
+      auto isDPASOperandConversion = [&](Instruction *I) {
+        bool IsConversion = isa<FPTruncInst>(I);
+        if (auto *Intr = dyn_cast<GenIntrinsicInst>(I))
+          IsConversion = Intr->getIntrinsicID() == GenISAIntrinsic::GenISA_ftobf;
+        if (!IsConversion)
+          return false;
+        auto Uses = RT.getRealUses(I);
+        return !Uses.empty() && llvm::all_of(Uses, [&](Value *U) {
+          auto *UI = dyn_cast<Instruction>(U);
+          return UI && UI->getParent() == BB && isDPAS(UI) && RT.getRealOp(UI->getOperand(DPASAccumulatorOperand)) != I;
+        });
+      };
+
+      auto prioritizeDPASOperandConversions = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
+        int32_t MaxWeight = INT32_MIN;
+        for (InstructionNode *Node : Nodes)
+          MaxWeight = std::max(MaxWeight, Node->MaxWeight);
+        bool ChoosesDPAS =
+            llvm::any_of(Nodes, [&](InstructionNode *Node) { return Node->MaxWeight == MaxWeight && isDPAS(Node->I); });
+        if (!ChoosesDPAS)
+          return Nodes;
+
+        InstNodePtrList Conversions;
+        for (InstructionNode *Node : Nodes) {
+          if (isDPASOperandConversion(Node->I) && !RT.isRegpressureHigh(Node->I))
+            Conversions.push_back(Node);
+        }
+        if (!Conversions.empty()) {
+          PrintDumpLevel(VerbosityLevel::Medium,
+                         "DPAS operand conversions: keeping " << Conversions.size() << " instructions\n");
+          Nodes = std::move(Conversions);
         }
         return Nodes;
       };
@@ -3838,6 +3893,9 @@ private:
           }
           if (G.ExtendedMathOf) {
             FilteredReadyList = keepExtendedMathBatch(FilteredReadyList);
+          }
+          if (C[Option::PrioritizeDPASOperandConversions]) {
+            FilteredReadyList = prioritizeDPASOperandConversions(FilteredReadyList);
           }
 
           FilteredReadyList = getMaxWeightNodes(FilteredReadyList);
