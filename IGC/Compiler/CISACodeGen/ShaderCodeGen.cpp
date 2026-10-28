@@ -2024,6 +2024,10 @@ void OptimizeIR(CodeGenContext *const pContext) {
         mpm.add(createScalarizerPass(SelectiveScalarizer::Auto));
       mpm.add(new IGCVectorCoalescer());
       mpm.add(IGCLLVM::createLegacyWrappedADCEPass());
+      if (IGC_IS_FLAG_ENABLED(EnableVectCombine)) {
+        mpm.add(new IGCVectCombine());
+        mpm.add(IGCLLVM::createLegacyWrappedADCEPass());
+      }
     }
 
 

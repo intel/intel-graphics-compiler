@@ -1341,6 +1341,7 @@ DECLARE_IGC_REGKEY(bool, VectorizerUniformValueVectorizationEnabled, true,
 DECLARE_IGC_REGKEY(DWORD, CoalescerDepWindowSize, 100, "Window size to account for vectorizer dependency check window",
                    ALWAYS)
 DECLARE_IGC_REGKEY(bool, CoalescerAllowBinary, true, "Allow binary instructions inside coalescer", ALWAYS)
+DECLARE_IGC_REGKEY(bool, EnableVectCombine, true, "Enable IGCVectCombine pass", ALWAYS)
 DECLARE_IGC_REGKEY(bool, DisableOCLScalarizer, false, "Disable ScalarizeFunction pass in OCL pipeline", ALWAYS)
 DECLARE_IGC_REGKEY(bool, DisablePHIScalarization, false, "Disable scalarization of PHINode instructions", ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableSelectiveScalarizer, false, "enable selective scalarizer on GPGPU path", ALWAYS)

@@ -184,4 +184,23 @@ public:
   static char ID;
 };
 
+class IGCVectCombine : public llvm::FunctionPass, IGCVectorizerCommon {
+
+  bool getJointBroadcastLanes(llvm::Value *V, llvm::Value *&Src, llvm::Value *&HelperLane, unsigned &FirstLane,
+                              unsigned &NumLanes);
+  bool matchJointBroadcastConcat(llvm::ShuffleVectorInst *Shuffle);
+
+public:
+  llvm::StringRef getPassName() const override { return "IGCVectCombine"; }
+  IGCVectCombine(const IGCVectCombine &) = delete;
+  IGCVectCombine &operator=(const IGCVectCombine &) = delete;
+  virtual bool runOnFunction(llvm::Function &F) override;
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
+  IGCVectCombine();
+  static char ID;
+};
+
 }; // namespace IGC

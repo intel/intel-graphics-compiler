@@ -308,6 +308,7 @@ void initializeIGCRegisterPressurePrinterPass(llvm::PassRegistry &);
 void initializeIGCRegisterPressurePublisherPass(llvm::PassRegistry &);
 void initializeIGCVectorizerPass(llvm::PassRegistry &);
 void initializeIGCVectorCoalescerPass(llvm::PassRegistry &);
+void initializeIGCVectCombinePass(llvm::PassRegistry &);
 void initializeIGCFunctionExternalRegPressureAnalysisPass(llvm::PassRegistry &);
 void initializePromoteConstantStructsPass(llvm::PassRegistry &);
 void initializeLowerInvokeSIMDLPMPass(llvm::PassRegistry &);

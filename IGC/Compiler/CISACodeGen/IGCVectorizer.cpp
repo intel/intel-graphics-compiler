@@ -2371,3 +2371,181 @@ bool IGCVectorCoalescer::runOnFunction(llvm::Function &F) {
   }
   return true;
 }
+
+char IGCVectCombine::ID = 0;
+
+#define PASS_FLAG4 "igc-vect-combine"
+#define PASS_DESCRIPTION4 "Combines vector instructions produced by the vectorizer"
+#define PASS_CFG_ONLY4 false
+#define PASS_ANALYSIS4 false
+IGC_INITIALIZE_PASS_BEGIN(IGCVectCombine, PASS_FLAG4, PASS_DESCRIPTION4, PASS_CFG_ONLY4, PASS_ANALYSIS4)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_END(IGCVectCombine, PASS_FLAG4, PASS_DESCRIPTION4, PASS_CFG_ONLY4, PASS_ANALYSIS4)
+
+IGCVectCombine::IGCVectCombine() : FunctionPass(ID) { initializeIGCVectCombinePass(*PassRegistry::getPassRegistry()); };
+
+// recognizes a joint wave broadcast that covers a consecutive ascending
+// range of lanes, this is the only form the emitter can turn into an alias
+// returns the source register, the helper lane and the covered lane range
+bool IGCVectCombine::getJointBroadcastLanes(Value *V, Value *&Src, Value *&HelperLane, unsigned &FirstLane,
+                                            unsigned &NumLanes) {
+
+  auto *Broadcast = llvm::dyn_cast<JointWaveBroadcastIntrinsic>(V);
+  if (!Broadcast)
+    return false;
+
+  auto *Lanes = llvm::dyn_cast<ConstantDataVector>(Broadcast->getLane());
+  if (!Lanes)
+    return false;
+
+  auto *LaneElementType = llvm::dyn_cast<IntegerType>(Lanes->getType()->getElementType());
+  if (!LaneElementType || LaneElementType->getBitWidth() != 32)
+    return false;
+
+  NumLanes = Lanes->getNumElements();
+  FirstLane = getConstantValueAsInt(Lanes->getElementAsConstant(0));
+
+  // a valid joint wave broadcast can't have negative lane indices anyway,
+  // but they are read sign extended and a negative first lane would wrap the
+  // consecutive check below and the merged bounds check, reject it up front
+  if (FirstLane >= SIMDSize)
+    return false;
+
+  for (unsigned i = 1; i < NumLanes; ++i)
+    if (getConstantValueAsInt(Lanes->getElementAsConstant(i)) != FirstLane + i)
+      return false;
+
+  Src = Broadcast->getSrc();
+  HelperLane = Broadcast->getHelperLane();
+  return true;
+}
+
+// BEFORE:
+// %low  = JointWaveBroadcast(%src, <8 x i32> <i32 0 ... i32 7>,  i32 0)
+// %high = JointWaveBroadcast(%src, <8 x i32> <i32 8 ... i32 15>, i32 0)
+// %concat = shufflevector <8 x float> %low, <8 x float> %high,
+//                         <16 x i32> <i32 0 ... i32 15>
+//
+// AFTER:
+// %concat = JointWaveBroadcast(%src, <16 x i32> <i32 0 ... i32 15>, i32 0)
+//
+// both halves alias the very same register %src lives in, so stitching them
+// back together is just a wider view of %src, the shuffle is pure overhead
+//
+// JointWaveBroadcast is convergent so new concat must be placed at the same bb
+// as parents
+bool IGCVectCombine::matchJointBroadcastConcat(ShuffleVectorInst *Shuffle) {
+
+  Value *LowSrc = nullptr;
+  Value *LowHelperLane = nullptr;
+  unsigned LowFirstLane = 0;
+  unsigned LowNumLanes = 0;
+  if (!getJointBroadcastLanes(Shuffle->getOperand(0), LowSrc, LowHelperLane, LowFirstLane, LowNumLanes))
+    return false;
+
+  Value *HighSrc = nullptr;
+  Value *HighHelperLane = nullptr;
+  unsigned HighFirstLane = 0;
+  unsigned HighNumLanes = 0;
+  if (!getJointBroadcastLanes(Shuffle->getOperand(1), HighSrc, HighHelperLane, HighFirstLane, HighNumLanes))
+    return false;
+
+  PRINT_LOG("joint wave broadcast concat candidate: ");
+  PRINT_INST_NL(Shuffle);
+
+  if (LowSrc != HighSrc) {
+    PRINT_LOG_NL("halves broadcast different sources");
+    return false;
+  }
+
+  if (LowHelperLane != HighHelperLane) {
+    PRINT_LOG_NL("halves use different helper lanes");
+    return false;
+  }
+
+  auto *Low = llvm::cast<Instruction>(Shuffle->getOperand(0));
+  auto *High = llvm::cast<Instruction>(Shuffle->getOperand(1));
+  if (Low->getParent() != High->getParent()) {
+    PRINT_LOG_NL("halves live in different blocks");
+    return false;
+  }
+
+  // the shuffle has to be a plain concatenation, no permutation, no undefs
+  ArrayRef<int> Mask = Shuffle->getShuffleMask();
+  unsigned NumLanes = LowNumLanes + HighNumLanes;
+  if (Mask.size() != NumLanes) {
+    PRINT_LOG_NL("shuffle does not cover both halves");
+    return false;
+  }
+
+  for (unsigned i = 0; i < NumLanes; ++i) {
+    if (Mask[i] != (int)i) {
+      PRINT_LOG_NL("shuffle is not a plain concatenation");
+      return false;
+    }
+  }
+
+  // the merged broadcast is emitted as an alias, so it has to stay
+  // a consecutive ascending in bounds lane range
+  if (LowFirstLane + LowNumLanes != HighFirstLane) {
+    PRINT_LOG_NL("halves do not form a consecutive lane range");
+    return false;
+  }
+
+  if (LowFirstLane + NumLanes > SIMDSize) {
+    PRINT_LOG_NL("merged lane range is OOB for simd line");
+    return false;
+  }
+
+  llvm::SmallVector<uint32_t, 16> MergedLanes;
+  for (unsigned i = 0; i < NumLanes; ++i)
+    MergedLanes.push_back(LowFirstLane + i);
+
+  Value *MergedLaneVector = ConstantDataVector::get(M->getContext(), MergedLanes);
+
+  VecVal Operands = {LowSrc, MergedLaneVector, LowHelperLane};
+  llvm::Type *OverloadedType[] = {Shuffle->getType(), LowSrc->getType(), MergedLaneVector->getType()};
+  auto *Decl = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_JointWaveBroadcast, OverloadedType);
+  PRINT_DECL_NL(Decl);
+
+  Instruction *Later = IGCLLVM::comesBefore(Low, High) ? High : Low;
+
+  auto *CreatedInst = llvm::CallInst::Create(Decl, Operands);
+  CreatedInst->setName("combined_joint_wavebroadcast");
+  CreatedInst->setDebugLoc(Later->getDebugLoc());
+  IGCLLVM::insertBefore(CreatedInst, IGCLLVM::getNextNonDebugInstruction(Later));
+
+  PRINT_LOG("merged into: ");
+  PRINT_INST_NL(CreatedInst);
+
+  Shuffle->replaceAllUsesWith(CreatedInst);
+  Shuffle->eraseFromParent();
+  return true;
+}
+
+bool IGCVectCombine::runOnFunction(llvm::Function &F) {
+
+  SIMDSize = checkSIMD(F, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  if (SIMDSize != 16)
+    return false;
+
+  CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  initializeLogFile(F, "vectcombine");
+
+  PRINT_LOG_NL("VectCombine 0.1");
+
+  M = F.getParent();
+
+  VecArr Shuffles;
+  for (auto &BB : F)
+    for (auto &Inst : BB)
+      if (llvm::isa<ShuffleVectorInst>(&Inst))
+        Shuffles.push_back(&Inst);
+
+  bool Changed = false;
+  for (auto *Shuffle : Shuffles)
+    Changed |= matchJointBroadcastConcat(llvm::cast<ShuffleVectorInst>(Shuffle));
+
+  writeLog();
+  return Changed;
+}

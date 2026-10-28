@@ -209,6 +209,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeIGCRegisterPressurePublisherPass(Registry);
   initializeIGCVectorizerPass(Registry);
   initializeIGCVectorCoalescerPass(Registry);
+  initializeIGCVectCombinePass(Registry);
   initializeIGCFunctionExternalRegPressureAnalysisPass(Registry);
   initializeSubGroupFuncsResolutionLPMPass(Registry);
   initializeSubGroupReductionPatternPass(Registry);
