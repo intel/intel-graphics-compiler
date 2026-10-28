@@ -81,7 +81,6 @@ bool PromoteSubByte::run(Module &module) {
   // per module. ConstantData does not maintain a use-list in LLVM 22+, so we
   // cannot call users() on them later.
   constantDataUsers.clear();
-  ZeroExtendedPacks.clear();
   for (auto &F : module)
     for (auto &I : llvm::instructions(F))
       for (auto &Op : I.operands())
@@ -1068,7 +1067,7 @@ Value *PromoteSubByte::promoteSelect(SelectInst *select) {
   Value *newSelect = builder.CreateSelect(condition, trueValue, falseValue);
 
   if (wasUnpacked) {
-    newSelect = packInt4Vector(newSelect, builder, /*ZeroExtended=*/true);
+    newSelect = packInt4Vector(newSelect, builder);
   }
 
   if (auto newSelectInstruction = dyn_cast<Instruction>(newSelect)) {
@@ -1139,9 +1138,8 @@ Value *PromoteSubByte::promoteInsertElement(InsertElementInst *insertElement) {
 
   Value *outputVector = builder.CreateInsertElement(inputVector, newElement, insertIndex);
 
-  // Only a constant element is known to have the high 4 bits zero.
   if (insertElement->getType()->getElementType()->isIntegerTy(4))
-    outputVector = packInt4Vector(outputVector, builder, /*ZeroExtended=*/isa<Constant>(newElement));
+    outputVector = packInt4Vector(outputVector, builder);
 
   return outputVector;
 }
@@ -1162,7 +1160,7 @@ Value *PromoteSubByte::promoteShuffleVector(ShuffleVectorInst *shuffleVector) {
   auto *result = builder.CreateShuffleVector(promotedArg0, promotedArg1, mask);
 
   if (shuffleVector->getType()->getElementType()->isIntegerTy(4))
-    result = packInt4Vector(result, builder, /*ZeroExtended=*/true);
+    result = packInt4Vector(result, builder);
 
   return result;
 }
@@ -1221,7 +1219,7 @@ Value *PromoteSubByte::promoteZExt(ZExtInst *zext) {
       // Handle zext i1 to i4. zext to i8 + pack i8 to "i4" vector
       Type *zextI8Ty = ReplaceScalarTypeWithI8(zext->getType());
       Value *promotedZExt = builder.CreateZExt(promotedTrunc, zextI8Ty);
-      return packInt4Vector(promotedZExt, builder, /*ZeroExtended=*/true);
+      return packInt4Vector(promotedZExt, builder);
     } else {
       // Handle zext i1 to other types
       return builder.CreateZExt(promotedTrunc, zext->getType());
@@ -1282,17 +1280,7 @@ Value *PromoteSubByte::promoteAndUnpackInt4Vector(Value *unpromoted, IRBuilder<>
   // Coalesce chained pack -> unpack calls
   if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(promoted)) {
     if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_Int4VectorPack) {
-      // Skip the pack -> unpack pair and use the pack input directly. Its bytes
-      // may have garbage in the high 4 bits (e.g. after a trunc from i32), so
-      // do what the unpack would have done to them.
-      Value *PackInput = GII->getOperand(0);
-
-      // Sign extend: fill the high 4 bits with bit 3.
-      if (signExtend)
-        return builder.CreateAShr(builder.CreateShl(PackInput, 4), 4);
-
-      // Zero extend: clear the high 4 bits, unless they are known to be zero.
-      return ZeroExtendedPacks.contains(GII) ? PackInput : builder.CreateAnd(PackInput, 0b1111);
+      return GII->getOperand(0);
     }
   }
 
@@ -1324,7 +1312,7 @@ Type *PromoteSubByte::ReplaceScalarTypeWithI8(Type *type) {
     return I8Ty;
 }
 
-Value *PromoteSubByte::packInt4Vector(Value *input, IRBuilder<> &builder, bool ZeroExtended) {
+Value *PromoteSubByte::packInt4Vector(Value *input, IRBuilder<> &builder) {
   // Coalesce chained unpack -> pack calls
   if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(input)) {
     if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_Int4VectorUnpack) {
@@ -1351,10 +1339,7 @@ Value *PromoteSubByte::packInt4Vector(Value *input, IRBuilder<> &builder, bool Z
 
   auto GIID = GenISAIntrinsic::GenISA_Int4VectorPack;
   Function *packingFunc = GenISAIntrinsic::getDeclaration(M, GIID, {outputTy, input->getType()});
-  auto *Pack = builder.CreateCall(packingFunc, {input});
-  if (ZeroExtended)
-    ZeroExtendedPacks.insert(Pack);
-  return Pack;
+  return builder.CreateCall(packingFunc, {input});
 }
 
 static SmallVector<uint8_t, 32> extractDataFromConstIntVector(Value *input) {

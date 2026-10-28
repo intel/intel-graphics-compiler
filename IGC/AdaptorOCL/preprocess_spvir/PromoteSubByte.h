@@ -113,21 +113,12 @@ private:
   llvm::Type *ReplaceScalarTypeWithI8(llvm::Type *type);
   llvm::Value *promoteAndUnpackInt4Vector(llvm::Value *unpromotedInput, llvm::IRBuilder<> &builder,
                                           bool signExtend = false);
-  // Set `ZeroExtended` when the high 4 bits of every byte of `input` are zero.
-  llvm::Value *packInt4Vector(llvm::Value *input, llvm::IRBuilder<> &builder, bool ZeroExtended = false);
+  llvm::Value *packInt4Vector(llvm::Value *input, llvm::IRBuilder<> &builder);
   llvm::Constant *unpackConstantInt4Vector(llvm::Value *input, llvm::Type *outputTy, bool signExtend);
   llvm::Constant *packConstantInt4Vector(llvm::Value *input);
 
   // Promoting values - helping vars
   llvm::DenseSet<llvm::PHINode *> visitedPHINodes;
-  // i4 vectors are stored packed, two values per byte. When a packed vector is
-  // unpacked again (e.g. a shufflevector result used by a zext), the pass skips
-  // the pack/unpack pair and reuses the bytes the pack was given, one value per
-  // byte. Those bytes must then get the high 4 bits cleared, unless they are
-  // known to be zero already. This set holds the packs created by this pass
-  // whose input bytes are known to be zero extended, so that the mask can be
-  // left out for them.
-  llvm::DenseSet<llvm::Value *> ZeroExtendedPacks;
 };
 
 // Legacy Pass Manager wrapper.
