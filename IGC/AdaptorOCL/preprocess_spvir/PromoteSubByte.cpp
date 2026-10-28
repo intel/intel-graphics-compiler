@@ -221,6 +221,18 @@ Value *PromoteSubByte::castTo(Value *value, Type *desiredType, IRBuilder<> &buil
     return convertI1ToI8(value, builder);
   } else if (value->getType()->isIntegerTy() && desiredType->isIntegerTy()) {
     return builder.CreateZExtOrTrunc(value, desiredType);
+  } else if (!CastInst::isBitCastable(value->getType(), desiredType)) {
+    // When an i4 vector has an odd number of elements, its packed type is wider
+    // than the original (<3 x i4> -> <2 x i8>), so it cannot be bitcast.
+    // Convert through one byte per element instead.
+    if (value->getType()->isIntOrIntVectorTy(4) && desiredType == getOrCreatePromotedType(value->getType())) {
+      return packInt4Vector(builder.CreateZExt(value, ReplaceScalarTypeWithI8(value->getType())), builder);
+    } else if (desiredType->isIntOrIntVectorTy(4) && value->getType() == getOrCreatePromotedType(desiredType)) {
+      Type *UnpackedTy = ReplaceScalarTypeWithI8(desiredType);
+      Function *UnpackFunc =
+          GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_Int4VectorUnpack, {UnpackedTy, value->getType()});
+      return builder.CreateTrunc(builder.CreateCall(UnpackFunc, {value, builder.getInt8(0)}), desiredType);
+    }
   }
 
   return builder.CreateBitCast(value, desiredType);
