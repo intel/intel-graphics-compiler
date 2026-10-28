@@ -1244,7 +1244,10 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy &AllIEIs) {
   auto S_use = getCandidateStateUse(lastIEI);
   auto B_def = getCandidateStateDef(BaseVec);
   auto B_use = getCandidateStateUse(BaseVec);
-  if (!aliasOkay(S_use, B_def, B_use))
+  if (aliasSkip(S_use, B_def, B_use))
+    return false;
+  // Continue if alias has TARGET or is profitable.
+  if (!aliasOkay(S_use, B_def, B_use) && !isExtractFromProfitable(AllIEIs, BaseVec))
     return false;
 
   Value *Sub = AllIEIs[0].IEI;
@@ -1625,6 +1628,86 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateDef(Value 
       return AState::SKIP;
   }
   return AState::OK;
+}
+
+// Return true if extractFrom alias where there is no target (dpas, load, store, ...)
+// is estimated to be profitable.
+bool VariableReuseAnalysis::isExtractFromProfitable(const VecInsEltInfoTy &AllIEIs, Value *BaseVec) const {
+  if (IGC_IS_FLAG_DISABLED(VectorAliasBaseOutlivesSub))
+    return false;
+
+  // Alias if Base is live wherever Sub is live. This cannot increase register pressure.
+  Value *Base_nv = m_DeSSA->getNodeValue(BaseVec);
+  InsertElementInst *SubLast = AllIEIs.back().IEI;
+  if (!isLiveRangeCovered(SubLast, m_DeSSA->getNodeValue(SubLast), Base_nv))
+    return false;
+
+  // Each extractelement is aliased to Base as well, so it must not outlive
+  // Base either (it may have uses other than the insertelement chain).
+  for (const SVecInsEltInfo &Info : AllIEIs) {
+    ExtractElementInst *EEI = Info.EEI;
+    if (EEI && !m_DeSSA->isNoopAliaser(EEI) && !isLiveRangeCovered(EEI, m_DeSSA->getNodeValue(EEI), Base_nv))
+      return false;
+  }
+  return true;
+}
+
+// Return true if Base is live at every point where Sub is live. Then making
+// Sub an alias of Base does not make any live range longer. Sub and Base are
+// dessa node values; SubFinalDef defines Sub's final value (the last
+// insertelement of Sub's chain, or an extractelement aliased to Base).
+bool VariableReuseAnalysis::isLiveRangeCovered(Value *SubFinalDef, Value *Sub, Value *Base) const {
+  Instruction *SubI = dyn_cast<Instruction>(Sub);
+  if (!SubI || !isa<Instruction>(Base))
+    return false;
+
+  // LiveVars does not record phi uses as kills, so skip if Sub (or a no-op
+  // cast of it) is used by a phi.
+  SmallVector<Value *, 4> Worklist{SubFinalDef};
+  while (!Worklist.empty()) {
+    Value *V = Worklist.pop_back_val();
+    for (User *U : V->users()) {
+      if (isa<PHINode>(U))
+        return false;
+      if (isa<CastInst>(U) && m_DeSSA->getNodeValue(U) == Sub)
+        Worklist.push_back(U);
+    }
+  }
+
+  LiveVars *LV = m_DeSSA->getLiveVars();
+  LiveVars::LVInfo &SubLVI = LV->getLVInfo(Sub);
+  LiveVars::LVInfo &BaseLVI = LV->getLVInfo(Base);
+  if (SubLVI.Kills.empty() && SubLVI.AliveBlocks.empty())
+    return false;
+
+  // Base must be live through every block Sub is live through.
+  for (BasicBlock *BB : SubLVI.AliveBlocks) {
+    if (!BaseLVI.AliveBlocks.count(BB))
+      return false;
+  }
+
+  // In blocks where Sub dies, Base must be live out or die at the same place
+  // or later.
+  for (Instruction *K : SubLVI.Kills) {
+    BasicBlock *BB = K->getParent();
+    if (BaseLVI.AliveBlocks.count(BB) || LV->isLiveOut(Base, *BB))
+      continue;
+    bool HasKill = false;
+    for (Instruction *BK : BaseLVI.Kills) {
+      if (BK->getParent() != BB)
+        continue;
+      if (LV->getDistance(BK) < LV->getDistance(K))
+        return false;
+      HasKill = true;
+    }
+    if (!HasKill)
+      return false;
+  }
+
+  BasicBlock *DefBB = SubI->getParent();
+  if (LV->isLiveOut(Sub, *DefBB) && !LV->isLiveOut(Base, *DefBB))
+    return false;
+  return true;
 }
 
 // Vector alias disables extractMask optimization. This function

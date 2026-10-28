@@ -1854,6 +1854,10 @@ DECLARE_IGC_REGKEY(DWORD, VectorAlias, -1,
                    "Vector aliasing control under EnableVariableAlias. -1 - context default. "
                    "Some features are still experimental",
                    ALWAYS)
+DECLARE_IGC_REGKEY(bool, VectorAliasBaseOutlivesSub, false,
+                   "Allow sub-vector aliasing (extractFrom) without a target if the base vector is live "
+                   "wherever the sub-vector is live",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, VectorAliasBBThreshold, 200,
                    "Max number of BBs of a function that VectorAlias will apply. VectorAlias will skip for funtions "
                    "beyond this threshold",

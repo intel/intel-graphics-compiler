@@ -440,6 +440,11 @@ private:
     const bool AnySkip = (S0 == AState::SKIP || S1 == AState::SKIP || S2 == AState::SKIP);
     return AnyTarget && !AnySkip;
   }
+  static bool aliasSkip(AState S0, AState S1, AState S2) {
+    return S0 == AState::SKIP || S1 == AState::SKIP || S2 == AState::SKIP;
+  }
+  bool isExtractFromProfitable(const VecInsEltInfoTy &AllIEIs, llvm::Value *BaseVec) const;
+  bool isLiveRangeCovered(llvm::Value *SubFinalDef, llvm::Value *Sub, llvm::Value *Base) const;
   bool checkSubAlign(e_alignment &BaseAlign, llvm::Value *Subvec, llvm::Value *Basevec, int Base_ix);
 
   CodeGenContext *m_pCtx;
