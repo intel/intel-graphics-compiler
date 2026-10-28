@@ -100,6 +100,32 @@ e_alignment getMinAlignment(Value *V, WIAnalysis *WIA, CodeGenContext *pContext)
     return getSendPayloadAlignment(is64BitTy);
   return GetPreferredAlignment(V, WIA, pContext);
 }
+
+// LLVM math intrinsics that emit regular ALU instructions and can be
+// considered alias-safe.
+bool isAliasSafeIntrinsic(const CallInst *CallI) {
+  const IntrinsicInst *II = dyn_cast<IntrinsicInst>(CallI);
+  if (!II)
+    return false;
+  switch (II->getIntrinsicID()) {
+  case Intrinsic::exp2:
+  case Intrinsic::log2:
+  case Intrinsic::sqrt:
+  case Intrinsic::sin:
+  case Intrinsic::cos:
+  case Intrinsic::pow:
+  case Intrinsic::fabs:
+  case Intrinsic::fma:
+  case Intrinsic::minnum:
+  case Intrinsic::maxnum:
+  case Intrinsic::floor:
+  case Intrinsic::ceil:
+  case Intrinsic::trunc:
+    return true;
+  default:
+    return false;
+  }
+}
 } // namespace
 
 char VariableReuseAnalysis::ID = 0;
@@ -1496,7 +1522,7 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateUse(Value 
     } else if (CallInst *CallI = dyn_cast<CallInst>(Val)) {
       if (CallI->isInlineAsm())
         retSt = AState::TARGET;
-      else
+      else if (!isAliasSafeIntrinsic(CallI))
         return AState::SKIP;
     }
   }
@@ -1527,7 +1553,8 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateDef(Value 
   } else if (CallInst *CallI = dyn_cast<CallInst>(Val)) {
     if (CallI->isInlineAsm())
       return AState::TARGET;
-    return AState::SKIP;
+    if (!isAliasSafeIntrinsic(CallI))
+      return AState::SKIP;
   }
   return AState::OK;
 }
