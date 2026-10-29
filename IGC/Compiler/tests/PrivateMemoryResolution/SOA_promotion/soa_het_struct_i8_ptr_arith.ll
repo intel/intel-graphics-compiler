@@ -7,13 +7,14 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
 ; Typed-pointer byte-address arithmetic on a heterogeneous-struct alloca:
 ; struct* -> i8*, a constant byte GEP, then i8* -> struct* again.
 ;
-; RUN: igc_opt --typed-pointers --ocl --platformPtl --igc-private-mem-resolution \
-; RUN:   --regkey EnablePrivMemNewSOATranspose=1,EnableAggressiveSOAPromotion=1 -S %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --ocl --platformPtl --igc-private-mem-resolution \
+; RUN:   --regkey EnablePrivMemNewSOATranspose=1,EnableAggressiveSOAPromotion=1 -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --ocl --platformPtl --igc-private-mem-resolution \
+; RUN:   --regkey EnablePrivMemNewSOATranspose=1,EnableAggressiveSOAPromotion=1 -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
@@ -28,13 +29,16 @@ target triple = "spir64-unknown-unknown"
 ; CHECK-LABEL: @test_i8_ptr_arith(
 ; CHECK:       [[SIMDSIZE:%.*]] = call i32 @llvm.genx.GenISA.simdSize()
 ; CHECK:       mul i32 [[SIMDSIZE]], 16
-; CHECK:       store float 1.000000e+00, float* %{{.*}}, align 4
+; CHECK-TYPED:       store float 1.000000e+00, float* %{{.*}}, align 4
+; CHECK-OPAQUE:       store float 1.000000e+00, ptr %{{.*}}, align 4
 ; CHECK:       mul i32 [[SIMDSIZE]], 20
-; CHECK:       store i32 7, i32* %{{.*}}, align 4
+; CHECK-TYPED:       store i32 7, i32* %{{.*}}, align 4
+; CHECK-OPAQUE:       store i32 7, ptr %{{.*}}, align 4
 ; CHECK:       [[OFF:%.*]] = mul nsw i32 %{{.*}}, 8
 ; CHECK:       [[OFF4:%.*]] = add nsw i32 [[OFF]], 4
 ; CHECK:       lshr i32 [[OFF4]], 2
-; CHECK:       load i32, i32* %{{.*}}, align 4
+; CHECK-TYPED:       load i32, i32* %{{.*}}, align 4
+; CHECK-OPAQUE:       load i32, ptr %{{.*}}, align 4
 ; CHECK-NOT:   bitcast
 define spir_kernel void @test_i8_ptr_arith(i32 addrspace(1)* nocapture %d, i32 %ix, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase) {
 entry:

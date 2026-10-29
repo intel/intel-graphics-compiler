@@ -6,9 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN: igc_opt --typed-pointers -regkey TestIGCPreCompiledFunctions=1 --platformdg2 --igc-precompiled-import --print-codegencontext -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -regkey TestIGCPreCompiledFunctions=1 --platformdg2 --igc-precompiled-import --print-codegencontext -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -regkey TestIGCPreCompiledFunctions=1 --platformdg2 --igc-precompiled-import --print-codegencontext -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; PreCompiledFuncImport
 ; ------------------------------------------------
@@ -33,13 +33,20 @@ define void @fadd_kernel(double addrspace(1)* %inA, double addrspace(1)* %inB, d
 ; CHECK:  [[ADD0:%.*]] = add i32 [[MUL]], [[LOCAL_ID_X]]
 ; CHECK:  [[ADD1:%.*]] = add i32 [[ADD0]], [[TMP0]]
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
-; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
-; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
-; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %inB, i64 [[CONV0]]
-; CHECK:  [[TMP4:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX1]], align 8
-; CHECK:  [[CALL_FADD:%.*]] = call spir_func double @__igcbuiltin_dp_add(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
-; CHECK:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
-; CHECK:  store double [[CALL_FADD]], double addrspace(1)* [[ARRAY_IDX2]], align 8
+; CHECK-TYPED:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, ptr addrspace(1) %inA, i64 [[CONV0]]
+; CHECK-TYPED:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
+; CHECK-OPAQUE:  [[TMP3:%.*]] = load double, ptr addrspace(1) [[ARRAY_IDX0]], align 8
+; CHECK-TYPED:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %inB, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, ptr addrspace(1) %inB, i64 [[CONV0]]
+; CHECK-TYPED:  [[TMP4:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX1]], align 8
+; CHECK-OPAQUE:  [[TMP4:%.*]] = load double, ptr addrspace(1) [[ARRAY_IDX1]], align 8
+; CHECK-TYPED:  [[CALL_FADD:%.*]] = call spir_func double @__igcbuiltin_dp_add(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
+; CHECK-OPAQUE:  [[CALL_FADD:%.*]] = call spir_func double @__igcbuiltin_dp_add(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, ptr [[DPEmuFlag]])
+; CHECK-TYPED:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, ptr addrspace(1) %out, i64 [[CONV0]]
+; CHECK-TYPED:  store double [[CALL_FADD]], double addrspace(1)* [[ARRAY_IDX2]], align 8
+; CHECK-OPAQUE:  store double [[CALL_FADD]], ptr addrspace(1) [[ARRAY_IDX2]], align 8
 ; CHECK:  ret void
 ;
 entry:
@@ -73,13 +80,20 @@ define void @fsub_kernel(double addrspace(1)* %inA, double addrspace(1)* %inB, d
 ; CHECK:  [[ADD0:%.*]] = add i32 [[MUL]], [[LOCAL_ID_X]]
 ; CHECK:  [[ADD1:%.*]] = add i32 [[ADD0]], [[TMP0]]
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
-; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
-; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
-; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %inB, i64 [[CONV0]]
-; CHECK:  [[TMP4:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX1]], align 8
-; CHECK:  [[CALL_FSUB:%.*]] = call spir_func double @__igcbuiltin_dp_sub(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
-; CHECK:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
-; CHECK:  store double [[CALL_FSUB]], double addrspace(1)* [[ARRAY_IDX2]], align 8
+; CHECK-TYPED:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, ptr addrspace(1) %inA, i64 [[CONV0]]
+; CHECK-TYPED:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
+; CHECK-OPAQUE:  [[TMP3:%.*]] = load double, ptr addrspace(1) [[ARRAY_IDX0]], align 8
+; CHECK-TYPED:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %inB, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, ptr addrspace(1) %inB, i64 [[CONV0]]
+; CHECK-TYPED:  [[TMP4:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX1]], align 8
+; CHECK-OPAQUE:  [[TMP4:%.*]] = load double, ptr addrspace(1) [[ARRAY_IDX1]], align 8
+; CHECK-TYPED:  [[CALL_FSUB:%.*]] = call spir_func double @__igcbuiltin_dp_sub(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
+; CHECK-OPAQUE:  [[CALL_FSUB:%.*]] = call spir_func double @__igcbuiltin_dp_sub(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, ptr [[DPEmuFlag]])
+; CHECK-TYPED:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, ptr addrspace(1) %out, i64 [[CONV0]]
+; CHECK-TYPED:  store double [[CALL_FSUB]], double addrspace(1)* [[ARRAY_IDX2]], align 8
+; CHECK-OPAQUE:  store double [[CALL_FSUB]], ptr addrspace(1) [[ARRAY_IDX2]], align 8
 ; CHECK:  ret void
 ;
 entry:
@@ -113,13 +127,20 @@ define void @fmul_kernel(double addrspace(1)* %inA, double addrspace(1)* %inB, d
 ; CHECK:  [[ADD0:%.*]] = add i32 [[MUL]], [[LOCAL_ID_X]]
 ; CHECK:  [[ADD1:%.*]] = add i32 [[ADD0]], [[TMP0]]
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
-; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
-; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
-; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %inB, i64 [[CONV0]]
-; CHECK:  [[TMP4:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX1]], align 8
-; CHECK:  [[CALL_FMUL:%.*]] = call spir_func double @__igcbuiltin_dp_mul(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
-; CHECK:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
-; CHECK:  store double [[CALL_FMUL]], double addrspace(1)* [[ARRAY_IDX2]], align 8
+; CHECK-TYPED:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, ptr addrspace(1) %inA, i64 [[CONV0]]
+; CHECK-TYPED:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
+; CHECK-OPAQUE:  [[TMP3:%.*]] = load double, ptr addrspace(1) [[ARRAY_IDX0]], align 8
+; CHECK-TYPED:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %inB, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, ptr addrspace(1) %inB, i64 [[CONV0]]
+; CHECK-TYPED:  [[TMP4:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX1]], align 8
+; CHECK-OPAQUE:  [[TMP4:%.*]] = load double, ptr addrspace(1) [[ARRAY_IDX1]], align 8
+; CHECK-TYPED:  [[CALL_FMUL:%.*]] = call spir_func double @__igcbuiltin_dp_mul(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
+; CHECK-OPAQUE:  [[CALL_FMUL:%.*]] = call spir_func double @__igcbuiltin_dp_mul(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, ptr [[DPEmuFlag]])
+; CHECK-TYPED:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, ptr addrspace(1) %out, i64 [[CONV0]]
+; CHECK-TYPED:  store double [[CALL_FMUL]], double addrspace(1)* [[ARRAY_IDX2]], align 8
+; CHECK-OPAQUE:  store double [[CALL_FMUL]], ptr addrspace(1) [[ARRAY_IDX2]], align 8
 ; CHECK:  ret void
 ;
 entry:
@@ -153,13 +174,20 @@ define void @fdiv_kernel(double addrspace(1)* %inA, double addrspace(1)* %inB, d
 ; CHECK:  [[ADD0:%.*]] = add i32 [[MUL]], [[LOCAL_ID_X]]
 ; CHECK:  [[ADD1:%.*]] = add i32 [[ADD0]], [[TMP0]]
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
-; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
-; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
-; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %inB, i64 [[CONV0]]
-; CHECK:  [[TMP4:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX1]], align 8
-; CHECK:  [[CALL_FDIV:%.*]] = call spir_func double @__igcbuiltin_dp_div(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
-; CHECK:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
-; CHECK:  store double [[CALL_FDIV]], double addrspace(1)* [[ARRAY_IDX2]], align 8
+; CHECK-TYPED:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, ptr addrspace(1) %inA, i64 [[CONV0]]
+; CHECK-TYPED:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
+; CHECK-OPAQUE:  [[TMP3:%.*]] = load double, ptr addrspace(1) [[ARRAY_IDX0]], align 8
+; CHECK-TYPED:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, double addrspace(1)* %inB, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds double, ptr addrspace(1) %inB, i64 [[CONV0]]
+; CHECK-TYPED:  [[TMP4:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX1]], align 8
+; CHECK-OPAQUE:  [[TMP4:%.*]] = load double, ptr addrspace(1) [[ARRAY_IDX1]], align 8
+; CHECK-TYPED:  [[CALL_FDIV:%.*]] = call spir_func double @__igcbuiltin_dp_div(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
+; CHECK-OPAQUE:  [[CALL_FDIV:%.*]] = call spir_func double @__igcbuiltin_dp_div(double [[TMP3]], double [[TMP4]], i32 0, i32 0, i32 0, ptr [[DPEmuFlag]])
+; CHECK-TYPED:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, ptr addrspace(1) %out, i64 [[CONV0]]
+; CHECK-TYPED:  store double [[CALL_FDIV]], double addrspace(1)* [[ARRAY_IDX2]], align 8
+; CHECK-OPAQUE:  store double [[CALL_FDIV]], ptr addrspace(1) [[ARRAY_IDX2]], align 8
 ; CHECK:  ret void
 ;
 entry:
@@ -193,11 +221,16 @@ define void @sqrt_kernel(double addrspace(1)* %inA, double addrspace(1)* %out, <
 ; CHECK:  [[ADD0:%.*]] = add i32 [[MUL]], [[LOCAL_ID_X]]
 ; CHECK:  [[ADD1:%.*]] = add i32 [[ADD0]], [[TMP0]]
 ; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
-; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
-; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
-; CHECK:  [[CALL_SQRT:%.*]] = call spir_func double @__igcbuiltin_dp_sqrt(double [[TMP3]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
-; CHECK:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
-; CHECK:  store double [[CALL_SQRT]], double addrspace(1)* [[ARRAY_IDX2]], align 8
+; CHECK-TYPED:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, ptr addrspace(1) %inA, i64 [[CONV0]]
+; CHECK-TYPED:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
+; CHECK-OPAQUE:  [[TMP3:%.*]] = load double, ptr addrspace(1) [[ARRAY_IDX0]], align 8
+; CHECK-TYPED:  [[CALL_SQRT:%.*]] = call spir_func double @__igcbuiltin_dp_sqrt(double [[TMP3]], i32 0, i32 0, i32 0, i32* [[DPEmuFlag]])
+; CHECK-OPAQUE:  [[CALL_SQRT:%.*]] = call spir_func double @__igcbuiltin_dp_sqrt(double [[TMP3]], i32 0, i32 0, i32 0, ptr [[DPEmuFlag]])
+; CHECK-TYPED:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, double addrspace(1)* %out, i64 [[CONV0]]
+; CHECK-OPAQUE:  [[ARRAY_IDX2:%.*]] = getelementptr inbounds double, ptr addrspace(1) %out, i64 [[CONV0]]
+; CHECK-TYPED:  store double [[CALL_SQRT]], double addrspace(1)* [[ARRAY_IDX2]], align 8
+; CHECK-OPAQUE:  store double [[CALL_SQRT]], ptr addrspace(1) [[ARRAY_IDX2]], align 8
 ; CHECK:  ret void
 ;
 entry:

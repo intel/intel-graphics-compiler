@@ -6,9 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-promote-sub-byte -S %s -o %t.ll
-; RUN: FileCheck %s --input-file=%t.ll
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-promote-sub-byte -S %s -o %t.opaque.ll %}
+; RUN: %if llvm-16-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE --input-file=%t.opaque.ll %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-promote-sub-byte -S %s -o %t.typed.ll %}
+; RUN: %if !llvm-17-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-TYPED --input-file=%t.typed.ll %}
 
 define spir_func void @icmps() {
   %1 = alloca i8, align 1
@@ -27,4 +28,5 @@ define spir_func void @icmps() {
 ; CHECK-NEXT: %6 = zext i1 %5 to i8
 ; CHECK-NEXT: %7 = icmp ne i8 %6, 1
 ; CHECK-NEXT: %8 = select i1 %7, i8 1, i8 0
-; CHECK-NEXT: store i8 %8, i8 addrspace(4)* %2, align 1
+; CHECK-TYPED-NEXT: store i8 %8, i8 addrspace(4)* %2, align 1
+; CHECK-OPAQUE-NEXT: store i8 %8, ptr addrspace(4) %2, align 1

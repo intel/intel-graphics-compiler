@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --enable-debugify --igc-promote-to-predicated-memory-access --platformbmg -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --enable-debugify --igc-promote-to-predicated-memory-access --platformbmg -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --enable-debugify --igc-promote-to-predicated-memory-access --platformbmg -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; Debug-info related check
 ; 11 warnings are related to 11 deleted phi instructions
@@ -22,7 +22,8 @@ entry:
   br i1 %pred, label %st, label %exit
 
 st:
-; CHECK: %load = call <4 x float> @llvm.genx.GenISA.PredicatedLoad.v4f32.p1v4f32.v4f32(<4 x float> addrspace(1)* %src, i64 16, i1 %pred, <4 x float> zeroinitializer)
+; CHECK-TYPED: %load = call <4 x float> @llvm.genx.GenISA.PredicatedLoad.v4f32.p1v4f32.v4f32(<4 x float> addrspace(1)* %src, i64 16, i1 %pred, <4 x float> zeroinitializer)
+; CHECK-OPAQUE: %load = call <4 x float> @llvm.genx.GenISA.PredicatedLoad.v4f32.p1.v4f32(ptr addrspace(1) %src, i64 16, i1 %pred, <4 x float> zeroinitializer)
   %load = load <4 x float>, <4 x float> addrspace(1)* %src, align 16
   %.scalar = extractelement <4 x float> %load, i64 0
   %.scalar15 = extractelement <4 x float> %load, i64 1
@@ -59,7 +60,8 @@ st:
 ; CHECK: [[TMP1:%[0-9]+]] = insertelement <4 x float> [[TMP0]], float %d3, i64 1
 ; CHECK: [[TMP2:%[0-9]+]] = insertelement <4 x float> [[TMP1]], float %d2, i64 2
 ; CHECK: [[TMP3:%[0-9]+]] = insertelement <4 x float> [[TMP2]], float %d4, i64 3
-; CHECK: %load = call <4 x float> @llvm.genx.GenISA.PredicatedLoad.v4f32.p1v4f32.v4f32(<4 x float> addrspace(1)* %src, i64 16, i1 %pred, <4 x float> [[TMP3]])
+; CHECK-TYPED: %load = call <4 x float> @llvm.genx.GenISA.PredicatedLoad.v4f32.p1v4f32.v4f32(<4 x float> addrspace(1)* %src, i64 16, i1 %pred, <4 x float> [[TMP3]])
+; CHECK-OPAQUE: %load = call <4 x float> @llvm.genx.GenISA.PredicatedLoad.v4f32.p1.v4f32(ptr addrspace(1) %src, i64 16, i1 %pred, <4 x float> [[TMP3]])
   %load = load <4 x float>, <4 x float> addrspace(1)* %src, align 16
   %.scalar = extractelement <4 x float> %load, i64 0
   %.scalar15 = extractelement <4 x float> %load, i64 1
@@ -92,7 +94,8 @@ entry:
   br i1 %pred, label %st, label %exit
 
 st:
-; CHECK: %load = load <4 x float>, <4 x float> addrspace(1)* %src, align 16
+; CHECK-TYPED: %load = load <4 x float>, <4 x float> addrspace(1)* %src, align 16
+; CHECK-OPAQUE: %load = load <4 x float>, ptr addrspace(1) %src, align 16
   %load = load <4 x float>, <4 x float> addrspace(1)* %src, align 16
   %.scalar = extractelement <4 x float> %load, i64 %id0
   %.scalar15 = extractelement <4 x float> %load, i64 %id1
@@ -120,7 +123,8 @@ exit:
 ; CHECK-LABEL: @test4(
 define <4 x float> @test4(<4 x float> addrspace(1)* %src, i1 %pred) {
 entry:
-; CHECK: %load = load <4 x float>, <4 x float> addrspace(1)* %src, align 16
+; CHECK-TYPED: %load = load <4 x float>, <4 x float> addrspace(1)* %src, align 16
+; CHECK-OPAQUE: %load = load <4 x float>, ptr addrspace(1) %src, align 16
 ; CHECK: br i1 %pred, label %st, label %exit
   %load = load <4 x float>, <4 x float> addrspace(1)* %src, align 16
   br i1 %pred, label %st, label %exit
@@ -160,7 +164,8 @@ st:
 ; CHECK: [[TMP1:%[0-9]+]] = insertelement <4 x float> [[TMP0]], float %d2, i64 1
 ; CHECK: [[TMP2:%[0-9]+]] = insertelement <4 x float> [[TMP1]], float 0.000000e+00, i64 2
 ; CHECK: [[TMP3:%[0-9]+]] = insertelement <4 x float> [[TMP2]], float %d3, i64 3
-; CHECK: %load = call <4 x float> @llvm.genx.GenISA.PredicatedLoad.v4f32.p1v4f32.v4f32(<4 x float> addrspace(1)* %src, i64 16, i1 %pred, <4 x float> [[TMP3]])
+; CHECK-TYPED: %load = call <4 x float> @llvm.genx.GenISA.PredicatedLoad.v4f32.p1v4f32.v4f32(<4 x float> addrspace(1)* %src, i64 16, i1 %pred, <4 x float> [[TMP3]])
+; CHECK-OPAQUE: %load = call <4 x float> @llvm.genx.GenISA.PredicatedLoad.v4f32.p1.v4f32(ptr addrspace(1) %src, i64 16, i1 %pred, <4 x float> [[TMP3]])
   %load = load <4 x float>, <4 x float> addrspace(1)* %src, align 16
   %.scalar = extractelement <4 x float> %load, i64 0
   %.scalar15 = extractelement <4 x float> %load, i64 1
@@ -220,7 +225,8 @@ entry:
   br i1 %pred, label %st, label %exit
 
 st:
-; CHECK: %load = load volatile <4 x float>, <4 x float> addrspace(1)* %src, align 16
+; CHECK-TYPED: %load = load volatile <4 x float>, <4 x float> addrspace(1)* %src, align 16
+; CHECK-OPAQUE: %load = load volatile <4 x float>, ptr addrspace(1) %src, align 16
   %load = load volatile <4 x float>, <4 x float> addrspace(1)* %src, align 16
   %.scalar = extractelement <4 x float> %load, i64 0
   %.scalar15 = extractelement <4 x float> %load, i64 1
@@ -252,7 +258,8 @@ entry:
   br i1 %pred, label %st, label %exit
 
 st:
-; CHECK: %load = load <4 x float>, <4 x float> addrspace(1)* %src, align 16
+; CHECK-TYPED: %load = load <4 x float>, <4 x float> addrspace(1)* %src, align 16
+; CHECK-OPAQUE: %load = load <4 x float>, ptr addrspace(1) %src, align 16
   %load = load <4 x float>, <4 x float> addrspace(1)* %src, align 16
   %.scalar = extractelement <4 x float> %load, i64 0
   %.scalar15 = extractelement <4 x float> %load, i64 1

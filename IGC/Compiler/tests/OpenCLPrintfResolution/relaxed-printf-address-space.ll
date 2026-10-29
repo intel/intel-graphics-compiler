@@ -6,9 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-opencl-printf-resolution -igc-serialize-metadata \
-; RUN:   -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-opencl-printf-resolution -igc-serialize-metadata \
+; RUN:   -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-opencl-printf-resolution -igc-serialize-metadata \
+; RUN:   -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; OpenCLPrintfResolution
 ; ------------------------------------------------
@@ -18,9 +19,12 @@
 ; (this tested the case with EnableZEBinary=1 which is the default now)
 
 ; CHECK:     !{!"stringConstants",
-; CHECK-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", [3 x i8] addrspace(2)* @fmt_str}
-; CHECK-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", [3 x i8] addrspace(1)* @opencl_printf_str}
-; CHECK-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", [3 x i8] addrspace(1)* @sycl_printf_str}
+; CHECK-TYPED-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", [3 x i8] addrspace(2)* @fmt_str}
+; CHECK-OPAQUE-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", ptr addrspace(2) @fmt_str}
+; CHECK-TYPED-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", [3 x i8] addrspace(1)* @opencl_printf_str}
+; CHECK-OPAQUE-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", ptr addrspace(1) @opencl_printf_str}
+; CHECK-TYPED-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", [3 x i8] addrspace(1)* @sycl_printf_str}
+; CHECK-OPAQUE-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", ptr addrspace(1) @sycl_printf_str}
 
 @fmt_str = internal unnamed_addr addrspace(2) constant [3 x i8] c"%s\00", align 1
 @opencl_printf_str = internal unnamed_addr addrspace(1) constant [3 x i8] c"A\0A\00", align 1

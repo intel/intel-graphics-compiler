@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --enable-debugify --igc-promote-to-predicated-memory-access --platformbmg -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --enable-debugify --igc-promote-to-predicated-memory-access --platformbmg -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --enable-debugify --igc-promote-to-predicated-memory-access --platformbmg -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; Debug-info related check
 ; 2 warnings are related to 2 deleted phi instructions
@@ -22,7 +22,8 @@ entry:
   br i1 %pred, label %st, label %exit
 
 st:
-; CHECK: %load = call <64 x i32> @llvm.genx.GenISA.PredicatedLoad.v64i32.p1v64i32.v64i32(<64 x i32> addrspace(1)* %src, i64 4, i1 %pred, <64 x i32> %data)
+; CHECK-TYPED: %load = call <64 x i32> @llvm.genx.GenISA.PredicatedLoad.v64i32.p1v64i32.v64i32(<64 x i32> addrspace(1)* %src, i64 4, i1 %pred, <64 x i32> %data)
+; CHECK-OPAQUE: %load = call <64 x i32> @llvm.genx.GenISA.PredicatedLoad.v64i32.p1.v64i32(ptr addrspace(1) %src, i64 4, i1 %pred, <64 x i32> %data)
   %load = load <64 x i32>, <64 x i32> addrspace(1)* %src, align 4
   br label %exit
 
@@ -42,7 +43,8 @@ entry:
 
 st:
 ; CHECK: [[NOT:%.*]] = xor i1 %pred, true
-; CHECK: %load = call <64 x i32> @llvm.genx.GenISA.PredicatedLoad.v64i32.p1v64i32.v64i32(<64 x i32> addrspace(1)* %src, i64 4, i1 [[NOT]], <64 x i32> %data)
+; CHECK-TYPED: %load = call <64 x i32> @llvm.genx.GenISA.PredicatedLoad.v64i32.p1v64i32.v64i32(<64 x i32> addrspace(1)* %src, i64 4, i1 [[NOT]], <64 x i32> %data)
+; CHECK-OPAQUE: %load = call <64 x i32> @llvm.genx.GenISA.PredicatedLoad.v64i32.p1.v64i32(ptr addrspace(1) %src, i64 4, i1 [[NOT]], <64 x i32> %data)
   %load = load <64 x i32>, <64 x i32> addrspace(1)* %src, align 4
   br label %exit
 
@@ -61,7 +63,8 @@ entry:
   br i1 %pred, label %exit, label %st
 
 st:
-; CHECK: %load = load <64 x i32>, <64 x i32> addrspace(1)* %src, align 4
+; CHECK-TYPED: %load = load <64 x i32>, <64 x i32> addrspace(1)* %src, align 4
+; CHECK-OPAQUE: %load = load <64 x i32>, ptr addrspace(1) %src, align 4
   %load = load <64 x i32>, <64 x i32> addrspace(1)* %src, align 4
   %a = add i32 3, 8
   br label %exit
@@ -86,7 +89,8 @@ if:
   br i1 %pred.b, label %then, label %exit
 
 then:
-; CHECK: %load = load <64 x i32>, <64 x i32> addrspace(1)* %src, align 4
+; CHECK-TYPED: %load = load <64 x i32>, <64 x i32> addrspace(1)* %src, align 4
+; CHECK-OPAQUE: %load = load <64 x i32>, ptr addrspace(1) %src, align 4
   %load = load <64 x i32>, <64 x i32> addrspace(1)* %src, align 4
   br label %exit
 
@@ -105,7 +109,8 @@ entry:
   br i1 %pred, label %st, label %exit
 
 st:
-; CHECK: %load = load volatile <64 x i32>, <64 x i32> addrspace(1)* %src, align 4
+; CHECK-TYPED: %load = load volatile <64 x i32>, <64 x i32> addrspace(1)* %src, align 4
+; CHECK-OPAQUE: %load = load volatile <64 x i32>, ptr addrspace(1) %src, align 4
   %load = load volatile <64 x i32>, <64 x i32> addrspace(1)* %src, align 4
   br label %exit
 
@@ -124,7 +129,8 @@ entry:
   br i1 %pred, label %st, label %exit
 
 st:
-; CHECK: %load = load i42, i42 addrspace(1)* %src, align 4
+; CHECK-TYPED: %load = load i42, i42 addrspace(1)* %src, align 4
+; CHECK-OPAQUE: %load = load i42, ptr addrspace(1) %src, align 4
   %load = load i42, i42 addrspace(1)* %src, align 4
   br label %exit
 
@@ -143,7 +149,8 @@ entry:
   br i1 %pred, label %st, label %exit
 
 st:
-; CHECK: %load = load i32, i32 addrspace(1)* %src, align 4
+; CHECK-TYPED: %load = load i32, i32 addrspace(1)* %src, align 4
+; CHECK-OPAQUE: %load = load i32, ptr addrspace(1) %src, align 4
   %load = load i32, i32 addrspace(1)* %src, align 4
   call void @side_effect_function()
   br label %exit
@@ -165,7 +172,8 @@ entry:
   br i1 %pred, label %st, label %exit
 
 st:
-; CHECK: %load = load i32, i32 addrspace(1)* %src, align 4
+; CHECK-TYPED: %load = load i32, i32 addrspace(1)* %src, align 4
+; CHECK-OPAQUE: %load = load i32, ptr addrspace(1) %src, align 4
   %load = load i32, i32 addrspace(1)* %src, align 4
   call void @convergent_function()
   br label %exit
@@ -187,7 +195,8 @@ entry:
   br i1 %pred, label %st, label %exit
 
 st:
-; CHECK: %load = load i32, i32 addrspace(1)* %src, align 4
+; CHECK-TYPED: %load = load i32, i32 addrspace(1)* %src, align 4
+; CHECK-OPAQUE: %load = load i32, ptr addrspace(1) %src, align 4
   %load = load i32, i32 addrspace(1)* %src, align 4
   %load1 = load i32, i32 addrspace(1)* %src1, align 4
   br label %exit

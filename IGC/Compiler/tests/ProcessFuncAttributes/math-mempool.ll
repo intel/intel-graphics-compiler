@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -debugify --igc-process-func-attributes -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -debugify --igc-process-func-attributes -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -debugify --igc-process-func-attributes -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ;
 ; Checks that alwaysinline attibute is set for FastRelaxMath and MemPool
@@ -17,7 +17,8 @@
 ; CHECK: CheckModuleDebugify: PASS
 
 ; CHECK: ; Function Attrs: alwaysinline
-; CHECK: define internal void @test_prfuncattr(i32 %src, i32* %dst){{.*}} [[ATTR:#[0-9]*]]
+; CHECK-TYPED: define internal void @test_prfuncattr(i32 %src, i32* %dst){{.*}} [[ATTR:#[0-9]*]]
+; CHECK-OPAQUE: define internal void @test_prfuncattr(i32 %src, ptr %dst){{.*}} [[ATTR:#[0-9]*]]
 
 @__bif_flag_FastRelaxedMath = constant i1 true
 

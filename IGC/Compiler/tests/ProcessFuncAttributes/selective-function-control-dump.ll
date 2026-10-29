@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: regkeys, opaque-ptr-fix
-; RUN: igc_opt --opaque-pointers --igc-process-func-attributes -regkey FunctionControl=3,SelectiveFunctionControl=2,SelectiveFunctionControlFile=%t < %s
+; REQUIRES: regkeys
+; RUN: igc_opt --typed-pointers --igc-process-func-attributes -regkey FunctionControl=3,SelectiveFunctionControl=2,SelectiveFunctionControlFile=%t -disable-output < %s
 ; RUN: cat %t | FileCheck %s
 ; ------------------------------------------------
 
@@ -18,28 +18,28 @@
 ; CHECK-DAG: foo3
 ; CHECK-NOT: declared_foo
 
-define spir_func i32 @foo1(ptr %src) #0 {
-  %1 = load i32, ptr %src
+define spir_func i32 @foo1(i32* %src) #0 {
+  %1 = load i32, i32* %src
   %2 = add i32 %1, 144
   ret i32 %2
 }
 
-define spir_func i32 @foo2(ptr %src) #1 {
-  %1 = load i32, ptr %src
+define spir_func i32 @foo2(i32* %src) #1 {
+  %1 = load i32, i32* %src
   %2 = mul i32 %1, 13
   ret i32 %2
 }
 
-define spir_func i32 @foo3(ptr %src) #0 {
-  %1 = load i32, ptr %src
+define spir_func i32 @foo3(i32* %src) #0 {
+  %1 = load i32, i32* %src
   %2 = mul i32 %1, 13
   ret i32 %2
 }
 
-define spir_kernel void @test_kernel(ptr %a) #0 {
-  %1 = call i32 @foo1(ptr %a)
-  %2 = call i32 @foo2(ptr %a)
-  %3 = call i32 @foo3(ptr %a)
+define spir_kernel void @test_kernel(i32* %a) #0 {
+  %1 = call i32 @foo1(i32* %a)
+  %2 = call i32 @foo2(i32* %a)
+  %3 = call i32 @foo3(i32* %a)
   %4 = mul i32 %1, %2
   %5 = add i32 %4, %3
   call void @declared_foo(i32 %5)
@@ -52,6 +52,6 @@ attributes #0 = { noinline optnone }
 attributes #1 = { alwaysinline }
 
 !igc.functions = !{!1}
-!1 = !{ptr @test_kernel, !2}
+!1 = !{void (i32*)* @test_kernel, !2}
 !2 = !{!3}
 !3 = !{!"function_type", i32 0}

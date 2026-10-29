@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify -PromoteConstant -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify -PromoteConstant -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify -PromoteConstant -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; PromoteConstant
 ; ------------------------------------------------
@@ -23,8 +23,10 @@
 define spir_kernel void @test_promoteconst(i32 %a, i32* %b) #0 {
 ; CHECK-LABEL: @test_promoteconst(
 ; CHECK:  entry:
-; CHECK:    [[TMP0:%.*]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(2)* @a, i32 0, i32 [[A:%[A-z0-9]*]]
-; CHECK:    [[TMP1:%.*]] = getelementptr inbounds [16 x i32], [16 x i32] addrspace(2)* @b, i32 0, i32 [[A]]
+; CHECK-TYPED:    [[TMP0:%.*]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(2)* @a, i32 0, i32 [[A:%[A-z0-9]*]]
+; CHECK-OPAQUE:    [[TMP0:%.*]] = getelementptr inbounds [4 x i32], ptr addrspace(2) @a, i32 0, i32 [[A:%[A-z0-9]*]]
+; CHECK-TYPED:    [[TMP1:%.*]] = getelementptr inbounds [16 x i32], [16 x i32] addrspace(2)* @b, i32 0, i32 [[A]]
+; CHECK-OPAQUE:    [[TMP1:%.*]] = getelementptr inbounds [16 x i32], ptr addrspace(2) @b, i32 0, i32 [[A]]
 ; CHECK:    br label %bb1
 ; CHECK:  bb1:
 ; CHECK:    [[TMP2:%.*]] = icmp eq i32 [[A]], 0
@@ -38,7 +40,8 @@ define spir_kernel void @test_promoteconst(i32 %a, i32* %b) #0 {
 ; CHECK:    [[TMP10:%.*]] = icmp sgt i32 [[TMP7]], [[TMP9]]
 ; CHECK:    br i1 [[TMP10]], label %bb1, label %end
 ; CHECK:  end:
-; CHECK:    store i32 [[TMP9]], i32* [[B:%.*]]
+; CHECK-TYPED:    store i32 [[TMP9]], i32* [[B:%.*]]
+; CHECK-OPAQUE:    store i32 [[TMP9]], ptr [[B:%.*]]
 ; CHECK:    ret void
 ;
 entry:

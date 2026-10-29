@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
 ; Test that a heterogeneous struct alloca ([64 x {float, float, i32}]) is
 ; promoted to SoA even when two adjacent 4B float fields are accessed as a

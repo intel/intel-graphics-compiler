@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --regkey EnableSOAPromotionDisablingHeuristic=1 --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution --platformtgllp -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --regkey EnableSOAPromotionDisablingHeuristic=1 --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution --platformtgllp -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --regkey EnableSOAPromotionDisablingHeuristic=1 --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution --platformtgllp -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; The stored vector has the same baseType and number of elements as alloca type
 ; Apply SOA, but preserve the vector store (vectorSOA)
@@ -24,12 +24,15 @@ define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %sr
 ; CHECK-NEXT:    [[PERLANEOFFSET:%.*]] = mul i32 [[SIMDLANEID]], 16
 ; CHECK-NEXT:    [[OUT_TOTALOFFSET:%.*]] = add i32 [[OUT_SIMDBUFFEROFFSET]], [[PERLANEOFFSET]]
 ; CHECK-NEXT:    [[OUT_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[OUT_TOTALOFFSET]]
-; CHECK-NEXT:    [[OUT_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[OUT_THREADOFFSET]] to [7 x <4 x i32>]*
+; CHECK-TYPED-NEXT:    [[OUT_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[OUT_THREADOFFSET]] to [7 x <4 x i32>]*
+; CHECK-OPAQUE-NEXT:    [[OUT_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[OUT_THREADOFFSET]] to ptr{{$}}
 ; CHECK-NEXT:    [[TMP0:%.*]] = mul i32 [[SIMDSIZE]], 16
 ; CHECK-NEXT:    [[TMP1:%.*]] = mul i32 0, [[TMP0]]
 ; CHECK-NEXT:    [[TMP2:%.*]] = add i32 [[OUT_THREADOFFSET]], [[TMP1]]
-; CHECK-NEXT:    [[TMP3:%.*]] = inttoptr i32 [[TMP2]] to <4 x i32>*
-; CHECK-NEXT:    store <4 x i32> zeroinitializer, <4 x i32>* [[TMP3]], align 16
+; CHECK-TYPED-NEXT:    [[TMP3:%.*]] = inttoptr i32 [[TMP2]] to <4 x i32>*
+; CHECK-OPAQUE-NEXT:    [[TMP3:%.*]] = inttoptr i32 [[TMP2]] to ptr{{$}}
+; CHECK-TYPED-NEXT:    store <4 x i32> zeroinitializer, <4 x i32>* [[TMP3]], align 16
+; CHECK-OPAQUE-NEXT:    store <4 x i32> zeroinitializer, ptr [[TMP3]], align 16
 ; CHECK-NEXT:    ret void
 ;
 entry:

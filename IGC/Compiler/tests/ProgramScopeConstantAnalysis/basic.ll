@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-programscope-constant-analysis -igc-serialize-metadata -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-programscope-constant-analysis -igc-serialize-metadata -S < %s | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-programscope-constant-analysis -igc-serialize-metadata -S < %s | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; ProgramScopeConstantAnalysis
 ; ------------------------------------------------
@@ -18,7 +18,8 @@
 @d = internal addrspace(1) global i32 addrspace(2)* getelementptr inbounds ([2 x i32], [2 x i32] addrspace(2)* @a, i32 0, i32 0), align 8
 @c = internal addrspace(1) global i32 0, align 4
 
-; CHECK: @[[LLVM_USED:[a-zA-Z0-9_$"\\.-]+]] = appending global [3 x i8*] [i8* addrspacecast (i8 addrspace(2)* bitcast ([2 x i32] addrspace(2)* @a to i8 addrspace(2)*) to i8*), i8* addrspacecast (i8 addrspace(1)* bitcast (i32 addrspace(2)* addrspace(1)* @d to i8 addrspace(1)*) to i8*), i8* addrspacecast (i8 addrspace(1)* bitcast (i32 addrspace(1)* @c to i8 addrspace(1)*) to i8*)], section "llvm.metadata"
+; CHECK-TYPED: @[[LLVM_USED:[a-zA-Z0-9_$"\\.-]+]] = appending global [3 x i8*] [i8* addrspacecast (i8 addrspace(2)* bitcast ([2 x i32] addrspace(2)* @a to i8 addrspace(2)*) to i8*), i8* addrspacecast (i8 addrspace(1)* bitcast (i32 addrspace(2)* addrspace(1)* @d to i8 addrspace(1)*) to i8*), i8* addrspacecast (i8 addrspace(1)* bitcast (i32 addrspace(1)* @c to i8 addrspace(1)*) to i8*)], section "llvm.metadata"
+; CHECK-OPAQUE: @[[LLVM_USED:[a-zA-Z0-9_$"\\.-]+]] = appending global [3 x ptr] [ptr addrspacecast (ptr addrspace(2) @a to ptr), ptr addrspacecast (ptr addrspace(1) @d to ptr), ptr addrspacecast (ptr addrspace(1) @c to ptr)], section "llvm.metadata"
 
 define spir_kernel void @test_program(i32 addrspace(1)* %dst) {
 entry:
@@ -63,9 +64,12 @@ entry:
 ; CHECK-DAG: [[POINTER_SIZE]] = !{!"PointerSize", i32 8}
 ; CHECK-DAG: [[SYMBOL]] = !{!"Symbol", !"a"}
 ; CHECK-DAG: !{!"inlineProgramScopeOffsets", [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP0:![0-9]*]], [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE0:![0-9]*]], [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP1:![0-9]*]], [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE1:![0-9]*]], [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP2:![0-9]*]], [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE2:![0-9]*]]}
-; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP0]] = !{!"inlineProgramScopeOffsetsMap[0]", [2 x i32] addrspace(2)* @a}
+; CHECK-TYPED-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP0]] = !{!"inlineProgramScopeOffsetsMap[0]", [2 x i32] addrspace(2)* @a}
+; CHECK-OPAQUE-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP0]] = !{!"inlineProgramScopeOffsetsMap[0]", ptr addrspace(2) @a}
 ; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE0]] = !{!"inlineProgramScopeOffsetsValue[0]", i64 0}
-; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP1]] = !{!"inlineProgramScopeOffsetsMap[1]", i32 addrspace(2)* addrspace(1)* @d}
+; CHECK-TYPED-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP1]] = !{!"inlineProgramScopeOffsetsMap[1]", i32 addrspace(2)* addrspace(1)* @d}
+; CHECK-OPAQUE-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP1]] = !{!"inlineProgramScopeOffsetsMap[1]", ptr addrspace(1) @d}
 ; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE1]] = !{!"inlineProgramScopeOffsetsValue[1]", i64 0}
-; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP2]] = !{!"inlineProgramScopeOffsetsMap[2]", i32 addrspace(1)* @c}
+; CHECK-TYPED-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP2]] = !{!"inlineProgramScopeOffsetsMap[2]", i32 addrspace(1)* @c}
+; CHECK-OPAQUE-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_MAP2]] = !{!"inlineProgramScopeOffsetsMap[2]", ptr addrspace(1) @c}
 ; CHECK-DAG: [[INLINE_PROGRAM_SCOPE_OFFSETS_VALUE2]] = !{!"inlineProgramScopeOffsetsValue[2]", i64 8}

@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify --igc-promote-stateless-to-bindless -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify --igc-promote-stateless-to-bindless -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify --igc-promote-stateless-to-bindless -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; PromoteStatelessToBindless : load and store part
 ; ------------------------------------------------
@@ -18,13 +18,20 @@
 
 define spir_kernel void @test_promote(i32 addrspace(1)* %src, float addrspace(2)* %dst) {
 ; CHECK-LABEL: @test_promote(
-; CHECK:    [[TMP1:%.*]] = addrspacecast i32 addrspace(1)* [[SRC:%.*]] to i32 addrspace(2490368)*
-; CHECK:    [[TMP2:%.*]] = call i32 @llvm.genx.GenISA.ldraw.indexed.i32.p2490368i32(i32 addrspace(2490368)* [[TMP1]], i32 0, i32 4, i1 false)
-; CHECK:    [[TMP3:%.*]] = addrspacecast float addrspace(2)* null to float addrspace(1)*
-; CHECK:    [[TMP4:%.*]] = bitcast float addrspace(1)* [[TMP3]] to i32 addrspace(1)*
-; CHECK:    [[TMP5:%.*]] = ptrtoint i32 addrspace(1)* [[TMP4]] to i32
-; CHECK:    [[TMP6:%.*]] = addrspacecast float addrspace(2)* [[DST:%.*]] to i32 addrspace(2490368)*
-; CHECK:    call void @llvm.genx.GenISA.storeraw.indexed.p2490368i32.i32(i32 addrspace(2490368)* [[TMP6]], i32 [[TMP5]], i32 [[TMP2]], i32 4, i1 false)
+; CHECK-TYPED:    [[TMP1:%.*]] = addrspacecast i32 addrspace(1)* [[SRC:%.*]] to i32 addrspace(2490368)*
+; CHECK-OPAQUE:    [[TMP1:%.*]] = addrspacecast ptr addrspace(1) [[SRC:%.*]] to ptr addrspace(2490368)
+; CHECK-TYPED:    [[TMP2:%.*]] = call i32 @llvm.genx.GenISA.ldraw.indexed.i32.p2490368i32(i32 addrspace(2490368)* [[TMP1]], i32 0, i32 4, i1 false)
+; CHECK-OPAQUE:    [[TMP2:%.*]] = call i32 @llvm.genx.GenISA.ldraw.indexed.i32.p2490368(ptr addrspace(2490368) [[TMP1]], i32 0, i32 4, i1 false)
+; CHECK-TYPED:    [[TMP3:%.*]] = addrspacecast float addrspace(2)* null to float addrspace(1)*
+; CHECK-OPAQUE:    [[TMP3:%.*]] = addrspacecast ptr addrspace(2) null to ptr addrspace(1)
+; CHECK-TYPED:    [[TMP4:%.*]] = bitcast float addrspace(1)* [[TMP3]] to i32 addrspace(1)*
+; CHECK-OPAQUE:    [[TMP4:%.*]] = bitcast ptr addrspace(1) [[TMP3]] to ptr addrspace(1)
+; CHECK-TYPED:    [[TMP5:%.*]] = ptrtoint i32 addrspace(1)* [[TMP4]] to i32
+; CHECK-OPAQUE:    [[TMP5:%.*]] = ptrtoint ptr addrspace(1) [[TMP4]] to i32
+; CHECK-TYPED:    [[TMP6:%.*]] = addrspacecast float addrspace(2)* [[DST:%.*]] to i32 addrspace(2490368)*
+; CHECK-OPAQUE:    [[TMP6:%.*]] = addrspacecast ptr addrspace(2) [[DST:%.*]] to ptr addrspace(2490368)
+; CHECK-TYPED:    call void @llvm.genx.GenISA.storeraw.indexed.p2490368i32.i32(i32 addrspace(2490368)* [[TMP6]], i32 [[TMP5]], i32 [[TMP2]], i32 4, i1 false)
+; CHECK-OPAQUE:    call void @llvm.genx.GenISA.storeraw.indexed.p2490368.i32(ptr addrspace(2490368) [[TMP6]], i32 [[TMP5]], i32 [[TMP2]], i32 4, i1 false)
 ; CHECK:    ret void
 ;
   %1 = load i32, i32 addrspace(1)* %src

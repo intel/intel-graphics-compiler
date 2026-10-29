@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -platformpvc -igc-Pre-BIImport-Analysis -igc-serialize-metadata -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -platformpvc -igc-Pre-BIImport-Analysis -igc-serialize-metadata -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -platformpvc -igc-Pre-BIImport-Analysis -igc-serialize-metadata -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; ------------------------------------------------
 ; PreBIImportAnalysis
@@ -21,7 +21,8 @@ define spir_kernel void @test_wg_walk_order() {
 }
 
 ; CHECK-DAG: [[FMD:![0-9]*]] = !{!"FuncMD", [[FMDMAP:![0-9]*]], [[FMDVAL:![0-9]*]]}
-; CHECK-DAG: [[FMDMAP]] = !{!"FuncMDMap[0]", void ()* @test_wg_walk_order}
+; CHECK-TYPED-DAG: [[FMDMAP]] = !{!"FuncMDMap[0]", void ()* @test_wg_walk_order}
+; CHECK-OPAQUE-DAG: [[FMDMAP]] = !{!"FuncMDMap[0]", ptr @test_wg_walk_order}
 ; CHECK-DAG: [[FMDVAL]] = !{!"FuncMDValue[0]", [[T1:![0-9]*]], [[WGWO:![0-9]*]], [[T3:.*]]}
 ; CHECK-DAG: [[WGWO]] = !{!"workGroupWalkOrder", [[DIM0:![0-9]*]], [[DIM1:![0-9]*]], [[DIM2:![0-9]*]]}
 ; CHECK-DAG: [[DIM0]] = !{!"dim0", i32 0}

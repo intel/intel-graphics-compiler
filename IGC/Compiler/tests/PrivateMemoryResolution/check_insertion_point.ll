@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - --igc-private-mem-resolution --platformdg2 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - --igc-private-mem-resolution --platformdg2 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - --igc-private-mem-resolution --platformdg2 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; The test checks if all instructions are generated in the correct order.
 ; after callling getPrivateBase() and getR0() intrinsics.
@@ -15,7 +15,8 @@
 
 define void @test( i32 %src, i32 %bufferOffset, i32 %bufferOffset1) #0 {
 ; CHECK-LABEL: @test(
-; CHECK: [[PRIV_BASE:%.*]] = call i8* @llvm.genx.GenISA.getPrivateBase.p0i8()
+; CHECK-TYPED: [[PRIV_BASE:%.*]] = call i8* @llvm.genx.GenISA.getPrivateBase.p0i8()
+; CHECK-OPAQUE: [[PRIV_BASE:%.*]] = call ptr @llvm.genx.GenISA.getPrivateBase.p0()
 ; CHECK: [[R0:%.*]] = call <8 x i32> @llvm.genx.GenISA.getR0.v8i32()
 ; CHECK: [[SIMD_LANEID:%.*]] = call i16 @llvm.genx.GenISA.simdLaneId()
 ; CHECK: [[ZEXT:%.*]] = zext i16 [[SIMD_LANEID]] to i32

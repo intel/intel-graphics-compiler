@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 ;
 ; run: igc_opt --platformdg2 --enable-debugify --igc-PartialEmuI64Ops -S < %s 2>&1 | FileCheck %s
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --platformdg2 --igc-PartialEmuI64Ops -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --platformdg2 --igc-PartialEmuI64Ops -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --platformdg2 --igc-PartialEmuI64Ops -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; PartialEmuI64Ops : preprocess part
 ; ------------------------------------------------
@@ -56,10 +56,13 @@ declare void @use.i1(i1)
 
 define void @test_load(i64 addrspace(1)** %src) {
 ; CHECK-LABEL: @test_load(
-; CHECK:    [[TMP1:%.*]] = bitcast i64 addrspace(1)** %src to i64*
-; CHECK:    [[TMP2:%.*]] = load i64, i64* [[TMP1]], align 8
-; CHECK:    [[TMP3:%.*]] = inttoptr i64 [[TMP2]] to i64 addrspace(1)*
-; CHECK:    call void @use.p64(i64 addrspace(1)* [[TMP3]])
+; CHECK-TYPED:    [[TMP1:%.*]] = bitcast i64 addrspace(1)** %src to i64*
+; CHECK-TYPED:    [[TMP2:%.*]] = load i64, i64* [[TMP1]], align 8
+; CHECK-OPAQUE:    [[TMP2:%.*]] = load i64, ptr %src, align 8
+; CHECK-TYPED:    [[TMP3:%.*]] = inttoptr i64 [[TMP2]] to i64 addrspace(1)*
+; CHECK-OPAQUE:    [[TMP3:%.*]] = inttoptr i64 [[TMP2]] to ptr addrspace(1)
+; CHECK-TYPED:    call void @use.p64(i64 addrspace(1)* [[TMP3]])
+; CHECK-OPAQUE:    call void @use.p64(ptr addrspace(1) [[TMP3]])
 ; CHECK:    ret void
 ;
   %1 = load i64 addrspace(1)*, i64 addrspace(1)** %src
@@ -70,12 +73,16 @@ declare void @use.p64(i64 addrspace(1)*)
 
 define void @test_cmp(i64 addrspace(1)* %src1, i64 addrspace(1)* %src2) {
 ; CHECK-LABEL: @test_cmp(
-; CHECK:    [[TMP1:%.*]] = ptrtoint i64 addrspace(1)* %src1 to i64
-; CHECK:    [[TMP2:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1i64(i64 addrspace(1)* %src1)
+; CHECK-TYPED:    [[TMP1:%.*]] = ptrtoint i64 addrspace(1)* %src1 to i64
+; CHECK-OPAQUE:    [[TMP1:%.*]] = ptrtoint ptr addrspace(1) %src1 to i64
+; CHECK-TYPED:    [[TMP2:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1i64(i64 addrspace(1)* %src1)
+; CHECK-OPAQUE:    [[TMP2:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1(ptr addrspace(1) %src1)
 ; CHECK:    [[TMP3:%.*]] = extractvalue { i32, i32 } [[TMP2]], 0
 ; CHECK:    [[TMP4:%.*]] = extractvalue { i32, i32 } [[TMP2]], 1
-; CHECK:    [[TMP5:%.*]] = ptrtoint i64 addrspace(1)* %src2 to i64
-; CHECK:    [[TMP6:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1i64(i64 addrspace(1)* %src2)
+; CHECK-TYPED:    [[TMP5:%.*]] = ptrtoint i64 addrspace(1)* %src2 to i64
+; CHECK-OPAQUE:    [[TMP5:%.*]] = ptrtoint ptr addrspace(1) %src2 to i64
+; CHECK-TYPED:    [[TMP6:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1i64(i64 addrspace(1)* %src2)
+; CHECK-OPAQUE:    [[TMP6:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1(ptr addrspace(1) %src2)
 ; CHECK:    [[TMP7:%.*]] = extractvalue { i32, i32 } [[TMP6]], 0
 ; CHECK:    [[TMP8:%.*]] = extractvalue { i32, i32 } [[TMP6]], 1
 ; CHECK:    [[TMP9:%.*]] = icmp eq i32 [[TMP3]], [[TMP7]]
@@ -91,12 +98,16 @@ define void @test_cmp(i64 addrspace(1)* %src1, i64 addrspace(1)* %src2) {
 
 define void @test_select(i64 addrspace(1)* %src1, i64 addrspace(1)* %src2, i1 %cond) {
 ; CHECK-LABEL: @test_select(
-; CHECK:    [[TMP1:%.*]] = ptrtoint i64 addrspace(1)* %src1 to i64
-; CHECK:    [[TMP2:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1i64(i64 addrspace(1)* %src1)
+; CHECK-TYPED:    [[TMP1:%.*]] = ptrtoint i64 addrspace(1)* %src1 to i64
+; CHECK-OPAQUE:    [[TMP1:%.*]] = ptrtoint ptr addrspace(1) %src1 to i64
+; CHECK-TYPED:    [[TMP2:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1i64(i64 addrspace(1)* %src1)
+; CHECK-OPAQUE:    [[TMP2:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1(ptr addrspace(1) %src1)
 ; CHECK:    [[TMP3:%.*]] = extractvalue { i32, i32 } [[TMP2]], 0
 ; CHECK:    [[TMP4:%.*]] = extractvalue { i32, i32 } [[TMP2]], 1
-; CHECK:    [[TMP5:%.*]] = ptrtoint i64 addrspace(1)* %src2 to i64
-; CHECK:    [[TMP6:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1i64(i64 addrspace(1)* %src2)
+; CHECK-TYPED:    [[TMP5:%.*]] = ptrtoint i64 addrspace(1)* %src2 to i64
+; CHECK-OPAQUE:    [[TMP5:%.*]] = ptrtoint ptr addrspace(1) %src2 to i64
+; CHECK-TYPED:    [[TMP6:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1i64(i64 addrspace(1)* %src2)
+; CHECK-OPAQUE:    [[TMP6:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1(ptr addrspace(1) %src2)
 ; CHECK:    [[TMP7:%.*]] = extractvalue { i32, i32 } [[TMP6]], 0
 ; CHECK:    [[TMP8:%.*]] = extractvalue { i32, i32 } [[TMP6]], 1
 ; CHECK:    [[TMP9:%.*]] = select i1 [[COND:%.*]], i32 [[TMP3]], i32 [[TMP7]]
@@ -104,8 +115,10 @@ define void @test_select(i64 addrspace(1)* %src1, i64 addrspace(1)* %src2, i1 %c
 ; CHECK:    [[TMP11:%.*]] = insertelement <2 x i32> undef, i32 [[TMP9]], i32 0
 ; CHECK:    [[TMP12:%.*]] = insertelement <2 x i32> [[TMP11]], i32 [[TMP10]], i32 1
 ; CHECK:    [[TMP13:%.*]] = bitcast <2 x i32> [[TMP12]] to i64
-; CHECK:    [[TMP14:%.*]] = inttoptr i64 [[TMP13]] to i64 addrspace(1)*
-; CHECK:    call void @use.p64(i64 addrspace(1)* [[TMP14]])
+; CHECK-TYPED:    [[TMP14:%.*]] = inttoptr i64 [[TMP13]] to i64 addrspace(1)*
+; CHECK-OPAQUE:    [[TMP14:%.*]] = inttoptr i64 [[TMP13]] to ptr addrspace(1)
+; CHECK-TYPED:    call void @use.p64(i64 addrspace(1)* [[TMP14]])
+; CHECK-OPAQUE:    call void @use.p64(ptr addrspace(1) [[TMP14]])
 ; CHECK:    ret void
 ;
   %1 = select i1 %cond, i64 addrspace(1)* %src1, i64 addrspace(1)* %src2
@@ -115,8 +128,10 @@ define void @test_select(i64 addrspace(1)* %src1, i64 addrspace(1)* %src2, i1 %c
 
 define void @test_ptrtoint(i64 addrspace(1)* %src) {
 ; CHECK-LABEL: @test_ptrtoint(
-; CHECK:    [[TMP1:%.*]] = ptrtoint i64 addrspace(1)* %src to i64
-; CHECK:    call void @use.i64(i64 [[TMP1]])
+; CHECK-TYPED:    [[TMP1:%.*]] = ptrtoint i64 addrspace(1)* %src to i64
+; CHECK-OPAQUE:    [[TMP1:%.*]] = ptrtoint ptr addrspace(1) %src to i64
+; CHECK-TYPED:    call void @use.i64(i64 [[TMP1]])
+; CHECK-OPAQUE:    call void @use.i64(i64 [[TMP1]])
 ; CHECK:    ret void
 ;
   %1 = ptrtoint i64 addrspace(1)* %src to i64
@@ -126,8 +141,10 @@ define void @test_ptrtoint(i64 addrspace(1)* %src) {
 
 define void @test_inttoptr(i64 %src) {
 ; CHECK-LABEL: @test_inttoptr(
-; CHECK:    [[TMP1:%.*]] = inttoptr i64 %src to i64 addrspace(1)*
-; CHECK:    call void @use.p64(i64 addrspace(1)* [[TMP1]])
+; CHECK-TYPED:    [[TMP1:%.*]] = inttoptr i64 %src to i64 addrspace(1)*
+; CHECK-OPAQUE:    [[TMP1:%.*]] = inttoptr i64 %src to ptr addrspace(1)
+; CHECK-TYPED:    call void @use.p64(i64 addrspace(1)* [[TMP1]])
+; CHECK-OPAQUE:    call void @use.p64(ptr addrspace(1) [[TMP1]])
 ; CHECK:    ret void
 ;
   %1 = inttoptr i64 %src to i64 addrspace(1)*
@@ -141,9 +158,11 @@ declare { i64, i1 } @llvm.uadd.with.overflow.i64(i64, i64) #0
 
 define void @test_store(i64 addrspace(1)* %src1, i64 addrspace(1)** %src2) {
 ; CHECK-LABEL: @test_store(
-; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i64 addrspace(1)** [[SRC2:%.*]] to i64*
-; CHECK-NEXT:    [[TMP2:%.*]] = ptrtoint i64 addrspace(1)* [[SRC1:%.*]] to i64
-; CHECK-NEXT:    store i64 [[TMP2]], i64* [[TMP1]], align 8
+; CHECK-TYPED-NEXT:    [[TMP1:%.*]] = bitcast i64 addrspace(1)** [[SRC2:%.*]] to i64*
+; CHECK-TYPED-NEXT:    [[TMP2:%.*]] = ptrtoint i64 addrspace(1)* [[SRC1:%.*]] to i64
+; CHECK-OPAQUE-NEXT:    [[TMP2:%.*]] = ptrtoint ptr addrspace(1) [[SRC1:%.*]] to i64
+; CHECK-TYPED-NEXT:    store i64 [[TMP2]], i64* [[TMP1]], align 8
+; CHECK-OPAQUE-NEXT:    store i64 [[TMP2]], ptr [[SRC2:%.*]], align 8
 ; CHECK-NEXT:    ret void
 ;
   store i64 addrspace(1)* %src1, i64 addrspace(1)** %src2, align 8

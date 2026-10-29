@@ -5,10 +5,10 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-promote-sub-byte -S %s -o %t.ll
-; RUN: FileCheck %s --input-file=%t.ll
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-promote-sub-byte -S %s -o %t.opaque.ll %}
+; RUN: %if llvm-16-plus %{ FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s --input-file=%t.opaque.ll %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-promote-sub-byte -S %s -o %t.typed.ll %}
+; RUN: %if !llvm-17-plus %{ FileCheck --check-prefixes=CHECK,CHECK-TYPED %s --input-file=%t.typed.ll %}
 
 define spir_func void @icmps() {
   %1 = alloca i1, align 1
@@ -19,5 +19,6 @@ define spir_func void @icmps() {
 
 ; CHECK-LABEL:  define spir_func void @icmps()
 ; CHECK-NEXT:   %1 = alloca i8, align 1
-; CHECK-NEXT:   %2 = load i8, i8* %1
+; CHECK-TYPED-NEXT:   %2 = load i8, i8* %1
+; CHECK-OPAQUE-NEXT:   %2 = load i8, ptr %1
 ; CHECK-NEXT:   %3 = icmp eq i8 0, %2

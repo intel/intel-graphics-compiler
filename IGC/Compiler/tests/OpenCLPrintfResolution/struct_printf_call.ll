@@ -5,8 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-opencl-printf-resolution -S  < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-opencl-printf-resolution -S  < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-opencl-printf-resolution -S  < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; OpenCLPrintfResolution
 ; ------------------------------------------------
@@ -23,10 +23,14 @@ entry:
   %str = getelementptr inbounds [19 x i8], [19 x i8] addrspace(2)* @.str, i64 0, i64 0
   %bc = bitcast %struct.B addrspace(1)* @.priv.__global to i8 addrspace(1)*
   %asc = addrspacecast i8 addrspace(1)* %bc to i8 addrspace(4)*
-; CHECK: [[TMP1:%[A-z0-9]*]] = bitcast %struct.B addrspace(1)* @.priv.__global to i8 addrspace(1)*
-; CHECK: [[TMP2:%[A-z0-9]*]] = addrspacecast i8 addrspace(1)* [[TMP1]] to i8 addrspace(4)*
-; CHECK: [[TMP3:%[A-z0-9]*]] = ptrtoint i8 addrspace(4)* [[TMP2]] to i64
-; CHECK-NOT: [[TMP4:%[A-z0-9]*]] = ptrtoint %struct.B addrspace(1)* @.priv.__global to i64
+; CHECK-TYPED: [[TMP1:%[A-z0-9]*]] = bitcast %struct.B addrspace(1)* @.priv.__global to i8 addrspace(1)*
+; CHECK-OPAQUE: [[TMP1:%[A-z0-9]*]] = bitcast ptr addrspace(1) @.priv.__global to ptr addrspace(1)
+; CHECK-TYPED: [[TMP2:%[A-z0-9]*]] = addrspacecast i8 addrspace(1)* [[TMP1]] to i8 addrspace(4)*
+; CHECK-OPAQUE: [[TMP2:%[A-z0-9]*]] = addrspacecast ptr addrspace(1) [[TMP1]] to ptr addrspace(4)
+; CHECK-TYPED: [[TMP3:%[A-z0-9]*]] = ptrtoint i8 addrspace(4)* [[TMP2]] to i64
+; CHECK-OPAQUE: [[TMP3:%[A-z0-9]*]] = ptrtoint ptr addrspace(4) [[TMP2]] to i64
+; CHECK-TYPED-NOT: [[TMP4:%[A-z0-9]*]] = ptrtoint %struct.B addrspace(1)* @.priv.__global to i64
+; CHECK-OPAQUE-NOT: [[TMP4:%[A-z0-9]*]] = ptrtoint ptr addrspace(1) @.priv.__global to i64
 ; CHECK: store i64 [[TMP3]]
   %call = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %str, i8 addrspace(4)* %asc) #0
   store i32 %call, i32 addrspace(1)* %out, align 4

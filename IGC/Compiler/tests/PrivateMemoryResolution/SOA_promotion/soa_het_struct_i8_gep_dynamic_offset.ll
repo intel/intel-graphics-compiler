@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
 ; Test that a heterogeneous struct alloca is SoA-promoted even when an inner
 ; sub-array is indexed via a *dynamic* i8-byte GEP whose offset is provably a

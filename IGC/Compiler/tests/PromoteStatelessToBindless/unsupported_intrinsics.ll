@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify --igc-promote-stateless-to-bindless -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify --igc-promote-stateless-to-bindless -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify --igc-promote-stateless-to-bindless -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; PromoteStatelessToBindless supports promotion of only two intrinsics: GenISA_simdBlockRead and
 ; GenISA_simdBlockWrite. This test verifies that the pass can correctly bail out and leave
@@ -16,9 +16,12 @@
 
 define spir_func float @test_unsupported(i32 addrspace(1)* %src_i, float addrspace(1)* %src_f) {
 ; CHECK-LABEL: @test_unsupported(
-; CHECK: call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)* {{%.*}}, i32 addrspace(1)* {{%.*}}, i32 1, i32 1)
-; CHECK: call i32 @llvm.genx.GenISA.icmpxchgatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)* {{%.*}}, i32 addrspace(1)* {{%.*}}, i32 0, i32 19)
-; CHECK: call float @llvm.genx.GenISA.floatatomicrawA64.f32.p1f32.p1f32(float addrspace(1)* {{%.*}}, float addrspace(1)* {{%.*}}, float {{.*}}, i32 19)
+; CHECK-TYPED: call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)* {{%.*}}, i32 addrspace(1)* {{%.*}}, i32 1, i32 1)
+; CHECK-OPAQUE: call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1.p1(ptr addrspace(1) {{%.*}}, ptr addrspace(1) {{%.*}}, i32 1, i32 1)
+; CHECK-TYPED: call i32 @llvm.genx.GenISA.icmpxchgatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)* {{%.*}}, i32 addrspace(1)* {{%.*}}, i32 0, i32 19)
+; CHECK-OPAQUE: call i32 @llvm.genx.GenISA.icmpxchgatomicrawA64.i32.p1.p1(ptr addrspace(1) {{%.*}}, ptr addrspace(1) {{%.*}}, i32 0, i32 19)
+; CHECK-TYPED: call float @llvm.genx.GenISA.floatatomicrawA64.f32.p1f32.p1f32(float addrspace(1)* {{%.*}}, float addrspace(1)* {{%.*}}, float {{.*}}, i32 19)
+; CHECK-OPAQUE: call float @llvm.genx.GenISA.floatatomicrawA64.f32.p1.p1(ptr addrspace(1) {{%.*}}, ptr addrspace(1) {{%.*}}, float {{.*}}, i32 19)
 
   %1 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)* %src_i, i32 addrspace(1)* %src_i, i32 1, i32 1)
   %2 = call i32 @llvm.genx.GenISA.icmpxchgatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)* %src_i, i32 addrspace(1)* %src_i, i32 0, i32 19)

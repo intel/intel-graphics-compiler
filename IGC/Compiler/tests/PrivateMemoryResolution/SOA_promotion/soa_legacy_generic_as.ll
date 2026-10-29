@@ -7,21 +7,25 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
 ; The array is accessed through a private->generic (addrspace 4) round-trip.
 ; The SoA buffer lives in private memory, so the resolved scratch pointer must be
 ; a private pointer (inttoptr ... to float*), not a generic one (float addrspace(4)*).
 ;
-; RUN: igc_opt --typed-pointers -regkey EnablePrivMemNewSOAForScalarArrays=0 --ocl --platformPtl --igc-private-mem-resolution -S %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -regkey EnablePrivMemNewSOAForScalarArrays=0 --ocl --platformPtl --igc-private-mem-resolution -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -regkey EnablePrivMemNewSOAForScalarArrays=0 --ocl --platformPtl --igc-private-mem-resolution -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; CHECK-LABEL: @test(
 ; The scratch offset must be reinterpreted as a private pointer, never generic AS4.
-; CHECK-NOT:   inttoptr i32 {{.*}} to float addrspace(4)*
-; CHECK:       inttoptr i32 {{.*}} to float*
+; CHECK-TYPED-NOT:   inttoptr i32 {{.*}} to float addrspace(4)*
+; CHECK-OPAQUE-NOT:   inttoptr i32 {{.*}} to ptr addrspace(4)
+; CHECK-TYPED:       inttoptr i32 {{.*}} to float*
+; CHECK-OPAQUE:       inttoptr i32 {{.*}} to ptr{{$}}
 ; CHECK:       store float
-; CHECK-NOT:   inttoptr i32 {{.*}} to float addrspace(4)*
-; CHECK:       inttoptr i32 {{.*}} to float*
+; CHECK-TYPED-NOT:   inttoptr i32 {{.*}} to float addrspace(4)*
+; CHECK-OPAQUE-NOT:   inttoptr i32 {{.*}} to ptr addrspace(4)
+; CHECK-TYPED:       inttoptr i32 {{.*}} to float*
+; CHECK-OPAQUE:       inttoptr i32 {{.*}} to ptr{{$}}
 ; CHECK:       load float
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"

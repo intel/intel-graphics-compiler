@@ -1,6 +1,7 @@
-; UNSUPPORTED: system-windows, llvm-17-plus
+; UNSUPPORTED: system-windows
 ; REQUIRES: regkeys
-; RUN: igc_opt --typed-pointers --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=1 < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=1 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=1 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 define spir_func void @baz() nounwind {
 entry:
@@ -96,7 +97,8 @@ entry:
 ; CHECK: IN:     [       4       ]
 ; CHECK: KILL:   [       4       ]
 ; CHECK: OUT:    [       0       ]
-; CHECK: N: 256 (8)        %baseArith = ptrtoint double addrspace(1)* %base to i64
+; CHECK-TYPED: N: 256 (8)        %baseArith = ptrtoint double addrspace(1)* %base to i64
+; CHECK-OPAQUE: N: 256 (8)        %baseArith = ptrtoint ptr addrspace(1) %base to i64
 ; CHECK: N: 256 (8)        %basePtr = mul nuw nsw i64 %offset, 207368
 ; CHECK: N: 256 (8)        %offsetI = mul nsw i64 %I, 1288
 ; CHECK: N: 256 (8)        %offsetJ = shl nsw i64 %J, 3
@@ -104,14 +106,18 @@ entry:
 ; CHECK: N: 192 (6)        %a1 = add i64 %a0, %basePtr
 ; CHECK: N: 128 (4)        %a2 = add i64 %a1, %offsetI
 ; CHECK: N: 64 (2)         %a3 = add i64 %a2, %offsetJ
-; CHECK: N: 128 (4)        %a4 = inttoptr i64 %a3 to double addrspace(1)*
-; CHECK: N: 128 (4)        %a5 = inttoptr i64 %a3 to double addrspace(1)*
+; CHECK-TYPED: N: 128 (4)        %a4 = inttoptr i64 %a3 to double addrspace(1)*
+; CHECK-OPAQUE: N: 128 (4)        %a4 = inttoptr i64 %a3 to ptr addrspace(1)
+; CHECK-TYPED: N: 128 (4)        %a5 = inttoptr i64 %a3 to double addrspace(1)*
+; CHECK-OPAQUE: N: 128 (4)        %a5 = inttoptr i64 %a3 to ptr addrspace(1)
 ; CHECK: N: 128 (4)        call spir_func void @foo()
 ; CHECK: N: 128 (4)        call spir_func void @baz()
 ; CHECK: N: 128 (4)        call spir_func void @dave()
-; CHECK: N: 128 (4)        %r0 = load double, double addrspace(1)* %a4, align 8
+; CHECK-TYPED: N: 128 (4)        %r0 = load double, double addrspace(1)* %a4, align 8
+; CHECK-OPAQUE: N: 128 (4)        %r0 = load double, ptr addrspace(1) %a4, align 8
 ; CHECK: N: 128 (4)        %rr0 = fmul double %r0, 2.000000e+00
-; CHECK: N: 0 (0)          store double %rr0, double addrspace(1)* %a5, align 8
+; CHECK-TYPED: N: 0 (0)          store double %rr0, double addrspace(1)* %a5, align 8
+; CHECK-OPAQUE: N: 0 (0)          store double %rr0, ptr addrspace(1) %a5, align 8
 ; CHECK: N: 0 (0)          ret void
 ; CHECK: ==============================================
 ; CHECK: MaxPressure In Function: main --> 8
@@ -127,9 +133,12 @@ entry:
 ; CHECK: N: 96 (3)         %alloca2 = alloca i32, align 4
 ; CHECK: N: 96 (3)         call spir_func void @dave()
 ; CHECK: N: 96 (3)         call spir_func void @foo()
-; CHECK: N: 64 (2)         store i32 0, i32* %alloca0, align 4
-; CHECK: N: 32 (1)         store i32 0, i32* %alloca1, align 4
-; CHECK: N: 0 (0)          store i32 0, i32* %alloca2, align 4
+; CHECK-TYPED: N: 64 (2)         store i32 0, i32* %alloca0, align 4
+; CHECK-OPAQUE: N: 64 (2)         store i32 0, ptr %alloca0, align 4
+; CHECK-TYPED: N: 32 (1)         store i32 0, i32* %alloca1, align 4
+; CHECK-OPAQUE: N: 32 (1)         store i32 0, ptr %alloca1, align 4
+; CHECK-TYPED: N: 0 (0)          store i32 0, i32* %alloca2, align 4
+; CHECK-OPAQUE: N: 0 (0)          store i32 0, ptr %alloca2, align 4
 ; CHECK: N: 0 (0)          ret void
 ; CHECK: ==============================================
 ; CHECK: MaxPressure In Function: main_2 --> 3
@@ -143,7 +152,8 @@ entry:
 ; CHECK: N: 32 (1)         %alloca = alloca i32, align 4
 ; CHECK: N: 32 (1)         call spir_func void @bar()
 ; CHECK: N: 32 (1)         call spir_func void @baz()
-; CHECK: N: 0 (0)          store i32 0, i32* %alloca, align 4
+; CHECK-TYPED: N: 0 (0)          store i32 0, i32* %alloca, align 4
+; CHECK-OPAQUE: N: 0 (0)          store i32 0, ptr %alloca, align 4
 ; CHECK: ==============================================
 ; CHECK: MaxPressure In Function: foo --> 1
 ; CHECK: Max Uniform Pressure In Function: foo --> 0
@@ -155,7 +165,8 @@ entry:
 ; CHECK: OUT:    [       0       ]
 ; CHECK: N: 32 (1)         %alloca0 = alloca i32, align 4
 ; CHECK: N: 32 (1)         call spir_func void @foo()
-; CHECK: N: 0 (0)          store i32 0, i32* %alloca0, align 4
+; CHECK-TYPED: N: 0 (0)          store i32 0, i32* %alloca0, align 4
+; CHECK-OPAQUE: N: 0 (0)          store i32 0, ptr %alloca0, align 4
 ; CHECK: N: 0 (0)          ret void
 ; CHECK: ==============================================
 ; CHECK: MaxPressure In Function: dave --> 1

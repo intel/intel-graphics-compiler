@@ -6,15 +6,16 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --igc-promote-resources-to-direct-addrspace -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --igc-promote-resources-to-direct-addrspace -S < %s | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --igc-promote-resources-to-direct-addrspace -S < %s | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; PromoteResourceToDirectAS : sampler promotion part
 ; ------------------------------------------------
 
 define spir_kernel void @test_indirect(i32 %a, i32 %b, i32* %ptr) {
 ; CHECK-LABEL: @test_indirect(
-; CHECK:    call void @llvm.genx.GenISA.typedwrite.p131077f32(float addrspace(131077)* null, i32 1, i32 2, i32 3, i32 4, float 5.000000e+00, float 6.000000e+00, float 7.000000e+00, float 8.000000e+00)
+; CHECK-TYPED:    call void @llvm.genx.GenISA.typedwrite.p131077f32(float addrspace(131077)* null, i32 1, i32 2, i32 3, i32 4, float 5.000000e+00, float 6.000000e+00, float 7.000000e+00, float 8.000000e+00)
+; CHECK-OPAQUE:    call void @llvm.genx.GenISA.typedwrite.p131077(ptr addrspace(131077) null, i32 1, i32 2, i32 3, i32 4, float 5.000000e+00, float 6.000000e+00, float 7.000000e+00, float 8.000000e+00)
 ; CHECK:    ret void
 ;
   %1 = addrspacecast i32* %ptr to float addrspace(2293760)*

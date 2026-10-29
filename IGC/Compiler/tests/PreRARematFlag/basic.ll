@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify -igc-pre-ra-remat-flag -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify -igc-pre-ra-remat-flag -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify -igc-pre-ra-remat-flag -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; PreRARematFlag
 ; ------------------------------------------------
@@ -16,8 +16,10 @@ define void @test_preraremat(i32* %src1, i32* %src2) {
 ; CHECK-LABEL: @test_preraremat(
 ; CHECK:  entry:
 ; CHECK:    [[TMP0:%[A-z0-9]*]] = alloca i32, align 4
-; CHECK:    [[TMP1:%[A-z0-9]*]] = load i32, i32* [[SRC1:%[A-z0-9]*]], align 4
-; CHECK:    [[TMP2:%[A-z0-9]*]] = load i32, i32* [[SRC2:%[A-z0-9]*]], align 4
+; CHECK-TYPED:    [[TMP1:%[A-z0-9]*]] = load i32, i32* [[SRC1:%[A-z0-9]*]], align 4
+; CHECK-OPAQUE:    [[TMP1:%[A-z0-9]*]] = load i32, ptr [[SRC1:%[A-z0-9]*]], align 4
+; CHECK-TYPED:    [[TMP2:%[A-z0-9]*]] = load i32, i32* [[SRC2:%[A-z0-9]*]], align 4
+; CHECK-OPAQUE:    [[TMP2:%[A-z0-9]*]] = load i32, ptr [[SRC2:%[A-z0-9]*]], align 4
 ; CHECK:    [[TMP3:%[A-z0-9]*]] = icmp eq i32 [[TMP1]], [[TMP2]]
 ; CHECK:    [[TMP4:%[A-z0-9]*]] = icmp ugt i32 [[TMP1]], [[TMP2]]
 ; CHECK:    [[TMP5:%[A-z0-9]*]] = and i1 [[TMP3]], [[TMP4]]
@@ -28,8 +30,10 @@ define void @test_preraremat(i32* %src1, i32* %src2) {
 ; CHECK:    br i1 [[TMP9]], label [[LBL2:%[A-z0-9]*]], label [[LBL1:%[A-z0-9]*]]
 ; CHECK:  lbl1:
 ; CHECK:    [[TMP10:%[A-z0-9]*]] = phi i32 [ [[TMP1]], [[ENTRY:%[A-z0-9]*]] ], [ [[TMP22:%[A-z0-9]*]], [[LBL2]] ]
-; CHECK:    [[TMP11:%[A-z0-9]*]] = inttoptr i32 [[TMP10]] to i32*
-; CHECK:    [[TMP12:%[A-z0-9]*]] = load i32, i32* [[TMP11]], align 4
+; CHECK-TYPED:    [[TMP11:%[A-z0-9]*]] = inttoptr i32 [[TMP10]] to i32*
+; CHECK-OPAQUE:    [[TMP11:%[A-z0-9]*]] = inttoptr i32 [[TMP10]] to ptr,
+; CHECK-TYPED:    [[TMP12:%[A-z0-9]*]] = load i32, i32* [[TMP11]], align 4
+; CHECK-OPAQUE:    [[TMP12:%[A-z0-9]*]] = load i32, ptr [[TMP11]], align 4
 ; CHECK:    [[TMP13:%[A-z0-9]*]] = icmp slt i32 [[TMP12]], [[TMP10]]
 ; CHECK:    [[TMP14:%[A-z0-9]*]] = icmp ult i32 [[TMP12]], [[TMP1]]
 ; CHECK:    [[TMP15:%[A-z0-9]*]] = and i1 [[TMP13]], [[TMP5]]
@@ -42,7 +46,8 @@ define void @test_preraremat(i32* %src1, i32* %src2) {
 ; CHECK:    [[TMP20:%[A-z0-9]*]] = xor i1 [[TMP19]], [[TMP5]]
 ; CHECK:    [[TMP21:%[A-z0-9]*]] = icmp eq i32 [[TMP1]], [[TMP2]]
 ; CHECK:    [[TMP22]] = select i1 [[TMP21]], i32 [[TMP1]], i32 [[TMP2]]
-; CHECK:    store i32 [[TMP22]], i32* [[TMP0]]
+; CHECK-TYPED:    store i32 [[TMP22]], i32* [[TMP0]]
+; CHECK-OPAQUE:    store i32 [[TMP22]], ptr [[TMP0]]
 ; CHECK:    br i1 [[TMP20]], label [[LBL1]], label [[END]]
 ; CHECK:  end:
 ; CHECK:    ret void

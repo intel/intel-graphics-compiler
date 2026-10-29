@@ -7,10 +7,11 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN: igc_opt --typed-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl \
-; RUN:   --igc-split-selects-of-alloca-pointers --igc-private-mem-resolution -S %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl \
+; RUN:   --igc-split-selects-of-alloca-pointers --igc-private-mem-resolution -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl \
+; RUN:   --igc-split-selects-of-alloca-pointers --igc-private-mem-resolution -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ;
 ; When private memory is using stateless global, to avoid OOB reads,
 ; loads lowered from select are changed to predicated loads.
@@ -20,11 +21,13 @@
 ; CHECK:       [[SIMDSZ:%[A-Za-z0-9_.]+]] = call i32 @llvm.genx.GenISA.simdSize()
 ; CHECK:       [[NC:%[A-Za-z0-9_.]+]] = xor i1 %c, true
 ;; extern operand: generic-AS, predicated on %c
-; CHECK:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p4f32.f32(float addrspace(4)* {{.*}}, i64 4, i1 %c, float poison)
+; CHECK-TYPED:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p4f32.f32(float addrspace(4)* {{.*}}, i64 4, i1 %c, float poison)
+; CHECK-OPAQUE:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p4.f32(ptr addrspace(4) {{.*}}, i64 4, i1 %c, float poison)
 ;; stack operand: SoA element stride uses simdSize ...
 ; CHECK:       mul i32 [[SIMDSZ]],
 ;; ... and lowers to a predicated load on a private (p0) pointer, predicate preserved
-; CHECK:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p0f32.f32(float* {{.*}}, i64 4, i1 [[NC]], float poison)
+; CHECK-TYPED:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p0f32.f32(float* {{.*}}, i64 4, i1 [[NC]], float poison)
+; CHECK-OPAQUE:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p0.f32(ptr {{.*}}, i64 4, i1 [[NC]], float poison)
 ; CHECK:       select i1 %c, float
 
 ; CHECK-LABEL: @test_vec_load_select_no_scratch(

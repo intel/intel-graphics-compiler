@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: system-windows, llvm-17-plus
+; UNSUPPORTED: system-windows
 ; REQUIRES: regkeys
 
 ; RUN: igc_opt -opaque-pointers --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=6,ForceOCLSIMDWidth=16 -platformPtl < %s 2>&1  | FileCheck %s

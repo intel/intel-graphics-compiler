@@ -7,9 +7,9 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN: igc_opt --typed-pointers --ocl --platformpvc --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=1  -S %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --ocl --platformpvc --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=1  -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --ocl --platformpvc --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=1  -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ;
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
@@ -49,7 +49,8 @@ entry:
 ; CHECK:       [[T11:%.*]] = mul i32 [[simdLaneId]], 4
 ; CHECK:       [[T12:%.*]] = add i32 [[T10]], [[T11]]
 ; CHECK:       [[bufferOffset:%.*]] = add {{.*}} i32 [[perThreadOffset]], [[T12]]
-; CHECK:       [[T13:%.*]] = ptrtoint i8* %privateBase to i64
+; CHECK-TYPED:       [[T13:%.*]] = ptrtoint i8* %privateBase to i64
+; CHECK-OPAQUE:       [[T13:%.*]] = ptrtoint ptr %privateBase to i64
 ; CHECK:       [[T14:%.*]] = zext i32 [[bufferOffset]] to i64
 ; CHECK:       [[bufbaseAsInt:%.*]] = add {{.*}} i64 [[T13]], [[T14]]
 ;;
@@ -62,9 +63,12 @@ entry:
 ; CHECK:       [[T24:%.*]] = mul i32 [[simdSize]], [[T23]]
 ; CHECK:       [[T25:%.*]] = zext i32 [[T24]] to i64
 ; CHECK:       [[T26:%.*]] = add {{.*}} i64 [[bufbaseAsInt]], [[T25]]
-; CHECK:       [[GEPBase:%.*]] = inttoptr i64 [[T26]] to float*
-; CHECK:       [[staddr0:%.*]] = getelementptr float, float* [[GEPBase]], i32 0
-; CHECK:       store float {{.*}}, float* [[staddr0]]
+; CHECK-TYPED:       [[GEPBase:%.*]] = inttoptr i64 [[T26]] to float*
+; CHECK-OPAQUE:       [[GEPBase:%.*]] = inttoptr i64 [[T26]] to ptr{{$}}
+; CHECK-TYPED:       [[staddr0:%.*]] = getelementptr float, float* [[GEPBase]], i32 0
+; CHECK-OPAQUE:       [[staddr0:%.*]] = getelementptr float, ptr [[GEPBase]], i32 0
+; CHECK-TYPED:       store float {{.*}}, float* [[staddr0]]
+; CHECK-OPAQUE:       store float {{.*}}, ptr [[staddr0]]
 ;;
   %idx = zext i32 %ix to i64
   %tmp2 = bitcast [1024 x %struct.Color]* %pb to i8*

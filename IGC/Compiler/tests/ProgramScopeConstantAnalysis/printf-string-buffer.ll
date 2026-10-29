@@ -6,12 +6,13 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
 ; Resolution marks the printf string host-only (stringConstants); this checks that
 ; ProgramScopeConstantAnalysis then places it in the ConstantStrings buffer, not
 ; in the GPU-resident Constants/Globals buffers.
-; RUN: igc_opt --typed-pointers -igc-opencl-printf-resolution -igc-programscope-constant-analysis \
-; RUN:   -igc-serialize-metadata -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-opencl-printf-resolution -igc-programscope-constant-analysis \
+; RUN:   -igc-serialize-metadata -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-opencl-printf-resolution -igc-programscope-constant-analysis \
+; RUN:   -igc-serialize-metadata -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; ProgramScopeConstantAnalysis
 ; ------------------------------------------------
@@ -33,7 +34,8 @@
 ; CHECK-DAG: [[GLOBALS]] = !{!"inlineBuffersVec[2]", [[ALIGN]], [[EMPTY_SIZE]], [[EMPTY_BUF]]}
 
 ; The string is recorded in the offsets map.
-; CHECK-DAG: !{!"inlineProgramScopeOffsetsMap[0]", [4 x i8] addrspace(2)* @.str}
+; CHECK-TYPED-DAG: !{!"inlineProgramScopeOffsetsMap[0]", [4 x i8] addrspace(2)* @.str}
+; CHECK-OPAQUE-DAG: !{!"inlineProgramScopeOffsetsMap[0]", ptr addrspace(2) @.str}
 
 @.str = internal unnamed_addr addrspace(2) constant [4 x i8] c"abc\00", align 1
 

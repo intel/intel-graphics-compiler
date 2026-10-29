@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------
@@ -33,53 +33,73 @@ define spir_kernel void @test_pmem(<8 x i32> addrspace(1)* %dst, <8 x i32> addrs
 ; CHECK:    [[PERLANEOFFSET3:%.*]] = mul i32 [[SIMDLANEID]], 8
 ; CHECK:    [[DST_ADDR_SIMDBUFOFF:%.*]] = add i32 [[DST_ADDR_BUFFEROFFSET]], [[PERLANEOFFSET3]]
 ; CHECK:    [[DST_ADDR_BASEOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[DST_ADDR_SIMDBUFOFF]]
-; CHECK:    [[DST_ADDR_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[DST_ADDR_BASEOFFSET]] to <8 x i32> addrspace(1)**
+; CHECK-TYPED:    [[DST_ADDR_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[DST_ADDR_BASEOFFSET]] to <8 x i32> addrspace(1)**
+; CHECK-OPAQUE:    [[DST_ADDR_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[DST_ADDR_BASEOFFSET]] to ptr{{$}}
 ; CHECK:    [[AA_SECTIONOFFSET:%.*]] = mul i32 [[SIMDSIZE]], 0
 ; CHECK:    [[AA_BUFFEROFFSET:%.*]] = add i32 0, [[AA_SECTIONOFFSET]]
 ; CHECK:    [[PERLANEOFFSET:%.*]] = mul i32 [[SIMDLANEID]], 32
 ; CHECK:    [[AA_SIMDBUFOFF:%.*]] = add i32 [[AA_BUFFEROFFSET]], [[PERLANEOFFSET]]
 ; CHECK:    [[AA_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[AA_SIMDBUFOFF]]
-; CHECK:    [[AA_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[AA_THREADOFFSET]] to <8 x i32>*
+; CHECK-TYPED:    [[AA_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[AA_THREADOFFSET]] to <8 x i32>*
+; CHECK-OPAQUE:    [[AA_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[AA_THREADOFFSET]] to ptr{{$}}
 ; CHECK:    [[TMP0:%.*]] = mul i32 [[SIMDSIZE]], 32
 ; CHECK:    [[TMP1:%.*]] = mul i32 0, [[TMP0]]
 ; CHECK:    [[TMP2:%.*]] = add i32 [[AA_THREADOFFSET]], [[TMP1]]
 ; CHECK:    [[TMP3:%.*]] = mul i32 [[SIMDSIZE]], 32
 ; CHECK:    [[TMP4:%.*]] = mul i32 0, [[TMP3]]
 ; CHECK:    [[TMP5:%.*]] = add i32 [[AA_THREADOFFSET]], [[TMP4]]
-; CHECK:    store <8 x i32> addrspace(1)* [[DST:%.*]], <8 x i32> addrspace(1)** [[DST_ADDR_PRIVATEBUFFERPTR]], align 8
+; CHECK-TYPED:    store <8 x i32> addrspace(1)* [[DST:%.*]], <8 x i32> addrspace(1)** [[DST_ADDR_PRIVATEBUFFERPTR]], align 8
+; CHECK-OPAQUE:    store ptr addrspace(1) [[DST:%.*]], ptr [[DST_ADDR_PRIVATEBUFFERPTR]], align 8
 ; CHECK:    [[SRC_ADDR_SECTIONOFFSET:%.*]] = mul i32 [[SIMDSIZE]], 72
 ; CHECK:    [[SRC_ADDR_BUFFEROFFSET:%.*]] = add i32 0, [[SRC_ADDR_SECTIONOFFSET]]
 ; CHECK:    [[PERLANEOFFSET4:%.*]] = mul i32 [[SIMDLANEID]], 8
 ; CHECK:    [[SRC_ADDR_SIMDBUFOFF:%.*]] = add i32 [[SRC_ADDR_BUFFEROFFSET]], [[PERLANEOFFSET4]]
 ; CHECK:    [[SRC_ADDR_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[SRC_ADDR_SIMDBUFOFF]]
-; CHECK:    [[SRC_ADDR_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[SRC_ADDR_THREADOFFSET]] to <8 x i32> addrspace(1)**
-; CHECK:    store <8 x i32> addrspace(1)* [[SRC:%.*]], <8 x i32> addrspace(1)** [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
-; CHECK:    [[TMP6:%.*]] = load <8 x i32> addrspace(1)*, <8 x i32> addrspace(1)** [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
-; CHECK:    [[ARRAYIDX:%.*]] = getelementptr inbounds <8 x i32>, <8 x i32> addrspace(1)* [[TMP6]], i64 0
-; CHECK:    [[TMP7:%.*]] = load <8 x i32>, <8 x i32> addrspace(1)* [[ARRAYIDX]], align 4
-; CHECK:    [[TMP8:%.*]] = inttoptr i32 [[TMP5]] to <8 x i32>*
-; CHECK:    store <8 x i32> [[TMP7]], <8 x i32>* [[TMP8]], align 4
-; CHECK:    [[TMP9:%.*]] = load <8 x i32> addrspace(1)*, <8 x i32> addrspace(1)** [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
-; CHECK:    [[ARRAYIDX1:%.*]] = getelementptr inbounds <8 x i32>, <8 x i32> addrspace(1)* [[TMP9]], i64 1
-; CHECK:    [[TMP10:%.*]] = load <8 x i32>, <8 x i32> addrspace(1)* [[ARRAYIDX1]], align 4
+; CHECK-TYPED:    [[SRC_ADDR_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[SRC_ADDR_THREADOFFSET]] to <8 x i32> addrspace(1)**
+; CHECK-OPAQUE:    [[SRC_ADDR_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[SRC_ADDR_THREADOFFSET]] to ptr{{$}}
+; CHECK-TYPED:    store <8 x i32> addrspace(1)* [[SRC:%.*]], <8 x i32> addrspace(1)** [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
+; CHECK-OPAQUE:    store ptr addrspace(1) [[SRC:%.*]], ptr [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
+; CHECK-TYPED:    [[TMP6:%.*]] = load <8 x i32> addrspace(1)*, <8 x i32> addrspace(1)** [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
+; CHECK-OPAQUE:    [[TMP6:%.*]] = load ptr addrspace(1), ptr [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
+; CHECK-TYPED:    [[ARRAYIDX:%.*]] = getelementptr inbounds <8 x i32>, <8 x i32> addrspace(1)* [[TMP6]], i64 0
+; CHECK-OPAQUE:    [[ARRAYIDX:%.*]] = getelementptr inbounds <8 x i32>, ptr addrspace(1) [[TMP6]], i64 0
+; CHECK-TYPED:    [[TMP7:%.*]] = load <8 x i32>, <8 x i32> addrspace(1)* [[ARRAYIDX]], align 4
+; CHECK-OPAQUE:    [[TMP7:%.*]] = load <8 x i32>, ptr addrspace(1) [[ARRAYIDX]], align 4
+; CHECK-TYPED:    [[TMP8:%.*]] = inttoptr i32 [[TMP5]] to <8 x i32>*
+; CHECK-OPAQUE:    [[TMP8:%.*]] = inttoptr i32 [[TMP5]] to ptr{{$}}
+; CHECK-TYPED:    store <8 x i32> [[TMP7]], <8 x i32>* [[TMP8]], align 4
+; CHECK-OPAQUE:    store <8 x i32> [[TMP7]], ptr [[TMP8]], align 4
+; CHECK-TYPED:    [[TMP9:%.*]] = load <8 x i32> addrspace(1)*, <8 x i32> addrspace(1)** [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
+; CHECK-OPAQUE:    [[TMP9:%.*]] = load ptr addrspace(1), ptr [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
+; CHECK-TYPED:    [[ARRAYIDX1:%.*]] = getelementptr inbounds <8 x i32>, <8 x i32> addrspace(1)* [[TMP9]], i64 1
+; CHECK-OPAQUE:    [[ARRAYIDX1:%.*]] = getelementptr inbounds <8 x i32>, ptr addrspace(1) [[TMP9]], i64 1
+; CHECK-TYPED:    [[TMP10:%.*]] = load <8 x i32>, <8 x i32> addrspace(1)* [[ARRAYIDX1]], align 4
+; CHECK-OPAQUE:    [[TMP10:%.*]] = load <8 x i32>, ptr addrspace(1) [[ARRAYIDX1]], align 4
 ; CHECK:    [[BB_SECTIONOFFSET:%.*]] = mul i32 [[SIMDSIZE]], 32
 ; CHECK:    [[BB_BUFFEROFFSET:%.*]] = add i32 0, [[BB_SECTIONOFFSET]]
 ; CHECK:    [[PERLANEOFFSET2:%.*]] = mul i32 [[SIMDLANEID]], 32
 ; CHECK:    [[BB_SIMDBUFOFF:%.*]] = add i32 [[BB_BUFFEROFFSET]], [[PERLANEOFFSET2]]
 ; CHECK:    [[BB_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[BB_SIMDBUFOFF]]
-; CHECK:    [[BB_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[BB_THREADOFFSET]] to <8 x i32>*
+; CHECK-TYPED:    [[BB_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[BB_THREADOFFSET]] to <8 x i32>*
+; CHECK-OPAQUE:    [[BB_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[BB_THREADOFFSET]] to ptr{{$}}
 ; CHECK:    [[TMP11:%.*]] = mul i32 [[SIMDSIZE]], 32
 ; CHECK:    [[TMP12:%.*]] = mul i32 0, [[TMP11]]
 ; CHECK:    [[TMP13:%.*]] = add i32 [[BB_THREADOFFSET]], [[TMP12]]
 ; CHECK:    [[TMP14:%.*]] = mul i32 [[SIMDSIZE]], 32
 ; CHECK:    [[TMP15:%.*]] = mul i32 0, [[TMP14]]
 ; CHECK:    [[TMP16:%.*]] = add i32 [[BB_THREADOFFSET]], [[TMP15]]
-; CHECK:    [[TMP17:%.*]] = inttoptr i32 [[TMP16]] to <8 x i32>*
-; CHECK:    store <8 x i32> [[TMP10]], <8 x i32>* [[TMP17]], align 4
-; CHECK:    [[TMP18:%.*]] = inttoptr i32 [[TMP2]] to <8 x i32>*
-; CHECK:    [[TMP19:%.*]] = load <8 x i32>, <8 x i32>* [[TMP18]], align 4
-; CHECK:    [[TMP20:%.*]] = inttoptr i32 [[TMP13]] to <8 x i32>*
-; CHECK:    [[TMP21:%.*]] = load <8 x i32>, <8 x i32>* [[TMP20]], align 4
+; CHECK-TYPED:    [[TMP17:%.*]] = inttoptr i32 [[TMP16]] to <8 x i32>*
+; CHECK-OPAQUE:    [[TMP17:%.*]] = inttoptr i32 [[TMP16]] to ptr{{$}}
+; CHECK-TYPED:    store <8 x i32> [[TMP10]], <8 x i32>* [[TMP17]], align 4
+; CHECK-OPAQUE:    store <8 x i32> [[TMP10]], ptr [[TMP17]], align 4
+; CHECK-TYPED:    [[TMP18:%.*]] = inttoptr i32 [[TMP2]] to <8 x i32>*
+; CHECK-OPAQUE:    [[TMP18:%.*]] = inttoptr i32 [[TMP2]] to ptr{{$}}
+; CHECK-TYPED:    [[TMP19:%.*]] = load <8 x i32>, <8 x i32>* [[TMP18]], align 4
+; CHECK-OPAQUE:    [[TMP19:%.*]] = load <8 x i32>, ptr [[TMP18]], align 4
+; CHECK-TYPED:    [[TMP20:%.*]] = inttoptr i32 [[TMP13]] to <8 x i32>*
+; CHECK-OPAQUE:    [[TMP20:%.*]] = inttoptr i32 [[TMP13]] to ptr{{$}}
+; CHECK-TYPED:    [[TMP21:%.*]] = load <8 x i32>, <8 x i32>* [[TMP20]], align 4
+; CHECK-OPAQUE:    [[TMP21:%.*]] = load <8 x i32>, ptr [[TMP20]], align 4
 ; CHECK:    ret void
 ;
 entry:

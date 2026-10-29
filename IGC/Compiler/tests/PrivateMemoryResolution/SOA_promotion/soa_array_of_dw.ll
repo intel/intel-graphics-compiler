@@ -7,9 +7,9 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN: igc_opt --typed-pointers --ocl --platformpvc --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=2  -S %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --ocl --platformpvc --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=2  -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --ocl --platformpvc --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=2  -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ;
 
 ; CHECK-LABEL: @test
@@ -47,7 +47,8 @@ entry:
 ; CHECK:       [[T11:%.*]] = mul i32 [[simdLaneId]], 4
 ; CHECK:       [[T12:%.*]] = add i32 [[T10]], [[T11]]
 ; CHECK:       [[bufferOffset:%.*]] = add {{.*}} i32 [[perThreadOffset]], [[T12]]
-; CHECK:       [[T13:%.*]] = ptrtoint i8* %privateBase to i64
+; CHECK-TYPED:       [[T13:%.*]] = ptrtoint i8* %privateBase to i64
+; CHECK-OPAQUE:       [[T13:%.*]] = ptrtoint ptr %privateBase to i64
 ; CHECK:       [[T14:%.*]] = zext i32 [[bufferOffset]] to i64
 ; CHECK:       [[bufbaseoff:%.*]] = add {{.*}} i64 [[T13]], [[T14]]
 ;;
@@ -60,9 +61,12 @@ entry:
 ; CHECK:       [[T24:%.*]] = mul i32 [[simdSize]], [[T23]]
 ; CHECK:       [[T25:%.*]] = zext i32 [[T24]] to i64
 ; CHECK:       [[T26:%.*]] = add {{.*}} i64 [[bufbaseoff]], [[T25]]
-; CHECK:       [[GEPBase:%.*]] = inttoptr i64 [[T26]] to i32*
-; CHECK:       [[staddr0:%.*]] = getelementptr i32, i32* [[GEPBase]], i32 0
-; CHECK:       store i32 %ix, i32* [[staddr0]]
+; CHECK-TYPED:       [[GEPBase:%.*]] = inttoptr i64 [[T26]] to i32*
+; CHECK-OPAQUE:       [[GEPBase:%.*]] = inttoptr i64 [[T26]] to ptr{{$}}
+; CHECK-TYPED:       [[staddr0:%.*]] = getelementptr i32, i32* [[GEPBase]], i32 0
+; CHECK-OPAQUE:       [[staddr0:%.*]] = getelementptr i32, ptr [[GEPBase]], i32 0
+; CHECK-TYPED:       store i32 %ix, i32* [[staddr0]]
+; CHECK-OPAQUE:       store i32 %ix, ptr [[staddr0]]
 ;;
   %idx = zext i32 %ix to i64
   %tmp2 = bitcast [1024 x i32]* %pb to i8*

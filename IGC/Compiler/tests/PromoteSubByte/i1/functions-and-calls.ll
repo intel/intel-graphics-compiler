@@ -6,9 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-promote-sub-byte -S %s -o %t.ll
-; RUN: FileCheck %s --input-file=%t.ll
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-promote-sub-byte -S %s -o %t.opaque.ll %}
+; RUN: %if llvm-16-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE --input-file=%t.opaque.ll %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-promote-sub-byte -S %s -o %t.typed.ll %}
+; RUN: %if !llvm-17-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-TYPED --input-file=%t.typed.ll %}
 
 %struct_without_bools = type { i8 }
 %struct = type { [4 x <8 x i1*>], [4 x <8 x i1>*]* }
@@ -16,7 +17,8 @@
 %struct2 = type { i32, i1, %inner }
 
 ; CHECK:        %struct_without_bools = type { i8 }
-; CHECK:        %struct = type { [4 x <8 x i8*>], [4 x <8 x i8>*]* }
+; CHECK-TYPED:        %struct = type { [4 x <8 x i8*>], [4 x <8 x i8>*]* }
+; CHECK-OPAQUE:        %struct = type { [4 x <8 x ptr>], ptr }
 ; CHECK:        %struct2 = type { i32, i8, %inner }
 ; CHECK:        %inner = type { i8 }
 
@@ -41,8 +43,10 @@ define spir_func i1 @callee1(%struct addrspace(1)* %input_struct)
   ret i1 true
 }
 
-; CHECK:        define spir_func i8 @callee1(%struct addrspace(1)* %input_struct)
-; CHECK-NEXT:   %1 = load %struct, %struct addrspace(1)* %input_struct
+; CHECK-TYPED:        define spir_func i8 @callee1(%struct addrspace(1)* %input_struct)
+; CHECK-OPAQUE:        define spir_func i8 @callee1(ptr addrspace(1) %input_struct)
+; CHECK-TYPED-NEXT:   %1 = load %struct, %struct addrspace(1)* %input_struct
+; CHECK-OPAQUE-NEXT:   %1 = load %struct, ptr addrspace(1) %input_struct
 ; CHECK-NEXT:   ret i8 1
 
 
@@ -132,11 +136,13 @@ define spir_func void @caller(i1 %input, %struct addrspace(1)* %input_struct) {
   ret void
 }
 
-; CHECK:        define spir_func void @caller(i8 %input, %struct addrspace(1)* %input_struct)
+; CHECK-TYPED:        define spir_func void @caller(i8 %input, %struct addrspace(1)* %input_struct)
+; CHECK-OPAQUE:        define spir_func void @caller(i8 %input, ptr addrspace(1) %input_struct)
 ; CHECK-NEXT:   %1 = call i8 @callee0(i8 0)
 ; CHECK-NEXT:   %2 = call i8 @callee0(i8 1)
 ; CHECK-NEXT:   %3 = call i8 @callee0(i8 %input)
-; CHECK-NEXT:   %4 = call i8 @callee1(%struct addrspace(1)* %input_struct)
+; CHECK-TYPED-NEXT:   %4 = call i8 @callee1(%struct addrspace(1)* %input_struct)
+; CHECK-OPAQUE-NEXT:   %4 = call i8 @callee1(ptr addrspace(1) %input_struct)
 ; CHECK-NEXT:   %5 = call %struct2 @callee2(%struct2 { i32 5, i8 0, %inner { i8 1 } })
 ; CHECK-NEXT:   %6 = call [2 x i8] @callee3([2 x i8] c"\01\00")
 ; CHECK-NEXT:   %7 = call [2 x %inner] @calle4([2 x %inner] [%inner { i8 1 }, %inner zeroinitializer])

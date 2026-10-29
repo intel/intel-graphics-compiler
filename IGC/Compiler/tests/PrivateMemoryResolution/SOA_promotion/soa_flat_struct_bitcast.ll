@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
 ; Flat (scalar-leaf) promotion of a scalar array that is temporarily viewed as a
 ; struct: the alloca's base type is float, so visitBitCastInst must accept both
@@ -19,9 +18,12 @@
 ;
 ; Typed pointers are required for these bitcasts to survive to the pass.
 ;
-; RUN: igc_opt --typed-pointers --ocl --platformPtl --igc-private-mem-resolution \
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --ocl --platformPtl --igc-private-mem-resolution \
 ; RUN:   --regkey EnablePrivMemNewSOATranspose=1,EnableAggressiveSOAPromotion=1,EnablePrivMemNewSOAForScalarArrays=0 \
-; RUN:   -S %s | FileCheck %s
+; RUN:   -S %s | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --ocl --platformPtl --igc-private-mem-resolution \
+; RUN:   --regkey EnablePrivMemNewSOATranspose=1,EnableAggressiveSOAPromotion=1,EnablePrivMemNewSOAForScalarArrays=0 \
+; RUN:   -S %s | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
@@ -36,10 +38,13 @@ target triple = "spir64-unknown-unknown"
 ; CHECK: [[SIMD:%.*]] = call i32 @llvm.genx.GenISA.simdSize()
 ; CHECK: mul i32 [[LANE]], 4
 ; CHECK: mul i32 [[SIMD]], 4
-; CHECK: store float 1.000000e+00, float*
+; CHECK-TYPED: store float 1.000000e+00, float*
+; CHECK-OPAQUE: store float 1.000000e+00, ptr %
 ; CHECK: mul i32 [[SIMD]], 4
-; CHECK: load float, float*
-; CHECK-NOT: bitcast %Complex*
+; CHECK-TYPED: load float, float*
+; CHECK-OPAQUE: load float, ptr %
+; CHECK-TYPED-NOT: bitcast %Complex*
+; CHECK-OPAQUE-NOT: bitcast ptr
 ; CHECK: ret void
 define spir_kernel void @test_flat_struct_bitcast(float addrspace(1)* nocapture %d, i32 %n, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase) {
 entry:

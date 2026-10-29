@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -debugify --igc-process-builtin-metaData -check-debugify -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -debugify --igc-process-builtin-metaData -check-debugify -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -debugify --igc-process-builtin-metaData -check-debugify -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; ProcessBuiltinMetaData
 ; ------------------------------------------------
@@ -31,18 +31,23 @@ entry:
 }
 
 ; CHECK-DAG: !igc.functions = !{[[TEST_MD:![0-9]*]], [[USER_MD:![0-9]*]]}
-; CHECK-DAG: [[TEST_MD]] = !{void (i32*, i32*)* @test_processmd
-; CHECK-DAG: [[USER_MD]] = !{void (i32*, i32*)* @user_processmd, [[USER_FT:![0-9]*]]}
+; CHECK-TYPED-DAG: [[TEST_MD]] = !{void (i32*, i32*)* @test_processmd
+; CHECK-OPAQUE-DAG: [[TEST_MD]] = !{ptr @test_processmd
+; CHECK-TYPED-DAG: [[USER_MD]] = !{void (i32*, i32*)* @user_processmd, [[USER_FT:![0-9]*]]}
+; CHECK-OPAQUE-DAG: [[USER_MD]] = !{ptr @user_processmd, [[USER_FT:![0-9]*]]}
 ; CHECK-DAG: [[USER_FT]] = !{[[USER_FT1:![0-9]*]]}
 ; CHECK-DAG: [[USER_FT1]] = !{!"function_type", i32 2}
-; CHECK-DAG: !{!"FuncMDMap[1]", void (i32*, i32*)* @user_processmd}
+; CHECK-TYPED-DAG: !{!"FuncMDMap[1]", void (i32*, i32*)* @user_processmd}
+; CHECK-OPAQUE-DAG: !{!"FuncMDMap[1]", ptr @user_processmd}
 ; CHECK-DAG: [[FUNC_MD_FT:![0-9]*]] = !{!"functionType", !"UserFunction"}
 ; CHECK-DAG: [[FUNC_MD_AQ:![0-9]*]] = !{!"m_OpenCLArgAccessQualifiers", [[FUNC_MD_AQ0:![0-9]*]], [[FUNC_MD_AQ1:![0-9]*]]}
 ; CHECK-DAG: [[FUNC_MD_AQ0]] = !{!"m_OpenCLArgAccessQualifiersVec[0]", !"none"}
 ; CHECK-DAG: [[FUNC_MD_AQ1]] = !{!"m_OpenCLArgAccessQualifiersVec[1]", !"none"}
 ; CHECK-DAG: [[FUNC_MD_AB:![0-9]*]] = !{!"m_OpenCLArgBaseTypes", [[FUNC_MD_AB0:![0-9]*]], [[FUNC_MD_AB1:![0-9]*]]}
-; CHECK-DAG: [[FUNC_MD_AB0]] = !{!"m_OpenCLArgBaseTypesVec[0]", !"i32*"}
-; CHECK-DAG: [[FUNC_MD_AB1]] = !{!"m_OpenCLArgBaseTypesVec[1]", !"i32*"}
+; CHECK-TYPED-DAG: [[FUNC_MD_AB0]] = !{!"m_OpenCLArgBaseTypesVec[0]", !"i32*"}
+; CHECK-OPAQUE-DAG: [[FUNC_MD_AB0]] = !{!"m_OpenCLArgBaseTypesVec[0]", !"ptr"}
+; CHECK-TYPED-DAG: [[FUNC_MD_AB1]] = !{!"m_OpenCLArgBaseTypesVec[1]", !"i32*"}
+; CHECK-OPAQUE-DAG: [[FUNC_MD_AB1]] = !{!"m_OpenCLArgBaseTypesVec[1]", !"ptr"}
 ; CHECK-DAG: [[FUNC_MD_AN:![0-9]*]] = !{!"m_OpenCLArgNames", [[FUNC_MD_AN0:![0-9]*]], [[FUNC_MD_AN1:![0-9]*]]}
 ; CHECK-DAG: [[FUNC_MD_AN0]] = !{!"m_OpenCLArgNamesVec[0]", !"src"}
 ; CHECK-DAG: [[FUNC_MD_AN1]] = !{!"m_OpenCLArgNamesVec[1]", !"dst"}

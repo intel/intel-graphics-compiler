@@ -5,14 +5,15 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-promote-sub-byte -S %s -o %t.ll
-; RUN: FileCheck %s --input-file=%t.ll
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-promote-sub-byte -S %s -o %t.opaque.ll %}
+; RUN: %if llvm-16-plus %{ FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s --input-file=%t.opaque.ll %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-promote-sub-byte -S %s -o %t.typed.ll %}
+; RUN: %if !llvm-17-plus %{ FileCheck --check-prefixes=CHECK,CHECK-TYPED %s --input-file=%t.typed.ll %}
 
 %struct = type { [4 x <8 x i1*>], [4 x <8 x i1>*]* }
 
-; CHECK:        %struct = type { [4 x <8 x i8*>], [4 x <8 x i8>*]* }
+; CHECK-TYPED:        %struct = type { [4 x <8 x i8*>], [4 x <8 x i8>*]* }
+; CHECK-OPAQUE:        %struct = type { [4 x <8 x ptr>], ptr }
 
 
 define spir_func void @scalar_alloca() {

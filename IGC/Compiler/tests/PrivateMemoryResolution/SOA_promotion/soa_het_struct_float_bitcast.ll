@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
 ; Test that a heterogeneous struct array alloca is SoA-promoted even when one
 ; element is accessed via a direct struct*->T* bitcast (single-chunk access).

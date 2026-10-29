@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 define spir_kernel void @test_alloca_vla(i64, i8* %privateBase) #0 {
 ; CHECK-LABEL: @test_alloca_vla
@@ -18,15 +18,17 @@ define spir_kernel void @test_alloca_vla(i64, i8* %privateBase) #0 {
 ; CHECK:  [[TruncVLASize:%[A-z0-9]*]] = trunc i64 %0 to i32
 ; CHECK:  [[VLASizeWithType:%[A-z0-9]*]] = mul i32 [[TruncVLASize]], 8
 ; CHECK:  [[VLAPerLaneOffset:%[A-z0-9]*]] = mul i32 [[simdLaneId]], [[VLASizeWithType]]
-; CHECK:  [[VLAStackAlloca:%[A-z0-9]*]] = call i8* @llvm.genx.GenISA.VLAStackAlloca(i32 [[VLAPerLaneOffset]], i32 [[VLASizeWithType]])
-; CHECK:  [[privateBuffer:%[.A-z0-9]*]] = bitcast i8* [[VLAStackAlloca]] to i64*
+; CHECK-TYPED:  [[VLAStackAlloca:%[A-z0-9]*]] = call i8* @llvm.genx.GenISA.VLAStackAlloca(i32 [[VLAPerLaneOffset]], i32 [[VLASizeWithType]])
+; CHECK-OPAQUE:  [[VLAStackAlloca:%[A-z0-9]*]] = call ptr @llvm.genx.GenISA.VLAStackAlloca(i32 [[VLAPerLaneOffset]], i32 [[VLASizeWithType]])
+; CHECK-TYPED:  [[privateBuffer:%[.A-z0-9]*]] = bitcast i8* [[VLAStackAlloca]] to i64*
 ; CHECK:  ret void
 entry:
   %1 = alloca i64, i64 %0, align 8
   ret void
 }
 
-; CHECK:  declare i8* @llvm.genx.GenISA.VLAStackAlloca(i32, i32) [[attrNum:#[0-9]*]]
+; CHECK-TYPED:  declare i8* @llvm.genx.GenISA.VLAStackAlloca(i32, i32) [[attrNum:#[0-9]*]]
+; CHECK-OPAQUE:  declare ptr @llvm.genx.GenISA.VLAStackAlloca(i32, i32) [[attrNum:#[0-9]*]]
 ; CHECK-LLVM-14: attributes [[attrNum]] = { nounwind willreturn }
 ; CHECK-LLVM-15: attributes [[attrNum]] = { nounwind willreturn }
 ; CHECK-LLVM-16: attributes [[attrNum]] = { nounwind willreturn memory(readwrite) }

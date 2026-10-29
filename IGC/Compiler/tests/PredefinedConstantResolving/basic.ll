@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -debugify --igc-predefined-constant-resolve -check-debugify 2>&1 -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -debugify --igc-predefined-constant-resolve -check-debugify 2>&1 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -debugify --igc-predefined-constant-resolve -check-debugify 2>&1 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; PredefinedConstantResolving
 ; ------------------------------------------------
@@ -36,11 +36,16 @@
 define spir_kernel void @test_const(i32 addrspace(1)* %dst) #0 {
 ; CHECK-LABEL: @test_const(
 ; CHECK:  entry:
-; CHECK:    [[DST_ADDR:%.*]] = alloca i32 addrspace(1)*, align 8
-; CHECK:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR]], align 8
-; CHECK:    [[TMP0:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[DST_ADDR]], align 8
-; CHECK:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP0]], i64 0
-; CHECK:    store i32 42, i32 addrspace(1)* [[ARRAYIDX]], align 4
+; CHECK-TYPED:    [[DST_ADDR:%.*]] = alloca i32 addrspace(1)*, align 8
+; CHECK-OPAQUE:    [[DST_ADDR:%.*]] = alloca ptr addrspace(1), align 8
+; CHECK-TYPED:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR]], align 8
+; CHECK-OPAQUE:    store ptr addrspace(1) [[DST:%.*]], ptr [[DST_ADDR]], align 8
+; CHECK-TYPED:    [[TMP0:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[DST_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP0:%.*]] = load ptr addrspace(1), ptr [[DST_ADDR]], align 8
+; CHECK-TYPED:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP0]], i64 0
+; CHECK-OPAQUE:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, ptr addrspace(1) [[TMP0]], i64 0
+; CHECK-TYPED:    store i32 42, i32 addrspace(1)* [[ARRAYIDX]], align 4
+; CHECK-OPAQUE:    store i32 42, ptr addrspace(1) [[ARRAYIDX]], align 4
 ; CHECK:    ret void
 ;
 entry:

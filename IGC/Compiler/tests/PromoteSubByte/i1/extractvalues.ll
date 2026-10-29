@@ -5,10 +5,10 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-promote-sub-byte -S %s -o %t.ll
-; RUN: FileCheck %s --input-file=%t.ll
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-promote-sub-byte -S %s -o %t.opaque.ll %}
+; RUN: %if llvm-16-plus %{ FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s --input-file=%t.opaque.ll %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-promote-sub-byte -S %s -o %t.typed.ll %}
+; RUN: %if !llvm-17-plus %{ FileCheck --check-prefixes=CHECK,CHECK-TYPED %s --input-file=%t.typed.ll %}
 
 %struct = type { i32, i1 }
 
@@ -26,6 +26,7 @@ define void @extract_values() {
 }
 
 ; CHECK-LABEL:  define void @extract_values() {
-; CHECK-NEXT:   [[NEW_LOAD:%[a-zA-Z0-9]+]] = load %struct, %struct addrspace(3)* @global_variable, align 8
+; CHECK-TYPED-NEXT:   [[NEW_LOAD:%[a-zA-Z0-9]+]] = load %struct, %struct addrspace(3)* @global_variable, align 8
+; CHECK-OPAQUE-NEXT:   [[NEW_LOAD:%[a-zA-Z0-9]+]] = load %struct, ptr addrspace(3) @global_variable, align 8
 ; CHECK-NEXT:   {{%[a-zA-Z0-9]+}} = extractvalue %struct [[NEW_LOAD]], 0
 ; CHECK-NEXT:   {{%[a-zA-Z0-9]+}} = extractvalue %struct [[NEW_LOAD]], 1

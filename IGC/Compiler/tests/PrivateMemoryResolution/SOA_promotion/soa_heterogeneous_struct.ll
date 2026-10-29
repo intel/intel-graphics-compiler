@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
 ; Test that a heterogeneous struct (Vec3 sub-struct + float + i32) inside an
 ; array alloca is promoted to SoA when EnablePrivMemNewSOATranspose=1 on PTL.

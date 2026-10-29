@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution --platformpvc -S %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution --platformpvc -S %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution --platformpvc -S %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 define spir_kernel void @testallocabig(i8* %privateBase) {
 entry:
@@ -32,8 +32,9 @@ entry:
 ; CHECK:  [[SIMDBUFOFF:%[.A-z0-9]*]] = add i32 [[BufferOffset]], [[perLaneOffset]]
 ; CHECK:  [[ZXT2:%[A-z0-9]*]] = zext i32 [[SIMDBUFOFF]] to i64
 ; CHECK:  [[totalOffset:%.*]] = add {{.*}} i64 [[perThreadOffset]], [[ZXT2]]
-; CHECK:  [[privateBufferGEP:%[.A-z0-9]*]] = getelementptr i8, i8* %privateBase, i64 [[totalOffset]]
-; CHECK:  [[privateBuffer:%[.A-z0-9]*]] = bitcast i8* [[privateBufferGEP]] to [50000 x float]*
+; CHECK-TYPED:  [[privateBufferGEP:%[.A-z0-9]*]] = getelementptr i8, i8* %privateBase, i64 [[totalOffset]]
+; CHECK-OPAQUE:  [[privateBufferGEP:%[.A-z0-9]*]] = getelementptr i8, ptr %privateBase, i64 [[totalOffset]]
+; CHECK-TYPED:  [[privateBuffer:%[.A-z0-9]*]] = bitcast i8* [[privateBufferGEP]] to [50000 x float]*
 ; CHECK:  ret void
 }
 

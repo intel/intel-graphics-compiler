@@ -6,9 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN: igc_opt --typed-pointers -regkey TestIGCPreCompiledFunctions=1 -regkey ForceEmuKind=4 -regkey InlinedEmulationThreshold=500 --platformmtl --igc-precompiled-import --print-codegencontext -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -regkey TestIGCPreCompiledFunctions=1 -regkey ForceEmuKind=4 -regkey InlinedEmulationThreshold=500 --platformmtl --igc-precompiled-import --print-codegencontext -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -regkey TestIGCPreCompiledFunctions=1 -regkey ForceEmuKind=4 -regkey InlinedEmulationThreshold=500 --platformmtl --igc-precompiled-import --print-codegencontext -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; PreCompiledFuncImport
 ; ------------------------------------------------
@@ -26,7 +26,8 @@ entry:
 ; CHECK:   [[TMP1:%.*]] = call spir_func double @__igcbuiltin_dp_div_nomadm_ieee_always_inline(double [[TMP0]], double %b)
 ; CHECK:   [[TMP2:%.*]] = call spir_func double @__igcbuiltin_dp_sqrt_nomadm_ieee(double [[TMP1]])
 ; CHECK:   [[TMP3:%.*]] = call spir_func double @__igcbuiltin_dp_div_nomadm_ieee(double [[TMP2]], double %c)
-; CHECK:   store double [[TMP3]], double addrspace(1)* %p, align 8
+; CHECK-TYPED:   store double [[TMP3]], double addrspace(1)* %p, align 8
+; CHECK-OPAQUE:   store double [[TMP3]], ptr addrspace(1) %p, align 8
   %call.i.i2 = call double @llvm.sqrt.f64(double %a)
   %div = fdiv double %call.i.i2, %b
   %call.i.i13 = call double @llvm.sqrt.f64(double %div)

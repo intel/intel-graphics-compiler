@@ -6,9 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-opencl-printf-resolution -igc-serialize-metadata \
-; RUN:   -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-opencl-printf-resolution -igc-serialize-metadata \
+; RUN:   -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-opencl-printf-resolution -igc-serialize-metadata \
+; RUN:   -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; OpenCLPrintfResolution
 ; ------------------------------------------------
@@ -17,7 +18,8 @@
 ; string in another global.
 
 ; CHECK:     !{!"stringConstants",
-; CHECK-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", [3 x i8] addrspace(2)* @str}
+; CHECK-TYPED-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", [3 x i8] addrspace(2)* @str}
+; CHECK-OPAQUE-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", ptr addrspace(2) @str}
 
 @str = internal unnamed_addr addrspace(2) constant [3 x i8] c"A\0A\00", align 1
 @ref = addrspace(2) constant [1 x i64] [i64 ptrtoint ([3 x i8] addrspace(2)* @str to i64)]

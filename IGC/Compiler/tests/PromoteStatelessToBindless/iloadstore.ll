@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify --igc-promote-stateless-to-bindless -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify --igc-promote-stateless-to-bindless -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify --igc-promote-stateless-to-bindless -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; PromoteStatelessToBindless : load and store intrinsics part
 ; ------------------------------------------------
@@ -18,10 +18,14 @@
 
 define spir_kernel void @test_promote(i8 addrspace(1)* %src, i8 addrspace(2)* %dst) {
 ; CHECK-LABEL: @test_promote(
-; CHECK:    [[TMP1:%.*]] = addrspacecast i8 addrspace(1)* [[SRC:%.*]] to i8 addrspace(2490368)*
-; CHECK:    [[TMP2:%.*]] = call <2 x float> @llvm.genx.GenISA.simdBlockReadBindless.v2f32.p2490368i8.i32(i8 addrspace(2490368)* [[TMP1]], i32 0)
-; CHECK:    [[TMP3:%.*]] = addrspacecast i8 addrspace(2)* [[DST:%.*]] to i8 addrspace(2490368)*
-; CHECK:    call void @llvm.genx.GenISA.simdBlockWriteBindless.p2490368i8.v2f32.i32(i8 addrspace(2490368)* [[TMP3]], <2 x float> [[TMP2]], i32 0)
+; CHECK-TYPED:    [[TMP1:%.*]] = addrspacecast i8 addrspace(1)* [[SRC:%.*]] to i8 addrspace(2490368)*
+; CHECK-OPAQUE:    [[TMP1:%.*]] = addrspacecast ptr addrspace(1) [[SRC:%.*]] to ptr addrspace(2490368)
+; CHECK-TYPED:    [[TMP2:%.*]] = call <2 x float> @llvm.genx.GenISA.simdBlockReadBindless.v2f32.p2490368i8.i32(i8 addrspace(2490368)* [[TMP1]], i32 0)
+; CHECK-OPAQUE:    [[TMP2:%.*]] = call <2 x float> @llvm.genx.GenISA.simdBlockReadBindless.v2f32.p2490368.i32(ptr addrspace(2490368) [[TMP1]], i32 0)
+; CHECK-TYPED:    [[TMP3:%.*]] = addrspacecast i8 addrspace(2)* [[DST:%.*]] to i8 addrspace(2490368)*
+; CHECK-OPAQUE:    [[TMP3:%.*]] = addrspacecast ptr addrspace(2) [[DST:%.*]] to ptr addrspace(2490368)
+; CHECK-TYPED:    call void @llvm.genx.GenISA.simdBlockWriteBindless.p2490368i8.v2f32.i32(i8 addrspace(2490368)* [[TMP3]], <2 x float> [[TMP2]], i32 0)
+; CHECK-OPAQUE:    call void @llvm.genx.GenISA.simdBlockWriteBindless.p2490368.v2f32.i32(ptr addrspace(2490368) [[TMP3]], <2 x float> [[TMP2]], i32 0)
 ; CHECK:    ret void
 ;
   %1 = call <2 x float> @llvm.genx.GenISA.simdBlockRead.v2f32.p1(i8 addrspace(1)* %src)

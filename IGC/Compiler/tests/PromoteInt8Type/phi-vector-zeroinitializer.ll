@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --igc-promoteint8type -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --igc-promoteint8type -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --igc-promoteint8type -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; PromoteInt8Type : phi with vector zeroinitializer (ConstantAggregateZero)
 ; ------------------------------------------------
@@ -21,7 +21,8 @@ define void @test_promote(<4 x i8>* %src, i32 %idx, i1 %cond, i8* %dst) {
 ; CHECK:    [[PHI:%[A-z0-9]*]] = phi <4 x i16> [ zeroinitializer, [[ENTRY:%[A-z0-9]*]] ], [ {{%[A-z0-9]*}}, [[LBL:%[A-z0-9]*]] ]
 ; CHECK:    [[B2S:%[A-z0-9]*]] = extractelement <4 x i16> [[PHI]], i32 %idx
 ; CHECK:    [[TRUNC:%[A-z0-9]*]] = trunc i16 [[B2S]] to i8
-; CHECK:    store i8 [[TRUNC]], i8* %dst
+; CHECK-TYPED:    store i8 [[TRUNC]], i8* %dst
+; CHECK-OPAQUE:    store i8 [[TRUNC]], ptr %dst
 ; CHECK:    ret void
 ;
 entry:

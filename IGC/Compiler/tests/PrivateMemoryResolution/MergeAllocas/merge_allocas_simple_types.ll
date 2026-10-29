@@ -6,8 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --regkey DisableMergingOfAllocasWithDifferentType=0 --igc-ocl-merge-allocas --igc-private-mem-resolution -S %s --platformpvc | FileCheck %s
+; RUN: igc_opt --typed-pointers --regkey DisableMergingOfAllocasWithDifferentType=0 --igc-ocl-merge-allocas --igc-private-mem-resolution -S %s --platformpvc | FileCheck --check-prefixes=CHECK%if llvm-17-plus %{%} %else %{,CHECK-TYPED%} %s
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------
@@ -17,7 +16,7 @@
 define spir_kernel void @main(float addrspace(1)* %0, i64 %1, i64 %2, i32 %3, i32 %4) {
 ; CHECK-LABEL: main
 ; CHECK-NEXT: alloca i64, align 4
-; CHECK-NEXT: bitcast i64* {{.*}} to float*
+; CHECK-TYPED-NEXT: bitcast i64* {{.*}} to float*
 ; CHECK-NOT: alloca float, align 4
   %6 = alloca float, align 4
   %7 = alloca i64, align 4

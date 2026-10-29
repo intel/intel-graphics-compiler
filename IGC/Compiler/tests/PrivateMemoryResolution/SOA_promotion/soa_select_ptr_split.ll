@@ -7,10 +7,11 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN: igc_opt --typed-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl \
-; RUN:   --igc-split-selects-of-alloca-pointers --igc-private-mem-resolution -S %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl \
+; RUN:   --igc-split-selects-of-alloca-pointers --igc-private-mem-resolution -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl \
+; RUN:   --igc-split-selects-of-alloca-pointers --igc-private-mem-resolution -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ;
 ; Test: SELECT-of-pointer with one alloca-derived operand is split before
 ; SOALayoutChecker so the underlying [33 x float] alloca becomes SoA.
@@ -38,8 +39,10 @@
 ;; SoA-transposed stack operand, with a value-level SELECT merging them.
 ;;
 ; CHECK:       call i32 @llvm.genx.GenISA.simdSize()
-; CHECK:       load float, float addrspace(4)*
-; CHECK:       load float, float*
+; CHECK-TYPED:       load float, float addrspace(4)*
+; CHECK-OPAQUE:       load float, ptr addrspace(4)
+; CHECK-TYPED:       load float, float*
+; CHECK-OPAQUE:       load float, ptr %
 ; CHECK:       select i1 %c, float
 ;;
 ; CHECK-LABEL: @test_store_select(
@@ -48,8 +51,10 @@
 ;; (br i1 %c) with one store in each successor (stack store goes to SoA float*).
 ;;
 ; CHECK:       br i1 %c
-; CHECK:       store float %x, float addrspace(4)*
-; CHECK:       store float %x, float*
+; CHECK-TYPED:       store float %x, float addrspace(4)*
+; CHECK-OPAQUE:       store float %x, ptr addrspace(4)
+; CHECK-TYPED:       store float %x, float*
+; CHECK-OPAQUE:       store float %x, ptr %
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"

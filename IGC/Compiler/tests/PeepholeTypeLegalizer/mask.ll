@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -debugify --igc-int-type-legalizer -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -debugify --igc-int-type-legalizer -check-debugify -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -debugify --igc-int-type-legalizer -check-debugify -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; Debug-info related check
 ; CHECK: CheckModuleDebugify: PASS
@@ -21,7 +21,8 @@ define spir_kernel void @test_i32_to_i32(i32 %input, i32 addrspace(1)* %dst) {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = and i32 %input, 7
-; CHECK:         store i32 %0, i32 addrspace(1)* %dst
+; CHECK-TYPED:         store i32 %0, i32 addrspace(1)* %dst
+; CHECK-OPAQUE:         store i32 %0, ptr addrspace(1) %dst
 ; CHECK:         ret void
   %0 = trunc i32 %input to i3
   %1 = zext i3 %0 to i32
@@ -34,7 +35,8 @@ entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = and i32 %input, 7
 ; CHECK:         %1 = trunc i32 %0 to i16
-; CHECK:         store i16 %1, i16 addrspace(1)* %dst
+; CHECK-TYPED:         store i16 %1, i16 addrspace(1)* %dst
+; CHECK-OPAQUE:         store i16 %1, ptr addrspace(1) %dst
 ; CHECK:         ret void
   %0 = trunc i32 %input to i3
   %1 = zext i3 %0 to i16
@@ -55,7 +57,8 @@ entry:
 ; CHECK:               [[IDX1_AFTER:%.*]] = and i32 [[IDX1_BEFORE]], 31
 ; CHECK:               [[VEC1:%.*]] = insertelement <2 x i32> [[VEC0]], i32 [[IDX1_AFTER]], i64 1
 ; CHECK:               [[RESULT:%.*]] = bitcast <2 x i32> [[VEC1]] to i64
-; CHECK:               store i64 [[RESULT]], i64 addrspace(1)* %dst
+; CHECK-TYPED:               store i64 [[RESULT]], i64 addrspace(1)* %dst
+; CHECK-OPAQUE:               store i64 [[RESULT]], ptr addrspace(1) %dst
 ; CHECK:               ret void
   %0 = trunc i64 %input to i37
   %1 = zext i37 %0 to i64
@@ -70,7 +73,8 @@ entry:
 ; CHECK:         %1 = extractelement <2 x i32> %0, i32 0
 ; CHECK:         %2 = and i32 %1, 7
 ; CHECK:         %3 = trunc i32 %2 to i8
-; CHECK:         store i8 %3, i8 addrspace(1)* %dst
+; CHECK-TYPED:         store i8 %3, i8 addrspace(1)* %dst
+; CHECK-OPAQUE:         store i8 %3, ptr addrspace(1) %dst
 ; CHECK:         ret void
   %0 = trunc i64 %input to i3
   %1 = zext i3 %0 to i8

@@ -6,9 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: system-windows, llvm-17-plus
+; UNSUPPORTED: system-windows
 ; REQUIRES: regkeys
-; RUN: igc_opt --typed-pointers --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=6 < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=6 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=6 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 define spir_kernel void @testMixed(float addrspace(1)* %out, float addrspace(1)* %in, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX) {
 entry:
@@ -43,7 +44,10 @@ entry:
 ; CHECK: block: entry function: testMixed
 ; CHECK: N: UP: 1 NP: 1     48 (2)         %lid = zext i16 %localIdX to i32
 ; CHECK: N: UP: 1 NP: 2     80 (3)         %idx = zext i32 %lid to i64
-; CHECK: N: UP: 1 NP: 4     136 (5)        %ptr = getelementptr inbounds float, float addrspace(1)* %in, i64 %idx
-; CHECK: N: UP: 1 NP: 3     104 (4)        %val = load float, float addrspace(1)* %ptr, align 4
-; CHECK: N: UP: 0 NP: 3     96 (3)         %outptr = getelementptr inbounds float, float addrspace(1)* %out, i64 %idx
+; CHECK-TYPED: N: UP: 1 NP: 4     136 (5)        %ptr = getelementptr inbounds float, float addrspace(1)* %in, i64 %idx
+; CHECK-OPAQUE: N: UP: 1 NP: 4     136 (5)        %ptr = getelementptr inbounds float, ptr addrspace(1) %in, i64 %idx
+; CHECK-TYPED: N: UP: 1 NP: 3     104 (4)        %val = load float, float addrspace(1)* %ptr, align 4
+; CHECK-OPAQUE: N: UP: 1 NP: 3     104 (4)        %val = load float, ptr addrspace(1) %ptr, align 4
+; CHECK-TYPED: N: UP: 0 NP: 3     96 (3)         %outptr = getelementptr inbounds float, float addrspace(1)* %out, i64 %idx
+; CHECK-OPAQUE: N: UP: 0 NP: 3     96 (3)         %outptr = getelementptr inbounds float, ptr addrspace(1) %out, i64 %idx
 ; CHECK: MaxPressure In Function: testMixed --> 5

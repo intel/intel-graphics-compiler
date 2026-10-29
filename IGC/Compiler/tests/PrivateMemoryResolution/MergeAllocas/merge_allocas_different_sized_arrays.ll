@@ -5,8 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --igc-ocl-merge-allocas --igc-private-mem-resolution -S %s --platformpvc | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --igc-ocl-merge-allocas --igc-private-mem-resolution -S %s --platformpvc | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --igc-ocl-merge-allocas --igc-private-mem-resolution -S %s --platformpvc | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------
@@ -15,9 +15,11 @@
 
 define spir_kernel void @main(float addrspace(1)* %0, i64 %1, i64 %2, i32 %3, i32 %4) {
 ; CHECK-LABEL: main
-; CHECK-NEXT: alloca [256 x float], align 4
-; CHECK-NEXT: bitcast [256 x float]* {{.*}} to [128 x float]*
+; CHECK-NEXT: [[MERGED:%.*]] = alloca [256 x float], align 4
+; CHECK-TYPED-NEXT: bitcast [256 x float]* {{.*}} to [128 x float]*
 ; CHECK-NOT: alloca [128 x float], align 4
+; CHECK-OPAQUE: getelementptr inbounds [128 x float], ptr [[MERGED]], i64 0, i64 %1
+; CHECK-OPAQUE: getelementptr inbounds [256 x float], ptr [[MERGED]], i64 0, i64 %2
   %6 = alloca [128 x float], align 4
   %7 = alloca [256 x float], align 4
   br label %8

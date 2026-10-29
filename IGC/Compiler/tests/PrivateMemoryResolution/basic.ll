@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------
@@ -36,9 +36,11 @@ define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %sr
 ; CHECK:    [[DST_ADDR_SIMDBUFOFF:%.*]] = add i32 [[DST_ADDR_BUFFEROFFSET]], [[PERLANEOFFSET2]]
 ; CHECK:    [[DST_ADDR_TOTALOFFSET:%.*]] = add {{.*}} [[PERTHREADOFFSET]], [[DST_ADDR_SIMDBUFOFF]]
 ; CHECK:    [[ZXT0:%.*]] = zext i32 [[DST_ADDR_TOTALOFFSET]] to i64
-; CHECK:    [[DST_ADDR_PRIVATEBUFFERGEP:%.*]] = getelementptr i8, i8* %privateBase, i64 [[ZXT0]]
-; CHECK:    [[DST_ADDR_PRIVATEBUFFER:%.*]] = bitcast i8* [[DST_ADDR_PRIVATEBUFFERGEP]] to i32 addrspace(1)**
-; CHECK:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR_PRIVATEBUFFER]], align 8
+; CHECK-TYPED:    [[DST_ADDR_PRIVATEBUFFERGEP:%.*]] = getelementptr i8, i8* %privateBase, i64 [[ZXT0]]
+; CHECK-OPAQUE:    [[DST_ADDR_PRIVATEBUFFER:%.*]] = getelementptr i8, ptr %privateBase, i64 [[ZXT0]]
+; CHECK-TYPED:    [[DST_ADDR_PRIVATEBUFFER:%.*]] = bitcast i8* [[DST_ADDR_PRIVATEBUFFERGEP]] to i32 addrspace(1)**
+; CHECK-TYPED:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR_PRIVATEBUFFER]], align 8
+; CHECK-OPAQUE:    store ptr addrspace(1) [[DST:%.*]], ptr [[DST_ADDR_PRIVATEBUFFER]], align 8
 ;
 ; CHECK:    [[SRC_ADDR_SECTIONOFFSET:%.*]] = mul i32 [[SIMDSIZE]], 16
 ; CHECK:    [[SRC_ADDR_BUFFEROFFSET:%.*]] = add i32 0, [[SRC_ADDR_SECTIONOFFSET]]
@@ -46,37 +48,51 @@ define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %sr
 ; CHECK:    [[SRC_ADDR_SIMDBUFOFF:%.*]] = add i32 [[SRC_ADDR_BUFFEROFFSET]], [[PERLANEOFFSET3]]
 ; CHECK:    [[SRC_ADDR_TOTALOFFSET:%.*]] = add {{.*}} [[PERTHREADOFFSET]], [[SRC_ADDR_SIMDBUFOFF]]
 ; CHECK:    [[ZXT1:%.*]] = zext i32 [[SRC_ADDR_TOTALOFFSET]] to i64
-; CHECK:    [[SRC_ADDR_PRIVATEBUFFERGEP:%.*]] = getelementptr i8, i8* %privateBase, i64 [[ZXT1]]
-; CHECK:    [[SRC_ADDR_PRIVATEBUFFER:%.*]] = bitcast i8* [[SRC_ADDR_PRIVATEBUFFERGEP]] to i32 addrspace(1)**
-; CHECK:    store i32 addrspace(1)* [[SRC:%.*]], i32 addrspace(1)** [[SRC_ADDR_PRIVATEBUFFER]], align 8
+; CHECK-TYPED:    [[SRC_ADDR_PRIVATEBUFFERGEP:%.*]] = getelementptr i8, i8* %privateBase, i64 [[ZXT1]]
+; CHECK-OPAQUE:    [[SRC_ADDR_PRIVATEBUFFER:%.*]] = getelementptr i8, ptr %privateBase, i64 [[ZXT1]]
+; CHECK-TYPED:    [[SRC_ADDR_PRIVATEBUFFER:%.*]] = bitcast i8* [[SRC_ADDR_PRIVATEBUFFERGEP]] to i32 addrspace(1)**
+; CHECK-TYPED:    store i32 addrspace(1)* [[SRC:%.*]], i32 addrspace(1)** [[SRC_ADDR_PRIVATEBUFFER]], align 8
+; CHECK-OPAQUE:    store ptr addrspace(1) [[SRC:%.*]], ptr [[SRC_ADDR_PRIVATEBUFFER]], align 8
 ;
-; CHECK:    [[TMP1:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[SRC_ADDR_PRIVATEBUFFER]], align 8
-; CHECK:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP1]], i64 0
-; CHECK:    [[TMP2:%.*]] = load i32, i32 addrspace(1)* [[ARRAYIDX]], align 4
+; CHECK-TYPED:    [[TMP1:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[SRC_ADDR_PRIVATEBUFFER]], align 8
+; CHECK-OPAQUE:    [[TMP1:%.*]] = load ptr addrspace(1), ptr [[SRC_ADDR_PRIVATEBUFFER]], align 8
+; CHECK-TYPED:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP1]], i64 0
+; CHECK-OPAQUE:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, ptr addrspace(1) [[TMP1]], i64 0
+; CHECK-TYPED:    [[TMP2:%.*]] = load i32, i32 addrspace(1)* [[ARRAYIDX]], align 4
+; CHECK-OPAQUE:    [[TMP2:%.*]] = load i32, ptr addrspace(1) [[ARRAYIDX]], align 4
 ; CHECK:    [[AA_SECTIONOFFSET:%.*]] = mul i32 [[SIMDSIZE]], 0
 ; CHECK:    [[AA_BUFFEROFFSET:%.*]] = add i32 0, [[AA_SECTIONOFFSET]]
 ; CHECK:    [[PERLANEOFFSET:%.*]] = mul i32 [[SIMDLANEID]], 4
 ; CHECK:    [[AA_SIMDBUFOFF:%.*]] = add i32 [[AA_BUFFEROFFSET]], [[PERLANEOFFSET]]
 ; CHECK:    [[AA_TOTALOFFSET:%.*]] = add {{.*}} [[PERTHREADOFFSET]], [[AA_SIMDBUFOFF]]
 ; CHECK:    [[ZXT2:%.*]] = zext i32 [[AA_TOTALOFFSET]] to i64
-; CHECK:    [[AA_PRIVATEBUFFERGEP:%.*]] = getelementptr i8, i8* %privateBase, i64 [[ZXT2]]
-; CHECK:    [[AA_PRIVATEBUFFER:%.*]] = bitcast i8* [[AA_PRIVATEBUFFERGEP]] to i32*
-; CHECK:    store i32 [[TMP2]], i32* [[AA_PRIVATEBUFFER]], align 4
+; CHECK-TYPED:    [[AA_PRIVATEBUFFERGEP:%.*]] = getelementptr i8, i8* %privateBase, i64 [[ZXT2]]
+; CHECK-OPAQUE:    [[AA_PRIVATEBUFFER:%.*]] = getelementptr i8, ptr %privateBase, i64 [[ZXT2]]
+; CHECK-TYPED:    [[AA_PRIVATEBUFFER:%.*]] = bitcast i8* [[AA_PRIVATEBUFFERGEP]] to i32*
+; CHECK-TYPED:    store i32 [[TMP2]], i32* [[AA_PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    store i32 [[TMP2]], ptr [[AA_PRIVATEBUFFER]], align 4
 ;
-; CHECK:    [[TMP3:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[SRC_ADDR_PRIVATEBUFFER]], align 8
-; CHECK:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP3]], i64 1
-; CHECK:    [[TMP4:%.*]] = load i32, i32 addrspace(1)* [[ARRAYIDX1]], align 4
+; CHECK-TYPED:    [[TMP3:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[SRC_ADDR_PRIVATEBUFFER]], align 8
+; CHECK-OPAQUE:    [[TMP3:%.*]] = load ptr addrspace(1), ptr [[SRC_ADDR_PRIVATEBUFFER]], align 8
+; CHECK-TYPED:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP3]], i64 1
+; CHECK-OPAQUE:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i32, ptr addrspace(1) [[TMP3]], i64 1
+; CHECK-TYPED:    [[TMP4:%.*]] = load i32, i32 addrspace(1)* [[ARRAYIDX1]], align 4
+; CHECK-OPAQUE:    [[TMP4:%.*]] = load i32, ptr addrspace(1) [[ARRAYIDX1]], align 4
 ; CHECK:    [[BB_SECTIONOFFSET:%.*]] = mul i32 [[SIMDSIZE]], 4
 ; CHECK:    [[BB_BUFFEROFFSET:%.*]] = add i32 0, [[BB_SECTIONOFFSET]]
 ; CHECK:    [[PERLANEOFFSET1:%.*]] = mul i32 [[SIMDLANEID]], 4
 ; CHECK:    [[BB_SIMDBUFOFF:%.*]] = add i32 [[BB_BUFFEROFFSET]], [[PERLANEOFFSET1]]
 ; CHECK:    [[BB_TOTALOFFSET:%.*]] = add {{.*}} [[PERTHREADOFFSET]], [[BB_SIMDBUFOFF]]
 ; CHECK:    [[ZXT3:%.*]] = zext i32 [[BB_TOTALOFFSET]] to i64
-; CHECK:    [[BB_PRIVATEBUFFERGEP:%.*]] = getelementptr i8, i8* %privateBase, i64 [[ZXT3]]
-; CHECK:    [[BB_PRIVATEBUFFER:%.*]] = bitcast i8* [[BB_PRIVATEBUFFERGEP]] to i32*
-; CHECK:    store i32 [[TMP4]], i32* [[BB_PRIVATEBUFFER]], align 4
-; CHECK:    [[TMP5:%.*]] = load i32, i32* [[AA_PRIVATEBUFFER]], align 4
-; CHECK:    [[TMP6:%.*]] = load i32, i32* [[BB_PRIVATEBUFFER]], align 4
+; CHECK-TYPED:    [[BB_PRIVATEBUFFERGEP:%.*]] = getelementptr i8, i8* %privateBase, i64 [[ZXT3]]
+; CHECK-OPAQUE:    [[BB_PRIVATEBUFFER:%.*]] = getelementptr i8, ptr %privateBase, i64 [[ZXT3]]
+; CHECK-TYPED:    [[BB_PRIVATEBUFFER:%.*]] = bitcast i8* [[BB_PRIVATEBUFFERGEP]] to i32*
+; CHECK-TYPED:    store i32 [[TMP4]], i32* [[BB_PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    store i32 [[TMP4]], ptr [[BB_PRIVATEBUFFER]], align 4
+; CHECK-TYPED:    [[TMP5:%.*]] = load i32, i32* [[AA_PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    [[TMP5:%.*]] = load i32, ptr [[AA_PRIVATEBUFFER]], align 4
+; CHECK-TYPED:    [[TMP6:%.*]] = load i32, i32* [[BB_PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    [[TMP6:%.*]] = load i32, ptr [[BB_PRIVATEBUFFER]], align 4
 ; CHECK:    ret void
 ;
 entry:

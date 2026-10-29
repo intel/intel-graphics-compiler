@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
 ; SplitSelectsOfAllocaPointers runs before PrivateMemoryResolution, so it must
 ; not read ModuleMetaData::compOpt.UseScratchSpacePrivateMemory: that field is
@@ -19,15 +18,20 @@
 ; makes safeToUseScratchSpace return false, so the duplicated loads must still be
 ; predicated.
 ;
-; RUN: igc_opt --typed-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl \
-; RUN:   --igc-split-selects-of-alloca-pointers --igc-private-mem-resolution -S %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl \
+; RUN: --igc-split-selects-of-alloca-pointers --igc-private-mem-resolution -S %s | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl \
+; RUN: --igc-split-selects-of-alloca-pointers --igc-private-mem-resolution -S %s | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ;
 ; CHECK-LABEL: @test_load_select_stale_scratch_flag(
 ; CHECK:       [[NC:%[A-Za-z0-9_.]+]] = xor i1 %c, true
-; CHECK:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p4f32.f32(float addrspace(4)* {{.*}}, i64 4, i1 %c, float poison)
-; CHECK:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p0f32.f32(float* {{.*}}, i64 4, i1 [[NC]], float poison)
+; CHECK-TYPED:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p4f32.f32(float addrspace(4)* {{.*}}, i64 4, i1 %c, float poison)
+; CHECK-OPAQUE:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p4.f32(ptr addrspace(4) {{.*}}, i64 4, i1 %c, float poison)
+; CHECK-TYPED:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p0f32.f32(float* {{.*}}, i64 4, i1 [[NC]], float poison)
+; CHECK-OPAQUE:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p0.f32(ptr {{.*}}, i64 4, i1 [[NC]], float poison)
 ; CHECK:       select i1 %c, float
-; CHECK-NOT:   select i1 %c, float addrspace(4)*
+; CHECK-TYPED-NOT:   select i1 %c, float addrspace(4)*
+; CHECK-OPAQUE-NOT:   select i1 %c, ptr addrspace(4)
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"

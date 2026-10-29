@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --enable-debugify --igc-promote-to-predicated-memory-access --platformbmg -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --enable-debugify --igc-promote-to-predicated-memory-access --platformbmg -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --enable-debugify --igc-promote-to-predicated-memory-access --platformbmg -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; Debug-info related check
 ; CHECK-NOT: WARNING
@@ -21,7 +21,8 @@ entry:
   br i1 %pred, label %st, label %exit
 
 st:
-; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1v64i32.v64i32(<64 x i32> addrspace(1)* %dst, <64 x i32> %data, i64 4, i1 %pred)
+; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p1v64i32.v64i32(<64 x i32> addrspace(1)* %dst, <64 x i32> %data, i64 4, i1 %pred)
+; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p1.v64i32(ptr addrspace(1) %dst, <64 x i32> %data, i64 4, i1 %pred)
   store <64 x i32> %data, <64 x i32> addrspace(1)* %dst, align 4
   br label %exit
 
@@ -38,7 +39,8 @@ entry:
 
 st:
 ; CHECK: [[NOT:%.*]] = xor i1 %pred, true
-; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1v64i32.v64i32(<64 x i32> addrspace(1)* %dst, <64 x i32> %data, i64 4, i1 [[NOT]])
+; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p1v64i32.v64i32(<64 x i32> addrspace(1)* %dst, <64 x i32> %data, i64 4, i1 [[NOT]])
+; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p1.v64i32(ptr addrspace(1) %dst, <64 x i32> %data, i64 4, i1 [[NOT]])
   store <64 x i32> %data, <64 x i32> addrspace(1)* %dst, align 4
   br label %exit
 
@@ -54,7 +56,8 @@ entry:
   br i1 %pred, label %st, label %exit
 
 st:
-; CHECK: store volatile <64 x i32> %data, <64 x i32> addrspace(1)* %dst, align 4
+; CHECK-TYPED: store volatile <64 x i32> %data, <64 x i32> addrspace(1)* %dst, align 4
+; CHECK-OPAQUE: store volatile <64 x i32> %data, ptr addrspace(1) %dst, align 4
   store volatile <64 x i32> %data, <64 x i32> addrspace(1)* %dst, align 4
   br label %exit
 
@@ -70,7 +73,8 @@ entry:
   br i1 %pred, label %st, label %exit
 
 st:
-; CHECK: store <64 x i33> %data, <64 x i33> addrspace(1)* %dst, align 4
+; CHECK-TYPED: store <64 x i33> %data, <64 x i33> addrspace(1)* %dst, align 4
+; CHECK-OPAQUE: store <64 x i33> %data, ptr addrspace(1) %dst, align 4
   store <64 x i33> %data, <64 x i33> addrspace(1)* %dst, align 4
   br label %exit
 
@@ -81,7 +85,8 @@ exit:
 ; basic test with phi in store block
 ; CHECK-LABEL: @test5(
 ; CHECK: br label %st
-; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1v64i32.v64i32(<64 x i32> addrspace(1)* %dst, <64 x i32> %phi, i64 4, i1 %pred)
+; CHECK-TYPED: call void @llvm.genx.GenISA.PredicatedStore.p1v64i32.v64i32(<64 x i32> addrspace(1)* %dst, <64 x i32> %phi, i64 4, i1 %pred)
+; CHECK-OPAQUE: call void @llvm.genx.GenISA.PredicatedStore.p1.v64i32(ptr addrspace(1) %dst, <64 x i32> %phi, i64 4, i1 %pred)
 ;
 define void @test5(<64 x i32> addrspace(1)* %dst, i1 %pred, <64 x i32> %data) {
 entry:

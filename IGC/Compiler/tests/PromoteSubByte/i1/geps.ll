@@ -6,9 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-promote-sub-byte -S %s -o %t.ll
-; RUN: FileCheck %s --input-file=%t.ll
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-promote-sub-byte -S %s -o %t.opaque.ll %}
+; RUN: %if llvm-16-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE --input-file=%t.opaque.ll %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-promote-sub-byte -S %s -o %t.typed.ll %}
+; RUN: %if !llvm-17-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-TYPED --input-file=%t.typed.ll %}
 
 %struct = type { i32, i1 }
 
@@ -23,5 +24,7 @@ define spir_func void @geps() {
 
 ; CHECK-LABEL:  define spir_func void @geps()
 ; CHECK-NEXT:   %1 = alloca %struct, align 64
-; CHECK-NEXT:   %2 = getelementptr %struct, %struct* %1, i64 0, i32 1
-; CHECK-NEXT:   %3 = load i8, i8* %2
+; CHECK-TYPED-NEXT:   %2 = getelementptr %struct, %struct* %1, i64 0, i32 1
+; CHECK-OPAQUE-NEXT:   %2 = getelementptr %struct, ptr %1, i64 0, i32 1
+; CHECK-TYPED-NEXT:   %3 = load i8, i8* %2
+; CHECK-OPAQUE-NEXT:   %3 = load i8, ptr %2

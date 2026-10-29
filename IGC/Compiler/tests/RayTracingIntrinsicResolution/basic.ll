@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify --raytracing-intrinsic-resolution -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify --raytracing-intrinsic-resolution -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify --raytracing-intrinsic-resolution -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; RayTracingIntrinsicResolution
 ; ------------------------------------------------
@@ -19,13 +19,17 @@
 
 define spir_kernel void @test_rti(i32 %src, i8 addrspace(1)* %globalPointer, i8 addrspace(1)* %localPointer, i16 %stackID, <2 x i8 addrspace(1)*> %inlinedData) {
 ; CHECK-LABEL: @test_rti(
-; CHECK:    [[TMP1:%.*]] = bitcast i8 addrspace(1)* [[LOCALPOINTER:%.*]] to i32 addrspace(1)*
+; CHECK-TYPED:    [[TMP1:%.*]] = bitcast i8 addrspace(1)* [[LOCALPOINTER:%.*]] to i32 addrspace(1)*
 ; CHECK:    [[STACKID_EXT:%.*]] = zext i16 [[STACKID:%.*]] to i32
-; CHECK:    [[TMP2:%.*]] = extractelement <2 x i8 addrspace(1)*> [[INLINEDDATA:%.*]], i32 [[STACKID_EXT]]
-; CHECK:    [[TMP3:%.*]] = bitcast i8 addrspace(1)* [[TMP2]] to i32 addrspace(1)*
-; CHECK:    store i8 13, i8 addrspace(1)* [[GLOBALPOINTER:%.*]], align 1
-; CHECK:    store i32 [[SRC:%.*]], i32 addrspace(1)* [[TMP1]], align 4
-; CHECK:    store i32 [[SRC]], i32 addrspace(1)* [[TMP3]], align 4
+; CHECK-TYPED:    [[TMP2:%.*]] = extractelement <2 x i8 addrspace(1)*> [[INLINEDDATA:%.*]], i32 [[STACKID_EXT]]
+; CHECK-OPAQUE:    [[TMP2:%.*]] = extractelement <2 x ptr addrspace(1)> [[INLINEDDATA:%.*]], i32 [[STACKID_EXT]]
+; CHECK-TYPED:    [[TMP3:%.*]] = bitcast i8 addrspace(1)* [[TMP2]] to i32 addrspace(1)*
+; CHECK-TYPED:    store i8 13, i8 addrspace(1)* [[GLOBALPOINTER:%.*]], align 1
+; CHECK-OPAQUE:    store i8 13, ptr addrspace(1) [[GLOBALPOINTER:%.*]], align 1
+; CHECK-TYPED:    store i32 [[SRC:%.*]], i32 addrspace(1)* [[TMP1]], align 4
+; CHECK-OPAQUE:    store i32 [[SRC:%.*]], ptr addrspace(1) [[LOCALPOINTER:%.*]], align 4
+; CHECK-TYPED:    store i32 [[SRC]], i32 addrspace(1)* [[TMP3]], align 4
+; CHECK-OPAQUE:    store i32 [[SRC]], ptr addrspace(1) [[TMP2]], align 4
 ; CHECK:    ret void
 ;
   %1 = call i8 addrspace(1)* @llvm.genx.GenISA.GlobalBufferPointer.p1i8()

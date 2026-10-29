@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify --igc-promoteint8type -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify --igc-promoteint8type -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify --igc-promoteint8type -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; PromoteInt8Type : phi
 ; ------------------------------------------------
@@ -19,14 +19,16 @@
 define void @test_promote(i8* %src1, i8* %src2) {
 ; CHECK-LABEL: @test_promote(
 ; CHECK:  entry:
-; CHECK:    [[TMP0:%[A-z0-9]*]] = load i8, i8* [[SRC1:%[A-z0-9]*]]
+; CHECK-TYPED:    [[TMP0:%[A-z0-9]*]] = load i8, i8* [[SRC1:%[A-z0-9]*]]
+; CHECK-OPAQUE:    [[TMP0:%[A-z0-9]*]] = load i8, ptr [[SRC1:%[A-z0-9]*]]
 ; CHECK:    [[B2S3:%[A-z0-9]*]] = zext i8 [[TMP0]] to i16
 ; CHECK:    [[B2S4:%[A-z0-9]*]] = icmp ugt i16 [[B2S3]], 12
 ; CHECK:    [[B2S2:%[A-z0-9]*]] = sext i8 [[TMP0]] to i16
 ; CHECK:    br i1 [[B2S4]], label [[LBL:%[A-z0-9]*]], label [[END:%[A-z0-9]*]]
 ; CHECK:  lbl:
 ; CHECK:    [[TMP1:%[A-z0-9]*]] = phi i16 [ [[B2S2]], [[ENTRY:%[A-z0-9]*]] ], [ [[B2S1:%[A-z0-9]*]], [[LBL]] ]
-; CHECK:    [[TMP2:%[A-z0-9]*]] = load i8, i8* [[SRC2:%[A-z0-9]*]]
+; CHECK-TYPED:    [[TMP2:%[A-z0-9]*]] = load i8, i8* [[SRC2:%[A-z0-9]*]]
+; CHECK-OPAQUE:    [[TMP2:%[A-z0-9]*]] = load i8, ptr [[SRC2:%[A-z0-9]*]]
 ; CHECK:    [[B2S:%[A-z0-9]*]] = sext i8 [[TMP2]] to i16
 ; CHECK:    [[B2S1]] = add i16 [[TMP1]], [[B2S]]
 ; CHECK:    [[TMP3:%[A-z0-9]*]] = trunc i16 [[B2S1]] to i8
@@ -36,7 +38,8 @@ define void @test_promote(i8* %src1, i8* %src2) {
 ; CHECK:  end:
 ; CHECK:    [[TMP4:%[A-z0-9]*]] = phi i16 [ 12, [[ENTRY]] ], [ [[B2S1]], [[LBL]] ]
 ; CHECK:    [[TMP5:%[A-z0-9]*]] = trunc i16 [[TMP4]] to i8
-; CHECK:    store i8 [[TMP5]], i8* [[SRC2]]
+; CHECK-TYPED:    store i8 [[TMP5]], i8* [[SRC2]]
+; CHECK-OPAQUE:    store i8 [[TMP5]], ptr [[SRC2]]
 ; CHECK:    ret void
 ;
 entry:

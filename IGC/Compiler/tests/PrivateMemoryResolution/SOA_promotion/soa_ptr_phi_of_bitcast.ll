@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
 ; The incoming value of a single-incoming pointer PHI may itself be a cast: the
 ; backward walk in tracesToAlloca has to look through the bitcast to reach the
@@ -30,7 +29,7 @@ target triple = "spir64-unknown-unknown"
 ; CHECK: [[SIMD:%.*]] = call i32 @llvm.genx.GenISA.simdSize()
 ; CHECK: mul i32 [[LANE]], 4
 ; CHECK: mul i32 [[SIMD]], %
-; CHECK-NOT: phi i32*
+; CHECK-NOT: phi {{i32\*|ptr}}
 ; CHECK: ret void
 define spir_kernel void @test_phi_of_bitcast(i32 addrspace(1)* nocapture %d, i32 %n, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase) {
 entry:

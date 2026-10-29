@@ -7,10 +7,11 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ;
-; RUN: igc_opt --typed-pointers --ocl --platformPtl --igc-split-phis-of-alloca-pointers --igc-private-mem-resolution \
-; RUN:   --regkey EnablePHIOfAllocaPtrSplit=1 -S %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --ocl --platformPtl --igc-split-phis-of-alloca-pointers --igc-private-mem-resolution \
+; RUN:   --regkey EnablePHIOfAllocaPtrSplit=1 -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --ocl --platformPtl --igc-split-phis-of-alloca-pointers --igc-private-mem-resolution \
+; RUN:   --regkey EnablePHIOfAllocaPtrSplit=1 -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ;
 ; Tests SoA promotion of the workload pattern `if (is_stack_slot) stack[idx] else svm_data[i]`
 ; diamond, whose pointer-merge PHI otherwise blocks SoA promotion.
@@ -30,10 +31,13 @@
 
 ; CHECK-LABEL: @test_load_phi(
 ; CHECK:       call i32 @llvm.genx.GenISA.simdSize()
-; CHECK:       load float, float*
-; CHECK:       load float, float addrspace(4)*
+; CHECK-TYPED:       load float, float*
+; CHECK-OPAQUE:       load float, ptr %
+; CHECK-TYPED:       load float, float addrspace(4)*
+; CHECK-OPAQUE:       load float, ptr addrspace(4)
 ; CHECK:       phi float
-; CHECK-NOT:   phi i8 addrspace(4)*
+; CHECK-TYPED-NOT:   phi i8 addrspace(4)*
+; CHECK-OPAQUE-NOT:   phi ptr addrspace(4)
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"

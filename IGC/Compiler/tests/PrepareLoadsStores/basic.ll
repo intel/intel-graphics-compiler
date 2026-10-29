@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -debugify -prepare-loads-stores -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -debugify -prepare-loads-stores -check-debugify -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -debugify -prepare-loads-stores -check-debugify -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; PrepareLoadsStoresPass
 ; ------------------------------------------------
@@ -18,8 +18,9 @@
 
 define void @test_load_i64(i64 addrspace(1)* %a) {
 ; CHECK-LABEL: @test_load_i64(
-; CHECK:    [[TMP1:%.*]] = bitcast i64 addrspace(1)* %a to <2 x i32> addrspace(1)*
-; CHECK:    [[TMP2:%.*]] = load <2 x i32>, <2 x i32> addrspace(1)* [[TMP1]]
+; CHECK-TYPED:    [[TMP1:%.*]] = bitcast i64 addrspace(1)* %a to <2 x i32> addrspace(1)*
+; CHECK-TYPED:    [[TMP2:%.*]] = load <2 x i32>, <2 x i32> addrspace(1)* [[TMP1]]
+; CHECK-OPAQUE:    [[TMP2:%.*]] = load <2 x i32>, ptr addrspace(1) %a
 ; CHECK:    [[TMP3:%.*]] = bitcast <2 x i32> [[TMP2]] to i64
 ; CHECK:    call void @use.i64(i64 [[TMP3]])
 ; CHECK:    ret void
@@ -31,8 +32,9 @@ define void @test_load_i64(i64 addrspace(1)* %a) {
 
 define void @test_load_v2i64(<2 x i64> addrspace(1)* %a) {
 ; CHECK-LABEL: @test_load_v2i64(
-; CHECK:    [[TMP1:%.*]] = bitcast <2 x i64> addrspace(1)* %a to <4 x i32> addrspace(1)*
-; CHECK:    [[TMP2:%.*]] = load <4 x i32>, <4 x i32> addrspace(1)* [[TMP1]]
+; CHECK-TYPED:    [[TMP1:%.*]] = bitcast <2 x i64> addrspace(1)* %a to <4 x i32> addrspace(1)*
+; CHECK-TYPED:    [[TMP2:%.*]] = load <4 x i32>, <4 x i32> addrspace(1)* [[TMP1]]
+; CHECK-OPAQUE:    [[TMP2:%.*]] = load <4 x i32>, ptr addrspace(1) %a
 ; CHECK:    [[TMP3:%.*]] = bitcast <4 x i32> [[TMP2]] to <2 x i64>
 ; CHECK:    call void @use.v2i64(<2 x i64> [[TMP3]])
 ; CHECK:    ret void
@@ -49,8 +51,9 @@ declare void @use.v2i64(<2 x i64>)
 define void @test_store_i64(i64 addrspace(1)* %a, i64 %b) {
 ; CHECK-LABEL: @test_store_i64(
 ; CHECK:    [[TMP1:%.*]] = bitcast i64 %b to <2 x i32>
-; CHECK:    [[TMP2:%.*]] = bitcast i64 addrspace(1)* %a to <2 x i32> addrspace(1)*
-; CHECK:    store <2 x i32> [[TMP1]], <2 x i32> addrspace(1)* [[TMP2]]
+; CHECK-TYPED:    [[TMP2:%.*]] = bitcast i64 addrspace(1)* %a to <2 x i32> addrspace(1)*
+; CHECK-TYPED:    store <2 x i32> [[TMP1]], <2 x i32> addrspace(1)* [[TMP2]]
+; CHECK-OPAQUE:    store <2 x i32> [[TMP1]], ptr addrspace(1) %a
 ; CHECK:    ret void
 ;
   store i64 %b, i64 addrspace(1)* %a
@@ -60,8 +63,9 @@ define void @test_store_i64(i64 addrspace(1)* %a, i64 %b) {
 define void @test_store_v2i64(<2 x i64> addrspace(1)* %a, <2 x i64> %b) {
 ; CHECK-LABEL: @test_store_v2i64(
 ; CHECK:    [[TMP1:%.*]] = bitcast <2 x i64> %b to <4 x i32>
-; CHECK:    [[TMP2:%.*]] = bitcast <2 x i64> addrspace(1)* %a to <4 x i32> addrspace(1)*
-; CHECK:    store <4 x i32> [[TMP1]], <4 x i32> addrspace(1)* [[TMP2]]
+; CHECK-TYPED:    [[TMP2:%.*]] = bitcast <2 x i64> addrspace(1)* %a to <4 x i32> addrspace(1)*
+; CHECK-TYPED:    store <4 x i32> [[TMP1]], <4 x i32> addrspace(1)* [[TMP2]]
+; CHECK-OPAQUE:    store <4 x i32> [[TMP1]], ptr addrspace(1) %a
 ; CHECK:    ret void
 ;
   store <2 x i64> %b, <2 x i64> addrspace(1)* %a

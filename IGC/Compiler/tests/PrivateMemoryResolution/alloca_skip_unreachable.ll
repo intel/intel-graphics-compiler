@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --igc-private-mem-resolution -S %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --igc-private-mem-resolution -S %s | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --igc-private-mem-resolution -S %s | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------
@@ -19,9 +19,12 @@
 define spir_kernel void @test_skip( i32 %src, i32 %bufferOffset, i32 %bufferOffset1) #0 {
 ; CHECK-LABEL: @test_skip(
 ; CHECK:  entry:
-; CHECK:    [[PRIVATEBUFFER:%.*]] = bitcast i8* {{%.*}} to i32*
-; CHECK:    store i32 %src, i32* [[PRIVATEBUFFER]], align 4
-; CHECK:    [[LOAD1:%.*]] = load i32, i32* [[PRIVATEBUFFER]], align 4
+; CHECK-TYPED:    [[PRIVATEBUFFER:%.*]] = bitcast i8* {{%.*}} to i32*
+; CHECK-OPAQUE:    [[PRIVATEBUFFER:%.*]] = getelementptr i8, ptr {{%.*}}, i64 {{%.*}}
+; CHECK-TYPED:    store i32 %src, i32* [[PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    store i32 %src, ptr [[PRIVATEBUFFER]], align 4
+; CHECK-TYPED:    [[LOAD1:%.*]] = load i32, i32* [[PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    [[LOAD1:%.*]] = load i32, ptr [[PRIVATEBUFFER]], align 4
 entry:
   %0 = alloca i32, align 4
   store i32 %src, i32* %0, align 4
@@ -30,8 +33,10 @@ entry:
 
 unused:                         ; No predecessors!
 ; CHECK:  unused:
-; CHECK:    store i32 %src, i32* [[PRIVATEBUFFER]], align 4
-; CHECK:    [[LOAD2:%.*]] = load i32, i32* [[PRIVATEBUFFER]], align 4
+; CHECK-TYPED:    store i32 %src, i32* [[PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    store i32 %src, ptr [[PRIVATEBUFFER]], align 4
+; CHECK-TYPED:    [[LOAD2:%.*]] = load i32, i32* [[PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    [[LOAD2:%.*]] = load i32, ptr [[PRIVATEBUFFER]], align 4
   store i32 %src, i32* %0, align 4
   %2 = load i32, i32* %0, align 4
   unreachable
