@@ -1307,6 +1307,7 @@ DECLARE_IGC_REGKEY(DWORD, VectorizerDepWindowMultiplier, 8,
                    "Multiplier for the slice size to account for vectorizer dependency check window", ALWAYS)
 DECLARE_IGC_REGKEY(bool, VectorizerCheckScalarizer, false, "Add scalariser after vectorizer to check performance",
                    ALWAYS)
+DECLARE_IGC_REGKEY(bool, VectorizerCSEBefore, false, "Add CSE before vectorizer for experiments", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, VectorizerList, -1, "Vectorize only one seed instruction with the provided number", ALWAYS)
 DECLARE_IGC_REGKEY(debugString, VectorizerNameFilter, 0,
                    "Only run IGCVectorizer for functions matching the given regex", ALWAYS)

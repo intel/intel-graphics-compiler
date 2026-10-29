@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/Regex.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 //
 // IGCVectorizer pass currently looks for insert elements instructions
@@ -2303,6 +2304,32 @@ void IGCVectorCoalescer::mergeHorizontalSliceBinary(VecArr &Slice) {
   ShuffleOut(Slice, CreatedInst);
 }
 
+static bool isIdenticalOrCommuted(Instruction *U, Instruction *I) {
+  if (U->isIdenticalToWhenDefined(I))
+    return true;
+  bool CommutativelyIdentical = llvm::isa<BinaryOperator>(I) && I->isCommutative() && U->isSameOperationAs(I) &&
+                                U->getOperand(0) == I->getOperand(1) && U->getOperand(1) == I->getOperand(0);
+  return CommutativelyIdentical;
+}
+
+// coalescer can prevent later passes in our compiler to do it's job
+// most of them are still scalar only
+// pairing identical instructions will prevent cse and instcombine
+// from cleaning them up later, so we clean up
+void IGCVectorCoalescer::addUnique(std::vector<Instruction *> &Unique, Instruction *I) {
+  for (Instruction *U : Unique) {
+    if (!isIdenticalOrCommuted(U, I))
+      continue;
+    PRINT_LOG_INST_NL("identical: ", I);
+    // the survivor serves both, keep only the flags and metadata both allow
+    U->andIRFlags(I);
+    llvm::combineMetadataForCSE(U, I, /*DoesKMove=*/false);
+    I->replaceAllUsesWith(U);
+    return;
+  }
+  Unique.push_back(I);
+}
+
 void IGCVectorCoalescer::processMap(std::unordered_map<unsigned int, std::vector<Instruction *>> &MapOfInstructions) {
 
   for (auto &El : MapOfInstructions) {
@@ -2375,10 +2402,10 @@ bool IGCVectorCoalescer::runOnFunction(llvm::Function &F) {
       // we want only llvm intrinsics right now
       if (isIntrinsicSafe(&Inst)) {
         unsigned int IntrinsicID = cast<IntrinsicInst>(&Inst)->getIntrinsicID();
-        MapOfIntrinsics[IntrinsicID].push_back(&Inst);
+        addUnique(MapOfIntrinsics[IntrinsicID], &Inst);
       } else if (IGC_GET_FLAG_VALUE(CoalescerAllowBinary) && isBinarySafe(&Inst)) {
         unsigned int BinaryId = cast<BinaryOperator>(&Inst)->getOpcode();
-        MapOfBinary[BinaryId].push_back(&Inst);
+        addUnique(MapOfBinary[BinaryId], &Inst);
       }
     }
     processMap(MapOfIntrinsics);

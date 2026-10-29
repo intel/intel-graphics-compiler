@@ -163,6 +163,7 @@ public:
 
 class IGCVectorCoalescer : public llvm::FunctionPass, IGCVectorizerCommon {
 
+  void addUnique(std::vector<Instruction *> &Unique, Instruction *I);
   void processMap(std::unordered_map<unsigned int, std::vector<Instruction *>> &MapOfInstructions);
   void mergeHorizontalSlice(VecArr &Slice);
   void mergeHorizontalSliceIntrinsic(VecArr &Slice);

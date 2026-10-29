@@ -2010,6 +2010,8 @@ void OptimizeIR(CodeGenContext *const pContext) {
       mpm.add(createMadLoopSlicePass());
     }
     if (IGC_IS_FLAG_ENABLED(EnableVectorizer)) {
+      if (IGC_IS_FLAG_ENABLED(VectorizerCSEBefore))
+        mpm.add(llvm::createEarlyCSEPass());
       mpm.add(new IGCVectorizer());
       mpm.add(IGCLLVM::createLegacyWrappedADCEPass());
       if (IGC_IS_FLAG_ENABLED(VectorizerCheckScalarizer))
