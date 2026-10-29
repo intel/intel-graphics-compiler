@@ -89,6 +89,7 @@ cmp+sel to avoid expensive VxH mov.
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
 #include <llvm/Analysis/ValueTracking.h>
+#include <llvm/Analysis/VectorUtils.h>
 #include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/IntrinsicInst.h"
@@ -4441,25 +4442,16 @@ Constant *IGCConstProp::ConstantFoldExtractElement(ExtractElementInst *EEI) {
 
   Constant *EltIdx = dyn_cast<Constant>(EEI->getIndexOperand());
   if (EltIdx) {
-    if (InsertElementInst *IEI = dyn_cast<InsertElementInst>(EEI->getVectorOperand())) {
-      Constant *InsertIdx = dyn_cast<Constant>(IEI->getOperand(2));
+    if (isa<InsertElementInst>(EEI->getVectorOperand())) {
       // try to find the constant from a chain of InsertElement
-      while (IEI && InsertIdx) {
-        if (InsertIdx == EltIdx) {
-          Constant *EltVal = dyn_cast<Constant>(IEI->getOperand(1));
+      if (auto *Idx = dyn_cast<ConstantInt>(EltIdx)) {
+        unsigned NumElts = cast<IGCLLVM::FixedVectorType>(EEI->getVectorOperandType())->getNumElements();
+        // Before LLVM 19, findScalarElement returns undef, not poison, for an out-of-range index.
+        if (Idx->getValue().uge(NumElts))
+          return PoisonValue::get(EEI->getType());
+        unsigned Lane = (unsigned)Idx->getZExtValue();
+        if (auto *EltVal = dyn_cast_or_null<Constant>(findScalarElement(EEI->getVectorOperand(), Lane)))
           return EltVal;
-        } else {
-          Value *Vec = IEI->getOperand(0);
-          if (isa<ConstantDataVector>(Vec)) {
-            ConstantDataVector *CVec = cast<ConstantDataVector>(Vec);
-            return CVec->getAggregateElement(EltIdx);
-          } else if (isa<InsertElementInst>(Vec)) {
-            IEI = cast<InsertElementInst>(Vec);
-            InsertIdx = dyn_cast<Constant>(IEI->getOperand(2));
-          } else {
-            break;
-          }
-        }
       }
     } else if (SelectInst *sel = dyn_cast<SelectInst>(EEI->getVectorOperand())) {
       Value *vec0 = sel->getOperand(1);
