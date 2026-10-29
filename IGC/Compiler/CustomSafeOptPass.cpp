@@ -6207,25 +6207,28 @@ void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst &I) 
   // and don't qualify for this optimization.
   bool opsAreDisjoint = true;
 
+  bool PatternMatched = false;
+
   if (match(index, pat_mul) || (match(index, pat_add) && match(Val2, pat_mul))) {
+    PatternMatched = true;
     mul = ci_mul ? ci_mul->getSExtValue() : 1;
   } else if (match(index, pat_shl) || (match(index, pat_or) && match(Val2, pat_shl))) {
+    PatternMatched = true;
     mul = ci_mul ? (1LL << ci_mul->getSExtValue()) : 1LL;
     opsAreDisjoint = !Val2 || (ci_add && mul > 0 && ci_add->getValue().getActiveBits() <= Log2_64((uint64_t)mul));
   }
-  // Instruction::hasPoisonGeneratingFlags() could be used instead
-  // after llvm9 support is dropped
   auto hasNoOverflow = [](Value *value) {
     if (OverflowingBinaryOperator *OBO = dyn_cast<OverflowingBinaryOperator>(value))
-      return OBO->hasNoUnsignedWrap() || OBO->hasNoSignedWrap();
+      return OBO->hasPoisonGeneratingFlags();
     return true;
   };
 
   // If pattern matched check that corresponding index calculation has nsw or nuw
-  if (Val1) {
+  if (PatternMatched) {
     // Transformation could still be profitable,
-    // but index and it's multiplier shouldn't be modified
-    if (!hasNoOverflow(index) || (Val2 && !hasNoOverflow(Val2)) || !opsAreDisjoint) {
+    // but index and it's multiplier shouldn't be modified.
+    // A zero multiplier leaves nothing to divide by when matching elements.
+    if (mul == 0 || !hasNoOverflow(index) || (Val2 && !hasNoOverflow(Val2)) || !opsAreDisjoint) {
       mul = 1;
     } else {
       add = ci_add ? ci_add->getSExtValue() : 0;
