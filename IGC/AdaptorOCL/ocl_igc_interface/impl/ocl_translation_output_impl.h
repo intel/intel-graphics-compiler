@@ -65,7 +65,8 @@ CIF_DECLARE_INTERFACE_PIMPL(OclTranslationOutput) : CIF::PimplBase {
       return true;
     }
 
-    return AddWarning(std::string(errString));
+    auto len = strlen(errString);
+    return BuildLog->PushBackRawBytes(errString, len + 1);
   }
 
   OCL_API_CALL bool AddWarning(const std::string &warnString) {

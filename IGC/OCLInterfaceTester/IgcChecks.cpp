@@ -285,12 +285,6 @@ IGC_CHECK(spirv_ext, "Interface v5: test that SPIR-V extensions supported by a p
   return ExitCode::Success;
 }
 
-// The internal options the runtime always passes for a render core family, so the
-// translation satisfies the options a platform requires and only a mismatch can fail it
-static std::string getRuntimeInternalOptions(GFXCORE_FAMILY core) {
-  return {};
-}
-
 // Translation path: the platform cross-check
 IGC_CHECK(platform_check, "Translation: cross-check the render GMDID against the platform enum") {
   auto deviceCtx = cif->CreateInterface<IGC::IgcOclDeviceCtx<1>>();
@@ -339,9 +333,7 @@ IGC_CHECK(platform_check, "Translation: cross-check the render GMDID against the
   };
   auto srcBuf = CIF::Builtins::CreateConstBuffer<CIF::Builtins::BufferSimple>(cif, emptySpirV, sizeof(emptySpirV));
   auto optionsBuf = CIF::Builtins::CreateConstBuffer<CIF::Builtins::BufferSimple>(cif, nullptr, 0);
-  const std::string internalOptions = getRuntimeInternalOptions(getEffectiveCore());
-  auto internalOptionsBuf = CIF::Builtins::CreateConstBuffer<CIF::Builtins::BufferSimple>(cif, internalOptions.data(),
-                                                                                          internalOptions.size());
+  auto internalOptionsBuf = CIF::Builtins::CreateConstBuffer<CIF::Builtins::BufferSimple>(cif, nullptr, 0);
   if (!srcBuf || !optionsBuf || !internalOptionsBuf) {
     std::cerr << "error: failed to create translation input buffers\n";
     return ExitCode::FailedToGetInterface;
