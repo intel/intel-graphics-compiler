@@ -113,6 +113,10 @@ void registerPluginPasses(PassBuilder &PB) {
 }
 } // namespace
 
+PassPluginLibraryInfo getNewPMPluginInfo() {
+  return {LLVM_PLUGIN_API_VERSION, "NewPMPlugin", "v0.1", registerPluginPasses};
+}
+
 #ifdef __GNUC__
 #define DLL_PUBLIC __attribute__((visibility("default")))
 #else
@@ -120,10 +124,6 @@ void registerPluginPasses(PassBuilder &PB) {
 #endif
 
 extern "C" {
-PassPluginLibraryInfo DLL_PUBLIC getNewPMPluginInfo() {
-  return {LLVM_PLUGIN_API_VERSION, "NewPMPlugin", "v0.1", registerPluginPasses};
-}
-
 #if !(defined(_WIN64) || defined(_WIN32))
 LLVM_ATTRIBUTE_WEAK DLL_PUBLIC PassPluginLibraryInfo llvmGetPassPluginInfo() {
   return getNewPMPluginInfo();
