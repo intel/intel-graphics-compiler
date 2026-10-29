@@ -1620,9 +1620,8 @@ if(UNIX)
     set(IGC_BUILD__PROJ_LINKER_SCRIPT_FULL_PATH ${CMAKE_CURRENT_BINARY_DIR}/${IGC_BUILD__PROJ_LINKER_SCRIPT_NAME})
 
     set(IGC_BUILD__PROJ_BIF_LIBRARY_NAME "null")
-    set(IGC_BUILD__PROJ_DX10_LIBRARY_NAME "null")
-    set(IGC_BUILD__PROJ_DXIL_LIBRARY_NAME "null")
     set(IGC_BUILD__PROJ_VULKAN_FE_LIBRARY_NAME "null")
+    set(IGC_BUILD__PROJ_LINKER_SCRIPT_EXTRA_ARGS "")
 
 endif()
 
@@ -2055,10 +2054,6 @@ if(UNIX)
       $<TARGET_OBJECTS:${IGC_BUILD__PROJ__igc_objs}>
   )
 
-  if(TARGET ${IGC_BUILD__PROJ__AdaptorDX})
-      set(IGC_BUILD__PROJ_DXIL_LIBRARY_NAME "$<TARGET_FILE:${IGC_BUILD__PROJ__AdaptorDX}>")
-      list(APPEND IGC_BUILD__PROJ_LINKER_SCRIPT_DEPENDS ${IGC_BUILD__PROJ_DXIL_LIBRARY_NAME})
-  endif()
 
   if(TARGET ${IGC_BUILD__PROJ__BiFLib_OCL})
       set(IGC_BUILD__PROJ_BIF_LIBRARY_NAME "$<TARGET_FILE:${IGC_BUILD__PROJ__BiFLib_OCL}>")
@@ -2070,11 +2065,88 @@ if(UNIX)
       list(APPEND IGC_BUILD__PROJ_LINKER_SCRIPT_DEPENDS ${IGC_BUILD__PROJ_VULKAN_FE_LIBRARY_NAME})
   endif()
 
+  # The script falls back to llvm-nm when objdump cannot read an input (LLVM
+  # bitcode from Clang ThinLTO, or an archive mixing bitcode and ELF members).
+  # The tool is optional here: native-only builds never need it, and the script
+  # fails with a clear message if it is required but empty.
+  set(IGC_OPTION__SYMBOL_NM "" CACHE FILEPATH
+      "llvm-nm used to read symbols objdump cannot read when generating the linker script. Auto-detected from the compiler if empty, the compiler is Clang and C++ flags enable LTO (-flto, -flto=thin, -flto=full, -flto=auto).")
+
+  # Last LTO flag wins, matching the selected single-config build type.
+  function(igc_config_enables_lto RESULT_VAR)
+    string(TOUPPER "${CMAKE_BUILD_TYPE}" _upperConfig)
+    set(_flags "${CMAKE_CXX_FLAGS} ${USER_CXX_FLAGS}")
+    if(_upperConfig)
+      set(_flags "${_flags} ${CMAKE_CXX_FLAGS_${_upperConfig}}")
+    endif()
+    separate_arguments(_tokens UNIX_COMMAND "${_flags}")
+    set(_lto FALSE)
+    foreach(_token IN LISTS _tokens)
+      if("${_token}" MATCHES "^-flto(=thin|=full|=auto)?$")
+        set(_lto TRUE)
+      elseif("${_token}" STREQUAL "-fno-lto")
+        set(_lto FALSE)
+      endif()
+    endforeach()
+    set(${RESULT_VAR} ${_lto} PARENT_SCOPE)
+  endfunction()
+
+  function(igc_is_llvm_nm RESULT_VAR TOOL)
+    set(${RESULT_VAR} FALSE PARENT_SCOPE)
+    if(IS_ABSOLUTE "${TOOL}" AND EXISTS "${TOOL}")
+      execute_process(
+          COMMAND "${TOOL}" --version
+          OUTPUT_VARIABLE _nmVersion
+          RESULT_VARIABLE _nmResult
+          ERROR_QUIET
+      )
+      if(_nmResult EQUAL 0 AND _nmVersion MATCHES "LLVM")
+        set(${RESULT_VAR} TRUE PARENT_SCOPE)
+      endif()
+    endif()
+  endfunction()
+
+  set(IGC_BUILD__PROJ_SYMBOL_NM "")
+  if(IGC_OPTION__SYMBOL_NM)
+    unset(_igcSymbolNmOverride CACHE)
+    find_program(_igcSymbolNmOverride NAMES "${IGC_OPTION__SYMBOL_NM}")
+    if(NOT _igcSymbolNmOverride)
+      message(FATAL_ERROR "IGC_OPTION__SYMBOL_NM is set to '${IGC_OPTION__SYMBOL_NM}', but it is not an executable file.")
+    endif()
+    igc_is_llvm_nm(_isLlvmNm "${_igcSymbolNmOverride}")
+    if(NOT _isLlvmNm)
+      message(FATAL_ERROR "IGC_OPTION__SYMBOL_NM='${_igcSymbolNmOverride}' is not llvm-nm.")
+    endif()
+    set(IGC_BUILD__PROJ_SYMBOL_NM "${_igcSymbolNmOverride}")
+    unset(_igcSymbolNmOverride CACHE)
+  elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    igc_config_enables_lto(_igcLtoEnabled)
+    if(_igcLtoEnabled)
+      # The reader must match the bitcode producer, so only the host compiler's llvm-nm is used.
+      execute_process(
+          COMMAND "${CMAKE_CXX_COMPILER}" --print-prog-name=llvm-nm
+          OUTPUT_VARIABLE _compilerNm
+          OUTPUT_STRIP_TRAILING_WHITESPACE
+          ERROR_QUIET
+      )
+      igc_is_llvm_nm(_isLlvmNm "${_compilerNm}")
+      if(_isLlvmNm)
+        set(IGC_BUILD__PROJ_SYMBOL_NM "${_compilerNm}")
+      endif()
+    endif()
+  endif()
+  if(IGC_BUILD__PROJ_SYMBOL_NM)
+    message(STATUS "IGC symbol export: llvm-nm fallback is ${IGC_BUILD__PROJ_SYMBOL_NM}")
+  else()
+    message(STATUS "IGC symbol export: no llvm-nm fallback (not Clang with -flto/-flto=thin/-flto=full/-flto=auto, or llvm-nm not found); linker script generation requires objdump to read all inputs")
+  endif()
+
   # The script scans the .o files for non-hidden global symbols and writes them
   # into igc_symbols.ld, which is then fed to the linker via --version-script.
   add_custom_command(
       OUTPUT "${IGC_BUILD__PROJ_LINKER_SCRIPT_FULL_PATH}"
-      COMMAND bash ${IGC_BUILD__PROJ_SYMBOL_SCRIPT_COPY_PATH} ${IGC_BUILD__PROJ_LINKER_SCRIPT_NAME} ${IGC_BUILD__PROJ_BIF_LIBRARY_NAME} ${IGC_BUILD__PROJ_DX10_LIBRARY_NAME} ${IGC_BUILD__PROJ_DXIL_LIBRARY_NAME} ${IGC_BUILD__PROJ_VULKAN_FE_LIBRARY_NAME} $<TARGET_OBJECTS:${IGC_BUILD__PROJ__igc_objs}> --
+      COMMAND ${CMAKE_COMMAND} -E env IGC_SYMBOL_NM=${IGC_BUILD__PROJ_SYMBOL_NM}
+              bash ${IGC_BUILD__PROJ_SYMBOL_SCRIPT_COPY_PATH} ${IGC_BUILD__PROJ_LINKER_SCRIPT_NAME} ${IGC_BUILD__PROJ_BIF_LIBRARY_NAME} ${IGC_BUILD__PROJ_LINKER_SCRIPT_EXTRA_ARGS} ${IGC_BUILD__PROJ_VULKAN_FE_LIBRARY_NAME} $<TARGET_OBJECTS:${IGC_BUILD__PROJ__igc_objs}> --
       DEPENDS ${IGC_BUILD__PROJ_LINKER_SCRIPT_DEPENDS}
       COMMAND_EXPAND_LISTS
       COMMENT "Creating linker script for custom symbol exporting"
