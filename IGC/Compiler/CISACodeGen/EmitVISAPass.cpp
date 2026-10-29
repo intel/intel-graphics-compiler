@@ -21192,11 +21192,9 @@ void IGC::EmitPass::emitCanonicalize(llvm::Instruction *inst, const DstModifier 
   // If the instruction should be emitted anyway, flushing a subnormal to zero
   // has to implemented in other way.
   CompOptions &compOpt = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData()->compOpt;
-  bool flushVal = compOpt.FloatDenormMode16 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isHalfTy();
-  flushVal =
-      flushVal || (compOpt.FloatDenormMode32 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isFloatTy());
-  flushVal =
-      flushVal || (compOpt.FloatDenormMode64 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isDoubleTy());
+  bool flushVal = ::IGC::isDenormFlushed(compOpt.FloatDenormMode16) && inst->getType()->isHalfTy();
+  flushVal = flushVal || (::IGC::isDenormFlushed(compOpt.FloatDenormMode32) && inst->getType()->isFloatTy());
+  flushVal = flushVal || (::IGC::isDenormFlushed(compOpt.FloatDenormMode64) && inst->getType()->isDoubleTy());
   if (flushVal || modifier.sat) {
     CVariable *inputVal = GetSymbol(inst->getOperand(0));
     CVariable *negativeZero = m_currShader->GetScalarConstant(llvm::ConstantFP::get(inst->getType(), -0.0));

@@ -239,10 +239,30 @@ enum SGVUsage {
   NUM_SGV,
 };
 
+// Denorm handling required for a floating-point precision.
+//
+// Keep this in sync with the copy in common/MDFrameWork.h, which is used to
+// generate the metadata (de)serialization code. Metadata readers that don't
+// recognize an enumerator name fall back to FLOAT_DENORM_FLUSH_TO_ZERO, so the
+// existing values must not be renumbered.
 enum Float_DenormMode {
+  // The source language requires denorms to be flushed to zero.
   FLOAT_DENORM_FLUSH_TO_ZERO = 0,
+  // The source language requires denorms to be retained.
   FLOAT_DENORM_RETAIN,
+  // The source language accepts either behavior, so the compiler need not
+  // program the denorm mode. This is the CompOptions default; a frontend must
+  // set FLUSH_TO_ZERO or RETAIN explicitly when the language requires one.
+  FLOAT_DENORM_ANY,
 };
+
+// Whether code compiled for \p Mode may assume denorms are flushed.
+//
+// IGC only programs the denorm control bits for FLOAT_DENORM_RETAIN (see
+// CEncoder::initCR). Otherwise it relies on the state the thread starts with
+// (the hardware default, or the dispatch state for single precision) being a
+// flush.
+inline bool isDenormFlushed(Float_DenormMode Mode) { return Mode != FLOAT_DENORM_RETAIN; }
 
 enum ERoundingMode {
   ROUND_TO_NEAREST_EVEN,

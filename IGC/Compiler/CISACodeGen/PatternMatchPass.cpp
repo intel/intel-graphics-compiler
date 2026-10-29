@@ -187,12 +187,9 @@ bool CodeGenPatternMatch::IsConstOrSimdConstExpr(Value *C) {
 // - extended math instructions retain half float denorms
 bool CodeGenPatternMatch::FlushesDenormsOnOutput(Instruction &I) {
   bool flushesDenorms = false;
-  if ((m_ctx->getModuleMetaData()->compOpt.FloatDenormMode16 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO &&
-       I.getType()->isHalfTy()) ||
-      (m_ctx->getModuleMetaData()->compOpt.FloatDenormMode32 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO &&
-       I.getType()->isFloatTy()) ||
-      (m_ctx->getModuleMetaData()->compOpt.FloatDenormMode64 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO &&
-       I.getType()->isDoubleTy())) {
+  if ((IGC::isDenormFlushed(m_ctx->getModuleMetaData()->compOpt.FloatDenormMode16) && I.getType()->isHalfTy()) ||
+      (IGC::isDenormFlushed(m_ctx->getModuleMetaData()->compOpt.FloatDenormMode32) && I.getType()->isFloatTy()) ||
+      (IGC::isDenormFlushed(m_ctx->getModuleMetaData()->compOpt.FloatDenormMode64) && I.getType()->isDoubleTy())) {
     switch (GetOpCode(&I)) {
     case llvm_select:
       flushesDenorms = true;
@@ -255,12 +252,9 @@ bool CodeGenPatternMatch::FlushesDenormsOnOutput(Instruction &I) {
 }
 bool CodeGenPatternMatch::FlushesDenormsOnInput(Instruction &I) {
   bool flushesDenorms = false;
-  if ((m_ctx->getModuleMetaData()->compOpt.FloatDenormMode16 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO &&
-       I.getType()->isHalfTy()) ||
-      (m_ctx->getModuleMetaData()->compOpt.FloatDenormMode32 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO &&
-       I.getType()->isFloatTy()) ||
-      (m_ctx->getModuleMetaData()->compOpt.FloatDenormMode64 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO &&
-       I.getType()->isDoubleTy())) {
+  if ((IGC::isDenormFlushed(m_ctx->getModuleMetaData()->compOpt.FloatDenormMode16) && I.getType()->isHalfTy()) ||
+      (IGC::isDenormFlushed(m_ctx->getModuleMetaData()->compOpt.FloatDenormMode32) && I.getType()->isFloatTy()) ||
+      (IGC::isDenormFlushed(m_ctx->getModuleMetaData()->compOpt.FloatDenormMode64) && I.getType()->isDoubleTy())) {
     switch (GetOpCode(&I)) {
     case llvm_canonicalize:
     case llvm_fadd:
@@ -4641,8 +4635,8 @@ bool CodeGenPatternMatch::MatchCanonicalizeInstruction(llvm::Instruction &I) {
   IGC_ASSERT(isa<Instruction>(I.getOperand(0)) || isa<Argument>(I.getOperand(0)));
   // Current implementation assumes that mix mode is disabled if
   // half float or 32-bit float denorms must be flushed.
-  if (m_ctx->getModuleMetaData()->compOpt.FloatDenormMode16 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO ||
-      m_ctx->getModuleMetaData()->compOpt.FloatDenormMode32 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO) {
+  if (IGC::isDenormFlushed(m_ctx->getModuleMetaData()->compOpt.FloatDenormMode16) ||
+      IGC::isDenormFlushed(m_ctx->getModuleMetaData()->compOpt.FloatDenormMode32)) {
     IGC_ASSERT(!m_Platform.supportMixMode() || m_ctx->getModuleMetaData()->disableMixMode);
   }
   if (isa<Argument>(I.getOperand(0)) || !FlushesDenormsOnOutput(*(cast<Instruction>(I.getOperand(0))))) {

@@ -122,6 +122,7 @@ enum class ShaderTypeMD
     {
         FLOAT_DENORM_FLUSH_TO_ZERO = 0,
         FLOAT_DENORM_RETAIN,
+        FLOAT_DENORM_ANY,
     };
 #endif
 
@@ -450,11 +451,12 @@ enum class ShaderTypeMD
         bool MadEnable                                  = false;
         bool NoSignedZeros                              = false;
         bool NoNaNs                                     = false;
-        // float 16, float32 and float64 denorm mode
-        Float_DenormMode FloatDenormMode16              = FLOAT_DENORM_FLUSH_TO_ZERO;
-        Float_DenormMode FloatDenormMode32              = FLOAT_DENORM_FLUSH_TO_ZERO;
-        Float_DenormMode FloatDenormMode64              = FLOAT_DENORM_FLUSH_TO_ZERO;
-        Float_DenormMode FloatDenormModeBFTF            = FLOAT_DENORM_FLUSH_TO_ZERO;
+        // float16, float32, float64 and bf/tf denorm mode. FLOAT_DENORM_ANY means
+        // the source places no requirement; see Float_DenormMode.
+        Float_DenormMode FloatDenormMode16              = FLOAT_DENORM_ANY;
+        Float_DenormMode FloatDenormMode32              = FLOAT_DENORM_ANY;
+        Float_DenormMode FloatDenormMode64              = FLOAT_DENORM_ANY;
+        Float_DenormMode FloatDenormModeBFTF            = FLOAT_DENORM_ANY;
 
         // default rounding modes
         unsigned FloatRoundingMode                      = IGC::ROUND_TO_NEAREST_EVEN;

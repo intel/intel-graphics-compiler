@@ -3797,11 +3797,11 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
 
   CodeGenContext *pCtx = m_program->GetContext();
   bool needsDenormRetainForMathInstructions =
-      (context->getModuleMetaData()->compOpt.FloatDenormMode16 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
-      (context->getModuleMetaData()->compOpt.FloatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
-      (context->getModuleMetaData()->compOpt.FloatDenormMode64 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
+      isDenormFlushed(context->getModuleMetaData()->compOpt.FloatDenormMode16) ||
+      isDenormFlushed(context->getModuleMetaData()->compOpt.FloatDenormMode32) ||
+      isDenormFlushed(context->getModuleMetaData()->compOpt.FloatDenormMode64) ||
       (m_program->m_Platform->hasBFTFDenormMode() &&
-       context->getModuleMetaData()->compOpt.FloatDenormModeBFTF == FLOAT_DENORM_FLUSH_TO_ZERO);
+       isDenormFlushed(context->getModuleMetaData()->compOpt.FloatDenormModeBFTF));
   bool needsCRSetupForIEEEArithmetic = hasIEEEArithmeticMacro(*context->getModule());
 
   // IEEE arithmetic macros require RNE for their intermediate MADM operations.

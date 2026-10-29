@@ -1872,7 +1872,7 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
     args[1] = I.getOperand(1);
 
     auto pMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    int ftz = (pMD->compOpt.FloatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ? 1 : 0;
+    int ftz = isDenormFlushed(pMD->compOpt.FloatDenormMode32) ? 1 : 0;
     int daz = (pMD->compOpt.DenormsAreZero) ? 1 : 0;
     args[2] = ConstantInt::get(Type::getInt32Ty(I.getContext()), ftz);
     args[3] = ConstantInt::get(Type::getInt32Ty(I.getContext()), daz);

@@ -38,9 +38,8 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   // with new value from outside.
   BIF_FLAG_CTRL_SET(PlatformType, PtrCGC->platform.GetProductFamily());
   BIF_FLAG_CTRL_SET(RenderFamily, PtrCGC->platform.getPlatformInfo().eRenderCoreFamily);
-  BIF_FLAG_CTRL_SET(FlushDenormals,
-                    ((PtrCGC->getModuleMetaData()->compOpt.FloatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
-                     PtrCGC->getModuleMetaData()->compOpt.DenormsAreZero));
+  BIF_FLAG_CTRL_SET(FlushDenormals, (isDenormFlushed(PtrCGC->getModuleMetaData()->compOpt.FloatDenormMode32) ||
+                                     PtrCGC->getModuleMetaData()->compOpt.DenormsAreZero));
   BIF_FLAG_CTRL_SET(FastRelaxedMath, PtrCGC->getModuleMetaData()->compOpt.RelaxedBuiltins);
   BIF_FLAG_CTRL_SET(DashGSpecified, PtrCGC->getModuleMetaData()->compOpt.DashGSpecified);
   BIF_FLAG_CTRL_SET(MadEnable, PtrCGC->getModuleMetaData()->compOpt.MadEnable);

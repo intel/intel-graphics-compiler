@@ -1197,7 +1197,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
   oclContext.annotater = nullptr;
 
   // Set default denorm.
-  // Note that those values have been set to FLOAT_DENORM_FLUSH_TO_ZERO
+  // Note that those values have been set to FLOAT_DENORM_ANY by default
   CompOptions *compOpt = &oclContext.getModuleMetaData()->compOpt;
   compOpt->FloatDenormMode16 = FLOAT_DENORM_RETAIN;
   compOpt->FloatDenormMode32 = FLOAT_DENORM_RETAIN;
@@ -1316,7 +1316,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
         RebuildGlobalAnnotations(oclContext, pKernelModule);
 
         // Set default denorm since metadata was cleared.
-        // Note that those values have been set to FLOAT_DENORM_FLUSH_TO_ZERO
+        // Note that those values have been set to FLOAT_DENORM_ANY by default
         compOpt = &oclContext.getModuleMetaData()->compOpt;
         compOpt->FloatDenormMode16 = FLOAT_DENORM_RETAIN;
         compOpt->FloatDenormMode32 = FLOAT_DENORM_RETAIN;
