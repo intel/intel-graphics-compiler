@@ -200,3 +200,39 @@ define spir_func void @test_sext1to4_vector4(ptr %src, ptr %dst) {
   store <4 x i4> %2, ptr %dst
   ret void
 }
+
+;
+; Tests for sext of an i4 vector that was packed by a previous instruction
+;
+
+; CHECK-LABEL: define spir_func void @test_sext_shufflevector(ptr %src, ptr %dst)
+; CHECK-NEXT: %1 = load <2 x i8>, ptr %src, align 2
+; CHECK-NEXT: %2 = call <4 x i8> @llvm.genx.GenISA.Int4VectorUnpack.v4i8.v2i8(<2 x i8> %1, i8 0)
+; CHECK-NEXT: %3 = call <4 x i8> @llvm.genx.GenISA.Int4VectorUnpack.v4i8.v2i8(<2 x i8> %1, i8 0)
+; CHECK-NEXT: %4 = shufflevector <4 x i8> %2, <4 x i8> %3, <3 x i32> <i32 0, i32 1, i32 2>
+; CHECK-NEXT: %5 = shl <3 x i8> %4, {{<i8 4, i8 4, i8 4>|splat \(i8 4\)}}
+; CHECK-NEXT: %6 = ashr <3 x i8> %5, {{<i8 4, i8 4, i8 4>|splat \(i8 4\)}}
+; CHECK-NEXT: store <3 x i8> %6, ptr %dst, align 4
+define spir_func void @test_sext_shufflevector(ptr %src, ptr %dst) {
+  %1 = load <4 x i4>, ptr %src, align 2
+  %2 = shufflevector <4 x i4> %1, <4 x i4> %1, <3 x i32> <i32 0, i32 1, i32 2>
+  %3 = sext <3 x i4> %2 to <3 x i8>
+  store <3 x i8> %3, ptr %dst, align 4
+  ret void
+}
+
+; The high 4 bits after a trunc are garbage, so the sign is taken from bit 3.
+; CHECK-LABEL: define spir_func void @test_sext_trunc(ptr %src, ptr %dst)
+; CHECK-NEXT: %1 = load <3 x i32>, ptr %src, align 16
+; CHECK-NEXT: %2 = trunc <3 x i32> %1 to <3 x i8>
+; CHECK-NEXT: %3 = shl <3 x i8> %2, {{<i8 4, i8 4, i8 4>|splat \(i8 4\)}}
+; CHECK-NEXT: %4 = ashr <3 x i8> %3, {{<i8 4, i8 4, i8 4>|splat \(i8 4\)}}
+; CHECK-NEXT: %5 = sext <3 x i8> %4 to <3 x i32>
+; CHECK-NEXT: store <3 x i32> %5, ptr %dst, align 16
+define spir_func void @test_sext_trunc(ptr %src, ptr %dst) {
+  %1 = load <3 x i32>, ptr %src, align 16
+  %2 = trunc <3 x i32> %1 to <3 x i4>
+  %3 = sext <3 x i4> %2 to <3 x i32>
+  store <3 x i32> %3, ptr %dst, align 16
+  ret void
+}
