@@ -4840,16 +4840,21 @@ void Augmentation::handleNonLoopBackEdges(FuncInfo *funcInfo) {
   // the backedge destination. In above snippet, it means
   // extending P21 to "up" so that it overlaps with P5.
 
+  // Both queries below ask which instructions of a set lie within an
+  // interval; with the lexical ids sorted that is a binary search instead of
+  // a scan of the whole set for every variable.
   auto AllJIPTargetBBs = getAllJIPTargetBBs(funcInfo);
+  std::vector<unsigned> JIPTargetIds;
+  JIPTargetIds.reserve(AllJIPTargetBBs.size());
+  for (auto *JIPTargetBB : AllJIPTargetBBs)
+    JIPTargetIds.push_back(JIPTargetBB->front()->getLexicalId());
+  std::sort(JIPTargetIds.begin(), JIPTargetIds.end());
 
   // Return true if there's any JIP incoming edge within interval
-  auto hasIncomingJIPEdge = [&AllJIPTargetBBs](const vISA::Interval &Interval) {
-    for (auto *JIPTargetBB : AllJIPTargetBBs) {
-      vISA::Interval Temp(JIPTargetBB->front(), JIPTargetBB->front());
-      if (Interval.intervalsOverlap(Temp))
-        return true;
-    }
-    return false;
+  auto hasIncomingJIPEdge = [&JIPTargetIds](const vISA::Interval &Interval) {
+    auto It = std::lower_bound(JIPTargetIds.begin(), JIPTargetIds.end(),
+                               Interval.start->getLexicalId());
+    return It != JIPTargetIds.end() && *It <= Interval.end->getLexicalId();
   };
 
   auto NonLoopBackEdges = getNonLoopBackEdges(funcInfo);
@@ -4857,20 +4862,28 @@ void Augmentation::handleNonLoopBackEdges(FuncInfo *funcInfo) {
     VISA_DEBUG_VERBOSE({ std::cout << "No non-loop backedges found\n"; });
     return;
   }
+  auto backEdgeId = [](const std::pair<G4_BB *, G4_BB *> &Edge) {
+    return Edge.first->back()->getLexicalId();
+  };
+  std::stable_sort(NonLoopBackEdges.begin(), NonLoopBackEdges.end(),
+                   [&](const auto &A, const auto &B) {
+                     return backEdgeId(A) < backEdgeId(B);
+                   });
 
-  auto getNonLoopBackEdgesInInterval =
-      [&NonLoopBackEdges](const vISA::Interval &Interval) {
-        std::vector<std::pair<G4_BB *, G4_BB *>> NonLoopBackEdgesInInterval;
+  auto getNonLoopBackEdgesInInterval = [&](const vISA::Interval &Interval) {
+    std::vector<std::pair<G4_BB *, G4_BB *>> NonLoopBackEdgesInInterval;
+    auto It = std::partition_point(
+        NonLoopBackEdges.begin(), NonLoopBackEdges.end(),
+        [&](const auto &Edge) {
+          return backEdgeId(Edge) < Interval.start->getLexicalId();
+        });
+    for (; It != NonLoopBackEdges.end() &&
+           backEdgeId(*It) <= Interval.end->getLexicalId();
+         ++It)
+      NonLoopBackEdgesInInterval.push_back(*It);
 
-        for (auto &NonLoopBackEdge : NonLoopBackEdges) {
-          vISA::Interval Temp(NonLoopBackEdge.first->back(),
-                              NonLoopBackEdge.first->back());
-          if (Interval.intervalsOverlap(Temp))
-            NonLoopBackEdgesInInterval.push_back(NonLoopBackEdge);
-        }
-
-        return NonLoopBackEdgesInInterval;
-      };
+    return NonLoopBackEdgesInInterval;
+  };
 
   for (G4_Declare *Dcl : kernel.Declares) {
     auto &All = gra.getAllIntervals(Dcl);
