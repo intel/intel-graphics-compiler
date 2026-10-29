@@ -320,6 +320,11 @@ public:
     return false;
   }
 
+  // Return true if EmitVISA decides V's variable only after alias variables
+  // are created (CShader::CreateAliasVars()), so V must be neither an aliaser
+  // nor an aliasee.
+  bool hasLateBoundSymbol(llvm::Value *V);
+
   void addVecAlias(llvm::Value *Aliaser, llvm::Value *Aliasee, llvm::Value *OrigBaseVec, int Idx,
                    e_alignment AliaseeAlign = EALIGN_AUTO);
   SSubVecDesc *getOrCreateSubVecDesc(llvm::Value *V);
@@ -491,7 +496,10 @@ llvm::FunctionPass *createVariableReuseAnalysisPass();
 
 // Return true if V's variable layout is decided by DeSSA, payload coalescing or
 // VRA. Null analyses are skipped.
-bool isCoalescedValue(llvm::Value *V, DeSSA *DS, CoalescingEngine *CE, VariableReuseAnalysis *VRA);
+// IgnoreDeSSAAliases: a DeSSA alias alone (e.g. bitcast of V) does not count.
+// Other checks still apply.
+bool isCoalescedValue(llvm::Value *V, DeSSA *DS, CoalescingEngine *CE, VariableReuseAnalysis *VRA,
+                      bool IgnoreDeSSAAliases = false);
 
 // Return true if EmitVISA can emit EEI as an alias of its vector operand. VRA will skip such
 // extracts.

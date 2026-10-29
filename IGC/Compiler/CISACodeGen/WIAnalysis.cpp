@@ -1593,7 +1593,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       GII_id == GenISAIntrinsic::GenISA_bitcastfromstruct || GII_id == GenISAIntrinsic::GenISA_bitcasttostruct ||
       GII_id == GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload ||
       GII_id == GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload || GII_id == GenISAIntrinsic::GenISA_PredicatedLoad ||
-      GII_id == GenISAIntrinsic::GenISA_PredicatedStore || GII_id == GenISAIntrinsic::GenISA_bfn) {
+      GII_id == GenISAIntrinsic::GenISA_PredicatedStore || GII_id == GenISAIntrinsic::GenISA_bfn ||
+      GII_id == GenISAIntrinsic::GenISA_JointWaveBroadcast) {
     switch (GII_id) {
     default:
       break;
@@ -1610,6 +1611,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
     case GenISAIntrinsic::GenISA_hw_tile_id:
     case GenISAIntrinsic::GenISA_hw_engine_id:
     case GenISAIntrinsic::GenISA_movcr:
+      return WIAnalysis::UNIFORM_THREAD;
+    case GenISAIntrinsic::GenISA_JointWaveBroadcast:
       return WIAnalysis::UNIFORM_THREAD;
     case GenISAIntrinsic::GenISA_slice_id:
     case GenISAIntrinsic::GenISA_subslice_id:

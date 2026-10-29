@@ -934,6 +934,10 @@ private:
   // load (the gatherDst temporary is only valid within that block).
   llvm::DenseMap<CVariable *, std::pair<CVariable *, llvm::BasicBlock *>> m_SubDWLoadWideDst;
 
+  // True if the zext's variable is shared with other values, so
+  // EmitZExtByteLoad must not remap it to gatherDst.
+  bool isZExtVarShared(llvm::Instruction *zextInst);
+
   // caching the number of instances for the current inst.
   int16_t m_currInstNumInstances = -1;
   inline void resetCurrInstNumInstances() { m_currInstNumInstances = -1; }

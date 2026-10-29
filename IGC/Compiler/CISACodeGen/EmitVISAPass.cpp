@@ -931,6 +931,7 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
         Function *pFunc =
             GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::GenISA_RuntimeValue, kernArg->getType());
         Value *tempCall = builder.CreateCall(pFunc, builder.getInt32(kernArg->getArgNo()), "kernArgCopy");
+        IGC_ASSERT_MESSAGE(!m_VRA->isAliasedValue(kernArg), "Cannot remap symbol of a VRA-aliased value!");
         kernArg->replaceAllUsesWith(tempCall);
 
         // Create another CVar to hold the copied kernelArg, and map it to the
@@ -2814,27 +2815,15 @@ void EmitPass::EmitUnpack4i8(const SSource &source, uint32_t index, bool isUnsig
 // When the source of a zext i8→i32 (or i16→i32) is a sub-dword load, the LSC
 // d8u32 / d16u32 load already produces a dword-typed zero-extended result.
 // This function remaps the zext's symbol to the load's dword gatherDst,
-// eliminating the byte/word-extraction and cast movs entirely.
+// eliminating the byte/word-extraction and cast movs entirely. If the zext's
+// variable is shared with other values, gatherDst is copied into it instead.
 void EmitPass::EmitZExtByteLoad(llvm::LoadInst *loadInst, llvm::Instruction *zextInst, const DstModifier &dstMod) {
   CVariable *loadDest = GetSymbol(loadInst);
   auto it = m_SubDWLoadWideDst.find(loadDest);
+  CVariable *src = nullptr;
   if (it != m_SubDWLoadWideDst.end() && loadInst->getParent() == zextInst->getParent()) {
-    // Skip the gatherDst remap when a zext user is an InsertElementInst
-    // that won't emit a scalar copy: HasBecomeNoop (VRA aliased the scalar
-    // into the vector slot, EmitNoModifier skips it) or
-    // CanTreatScalarSourceAsAlias (emitInsert returns early).
-    // UpdateSymbolMap would break the VRA alias, dropping the loaded value.
-    bool hasIEIAliasUser = false;
-    for (auto *U : zextInst->users()) {
-      if (auto *IEI = dyn_cast<llvm::InsertElementInst>(U)) {
-        if (m_currShader->HasBecomeNoop(IEI) || m_currShader->CanTreatScalarSourceAsAlias(IEI)) {
-          hasIEIAliasUser = true;
-          break;
-        }
-      }
-    }
-    if (!hasIEIAliasUser) {
-      CVariable *gatherDst = it->second.first;
+    CVariable *gatherDst = it->second.first;
+    if (!isZExtVarShared(zextInst)) {
       // Pre-allocate CVariables for non-alias zext users before the remap so
       // they get their own destinations and don't accidentally resolve to
       // gatherDst via DeSSA. Skip BitCastInst: bitcasts alias the zext and
@@ -2854,13 +2843,30 @@ void EmitPass::EmitZExtByteLoad(llvm::LoadInst *loadInst, llvm::Instruction *zex
       m_destination = gatherDst;
       return;
     }
+    // Other values share the zext's variable, so a remap would leave it
+    // unwritten. Copy the already zero-extended dword result instead.
+    src = gatherDst;
+  } else {
+    // gatherDst not available (cross-BB load, mergeVal, map miss).
+    src = m_currShader->BitCast(loadDest, GetUnsignedType(loadDest->GetType()));
   }
-  // Fallback: gatherDst not available (cross-BB load, mergeVal, map miss,
-  // or IEI-alias user that would be broken by the remap).
-  CVariable *src = m_currShader->BitCast(loadDest, GetUnsignedType(loadDest->GetType()));
   m_encoder->SetDstModifier(dstMod);
   m_encoder->Cast(m_destination, src);
   m_encoder->Push();
+}
+
+bool EmitPass::isZExtVarShared(llvm::Instruction *zextInst) {
+  // Coalesced with other values. A DeSSA alias (e.g. bitcast) only renames
+  // the zext, so it doesn't count.
+  if (m_currShader->IsCoalesced(zextInst, /*IgnoreDeSSAAliases=*/true))
+    return true;
+  // InsertElementInst user that won't emit a scalar copy: HasBecomeNoop
+  // (EmitNoModifier skips it) or CanTreatScalarSourceAsAlias (emitInsert
+  // returns early).
+  return llvm::any_of(zextInst->users(), [&](User *U) {
+    auto *IEI = dyn_cast<llvm::InsertElementInst>(U);
+    return IEI && (m_currShader->HasBecomeNoop(IEI) || m_currShader->CanTreatScalarSourceAsAlias(IEI));
+  });
 }
 
 // Emits 8-bit integer move operations that repack 4 i8 values from a packed
@@ -19101,7 +19107,7 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
 
   // If every user of this sub-dword load is a zext-to-i32 or a sub-dword
   // store, the narrow Dest is never read:
-  //   - EmitZExtByteLoad remaps zext users to gatherDst directly
+  //   - EmitZExtByteLoad reads gatherDst for zext users (remap or copy)
   //   - emitLSCVectorStore_subDW looks up m_SubDWLoadWideDst for store users
   // Skip the copy to avoid emitting a dead mov.
   // This optimization is only safe on Xe2+ where the supporting infrastructure
@@ -19119,24 +19125,10 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
         }
         if (isa<ZExtInst>(U) && U->getType()->isIntegerTy(32)) {
           // All zext users must be in loadBB (else MatchModifier reads Dest).
-          // Also bail if a zext user is a noop IEI (HasBecomeNoop or
-          // CanTreatScalarSourceAsAlias): EmitZExtByteLoad falls back to
-          // Cast in that case and reads from Dest, so Dest must be written.
-          bool zextUsersLocal = true;
-          for (auto *ZU : U->users()) {
-            if (auto *ZUI = dyn_cast<Instruction>(ZU)) {
-              if (ZUI->getParent() != loadBB) {
-                zextUsersLocal = false;
-                break;
-              }
-              if (auto *IEI = dyn_cast<InsertElementInst>(ZUI)) {
-                if (m_currShader->HasBecomeNoop(IEI) || m_currShader->CanTreatScalarSourceAsAlias(IEI)) {
-                  zextUsersLocal = false;
-                  break;
-                }
-              }
-            }
-          }
+          bool zextUsersLocal = llvm::all_of(U->users(), [&](User *ZU) {
+            auto *ZUI = dyn_cast<Instruction>(ZU);
+            return !ZUI || ZUI->getParent() == loadBB;
+          });
           if (zextUsersLocal)
             continue;
         }
@@ -22645,6 +22637,7 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst *I) {
     if (I->getIntrinsicID() == GenISAIntrinsic::ID::GenISA_getR0) {
       // The R0 intrinsic will not be lowered by LowerImplicitArgIntrinsics.
       // Map to the predefined R0 register
+      IGC_ASSERT_MESSAGE(!m_VRA->isAliasedValue(I), "Cannot remap symbol of a VRA-aliased value!");
       m_currShader->GetEncoder().GetVISAPredefinedVar(GetSymbol(I), PREDEFINED_R0);
     } else {
       IGC_ASSERT_MESSAGE(0, "Intrinsics used in stackcalls has not been lowered!");

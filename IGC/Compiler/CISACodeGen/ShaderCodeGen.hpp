@@ -376,10 +376,11 @@ public:
 
   bool HasBecomeNoop(llvm::Instruction *inst);
 
-  // If V is not in any congruent class, not aliased to any other
-  // variables, not payload-coalesced, then this function returns
-  // true.
-  bool IsCoalesced(llvm::Value *V);
+  // If V is in any congruent class, is aliased to any other variable,
+  // or is payload-coalesced, then return true.
+  // IgnoreDeSSAAliases: a DeSSA alias alone (e.g. bitcast of V) does not count.
+  // Other checks still apply.
+  bool IsCoalesced(llvm::Value *V, bool IgnoreDeSSAAliases = false);
 
   bool VMECoalescePattern(llvm::GenIntrinsicInst *);
 

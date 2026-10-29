@@ -2737,7 +2737,12 @@ CVariable *CShader::getOrCreateArgumentSymbol(Argument *Arg, bool ArgInCallee, b
   return var;
 }
 
-void CShader::UpdateSymbolMap(llvm::Value *v, CVariable *CVar) { symbolMapping[v] = CVar; }
+void CShader::UpdateSymbolMap(llvm::Value *v, CVariable *CVar) {
+  // Alias variables (CreateAliasVars()) are bound to v's current variable,
+  // so remapping a VRA-aliased value would leave them pointing to it.
+  IGC_ASSERT_MESSAGE(!m_VRA || !m_VRA->isAliasedValue(v), "Cannot remap symbol of a VRA-aliased value!");
+  symbolMapping[v] = CVar;
+}
 
 // Reuse a varable in the following case
 // %x = op1...
@@ -3519,7 +3524,9 @@ bool CShader::CanTreatScalarSourceAsAlias(llvm::InsertElementInst *IEI) {
 
 bool CShader::HasBecomeNoop(Instruction *inst) { return m_VRA->m_HasBecomeNoopInsts.count(inst); }
 
-bool CShader::IsCoalesced(Value *V) { return isCoalescedValue(V, m_deSSA, m_coalescingEngine, m_VRA); }
+bool CShader::IsCoalesced(Value *V, bool IgnoreDeSSAAliases) {
+  return isCoalescedValue(V, m_deSSA, m_coalescingEngine, m_VRA, IgnoreDeSSAAliases);
+}
 
 #define SET_INTRINSICS()                                                                                               \
   GenISAIntrinsic::GenISA_setMessagePhaseX : case GenISAIntrinsic::GenISA_setMessagePhaseXV:                           \

@@ -35,9 +35,9 @@
 ; CHECK-VRA1-NEXT:    mov (M1, 16) [[P]](0,0)<1> [[X]](0,0)<0;1,0>
 ; CHECK-VRA1:       [[JOIN]]:
 ; CHECK-VRA1-NEXT:    mul (M1, 16) [[Q:[A-Za-z0-9_]+]](0,0)<1> [[P]](0,0)<1;1,0> [[P]](0,0)<1;1,0>
-; CHECK-VRA1:         // .decl [[V]] v_type=G type=d num_elts=64 {{.*}}
-; CHECK-VRA1:         // .decl [[P]] v_type=G type=d num_elts=16 {{.*}}
-; CHECK-VRA1:         // .decl [[Q]] v_type=G type=d num_elts=16 {{.*}}
+; CHECK-VRA1:         // .decl [[V]] v_type=G type=d num_elts=64 align=wordx32{{$}}
+; CHECK-VRA1:         // .decl [[P]] v_type=G type=d num_elts=16 align=wordx32{{$}}
+; CHECK-VRA1:         // .decl [[Q]] v_type=G type=d num_elts=16 align=wordx32{{$}}
 
 ; CHECK-VRA9-LABEL: .kernel "test"
 ; CHECK-VRA9:         lsc_load.ugm (M1, 16)  [[V:[A-Za-z0-9_]+]]:d32x4  flat[{{.+}}]:a64
@@ -49,8 +49,8 @@
 ; CHECK-VRA9-NEXT:    mov (M1, 16) [[V]](1,0)<1> [[X]](0,0)<0;1,0>
 ; CHECK-VRA9:       [[JOIN]]:
 ; CHECK-VRA9-NEXT:    mul (M1, 16) [[Q:[A-Za-z0-9_]+]](0,0)<1> [[V]](1,0)<1;1,0> [[V]](1,0)<1;1,0>
-; CHECK-VRA9:         // .decl [[V]] v_type=G type=d num_elts=64 {{.*}}
-; CHECK-VRA9:         // .decl [[Q]] v_type=G type=d num_elts=16 {{.*}}
+; CHECK-VRA9:         // .decl [[V]] v_type=G type=d num_elts=64 align=wordx32{{$}}
+; CHECK-VRA9:         // .decl [[Q]] v_type=G type=d num_elts=16 align=wordx32{{$}}
 
 define spir_kernel void @test(ptr addrspace(1) %in, ptr addrspace(1) %out, i32 %n, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX) {
 entry:

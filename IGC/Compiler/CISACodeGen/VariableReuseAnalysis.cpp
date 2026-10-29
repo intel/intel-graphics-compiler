@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CodeGenPublic.h"
+#include "AdaptorCommon/ImplicitArgs.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/Debug.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -537,6 +538,24 @@ Value *VariableReuseAnalysis::getRootValue(Value *V) {
   return dessaRV ? dessaRV : V;
 }
 
+// Return true if V's variable may be replaced after the alias variables are
+// created. An alias to V's old variable would then read a never-written one.
+bool VariableReuseAnalysis::hasLateBoundSymbol(Value *V) {
+  // Stack-call args are remapped; kernel args may be copied to a new
+  // variable if the kernel has stack calls.
+  if (isOrCoalescedWithArg(V))
+    return true;
+  if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(V)) {
+    // JointWaveBroadcast maps the result to an alias of its source.
+    if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_JointWaveBroadcast)
+      return true;
+    // Implicit arg intrinsics are mapped to a predefined
+    // variable or to the kernel's implicit arg.
+    return ImplicitArgs::getArgType(GII->getIntrinsicID()) != ImplicitArg::ArgType::NUM_IMPLICIT_ARGS;
+  }
+  return false;
+}
+
 Value *VariableReuseAnalysis::getAliasRootValue(Value *V) {
   Value *V_nv = m_DeSSA ? m_DeSSA->getNodeValue(V) : V;
   auto II0 = m_baseVecMap.find(V_nv);
@@ -594,6 +613,11 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst &I) {
     return;
   }
 
+  // If EmitVISA decides vecVal's variable after alias creation, skip.
+  if (hasLateBoundSymbol(vecVal) || hasLateBoundSymbol(vec_nv)) {
+    return;
+  }
+
   if (!m_DeSSA->isSingleValued(EEI_nv) || !m_DeSSA->isSingleValued(vec_nv)) {
     if (control < 2) {
       return;
@@ -621,8 +645,15 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst &I) {
       return;
   }
 
+  // EEI's offset in vecVal must meet the alignment required by EEI and the
+  // values coalesced with it (for example, a dpas dst must be GRF-aligned).
+  e_alignment BaseAlign;
+  if (!checkSubAlign(BaseAlign, EEI, vecVal, iIdx)) {
+    return;
+  }
+
   // Valid vec alias and add it into alias map
-  addVecAlias(EEI_nv, vec_nv, vecVal, iIdx);
+  addVecAlias(EEI_nv, vec_nv, vecVal, iIdx, BaseAlign);
 
   // Mark this inst as no-op inst
   m_HasBecomeNoopInsts[EEI] = 1;
@@ -1218,6 +1249,11 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy &AllIEIs) {
   Value *Sub_nv = m_DeSSA->getNodeValue(Sub);
   Value *Base_nv = m_DeSSA->getNodeValue(BaseVec);
 
+  // If EmitVISA decides BaseVec's variable after alias creation, skip.
+  if (hasLateBoundSymbol(BaseVec) || hasLateBoundSymbol(Base_nv)) {
+    return false;
+  }
+
   // If Sub_nv has been aliased to another vector already, skip
   if (isAliaser(Sub_nv)) {
     return false;
@@ -1377,8 +1413,8 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &All
     Value *V = aPair.first;
     int V_ix = aPair.second;
 
-    // If V is an arg, skip it
-    if (isOrCoalescedWithArg(V)) {
+    // If EmitVISA decides V's variable after alias creation, skip.
+    if (hasLateBoundSymbol(V) || hasLateBoundSymbol(m_DeSSA->getNodeValue(V))) {
       continue;
     }
 
@@ -1587,8 +1623,10 @@ bool VariableReuseAnalysis::isExtractMaskCandidate(Value *V) const {
   return fullMask > mask;
 }
 
-bool IGC::isCoalescedValue(Value *V, DeSSA *DS, CoalescingEngine *CE, VariableReuseAnalysis *VRA) {
-  return (VRA && VRA->isAliasedValue(V)) || (DS && DS->getRootValue(V)) || (CE && CE->GetValueCCTupleMapping(V));
+bool IGC::isCoalescedValue(Value *V, DeSSA *DS, CoalescingEngine *CE, VariableReuseAnalysis *VRA,
+                           bool IgnoreDeSSAAliases) {
+  bool deSSACoalesced = DS && (IgnoreDeSSAAliases ? !DS->isSingleValued(V) : DS->getRootValue(V) != nullptr);
+  return (VRA && VRA->isAliasedValue(V)) || deSSACoalesced || (CE && CE->GetValueCCTupleMapping(V));
 }
 
 bool IGC::canEmitExtractAsAlias(ExtractElementInst *EEI, DeSSA *DS, CoalescingEngine *CE, VariableReuseAnalysis *VRA,
