@@ -1167,6 +1167,8 @@ class SWSB {
   // Insert sync instructions
   G4_INST *insertSyncInstruction(G4_BB *bb, INST_LIST_ITER nextIter);
   G4_INST *insertSyncInstructionAfter(G4_BB *bb, INST_LIST_ITER nextIter);
+  void insertFenceSync(G4_BB *bb, INST_LIST_ITER nextIter,
+                       unsigned short fenceToken);
   G4_INST *insertSyncAllRDInstruction(G4_BB *bb, unsigned int SBIDs,
                                       INST_LIST_ITER nextIter);
   G4_INST *insertSyncAllWRInstruction(G4_BB *bb, unsigned int SBIDs,

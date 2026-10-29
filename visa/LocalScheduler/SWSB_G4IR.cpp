@@ -3973,6 +3973,19 @@ G4_INST *SWSB::insertSyncInstruction(G4_BB *bb, INST_LIST_ITER nextIter) {
   return syncInst;
 }
 
+// Insert the syncs that stall on a null-dst fence's token before nextIter.
+void SWSB::insertFenceSync(G4_BB *bb, INST_LIST_ITER nextIter,
+                           unsigned short fenceToken) {
+  if (fg.builder->needFenceAfterReadSync()) {
+    G4_INST *syncARInst = insertSyncInstruction(bb, nextIter);
+    syncARInst->setToken(fenceToken);
+    syncARInst->setTokenType(SWSBTokenType::AFTER_READ);
+  }
+  G4_INST *syncInst = insertSyncInstruction(bb, nextIter);
+  syncInst->setToken(fenceToken);
+  syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
+}
+
 G4_INST *SWSB::insertSyncInstructionAfter(G4_BB *bb, INST_LIST_ITER iter) {
   INST_LIST_ITER nextIter = iter;
   nextIter++;
@@ -4889,20 +4902,15 @@ void SWSB::insertTokenSync() {
       vASSERT(node->GetInstruction() == inst);
       // With efficient64b, the fence instruction will have null dst.
       // In this case, we need insert force dependence to stall following
-      // instructions.
+      // instructions. The sync is placed before the first following token
+      // instruction or branch in the BB; if there is none, it is placed at the
+      // end of the BB (see after the loop).
       if (fenceToken != (unsigned short)-1) {
         if (tokenHonourInstruction(
                 inst) || // Don't across any token instruction
             inst->isCFInst() ||
             inst->isLabel() || inst->isOptBarrier()) {
-          if (fg.builder->needFenceAfterReadSync()) {
-            G4_INST *syncARInst = insertSyncInstruction(bb, inst_it);
-            syncARInst->setToken(fenceToken);
-            syncARInst->setTokenType(SWSBTokenType::AFTER_READ);
-          }
-          G4_INST *syncInst = insertSyncInstruction(bb, inst_it);
-          syncInst->setToken(fenceToken);
-          syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
+          insertFenceSync(bb, inst_it, fenceToken);
           fenceToken = (unsigned short)-1;
         }
       }
@@ -4911,20 +4919,6 @@ void SWSB::insertTokenSync() {
           inst->asSendInst()->isFence() &&
           inst->getDst()->isNullReg()) {
         fenceToken = inst->getSBIDSetToken();
-        if (iInstNext == bb->end()) { // In case the fence instruction is the
-                                      // last instruction of BB
-          if (fg.builder->needFenceAfterReadSync()) {
-            G4_INST *syncARInst = insertSyncInstructionAfter(bb, inst_it);
-            syncARInst->setToken(fenceToken);
-            syncARInst->setTokenType(SWSBTokenType::AFTER_READ);
-          }
-          // The fence is the last instruction of the BB, so appending at the
-          // end puts the AFTER_WRITE sync after the fence, and after the
-          // AFTER_READ sync when one was inserted.
-          G4_INST *syncInst = insertSyncInstruction(bb, bb->end());
-          syncInst->setToken(fenceToken);
-          syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
-        }
       }
 
       if (rayQueryCheckToken != (unsigned short)-1) {
@@ -4955,12 +4949,6 @@ void SWSB::insertTokenSync() {
       } else if (fg.builder->getOption(vISA_enableEfficient64b)) {
         if (inst->isSend() && isSendgRTQueryCheck(inst)) {
           rayQueryCheckToken = inst->getSBIDSetToken();
-          if (iInstNext == bb->end()) { // In case the fence instruction is the
-                                        // last instruction of BB
-            G4_INST *syncInst = insertSyncInstructionAfter(bb, inst_it);
-            syncInst->setToken(rayQueryCheckToken);
-            syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
-          }
         }
       } else {
         G4_INST *preInst = nullptr;
@@ -4973,12 +4961,6 @@ void SWSB::insertTokenSync() {
         if (inst->isSend() && preInst && preInst->isMov() &&
             isRTQueryCheck(inst, preInst)) {
           rayQueryCheckToken = inst->getSBIDSetToken();
-          if (iInstNext == bb->end()) { // In case the fence instruction is the
-                                        // last instruction of BB
-            G4_INST *syncInst = insertSyncInstructionAfter(bb, inst_it);
-            syncInst->setToken(rayQueryCheckToken);
-            syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
-          }
         }
       }
       if (inst->isCall() || inst->isReturn() || inst->isFCall() ||
@@ -5117,6 +5099,22 @@ void SWSB::insertTokenSync() {
       syncInst->setToken(rayTracingToken);
       syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
     }
+
+    // No token instruction or branch follows the null-dst fence in this BB
+    // (including the fence being the last instruction). Sync at the end of
+    // the BB so the stall is not lost when falling through to the next BB.
+    if (fenceToken != (unsigned short)-1) {
+      insertFenceSync(bb, bb->end(), fenceToken);
+    }
+
+    // Same for the ray query check: no token instruction or branch follows it
+    // in this BB, so sync at the end of the BB.
+    if (rayQueryCheckToken != (unsigned short)-1) {
+      G4_INST *syncInst = insertSyncInstruction(bb, bb->end());
+      syncInst->setToken(rayQueryCheckToken);
+      syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
+    }
+
     if (!bb->isLastInstEOT()) {
       if (!BBVector[bb->getId()]->globalARSendOpndList.empty()) {
         unsigned src = 0;
