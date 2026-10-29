@@ -32,11 +32,14 @@ inline llvm::KnownBits computeKnownBits(const llvm::Value *V, const llvm::DataLa
 }
 
 inline llvm::KnownBits computeKnownBits(const llvm::Value *V, const llvm::DataLayout &DL, llvm::AssumptionCache *AC,
-                                        const llvm::Instruction *CxtI, const llvm::DominatorTree *DT) {
+                                        const llvm::Instruction *CxtI, const llvm::DominatorTree *DT,
+                                        bool UseInstrInfo = true) {
 #if LLVM_VERSION_MAJOR >= 22
-  return llvm::computeKnownBits(V, DL, AC, CxtI, DT);
+  return llvm::computeKnownBits(V, DL, AC, CxtI, DT, UseInstrInfo);
+#elif LLVM_VERSION_MAJOR >= 17
+  return llvm::computeKnownBits(V, DL, 0, AC, CxtI, DT, UseInstrInfo);
 #else
-  return llvm::computeKnownBits(V, DL, 0, AC, CxtI, DT);
+  return llvm::computeKnownBits(V, DL, 0, AC, CxtI, DT, /*ORE=*/nullptr, UseInstrInfo);
 #endif
 }
 

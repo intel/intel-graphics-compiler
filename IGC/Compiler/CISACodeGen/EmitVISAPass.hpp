@@ -385,6 +385,8 @@ public:
   void emitSetDebugReg(llvm::Instruction *inst);
   void emitInsert(llvm::Instruction *inst);
   void emitExtract(llvm::Instruction *inst);
+  bool isVectorIndexInBounds(llvm::Instruction *Inst, llvm::Value *Index, unsigned NumElts) const;
+  CVariable *clampVectorIndex(CVariable *IndexVar, bool IsIndexUnpacked, unsigned NumElts);
   void emitBitCast(llvm::BitCastInst *btCst);
   void emitBitcastfromstruct(llvm::GenIntrinsicInst *BCFromStruct);
   void emitBitcasttostruct(llvm::GenIntrinsicInst *BCToStruct);

@@ -47,6 +47,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/InlineAsm.h"
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/Support/MathExtras.h"
+#include "llvmWrapper/Analysis/ValueTracking.h"
 #include "Probe/Assertion.h"
 #include "Compiler/CISACodeGen/LoopCountAnalysis.hpp"
 
@@ -11469,6 +11470,47 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst *addrSpaceCast) {
   }
 }
 
+static ConstantRange getSinglePredecessorGuardedRange(Instruction *Inst, Value *Index) {
+  ConstantRange Full = ConstantRange::getFull(Index->getType()->getScalarSizeInBits());
+  BasicBlock *Block = Inst->getParent();
+  BasicBlock *Pred = Block->getSinglePredecessor();
+  auto *Br = Pred ? dyn_cast<IGCLLVM::CondBrInst>(Pred->getTerminator()) : nullptr;
+  auto *Cmp = Br ? dyn_cast<ICmpInst>(Br->getCondition()) : nullptr;
+  auto *Bound = Cmp ? dyn_cast<ConstantInt>(Cmp->getOperand(1)) : nullptr;
+  if (!Bound || Cmp->getOperand(0) != Index || Br->getSuccessor(0) == Br->getSuccessor(1))
+    return Full;
+  ICmpInst::Predicate Predicate = Br->getSuccessor(0) == Block ? Cmp->getPredicate() : Cmp->getInversePredicate();
+  return ConstantRange::makeExactICmpRegion(Predicate, Bound->getValue());
+}
+
+// The proofs must hold for the emitted arithmetic, so they ignore
+// poison-generating flags and metadata.
+bool EmitPass::isVectorIndexInBounds(Instruction *Inst, Value *Index, unsigned NumElts) const {
+  ConstantRange Range = IGCLLVM::computeConstantRange(Index, /*ForSigned=*/false, *m_DL, /*UseInstrInfo=*/false);
+  bool RangeInBounds = Range.getUnsignedMax().ult(NumElts);
+  KnownBits Known = IGCLLVM::computeKnownBits(Index, *m_DL, nullptr, nullptr, nullptr, /*UseInstrInfo=*/false);
+  bool KnownBitsInBounds = Known.getMaxValue().ult(NumElts);
+  bool GuardedInBounds = getSinglePredecessorGuardedRange(Inst, Index).getUnsignedMax().ult(NumElts);
+  return RangeInBounds || KnownBitsInBounds || GuardedInBounds;
+}
+
+// An out-of-bounds index makes extractelement/insertelement poison, but makes
+// the indirect GRF access it is lowered to undefined (documentation/visa/5_operands.md).
+CVariable *EmitPass::clampVectorIndex(CVariable *IndexVar, bool IsIndexUnpacked, unsigned NumElts) {
+  CVariable *Clamped = m_currShader->GetNewVariable(IndexVar->GetNumberElement() / (IsIndexUnpacked ? 2 : 1),
+                                                    ISA_TYPE_UW, EALIGN_WORD, IndexVar->IsUniform(), CName::NONE);
+  if (IsIndexUnpacked && !IndexVar->IsUniform())
+    m_encoder->SetSrcRegion(0, 2, 1, 0);
+  CVariable *LastElt = m_currShader->ImmToVariable(NumElts - 1, ISA_TYPE_UW);
+  // An out-of-range index yields poison, so any in-range element will do.
+  if (isPowerOf2_32(NumElts))
+    m_encoder->And(Clamped, IndexVar, LastElt);
+  else
+    m_encoder->Min(Clamped, IndexVar, LastElt);
+  m_encoder->Push();
+  return Clamped;
+}
+
 void EmitPass::emitExtract(llvm::Instruction *inst) {
   IGC_ASSERT(llvm::isa<llvm::ExtractElementInst>(inst));
   llvm::ExtractElementInst *Extract = llvm::cast<llvm::ExtractElementInst>(inst);
@@ -11532,9 +11574,17 @@ void EmitPass::emitExtract(llvm::Instruction *inst) {
     CVariable *pIndexVar = GetSymbol(pIndex);
     IGC_ASSERT(pIndex->getType()->getPrimitiveSizeInBits() <= 64);
 
-    bool DoAliasing = pIndex->getType()->getPrimitiveSizeInBits() >= 32;
-    if (DoAliasing) {
+    bool IsIndexUnpacked = pIndex->getType()->getPrimitiveSizeInBits() >= 32;
+    if (IsIndexUnpacked) {
       pIndexVar = m_currShader->BitCast(pIndexVar, ISA_TYPE_UW);
+    } else {
+      // A negative narrow index must compare as out of range in the unsigned clamp.
+      pIndexVar = m_currShader->BitCast(pIndexVar, GetUnsignedType(pIndexVar->GetType()));
+    }
+    unsigned NumElts = int_cast<unsigned>(cast<IGCLLVM::FixedVectorType>(pVecType)->getNumElements());
+    if (!isVectorIndexInBounds(inst, pIndex, NumElts)) {
+      pIndexVar = clampVectorIndex(pIndexVar, IsIndexUnpacked, NumElts);
+      IsIndexUnpacked = false;
     }
 
     // size of vector entry
@@ -11553,7 +11603,7 @@ void EmitPass::emitExtract(llvm::Instruction *inst) {
                                                        pIndexVar->IsUniform(), CName::NONE);
 
     // We bitcast the address as uw so it is an "unpacked" uw
-    if (!pIndexVar->IsUniform() && DoAliasing) {
+    if (!pIndexVar->IsUniform() && IsIndexUnpacked) {
       m_encoder->SetSrcRegion(0, 2, 1, 0);
     }
 
@@ -13325,7 +13375,8 @@ void EmitPass::emitInsert(llvm::Instruction *inst) {
     CVariable *pIndexVar = GetSymbol(pIndex);
     IGC_ASSERT(pIndex->getType()->getPrimitiveSizeInBits() <= 64);
 
-    if (pIndex->getType()->getPrimitiveSizeInBits() >= 32) {
+    bool IsIndexUnpacked = pIndex->getType()->getPrimitiveSizeInBits() >= 32;
+    if (IsIndexUnpacked) {
       // Create a uw alias – the variable is wide enough for this to be safe.
       pIndexVar = m_currShader->BitCast(pIndexVar, ISA_TYPE_UW);
     } else {
@@ -13337,6 +13388,11 @@ void EmitPass::emitInsert(llvm::Instruction *inst) {
       m_encoder->Cast(pIndexVarUW, pIndexVar);
       m_encoder->Push();
       pIndexVar = pIndexVarUW;
+    }
+    unsigned NumElts = int_cast<unsigned>(cast<IGCLLVM::FixedVectorType>(pVecType)->getNumElements());
+    if (!isVectorIndexInBounds(inst, pIndex, NumElts)) {
+      pIndexVar = clampVectorIndex(pIndexVar, IsIndexUnpacked, NumElts);
+      IsIndexUnpacked = false;
     }
     CVariable *pElemVar = GetSymbol(pElement);
 
@@ -13354,7 +13410,7 @@ void EmitPass::emitInsert(llvm::Instruction *inst) {
     CVariable *pOffset2 = m_currShader->GetNewVariable(pIndexVar->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize),
                                                        ISA_TYPE_UW, EALIGN_WORD, pIndexVar->IsUniform(), CName::NONE);
 
-    if (pIndex->getType()->getPrimitiveSizeInBits() >= 32 && !pIndexVar->IsUniform()) {
+    if (IsIndexUnpacked && !pIndexVar->IsUniform()) {
       m_encoder->SetSrcRegion(0, 16, 8, 2);
     }
     m_encoder->Mul(pOffset2, pIndexVar, pOffset1);
