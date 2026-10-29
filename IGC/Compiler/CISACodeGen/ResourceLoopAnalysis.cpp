@@ -496,6 +496,10 @@ bool ResourceLoopDecodeSink::processBlock(BasicBlock &BB, WIAnalysis *WI, unsign
   };
   renumber();
 
+  // The search for the next send of a run stops after this many instructions since the previous send of the run, which
+  // keeps the pass cheap on long blocks.
+  constexpr unsigned MaxScanSinceSend = 128;
+
   bool Changed = false;
   for (auto It = BB.begin(); It != BB.end(); ++It) {
     unsigned OpTy = 0;
@@ -506,10 +510,13 @@ bool ResourceLoopDecodeSink::processBlock(BasicBlock &BB, WIAnalysis *WI, unsign
     SmallVector<Instruction *, 4> Sends{&*It};
     SmallPtrSet<Value *, 16> Dependent; // results of the sends and of the code that consumes them
     Dependent.insert(&*It);
-    SmallVector<Instruction *, 16> Decode;     // dependent code found so far, in program order
-    SmallVector<Instruction *, 4> Independent; // code since the last send that stays in the loop
+    SmallVector<Instruction *, 16> Decode;  // code that consumes the sends, in program order
+    SmallVector<Instruction *, 16> Between; // all other code between the sends, in program order
 
-    for (auto Scan = std::next(It); Scan != BB.end(); ++Scan) {
+    // Instructions looked at since the first send of this run or the last send that joined it. It belongs to this
+    // run only: the outer loop steps over instructions that are not sends without scanning.
+    unsigned Scanned = 0;
+    for (auto Scan = std::next(It); Scan != BB.end() && Scanned++ < MaxScanSinceSend; ++Scan) {
       Instruction *J = &*Scan;
       unsigned JTy = 0;
       Value *JRes = nullptr, *JSamp = nullptr;
@@ -520,22 +527,9 @@ bool ResourceLoopDecodeSink::processBlock(BasicBlock &BB, WIAnalysis *WI, unsign
         if (JTy != OpTy || !isSameResource(JRes, Res) || !(JSamp == Samp || isSameResource(JSamp, Samp)) ||
             DependsOnSends)
           break;
-        // The code staying between two sends has to be used only up to the send
-        // that follows it, as in ResourceLoopAnalysis.
-        bool UsesOk = true;
-        for (Instruction *K : Independent) {
-          for (User *U : K->users()) {
-            auto UIt = InstOrder.find(cast<Instruction>(U));
-            if (UIt == InstOrder.end() || UIt->second > InstOrder[J] || UIt->second <= InstOrder[K] ||
-                Dependent.contains(U))
-              UsesOk = false;
-          }
-        }
-        if (!UsesOk)
-          break;
         Sends.push_back(J);
         Dependent.insert(J);
-        Independent.clear();
+        Scanned = 0;
         if (Sends.size() == MaxSends)
           break;
         continue;
@@ -548,29 +542,79 @@ bool ResourceLoopDecodeSink::processBlock(BasicBlock &BB, WIAnalysis *WI, unsign
         Decode.push_back(J);
         Dependent.insert(J);
       } else {
-        // ResourceLoopAnalysis would end the loop here, so the run could not be fused.
-        if (endsResourceLoop(J, WI))
-          break;
-        Independent.push_back(J);
-        if (Independent.size() > MaxALU)
-          break;
+        Between.push_back(J);
       }
     }
 
-    if (Sends.size() < 2)
-      continue;
+    // Whether the first Count sends can be fused by ResourceLoopAnalysis once the code that does not have to stay
+    // between them is moved below the last one. The code that the later sends need (their operands, transitively)
+    // has to stay, and then it has to satisfy the rules ResourceLoopAnalysis applies to the code inside a loop.
+    // Everything else, whether it consumes a send or not, moves.
+    SmallPtrSet<Instruction *, 16> Needed;
+    auto fusable = [&](unsigned Count) {
+      Needed.clear();
+      Instruction *Last = Sends[Count - 1];
+      SmallPtrSet<Instruction *, 16> InBetween(Between.begin(), Between.end());
+      SmallVector<Instruction *, 8> Work;
+      auto addNeeded = [&](Value *V) {
+        auto *Inst = dyn_cast<Instruction>(V);
+        if (Inst && InBetween.contains(Inst) && InstOrder[Inst] < InstOrder[Last] && Needed.insert(Inst).second)
+          Work.push_back(Inst);
+      };
+      for (unsigned S = 1; S < Count; ++S)
+        for (Value *Op : Sends[S]->operands())
+          addNeeded(Op);
+      while (!Work.empty()) {
+        Instruction *Inst = Work.pop_back_val();
+        for (Value *Op : Inst->operands())
+          addNeeded(Op);
+      }
 
-    // Only the decode code that sits before the last send has to move.
+      for (unsigned S = 0; S + 1 < Count; ++S) {
+        unsigned Prev = InstOrder[Sends[S]], Next = InstOrder[Sends[S + 1]];
+        unsigned InGap = 0;
+        for (Instruction *K : Needed) {
+          unsigned Pos = InstOrder[K];
+          if (Pos <= Prev || Pos >= Next)
+            continue;
+          if (++InGap > MaxALU || endsResourceLoop(K, WI))
+            return false;
+          // like ResourceLoopAnalysis: the code between two sends is used only up to the send that follows it
+          for (User *U : K->users()) {
+            auto *UI = cast<Instruction>(U);
+            auto UIt = InstOrder.find(UI);
+            if (UIt == InstOrder.end() || UIt->second > Next || UIt->second <= Pos ||
+                !(UI == Sends[S + 1] || Needed.contains(UI)))
+              return false;
+          }
+        }
+      }
+      return true;
+    };
+
+    unsigned Count = Sends.size();
+    while (Count >= 2 && !fusable(Count))
+      --Count;
+    if (Count < 2)
+      continue;
+    Sends.resize(Count);
+    // the successful call of fusable above left the code that has to stay between the sends in Needed
+
+    // Move the code that does not have to stay between the sends below the last send, keeping its order.
     Instruction *Last = Sends.back();
-    Instruction *InsertPt = Last->getNextNode();
-    bool Moved = false;
-    for (Instruction *D : Decode) {
-      if (InstOrder[D] > InstOrder[Last])
-        break;
-      IGCLLVM::moveBefore(D, InsertPt);
-      Moved = true;
-    }
-    if (Moved) {
+    SmallVector<Instruction *, 16> ToMove;
+    for (Instruction *D : Decode)
+      if (InstOrder[D] < InstOrder[Last])
+        ToMove.push_back(D);
+    for (Instruction *K : Between)
+      if (InstOrder[K] < InstOrder[Last] && !Needed.contains(K))
+        ToMove.push_back(K);
+    llvm::sort(ToMove, [&](Instruction *A, Instruction *B) { return InstOrder[A] < InstOrder[B]; });
+
+    if (!ToMove.empty()) {
+      Instruction *InsertPt = Last->getNextNode();
+      for (Instruction *M : ToMove)
+        IGCLLVM::moveBefore(M, InsertPt);
       Changed = true;
       renumber();
       // Tell ResourceLoopAnalysis that this run is prepared, so FuseResourceLoopMinSize does not discard it.
