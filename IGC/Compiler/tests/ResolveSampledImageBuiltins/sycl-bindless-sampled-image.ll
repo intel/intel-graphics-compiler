@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-image-sampler-resolution %s -S -o - | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-image-sampler-resolution %s -S -o - | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-image-sampler-resolution %s -S -o - | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; Check image and sampler are resolved from 64-bit SYCL bindless sampled image handle.
 ; Check SYCL bindless sampler offset is computed from bindless image offset: (BindlessImageOffset + 128) | 1
@@ -21,9 +21,11 @@ target triple = "spir64-unknown-unknown"
 
 define spir_kernel void @test(%"struct.sycl::_V1::ext::oneapi::experimental::sampled_image_handle"* byval(%"struct.sycl::_V1::ext::oneapi::experimental::sampled_image_handle") align 8 %_arg_imgHandle) {
 entry:
-; CHECK: [[IMAGE:%[0-9]+]] = ptrtoint %spirv.SampledImage._void_1_0_0_0_0_0_0 addrspace(1)* %astype to i64
+; CHECK-TYPED: [[IMAGE:%[0-9]+]] = ptrtoint %spirv.SampledImage._void_1_0_0_0_0_0_0 addrspace(1)* %astype to i64
+; CHECK-OPAQUE: [[IMAGE:%[0-9]+]] = ptrtoint ptr addrspace(1) %astype to i64
 ; CHECK: %conv1 = trunc i64 [[IMAGE]] to i32
-; CHECK: [[IMAGE_OFFSET:%[0-9]+]] = ptrtoint %spirv.SampledImage._void_1_0_0_0_0_0_0 addrspace(1)* %astype to i64
+; CHECK-TYPED: [[IMAGE_OFFSET:%[0-9]+]] = ptrtoint %spirv.SampledImage._void_1_0_0_0_0_0_0 addrspace(1)* %astype to i64
+; CHECK-OPAQUE: [[IMAGE_OFFSET:%[0-9]+]] = ptrtoint ptr addrspace(1) %astype to i64
 ; CHECK: %sampler_offset = add i64 [[IMAGE_OFFSET]], 128
 ; CHECK: [[USE_BINDLESS_SSH:%[0-9]+]] = or i64 %sampler_offset, 1
 ; CHECK: %conv2 = trunc i64 [[USE_BINDLESS_SSH]] to i32

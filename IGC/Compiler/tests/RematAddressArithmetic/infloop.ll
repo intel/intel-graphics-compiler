@@ -5,9 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-remat-address-arithmetic | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-remat-address-arithmetic | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-remat-address-arithmetic | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; This unit test only checks if pass is able to deal with infinite loops of uses in "phi" function
 ; Function pattern - infinite loop using %privateBase
@@ -20,7 +19,8 @@
 ; }
 
 define spir_kernel void @foo(i8* %privateBase, i32 %cond) {
-; CHECK: [[BASE:%.*]] = ptrtoint i8* %privateBase to i64
+; CHECK-TYPED: [[BASE:%.*]] = ptrtoint i8* %privateBase to i64
+; CHECK-OPAQUE: [[BASE:%.*]] = ptrtoint ptr %privateBase to i64
   %base = ptrtoint i8* %privateBase to i64
 ; CHECK: [[OFFSET:%.*]] = add i64 [[BASE]], 8
   %offset = add i64 %base, 8
@@ -35,7 +35,8 @@ enter:
 loop:
   %indvar = phi i32 [ 0, %enter ], [ %nextindvar, %loop ]
   %nextindvar = add i32 %indvar, 1
-; CHECK: [[PTR:%.*]] = inttoptr i64 [[OFFSET]] to i32
+; CHECK-TYPED: [[PTR:%.*]] = inttoptr i64 [[OFFSET]] to i32*
+; CHECK-OPAQUE: [[PTR:%.*]] = inttoptr i64 [[OFFSET]] to ptr{{$}}
   %ptr2 = inttoptr i64 %offset to i32*
   store i32 %nextindvar, i32* %ptr2, align 4
   br label %loop

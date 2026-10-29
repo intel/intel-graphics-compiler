@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify -igc-agg-arg -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify -igc-agg-arg -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify -igc-agg-arg -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; ResolveAggregateArguments
 ; ------------------------------------------------
@@ -26,44 +26,68 @@ define spir_kernel void @bar(%struct._st_foo* byval(%struct._st_foo) %src, <8 x 
 ; CHECK-LABEL: @bar(
 ; CHECK-NEXT:  entry:
 ; CHECK:    [[SRC_ALLOCA:%.*]] = alloca [[STRUCT__ST_FOO:%[A-z0-9_.]*]]
-; CHECK:    [[TMP0:%[A-z0-9]*]] = bitcast %struct._st_foo* [[SRC_ALLOCA]] to i8*
-; CHECK:    [[TMP1:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 0
-; CHECK:    [[TMP2:%[A-z0-9]*]] = bitcast i8* [[TMP1]] to i32*
-; CHECK:    store i32 [[CONST_REG_DWORD:%[A-z0-9]*]], i32* [[TMP2]]
-; CHECK:    [[TMP3:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 16
-; CHECK:    [[TMP4:%[A-z0-9]*]] = bitcast i8* [[TMP3]] to float*
-; CHECK:    store float [[CONST_REG_FP32:%[A-z0-9]*]], float* [[TMP4]]
-; CHECK:    [[TMP5:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 20
-; CHECK:    [[TMP6:%[A-z0-9]*]] = bitcast i8* [[TMP5]] to float*
-; CHECK:    store float [[CONST_REG_FP321:%[A-z0-9]*]], float* [[TMP6]]
-; CHECK:    [[TMP7:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 24
-; CHECK:    [[TMP8:%[A-z0-9]*]] = bitcast i8* [[TMP7]] to float*
-; CHECK:    store float [[CONST_REG_FP322:%[A-z0-9]*]], float* [[TMP8]]
-; CHECK:    [[TMP9:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 28
-; CHECK:    [[TMP10:%[A-z0-9]*]] = bitcast i8* [[TMP9]] to float*
-; CHECK:    store float [[CONST_REG_FP323:%[A-z0-9]*]], float* [[TMP10]]
-; CHECK:    [[TMP11:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 32
-; CHECK:    [[TMP12:%[A-z0-9]*]] = bitcast i8* [[TMP11]] to i64*
-; CHECK:    store i64 [[CONST_REG_QWORD:%[A-z0-9]*]], i64* [[TMP12]]
-; CHECK:    [[TMP13:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 40
-; CHECK:    [[TMP14:%[A-z0-9]*]] = bitcast i8* [[TMP13]] to i64*
-; CHECK:    store i64 [[CONST_REG_QWORD4:%[A-z0-9]*]], i64* [[TMP14]]
+; CHECK-TYPED:    [[TMP0:%[A-z0-9]*]] = bitcast %struct._st_foo* [[SRC_ALLOCA]] to i8*
+; CHECK-TYPED:    [[TMP1:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 0
+; CHECK-OPAQUE:    [[TMP1:%[A-z0-9]*]] = getelementptr i8, ptr [[SRC_ALLOCA]], i32 0
+; CHECK-TYPED:    [[TMP2:%[A-z0-9]*]] = bitcast i8* [[TMP1]] to i32*
+; CHECK-TYPED:    store i32 [[CONST_REG_DWORD:%[A-z0-9]*]], i32* [[TMP2]]
+; CHECK-OPAQUE:    store i32 [[CONST_REG_DWORD:%[A-z0-9]*]], ptr [[TMP1]]
+; CHECK-TYPED:    [[TMP3:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 16
+; CHECK-OPAQUE:    [[TMP3:%[A-z0-9]*]] = getelementptr i8, ptr [[SRC_ALLOCA]], i32 16
+; CHECK-TYPED:    [[TMP4:%[A-z0-9]*]] = bitcast i8* [[TMP3]] to float*
+; CHECK-TYPED:    store float [[CONST_REG_FP32:%[A-z0-9]*]], float* [[TMP4]]
+; CHECK-OPAQUE:    store float [[CONST_REG_FP32:%[A-z0-9]*]], ptr [[TMP3]]
+; CHECK-TYPED:    [[TMP5:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 20
+; CHECK-OPAQUE:    [[TMP5:%[A-z0-9]*]] = getelementptr i8, ptr [[SRC_ALLOCA]], i32 20
+; CHECK-TYPED:    [[TMP6:%[A-z0-9]*]] = bitcast i8* [[TMP5]] to float*
+; CHECK-TYPED:    store float [[CONST_REG_FP321:%[A-z0-9]*]], float* [[TMP6]]
+; CHECK-OPAQUE:    store float [[CONST_REG_FP321:%[A-z0-9]*]], ptr [[TMP5]]
+; CHECK-TYPED:    [[TMP7:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 24
+; CHECK-OPAQUE:    [[TMP7:%[A-z0-9]*]] = getelementptr i8, ptr [[SRC_ALLOCA]], i32 24
+; CHECK-TYPED:    [[TMP8:%[A-z0-9]*]] = bitcast i8* [[TMP7]] to float*
+; CHECK-TYPED:    store float [[CONST_REG_FP322:%[A-z0-9]*]], float* [[TMP8]]
+; CHECK-OPAQUE:    store float [[CONST_REG_FP322:%[A-z0-9]*]], ptr [[TMP7]]
+; CHECK-TYPED:    [[TMP9:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 28
+; CHECK-OPAQUE:    [[TMP9:%[A-z0-9]*]] = getelementptr i8, ptr [[SRC_ALLOCA]], i32 28
+; CHECK-TYPED:    [[TMP10:%[A-z0-9]*]] = bitcast i8* [[TMP9]] to float*
+; CHECK-TYPED:    store float [[CONST_REG_FP323:%[A-z0-9]*]], float* [[TMP10]]
+; CHECK-OPAQUE:    store float [[CONST_REG_FP323:%[A-z0-9]*]], ptr [[TMP9]]
+; CHECK-TYPED:    [[TMP11:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 32
+; CHECK-OPAQUE:    [[TMP11:%[A-z0-9]*]] = getelementptr i8, ptr [[SRC_ALLOCA]], i32 32
+; CHECK-TYPED:    [[TMP12:%[A-z0-9]*]] = bitcast i8* [[TMP11]] to i64*
+; CHECK-TYPED:    store i64 [[CONST_REG_QWORD:%[A-z0-9]*]], i64* [[TMP12]]
+; CHECK-OPAQUE:    store i64 [[CONST_REG_QWORD:%[A-z0-9]*]], ptr [[TMP11]]
+; CHECK-TYPED:    [[TMP13:%[A-z0-9]*]] = getelementptr i8, i8* [[TMP0]], i32 40
+; CHECK-OPAQUE:    [[TMP13:%[A-z0-9]*]] = getelementptr i8, ptr [[SRC_ALLOCA]], i32 40
+; CHECK-TYPED:    [[TMP14:%[A-z0-9]*]] = bitcast i8* [[TMP13]] to i64*
+; CHECK-TYPED:    store i64 [[CONST_REG_QWORD4:%[A-z0-9]*]], i64* [[TMP14]]
+; CHECK-OPAQUE:    store i64 [[CONST_REG_QWORD4:%[A-z0-9]*]], ptr [[TMP13]]
 ; CHECK:    [[AA:%[A-z0-9]*]] = alloca i32, align 4
 ; CHECK:    [[BB:%[A-z0-9]*]] = alloca i32, align 4
 ; CHECK:    [[CC:%[A-z0-9]*]] = alloca i32, align 4
-; CHECK:    [[A:%[A-z0-9]*]] = getelementptr inbounds [[STRUCT__ST_FOO]], %struct._st_foo* [[SRC_ALLOCA]], i32 0, i32 0
-; CHECK:    [[TMP15:%[A-z0-9]*]] = load i32, i32* [[A]], align 16
-; CHECK:    store i32 [[TMP15]], i32* [[AA]], align 4
-; CHECK:    [[B:%[A-z0-9]*]] = getelementptr inbounds [[STRUCT__ST_FOO]], %struct._st_foo* [[SRC_ALLOCA]], i32 0, i32 1
-; CHECK:    [[TMP16:%[A-z0-9]*]] = load <4 x float>, <4 x float>* [[B]], align 16
+; CHECK-TYPED:    [[A:%[A-z0-9]*]] = getelementptr inbounds [[STRUCT__ST_FOO]], %struct._st_foo* [[SRC_ALLOCA]], i32 0, i32 0
+; CHECK-OPAQUE:    [[A:%[A-z0-9]*]] = getelementptr inbounds [[STRUCT__ST_FOO]], ptr [[SRC_ALLOCA]], i32 0, i32 0
+; CHECK-TYPED:    [[TMP15:%[A-z0-9]*]] = load i32, i32* [[A]], align 16
+; CHECK-OPAQUE:    [[TMP15:%[A-z0-9]*]] = load i32, ptr [[A]], align 16
+; CHECK-TYPED:    store i32 [[TMP15]], i32* [[AA]], align 4
+; CHECK-OPAQUE:    store i32 [[TMP15]], ptr [[AA]], align 4
+; CHECK-TYPED:    [[B:%[A-z0-9]*]] = getelementptr inbounds [[STRUCT__ST_FOO]], %struct._st_foo* [[SRC_ALLOCA]], i32 0, i32 1
+; CHECK-OPAQUE:    [[B:%[A-z0-9]*]] = getelementptr inbounds [[STRUCT__ST_FOO]], ptr [[SRC_ALLOCA]], i32 0, i32 1
+; CHECK-TYPED:    [[TMP16:%[A-z0-9]*]] = load <4 x float>, <4 x float>* [[B]], align 16
+; CHECK-OPAQUE:    [[TMP16:%[A-z0-9]*]] = load <4 x float>, ptr [[B]], align 16
 ; CHECK:    [[TMP17:%[A-z0-9]*]] = extractelement <4 x float> [[TMP16]], i32 1
 ; CHECK:    [[CONV_I:%[A-z0-9.]*]] = fptosi float [[TMP17]] to i32
-; CHECK:    store i32 [[CONV_I]], i32* [[BB]], align 4
-; CHECK:    [[C:%[A-z0-9]*]] = getelementptr inbounds [[STRUCT__ST_FOO]], %struct._st_foo* [[SRC_ALLOCA]], i32 0, i32 2
-; CHECK:    [[ARRAYIDX:%[A-z0-9]*]] = getelementptr inbounds [2 x i64], [2 x i64]* [[C]], i64 0, i64 1
-; CHECK:    [[TMP18:%[A-z0-9]*]] = load i64, i64* [[ARRAYIDX]], align 8
+; CHECK-TYPED:    store i32 [[CONV_I]], i32* [[BB]], align 4
+; CHECK-OPAQUE:    store i32 [[CONV_I]], ptr [[BB]], align 4
+; CHECK-TYPED:    [[C:%[A-z0-9]*]] = getelementptr inbounds [[STRUCT__ST_FOO]], %struct._st_foo* [[SRC_ALLOCA]], i32 0, i32 2
+; CHECK-OPAQUE:    [[C:%[A-z0-9]*]] = getelementptr inbounds [[STRUCT__ST_FOO]], ptr [[SRC_ALLOCA]], i32 0, i32 2
+; CHECK-TYPED:    [[ARRAYIDX:%[A-z0-9]*]] = getelementptr inbounds [2 x i64], [2 x i64]* [[C]], i64 0, i64 1
+; CHECK-OPAQUE:    [[ARRAYIDX:%[A-z0-9]*]] = getelementptr inbounds [2 x i64], ptr [[C]], i64 0, i64 1
+; CHECK-TYPED:    [[TMP18:%[A-z0-9]*]] = load i64, i64* [[ARRAYIDX]], align 8
+; CHECK-OPAQUE:    [[TMP18:%[A-z0-9]*]] = load i64, ptr [[ARRAYIDX]], align 8
 ; CHECK:    [[CONV_I1:%[A-z0-9.]*]] = trunc i64 [[TMP18]] to i32
-; CHECK:    store i32 [[CONV_I1]], i32* [[CC]], align 4
+; CHECK-TYPED:    store i32 [[CONV_I1]], i32* [[CC]], align 4
+; CHECK-OPAQUE:    store i32 [[CONV_I1]], ptr [[CC]], align 4
 ; CHECK:    ret void
 ;
 entry:

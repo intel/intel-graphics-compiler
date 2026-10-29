@@ -6,9 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-replace-unsupported-intrinsics -verify -S %s -o %t
-; RUN: FileCheck %s < %t
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-replace-unsupported-intrinsics -verify -S %s -o %t.opaque %}
+; RUN: %if llvm-16-plus %{ FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s < %t.opaque %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-replace-unsupported-intrinsics -verify -S %s -o %t.typed %}
+; RUN: %if !llvm-17-plus %{ FileCheck --check-prefixes=CHECK,CHECK-TYPED %s < %t.typed %}
 
 target triple = "igil_32_GEN12"
 
@@ -18,17 +19,24 @@ entry:
 ; CHECK:  %pIV = alloca i32
 ; CHECK:  %0 = icmp ugt i32 %S, 1
 ; CHECK:  %umax = select i1 %0, i32 %S, i32 1
-; CHECK:  store i32 0, i32* %pIV
+; CHECK-TYPED:  store i32 0, i32* %pIV
+; CHECK-OPAQUE:  store i32 0, ptr %pIV
 ; CHECK:  [[CMP0:%[a-zA-Z0-9]+]] = icmp ult i32 0, %umax
 ; CHECK:  br i1 [[CMP0]], label %memcpy.body, label %memcpy.post
 ; CHECK: memcpy.body:
-; CHECK:   %IV = load i32, i32* %pIV
-; CHECK:   [[GEP0:%[a-zA-Z0-9]+]] = getelementptr i8, i8* %Src, i32 %IV
-; CHECK:   [[GEP1:%[a-zA-Z0-9]+]] = getelementptr i8, i8* %Dst, i32 %IV
-; CHECK:   [[LD:%[a-zA-Z0-9]+]] = load i8, i8* [[GEP0]], align 1
-; CHECK:   store i8 [[LD]], i8* [[GEP1]], align 1
+; CHECK-TYPED:   %IV = load i32, i32* %pIV
+; CHECK-OPAQUE:   %IV = load i32, ptr %pIV
+; CHECK-TYPED:   [[GEP0:%[a-zA-Z0-9]+]] = getelementptr i8, i8* %Src, i32 %IV
+; CHECK-OPAQUE:   [[GEP0:%[a-zA-Z0-9]+]] = getelementptr i8, ptr %Src, i32 %IV
+; CHECK-TYPED:   [[GEP1:%[a-zA-Z0-9]+]] = getelementptr i8, i8* %Dst, i32 %IV
+; CHECK-OPAQUE:   [[GEP1:%[a-zA-Z0-9]+]] = getelementptr i8, ptr %Dst, i32 %IV
+; CHECK-TYPED:   [[LD:%[a-zA-Z0-9]+]] = load i8, i8* [[GEP0]], align 1
+; CHECK-OPAQUE:   [[LD:%[a-zA-Z0-9]+]] = load i8, ptr [[GEP0]], align 1
+; CHECK-TYPED:   store i8 [[LD]], i8* [[GEP1]], align 1
+; CHECK-OPAQUE:   store i8 [[LD]], ptr [[GEP1]], align 1
 ; CHECK:   [[INC0:%[a-zA-Z0-9]+]] = add i32 %IV, 1
-; CHECK:   store i32 [[INC0]], i32* %pIV
+; CHECK-TYPED:   store i32 [[INC0]], i32* %pIV
+; CHECK-OPAQUE:   store i32 [[INC0]], ptr %pIV
 ; CHECK:   [[CMP1:%[a-zA-Z0-9]+]] = icmp ult i32 [[INC0]], %umax
 ; CHECK:   br i1 [[CMP1]], label %memcpy.body, label %memcpy.post
 ; CHECK: memcpy.post:
@@ -64,14 +72,20 @@ define void @string_array(i32 addrspace(1)* %ocl_test_results, <8 x i32> %r0, <8
 entry:
 ; CHECK-LABEL: string_array
 ; CHECK:      entry:
-; CHECK-NEXT:  %args = alloca [3 x i8 addrspace(2)*], align 4
-; CHECK-NEXT:  %0 = bitcast [3 x i8 addrspace(2)*]* %args to i8*
-; CHECK-NEXT:  %1 = bitcast [3 x i8 addrspace(2)*]* @ocl_test_kernel.args to i8*
-; CHECK-NEXT:  [[memcpy_rem:%[a-zA-Z0-9_]+]] = bitcast [3 x i8 addrspace(2)*]* %args to i8*
-; CHECK-NEXT:  [[memcpy_rem1:%[a-zA-Z0-9_]+]] = bitcast [3 x i8 addrspace(2)*]* %args to <3 x i32>*
-; CHECK-NEXT:  [[load1:%[a-zA-Z0-9_]+]] = load <3 x i32>, <3 x i32>* bitcast ([3 x i8 addrspace(2)*]* @ocl_test_kernel.args to <3 x i32>*), align 4
-; CHECK-NEXT:  store <3 x i32> [[load1]], <3 x i32>* [[memcpy_rem1]], align 4
-; CHECK-NEXT:  %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %ocl_test_results, i32 0
+; CHECK-TYPED-NEXT:  %args = alloca [3 x i8 addrspace(2)*], align 4
+; CHECK-OPAQUE-NEXT:  %args = alloca [3 x ptr addrspace(2)], align 4
+; CHECK-TYPED-NEXT:  %0 = bitcast [3 x i8 addrspace(2)*]* %args to i8*
+; CHECK-OPAQUE-NEXT:  %0 = bitcast ptr %args to ptr{{$}}
+; CHECK-TYPED-NEXT:  %1 = bitcast [3 x i8 addrspace(2)*]* @ocl_test_kernel.args to i8*
+; CHECK-OPAQUE-NEXT:  %1 = bitcast ptr @ocl_test_kernel.args to ptr{{$}}
+; CHECK-TYPED-NEXT:  [[memcpy_rem:%[a-zA-Z0-9_]+]] = bitcast [3 x i8 addrspace(2)*]* %args to i8*
+; CHECK-TYPED-NEXT:  [[memcpy_rem1:%[a-zA-Z0-9_]+]] = bitcast [3 x i8 addrspace(2)*]* %args to <3 x i32>*
+; CHECK-TYPED-NEXT:  [[load1:%[a-zA-Z0-9_]+]] = load <3 x i32>, <3 x i32>* bitcast ([3 x i8 addrspace(2)*]* @ocl_test_kernel.args to <3 x i32>*), align 4
+; CHECK-OPAQUE-NEXT:  [[load1:%[a-zA-Z0-9_]+]] = load <3 x i32>, ptr @ocl_test_kernel.args, align 4
+; CHECK-TYPED-NEXT:  store <3 x i32> [[load1]], <3 x i32>* [[memcpy_rem1]], align 4
+; CHECK-OPAQUE-NEXT:  store <3 x i32> [[load1]], ptr %args, align 4
+; CHECK-TYPED-NEXT:  %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %ocl_test_results, i32 0
+; CHECK-OPAQUE-NEXT:  %arrayidx = getelementptr inbounds i32, ptr addrspace(1) %ocl_test_results, i32 0
 ; CHECK:      ret
   %args = alloca [3 x i8 addrspace(2)*], align 4
   %0 = bitcast [3 x i8 addrspace(2)*]* %args to i8*

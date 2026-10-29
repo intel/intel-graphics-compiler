@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -SplitIndirectEEtoSel -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -SplitIndirectEEtoSel -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -SplitIndirectEEtoSel -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; SplitIndirectEEtoSel
 ; ------------------------------------------------
@@ -26,7 +26,8 @@ none:
 ; CHECK-LABEL: @test_shl(
 ; CHECK:    [[TMP0:%.*]] = shl i32 [[SRC1:%.*]], 3
 ; CHECK:    [[TMP1:%.*]] = extractelement <12 x float> [[SRC2:%.*]], i32 [[TMP0]]
-; CHECK:    store float [[TMP1]], float* [[DST:%.*]], align 4
+; CHECK-TYPED:    store float [[TMP1]], float* [[DST:%.*]], align 4
+; CHECK-OPAQUE:    store float [[TMP1]], ptr [[DST:%.*]], align 4
 ;
   %0 = shl i32 %src1, 3
   %1 = extractelement <12 x float> %src2, i32 %0
@@ -41,7 +42,8 @@ nsw:
 ; CHECK:    [[TMP7:%.*]] = icmp eq i32 [[SRC1]], 1
 ; CHECK:    [[TMP8:%.*]] = extractelement <12 x float> [[SRC2]], i32 8
 ; CHECK:    [[TMP9:%.*]] = select i1 [[TMP7]], float [[TMP8]], float [[TMP6]]
-; CHECK:    store float [[TMP9]], float* [[DST]], align 4
+; CHECK-TYPED:    store float [[TMP9]], float* [[DST]], align 4
+; CHECK-OPAQUE:    store float [[TMP9]], ptr [[DST]], align 4
 ;
   %2 = shl nsw i32 %src1, 3
   %3 = extractelement <12 x float> %src2, i32 %2
@@ -56,7 +58,8 @@ nuw:
 ; CHECK:    [[TMP15:%.*]] = icmp eq i32 [[SRC1]], 1
 ; CHECK:    [[TMP16:%.*]] = extractelement <12 x float> [[SRC2]], i32 8
 ; CHECK:    [[TMP17:%.*]] = select i1 [[TMP15]], float [[TMP16]], float [[TMP14]]
-; CHECK:    store float [[TMP17]], float* [[DST]], align 4
+; CHECK-TYPED:    store float [[TMP17]], float* [[DST]], align 4
+; CHECK-OPAQUE:    store float [[TMP17]], ptr [[DST]], align 4
 ;
   %4 = shl nuw i32 %src1, 3
   %5 = extractelement <12 x float> %src2, i32 %4
@@ -71,7 +74,8 @@ both:
 ; CHECK:    [[TMP23:%.*]] = icmp eq i32 [[SRC1]], 1
 ; CHECK:    [[TMP24:%.*]] = extractelement <12 x float> [[SRC2]], i32 8
 ; CHECK:    [[TMP25:%.*]] = select i1 [[TMP23]], float [[TMP24]], float [[TMP22]]
-; CHECK:    store float [[TMP25]], float* [[DST]], align 4
+; CHECK-TYPED:    store float [[TMP25]], float* [[DST]], align 4
+; CHECK-OPAQUE:    store float [[TMP25]], ptr [[DST]], align 4
 ;
   %6 = shl nsw nuw i32 %src1, 3
   %7 = extractelement <12 x float> %src2, i32 %6
@@ -93,7 +97,8 @@ none:
 ; CHECK:    [[TMP0:%.*]] = shl i32 [[SRC1:%.*]], 3
 ; CHECK:    [[TMP1:%.*]] = or i32 [[TMP0]], 7
 ; CHECK:    [[TMP2:%.*]] = extractelement <12 x float> [[SRC2:%.*]], i32 [[TMP1]]
-; CHECK:    store float [[TMP2]], float* [[DST:%.*]], align 4
+; CHECK-TYPED:    store float [[TMP2]], float* [[DST:%.*]], align 4
+; CHECK-OPAQUE:    store float [[TMP2]], ptr [[DST:%.*]], align 4
 ;
   %0 = shl i32 %src1, 3
   %1 = or i32 %0, 7
@@ -107,7 +112,8 @@ nsw:
 ; CHECK:    [[TMP6:%.*]] = icmp eq i32 [[SRC1]], 0
 ; CHECK:    [[TMP7:%.*]] = extractelement <12 x float> [[SRC2]], i32 7
 ; CHECK:    [[TMP8:%.*]] = select i1 [[TMP6]], float [[TMP7]], float undef
-; CHECK:    store float [[TMP8]], float* [[DST]], align 4
+; CHECK-TYPED:    store float [[TMP8]], float* [[DST]], align 4
+; CHECK-OPAQUE:    store float [[TMP8]], ptr [[DST]], align 4
 ;
   %3 = shl nsw i32 %src1, 3
   %4 = or i32 %3, 7
@@ -121,7 +127,8 @@ nuw:
 ; CHECK:    [[TMP12:%.*]] = icmp eq i32 [[SRC1]], 0
 ; CHECK:    [[TMP13:%.*]] = extractelement <12 x float> [[SRC2]], i32 7
 ; CHECK:    [[TMP14:%.*]] = select i1 [[TMP12]], float [[TMP13]], float undef
-; CHECK:    store float [[TMP14]], float* [[DST]], align 4
+; CHECK-TYPED:    store float [[TMP14]], float* [[DST]], align 4
+; CHECK-OPAQUE:    store float [[TMP14]], ptr [[DST]], align 4
 ;
   %6 = shl nuw i32 %src1, 3
   %7 = or i32 %6, 7
@@ -152,7 +159,8 @@ define void @test_shl_profit(i32 %src1, <4 x float> %src2, float* %dst) {
 ; CHECK:    [[TMP12:%.*]] = icmp eq i32 [[TMP1]], 3
 ; CHECK:    [[TMP13:%.*]] = extractelement <4 x float> [[SRC2]], i32 3
 ; CHECK:    [[TMP14:%.*]] = select i1 [[TMP12]], float [[TMP13]], float [[TMP11]]
-; CHECK:    store float [[TMP14]], float* [[DST:%.*]], align 4
+; CHECK-TYPED:    store float [[TMP14]], float* [[DST:%.*]], align 4
+; CHECK-OPAQUE:    store float [[TMP14]], ptr [[DST:%.*]], align 4
 ; CHECK:    ret void
 ;
   %1 = shl i32 %src1, 3
@@ -180,7 +188,8 @@ define void @test_shl_or_not_disjoint(i32 %src1, <32 x float> %src2, float* %dst
 ; CHECK:    [[TMP2:%.*]] = extractelement <32 x float> [[SRC2:%.*]], i32 [[TMP1]]
 ; CHECK-NOT:  icmp
 ; CHECK-NOT:  select
-; CHECK:    store float [[TMP2]], float* [[DST:%.*]], align 4
+; CHECK-TYPED:    store float [[TMP2]], float* [[DST:%.*]], align 4
+; CHECK-OPAQUE:    store float [[TMP2]], ptr [[DST:%.*]], align 4
 ;
   %1 = shl nuw i32 %src1, 3
   %2 = or i32 %1, 8

@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution -platformpvc -igc-serialize-metadata | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution -platformpvc -igc-serialize-metadata | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution -platformpvc -igc-serialize-metadata | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; This test verifies whether proper BTIs are assigned to buffers when pointer is used by simdBlockWrite instruction.
 ; BTIs are expected to be assigned consecutively:
@@ -21,9 +21,11 @@ define spir_kernel void @test(i32 addrspace(1)* align 4 %in, i32 addrspace(1)* a
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %out, i64 1
   %arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1
-  ; CHECK: load i32, i32 addrspace(131072)* %{{.*}}, align 4
+  ; CHECK-TYPED: load i32, i32 addrspace(131072)* %{{.*}}, align 4
+  ; CHECK-OPAQUE: load i32, ptr addrspace(131072) %{{.*}}, align 4
   %0 = load i32, i32 addrspace(1)* %arrayidx1, align 4
-  ; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p131073i32.i32(i32 addrspace(131073)* %{{.*}}, i32 %{{.*}})
+  ; CHECK-TYPED: call void @llvm.genx.GenISA.simdBlockWrite.p131073i32.i32(i32 addrspace(131073)* %{{.*}}, i32 %{{.*}})
+  ; CHECK-OPAQUE: call void @llvm.genx.GenISA.simdBlockWrite.p131073.i32(ptr addrspace(131073) %{{.*}}, i32 %{{.*}})
   call void @llvm.genx.GenISA.simdBlockWrite.p1i32.i32(i32 addrspace(1)* %arrayidx, i32 %0)
   ret void
 }

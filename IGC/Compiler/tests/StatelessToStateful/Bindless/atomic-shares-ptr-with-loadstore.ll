@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; PromoteStatelessToBindless : Test promotion of regular loads and stores when a source pointer is shared with atomic
 ; ------------------------------------------------
@@ -16,13 +16,19 @@
 
 ; CHECK-LABEL: @test_promote
 ; CHECK: [[OFFSET0:%.*]] = add i32 0, 80
-; CHECK: [[A64PTR:%.*]] = getelementptr inbounds i64, i64 addrspace(1)* %src, i64 10
-; CHECK: [[BASEPTR0:%.*]] = inttoptr i32 %bindlessOffset to i64 addrspace(2490368)*
-; CHECK: [[LDRESULT:%.*]] = call i64 @llvm.genx.GenISA.ldraw.indexed.i64.p2490368i64(i64 addrspace(2490368)* [[BASEPTR0]], i32 [[OFFSET0]], i32 4, i1 false)
-; CHECK: call i64 @llvm.genx.GenISA.intatomicrawA64.i64.p1i64.p1i64(i64 addrspace(1)* [[A64PTR]], i64 addrspace(1)* [[A64PTR]], i64 25, i32 0)
+; CHECK-TYPED: [[A64PTR:%.*]] = getelementptr inbounds i64, i64 addrspace(1)* %src, i64 10
+; CHECK-OPAQUE: [[A64PTR:%.*]] = getelementptr inbounds i64, ptr addrspace(1) %src, i64 10
+; CHECK-TYPED: [[BASEPTR0:%.*]] = inttoptr i32 %bindlessOffset to i64 addrspace(2490368)*
+; CHECK-OPAQUE: [[BASEPTR0:%.*]] = inttoptr i32 %bindlessOffset to ptr addrspace(2490368)
+; CHECK-TYPED: [[LDRESULT:%.*]] = call i64 @llvm.genx.GenISA.ldraw.indexed.i64.p2490368i64(i64 addrspace(2490368)* [[BASEPTR0]], i32 [[OFFSET0]], i32 4, i1 false)
+; CHECK-OPAQUE: [[LDRESULT:%.*]] = call i64 @llvm.genx.GenISA.ldraw.indexed.i64.p2490368(ptr addrspace(2490368) [[BASEPTR0]], i32 [[OFFSET0]], i32 4, i1 false)
+; CHECK-TYPED: call i64 @llvm.genx.GenISA.intatomicrawA64.i64.p1i64.p1i64(i64 addrspace(1)* [[A64PTR]], i64 addrspace(1)* [[A64PTR]], i64 25, i32 0)
+; CHECK-OPAQUE: call i64 @llvm.genx.GenISA.intatomicrawA64.i64.p1.p1(ptr addrspace(1) [[A64PTR]], ptr addrspace(1) [[A64PTR]], i64 25, i32 0)
 ; CHECK: [[OFFSET1:%.*]] = add i32 0, 160
-; CHECK: [[BASEPTR1:%.*]] = inttoptr i32 %bindlessOffset1 to i64 addrspace(2490368)*
-; CHECK: call void @llvm.genx.GenISA.storeraw.indexed.p2490368i64.i64(i64 addrspace(2490368)* [[BASEPTR1]], i32 [[OFFSET1]], i64 [[LDRESULT]], i32 4, i1 false)
+; CHECK-TYPED: [[BASEPTR1:%.*]] = inttoptr i32 %bindlessOffset1 to i64 addrspace(2490368)*
+; CHECK-OPAQUE: [[BASEPTR1:%.*]] = inttoptr i32 %bindlessOffset1 to ptr addrspace(2490368)
+; CHECK-TYPED: call void @llvm.genx.GenISA.storeraw.indexed.p2490368i64.i64(i64 addrspace(2490368)* [[BASEPTR1]], i32 [[OFFSET1]], i64 [[LDRESULT]], i32 4, i1 false)
+; CHECK-OPAQUE: call void @llvm.genx.GenISA.storeraw.indexed.p2490368.i64(ptr addrspace(2490368) [[BASEPTR1]], i32 [[OFFSET1]], i64 [[LDRESULT]], i32 4, i1 false)
 
 define spir_kernel void @test_promote(i64 addrspace(1)* %src, i64 addrspace(1)* %dst, i32 %bindlessOffset, i32 %bindlessOffset1) {
   %1 = getelementptr inbounds i64, i64 addrspace(1)* %src, i64 10

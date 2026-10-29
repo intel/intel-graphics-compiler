@@ -5,8 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-wave-shuffle-index-sinking -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-wave-shuffle-index-sinking -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-wave-shuffle-index-sinking -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; WaveShuffleIndexSinking
 ;
@@ -25,7 +25,8 @@ define void @test_unprofitable(i32* %dst0, i32* %dst1, i32 %a, i32 %b, i32 %c) {
   %mul0 = mul i32 %add0, %c
 ; CHECK: [[UNPROFITABLE_WS0:%.*]] = shl i32 [[ANCHOR1_WS0]], 2
   %shl0 = shl i32 %mul0, 2
-; CHECK: store i32 [[UNPROFITABLE_WS0]], i32* %dst0
+; CHECK-TYPED: store i32 [[UNPROFITABLE_WS0]], i32* %dst0
+; CHECK-OPAQUE: store i32 [[UNPROFITABLE_WS0]], ptr %dst0
   store i32 %shl0, i32* %dst0
 ; CHECK: [[WS1:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %a, i32 1, i32 0)
   %ws1 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %a, i32 1, i32 0)
@@ -35,7 +36,8 @@ define void @test_unprofitable(i32* %dst0, i32* %dst1, i32 %a, i32 %b, i32 %c) {
   %mul1 = mul i32 %add1, %c
 ; CHECK: [[UNPROFITABLE_WS1:%.*]] = shl i32 [[ANCHOR1_WS1]], 2
   %shl1 = shl i32 %mul1, 2
-; CHECK: store i32 [[UNPROFITABLE_WS1]], i32* %dst1
+; CHECK-TYPED: store i32 [[UNPROFITABLE_WS1]], i32* %dst1
+; CHECK-OPAQUE: store i32 [[UNPROFITABLE_WS1]], ptr %dst1
   store i32 %shl1, i32* %dst1
   ret void
 }

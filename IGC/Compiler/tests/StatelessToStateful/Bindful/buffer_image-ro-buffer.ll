@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution -igc-serialize-metadata -platformpvc | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution -igc-serialize-metadata -platformpvc | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution -igc-serialize-metadata -platformpvc | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; This test verifies the scenario where there are three kernel arguments. The 0th and 2nd are global
 ; buffers that are expected to be promoted to stateful. The 1st argument is a read_only image which is already promoted
@@ -33,13 +33,15 @@ entry:
   %colorX = extractelement <4 x i32> %color, i32 0
 
   %ptrA = getelementptr inbounds i32, i32 addrspace(1)* %srcA, i64 1
-  ; CHECK: %[[VAL_A:[0-9]+]] = load i32, i32 addrspace(131072)* %{{.*}}, align 4
+  ; CHECK-TYPED: %[[VAL_A:[0-9]+]] = load i32, i32 addrspace(131072)* %{{.*}}, align 4
+  ; CHECK-OPAQUE: %[[VAL_A:[0-9]+]] = load i32, ptr addrspace(131072) %{{.*}}, align 4
   %valA = load i32, i32 addrspace(1)* %ptrA, align 4
 
   %sum = add nsw i32 %valA, %colorX
 
   %ptrDst = getelementptr inbounds i32, i32 addrspace(1)* %dst, i64 1
-  ; CHECK: store i32 %sum, i32 addrspace(131073)* %{{.*}}, align 4
+  ; CHECK-TYPED: store i32 %sum, i32 addrspace(131073)* %{{.*}}, align 4
+  ; CHECK-OPAQUE: store i32 %sum, ptr addrspace(131073) %{{.*}}, align 4
   store i32 %sum, i32 addrspace(1)* %ptrDst, align 4
   ret void
 }

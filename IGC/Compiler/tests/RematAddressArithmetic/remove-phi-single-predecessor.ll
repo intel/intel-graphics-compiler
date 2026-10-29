@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-remat-address-arithmetic | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-remat-address-arithmetic | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-remat-address-arithmetic | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; Test remateralization of address calculation that is a PHI instruction with
 ; a single incomming value.
@@ -25,7 +25,9 @@ exit:
   ret i64 %result
   ; CHECK-LABEL: exit:
   ; CHECK: [[ADD:%.*]] = add i64 %base, 4
-  ; CHECK-NEXT: [[PTR:%.*]] = inttoptr i64 [[ADD]] to i64 addrspace(2)*
-  ; CHECK-NEXT: [[RESULT:%.*]] = load i64, i64 addrspace(2)* [[PTR]], align 4
+  ; CHECK-TYPED-NEXT: [[PTR:%.*]] = inttoptr i64 [[ADD]] to i64 addrspace(2)*
+  ; CHECK-OPAQUE-NEXT: [[PTR:%.*]] = inttoptr i64 [[ADD]] to ptr addrspace(2)
+  ; CHECK-TYPED-NEXT: [[RESULT:%.*]] = load i64, i64 addrspace(2)* [[PTR]], align 4
+  ; CHECK-OPAQUE-NEXT: [[RESULT:%.*]] = load i64, ptr addrspace(2) [[PTR]], align 4
   ; CHECK-NEXT: ret i64 [[RESULT]]
 }

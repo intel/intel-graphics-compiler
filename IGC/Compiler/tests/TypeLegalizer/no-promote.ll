@@ -5,9 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --enable-debugify -igc-type-legalizer -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --enable-debugify -igc-type-legalizer -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --enable-debugify -igc-type-legalizer -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; Test checks legal cases for several unsupported instructions and cases that ignore
 ; illegal operands/return value
@@ -35,7 +34,8 @@ define void @test_aggregate(i8 %src) {
 ; Note: llvm does required checkers for pow2 and larger then byte access for atomics, but large ints are currently not supported
 define void @test_atomic_cmp(i128* %src) {
 ; CHECK-LABEL: @test_atomic_cmp(
-; CHECK:    [[TMP1:%.*]] = cmpxchg i128* [[SRC:%.*]], i128 13, i128 14 acq_rel monotonic
+; CHECK-TYPED:    [[TMP1:%.*]] = cmpxchg i128* [[SRC:%.*]], i128 13, i128 14 acq_rel monotonic
+; CHECK-OPAQUE:    [[TMP1:%.*]] = cmpxchg ptr [[SRC:%.*]], i128 13, i128 14 acq_rel monotonic
 ; CHECK:    [[TMP2:%.*]] = extractvalue { i128, i1 } [[TMP1]], 0
 ; CHECK:    call void @use.i128(i128 [[TMP2]])
 ; CHECK:    ret void
@@ -49,7 +49,8 @@ define void @test_atomic_cmp(i128* %src) {
 ; Note: llvm does required checkers for pow2 and larger then byte access for atomics, but large ints are currently not supported
 define void @test_atomic_rmw(i128* %src) {
 ; CHECK-LABEL: @test_atomic_rmw(
-; CHECK:    [[TMP1:%.*]] = atomicrmw add i128* [[SRC:%.*]], i128 1 acquire
+; CHECK-TYPED:    [[TMP1:%.*]] = atomicrmw add i128* [[SRC:%.*]], i128 1 acquire
+; CHECK-OPAQUE:    [[TMP1:%.*]] = atomicrmw add ptr [[SRC:%.*]], i128 1 acquire
 ; CHECK:    call void @use.i128(i128 [[TMP1]])
 ; CHECK:    ret void
 ;
@@ -89,7 +90,8 @@ define void @test_landingpad(i8* %src) personality i8* null {
 ; CHECK:    invoke void @foo()
 ; CHECK:    to label [[EXIT:%.*]] unwind label [[LPAD:%.*]]
 ; CHECK:       lpad:
-; CHECK:    [[TMP1:%.*]] = landingpad { i8*, i4 }
+; CHECK-TYPED:    [[TMP1:%.*]] = landingpad { i8*, i4 }
+; CHECK-OPAQUE:    [[TMP1:%.*]] = landingpad { ptr, i4 }
 ; CHECK:    cleanup
 ; CHECK:    ret void
 ; CHECK:       exit:
@@ -117,7 +119,8 @@ define void @test_shuffle() {
 ; Note: memtransfer intrinsic - always legal
 define void @test_memcpy(i4* %src, i4* %dst) {
 ; CHECK-LABEL: @test_memcpy(
-; CHECK:    call void @llvm.memcpy.p0i4.p0i4.i32(i4* [[SRC:%.*]], i4* [[DST:%.*]], i32 10, i1 false)
+; CHECK-TYPED:    call void @llvm.memcpy.p0i4.p0i4.i32(i4* [[SRC:%.*]], i4* [[DST:%.*]], i32 10, i1 false)
+; CHECK-OPAQUE:    call void @llvm.memcpy.p0.p0.i32(ptr [[SRC:%.*]], ptr [[DST:%.*]], i32 10, i1 false)
 ; CHECK:    ret void
 ;
   call void @llvm.memcpy.p0i4.p0i4.i32(i4* %src, i4* %dst, i32 10, i1 0)
@@ -128,7 +131,8 @@ declare void @llvm.memcpy.p0i4.p0i4.i32(i4*, i4*, i32, i1)
 ; Note: mem intrinsic - always legal
 define void @test_memset(i4* %dst) {
 ; CHECK-LABEL: @test_memset(
-; CHECK:    call void @llvm.memset.p0i4.i32(i4* [[DST:%.*]], i8 3, i32 10, i1 false)
+; CHECK-TYPED:    call void @llvm.memset.p0i4.i32(i4* [[DST:%.*]], i8 3, i32 10, i1 false)
+; CHECK-OPAQUE:    call void @llvm.memset.p0.i32(ptr [[DST:%.*]], i8 3, i32 10, i1 false)
 ; CHECK:    ret void
 ;
   call void @llvm.memset.p0i4.i32(i4* %dst, i8 3, i32 10, i1 0)
@@ -137,11 +141,14 @@ define void @test_memset(i4* %dst) {
 declare void @llvm.memset.p0i4.i32(i4*, i8, i32, i1)
 
 ; Note: VA intrinsics always legal, and have a checker in llvm
-define void @test_va(i8* %src, i8* %dst) {
+define void @test_va(i8* %src, i8* %dst, ...) {
 ; CHECK-LABEL: @test_va(
-; CHECK:    call void @llvm.va_start(i8* [[SRC:%.*]])
-; CHECK:    call void @llvm.va_copy(i8* [[DST:%.*]], i8* [[SRC]])
-; CHECK:    call void @llvm.va_end(i8* [[DST]])
+; CHECK-TYPED:    call void @llvm.va_start(i8* [[SRC:%.*]])
+; CHECK-OPAQUE:    call void @llvm.va_start{{(\.p0)?}}(ptr [[SRC:%.*]])
+; CHECK-TYPED:    call void @llvm.va_copy(i8* [[DST:%.*]], i8* [[SRC]])
+; CHECK-OPAQUE:    call void @llvm.va_copy{{(\.p0)?}}(ptr [[DST:%.*]], ptr [[SRC]])
+; CHECK-TYPED:    call void @llvm.va_end(i8* [[DST]])
+; CHECK-OPAQUE:    call void @llvm.va_end{{(\.p0)?}}(ptr [[DST]])
 ; CHECK:    ret void
 ;
   call void @llvm.va_start(i8* %src)

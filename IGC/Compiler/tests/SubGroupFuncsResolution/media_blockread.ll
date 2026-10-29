@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify --igc-sub-group-func-resolution -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify --igc-sub-group-func-resolution -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify --igc-sub-group-func-resolution -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; SubGroupFuncsResolution
 ; ------------------------------------------------
@@ -31,15 +31,19 @@
 define spir_kernel void @test_bread(i32 addrspace(1)* %dst, %opencl.image2d_t.read_only addrspace(1)* %src, <2 x i32> %coord) #0 {
 ; CHECK-LABEL: @test_bread(
 ; CHECK:  entry:
-; CHECK:    [[DST_ADDR:%.*]] = alloca i32 addrspace(1)*, align 8
-; CHECK:    [[SRC_ADDR:%.*]] = alloca [[OPENCL_IMAGE2D_T_READ_ONLY:%.*]] addrspace(1)*, align 8
+; CHECK-TYPED:    [[DST_ADDR:%.*]] = alloca i32 addrspace(1)*, align 8
+; CHECK-OPAQUE:    [[DST_ADDR:%.*]] = alloca ptr addrspace(1), align 8
+; CHECK-TYPED:    [[SRC_ADDR:%.*]] = alloca [[OPENCL_IMAGE2D_T_READ_ONLY:%.*]] addrspace(1)*, align 8
+; CHECK-OPAQUE:    [[SRC_ADDR:%.*]] = alloca ptr addrspace(1), align 8
 ; CHECK:    [[COORD_ADDR:%.*]] = alloca <2 x i32>, align 8
 ; CHECK:    [[B_READ:%.*]] = alloca i32, align 4
-; CHECK:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
+; CHECK-TYPED:    [[TMP1:%.*]] = load <2 x i32>, <2 x i32>* [[COORD_ADDR]], align 8
+; CHECK-OPAQUE:    [[TMP1:%.*]] = load <2 x i32>, ptr [[COORD_ADDR]], align 8
 ; CHECK:    [[XOFFSET:%.*]] = extractelement <2 x i32> [[TMP1]], i32 0
 ; CHECK:    [[YOFFSET:%.*]] = extractelement <2 x i32> [[TMP1]], i32 1
 ; CHECK:    [[TMP2:%.*]] = call i32 @llvm.genx.GenISA.simdMediaBlockRead.i32.i32(i32 0, i32 [[XOFFSET]], i32 [[YOFFSET]], i32 0)
-; CHECK:    store i32 [[TMP2]], i32* [[B_READ]], align 4
+; CHECK-TYPED:    store i32 [[TMP2]], i32* [[B_READ]], align 4
+; CHECK-OPAQUE:    store i32 [[TMP2]], ptr [[B_READ]], align 4
 ;
 ; CHECK:  declare i32 @llvm.genx.GenISA.simdMediaBlockRead.i32.i32(i32, i32, i32, i32) [[ATTR:#.*]]
 ; CHECK:  attributes [[ATTR]] = { {{.*convergent.*}} }

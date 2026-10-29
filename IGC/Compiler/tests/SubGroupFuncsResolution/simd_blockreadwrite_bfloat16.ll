@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --platformdg2 --igc-sub-group-func-resolution -S %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --platformdg2 --igc-sub-group-func-resolution -S %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --platformdg2 --igc-sub-group-func-resolution -S %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; SubGroupFuncsResolution
 ; ------------------------------------------------
@@ -20,14 +20,18 @@
 define spir_kernel void @test_bfloat16(%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(3)* %dst, %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* %src) #0 {
 ; CHECK-LABEL: @test_bfloat16(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[TMP0:%.*]] = bitcast %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* [[SRC:%.*]] to i16 addrspace(1)*
-; CHECK-NEXT:    [[TMP1:%.*]] = call <2 x i16> @llvm.genx.GenISA.simdBlockRead.v2i16.p1i16(i16 addrspace(1)* [[TMP0]])
-; CHECK-NEXT:    [[TMP2:%.*]] = bitcast %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(3)* [[DST:%.*]] to i16 addrspace(3)*
-; CHECK-NEXT:    call void @llvm.genx.GenISA.simdBlockWrite.p3i16.v2i16(i16 addrspace(3)* [[TMP2]], <2 x i16> [[TMP1]])
-; CHECK-NEXT:    [[TMP3:%.*]] = bitcast %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* [[SRC]] to i16 addrspace(1)*
-; CHECK-NEXT:    [[TMP4:%.*]] = call <16 x i16> @llvm.genx.GenISA.simdBlockRead.v16i16.p1i16(i16 addrspace(1)* [[TMP3]])
-; CHECK-NEXT:    [[TMP5:%.*]] = bitcast %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(3)* [[DST]] to i16 addrspace(3)*
-; CHECK-NEXT:    call void @llvm.genx.GenISA.simdBlockWrite.p3i16.v16i16(i16 addrspace(3)* [[TMP5]], <16 x i16> [[TMP4]])
+; CHECK-TYPED-NEXT:    [[TMP0:%.*]] = bitcast %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* [[SRC:%.*]] to i16 addrspace(1)*
+; CHECK-TYPED-NEXT:    [[TMP1:%.*]] = call <2 x i16> @llvm.genx.GenISA.simdBlockRead.v2i16.p1i16(i16 addrspace(1)* [[TMP0]])
+; CHECK-OPAQUE-NEXT:    [[TMP1:%.*]] = call <2 x i16> @llvm.genx.GenISA.simdBlockRead.v2i16.p1(ptr addrspace(1) [[SRC:%.*]])
+; CHECK-TYPED-NEXT:    [[TMP2:%.*]] = bitcast %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(3)* [[DST:%.*]] to i16 addrspace(3)*
+; CHECK-TYPED-NEXT:    call void @llvm.genx.GenISA.simdBlockWrite.p3i16.v2i16(i16 addrspace(3)* [[TMP2]], <2 x i16> [[TMP1]])
+; CHECK-OPAQUE-NEXT:    call void @llvm.genx.GenISA.simdBlockWrite.p3.v2i16(ptr addrspace(3) [[DST:%.*]], <2 x i16> [[TMP1]])
+; CHECK-TYPED-NEXT:    [[TMP3:%.*]] = bitcast %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)* [[SRC]] to i16 addrspace(1)*
+; CHECK-TYPED-NEXT:    [[TMP4:%.*]] = call <16 x i16> @llvm.genx.GenISA.simdBlockRead.v16i16.p1i16(i16 addrspace(1)* [[TMP3]])
+; CHECK-OPAQUE-NEXT:    [[TMP4:%.*]] = call <16 x i16> @llvm.genx.GenISA.simdBlockRead.v16i16.p1(ptr addrspace(1) [[SRC]])
+; CHECK-TYPED-NEXT:    [[TMP5:%.*]] = bitcast %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(3)* [[DST]] to i16 addrspace(3)*
+; CHECK-TYPED-NEXT:    call void @llvm.genx.GenISA.simdBlockWrite.p3i16.v16i16(i16 addrspace(3)* [[TMP5]], <16 x i16> [[TMP4]])
+; CHECK-OPAQUE-NEXT:    call void @llvm.genx.GenISA.simdBlockWrite.p3.v16i16(ptr addrspace(3) [[DST]], <16 x i16> [[TMP4]])
 ; CHECK-NEXT:    ret void
 ;
 entry:

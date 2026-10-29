@@ -5,8 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-wave-shuffle-index-sinking -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-wave-shuffle-index-sinking -S < %s | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-wave-shuffle-index-sinking -S < %s | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; WaveShuffleIndexSinking
 ;
@@ -27,9 +27,11 @@ define void @test_adjacent_hoistables(i32* %dst0, i32* %dst1, i32 %a) {
 ; CHECK:    [[MUL:%.*]] = mul i32 %a, 5
 ; CHECK:    [[SHL:%.*]] = shl i32 [[MUL]], 2
 ; CHECK:    [[WS0:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[SHL]], i32 0, i32 0)
-; CHECK:    store i32 [[WS0]], i32* %dst0
+; CHECK-TYPED:    store i32 [[WS0]], i32* %dst0
+; CHECK-OPAQUE:    store i32 [[WS0]], ptr %dst0
 ; CHECK:    [[WS1:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[SHL]], i32 1, i32 0)
-; CHECK:    store i32 [[WS1]], i32* %dst1
+; CHECK-TYPED:    store i32 [[WS1]], i32* %dst1
+; CHECK-OPAQUE:    store i32 [[WS1]], ptr %dst1
 
   %ws0 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %a, i32 0, i32 0)
   %mul0 = mul i32 %ws0, 5

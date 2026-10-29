@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --opaque-pointers -igc-pressure-publisher -igc-serialize-metadata -S %s | FileCheck %s
 ; RUN: igc_opt --typed-pointers -igc-pressure-publisher -igc-serialize-metadata -S %s | FileCheck %s
 

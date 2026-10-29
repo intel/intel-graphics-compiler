@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify --igc-vectorprocess -S 2>&1 < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify --igc-vectorprocess -S 2>&1 < %s | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify --igc-vectorprocess -S 2>&1 < %s | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; VectorProcess : load
 ; ------------------------------------------------
@@ -18,25 +18,36 @@
 
 define void @test_vectorpro(<2 x i16>** %src1, <2 x i16*>* %src2) {
 ; CHECK-LABEL: @test_vectorpro(
-; CHECK:    [[VPTRCAST:%.*]] = bitcast <2 x i16>** %src1 to <2 x i32>*
-; CHECK:    [[VCASTLOAD:%.*]] = load <2 x i32>, <2 x i32>* [[VPTRCAST]], align 4
+; CHECK-TYPED:    [[VPTRCAST:%.*]] = bitcast <2 x i16>** %src1 to <2 x i32>*
+; CHECK-TYPED:    [[VCASTLOAD:%.*]] = load <2 x i32>, <2 x i32>* [[VPTRCAST]], align 4
+; CHECK-OPAQUE:    [[VCASTLOAD:%.*]] = load <2 x i32>, ptr %src1, align 4
 ; CHECK:    [[TMP1:%.*]] = bitcast <2 x i32> [[VCASTLOAD]] to i64
-; CHECK:    [[TMP2:%.*]] = inttoptr i64 [[TMP1]] to <2 x i16>*
-; CHECK:    [[VPTRCAST1:%.*]] = bitcast <2 x i16*>* %src2 to <4 x i32>*
-; CHECK:    [[VCASTLOAD2:%.*]] = load <4 x i32>, <4 x i32>* [[VPTRCAST1]], align 1
+; CHECK-TYPED:    [[TMP2:%.*]] = inttoptr i64 [[TMP1]] to <2 x i16>*
+; CHECK-OPAQUE:    [[TMP2:%.*]] = inttoptr i64 [[TMP1]] to ptr,
+; CHECK-TYPED:    [[VPTRCAST1:%.*]] = bitcast <2 x i16*>* %src2 to <4 x i32>*
+; CHECK-TYPED:    [[VCASTLOAD2:%.*]] = load <4 x i32>, <4 x i32>* [[VPTRCAST1]], align 1
+; CHECK-OPAQUE:    [[VCASTLOAD2:%.*]] = load <4 x i32>, ptr %src2, align 1
 ; CHECK:    [[TMP3:%.*]] = bitcast <4 x i32> [[VCASTLOAD2]] to <2 x i64>
 ; CHECK:    [[TMP4:%.*]] = extractelement <2 x i64> [[TMP3]], i64 0
-; CHECK:    [[TMP5:%.*]] = inttoptr i64 [[TMP4]] to i16*
-; CHECK:    [[TMP6:%.*]] = insertelement <2 x i16*> undef, i16* [[TMP5]], i64 0
+; CHECK-TYPED:    [[TMP5:%.*]] = inttoptr i64 [[TMP4]] to i16*
+; CHECK-OPAQUE:    [[TMP5:%.*]] = inttoptr i64 [[TMP4]] to ptr,
+; CHECK-TYPED:    [[TMP6:%.*]] = insertelement <2 x i16*> undef, i16* [[TMP5]], i64 0
+; CHECK-OPAQUE:    [[TMP6:%.*]] = insertelement <2 x ptr> undef, ptr [[TMP5]], i64 0
 ; CHECK:    [[TMP7:%.*]] = extractelement <2 x i64> [[TMP3]], i64 1
-; CHECK:    [[TMP8:%.*]] = inttoptr i64 [[TMP7]] to i16*
-; CHECK:    [[TMP9:%.*]] = insertelement <2 x i16*> [[TMP6]], i16* [[TMP8]], i64 1
-; CHECK:    [[INTTOPTR2:%.*]] = inttoptr i64 [[TMP1]] to i32*
-; CHECK:    [[VCASTLOAD3:%.*]] = load i32, i32* [[INTTOPTR2]], align 2
+; CHECK-TYPED:    [[TMP8:%.*]] = inttoptr i64 [[TMP7]] to i16*
+; CHECK-OPAQUE:    [[TMP8:%.*]] = inttoptr i64 [[TMP7]] to ptr,
+; CHECK-TYPED:    [[TMP9:%.*]] = insertelement <2 x i16*> [[TMP6]], i16* [[TMP8]], i64 1
+; CHECK-OPAQUE:    [[TMP9:%.*]] = insertelement <2 x ptr> [[TMP6]], ptr [[TMP8]], i64 1
+; CHECK-TYPED:    [[INTTOPTR2:%.*]] = inttoptr i64 [[TMP1]] to i32*
+; CHECK-OPAQUE:    [[INTTOPTR2:%.*]] = inttoptr i64 [[TMP1]] to ptr,
+; CHECK-TYPED:    [[VCASTLOAD3:%.*]] = load i32, i32* [[INTTOPTR2]], align 2
+; CHECK-OPAQUE:    [[VCASTLOAD3:%.*]] = load i32, ptr [[INTTOPTR2]], align 2
 ; CHECK:    [[TMP10:%.*]] = bitcast i32 [[VCASTLOAD3]] to <2 x i16>
 ; CHECK:    [[TMP11:%.*]] = extractelement <2 x i16> [[TMP10]], i32 1
-; CHECK:    [[TMP12:%.*]] = extractelement <2 x i16*> [[TMP9]], i32 0
-; CHECK:    store i16 [[TMP11]], i16* [[TMP12]], align 2
+; CHECK-TYPED:    [[TMP12:%.*]] = extractelement <2 x i16*> [[TMP9]], i32 0
+; CHECK-OPAQUE:    [[TMP12:%.*]] = extractelement <2 x ptr> [[TMP9]], i32 0
+; CHECK-TYPED:    store i16 [[TMP11]], i16* [[TMP12]], align 2
+; CHECK-OPAQUE:    store i16 [[TMP11]], ptr [[TMP12]], align 2
 ; CHECK:    ret void
 ;
   %1 = load <2 x i16>*, <2 x i16>** %src1, align 4

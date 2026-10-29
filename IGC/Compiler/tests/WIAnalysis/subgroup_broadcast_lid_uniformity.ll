@@ -8,8 +8,8 @@
 ;
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=1 < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=1 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=1 < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; This test verifies if the WIAnalysis correctly treats localID argument of sub_group_broadcast
 ; as non-uniform if it comes directly from a load instruction.
@@ -27,6 +27,7 @@ entry:
 }
 
 ; CHECK: block: entry function: test_local_id_from_load
-; CHECK: N: {{.*}}  %localID = load i32, i32* %a, align 4
+; CHECK-TYPED: N: {{.*}}  %localID = load i32, i32* %a, align 4
+; CHECK-OPAQUE: N: {{.*}}  %localID = load i32, ptr %a, align 4
 
 declare i32 @llvm.genx.GenISA.WaveBroadcast.i32(i32, i32, i32)

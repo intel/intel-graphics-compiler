@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-sink-gep-constant | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-sink-gep-constant | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-sink-gep-constant | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
@@ -34,11 +34,16 @@ exit:
   %7 = load i32, i32* %5, align 4
   ret void
 }
- ; CHECK: [[B:%.*]] = phi i32* [ %a, %if.cond ], [ %b, %else.cond ]
- ; CHECK: [[P1:%.*]] = getelementptr inbounds i32, i32* %6, i64 1
- ; CHECK: [[P2:%.*]] = getelementptr inbounds i32, i32* %6, i64 0
- ; CHECK: load i32, i32* [[P2]], align 4
- ; CHECK: load i32, i32* [[P1]], align 4
+ ; CHECK-TYPED: [[B:%.*]] = phi i32* [ %a, %if.cond ], [ %b, %else.cond ]
+ ; CHECK-OPAQUE: [[B:%.*]] = phi ptr [ %a, %if.cond ], [ %b, %else.cond ]
+ ; CHECK-TYPED: [[P1:%.*]] = getelementptr inbounds i32, i32* %6, i64 1
+ ; CHECK-OPAQUE: [[P1:%.*]] = getelementptr inbounds i32, ptr %6, i64 1
+ ; CHECK-TYPED: [[P2:%.*]] = getelementptr inbounds i32, i32* %6, i64 0
+ ; CHECK-OPAQUE: [[P2:%.*]] = getelementptr inbounds i32, ptr %6, i64 0
+ ; CHECK-TYPED: load i32, i32* [[P2]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P2]], align 4
+ ; CHECK-TYPED: load i32, i32* [[P1]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P1]], align 4
 
 
 define void @f1(%struct.foo* %a, %struct.foo* %b, i1 %cond) {
@@ -59,16 +64,23 @@ exit:
   %7 = load i32, i32* %5, align 4
   ret void
 }
- ; CHECK: [[V1:%.*]] = getelementptr %struct.foo, %struct.foo* %a, i64 0, i32 0
+ ; CHECK-TYPED: [[V1:%.*]] = getelementptr %struct.foo, %struct.foo* %a, i64 0, i32 0
+ ; CHECK-OPAQUE: [[V1:%.*]] = getelementptr %struct.foo, ptr %a, i64 0, i32 0
 
- ; CHECK: [[V2:%.*]] = getelementptr %struct.foo, %struct.foo* %b, i64 0, i32 0
+ ; CHECK-TYPED: [[V2:%.*]] = getelementptr %struct.foo, %struct.foo* %b, i64 0, i32 0
+ ; CHECK-OPAQUE: [[V2:%.*]] = getelementptr %struct.foo, ptr %b, i64 0, i32 0
 
- ; CHECK: [[B:%.*]] = phi [2 x i32]* [ [[V1]], %if.cond ], [ [[V2]], %else.cond ]
+ ; CHECK-TYPED: [[B:%.*]] = phi [2 x i32]* [ [[V1]], %if.cond ], [ [[V2]], %else.cond ]
+ ; CHECK-OPAQUE: [[B:%.*]] = phi ptr [ [[V1]], %if.cond ], [ [[V2]], %else.cond ]
 
- ; CHECK: [[P1:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B]], i32 0, i32 1
- ; CHECK: [[P2:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B]], i32 0, i32 0
- ; CHECK: load i32, i32* [[P2]], align 4
- ; CHECK: load i32, i32* [[P1]], align 4
+ ; CHECK-TYPED: [[P1:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B]], i32 0, i32 1
+ ; CHECK-OPAQUE: [[P1:%.*]] = getelementptr inbounds [2 x i32], ptr [[B]], i32 0, i32 1
+ ; CHECK-TYPED: [[P2:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B]], i32 0, i32 0
+ ; CHECK-OPAQUE: [[P2:%.*]] = getelementptr inbounds [2 x i32], ptr [[B]], i32 0, i32 0
+ ; CHECK-TYPED: load i32, i32* [[P2]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P2]], align 4
+ ; CHECK-TYPED: load i32, i32* [[P1]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P1]], align 4
 
 
 define void @f2(%struct.bar* %a, %struct.bar* %b, i1 %cond) {
@@ -97,23 +109,37 @@ exit:
   %15 = load i32, i32* %11, align 4
   ret void
 }
- ; CHECK: [[V1:%.*]] = getelementptr %struct.bar, %struct.bar* %a, i32 0, i32 0, i32 0
- ; CHECK: [[V2:%.*]] = getelementptr %struct.bar, %struct.bar* %a, i32 0, i32 0, i32 1
+ ; CHECK-TYPED: [[V1:%.*]] = getelementptr %struct.bar, %struct.bar* %a, i32 0, i32 0, i32 0
+ ; CHECK-OPAQUE: [[V1:%.*]] = getelementptr %struct.bar, ptr %a, i32 0, i32 0, i32 0
+ ; CHECK-TYPED: [[V2:%.*]] = getelementptr %struct.bar, %struct.bar* %a, i32 0, i32 0, i32 1
+ ; CHECK-OPAQUE: [[V2:%.*]] = getelementptr %struct.bar, ptr %a, i32 0, i32 0, i32 1
 
- ; CHECK: [[V3:%.*]] = getelementptr %struct.bar, %struct.bar* %b, i32 0, i32 0, i32 0
- ; CHECK: [[V4:%.*]] = getelementptr %struct.bar, %struct.bar* %b, i32 0, i32 0, i32 1
+ ; CHECK-TYPED: [[V3:%.*]] = getelementptr %struct.bar, %struct.bar* %b, i32 0, i32 0, i32 0
+ ; CHECK-OPAQUE: [[V3:%.*]] = getelementptr %struct.bar, ptr %b, i32 0, i32 0, i32 0
+ ; CHECK-TYPED: [[V4:%.*]] = getelementptr %struct.bar, %struct.bar* %b, i32 0, i32 0, i32 1
+ ; CHECK-OPAQUE: [[V4:%.*]] = getelementptr %struct.bar, ptr %b, i32 0, i32 0, i32 1
 
- ; CHECK: [[B1:%.*]] = phi [2 x i32]* [ [[V1]], %if.cond ], [ [[V3]], %else.cond
- ; CHECK: [[B2:%.*]] = phi [2 x i32]* [ [[V2]], %if.cond ], [ [[V4]], %else.cond ]
+ ; CHECK-TYPED: [[B1:%.*]] = phi [2 x i32]* [ [[V1]], %if.cond ], [ [[V3]], %else.cond
+ ; CHECK-OPAQUE: [[B1:%.*]] = phi ptr [ [[V1]], %if.cond ], [ [[V3]], %else.cond
+ ; CHECK-TYPED: [[B2:%.*]] = phi [2 x i32]* [ [[V2]], %if.cond ], [ [[V4]], %else.cond ]
+ ; CHECK-OPAQUE: [[B2:%.*]] = phi ptr [ [[V2]], %if.cond ], [ [[V4]], %else.cond ]
 
- ; CHECK: [[P1:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B2]], i32 0, i32 1
- ; CHECK: [[P2:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B2]], i32 0, i32 0
- ; CHECK: [[P3:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B1]], i32 0, i32 1
- ; CHECK: [[P4:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B1]], i32 0, i32
- ; CHECK: load i32, i32* [[P4]], align 4
- ; CHECK: load i32, i32* [[P3]], align 4
- ; CHECK: load i32, i32* [[P2]], align 4
- ; CHECK: load i32, i32* [[P1]], align 4
+ ; CHECK-TYPED: [[P1:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B2]], i32 0, i32 1
+ ; CHECK-OPAQUE: [[P1:%.*]] = getelementptr inbounds [2 x i32], ptr [[B2]], i32 0, i32 1
+ ; CHECK-TYPED: [[P2:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B2]], i32 0, i32 0
+ ; CHECK-OPAQUE: [[P2:%.*]] = getelementptr inbounds [2 x i32], ptr [[B2]], i32 0, i32 0
+ ; CHECK-TYPED: [[P3:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B1]], i32 0, i32 1
+ ; CHECK-OPAQUE: [[P3:%.*]] = getelementptr inbounds [2 x i32], ptr [[B1]], i32 0, i32 1
+ ; CHECK-TYPED: [[P4:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B1]], i32 0, i32
+ ; CHECK-OPAQUE: [[P4:%.*]] = getelementptr inbounds [2 x i32], ptr [[B1]], i32 0, i32
+ ; CHECK-TYPED: load i32, i32* [[P4]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P4]], align 4
+ ; CHECK-TYPED: load i32, i32* [[P3]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P3]], align 4
+ ; CHECK-TYPED: load i32, i32* [[P2]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P2]], align 4
+ ; CHECK-TYPED: load i32, i32* [[P1]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P1]], align 4
 
 
 define void @f3(%struct.foo* %a, %struct.foo* %b, %struct.foo* %c, i1 %cond1, i1 %cond2) {
@@ -141,18 +167,26 @@ exit:
   %9 = load i32, i32* %7, align 4
   ret void
 }
- ; CHECK: [[V1:%.*]] = getelementptr %struct.foo, %struct.foo* %a, i64 0, i32 0
+ ; CHECK-TYPED: [[V1:%.*]] = getelementptr %struct.foo, %struct.foo* %a, i64 0, i32 0
+ ; CHECK-OPAQUE: [[V1:%.*]] = getelementptr %struct.foo, ptr %a, i64 0, i32 0
 
- ; CHECK: [[V2:%.*]] = getelementptr %struct.foo, %struct.foo* %b, i64 0, i32 0
+ ; CHECK-TYPED: [[V2:%.*]] = getelementptr %struct.foo, %struct.foo* %b, i64 0, i32 0
+ ; CHECK-OPAQUE: [[V2:%.*]] = getelementptr %struct.foo, ptr %b, i64 0, i32 0
 
- ; CHECK: [[V3:%.*]] = getelementptr %struct.foo, %struct.foo* %c, i64 0, i32 0
+ ; CHECK-TYPED: [[V3:%.*]] = getelementptr %struct.foo, %struct.foo* %c, i64 0, i32 0
+ ; CHECK-OPAQUE: [[V3:%.*]] = getelementptr %struct.foo, ptr %c, i64 0, i32 0
 
- ; CHECK: [[B:%.*]] =  phi [2 x i32]* [ [[V1]], %if.cond ], [ [[V2]], %else1.cond ], [ [[V3]], %else2.cond ]
+ ; CHECK-TYPED: [[B:%.*]] =  phi [2 x i32]* [ [[V1]], %if.cond ], [ [[V2]], %else1.cond ], [ [[V3]], %else2.cond ]
+ ; CHECK-OPAQUE: [[B:%.*]] =  phi ptr [ [[V1]], %if.cond ], [ [[V2]], %else1.cond ], [ [[V3]], %else2.cond ]
 
- ; CHECK: [[P1:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B]], i32 0, i32 1
- ; CHECK: [[P2:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B]], i32 0, i32 0
- ; CHECK: load i32, i32* [[P2]], align 4
- ; CHECK: load i32, i32* [[P1]], align 4
+ ; CHECK-TYPED: [[P1:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B]], i32 0, i32 1
+ ; CHECK-OPAQUE: [[P1:%.*]] = getelementptr inbounds [2 x i32], ptr [[B]], i32 0, i32 1
+ ; CHECK-TYPED: [[P2:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B]], i32 0, i32 0
+ ; CHECK-OPAQUE: [[P2:%.*]] = getelementptr inbounds [2 x i32], ptr [[B]], i32 0, i32 0
+ ; CHECK-TYPED: load i32, i32* [[P2]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P2]], align 4
+ ; CHECK-TYPED: load i32, i32* [[P1]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P1]], align 4
 
 
 define void @f4(i32* %a, i32* %b, i32* %c, i1 %cond1, i1 %cond2) {
@@ -180,11 +214,16 @@ exit:
   %9 = load i32, i32* %7, align 4
   ret void
 }
- ; CHECK: [[B:%.*]] = phi i32* [ %a, %if.cond ], [ %b, %else1.cond ], [ %c, %else2.cond ]
- ; CHECK: [[P1:%.*]] = getelementptr inbounds i32, i32* [[B]], i64 1
- ; CHECK: [[P2:%.*]] = getelementptr inbounds i32, i32* [[B]], i64 0
- ; CHECK: load i32, i32* [[P2]], align 4
- ; CHECK: load i32, i32* [[P1]], align 4
+ ; CHECK-TYPED: [[B:%.*]] = phi i32* [ %a, %if.cond ], [ %b, %else1.cond ], [ %c, %else2.cond ]
+ ; CHECK-OPAQUE: [[B:%.*]] = phi ptr [ %a, %if.cond ], [ %b, %else1.cond ], [ %c, %else2.cond ]
+ ; CHECK-TYPED: [[P1:%.*]] = getelementptr inbounds i32, i32* [[B]], i64 1
+ ; CHECK-OPAQUE: [[P1:%.*]] = getelementptr inbounds i32, ptr [[B]], i64 1
+ ; CHECK-TYPED: [[P2:%.*]] = getelementptr inbounds i32, i32* [[B]], i64 0
+ ; CHECK-OPAQUE: [[P2:%.*]] = getelementptr inbounds i32, ptr [[B]], i64 0
+ ; CHECK-TYPED: load i32, i32* [[P2]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P2]], align 4
+ ; CHECK-TYPED: load i32, i32* [[P1]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P1]], align 4
 
 
 define void @f5(%struct.foo* %a, %struct.foo* %b, i1 %cond) {
@@ -205,16 +244,23 @@ exit:
   %7 = load i32, i32* %5, align 4
   ret void
 }
- ; CHECK: [[V1:%.*]] = getelementptr %struct.foo, %struct.foo* %a, i64 0, i32 0
+ ; CHECK-TYPED: [[V1:%.*]] = getelementptr %struct.foo, %struct.foo* %a, i64 0, i32 0
+ ; CHECK-OPAQUE: [[V1:%.*]] = getelementptr %struct.foo, ptr %a, i64 0, i32 0
 
- ; CHECK: [[V2:%.*]] = getelementptr %struct.foo, %struct.foo* %b, i64 0, i32 0
+ ; CHECK-TYPED: [[V2:%.*]] = getelementptr %struct.foo, %struct.foo* %b, i64 0, i32 0
+ ; CHECK-OPAQUE: [[V2:%.*]] = getelementptr %struct.foo, ptr %b, i64 0, i32 0
 
- ; CHECK: [[B:%.*]] = phi [2 x i32]* [ [[V1]], %if.cond ], [ [[V2]], %else.cond ]
+ ; CHECK-TYPED: [[B:%.*]] = phi [2 x i32]* [ [[V1]], %if.cond ], [ [[V2]], %else.cond ]
+ ; CHECK-OPAQUE: [[B:%.*]] = phi ptr [ [[V1]], %if.cond ], [ [[V2]], %else.cond ]
 
- ; CHECK: [[P1:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B]], i32 0, i32 1
- ; CHECK: [[P2:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B]], i32 0, i32 0
- ; CHECK: load i32, i32* [[P2]], align 4
- ; CHECK: load i32, i32* [[P1]], align 4
+ ; CHECK-TYPED: [[P1:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B]], i32 0, i32 1
+ ; CHECK-OPAQUE: [[P1:%.*]] = getelementptr inbounds [2 x i32], ptr [[B]], i32 0, i32 1
+ ; CHECK-TYPED: [[P2:%.*]] = getelementptr inbounds [2 x i32], [2 x i32]* [[B]], i32 0, i32 0
+ ; CHECK-OPAQUE: [[P2:%.*]] = getelementptr inbounds [2 x i32], ptr [[B]], i32 0, i32 0
+ ; CHECK-TYPED: load i32, i32* [[P2]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P2]], align 4
+ ; CHECK-TYPED: load i32, i32* [[P1]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P1]], align 4
 
 
 define void @f6(i32* %a, i32* %b, i1 %cond) {
@@ -235,11 +281,16 @@ exit:
   %7 = load i32, i32* %5, align 4
   ret void
 }
- ; CHECK: [[B:%.*]] = phi i32* [ %a, %if.cond ], [ %b, %else.cond ]
- ; CHECK: [[P1:%.*]] = getelementptr inbounds i32, i32* %6, i64 1
- ; CHECK: [[P2:%.*]] = getelementptr inbounds i32, i32* %6, i64 0
- ; CHECK: load i32, i32* [[P2]], align 4
- ; CHECK: load i32, i32* [[P1]], align 4
+ ; CHECK-TYPED: [[B:%.*]] = phi i32* [ %a, %if.cond ], [ %b, %else.cond ]
+ ; CHECK-OPAQUE: [[B:%.*]] = phi ptr [ %a, %if.cond ], [ %b, %else.cond ]
+ ; CHECK-TYPED: [[P1:%.*]] = getelementptr inbounds i32, i32* %6, i64 1
+ ; CHECK-OPAQUE: [[P1:%.*]] = getelementptr inbounds i32, ptr %6, i64 1
+ ; CHECK-TYPED: [[P2:%.*]] = getelementptr inbounds i32, i32* %6, i64 0
+ ; CHECK-OPAQUE: [[P2:%.*]] = getelementptr inbounds i32, ptr %6, i64 0
+ ; CHECK-TYPED: load i32, i32* [[P2]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P2]], align 4
+ ; CHECK-TYPED: load i32, i32* [[P1]], align 4
+ ; CHECK-OPAQUE: load i32, ptr [[P1]], align 4
 
 
 define void @f7(%struct.foo* %a, %struct.foo* %b, i1 %cond) {
@@ -264,18 +315,27 @@ exit:
   %11 = load i32, i32 addrspace(1)* %9, align 4
   ret void
 }
- ; CHECK: [[V1:%.*]] = getelementptr %struct.foo, %struct.foo* %a, i64 0, i32
- ; CHECK: [[A1:%.*]] = addrspacecast [2 x i32]* [[V1]] to [2 x i32] addrspace(1)*
+ ; CHECK-TYPED: [[V1:%.*]] = getelementptr %struct.foo, %struct.foo* %a, i64 0, i32
+ ; CHECK-OPAQUE: [[V1:%.*]] = getelementptr %struct.foo, ptr %a, i64 0, i32
+ ; CHECK-TYPED: [[A1:%.*]] = addrspacecast [2 x i32]* [[V1]] to [2 x i32] addrspace(1)*
+ ; CHECK-OPAQUE: [[A1:%.*]] = addrspacecast ptr [[V1]] to ptr addrspace(1)
 
- ; CHECK: [[V2:%.*]] = getelementptr %struct.foo, %struct.foo* %b, i64 0, i32
- ; CHECK: [[A2:%.*]] = addrspacecast [2 x i32]* [[V2]] to [2 x i32] addrspace(1)*
+ ; CHECK-TYPED: [[V2:%.*]] = getelementptr %struct.foo, %struct.foo* %b, i64 0, i32
+ ; CHECK-OPAQUE: [[V2:%.*]] = getelementptr %struct.foo, ptr %b, i64 0, i32
+ ; CHECK-TYPED: [[A2:%.*]] = addrspacecast [2 x i32]* [[V2]] to [2 x i32] addrspace(1)*
+ ; CHECK-OPAQUE: [[A2:%.*]] = addrspacecast ptr [[V2]] to ptr addrspace(1)
 
- ; CHECK: [[B:%.*]] = phi [2 x i32] addrspace(1)* [ [[A1]], %if.cond ], [ [[A2]], %else.cond ]
+ ; CHECK-TYPED: [[B:%.*]] = phi [2 x i32] addrspace(1)* [ [[A1]], %if.cond ], [ [[A2]], %else.cond ]
+ ; CHECK-OPAQUE: [[B:%.*]] = phi ptr addrspace(1) [ [[A1]], %if.cond ], [ [[A2]], %else.cond ]
 
- ; CHECK: [[P1:%.*]] = getelementptr inbounds [2 x i32], [2 x i32] addrspace(1)* [[B]], i32 0, i32 1
- ; CHECK: [[P2:%.*]] = getelementptr inbounds [2 x i32], [2 x i32] addrspace(1)* [[B]], i32 0, i32 0
- ; CHECK: load i32, i32 addrspace(1)* [[P2]], align 4
- ; CHECK: load i32, i32 addrspace(1)* [[P1]], align 4
+ ; CHECK-TYPED: [[P1:%.*]] = getelementptr inbounds [2 x i32], [2 x i32] addrspace(1)* [[B]], i32 0, i32 1
+ ; CHECK-OPAQUE: [[P1:%.*]] = getelementptr inbounds [2 x i32], ptr addrspace(1) [[B]], i32 0, i32 1
+ ; CHECK-TYPED: [[P2:%.*]] = getelementptr inbounds [2 x i32], [2 x i32] addrspace(1)* [[B]], i32 0, i32 0
+ ; CHECK-OPAQUE: [[P2:%.*]] = getelementptr inbounds [2 x i32], ptr addrspace(1) [[B]], i32 0, i32 0
+ ; CHECK-TYPED: load i32, i32 addrspace(1)* [[P2]], align 4
+ ; CHECK-OPAQUE: load i32, ptr addrspace(1) [[P2]], align 4
+ ; CHECK-TYPED: load i32, i32 addrspace(1)* [[P1]], align 4
+ ; CHECK-OPAQUE: load i32, ptr addrspace(1) [[P1]], align 4
 
 
 define void @f8(%struct.bar* %a, %struct.bar* %b, i1 %cond) {
@@ -300,18 +360,26 @@ exit:
  ; CHECK-LABEL: entry:
  ; CHECK:   br i1 %cond, label %if.cond, label %else.cond
  ; CHECK-LABEL: if.cond:
- ; CHECK:   %0 = getelementptr inbounds %struct.bar, %struct.bar* %a, i32 0, i32 0, i32 0, i32 0
- ; CHECK:   %1 = getelementptr inbounds %struct.bar, %struct.bar* %a, i32 0, i32 0, i32 1, i32 1
+ ; CHECK-TYPED:   %0 = getelementptr inbounds %struct.bar, %struct.bar* %a, i32 0, i32 0, i32 0, i32 0
+ ; CHECK-OPAQUE:   %0 = getelementptr inbounds %struct.bar, ptr %a, i32 0, i32 0, i32 0, i32 0
+ ; CHECK-TYPED:   %1 = getelementptr inbounds %struct.bar, %struct.bar* %a, i32 0, i32 0, i32 1, i32 1
+ ; CHECK-OPAQUE:   %1 = getelementptr inbounds %struct.bar, ptr %a, i32 0, i32 0, i32 1, i32 1
  ; CHECK:   br label %exit
  ; CHECK-LABEL: else.cond:
- ; CHECK:   %2 = getelementptr inbounds %struct.bar, %struct.bar* %b, i32 0, i32 0, i32 0, i32 0
- ; CHECK:   %3 = getelementptr inbounds %struct.bar, %struct.bar* %b, i32 0, i32 0, i32 1, i32 1
+ ; CHECK-TYPED:   %2 = getelementptr inbounds %struct.bar, %struct.bar* %b, i32 0, i32 0, i32 0, i32 0
+ ; CHECK-OPAQUE:   %2 = getelementptr inbounds %struct.bar, ptr %b, i32 0, i32 0, i32 0, i32 0
+ ; CHECK-TYPED:   %3 = getelementptr inbounds %struct.bar, %struct.bar* %b, i32 0, i32 0, i32 1, i32 1
+ ; CHECK-OPAQUE:   %3 = getelementptr inbounds %struct.bar, ptr %b, i32 0, i32 0, i32 1, i32 1
  ; CHECK:   br label %exit
  ; CHECK-LABEL: exit:
- ; CHECK:   %4 = phi i32* [ %0, %if.cond ], [ %2, %else.cond ]
- ; CHECK:   %5 = phi i32* [ %1, %if.cond ], [ %3, %else.cond ]
- ; CHECK:   %6 = load i32, i32* %4, align 4
- ; CHECK:   %7 = load i32, i32* %5, align 4
+ ; CHECK-TYPED:   %4 = phi i32* [ %0, %if.cond ], [ %2, %else.cond ]
+ ; CHECK-OPAQUE:   %4 = phi ptr [ %0, %if.cond ], [ %2, %else.cond ]
+ ; CHECK-TYPED:   %5 = phi i32* [ %1, %if.cond ], [ %3, %else.cond ]
+ ; CHECK-OPAQUE:   %5 = phi ptr [ %1, %if.cond ], [ %3, %else.cond ]
+ ; CHECK-TYPED:   %6 = load i32, i32* %4, align 4
+ ; CHECK-OPAQUE:   %6 = load i32, ptr %4, align 4
+ ; CHECK-TYPED:   %7 = load i32, i32* %5, align 4
+ ; CHECK-OPAQUE:   %7 = load i32, ptr %5, align 4
  ; CHECK:   ret void
 
 
@@ -339,20 +407,28 @@ exit:
  ; CHECK-LABEL: entry:
  ; CHECK:   br i1 %cond, label %if.cond, label %else.cond
  ; CHECK-LABEL: if.cond:
- ; CHECK:   %0 = inttoptr i32 %a to i32*
+ ; CHECK-TYPED:   %0 = inttoptr i32 %a to i32*
+ ; CHECK-OPAQUE:   %0 = inttoptr i32 %a to ptr{{$}}
  ; CHECK:   %1 = add i32 %a, 4
- ; CHECK:   %2 = inttoptr i32 %1 to i32*
+ ; CHECK-TYPED:   %2 = inttoptr i32 %1 to i32*
+ ; CHECK-OPAQUE:   %2 = inttoptr i32 %1 to ptr{{$}}
  ; CHECK:   br label %exit
  ; CHECK-LABEL: else.cond:
- ; CHECK:   %3 = inttoptr i32 %b to i32*
+ ; CHECK-TYPED:   %3 = inttoptr i32 %b to i32*
+ ; CHECK-OPAQUE:   %3 = inttoptr i32 %b to ptr{{$}}
  ; CHECK:   %4 = add i32 %b, 4
- ; CHECK:   %5 = inttoptr i32 %4 to i32*
+ ; CHECK-TYPED:   %5 = inttoptr i32 %4 to i32*
+ ; CHECK-OPAQUE:   %5 = inttoptr i32 %4 to ptr{{$}}
  ; CHECK:   br label %exit
  ; CHECK-LABEL: exit:
- ; CHECK:   %6 = phi i32* [ %0, %if.cond ], [ %3, %else.cond ]
- ; CHECK:   %7 = phi i32* [ %2, %if.cond ], [ %5, %else.cond ]
- ; CHECK:   %8 = load i32, i32* %6, align 4
- ; CHECK:   %9 = load i32, i32* %7, align 4
+ ; CHECK-TYPED:   %6 = phi i32* [ %0, %if.cond ], [ %3, %else.cond ]
+ ; CHECK-OPAQUE:   %6 = phi ptr [ %0, %if.cond ], [ %3, %else.cond ]
+ ; CHECK-TYPED:   %7 = phi i32* [ %2, %if.cond ], [ %5, %else.cond ]
+ ; CHECK-OPAQUE:   %7 = phi ptr [ %2, %if.cond ], [ %5, %else.cond ]
+ ; CHECK-TYPED:   %8 = load i32, i32* %6, align 4
+ ; CHECK-OPAQUE:   %8 = load i32, ptr %6, align 4
+ ; CHECK-TYPED:   %9 = load i32, i32* %7, align 4
+ ; CHECK-OPAQUE:   %9 = load i32, ptr %7, align 4
  ; CHECK:   ret void
 
 define void @f10(i32* %a, %struct.foo* %b, i1 %cond) {

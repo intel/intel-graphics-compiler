@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution -platformpvc -igc-serialize-metadata | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution -platformpvc -igc-serialize-metadata | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution -platformpvc -igc-serialize-metadata | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; This test verifies the scenario where there are four global buffer arguments and the 3rd one is
 ; not used in the kernel. All memory instructions operating on 0th, 1st and 4th arguments
@@ -24,11 +24,13 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 define spir_kernel void @test(i32 addrspace(1)* align 4 %srcA, i32 addrspace(1)* align 4 %srcB, i32 addrspace(1)* align 4 %srcC, i32 addrspace(1)* align 4 %dst) {
 entry:
   %ptrA = getelementptr inbounds i32, i32 addrspace(1)* %srcA, i64 1
-  ; CHECK: %[[VAL_A:[0-9]+]] = load i32, i32 addrspace(131072)* %{{.*}}, align 4
+  ; CHECK-TYPED: %[[VAL_A:[0-9]+]] = load i32, i32 addrspace(131072)* %{{.*}}, align 4
+  ; CHECK-OPAQUE: %[[VAL_A:[0-9]+]] = load i32, ptr addrspace(131072) %{{.*}}, align 4
   %valA = load i32, i32 addrspace(1)* %ptrA, align 4
 
   %ptrB = getelementptr inbounds i32, i32 addrspace(1)* %srcB, i64 2
-  ; CHECK: %[[VAL_B:[0-9]+]] = load i32, i32 addrspace(131073)* %{{.*}}, align 4
+  ; CHECK-TYPED: %[[VAL_B:[0-9]+]] = load i32, i32 addrspace(131073)* %{{.*}}, align 4
+  ; CHECK-OPAQUE: %[[VAL_B:[0-9]+]] = load i32, ptr addrspace(131073) %{{.*}}, align 4
   %valB = load i32, i32 addrspace(1)* %ptrB, align 4
 
   ; %sum = add i32 %[[VAL_A]], %[[VAL_B]]

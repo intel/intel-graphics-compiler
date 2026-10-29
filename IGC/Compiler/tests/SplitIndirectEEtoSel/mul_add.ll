@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify -SplitIndirectEEtoSel -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify -SplitIndirectEEtoSel -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify -SplitIndirectEEtoSel -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; SplitIndirectEEtoSel
 ; ------------------------------------------------
@@ -29,7 +29,8 @@ none:
 ; CHECK-LABEL: @test_mul(
 ; CHECK:    [[TMP0:%.*]] = mul i32 [[SRC1:%.*]], 3
 ; CHECK:    [[TMP1:%.*]] = extractelement <12 x float> [[SRC2:%.*]], i32 [[TMP0]]
-; CHECK:    store float [[TMP1]], float* [[DST:%.*]], align 4
+; CHECK-TYPED:    store float [[TMP1]], float* [[DST:%.*]], align 4
+; CHECK-OPAQUE:    store float [[TMP1]], ptr [[DST:%.*]], align 4
 ;
   %0 = mul i32 %src1, 3
   %1 = extractelement <12 x float> %src2, i32 %0
@@ -48,7 +49,8 @@ nsw:
 ; CHECK:    [[TMP11:%.*]] = icmp eq i32 [[SRC1]], 3
 ; CHECK:    [[TMP12:%.*]] = extractelement <12 x float> [[SRC2]], i32 9
 ; CHECK:    [[TMP13:%.*]] = select i1 [[TMP11]], float [[TMP12]], float [[TMP10]]
-; CHECK:    store float [[TMP13]], float* [[DST]], align 4
+; CHECK-TYPED:    store float [[TMP13]], float* [[DST]], align 4
+; CHECK-OPAQUE:    store float [[TMP13]], ptr [[DST]], align 4
 ;
   %2 = mul nsw i32 %src1, 3
   %3 = extractelement <12 x float> %src2, i32 %2
@@ -67,7 +69,8 @@ nuw:
 ; CHECK:    [[TMP23:%.*]] = icmp eq i32 [[SRC1]], 3
 ; CHECK:    [[TMP24:%.*]] = extractelement <12 x float> [[SRC2]], i32 9
 ; CHECK:    [[TMP25:%.*]] = select i1 [[TMP23]], float [[TMP24]], float [[TMP22]]
-; CHECK:    store float [[TMP25]], float* [[DST]], align 4
+; CHECK-TYPED:    store float [[TMP25]], float* [[DST]], align 4
+; CHECK-OPAQUE:    store float [[TMP25]], ptr [[DST]], align 4
 ;
   %4 = mul nuw i32 %src1, 3
   %5 = extractelement <12 x float> %src2, i32 %4
@@ -86,7 +89,8 @@ both:
 ; CHECK:    [[TMP35:%.*]] = icmp eq i32 [[SRC1]], 3
 ; CHECK:    [[TMP36:%.*]] = extractelement <12 x float> [[SRC2]], i32 9
 ; CHECK:    [[TMP37:%.*]] = select i1 [[TMP35]], float [[TMP36]], float [[TMP34]]
-; CHECK:    store float [[TMP37]], float* [[DST]], align 4
+; CHECK-TYPED:    store float [[TMP37]], float* [[DST]], align 4
+; CHECK-OPAQUE:    store float [[TMP37]], ptr [[DST]], align 4
 ;
   %6 = mul nuw nsw i32 %src1, 3
   %7 = extractelement <12 x float> %src2, i32 %6
@@ -106,7 +110,8 @@ none:
 ; CHECK:    [[TMP0:%.*]] = mul nsw i32 [[SRC1:%.*]], 3
 ; CHECK:    [[TMP1:%.*]] = add i32 [[TMP0]], 1
 ; CHECK:    [[TMP2:%.*]] = extractelement <12 x float> [[SRC2:%.*]], i32 [[TMP1]]
-; CHECK:    store float [[TMP2]], float* [[DST:%.*]], align 4
+; CHECK-TYPED:    store float [[TMP2]], float* [[DST:%.*]], align 4
+; CHECK-OPAQUE:    store float [[TMP2]], ptr [[DST:%.*]], align 4
 ;
   %0 = mul nsw i32 %src1, 3
   %1 = add i32 %0, 1
@@ -126,7 +131,8 @@ nsw:
 ; CHECK:    [[TMP12:%.*]] = icmp eq i32 [[SRC1]], 3
 ; CHECK:    [[TMP13:%.*]] = extractelement <12 x float> [[SRC2]], i32 10
 ; CHECK:    [[TMP14:%.*]] = select i1 [[TMP12]], float [[TMP13]], float [[TMP11]]
-; CHECK:    store float [[TMP14]], float* [[DST]], align 4
+; CHECK-TYPED:    store float [[TMP14]], float* [[DST]], align 4
+; CHECK-OPAQUE:    store float [[TMP14]], ptr [[DST]], align 4
 ;
   %3 = mul nsw i32 %src1, 3
   %4 = add nsw i32 %3, 1
@@ -146,7 +152,8 @@ nuw:
 ; CHECK:    [[TMP24:%.*]] = icmp eq i32 [[SRC1]], 3
 ; CHECK:    [[TMP25:%.*]] = extractelement <12 x float> [[SRC2]], i32 10
 ; CHECK:    [[TMP26:%.*]] = select i1 [[TMP24]], float [[TMP25]], float [[TMP23]]
-; CHECK:    store float [[TMP26]], float* [[DST]], align 4
+; CHECK-TYPED:    store float [[TMP26]], float* [[DST]], align 4
+; CHECK-OPAQUE:    store float [[TMP26]], ptr [[DST]], align 4
 ;
   %6 = mul nsw i32 %src1, 3
   %7 = add nuw i32 %6, 1
@@ -166,7 +173,8 @@ both:
 ; CHECK:    [[TMP36:%.*]] = icmp eq i32 [[SRC1]], 3
 ; CHECK:    [[TMP37:%.*]] = extractelement <12 x float> [[SRC2]], i32 10
 ; CHECK:    [[TMP38:%.*]] = select i1 [[TMP36]], float [[TMP37]], float [[TMP35]]
-; CHECK:    store float [[TMP38]], float* [[DST]], align 4
+; CHECK-TYPED:    store float [[TMP38]], float* [[DST]], align 4
+; CHECK-OPAQUE:    store float [[TMP38]], ptr [[DST]], align 4
 ;
   %9 = mul nsw i32 %src1, 3
   %10 = add nuw nsw i32 %9, 1
@@ -187,7 +195,8 @@ entry:
 ; CHECK:    [[TMP0:%.*]] = mul i32 [[SRC1:%.*]], 3
 ; CHECK:    [[TMP1:%.*]] = add nuw i32 [[TMP0]], 1
 ; CHECK:    [[TMP2:%.*]] = extractelement <12 x float> [[SRC2:%.*]], i32 [[TMP1]]
-; CHECK:    store float [[TMP2]], float* [[DST:%.*]], align 4
+; CHECK-TYPED:    store float [[TMP2]], float* [[DST:%.*]], align 4
+; CHECK-OPAQUE:    store float [[TMP2]], ptr [[DST:%.*]], align 4
 ;
   %0 = mul i32 %src1, 3
   %1 = add nuw i32 %0, 1
@@ -219,7 +228,8 @@ entry:
 ; CHECK:    [[TMP11:%.*]] = icmp eq i32 [[TMP0]], 3
 ; CHECK:    [[TMP12:%.*]] = extractelement <4 x float> [[SRC2]], i32 3
 ; CHECK:    [[TMP13:%.*]] = select i1 [[TMP11]], float [[TMP12]], float [[TMP10]]
-; CHECK:    store float [[TMP13]], float* [[DST:%.*]], align 4
+; CHECK-TYPED:    store float [[TMP13]], float* [[DST:%.*]], align 4
+; CHECK-OPAQUE:    store float [[TMP13]], ptr [[DST:%.*]], align 4
 ;
   %0 = mul i32 %src1, 3
   %1 = extractelement <4 x float> %src2, i32 %0

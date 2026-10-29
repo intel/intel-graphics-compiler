@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-image-sampler-resolution %s -S -o - | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-image-sampler-resolution %s -S -o - | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-image-sampler-resolution %s -S -o - | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; Check offset of bindless sampler as kernel argument is computed as: ptrtoint(%sampler) | 1
 
@@ -17,7 +17,8 @@
 
 define spir_kernel void @image_read_sampler(%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %img, %spirv.Sampler addrspace(2)* %sampler) {
 entry:
-; CHECK: [[INT:%.*]] = ptrtoint %spirv.Sampler addrspace(2)* %sampler to i64
+; CHECK-TYPED: [[INT:%.*]] = ptrtoint %spirv.Sampler addrspace(2)* %sampler to i64
+; CHECK-OPAQUE: [[INT:%.*]] = ptrtoint ptr addrspace(2) %sampler to i64
 ; CHECK-NEXT: [[OR:%.*]] = or i64 [[INT]], 1
 ; CHECK-NEXT: [[SAMPLER:%.*]] = trunc i64 [[OR]] to i32
 ; CHECK: call spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i32 {{.*}}, i32 [[SAMPLER]], <2 x float>

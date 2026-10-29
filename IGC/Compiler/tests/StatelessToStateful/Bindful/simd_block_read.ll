@@ -5,9 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution -platformpvc -igc-serialize-metadata | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution -platformpvc -igc-serialize-metadata | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution -platformpvc -igc-serialize-metadata | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; This test verifies whether proper BTIs are assigned to buffers when pointer is used by simdBlockRead instruction.
 ; BTIs are expected to be assigned consecutively:
@@ -20,11 +19,13 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 define spir_kernel void @test(i32 addrspace(1)* align 4 %in, i32 addrspace(1)* align 4 %out) {
 entry:
   %ptrIn = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1
-  ; CHECK: %[[V:[0-9]+]] = call i32 @llvm.genx.GenISA.simdBlockRead.i32.p131072i32(i32 addrspace(131072)* %{{.*}})
+  ; CHECK-TYPED: %[[V:[0-9]+]] = call i32 @llvm.genx.GenISA.simdBlockRead.i32.p131072i32(i32 addrspace(131072)* %{{.*}})
+  ; CHECK-OPAQUE: %[[V:[0-9]+]] = call i32 @llvm.genx.GenISA.simdBlockRead.i32.p131072(ptr addrspace(131072) %{{.*}})
   %v = call i32 @llvm.genx.GenISA.simdBlockRead.i32.p1i32(i32 addrspace(1)* %ptrIn)
 
   %ptrOut = getelementptr inbounds i32, i32 addrspace(1)* %out, i64 1
-  ; CHECK: store i32 %[[V]], i32 addrspace(131073)* %{{.*}}, align 4
+  ; CHECK-TYPED: store i32 %[[V]], i32 addrspace(131073)* %{{.*}}, align 4
+  ; CHECK-OPAQUE: store i32 %[[V]], ptr addrspace(131073) %{{.*}}, align 4
   store i32 %v, i32 addrspace(1)* %ptrOut, align 4
   ret void
 }

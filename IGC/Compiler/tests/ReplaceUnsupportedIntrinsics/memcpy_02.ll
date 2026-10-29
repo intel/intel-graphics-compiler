@@ -5,10 +5,10 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-replace-unsupported-intrinsics -verify -S %s -o %t
-; RUN: FileCheck %s < %t
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-replace-unsupported-intrinsics -verify -S %s -o %t.opaque %}
+; RUN: %if llvm-16-plus %{ FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s < %t.opaque %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-replace-unsupported-intrinsics -verify -S %s -o %t.typed %}
+; RUN: %if !llvm-17-plus %{ FileCheck --check-prefixes=CHECK,CHECK-TYPED %s < %t.typed %}
 
 target triple = "igil_32_GEN12"
 
@@ -18,12 +18,17 @@ target triple = "igil_32_GEN12"
 
 ; Function Attrs: nounwind
 define void @test_kernel(%aggregation addrspace(1)* %p, %aggregation addrspace(1)* %q) #0 {
-; CHECK:   [[vSrc:%[a-zA-Z0-9_]+]] = bitcast %aggregation addrspace(1)* %q to <16 x i16> addrspace(1)*
-; CHECK:   [[vDst:%[a-zA-Z0-9_]+]] = bitcast %aggregation addrspace(1)* %p to <16 x i16> addrspace(1)*
-; CHECK:   [[GEP0:%[a-zA-Z0-9_]+]] = getelementptr <16 x i16>, <16 x i16> addrspace(1)* [[vSrc]], i32 0
-; CHECK:   [[GEP1:%[a-zA-Z0-9_]+]] = getelementptr <16 x i16>, <16 x i16> addrspace(1)* [[vDst]], i32 0
-; CHECK:   [[LD:%[a-zA-Z0-9_]+]] = load <16 x i16>, <16 x i16> addrspace(1)* [[GEP0]]
-; CHECK:   store <16 x i16> [[LD]], <16 x i16> addrspace(1)* [[GEP1]]
+; CHECK-TYPED:   [[vSrc:%[a-zA-Z0-9_]+]] = bitcast %aggregation addrspace(1)* %q to <16 x i16> addrspace(1)*
+; CHECK-TYPED:   [[vDst:%[a-zA-Z0-9_]+]] = bitcast %aggregation addrspace(1)* %p to <16 x i16> addrspace(1)*
+; CHECK-TYPED:   [[GEP0:%[a-zA-Z0-9_]+]] = getelementptr <16 x i16>, <16 x i16> addrspace(1)* [[vSrc]], i32 0
+; COM: without a pointee type the 32-byte copy is done as <8 x i32>
+; CHECK-OPAQUE:   [[GEP0:%[a-zA-Z0-9_]+]] = getelementptr <8 x i32>, ptr addrspace(1) %q, i32 0
+; CHECK-TYPED:   [[GEP1:%[a-zA-Z0-9_]+]] = getelementptr <16 x i16>, <16 x i16> addrspace(1)* [[vDst]], i32 0
+; CHECK-OPAQUE:   [[GEP1:%[a-zA-Z0-9_]+]] = getelementptr <8 x i32>, ptr addrspace(1) %p, i32 0
+; CHECK-TYPED:   [[LD:%[a-zA-Z0-9_]+]] = load <16 x i16>, <16 x i16> addrspace(1)* [[GEP0]]
+; CHECK-OPAQUE:   [[LD:%[a-zA-Z0-9_]+]] = load <8 x i32>, ptr addrspace(1) [[GEP0]]
+; CHECK-TYPED:   store <16 x i16> [[LD]], <16 x i16> addrspace(1)* [[GEP1]]
+; CHECK-OPAQUE:   store <8 x i32> [[LD]], ptr addrspace(1) [[GEP1]]
 ; CHECK:   ret void
   %Dst = bitcast %aggregation addrspace(1)* %p to i8 addrspace(1)*
   %Src = bitcast %aggregation addrspace(1)* %q to i8 addrspace(1)*

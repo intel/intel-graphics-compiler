@@ -7,17 +7,19 @@
 ;============================ end_copyright_notice =============================
 ;
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 define spir_kernel void @func_with_phinode_1(i1 %n, i32 addrspace(1)* align 4 %r, <4 x i32> addrspace(1)* %otp, i64 %idx1, i64 %idx2, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i8 addrspace(1)* %s2, i8 addrspace(1)* %s3, i32 %s4, i32 %s5, i32 %bufferOffset) #0 {
 bb1:
   %add.ptr1 = getelementptr inbounds i32, i32 addrspace(1)* %r, i64 16
   %add.ptr2 = getelementptr inbounds i32, i32 addrspace(1)* %r, i64 128
-  ; CHECK: [[TMP0:%.*]] = load <4 x i32>, <4 x i32> addrspace(131072)*
+  ; CHECK-TYPED: [[TMP0:%.*]] = load <4 x i32>, <4 x i32> addrspace(131072)*
+  ; CHECK-OPAQUE: [[TMP0:%.*]] = load <4 x i32>, ptr addrspace(131072)
   br i1 %n, label %bb3, label %bb2
 bb2:
-  ; CHECK: [[TMP1:%.*]] = load <4 x i32>, <4 x i32> addrspace(131072)*
+  ; CHECK-TYPED: [[TMP1:%.*]] = load <4 x i32>, <4 x i32> addrspace(131072)*
+  ; CHECK-OPAQUE: [[TMP1:%.*]] = load <4 x i32>, ptr addrspace(131072)
   br label %bb3
 bb3:
   ; CHECK: phi <4 x i32> [ [[TMP1]], %bb2 ], [ [[TMP0]], %bb1 ]
@@ -33,14 +35,17 @@ define spir_kernel void @func_with_phinode_2(i1 %n, i32 addrspace(1)* %r, <4 x i
 bb1:
   %add.ptr1 = getelementptr inbounds i32, i32 addrspace(1)* %r, i64 16
   %add.ptr2 = getelementptr inbounds i32, i32 addrspace(1)* %r, i64 128
-  ; CHECK-NOT: load <4 x i32>, <4 x i32> addrspace(131072)*
+  ; CHECK-TYPED-NOT: load <4 x i32>, <4 x i32> addrspace(131072)*
+  ; CHECK-OPAQUE-NOT: load <4 x i32>, ptr addrspace(131072)
   br i1 %n, label %bb3, label %bb2
 bb2:
-  ; CHECK-NOT: load <4 x i32>, <4 x i32> addrspace(131072)*
+  ; CHECK-TYPED-NOT: load <4 x i32>, <4 x i32> addrspace(131072)*
+  ; CHECK-OPAQUE-NOT: load <4 x i32>, ptr addrspace(131072)
   store i8 100, i8 addrspace(1)* %s2, align 2
   br label %bb3
 bb3:
-  ; CHECK: %phinode = phi i32 addrspace(1)*
+  ; CHECK-TYPED: %phinode = phi i32 addrspace(1)*
+  ; CHECK-OPAQUE: %phinode = phi ptr addrspace(1)
   %phinode = phi i32 addrspace(1)* [ %add.ptr2 , %bb2 ], [ %add.ptr1, %bb1 ]
   %cast = bitcast i32 addrspace(1)* %phinode to <4 x i32> addrspace(1)*
   %ld = load <4 x i32>, <4 x i32> addrspace(1)* %cast, align 4

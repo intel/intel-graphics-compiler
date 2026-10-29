@@ -18,8 +18,8 @@
 ;       dst[currentOffset] = 0;
 ;     }
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify --igc-vectorprocess -platformmtl -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify --igc-vectorprocess -platformmtl -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify --igc-vectorprocess -platformmtl -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; ------------------------------------------------
 ; VectorProcess
@@ -43,7 +43,8 @@ entry:
   %0 = addrspacecast i64 addrspace(1)* %dst to i64 addrspace(2490368)*
 ; CHECK: call void @llvm.genx.GenISA.storerawvector
 ; CHECK-NOT: i64
-; CHECK-SAME: v2i32.v2i32
+; CHECK-TYPED-SAME: v2i32.v2i32
+; CHECK-OPAQUE-SAME: .p2490368.v2i32(ptr addrspace(2490368) %0, i32 %mul, <2 x i32> zeroinitializer, i32 8, i1 false)
   call void @llvm.genx.GenISA.storeraw.indexed.p2490368i64.i64(i64 addrspace(2490368)* %0, i32 %mul, i64 0, i32 8, i1 false)
   ret void
 }

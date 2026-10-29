@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-spir-metadata-translation -igc-serialize-metadata -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-spir-metadata-translation -igc-serialize-metadata -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-spir-metadata-translation -igc-serialize-metadata -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; SPIRMetaDataTranslation
 ; ------------------------------------------------
@@ -27,7 +27,8 @@ declare spir_kernel void @test_spir(i64 addrspace(1)*)
 ; CHECK-DAG: {!"DashGSpecified", i1 true}
 ; CHECK-DAG: {!"RelaxedBuiltins", i1 true}
 ; CHECK-DAG: {!"MatchSinCosPi", i1 true}
-; CHECK-DAG: {!"FuncMDMap[0]", void (i64 addrspace(1)*)* @test_spir}
+; CHECK-TYPED-DAG: {!"FuncMDMap[0]", void (i64 addrspace(1)*)* @test_spir}
+; CHECK-OPAQUE-DAG: {!"FuncMDMap[0]", ptr @test_spir}
 ; CHECK-DAG: {!"threadGroupSize", {{![0-9]+}}, {{![0-9]+}}, [[D2:![0-9]+]]}
 ; CHECK-DAG: [[D2]] = !{!"dim2", i32 16}
 ; CHECK-DAG: {!"threadGroupSizeHint", {{![0-9]+}}, {{![0-9]+}}, [[DH2:![0-9]+]]}

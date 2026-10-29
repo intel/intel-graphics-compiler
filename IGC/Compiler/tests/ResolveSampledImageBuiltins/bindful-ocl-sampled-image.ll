@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-image-sampler-resolution %s -S -o - | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-image-sampler-resolution %s -S -o - | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-image-sampler-resolution %s -S -o - | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; Check bindful image and sampler are resolved to kernel arguments.
 
@@ -20,8 +20,10 @@ target triple = "spir64-unknown-unknown"
 
 define spir_kernel void @test(%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %srcImg, %spirv.Sampler addrspace(2)* %sampler) {
 entry:
-; CHECK: [[IMAGE_CAST:%.*]] = ptrtoint %spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %srcImg to i64
-; CHECK: [[SAMPLER_CAST:%.*]] = ptrtoint %spirv.Sampler addrspace(2)* %sampler to i64
+; CHECK-TYPED: [[IMAGE_CAST:%.*]] = ptrtoint %spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %srcImg to i64
+; CHECK-OPAQUE: [[IMAGE_CAST:%.*]] = ptrtoint ptr addrspace(1) %srcImg to i64
+; CHECK-TYPED: [[SAMPLER_CAST:%.*]] = ptrtoint %spirv.Sampler addrspace(2)* %sampler to i64
+; CHECK-OPAQUE: [[SAMPLER_CAST:%.*]] = ptrtoint ptr addrspace(2) %sampler to i64
 ; CHECK: [[SAMPLER:%.*]] = trunc i64 [[SAMPLER_CAST]] to i32
 ; CHECK: [[IMAGE:%.*]] = trunc i64 [[IMAGE_CAST]] to i32
 ; CHECK: %call13.i.i = call spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i32 [[IMAGE]], i32 [[SAMPLER]], <2 x float> <float 4.700000e+01, float 2.300000e+01>, float 0.000000e+00)

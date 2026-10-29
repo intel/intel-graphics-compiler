@@ -6,8 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --igc-resolve-constexpr-calls --igc-process-func-attributes -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-resolve-constexpr-calls --igc-process-func-attributes -S < %s 2>&1 | FileCheck --check-prefixes=CHECK%if llvm-17-plus %{%} %else %{,CHECK-TYPED%} %s
 ; ------------------------------------------------
 ;
 ; Checks that call graph updated correctly and hasRecursion attribute set
@@ -15,8 +14,8 @@
 
 ; CHECK: define internal spir_func void @func4({{.*}}[[ATTR1:#[0-9]*]]
 ; CHECK-NOT: define
-; CHECK: bitcast %"struct.ispc::Renderer" addrspace(4)* {{.*}} to %"struct.ispc::Renderer.542" addrspace(4)*
-; CHECK: bitcast %"struct.ispc::World" addrspace(4)* {{.*}} to %"struct.ispc::World.563" addrspace(4)*
+; CHECK-TYPED: bitcast %"struct.ispc::Renderer" addrspace(4)* {{.*}} to %"struct.ispc::Renderer.542" addrspace(4)*
+; CHECK-TYPED: bitcast %"struct.ispc::World" addrspace(4)* {{.*}} to %"struct.ispc::World.563" addrspace(4)*
 ; CHECK: call spir_func void @func1(
 ; CHECK: attributes [[ATTR1]] = { {{.*}}"hasRecursion" "visaStackCall"{{.*}} }
 ; CHECK-NOT: attributes [[ATTR1]] = { {{.*}}"referenced-indirectly"{{.*}} }

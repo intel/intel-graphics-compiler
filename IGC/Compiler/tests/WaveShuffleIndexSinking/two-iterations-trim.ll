@@ -5,8 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-wave-shuffle-index-sinking -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-wave-shuffle-index-sinking -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-wave-shuffle-index-sinking -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; WaveShuffleIndexSinking
 ;
@@ -32,7 +32,8 @@ define void @test_wave_shuffle_index_sinking(i32* %dst0, i32* %dst1, i32* %dst2,
 ; CHECK-NEXT: [[ANCHOR2_WS0:%.*]] = mul i32 [[ANCHOR1_WS0]], [[ANCHOR2_HOISTED_I2]]
   %mul0 = mul i32 %shl0, %c
   %ashr0 = ashr i32 %mul0, 1
-; CHECK: store i32 [[ANCHOR2_WS0]], i32* %dst0
+; CHECK-TYPED: store i32 [[ANCHOR2_WS0]], i32* %dst0
+; CHECK-OPAQUE: store i32 [[ANCHOR2_WS0]], ptr %dst0
   store i32 %ashr0, i32* %dst0
 ; CHECK: [[WS1:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[HOISTED_I2]], i32 1, i32 0)
   %ws1 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %a, i32 1, i32 0)
@@ -42,7 +43,8 @@ define void @test_wave_shuffle_index_sinking(i32* %dst0, i32* %dst1, i32* %dst2,
 ; CHECK: [[ANCHOR2_WS1:%.*]] = mul i32 [[ANCHOR1_WS1]], [[ANCHOR2_HOISTED_I2]]
   %mul1 = mul i32 %shl1, %c
   %ashr1 = ashr i32 %mul1, 1
-; CHECK: store i32 [[ANCHOR2_WS1]], i32* %dst1
+; CHECK-TYPED: store i32 [[ANCHOR2_WS1]], i32* %dst1
+; CHECK-OPAQUE: store i32 [[ANCHOR2_WS1]], ptr %dst1
   store i32 %ashr1, i32* %dst1
 ; CHECK: [[WS2:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[HOISTED_I2]], i32 2, i32 0)
   %ws2 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %a, i32 2, i32 0)
@@ -52,14 +54,16 @@ define void @test_wave_shuffle_index_sinking(i32* %dst0, i32* %dst1, i32* %dst2,
 ; CHECK: [[ANCHOR2_WS2:%.*]] = mul i32 [[ANCHOR1_WS2]], [[ANCHOR2_HOISTED_I2]]
   %mul2 = mul i32 %shl2, %c
   %ashr2 = ashr i32 %mul2, 1
-; CHECK: store i32 [[ANCHOR2_WS2]], i32* %dst2
+; CHECK-TYPED: store i32 [[ANCHOR2_WS2]], i32* %dst2
+; CHECK-OPAQUE: store i32 [[ANCHOR2_WS2]], ptr %dst2
   store i32 %ashr2, i32* %dst2
 ; CHECK: [[WS3:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[HOISTED_I1]], i32 3, i32 0)
   %ws3 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %a, i32 3, i32 0)
 ; CHECK: [[ANCHOR1_WS3:%.*]] = add i32 [[WS3]], [[ANCHOR1_HOISTED_I1]]
   %add3 = add i32 %ws3, %b
   %shl3 = shl i32 %add3, 2
-; CHECK: store i32 [[ANCHOR1_WS3]], i32* %dst3
+; CHECK-TYPED: store i32 [[ANCHOR1_WS3]], i32* %dst3
+; CHECK-OPAQUE: store i32 [[ANCHOR1_WS3]], ptr %dst3
   store i32 %shl3, i32* %dst3
   ret void
 }

@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -SplitIndirectEEtoSel -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -SplitIndirectEEtoSel -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -SplitIndirectEEtoSel -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 ; SplitIndirectEEtoSel
 ; ------------------------------------------------
@@ -36,7 +36,8 @@ define void @test_arg(i32 %src1, <4 x float> %src2, float* %dst) {
 ; CHECK:    [[TMP11:%.*]] = icmp eq i32 [[SRC1]], 3
 ; CHECK:    [[TMP12:%.*]] = extractelement <4 x float> [[SRC2]], i32 3
 ; CHECK:    [[TMP13:%.*]] = select i1 [[TMP11]], float [[TMP12]], float [[TMP10]]
-; CHECK:    store float [[TMP13]], float* [[DST:%.*]], align 4
+; CHECK-TYPED:    store float [[TMP13]], float* [[DST:%.*]], align 4
+; CHECK-OPAQUE:    store float [[TMP13]], ptr [[DST:%.*]], align 4
 ;
   %1 = extractelement <4 x float> %src2, i32 %src1
   store float %1, float* %dst, align 4
@@ -63,7 +64,8 @@ define void @test_instr(i32 %src1, <4 x float> %src2, float* %dst) {
 ; CHECK:    [[TMP12:%.*]] = icmp eq i32 [[TMP1]], 3
 ; CHECK:    [[TMP13:%.*]] = extractelement <4 x float> [[SRC2]], i32 3
 ; CHECK:    [[TMP14:%.*]] = select i1 [[TMP12]], float [[TMP13]], float [[TMP11]]
-; CHECK:    store float [[TMP14]], float* [[DST:%.*]], align 4
+; CHECK-TYPED:    store float [[TMP14]], float* [[DST:%.*]], align 4
+; CHECK-OPAQUE:    store float [[TMP14]], ptr [[DST:%.*]], align 4
 ;
   %1 = add i32 %src1, 13
   %2 = extractelement <4 x float> %src2, i32 %1
@@ -78,7 +80,8 @@ define void @test_instr(i32 %src1, <4 x float> %src2, float* %dst) {
 define void @test_arg_not_profit(i32 %src1, <12 x float> %src2, float* %dst) {
 ; CHECK-LABEL: @test_arg_not_profit(
 ; CHECK:    [[TMP1:%.*]] = extractelement <12 x float> [[SRC2:%.*]], i32 [[SRC1:%.*]]
-; CHECK:    store float [[TMP1]], float* [[DST:%.*]], align 4
+; CHECK-TYPED:    store float [[TMP1]], float* [[DST:%.*]], align 4
+; CHECK-OPAQUE:    store float [[TMP1]], ptr [[DST:%.*]], align 4
 ;
   %1 = extractelement <12 x float> %src2, i32 %src1
   store float %1, float* %dst, align 4

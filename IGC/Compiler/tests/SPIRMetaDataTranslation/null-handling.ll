@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-spir-metadata-translation -igc-serialize-metadata -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-spir-metadata-translation -igc-serialize-metadata -S < %s | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-spir-metadata-translation -igc-serialize-metadata -S < %s | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; SPIRMetaDataTranslation
 ; ------------------------------------------------
@@ -22,7 +22,8 @@
 
 declare spir_kernel void @test_spir(i64 addrspace(1)*)
 
-; CHECK: {!"FuncMDMap[0]", void (i64 addrspace(1)*)* @test_spir}
+; CHECK-TYPED: {!"FuncMDMap[0]", void (i64 addrspace(1)*)* @test_spir}
+; CHECK-OPAQUE: {!"FuncMDMap[0]", ptr @test_spir}
 ; CHECK-NOT: {!"FuncMDMap[{{0-9}}]",
 
 !opencl.kernels = !{!0, !1, !12}

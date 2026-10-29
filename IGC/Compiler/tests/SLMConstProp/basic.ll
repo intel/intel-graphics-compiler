@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-slmconstprop -S < %s | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-slmconstprop -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-slmconstprop -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ; ------------------------------------------------
 
 define spir_kernel void @test_slmconst(float %a, float* %b) {
@@ -15,17 +15,24 @@ define spir_kernel void @test_slmconst(float %a, float* %b) {
 ; CHECK:  entry:
 ; CHECK:    [[TMP0:%.*]] = call i32 @llvm.genx.GenISA.DCL.SystemValue.i32(i32 17)
 ; CHECK:    [[AA:%.*]] = mul i32 [[TMP0]], 4
-; CHECK:    [[TMP1:%.*]] = inttoptr i32 [[AA]] to float addrspace(3)*
-; CHECK:    store float 4.000000e+00, float addrspace(3)* [[TMP1]], align 4
+; CHECK-TYPED:    [[TMP1:%.*]] = inttoptr i32 [[AA]] to float addrspace(3)*
+; CHECK-OPAQUE:    [[TMP1:%.*]] = inttoptr i32 [[AA]] to ptr addrspace(3)
+; CHECK-TYPED:    store float 4.000000e+00, float addrspace(3)* [[TMP1]], align 4
+; CHECK-OPAQUE:    store float 4.000000e+00, ptr addrspace(3) [[TMP1]], align 4
 ; CHECK:    [[TMP2:%.*]] = add i32 [[AA]], 4
-; CHECK:    [[TMP3:%.*]] = inttoptr i32 [[TMP2]] to float addrspace(3)*
-; CHECK:    store float 4.000000e+00, float addrspace(3)* [[TMP3]], align 4
+; CHECK-TYPED:    [[TMP3:%.*]] = inttoptr i32 [[TMP2]] to float addrspace(3)*
+; CHECK-OPAQUE:    [[TMP3:%.*]] = inttoptr i32 [[TMP2]] to ptr addrspace(3)
+; CHECK-TYPED:    store float 4.000000e+00, float addrspace(3)* [[TMP3]], align 4
+; CHECK-OPAQUE:    store float 4.000000e+00, ptr addrspace(3) [[TMP3]], align 4
 ; CHECK:    [[TMP4:%.*]] = add i32 [[AA]], 8
-; CHECK:    [[TMP5:%.*]] = inttoptr i32 [[TMP4]] to float addrspace(3)*
-; CHECK:    store float 4.000000e+00, float addrspace(3)* [[TMP5]], align 4
+; CHECK-TYPED:    [[TMP5:%.*]] = inttoptr i32 [[TMP4]] to float addrspace(3)*
+; CHECK-OPAQUE:    [[TMP5:%.*]] = inttoptr i32 [[TMP4]] to ptr addrspace(3)
+; CHECK-TYPED:    store float 4.000000e+00, float addrspace(3)* [[TMP5]], align 4
+; CHECK-OPAQUE:    store float 4.000000e+00, ptr addrspace(3) [[TMP5]], align 4
 ; CHECK:    call void @llvm.genx.GenISA.threadgroupbarrier()
 ; CHECK:    [[ADD1:%.*]] = fadd float 4.000000e+00, 4.000000e+00
-; CHECK:    store float [[ADD1]], float* [[B:%.*]], align 4
+; CHECK-TYPED:    store float [[ADD1]], float* [[B:%.*]], align 4
+; CHECK-OPAQUE:    store float [[ADD1]], ptr [[B:%.*]], align 4
 ; CHECK:    ret void
 ;
 entry:

@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution -igc-serialize-metadata -platformdg2 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution -igc-serialize-metadata -platformdg2 | FileCheck --check-prefix=CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution -igc-serialize-metadata -platformdg2 | FileCheck --check-prefix=CHECK-TYPED %s %}
 
 ; This test verifies if raytracing implicit global buffer is not promoted to stateful, as only stateless mode is supported in the runtime.
 
@@ -15,17 +15,21 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 target triple = "spir64-unknown-unknown"
 
 ; Function Attrs: convergent nounwind
-define spir_kernel void @test_implicit_dg(i32 addrspace(1)* %out, i32 %offset, <8 x i32> %r0, <8 x i32> %payloadHeader, i8 addrspace(1)* %globalPointer, i32 %bufferOffset) #1 {
+define spir_kernel void @test_implicit_dg(i32 addrspace(1)* align 4 %out, i32 %offset, <8 x i32> %r0, <8 x i32> %payloadHeader, i8 addrspace(1)* %globalPointer, i32 %bufferOffset) #1 {
 entry:
   %mul = shl nsw i32 %offset, 4
   %idx.ext = sext i32 %mul to i64
   %add.ptr = getelementptr inbounds i8, i8 addrspace(1)* %globalPointer, i64 %idx.ext
   %0 = bitcast i8 addrspace(1)* %add.ptr to i32 addrspace(1)*
-  ; CHECK-NOT: %{{.*}} = inttoptr i32 %{{.*}} to i32 addrspace(131073)*
-  ; CHECK-NOT: %{{.*}} = load i32, i32 addrspace(131073)* %2, align 4
-  ; CHECK: %{{.*}} = load i32, i32 addrspace(1)* %0, align 4
+  ; CHECK-TYPED-NOT: %{{.*}} = inttoptr i32 %{{.*}} to i32 addrspace(131073)*
+  ; CHECK-OPAQUE-NOT: %{{.*}} = inttoptr i32 %{{.*}} to ptr addrspace(131073)
+  ; CHECK-TYPED-NOT: %{{.*}} = load i32, i32 addrspace(131073)* %2, align 4
+  ; CHECK-OPAQUE-NOT: %{{.*}} = load i32, ptr addrspace(131073) %2, align 4
+  ; CHECK-TYPED: %{{.*}} = load i32, i32 addrspace(1)* %0, align 4
+  ; CHECK-OPAQUE: %{{.*}} = load i32, ptr addrspace(1) %0, align 4
   %1 = load i32, i32 addrspace(1)* %0, align 4
-  ; CHECK: store i32 %{{.*}}, i32 addrspace(131072)* %{{.*}}, align 4
+  ; CHECK-TYPED: store i32 %{{.*}}, i32 addrspace(131072)* %{{.*}}, align 4
+  ; CHECK-OPAQUE: store i32 %{{.*}}, ptr addrspace(131072) %{{.*}}, align 4
   store i32 %1, i32 addrspace(1)* %out, align 4
   ret void
 }

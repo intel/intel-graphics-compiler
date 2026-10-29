@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution -igc-serialize-metadata -platformpvc | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution -igc-serialize-metadata -platformpvc | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution -igc-serialize-metadata -platformpvc | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; This test verifies the scenario where there are three kernel arguments. The 0th and 2nd are global
 ; buffers that are expected to be promoted to stateful. The 1st argument is a write_only image.
@@ -26,11 +26,13 @@ entry:
   ; BTI for image has been assigned by OCLBIConverter
   call void @llvm.genx.GenISA.typedwrite.p131072f32(float addrspace(131072)* null, i32 0, i32 0, i32 0, i32 0, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00)
 
-  ; CHECK: %[[VAL_A:[0-9]+]] = load i32, i32 addrspace(131073)* %{{.*}}, align 4
+  ; CHECK-TYPED: %[[VAL_A:[0-9]+]] = load i32, i32 addrspace(131073)* %{{.*}}, align 4
+  ; CHECK-OPAQUE: %[[VAL_A:[0-9]+]] = load i32, ptr addrspace(131073) %{{.*}}, align 4
   %ptrA = getelementptr inbounds i32, i32 addrspace(1)* %srcA, i64 1
   %valA = load i32, i32 addrspace(1)* %ptrA, align 4
 
-  ; CHECK: store i32 %[[VAL_A]], i32 addrspace(131074)* %{{.*}}, align 4
+  ; CHECK-TYPED: store i32 %[[VAL_A]], i32 addrspace(131074)* %{{.*}}, align 4
+  ; CHECK-OPAQUE: store i32 %[[VAL_A]], ptr addrspace(131074) %{{.*}}, align 4
   %ptrDst = getelementptr inbounds i32, i32 addrspace(1)* %dst, i64 1
   store i32 %valA, i32 addrspace(1)* %ptrDst, align 4
   ret void

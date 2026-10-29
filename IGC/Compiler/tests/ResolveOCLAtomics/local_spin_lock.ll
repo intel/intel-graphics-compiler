@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-resolve-atomics | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-resolve-atomics | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-resolve-atomics | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 
 ; This test verifies the correctness of local spinlock translation. Local spinlock is used by
 ; atomics implementation. Here is the copy of macros that are implemented in BiFModule
@@ -43,7 +43,8 @@ entry:
 ; CHECK:   br i1 %[[IS_FIRST_WORKITEM]], label %init_spinlock_var.start, label %init_spinlock_var.end
 
 ; CHECK: init_spinlock_var.start:
-; CHECK:   store i32 0, i32 addrspace(3)* @spinlock
+; CHECK-TYPED:   store i32 0, i32 addrspace(3)* @spinlock
+; CHECK-OPAQUE:   store i32 0, ptr addrspace(3) @spinlock
 ; CHECK:   br label %init_spinlock_var.end
 
 ; CHECK: init_spinlock_var.end:
@@ -64,8 +65,10 @@ while.body.lr.ph.i:                               ; preds = %entry
 while.body.i:                                     ; preds = %if.end5.i, %while.body.lr.ph.i
 ; CHECK-NOT: __builtin_IB_get_local_lock
   %call.i = call spir_func i32 addrspace(3)* @__builtin_IB_get_local_lock()
-; CHECK: %[[SPINLOCK_AS_INT0:.*]] = ptrtoint i32 addrspace(3)* @spinlock to i32
-; CHECK: call i32 @llvm.genx.GenISA.icmpxchgatomicraw.i32.p3i32.i32(i32 addrspace(3)* @spinlock, i32 %[[SPINLOCK_AS_INT0]], i32 0, i32 1)
+; CHECK-TYPED: %[[SPINLOCK_AS_INT0:.*]] = ptrtoint i32 addrspace(3)* @spinlock to i32
+; CHECK-OPAQUE: %[[SPINLOCK_AS_INT0:.*]] = ptrtoint ptr addrspace(3) @spinlock to i32
+; CHECK-TYPED: call i32 @llvm.genx.GenISA.icmpxchgatomicraw.i32.p3i32.i32(i32 addrspace(3)* @spinlock, i32 %[[SPINLOCK_AS_INT0]], i32 0, i32 1)
+; CHECK-OPAQUE: call i32 @llvm.genx.GenISA.icmpxchgatomicraw.i32.p3.i32(ptr addrspace(3) @spinlock, i32 %[[SPINLOCK_AS_INT0]], i32 0, i32 1)
   %call.i.i = call spir_func i32 @__builtin_IB_atomic_cmpxchg_local_i32(i32 addrspace(3)* %call.i, i32 0, i32 1)
   %cmp.i = icmp eq i32 %call.i.i, 0
   br i1 %cmp.i, label %if.then3.i, label %if.end5.i
@@ -76,8 +79,10 @@ if.then3.i:                                       ; preds = %while.body.i
 ; CHECK-NOT: __builtin_IB_get_local_lock
   %call4.i = call spir_func i32 addrspace(3)* @__builtin_IB_get_local_lock()
   call spir_func void @__builtin_IB_memfence(i1 zeroext true, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i32 0)
-; CHECK: %[[SPINLOCK_AS_INT1:.*]] = ptrtoint i32 addrspace(3)* @spinlock to i32
-; CHECK: call i32 @llvm.genx.GenISA.intatomicraw.i32.p3i32.i32(i32 addrspace(3)* @spinlock, i32 %[[SPINLOCK_AS_INT1]], i32 0, i32 6)
+; CHECK-TYPED: %[[SPINLOCK_AS_INT1:.*]] = ptrtoint i32 addrspace(3)* @spinlock to i32
+; CHECK-OPAQUE: %[[SPINLOCK_AS_INT1:.*]] = ptrtoint ptr addrspace(3) @spinlock to i32
+; CHECK-TYPED: call i32 @llvm.genx.GenISA.intatomicraw.i32.p3i32.i32(i32 addrspace(3)* @spinlock, i32 %[[SPINLOCK_AS_INT1]], i32 0, i32 6)
+; CHECK-OPAQUE: call i32 @llvm.genx.GenISA.intatomicraw.i32.p3.i32(ptr addrspace(3) @spinlock, i32 %[[SPINLOCK_AS_INT1]], i32 0, i32 6)
   %call.i1.i = call spir_func i32 @__builtin_IB_atomic_xchg_local_i32(i32 addrspace(3)* %call4.i, i32 0)
   call spir_func void @__builtin_IB_memfence(i1 zeroext true, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i32 0)
   br label %if.end5.i
@@ -97,8 +102,10 @@ declare spir_func i32 @__builtin_IB_atomic_xchg_local_i32(i32 addrspace(3)*, i32
 declare spir_func i32 @__builtin_IB_atomic_cmpxchg_local_i32(i32 addrspace(3)*, i32, i32)
 declare spir_func void @__builtin_IB_memfence(i1 zeroext, i1 zeroext, i1 zeroext, i1 zeroext, i1 zeroext, i1 zeroext, i1 zeroext, i32)
 
-; CHECK: declare i32 @llvm.genx.GenISA.icmpxchgatomicraw.i32.p3i32.i32(i32 addrspace(3)*, i32, i32, i32)
-; CHECK: declare i32 @llvm.genx.GenISA.intatomicraw.i32.p3i32.i32(i32 addrspace(3)*, i32, i32, i32)
+; CHECK-TYPED: declare i32 @llvm.genx.GenISA.icmpxchgatomicraw.i32.p3i32.i32(i32 addrspace(3)*, i32, i32, i32)
+; CHECK-OPAQUE: declare i32 @llvm.genx.GenISA.icmpxchgatomicraw.i32.p3.i32(ptr addrspace(3), i32, i32, i32)
+; CHECK-TYPED: declare i32 @llvm.genx.GenISA.intatomicraw.i32.p3i32.i32(i32 addrspace(3)*, i32, i32, i32)
+; CHECK-OPAQUE: declare i32 @llvm.genx.GenISA.intatomicraw.i32.p3.i32(ptr addrspace(3), i32, i32, i32)
 ; CHECK: declare i32 @__builtin_IB_get_local_id_x()
 ; CHECK: declare i32 @__builtin_IB_get_local_id_y()
 ; CHECK: declare i32 @__builtin_IB_get_local_id_z()

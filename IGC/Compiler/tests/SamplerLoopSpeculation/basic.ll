@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --igc-sampler-loop-speculation --verify -S < %s | FileCheck %s
 ;
 ; The pass derives its cluster size from the unrolled loop shape. Verify K=2

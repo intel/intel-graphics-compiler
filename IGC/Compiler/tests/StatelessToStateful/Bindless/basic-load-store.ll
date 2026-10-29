@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; PromoteStatelessToBindless : Test promotion of regular loads and stores to bindless addressing
 ; ------------------------------------------------
@@ -25,13 +25,17 @@
 ; CHECK: [[TMP0:%.*]] = trunc i64 [[RUNTIME_OFFSET]] to i32
 ; CHECK: [[TMP1:%.*]] = mul i32 [[TMP0]], 4
 ; CHECK: [[BYTE_OFFSET0:%.*]] = add i32 %bufferOffset, [[TMP1]]
-; CHECK: [[BASEPTR0:%.*]] = inttoptr i32 %bindlessOffset to i32 addrspace(2490368)*
-; CHECK: [[LOADED_VALUE:%.*]] = call i32 @llvm.genx.GenISA.ldraw.indexed.i32.p2490368i32(i32 addrspace(2490368)* [[BASEPTR0]], i32 [[BYTE_OFFSET0]], i32 4, i1 false)
+; CHECK-TYPED: [[BASEPTR0:%.*]] = inttoptr i32 %bindlessOffset to i32 addrspace(2490368)*
+; CHECK-OPAQUE: [[BASEPTR0:%.*]] = inttoptr i32 %bindlessOffset to ptr addrspace(2490368)
+; CHECK-TYPED: [[LOADED_VALUE:%.*]] = call i32 @llvm.genx.GenISA.ldraw.indexed.i32.p2490368i32(i32 addrspace(2490368)* [[BASEPTR0]], i32 [[BYTE_OFFSET0]], i32 4, i1 false)
+; CHECK-OPAQUE: [[LOADED_VALUE:%.*]] = call i32 @llvm.genx.GenISA.ldraw.indexed.i32.p2490368(ptr addrspace(2490368) [[BASEPTR0]], i32 [[BYTE_OFFSET0]], i32 4, i1 false)
 ; CHECK: [[TMP2:%.*]] = trunc i64 [[RUNTIME_OFFSET]] to i32
 ; CHECK: [[TMP3:%.*]] = mul i32 [[TMP2]], 4
 ; CHECK: [[BYTE_OFFSET1:%.*]] = add i32 %bufferOffset1, [[TMP3]]
-; CHECK: [[BASEPTR1:%.*]] = inttoptr i32 %bindlessOffset2 to i32 addrspace(2490368)*
-; CHECK: call void @llvm.genx.GenISA.storeraw.indexed.p2490368i32.i32(i32 addrspace(2490368)* [[BASEPTR1]], i32 [[BYTE_OFFSET1]], i32 [[LOADED_VALUE]], i32 4, i1 false)
+; CHECK-TYPED: [[BASEPTR1:%.*]] = inttoptr i32 %bindlessOffset2 to i32 addrspace(2490368)*
+; CHECK-OPAQUE: [[BASEPTR1:%.*]] = inttoptr i32 %bindlessOffset2 to ptr addrspace(2490368)
+; CHECK-TYPED: call void @llvm.genx.GenISA.storeraw.indexed.p2490368i32.i32(i32 addrspace(2490368)* [[BASEPTR1]], i32 [[BYTE_OFFSET1]], i32 [[LOADED_VALUE]], i32 4, i1 false)
+; CHECK-OPAQUE: call void @llvm.genx.GenISA.storeraw.indexed.p2490368.i32(ptr addrspace(2490368) [[BASEPTR1]], i32 [[BYTE_OFFSET1]], i32 [[LOADED_VALUE]], i32 4, i1 false)
 
 define spir_kernel void @test_promote(i32 addrspace(1)* %src, i32 addrspace(1)* %dst, i32 %runtimeOffset, <8 x i32> %r0, <8 x i32> %payloadHeader, i32 %bufferOffset, i32 %bufferOffset1, i32 %bindlessOffset, i32 %bindlessOffset2) #0 {
 entry:

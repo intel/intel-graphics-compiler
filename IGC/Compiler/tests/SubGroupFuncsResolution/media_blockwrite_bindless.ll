@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-sub-group-func-resolution %s -S -o - | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-sub-group-func-resolution %s -S -o - | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-sub-group-func-resolution %s -S -o - | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 ; Check bindless image handle is passed to GenISA.simdMediaBlockWrite as argument.
 
@@ -15,7 +15,8 @@
 
 define spir_kernel void @test_kernel_sub_group_block_write_image(%spirv.Image._void_1_0_0_0_0_0_1 addrspace(1)* %image) {
 entry:
-; CHECK: [[IMG:%.*]] = ptrtoint %spirv.Image._void_1_0_0_0_0_0_1 addrspace(1)* %image to i64
+; CHECK-TYPED: [[IMG:%.*]] = ptrtoint %spirv.Image._void_1_0_0_0_0_0_1 addrspace(1)* %image to i64
+; CHECK-OPAQUE: [[IMG:%.*]] = ptrtoint ptr addrspace(1) %image to i64
 ; CHECK-NEXT: [[IMG_TRUNC:%.*]] = trunc i64 [[IMG]] to i32
 ; CHECK: call void @llvm.genx.GenISA.simdMediaBlockWrite.i32.i16(i32 [[IMG_TRUNC]], i32 %xOffset, i32 %yOffset, i32 0, i16
 ;

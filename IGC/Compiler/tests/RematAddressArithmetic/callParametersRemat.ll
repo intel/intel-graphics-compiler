@@ -7,8 +7,9 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: system-windows, llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -igc-clone-address-arithmetic --regkey=RematChainLimit=10 --regkey=RematFlowThreshold=100 --regkey=RematRPELimit=0 --dce | FileCheck %s
+; UNSUPPORTED: system-windows
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers %s -S -o - -igc-clone-address-arithmetic --regkey=RematChainLimit=10 --regkey=RematFlowThreshold=100 --regkey=RematRPELimit=0 --dce | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers %s -S -o - -igc-clone-address-arithmetic --regkey=RematChainLimit=10 --regkey=RematFlowThreshold=100 --regkey=RematRPELimit=0 --dce | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024"
 target triple = "spir64-unknown-unknown"
@@ -29,8 +30,10 @@ if.end46:
   br label %cleanup.cont.i
 ; CHECK-LABEL: cleanup.cont.i:
 ; CHECK-NEXT: [[REMAT:%.*]] = alloca %"struct.ONEAPIKernelContext::LightSample", i32 0, align 4
-; CHECK-NEXT: [[CAST:%.*]] = addrspacecast %"struct.ONEAPIKernelContext::LightSample"* [[REMAT]] to %"struct.ONEAPIKernelContext::LightSample" addrspace(4)*
-; CHECK-NEXT: call spir_func void @target_func(%"struct.ONEAPIKernelContext::LightSample" addrspace(4)* [[CAST]])
+; CHECK-TYPED-NEXT: [[CAST:%.*]] = addrspacecast %"struct.ONEAPIKernelContext::LightSample"* [[REMAT]] to %"struct.ONEAPIKernelContext::LightSample" addrspace(4)*
+; CHECK-OPAQUE-NEXT: [[CAST:%.*]] = addrspacecast ptr [[REMAT]] to ptr addrspace(4)
+; CHECK-TYPED-NEXT: call spir_func void @target_func(%"struct.ONEAPIKernelContext::LightSample" addrspace(4)* [[CAST]])
+; CHECK-OPAQUE-NEXT: call spir_func void @target_func(ptr addrspace(4) [[CAST]])
 cleanup.cont.i:                                   ; preds = %if.end46
   call spir_func void @target_func(%"struct.ONEAPIKernelContext::LightSample" addrspace(4)* %ls.ascast.i)
   ret void
@@ -55,8 +58,10 @@ if.end46:
   br label %cleanup.cont.i
 ; CHECK-LABEL: cleanup.cont.i:
 ; CHECK-NEXT: [[REMAT:%.*]] = alloca %"struct.ONEAPIKernelContext::LightSample", i32 0, align 4
-; CHECK-NEXT: [[CAST:%.*]] = addrspacecast %"struct.ONEAPIKernelContext::LightSample"* [[REMAT]] to %"struct.ONEAPIKernelContext::LightSample" addrspace(4)*
-; CHECK-NEXT: call spir_func void @target_func(%"struct.ONEAPIKernelContext::LightSample" addrspace(4)* [[CAST]])
+; CHECK-TYPED-NEXT: [[CAST:%.*]] = addrspacecast %"struct.ONEAPIKernelContext::LightSample"* [[REMAT]] to %"struct.ONEAPIKernelContext::LightSample" addrspace(4)*
+; CHECK-OPAQUE-NEXT: [[CAST:%.*]] = addrspacecast ptr [[REMAT]] to ptr addrspace(4)
+; CHECK-TYPED-NEXT: call spir_func void @target_func(%"struct.ONEAPIKernelContext::LightSample" addrspace(4)* [[CAST]])
+; CHECK-OPAQUE-NEXT: call spir_func void @target_func(ptr addrspace(4) [[CAST]])
 cleanup.cont.i:                                   ; preds = %if.end46
   call spir_func void @target_func(%"struct.ONEAPIKernelContext::LightSample" addrspace(4)* %ls.ascast.i)
   call spir_func void @target_func_bitcast_no_ptr(double %cast_val2)

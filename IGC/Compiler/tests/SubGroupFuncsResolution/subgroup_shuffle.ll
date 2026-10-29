@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -enable-debugify --igc-sub-group-func-resolution -S < %s 2>&1 | FileCheck %s
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -enable-debugify --igc-sub-group-func-resolution -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-OPAQUE %s %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -enable-debugify --igc-sub-group-func-resolution -S < %s 2>&1 | FileCheck --check-prefixes=CHECK,CHECK-TYPED %s %}
 ; ------------------------------------------------
 ; SubGroupFuncsResolution
 ; ------------------------------------------------
@@ -35,14 +35,19 @@
 define spir_kernel void @test_shuf(i32 addrspace(1)* %dst, i32 %src) #0 {
 ; CHECK-LABEL: @test_shuf(
 ; CHECK-NEXT:  entry:
-; CHECK:    [[DST_ADDR:%.*]] = alloca i32 addrspace(1)*, align 8
+; CHECK-TYPED:    [[DST_ADDR:%.*]] = alloca i32 addrspace(1)*, align 8
+; CHECK-OPAQUE:    [[DST_ADDR:%.*]] = alloca ptr addrspace(1), align 8
 ; CHECK:    [[SRC_ADDR:%.*]] = alloca i32, align 4
 ; CHECK:    [[SHUF:%.*]] = alloca i32, align 4
-; CHECK:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR]], align 8
-; CHECK:    store i32 [[SRC:%.*]], i32* [[SRC_ADDR]], align 4
-; CHECK:    [[TMP0:%.*]] = load i32, i32* [[SRC_ADDR]], align 4
+; CHECK-TYPED:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR]], align 8
+; CHECK-OPAQUE:    store ptr addrspace(1) [[DST:%.*]], ptr [[DST_ADDR]], align 8
+; CHECK-TYPED:    store i32 [[SRC:%.*]], i32* [[SRC_ADDR]], align 4
+; CHECK-OPAQUE:    store i32 [[SRC:%.*]], ptr [[SRC_ADDR]], align 4
+; CHECK-TYPED:    [[TMP0:%.*]] = load i32, i32* [[SRC_ADDR]], align 4
+; CHECK-OPAQUE:    [[TMP0:%.*]] = load i32, ptr [[SRC_ADDR]], align 4
 ; CHECK:    [[SIMDSHUFFLE:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[TMP0]], i32 0, i32 0)
-; CHECK:    store i32 [[SIMDSHUFFLE]], i32* [[SHUF]], align 4
+; CHECK-TYPED:    store i32 [[SIMDSHUFFLE]], i32* [[SHUF]], align 4
+; CHECK-OPAQUE:    store i32 [[SIMDSHUFFLE]], ptr [[SHUF]], align 4
 ;
 entry:
   %dst.addr = alloca i32 addrspace(1)*, align 8
