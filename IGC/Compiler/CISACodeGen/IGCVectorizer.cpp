@@ -191,6 +191,17 @@ static unsigned int getVectorSize(Value *I) {
   return NumElements;
 }
 
+bool isFloatTyped(Instruction *I) {
+
+  const auto *fixedVecType = llvm::dyn_cast<llvm::FixedVectorType>(I->getType());
+  if (fixedVecType) {
+    if (fixedVecType->getElementType()->isFloatTy())
+      return true;
+  }
+
+  return I->getType()->isFloatTy();
+}
+
 // due to our emitter, currently we only process float fdiv's
 bool isFDivSafe(Instruction *I) {
   if (!IGC_GET_FLAG_VALUE(VectorizerAllowFDIV))
@@ -200,7 +211,7 @@ bool isFDivSafe(Instruction *I) {
     return false;
 
   auto OpCode = Binary->getOpcode();
-  if (!(OpCode == Instruction::FDiv && I->getType()->isFloatTy()))
+  if (!(OpCode == Instruction::FDiv && isFloatTyped(I)))
     return false;
 
   return true;
@@ -229,17 +240,6 @@ bool isPHISafe(Instruction *I) {
   if (PHI && PHI->getNumIncomingValues() == 2)
     return true;
   return false;
-}
-
-bool isFloatTyped(Instruction *I) {
-
-  const auto *fixedVecType = llvm::dyn_cast<llvm::FixedVectorType>(I->getType());
-  if (fixedVecType) {
-    if (fixedVecType->getElementType()->isFloatTy())
-      return true;
-  }
-
-  return I->getType()->isFloatTy();
 }
 
 bool isAllowedType(Instruction *I) {
