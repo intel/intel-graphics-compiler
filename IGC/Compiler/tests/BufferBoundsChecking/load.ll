@@ -6,10 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-buffer-bounds-checking -igc-add-implicit-args -igc-buffer-bounds-checking-patcher -S %s -o %t.opaque.ll %}
-; RUN: %if llvm-16-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE --input-file=%t.opaque.ll %}
-; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-buffer-bounds-checking -igc-add-implicit-args -igc-buffer-bounds-checking-patcher -S %s -o %t.typed.ll %}
-; RUN: %if !llvm-17-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-TYPED --input-file=%t.typed.ll %}
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-buffer-bounds-checking -igc-add-implicit-args -igc-buffer-bounds-checking-patcher -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-buffer-bounds-checking -igc-add-implicit-args -igc-buffer-bounds-checking-patcher -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 define spir_kernel void @kernel(i32 addrspace(1)* %input) nounwind {
   %1 = getelementptr inbounds i32, i32 addrspace(1)* %input, i64 2

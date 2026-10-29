@@ -6,10 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-custom-safe-opt -S %s -o %t.opaque.ll %}
-; RUN: %if llvm-16-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE --input-file=%t.opaque.ll %}
-; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-custom-safe-opt -S %s -o %t.typed.ll %}
-; RUN: %if !llvm-17-plus %{ FileCheck %s --check-prefixes=CHECK,CHECK-TYPED --input-file=%t.typed.ll %}
+; RUN: %if llvm-16-plus %{ igc_opt --opaque-pointers -igc-custom-safe-opt -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE %}
+; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -igc-custom-safe-opt -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 
 define spir_kernel void @testalloca1() {
 0:
