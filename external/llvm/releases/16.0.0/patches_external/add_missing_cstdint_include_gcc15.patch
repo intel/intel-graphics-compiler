@@ -1,0 +1,27 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2025 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+/*========================== begin_copyright_notice ============================
+
+Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+See https://llvm.org/LICENSE.txt for license information.
+SPDX-License-Identifier: Apache-2.0 with LLVM-exception
+
+============================= end_copyright_notice ===========================*/
+diff --git a/llvm/include/llvm/ADT/SmallVector.h b/llvm/include/llvm/ADT/SmallVector.h
+index e34702bdbb3c..08fa2765a1c2 100644
+--- a/llvm/include/llvm/ADT/SmallVector.h
++++ b/llvm/include/llvm/ADT/SmallVector.h
+@@ -21,6 +21,7 @@
+ #include <cstddef>
+ #include <cstdlib>
+ #include <cstring>
++#include <cstdint>
+ #include <functional>
+ #include <initializer_list>
+ #include <iterator>
