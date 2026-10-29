@@ -8,24 +8,48 @@
 ;
 ; RUN: igc_opt --opaque-pointers -igc-priv-mem-to-reg -S %s  | FileCheck %s
 
+; A byte-array GEP `getelementptr [N x i8], ptr %p, i64 %i` steps N bytes per index.
+; When N covers whole lanes of the alloca element, the alloca promotes and each index
+; becomes a lane index. A stride that splits a lane, a lane wider than the stride and
+; an access narrower than the lane must still block promotion.
+
+; [4 x i8] over [16 x i32]: index k is lane k.
+; CHECK-LABEL: define void @test(
+; CHECK: alloca <16 x i32>
+; CHECK-NOT: alloca [16 x i32]
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 0{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 0{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 1{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 1{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 2{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 2{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 3{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 3{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 4{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 4{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 5{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 5{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 6{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 6{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 7{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 7{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 8{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 8{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 9{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 9{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 10{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 10{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 11{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 11{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 12{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 12{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 13{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 13{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 14{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 14{{$}}
+; CHECK: extractelement <16 x i32> %{{.*}}, i32 15{{$}}
+; CHECK: insertelement <16 x i32> %{{.*}}, i32 %{{.*}}, i32 15{{$}}
 define void @test() {
-  ; CHECK: [[TMP1:%.*]] = alloca [16 x i32]
-  ; CHECK: [[PTR0:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 0
-  ; CHECK: [[PTR1:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 1
-  ; CHECK: [[PTR2:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 2
-  ; CHECK: [[PTR3:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 3
-  ; CHECK: [[PTR4:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 4
-  ; CHECK: [[PTR5:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 5
-  ; CHECK: [[PTR6:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 6
-  ; CHECK: [[PTR7:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 7
-  ; CHECK: [[PTR8:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 8
-  ; CHECK: [[PTR9:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 9
-  ; CHECK: [[PTR10:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 10
-  ; CHECK: [[PTR11:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 11
-  ; CHECK: [[PTR12:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 12
-  ; CHECK: [[PTR13:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 13
-  ; CHECK: [[PTR14:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 14
-  ; CHECK: [[PTR15:%.*]] = getelementptr inbounds [4 x i8], ptr [[TMP1]], i64 15
   %a = alloca [16 x i32], align 4
   %ptr0 = getelementptr inbounds [4 x i8], ptr %a, i64 0
   %ptr1 = getelementptr inbounds [4 x i8], ptr %a, i64 1
@@ -44,38 +68,6 @@ define void @test() {
   %ptr14 = getelementptr inbounds [4 x i8], ptr %a, i64 14
   %ptr15 = getelementptr inbounds [4 x i8], ptr %a, i64 15
 
-  ; CHECK: [[TMP2:%.*]] = load i32, ptr [[PTR0]]
-  ; CHECK: store i32 [[TMP2]], ptr [[PTR0]]
-  ; CHECK: [[TMP3:%.*]] = load i32, ptr [[PTR1]]
-  ; CHECK: store i32 [[TMP3]], ptr [[PTR1]]
-  ; CHECK: [[TMP4:%.*]] = load i32, ptr [[PTR2]]
-  ; CHECK: store i32 [[TMP4]], ptr [[PTR2]]
-  ; CHECK: [[TMP5:%.*]] = load i32, ptr [[PTR3]]
-  ; CHECK: store i32 [[TMP5]], ptr [[PTR3]]
-  ; CHECK: [[TMP6:%.*]] = load i32, ptr [[PTR4]]
-  ; CHECK: store i32 [[TMP6]], ptr [[PTR4]]
-  ; CHECK: [[TMP7:%.*]] = load i32, ptr [[PTR5]]
-  ; CHECK: store i32 [[TMP7]], ptr [[PTR5]]
-  ; CHECK: [[TMP8:%.*]] = load i32, ptr [[PTR6]]
-  ; CHECK: store i32 [[TMP8]], ptr [[PTR6]]
-  ; CHECK: [[TMP9:%.*]] = load i32, ptr [[PTR7]]
-  ; CHECK: store i32 [[TMP9]], ptr [[PTR7]]
-  ; CHECK: [[TMP10:%.*]] = load i32, ptr [[PTR8]]
-  ; CHECK: store i32 [[TMP10]], ptr [[PTR8]]
-  ; CHECK: [[TMP11:%.*]] = load i32, ptr [[PTR9]]
-  ; CHECK: store i32 [[TMP11]], ptr [[PTR9]]
-  ; CHECK: [[TMP12:%.*]] = load i32, ptr [[PTR10]]
-  ; CHECK: store i32 [[TMP12]], ptr [[PTR10]]
-  ; CHECK: [[TMP13:%.*]] = load i32, ptr [[PTR11]]
-  ; CHECK: store i32 [[TMP13]], ptr [[PTR11]]
-  ; CHECK: [[TMP14:%.*]] = load i32, ptr [[PTR12]]
-  ; CHECK: store i32 [[TMP14]], ptr [[PTR12]]
-  ; CHECK: [[TMP15:%.*]] = load i32, ptr [[PTR13]]
-  ; CHECK: store i32 [[TMP15]], ptr [[PTR13]]
-  ; CHECK: [[TMP16:%.*]] = load i32, ptr [[PTR14]]
-  ; CHECK: store i32 [[TMP16]], ptr [[PTR14]]
-  ; CHECK: [[TMP17:%.*]] = load i32, ptr [[PTR15]]
-  ; CHECK: store i32 [[TMP17]], ptr [[PTR15]]
   %l1 = load i32, ptr %ptr0
   store i32 %l1, ptr %ptr0
   %l2 = load i32, ptr %ptr1
@@ -112,7 +104,46 @@ define void @test() {
   ret void
 }
 
-!igc.functions = !{!0}
+; [2 x i8] over [16 x i32]: index 1 is byte 2, inside lane 0.
+; CHECK-LABEL: define void @split_lane(
+; CHECK: alloca [16 x i32]
+; CHECK: getelementptr inbounds [2 x i8]
+define void @split_lane() {
+  %a = alloca [16 x i32], align 4
+  %p = getelementptr inbounds [2 x i8], ptr %a, i64 1
+  %l = load i32, ptr %p, align 2
+  store i32 %l, ptr %a, align 4
+  ret void
+}
+
+; [4 x i8] over [8 x i64]: a 4-byte step is half a lane.
+; CHECK-LABEL: define void @wide_lane(
+; CHECK: alloca [8 x i64]
+; CHECK: getelementptr inbounds [4 x i8]
+define void @wide_lane() {
+  %a = alloca [8 x i64], align 8
+  %p = getelementptr inbounds [4 x i8], ptr %a, i64 3
+  %l = load i64, ptr %p, align 4
+  store i64 %l, ptr %a, align 8
+  ret void
+}
+
+; [4 x i8] over [16 x i32] with an i16 access: the access covers half a lane.
+; CHECK-LABEL: define void @narrow_access(
+; CHECK: alloca [16 x i32]
+; CHECK: getelementptr inbounds [4 x i8]
+define void @narrow_access() {
+  %a = alloca [16 x i32], align 4
+  %p = getelementptr inbounds [4 x i8], ptr %a, i64 3
+  %l = load i16, ptr %p, align 4
+  store i16 %l, ptr %a, align 4
+  ret void
+}
+
+!igc.functions = !{!0, !3, !4, !5}
 !0 = !{ptr @test, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
+!3 = !{ptr @split_lane, !1}
+!4 = !{ptr @wide_lane, !1}
+!5 = !{ptr @narrow_access, !1}

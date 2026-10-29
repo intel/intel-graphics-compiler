@@ -1083,6 +1083,23 @@ static bool isElementAlignedByteGEP(const GetElementPtrInst &GEP, uint64_t index
   return (Offset->getZExtValue() % indexUnitBytes) == 0;
 }
 
+/// Is \p GEP a byte-array GEP, i.e. `getelementptr [N x i8], ptr %p, i64 %i`?
+/// Since LLVM 23, InstCombine canonicalizes single-index GEPs into this form. The index
+/// then steps N bytes, whatever type is actually accessed.
+static bool isByteArrayGEP(const GetElementPtrInst &GEP) {
+  auto *ArrTy = dyn_cast<ArrayType>(GEP.getSourceElementType());
+  return ArrTy && ArrTy->getElementType()->isIntegerTy(8) && GEP.getNumIndices() == 1;
+}
+
+/// Does byte-array \p GEP step over whole elements? handleGEPInst then scales its
+/// index by N / IndexUnitBytes, so unlike a byte offset the index may be dynamic.
+static bool isElementStrideByteArrayGEP(const GetElementPtrInst &GEP, uint64_t IndexUnitBytes) {
+  if (IndexUnitBytes == 0 || !isByteArrayGEP(GEP))
+    return false;
+  uint64_t StrideBytes = GEP.getSourceElementType()->getArrayNumElements();
+  return StrideBytes != 0 && (StrideBytes % IndexUnitBytes) == 0;
+}
+
 uint64_t SOALayoutChecker::getByteGEPIndexUnit() const {
   if (!pInfo || !pInfo->baseType)
     return 0;
@@ -1104,6 +1121,12 @@ bool SOALayoutChecker::visitGetElementPtrInst(GetElementPtrInst &GEP) {
   // mixed-size i8/per-field GEPs are expected there and handled by the new-algo
   // transpose path; the scalar-size match only applies to the flat scalar path.
   if (pInfo && pInfo->baseType && !useAggressiveStructSOA()) {
+    const uint64_t IndexUnitBytes = getByteGEPIndexUnit();
+    // A byte-array GEP whose stride splits an element has no element index, under
+    // either strategy.
+    if (isByteArrayGEP(GEP) && !isElementStrideByteArrayGEP(GEP, IndexUnitBytes)) {
+      return false;
+    }
     Type *gepSrcEltTy = GEP.getSourceElementType();
     if (MismatchDetectionStrategy == DefaultLowerGEPStrategy)
       while (gepSrcEltTy->isArrayTy())
@@ -1111,11 +1134,11 @@ bool SOALayoutChecker::visitGetElementPtrInst(GetElementPtrInst &GEP) {
     if (!gepSrcEltTy->isAggregateType() && !gepSrcEltTy->isVectorTy()) {
       uint64_t gepBits = pDL->getTypeStoreSizeInBits(gepSrcEltTy);
       uint64_t baseBits = pDL->getTypeStoreSizeInBits(pInfo->baseType->getScalarType());
-      // An element-aligned byte offset is element-granular despite the i8 source type;
-      // keep walking and let MismatchDetected validate the accesses reached through it.
-      // Tests GEP's own source type, not the unwrapped one, so [4 x i8] still rejects.
-      if (gepBits != 0 && baseBits != 0 && gepBits != baseBits &&
-          !isElementAlignedByteGEP(GEP, getByteGEPIndexUnit())) {
+      // An element-aligned byte offset or an element-stride byte array is element-granular
+      // despite the i8 source type; keep walking and let MismatchDetected validate the
+      // accesses reached through it.
+      if (gepBits != 0 && baseBits != 0 && gepBits != baseBits && !isElementAlignedByteGEP(GEP, IndexUnitBytes) &&
+          !isElementStrideByteArrayGEP(GEP, IndexUnitBytes)) {
         return false;
       }
     }
@@ -1274,11 +1297,11 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
 
   uint64_t allocaEltBitsSize = pDL->getTypeStoreSizeInBits(allocaEltTy);
   IGC_ASSERT(allocaEltBitsSize > 0);
+  const uint64_t indexUnitBytes = getByteGEPIndexUnit();
 
   // Check for byte-level access patterns. This detects memcpy-like patterns where an alloca with multi-byte elements
   // (e.g., [4 x float]) is accessed through i8 GEPs, which the promotion transformation cannot handle correctly.
   if (!allocaEltTy->isIntegerTy(8) && allocaEltBitsSize > 8) {
-    const uint64_t indexUnitBytes = getByteGEPIndexUnit();
     SmallVector<Value *, 16> worklist;
     SmallPtrSet<Value *, 16> visited;
 
@@ -1322,11 +1345,13 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   // assumes byte offsets map exactly to whole promoted elements (e.g. multiples of the lane size) and cannot safely
   // reconstruct sub‑element (inter-lane or unaligned) accesses. Using it would risk incorrect indexing. The new
   // byte-precise algorithm could handle this, but while it is disabled we treat such dynamic non-promoted type GEPs as
-  // a mismatch and leave them untouched.
+  // a mismatch and leave them untouched. A byte-array GEP whose stride covers whole elements is exempt: its dynamic
+  // index counts whole elements.
   for (User *U : allocaRef.users()) {
     if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
       auto gepBitsSize = pDL->getTypeStoreSizeInBits(extractArrayOrVecEleType(GEP->getSourceElementType()));
-      if (allocaEltBitsSize != gepBitsSize && GEP->getNumOperands() > 1 && !isa<ConstantInt>(GEP->getOperand(1))) {
+      if (allocaEltBitsSize != gepBitsSize && GEP->getNumOperands() > 1 && !isa<ConstantInt>(GEP->getOperand(1)) &&
+          !isElementStrideByteArrayGEP(*GEP, indexUnitBytes)) {
         pInfo->canUseSOALayout = false;
         return true;
       }
@@ -1389,10 +1414,10 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
     return false;
   }
 
-  // A byte-offset GEP's result element type is always i8, so it must not be compared
-  // against the access type. Its offset is already proven element-aligned; fall through
-  // to the access-vs-alloca-element check, which rejects a genuine byte access.
-  if (pgep && isByteOffsetGEP(*pgep))
+  // A byte-offset or byte-array GEP's result element type is i8 or [N x i8], so it must
+  // not be compared against the access type. Its offset is already proven element-aligned;
+  // fall through to the access-vs-alloca-element check, which rejects a genuine byte access.
+  if (pgep && (isByteOffsetGEP(*pgep) || isElementStrideByteArrayGEP(*pgep, indexUnitBytes)))
     pgep = nullptr;
 
   // if it's a GEP, we're actually interested in it's element type
@@ -1770,6 +1795,23 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *
       byteIndex = IRB.CreateUDiv(byteIndex, IRB.getInt32(elementBytes));
 
     pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, byteIndex);
+    pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, idx);
+    HandleAllocaSources(pGEP, pScalarizedIdx);
+    return;
+  }
+
+  // A byte-array GEP steps N bytes per index. SOALayoutChecker only accepts it when N is
+  // a whole number of index units, so scale the index by that number rather than by N.
+  if (isByteArrayGEP(*pGEP)) {
+    uint64_t StrideBytes = pGEP->getSourceElementType()->getArrayNumElements();
+    IGC_ASSERT_MESSAGE(m_idxUnitBytes != 0 && (StrideBytes % m_idxUnitBytes) == 0,
+                       "Byte-array GEP stride is not a whole number of index units");
+    // GEP indices are signed, so a narrow index like i8 -1 must step back, not forward.
+    Value *ElementIndex = IRB.CreateSExtOrTrunc(pGEP->getOperand(1), IRB.getInt32Ty());
+    if (StrideBytes != m_idxUnitBytes)
+      ElementIndex = IRB.CreateMul(ElementIndex, IRB.getInt32((uint32_t)(StrideBytes / m_idxUnitBytes)));
+
+    pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, ElementIndex);
     pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, idx);
     HandleAllocaSources(pGEP, pScalarizedIdx);
     return;
