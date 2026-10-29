@@ -101,6 +101,9 @@ public:
 // forbidden physical registers that it cannot be assigned to.
 // -- Address and Flag live ranges currently all belong to same RC
 // (FBD_ADDR/FBD_FLAG) as there are no restrictions on their assignment.
+// The exception is the address of a movi source, which must be a0.0, or a0.0
+// or a0.8 for SIMD8. FBD_MOVIADDR forbids a0.16 and above, and together with
+// the 8-word alignment of the address variable allows only these.
 // -- The rest of RCs are for GRF live ranges. By default such live ranges have
 // FBD_RESERVEDGRF, which reserves a number of GRFs such as r0/r1/RN-1 based on
 // kernel type and user options.
@@ -113,6 +116,7 @@ enum class forbiddenKind {
   FBD_ADDR = 0,
   FBD_FLAG = 1,
   FBD_SCALAR,
+  FBD_MOVIADDR,
   FBD_RESERVEDGRF,
   FBD_EOT,
   FBD_LASTGRF,
@@ -140,6 +144,8 @@ constexpr bool isSubRegClass(forbiddenKind k1, forbiddenKind k2) {
     return true;
   if (k2 == forbiddenKind::FBD_RESERVEDGRF && isGRFRegClass(k1))
     return true;
+  if (k1 == forbiddenKind::FBD_MOVIADDR)
+    return k2 == forbiddenKind::FBD_ADDR;
   if (k1 == forbiddenKind::FBD_EOTLASTGRF)
     return k2 == forbiddenKind::FBD_EOT || k2 == forbiddenKind::FBD_LASTGRF;
   return false;
@@ -947,6 +953,7 @@ class Interference {
   void setOutOfBoundForbidden(G4_Operand *opnd);
 
   void setForbiddenGRFNumForSVMScatter(G4_INST *inst);
+  void setForbiddenAddrForMovi(G4_INST *inst);
 
   void buildInterferenceWithLocalRA(G4_BB *bb);
 
@@ -1392,6 +1399,7 @@ public:
         getForbiddenVectorSize(G4_FLAG));
     forbiddenVec[(size_t)forbiddenKind::FBD_SCALAR].resize(
         getForbiddenVectorSize(G4_SCALAR));
+    generateMoviAddrForbidden();
   };
 
   unsigned getForbiddenVectorSize(G4_RegFileKind regKind) const;
@@ -1401,6 +1409,7 @@ public:
   void generateEOTLastGRFForbidden();
   void generateCallerSaveGRFForbidden();
   void generateCalleeSaveGRFForbidden();
+  void generateMoviAddrForbidden();
 
   BitSet *getForbiddenRegs(forbiddenKind type) {
     return &forbiddenVec[(size_t)type];

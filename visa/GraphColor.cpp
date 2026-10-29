@@ -2087,6 +2087,36 @@ void Interference::setForbiddenGRFNumForSVMScatter(G4_INST *inst) {
   return;
 }
 
+// Restrict the address variable of a movi source, see FBD_MOVIADDR. With 16
+// address registers, the 8-word alignment of the variable already allows only
+// a0.0 and a0.8. A variable of more than 16 words, i.e. for a SIMD32 movi, can
+// only be assigned a0.0.
+void Interference::setForbiddenAddrForMovi(G4_INST *inst) {
+  if (kernel.fg.builder->getNumAddrRegisters() <= 16)
+    return;
+
+  G4_Operand *src0 = inst->getSrc(0);
+  if (!src0 || !src0->isSrcRegRegion() ||
+      !src0->asSrcRegRegion()->isIndirect())
+    return;
+
+  G4_VarBase *base = src0->asSrcRegRegion()->getBase();
+  if (!base->isRegAllocPartaker())
+    return;
+
+  LiveRange *lr = lrs[base->asRegVar()->getId()];
+  if (lr->getDcl()->getByteSize() > 16 * G4_WSIZE)
+    return;
+  // During address RA, initializeForbidden() leaves address live ranges in
+  // FBD_RESERVEDGRF, as incRA has no selected RF. Its GRF numbers don't apply
+  // to address registers and it doesn't intersect with FBD_MOVIADDR, so
+  // replace it.
+  if (lr->getForbiddenType() != forbiddenKind::FBD_MOVIADDR) {
+    lr->resetForbidden();
+    lr->setForbidden(forbiddenKind::FBD_MOVIADDR);
+  }
+}
+
 void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
                                                         G4_INST *inst) {
   bool isDstRegAllocPartaker = false;
@@ -2476,6 +2506,10 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitVector &live) {
     if (inst->isSend() && inst->asSendInst()->isSVMScatterRW() &&
         inst->getExecSize() < g4::SIMD8) {
       setForbiddenGRFNumForSVMScatter(inst);
+    }
+
+    if (inst->opcode() == G4_movi && liveAnalysis->livenessClass(G4_ADDRESS)) {
+      setForbiddenAddrForMovi(inst);
     }
 
     if ((inst->isSend() || inst->isFillIntrinsic()) && !dst->isNullReg() &&
@@ -7229,7 +7263,7 @@ void GraphColor::relaxNeighborDegreeARF(LiveRange *lr) {
         });
         lrs_it->subtractDegree(w);
 
-        unsigned availColor = numColor;
+        unsigned availColor = numColor - lrs_it->getNumForbidden();
 
         if (lrs_it->getDegree() + lrs_it->getNumRegNeeded() <= availColor) {
           unconstrainedWorklist.push_back(lrs_it);
@@ -10009,6 +10043,19 @@ void ForbiddenRegs::generateCalleeSaveGRFForbidden() {
   }
   forbiddenVec[(size_t)forbiddenKind::FBD_CALLEESAVE] |=
       forbiddenVec[(size_t)forbiddenKind::FBD_RESERVEDGRF];
+}
+
+//
+// mark forbidden registers for the address of a movi source, i.e., a0.16 and
+// above
+//
+void ForbiddenRegs::generateMoviAddrForbidden() {
+  unsigned numAddrRegs = getForbiddenVectorSize(G4_ADDRESS);
+  forbiddenVec[(size_t)forbiddenKind::FBD_MOVIADDR].resize(numAddrRegs);
+  forbiddenVec[(size_t)forbiddenKind::FBD_MOVIADDR].clear();
+  for (unsigned int i = 16; i < numAddrRegs; i++) {
+    forbiddenVec[(size_t)forbiddenKind::FBD_MOVIADDR].set(i, true);
+  }
 }
 
 //
