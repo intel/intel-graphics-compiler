@@ -234,7 +234,7 @@ private:
   bool visitAtomicCmpXchg(AtomicCmpXchgInst &);
   bool visitAtomicRMW(AtomicRMWInst &);
 
-  bool visitTrunc(TruncInst &) { return false; }
+  bool visitTrunc(TruncInst &);
   bool visitSExt(SExtInst &) { return false; }
   bool visitZExt(ZExtInst &) { return false; }
   bool visitFPToUI(FPToUIInst &) { return false; }
@@ -918,6 +918,18 @@ bool InstExpander::visitOr(BinaryOperator &BinOp) {
 
   Emu->setExpandedValues(&BinOp, Lo, Hi);
   convert2xi32OutputBackToi64(BinOp, Lo, Hi);
+  return true;
+}
+
+bool InstExpander::visitTrunc(TruncInst &TI) {
+  IGC_ASSERT(nullptr != Emu);
+  // A split i64 that still has non-split users is rebuilt as bitcast <2 x i32> to i64. Read the low half from
+  // element 0 so the rebuild is not kept alive by trunc users.
+  auto *BC = dyn_cast<BitCastInst>(TI.getOperand(0));
+  if (!BC || BC->getSrcTy() != Emu->getV2Int32Ty() || !TI.getType()->isIntegerTy(32))
+    return false;
+
+  TI.replaceAllUsesWith(IRB->CreateExtractElement(BC->getOperand(0), IRB->getInt32(0)));
   return true;
 }
 
