@@ -23,7 +23,8 @@ execute_process(
     OUTPUT_VARIABLE GIT_COMMIT_HASH
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-add_definitions(-DGIT_COMMIT_HASH=\"${GIT_COMMIT_HASH}\")
+# Only its consumer includes this, so a new hash rebuilds one TU, not all.
+configure_file(GitCommitHash.h.in "${CMAKE_CURRENT_BINARY_DIR}/GitCommitHash.h")
 
 #none of the values about 32/64 are being propogated down
 #and BuildSetup.cmake is not part of IGC enviroment

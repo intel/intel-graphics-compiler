@@ -35,7 +35,9 @@ if(GIT_COMMIT)
     set(IGA_VERSION_SUFFIX "${IGA_VERSION_SUFFIX}-${GIT_COMMIT}${IGA_VERSION_DIRTY_TAG}")
 endif()
 
-add_definitions(-DIGA_VERSION_SUFFIX="${IGA_VERSION_SUFFIX}")
+# Only its consumer includes this, so a new hash rebuilds one TU, not all.
+configure_file(IGAVersionSuffix.h.in "${CMAKE_CURRENT_BINARY_DIR}/IGAVersionSuffix.h")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 message("--  - IGA_VERSION_SUFFIX:    ${IGA_VERSION_SUFFIX}")
 
 ##############################################

@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "../Models/Models.hpp"
 #include "../strings.hpp"
 #include "../version.hpp"
+#include "IGAVersionSuffix.h"
 #include "common/secure_mem.h"
 #include "common/secure_string.h"
 

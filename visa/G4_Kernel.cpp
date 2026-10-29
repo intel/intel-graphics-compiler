@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Common_ISA_framework.h"
 #include "DebugInfo.h"
 #include "G4_BB.hpp"
+#include "GitCommitHash.h"
 #include "KernelCost.hpp"
 #include "VISAKernel.h"
 #include "VarSplit.h"
