@@ -5193,9 +5193,6 @@ void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
     G4_SendDescRaw *desc = builder->createLscMsgDesc(
         op, lscSfid, EXEC_SIZE_1, cacheOpts, addrInfo, dataShape, surface,
         responseLength, 1, LdStAttrs::SCRATCH_SURFACE);
-    if (!inst->getFP())
-      desc->setFillRows(inst->getOffset() + inst->getNumRows() - numRows,
-                        responseLength);
 
     auto sendInst = builder->createLscSendInst(
         nullptr, dstRead,
@@ -5282,9 +5279,6 @@ void GlobalRA::expandFillLscEff64(G4_BB *bb, INST_LIST_ITER &instIt) {
                                           surface, 0, 1, src0, addrImmOff,
                                           nullptr,
                                           inst->getOption());
-    if (!inst->getFP())
-      sendInst->getMsgDesc()->setFillRows(
-          inst->getOffset() + inst->getNumRows() - numRows, numGRFToRead);
     sendInst->addComment(makeSpillFillComment(
         "fill", "from", inst->getFP() ? "FP" : "offset", fillOffset,
         dstRead->getTopDcl()->getName(), builder->getGRFSize()));

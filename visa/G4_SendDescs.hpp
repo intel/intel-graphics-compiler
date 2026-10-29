@@ -311,11 +311,6 @@ protected:
   // The execution size for this message.
   G4_ExecSize execSize;
 
-  // For a load expanded from a fill intrinsic: the scratch rows, in GRFs, it
-  // reads.
-  uint32_t fillFirstRow = 0;
-  uint32_t fillNumRows = 0;
-
   // Limit access to G4_InstSend and any derived classes.
   void setExecSize(G4_ExecSize v) { execSize = v; }
 
@@ -395,15 +390,6 @@ public:
   //
   bool isScratchRead() const { return isScratch() && isRead(); }
   bool isScratchWrite() const { return isScratch() && isWrite(); }
-  //
-  // scratch rows read by a load expanded from a fill intrinsic
-  void setFillRows(uint32_t firstRow, uint32_t numRows) {
-    fillFirstRow = firstRow;
-    fillNumRows = numRows;
-  }
-  bool hasFillRows() const { return fillNumRows != 0; }
-  uint32_t getFillFirstRow() const { return fillFirstRow; }
-  uint32_t getFillNumRows() const { return fillNumRows; }
   //
   // message offset in terms of bytes
   //   e.g. scratch offset
@@ -541,7 +527,6 @@ public:
 
   Caching getCachingL1() const override { return std::get<0>(getCaching()); }
   std::tuple<Caching,Caching,Caching> getCaching() const;
-  void setCaching(const std::tuple<Caching, Caching, Caching> &caching);
 
   virtual std::optional<ImmOff> getOffset() const override;
 

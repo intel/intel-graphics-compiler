@@ -132,10 +132,6 @@ class Optimizer {
   void fixSamplerCacheBitInHeader();
   void InsertS0Movs();
   void fixSamplerCacheBit();
-  bool canMarkSpillFillIAR() const;
-  void markLastFillsInProgramOrder();
-  void endDebugLiveIntervalsAtIARFills(
-      const std::vector<G4_InstSend *> &iarFills);
   bool foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_II);
   bool foldPseudoNot(G4_BB *bb, INST_LIST_ITER &iter);
   bool createSmov(G4_BB *bb, G4_INST *flagMove, G4_INST *nextInst);
@@ -411,7 +407,6 @@ public:
     PI_InsertS0Movs,
     PI_fixSamplerCacheBit,
     PI_localSchedule,
-    PI_markLastFillsInProgramOrder,
     PI_HWWorkaround,        // always
     PI_fixEndIfWhileLabels, // always
     PI_HWDebug,
