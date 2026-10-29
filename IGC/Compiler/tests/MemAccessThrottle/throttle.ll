@@ -7,16 +7,19 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt --opaque-pointers --igc-mem-access-throttle -platformCri -regkey MemAccessThrottle=1 -S < %s | FileCheck %s
+; igc_opt does not fill the workaround table, so ForceMemAccessThrottleWA
+; stands in for Wa_14028586678.
+;
+; RUN: igc_opt --opaque-pointers --igc-mem-access-throttle -platformCri -regkey MemAccessThrottle=1,ForceMemAccessThrottleWA=1 -S < %s | FileCheck %s
 ;
 ; Opt-in only.
-; RUN: igc_opt --opaque-pointers --igc-mem-access-throttle -platformCri -S < %s | FileCheck --check-prefix=OFF --implicit-check-not=eu.thread.pause --implicit-check-not=threadgroupbarrier %s
+; RUN: igc_opt --opaque-pointers --igc-mem-access-throttle -platformCri -regkey ForceMemAccessThrottleWA=1 -S < %s | FileCheck --check-prefix=OFF --implicit-check-not=eu.thread.pause --implicit-check-not=threadgroupbarrier %s
 ;
 ; Regkey force-off wins over the option.
-; RUN: igc_opt --opaque-pointers --igc-mem-access-throttle -platformCri -regkey MemAccessThrottle=0 -S < %s | FileCheck --check-prefix=OFF --implicit-check-not=eu.thread.pause --implicit-check-not=threadgroupbarrier %s
+; RUN: igc_opt --opaque-pointers --igc-mem-access-throttle -platformCri -regkey MemAccessThrottle=0,ForceMemAccessThrottleWA=1 -S < %s | FileCheck --check-prefix=OFF --implicit-check-not=eu.thread.pause --implicit-check-not=threadgroupbarrier %s
 ;
-; CRI only.
-; RUN: igc_opt --opaque-pointers --igc-mem-access-throttle -platformbmg -regkey MemAccessThrottle=1 -S < %s | FileCheck --check-prefix=OFF --implicit-check-not=eu.thread.pause --implicit-check-not=threadgroupbarrier %s
+; Requesting it does nothing without the workaround table entry.
+; RUN: igc_opt --opaque-pointers --igc-mem-access-throttle -platformCri -regkey MemAccessThrottle=1 -S < %s | FileCheck --check-prefix=OFF --implicit-check-not=eu.thread.pause --implicit-check-not=threadgroupbarrier %s
 ; ------------------------------------------------
 ; MemAccessThrottle
 ; ------------------------------------------------

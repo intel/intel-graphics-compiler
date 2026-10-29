@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt --opaque-pointers --igc-mem-access-throttle -platformCri -regkey MemAccessThrottle=1 -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-mem-access-throttle -platformCri -regkey MemAccessThrottle=1,ForceMemAccessThrottleWA=1 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; MemAccessThrottle - a hand-written throttle is left alone
 ; ------------------------------------------------

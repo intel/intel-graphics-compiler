@@ -122,7 +122,7 @@ bool IGC::doMemAccessThrottle(const CodeGenContext *CGC) {
   if (CGC->type != ShaderType::OPENCL_SHADER)
     return false;
 
-  if (CGC->platform.getPlatformInfo().eProductFamily != IGFX_CRI)
+  if (!CGC->platform.needsMemAccessThrottleWA())
     return false;
 
   auto *OCLCtx = static_cast<const OpenCLProgramContext *>(CGC);

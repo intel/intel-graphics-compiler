@@ -1721,6 +1721,10 @@ DECLARE_IGC_REGKEY_ENUM(MemAccessThrottle, -1,
                         " 0 - force disabled"
                         " 1 - force enabled",
                         TRIBOOL_OPTIONS, ALWAYS)
+DECLARE_IGC_REGKEY(bool, ForceMemAccessThrottleWA, false,
+                   "Treat the platform as having the memory access throttle workaround table entry. Only makes "
+                   "the throttle available; MemAccessThrottle or the option still has to request it.",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, ManageableBarriersMode, 0,
                    "Set the ManageableBarriers mode in which should work"
                    "0 - Mix Mode of simple and dynamic ManageableBarriers"

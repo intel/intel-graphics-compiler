@@ -1111,6 +1111,11 @@ public:
     return m_WaTable.Wa_22023388425 != 0 || IGC_IS_FLAG_ENABLED(ForceLSCA32SNegativeOffsetWA);
   }
 
+  // Makes the opt-in memory access throttle available; it never enables it.
+  bool needsMemAccessThrottleWA() const {
+    return m_WaTable.Wa_14028586678 != 0 || IGC_IS_FLAG_ENABLED(ForceMemAccessThrottleWA);
+  }
+
   bool needsLSCA32SUniformBaseWA() const {
     return m_WaTable.Wa_14028404650 != 0 || IGC_IS_FLAG_ENABLED(ForceLSCA32SUniformBaseWA);
   }
