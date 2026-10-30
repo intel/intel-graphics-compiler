@@ -120,9 +120,7 @@ INLINE half __attribute__((overloadable)) __spirv_ocl_log( half x )
 {
     if (BIF_FLAG_CTRL_GET(HasAccurateLog2))
     {
-        // Scale in single precision; scaling in half precision gives up to
-        // 1.7 ulp of error instead of 0.5 ulp.
-        return (half)(__spirv_ocl_native_log2((float)x) * M_LN2_F);
+        return __spirv_ocl_native_log(x);
     }
     return (half)__spirv_ocl_log((float)x);
 }
