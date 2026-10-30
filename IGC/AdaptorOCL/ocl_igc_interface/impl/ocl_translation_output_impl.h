@@ -65,7 +65,7 @@ CIF_DECLARE_INTERFACE_PIMPL(OclTranslationOutput) : CIF::PimplBase {
       return true;
     }
 
-    auto len = strlen(errString);
+    auto len = std::char_traits<char>::length(errString);
     return BuildLog->PushBackRawBytes(errString, len + 1);
   }
 
