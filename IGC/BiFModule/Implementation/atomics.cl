@@ -2207,7 +2207,7 @@ double __attribute__((overloadable)) __spirv_AtomicFAddEXT( __global double *Poi
 
 double __attribute__((overloadable)) __spirv_AtomicFAddEXT( __local double *Pointer, int Scope, int Semantics, double Value)
 {
-    if(BIF_FLAG_CTRL_GET(PlatformType) == IGFX_PVC)
+    if (BIF_FLAG_CTRL_GET(HasInt64SLMAtomicCAS))
     {
         double orig;
         double desired;
