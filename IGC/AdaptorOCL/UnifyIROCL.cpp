@@ -76,6 +76,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/PullKernelArguments/PullKernelArguments.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ResourceAllocator/ResourceAllocator.hpp"
@@ -557,6 +558,11 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
   // 64-bit atomics have to be resolved before AddImplicitArgs pass as it uses
   // local ids for spin lock initialization
   IGC_ADD_PASS_AUTO(npm, lpm, ResolveOCLAtomics);
+
+  if (AllowPullingKernelArguments(pContext)) {
+    // Pull explicit kernel arguments exceeding the push budget
+    IGC_ADD_PASS_AUTO(npm, lpm, PullKernelArguments);
+  }
 
   // Run the AlignmentAnalysis pass before the passes which add implicit arguments, to ensure we do not lose load/store
   // alignment information. For example, ProgramScopeConstantResolution will relocate the buffer's base to an i8* typed

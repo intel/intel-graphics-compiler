@@ -694,6 +694,11 @@ bool UsedWithoutImmInMemInst(llvm::Value *v);
 bool AllowShortImplicitPayloadHeader(const CodeGenContext *ctx);
 bool AllowRemovingUnusedImplicitArguments(const CodeGenContext *ctx);
 bool AllowRemovingUnusedImplicitLocalIDs(const CodeGenContext *ctx);
+// Pulling of explicit kernel arguments over the push budget is enabled
+bool AllowPullingKernelArguments(const CodeGenContext *ctx);
+// In-memory size of a kernel argument
+uint64_t getKernelArgAllocSize(const llvm::Argument &Arg, const llvm::DataLayout &DL);
+
 int16_t GetVectorAliasControl(const CodeGenContext *ctx);
 
 struct ExtractBoundsResult {

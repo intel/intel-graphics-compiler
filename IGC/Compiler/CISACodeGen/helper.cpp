@@ -3327,6 +3327,29 @@ bool AllowRemovingUnusedImplicitLocalIDs(const CodeGenContext *ctx) {
   return ctx->platform.isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
+bool AllowPullingKernelArguments(const CodeGenContext *ctx) {
+  if (IGC_IS_FLAG_DISABLED(PullKernelArgs) || ctx->type != ShaderType::OPENCL_SHADER) {
+    return false;
+  }
+
+  auto *OCLCtx = static_cast<const OpenCLProgramContext *>(ctx);
+  // Pulled argument loads rely on the cross-thread offset relocation (runtime may place implicit_args
+  // in front of cross-thread data). Until they emit it under the same condition as the prologue
+  // (-emitCrossThreadOffR0Reloc), keep pulling disabled when that relocation is off.
+  // TODO: remove once pulled loads handle the no-relocation case
+  if (!OCLCtx->m_InternalOptions.AllowRelocAdd || IGC_IS_FLAG_DISABLED(EnableGlobalStateBuffer)) {
+    return false;
+  }
+
+  return ctx->platform.supportsPullingKernelArguments();
+}
+
+// Returns the in-memory size of a kernel argument
+uint64_t getKernelArgAllocSize(const llvm::Argument &Arg, const llvm::DataLayout &DL) {
+  Type *ArgType = Arg.hasByValAttr() ? Arg.getParamByValType() : Arg.getType();
+  return DL.getTypeAllocSize(ArgType);
+}
+
 // Returns VectorAlias regkey value. If not set (-1), returns default for current context.
 int16_t GetVectorAliasControl(const CodeGenContext *ctx) {
   const int value = static_cast<int>(IGC_GET_FLAG_VALUE(VectorAlias));

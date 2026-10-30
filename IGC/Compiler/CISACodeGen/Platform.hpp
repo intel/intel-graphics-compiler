@@ -1431,6 +1431,8 @@ public:
     return isCoreChildOf(IGFX_XE3P_CORE);
   }
 
+  bool supportsPullingKernelArguments() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
+
   bool EnableCSWalkerPass() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
 
   bool limitedBCR() const {

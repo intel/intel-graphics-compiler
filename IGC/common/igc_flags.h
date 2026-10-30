@@ -2164,6 +2164,11 @@ DECLARE_IGC_REGKEY(bool, EnableOpaquePointersBackend, false,
 DECLARE_IGC_REGKEY(bool, ExcludeIRFromZEBinary, false, "Exclude IR sections from ZE binary", ALWAYS)
 DECLARE_IGC_REGKEY(bool, AllocateZeroInitializedVarsInBss, true,
                    "Allocate zero initialized global variables in .bss section in ZEBinary", ALWAYS)
+DECLARE_IGC_REGKEY(bool, PullKernelArgs, false,
+                   "Pull explicit kernel arguments that do not fit in the push budget: keep them in cross-thread "
+                   "memory and load them where they are used, instead of having the payload prologue push them "
+                   "to GRFs. Arguments within the budget are still pushed. Xe2+ only",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, OverrideOCLMaxParamSize, 0,
                    "Override the value imposed on the kernel by CL_DEVICE_MAX_PARAMETER_SIZE. Value in bytes, if "
                    "value==0 no override happens.",

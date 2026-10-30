@@ -429,6 +429,9 @@ enum class ShaderTypeMD
 
         // List of optimizations to disable at a per-function level
         std::set<std::string> m_OptsToDisablePerFunc{};
+
+        // Indices of explicit arguments kept in cross-thread memory and loaded on use
+        std::vector<unsigned> pulledArgs{};
     };
 
     // isCloned member is added to mark whether a function is clone

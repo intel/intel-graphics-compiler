@@ -55,6 +55,7 @@ add_subdirectory(PrivateMemory)
 add_subdirectory(ProcessBICodeAssumption)
 add_subdirectory(FoldZeroInitAllocaIntoMemset)
 add_subdirectory(ProgramScopeConstants)
+add_subdirectory(PullKernelArguments)
 add_subdirectory(RayTracing)
 add_subdirectory(ReplaceUnsupportedIntrinsics)
 add_subdirectory(ResourceAllocator)
@@ -124,6 +125,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_ProcessBICodeAssumption}
     ${IGC_BUILD__SRC__OpenCLPasses_FoldZeroInitAllocaIntoMemset}
     ${IGC_BUILD__SRC__OpenCLPasses_ProgramScopeConstants}
+    ${IGC_BUILD__SRC__OpenCLPasses_PullKernelArguments}
     ${IGC_BUILD__SRC__OpenCLPasses_Raytracing}
     ${IGC_BUILD__SRC__OpenCLPasses_ReplaceUnsupportedIntrinsics}
     ${IGC_BUILD__SRC__OpenCLPasses_ResourceAllocator}
@@ -199,6 +201,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_ProcessBICodeAssumption}
     ${IGC_BUILD__HDR__OpenCLPasses_FoldZeroInitAllocaIntoMemset}
     ${IGC_BUILD__HDR__OpenCLPasses_ProgramScopeConstants}
+    ${IGC_BUILD__HDR__OpenCLPasses_PullKernelArguments}
     ${IGC_BUILD__HDR__OpenCLPasses_Raytracing}
     ${IGC_BUILD__HDR__OpenCLPasses_ReplaceUnsupportedIntrinsics}
     ${IGC_BUILD__HDR__OpenCLPasses_ResourceAllocator}
@@ -275,6 +278,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_ProcessBICodeAssumption
     Compiler__OpenCLPasses_FoldZeroInitAllocaIntoMemset
     Compiler__OpenCLPasses_ProgramScopeConstants
+    Compiler__OpenCLPasses_PullKernelArguments
     Compiler__OpenCLPasses_Raytracing
     Compiler__OpenCLPasses_ReplaceUnsupportedIntrinsics
     Compiler__OpenCLPasses_RewriteLocalSize

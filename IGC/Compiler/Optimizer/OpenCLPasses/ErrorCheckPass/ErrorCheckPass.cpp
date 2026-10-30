@@ -21,6 +21,9 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
+// Maximum total size of explicit kernel arguments when pulling is enabled
+static constexpr uint64_t MaxPulledKernelArgsSize = 32 * 1024;
+
 char ErrorCheckLPM::ID = 0;
 
 // Register pass to igc-opt
@@ -73,7 +76,12 @@ void ErrorCheck::checkArgsSize(Function &F) {
 
   auto DL = F.getParent()->getDataLayout();
   KernelArgs KernelArgs(F, &DL, MdUtils, ModMD, Ctx->platform.getGRFSize());
-  auto MaxParamSize = Ctx->platform.getMaxOCLParameteSize();
+  uint64_t MaxParamSize = Ctx->platform.getMaxOCLParameteSize();
+  // Arguments over the platform parameter size are pulled from cross-thread memory,
+  // so only the hard cap on explicit arguments applies.
+  if (AllowPullingKernelArguments(Ctx)) {
+    MaxParamSize = MaxPulledKernelArgsSize;
+  }
   uint64_t TotalSize = 0;
 
   if (KernelArgs.empty()) {
@@ -81,11 +89,8 @@ void ErrorCheck::checkArgsSize(Function &F) {
   }
 
   for (auto &KernelArg : KernelArgs) {
-    auto Arg = KernelArg.getArg();
-    Type *ArgType = Arg->getType();
-    ArgType = Arg->hasByValAttr() ? Arg->getParamByValType() : ArgType;
     if (!KernelArg.isImplicitArg()) {
-      TotalSize += DL.getTypeAllocSize(ArgType);
+      TotalSize += getKernelArgAllocSize(*KernelArg.getArg(), DL);
     }
   }
 

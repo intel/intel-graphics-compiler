@@ -160,6 +160,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeCleanupIndirectlyReferencedFunctionsLPMPass(Registry);
   initializeProgramScopeConstantAnalysisLPMPass(Registry);
   initializeProgramScopeConstantResolutionLPMPass(Registry);
+  initializePullKernelArgumentsLPMPass(Registry);
   initializePropagateCmpUniformityPass(Registry);
   initializeReduceOptPassLPMPass(Registry);
   initializeTypesLegalizationPassLPMPass(Registry);
