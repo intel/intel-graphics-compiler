@@ -156,18 +156,26 @@ void IR_Builder::dump(std::ostream &os) {
 }
 
 // bind a vISA input variable <dcl> to the GRF byte offset <offset>
-void IR_Builder::bindInputDecl(
+int IR_Builder::bindInputDecl(
     G4_Declare *dcl,
     int offset) { // decide the physical register number and sub register number
   unsigned int regNum = offset / getGRFSize();
   unsigned int subRegNum = (offset % getGRFSize()) / dcl->getElemSize();
-  dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), subRegNum);
-  dcl->setRegFile(G4_INPUT);
   unsigned int reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
   unsigned int totalGRFNum = kernel.grfMode.getInitalGRFNum();
+  // Validate before indexing the physical register table: an out-of-range
+  // index would silently return a garbage register and crash much later.
   if (regNum + dcl->getNumRows() > totalGRFNum - reservedGRFNum) {
-    vISA_ASSERT(false, "INPUT payload execeeds the register number");
+    std::stringstream ss;
+    ss << "input " << dcl->getName() << " at byte offset " << offset
+       << " (r" << regNum << ", " << dcl->getNumRows()
+       << " GRF(s)) exceeds the " << totalGRFNum
+       << "-GRF register file of this kernel";
+    return recordInputError(ss.str().c_str());
   }
+  dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), subRegNum);
+  dcl->setRegFile(G4_INPUT);
+  return VISA_SUCCESS;
 }
 
 bool IR_Builder::isGRFDstAligned(G4_Operand* opnd, int alignByte) const
