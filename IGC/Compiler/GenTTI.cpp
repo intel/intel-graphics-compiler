@@ -325,8 +325,13 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
     UP.Partial = true;
   } else // for high registry pressure shaders, limit the unrolling to small loops and only fully unroll
   {
-    UP.Threshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThresholdForHighRegPressure);
-    UP.PartialThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThresholdForHighRegPressure);
+    unsigned HighRegPressureThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThresholdForHighRegPressure);
+    if (!IGC_IS_FLAG_SET(SetLoopUnrollThresholdForHighRegPressure) &&
+        ctx->getModuleMetaData()->compOpt.SetLoopUnrollThresholdForHighRegPressure > 0) {
+      HighRegPressureThreshold = ctx->getModuleMetaData()->compOpt.SetLoopUnrollThresholdForHighRegPressure;
+    }
+    UP.Threshold = HighRegPressureThreshold;
+    UP.PartialThreshold = HighRegPressureThreshold;
     // This is similiar to LLVM OptForSize scenario in LoopUnrollPass
     UP.MaxPercentThresholdBoost = IGC_GET_FLAG_VALUE(SetLoopUnrollMaxPercentThresholdBoostForHighRegPressure);
   }
