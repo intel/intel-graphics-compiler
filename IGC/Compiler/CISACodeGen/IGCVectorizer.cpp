@@ -1170,6 +1170,8 @@ bool IGCVectorizer::handleExtractElement(VecArr &Slice) {
     PRINT_LOG_NL("Couldn't find insert point");
     return false;
   }
+  if (isThinSliceFromWideSource(Slice))
+    return false;
   auto ExtractInterface = createVector(Slice, InsertPoint);
   PRINT_LOG_INST_NL("extract interface is used: ", ExtractInterface);
   return true;
@@ -1552,6 +1554,18 @@ bool IGCVectorizer::checkNaiveSwizzle(VecArr &Slice) {
   return true;
 }
 
+// on SIMD16 repacking less than 4 lanes out of a wide (8+) source
+// costs more movs than the vectorized chain saves
+// with current alias analysis
+bool IGCVectorizer::isThinSliceFromWideSource(VecArr &Slice) {
+  unsigned int ExtractSourceVecSize = getVectorSize(Slice.front()->getOperand(0));
+  if (Slice.size() < 4 && SIMDSize == 16 && ExtractSourceVecSize >= 8) {
+    PRINT_LOG_NL("thin slice repacking from wide source is mostly unprofitable, bail");
+    return true;
+  }
+  return false;
+}
+
 bool IGCVectorizer::checkExtractElement(VecArr &Slice) {
   Value *CompareSource = Slice[0]->getOperand(0);
 
@@ -1838,6 +1852,9 @@ bool IGCVectorizer::estimateVirtualSeedProfitability(VecArr &SeedSlice) {
     return false;
 
   if (!checkNaiveSwizzle(ExtractElementSlice))
+    return false;
+
+  if (isThinSliceFromWideSource(ExtractElementSlice))
     return false;
 
   PRINT_LOG_NL("Naive swizzle, good!");

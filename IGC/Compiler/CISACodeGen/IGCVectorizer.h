@@ -114,6 +114,7 @@ private:
   bool handleInsertElement(VecArr &Slice);
   bool checkNaiveSwizzle(VecArr &Slice);
   bool checkExtractElement(VecArr &Slice);
+  bool isThinSliceFromWideSource(VecArr &Slice);
   bool handleExtractElement(VecArr &Slice);
   bool handleCastInstruction(VecArr &Slice);
   bool handleSelectInstruction(VecArr &Slice);
