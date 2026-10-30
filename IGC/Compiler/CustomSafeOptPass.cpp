@@ -607,6 +607,8 @@ void CustomSafeOptPass::mergeDotAddToDp4a(llvm::CallInst *I) {
             auto *user = *instr->users().begin();
             // replace i32 0 with %id113-
             instr->setOperand(0, accVal);
+            // The dot can't overflow with a zero acc, so sat was a no-op. The add wraps, so clear it.
+            instr->setOperand(3, ConstantInt::getFalse(instr->getContext()));
             user->replaceAllUsesWith(instr);
             // %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %id113-, i32 %305, i32 %345)
           }
