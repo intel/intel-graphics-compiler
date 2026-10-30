@@ -12784,9 +12784,9 @@ int GlobalRA::coloringRegAlloc() {
 
   bool hybridWithSpill = useHybridRAwithSpill &&
     (!hasStackCall || builder.getOption(vISA_PartitionWithFastHybridRA));
-  // Restricted EOT payloads need global liveness to reuse the final 16 GRFs.
-  useLocalRA = builder.getOption(vISA_LocalRA) &&
-               !(builder.hasEOTGRFBinding() && hasMultipleEOTs) &&
+  // Multiple EOTs need graph coloring to reuse the restricted payload GRFs.
+  const bool needsEOTGRFReuse = builder.hasEOTGRFBinding() && hasMultipleEOTs;
+  useLocalRA = builder.getOption(vISA_LocalRA) && !needsEOTGRFReuse &&
                (kernel.fg.funcInfoTable.size() == 0 ||
                 kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D ||
                 hybridWithSpill);
@@ -12838,11 +12838,17 @@ int GlobalRA::coloringRegAlloc() {
   // Global linear scan RA
   if (builder.getOption(vISA_LinearScan) &&
       builder.kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D) {
-    int success = doGlobalLinearScanRA();
-    if (success == VISA_SUCCESS)
-      return success;
-    else if (success == VISA_SPILL) {
-      return VISA_SPILL;
+    if (!needsEOTGRFReuse) {
+      int success = doGlobalLinearScanRA();
+      if (success == VISA_SUCCESS)
+        return success;
+      else if (success == VISA_SPILL) {
+        return VISA_SPILL;
+      }
+    } else {
+      RA_TRACE(std::cout
+               << "--Skipping requested global linear scan RA: multiple "
+                  "EOTs require graph coloring to reuse EOT payload GRFs--\n");
     }
   } else if (useLocalRA && !hasStackCall) {
     if (tryHybridRA()) {
