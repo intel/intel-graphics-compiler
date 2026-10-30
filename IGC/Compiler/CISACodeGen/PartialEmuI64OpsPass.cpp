@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Analysis/TargetFolder.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Analysis/ValueTracking.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/InstVisitor.h"
@@ -274,42 +275,26 @@ class Preprocessor {
 public:
   Preprocessor(PartialEmuI64Ops *E, BuilderType *B) : Emu(E), IRB(B) {}
 
+private:
+  bool replaceUAddWithOverflow(Instruction *I, SmallVectorImpl<Instruction *> &DeadInsts);
+  bool replaceDisjointOrWithAdd(Instruction *I, SmallVectorImpl<Instruction *> &DeadInsts);
+
+public:
   bool preprocess(Function &F) {
     bool Changed = false;
-    // Preprocess additions with overflow.
+    const bool HasInt64Add = Emu->CGC->platform.hasInt64Add();
+    // Preprocess additions with overflow and disjoint 64-bit `or`.
+    SmallVector<Instruction *, 16> DeadInsts;
     for (auto &BB : F) {
-      for (auto BI = BB.begin(), BE = BB.end(); BI != BE; /*EMPTY*/) {
-        IntrinsicInst *II = dyn_cast<IntrinsicInst>(BI);
-        if (!II || II->getIntrinsicID() != Intrinsic::uadd_with_overflow ||
-            !II->getArgOperand(0)->getType()->isIntegerTy(64)) {
-          ++BI;
-          continue;
-        }
-
-        IRB->SetInsertPoint(II);
-
-        Value *LHS = II->getArgOperand(0);
-        Value *RHS = II->getArgOperand(1);
-        Value *Res = IRB->CreateAdd(LHS, RHS);
-        Value *Overflow = IRB->CreateICmpULT(Res, LHS);
-
-        for (auto UI = II->user_begin(), UE = II->user_end(); UI != UE; /*EMPTY*/) {
-          User *U = *UI++;
-          ExtractValueInst *Ex = cast<ExtractValueInst>(U);
-          IGC_ASSERT(nullptr != Ex);
-          IGC_ASSERT(Ex->getNumIndices() == 1);
-
-          unsigned Idx = *Ex->idx_begin();
-          IGC_ASSERT(Idx == 0 || Idx == 1);
-          Ex->replaceAllUsesWith((Idx == 0) ? Res : Overflow);
-          Ex->eraseFromParent();
-        }
-        IGC_ASSERT(II->user_empty());
-        ++BI;
-        II->eraseFromParent();
-        Changed = true;
+      for (auto &I : BB) {
+        if (replaceUAddWithOverflow(&I, DeadInsts))
+          Changed = true;
+        else if (HasInt64Add && replaceDisjointOrWithAdd(&I, DeadInsts))
+          Changed = true;
       }
     }
+    for (auto *I : DeadInsts)
+      I->eraseFromParent();
     // Preprocess non-LOAD/-STORE pointer usage if there's 64-bit pointer.
     IGC_ASSERT(nullptr != Emu);
     if (Emu->hasPtr64()) {
@@ -450,6 +435,59 @@ public:
     return Changed;
   }
 };
+
+// Replace 64-bit `uadd.with.overflow` with `add` and `icmp ult`.
+bool Preprocessor::replaceUAddWithOverflow(Instruction *I, SmallVectorImpl<Instruction *> &DeadInsts) {
+  auto *II = dyn_cast<IntrinsicInst>(I);
+  if (!II || II->getIntrinsicID() != Intrinsic::uadd_with_overflow || !II->getArgOperand(0)->getType()->isIntegerTy(64))
+    return false;
+
+  IRB->SetInsertPoint(II);
+
+  Value *LHS = II->getArgOperand(0);
+  Value *RHS = II->getArgOperand(1);
+  Value *Res = IRB->CreateAdd(LHS, RHS);
+  Value *Overflow = IRB->CreateICmpULT(Res, LHS);
+
+  for (User *U : II->users()) {
+    ExtractValueInst *Ex = cast<ExtractValueInst>(U);
+    IGC_ASSERT(nullptr != Ex);
+    IGC_ASSERT(Ex->getNumIndices() == 1);
+
+    unsigned Idx = *Ex->idx_begin();
+    IGC_ASSERT(Idx == 0 || Idx == 1);
+    Ex->replaceAllUsesWith((Idx == 0) ? Res : Overflow);
+    DeadInsts.push_back(Ex);
+  }
+  DeadInsts.push_back(II);
+  return true;
+}
+
+// Replace 64-bit `or` without common bits set with `add`. Call it only if there is HW support for 64-bit `add`. There
+// is no 64-bit `or`, so it would be split into two 32-bit halves otherwise.
+bool Preprocessor::replaceDisjointOrWithAdd(Instruction *I, SmallVectorImpl<Instruction *> &DeadInsts) {
+  auto *Or = dyn_cast<BinaryOperator>(I);
+  if (!Or || Or->getOpcode() != Instruction::Or || !Emu->isInt64(Or))
+    return false;
+
+  Value *LHS = Or->getOperand(0);
+  Value *RHS = Or->getOperand(1);
+  bool IsDisjoint = false;
+#if LLVM_VERSION_MAJOR >= 18
+  IsDisjoint = cast<PossiblyDisjointInst>(Or)->isDisjoint();
+#endif
+  if (!IsDisjoint && !IGCLLVM::haveNoCommonBitsSet(LHS, RHS, *Emu->DL, nullptr, Or, Emu->DT))
+    return false;
+
+  BinaryOperator *Add = BinaryOperator::CreateAdd(LHS, RHS, "", IGCLLVM::insertPosition(Or));
+  Add->setHasNoUnsignedWrap(true);
+  Add->setHasNoSignedWrap(true);
+  Add->setDebugLoc(Or->getDebugLoc());
+  Add->takeName(Or);
+  Or->replaceAllUsesWith(Add);
+  DeadInsts.push_back(Or);
+  return true;
+}
 
 char PartialEmuI64Ops::ID = 0;
 
