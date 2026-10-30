@@ -174,10 +174,13 @@ entry:
 ; DUMP:         Max original regpressure: [[#ORIG:]]
 ; DUMP:         Attempt 0 (greedy-mw): result=retained, complete=1, maxRP=[[#ORIG]], {{.*}}, fwd=1/1
 ;
+; Without forwarding, %x2 also follows %x1: it releases %x1, and %z shares no
+; matrix with %x1, so FireChainGroupHeads does not schedule %z next.
+;
 ; UNPAIRED-LABEL: define spir_kernel void @local_operands(
 ; UNPAIRED:       %x1 = call
-; UNPAIRED-NEXT:  %z = call
 ; UNPAIRED-NEXT:  %x2 = call
+; UNPAIRED-NEXT:  %z = call
 define spir_kernel void @local_operands(<8 x i16> %a, <8 x i32> %b, ptr addrspace(1) %out) {
 entry:
   %a1 = add <8 x i16> %a, <i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1>
@@ -291,10 +294,10 @@ bb:
   ret void
 }
 
-; The chain heads %x1 and %y1 share %a, so they form a chain group. Without
-; pairing, the group boosts %y1 right after %x1. With pairing, %x2 is the
-; last scheduled instruction, not a chain head, so the group does not boost
-; %y1.
+; The chain heads %x1 and %y1 share %a, which the block loads, so they form a
+; chain group. Without pairing, the group boosts %y1 right after %x1. With
+; pairing, %x2 is the last scheduled instruction, not a chain head, so the
+; group does not boost %y1.
 ;
 ; PAIRED-LABEL: define spir_kernel void @chain_group_heads(
 ; PAIRED:       %x1 = call
@@ -309,8 +312,9 @@ bb:
 ; UNPAIRED-NEXT:  %x2 = call
 ; UNPAIRED-NEXT:  %x3 = call
 ; UNPAIRED-NEXT:  %x4 = call
-define spir_kernel void @chain_group_heads(<8 x i16> %a, <8 x i32> %b, <8 x i32> %b2, ptr addrspace(1) %out) {
+define spir_kernel void @chain_group_heads(ptr addrspace(1) %pa, <8 x i32> %b, <8 x i32> %b2, ptr addrspace(1) %out) {
 entry:
+  %a = load <8 x i16>, ptr addrspace(1) %pa, align 16
   %x1 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> %a, <8 x i32> %b, i32 11, i32 11, i32 8, i32 8, i1 false)
   %x2 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %x1, <8 x i16> %a, <8 x i32> %b, i32 11, i32 11, i32 8, i32 8, i1 false)
   %x3 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %x2, <8 x i16> %a, <8 x i32> %b, i32 11, i32 11, i32 8, i32 8, i1 false)

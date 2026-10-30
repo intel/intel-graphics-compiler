@@ -186,9 +186,10 @@ DECLARE_SCHEDULING_OPTION(HighInitialPressureRPMargin, 20,
                           "Additional RP margin applied to both High and Critical thresholds "
                           "when the BB initial pressure exceeds HighInitialPressureThreshold. "
                           "Accounts for cross-BB live-range overhead in loop bodies (0=disabled)")
-DECLARE_SCHEDULING_OPTION(HighInitialPressureThreshold, 180,
-                          "Threshold for initial BB pressure (in GRFs) above which "
-                          "HighInitialPressureRPMargin is applied")
+DECLARE_SCHEDULING_OPTION(HighInitialPressureThresholdDelta, 76,
+                          "HighInitialPressureRPMargin is applied when the initial BB pressure (in GRFs) is above "
+                          "the number of GRFs minus this delta (180 GRF for 256 GRF). Fewer than 256 GRF use the "
+                          "threshold of 256 GRF")
 // Load-density-based RA fragmentation compensation
 DECLARE_SCHEDULING_OPTION(LargeLoadFragOverheadPerLoad, 2,
                           "Estimated GRF fragmentation overhead per 2D block read in the BB. "
@@ -203,17 +204,19 @@ DECLARE_SCHEDULING_OPTION(LargeLoadDensityMarginApplyToCritical, 0,
                           "in addition to isRegpressureHigh(). 0=only applied to "
                           "isRegpressureHigh (avoids false spill predictions for BBs "
                           "that MW-schedule cleanly)")
-DECLARE_SCHEDULING_OPTION(LargeLoadDensityMarginCriticalMaxInitialRP, 120,
+DECLARE_SCHEDULING_OPTION(LargeLoadDensityMarginCriticalMaxInitialRPDelta, 136,
                           "Apply LargeLoadDensityMargin to isRegpressureCritical() when "
-                          "initialBBPressure < this threshold (in GRF units). 0 = never apply "
-                          "based on this gate; use LargeLoadDensityMarginApplyToCritical for "
-                          "unconditional control. Set to 120 to apply density margin to "
-                          "RP_critical only for low-initial-pressure BBs")
-DECLARE_SCHEDULING_OPTION(LargeLoadHighRPAdjustmentsMinInitialRP, 160,
+                          "initialBBPressure < the number of GRFs minus this delta (120 GRF for "
+                          "256 GRF), so only for low-initial-pressure BBs. Fewer than 256 GRF "
+                          "use the threshold of 256 GRF. A delta of at least the number of GRFs "
+                          "never applies it based on this gate; use "
+                          "LargeLoadDensityMarginApplyToCritical for unconditional control")
+DECLARE_SCHEDULING_OPTION(LargeLoadHighRPAdjustmentsMinInitialRPDelta, 96,
                           "Apply large-load RP_high adjustments (LargeLoadDensityMargin + "
-                          "ApplyStaticFragAdjustmentToHighRP) only when "
-                          "initialBBPressure >= this threshold (in GRF units). 0 = always apply "
-                          "(current behavior)")
+                          "ApplyStaticFragAdjustmentToHighRP) only when initialBBPressure >= "
+                          "the number of GRFs minus this delta (160 GRF for 256 GRF). Fewer "
+                          "than 256 GRF use the threshold of 256 GRF. A delta of at least the "
+                          "number of GRFs always applies them")
 
 // Other
 DECLARE_SCHEDULING_OPTION(ForceSIMDSize, 0,

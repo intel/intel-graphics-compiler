@@ -400,15 +400,20 @@ public:
     InitialPressureInRegisters = RPT.InitialPressureInRegisters;
     LargeLoadDensityMargin = RPT.LargeLoadDensityMargin;
 
-    // deepcopy HangingLiveVarsVec and HangingLiveVars
+    // deepcopy HangingLiveVarsVec and HangingLiveVars. HangingLiveVars also
+    // keeps the values that already died: the entry of the first scalar of a
+    // partially populated vector stops the update from tracking the vector a
+    // second time, with the dead scalar that would then never release it.
     HangingLiveVarsVec.clear();
     HangingLiveVarsVec.reserve(RPT.HangingLiveVarsVec.size());
+    DenseMap<const HangingLiveVarsInfo *, HangingLiveVarsInfo *> CopyOf;
     for (const auto &HangingLiveVar : RPT.HangingLiveVarsVec) {
-      HangingLiveVarsVec.push_back(std::make_unique<HangingLiveVarsInfo>(HangingLiveVar->Size, HangingLiveVar->Type));
-      HangingLiveVarsVec.back()->LiveVars = HangingLiveVar->LiveVars;
-      for (auto *V : HangingLiveVar->LiveVars) {
-        HangingLiveVars[V] = HangingLiveVarsVec.back().get();
-      }
+      HangingLiveVarsVec.push_back(std::make_unique<HangingLiveVarsInfo>(*HangingLiveVar));
+      CopyOf[HangingLiveVar.get()] = HangingLiveVarsVec.back().get();
+    }
+    for (const auto &[V, HangingLiveVar] : RPT.HangingLiveVars) {
+      IGC_ASSERT(CopyOf.count(HangingLiveVar));
+      HangingLiveVars[V] = CopyOf.lookup(HangingLiveVar);
     }
   }
 
@@ -549,13 +554,23 @@ public:
     return C->get(SchedulingConfig::Option::RPMarginIncreaseForFragmentationAdjustment);
   }
 
+  // Returns the threshold of the initial BB pressure that is the given delta
+  // below the number of GRFs. The deltas are tuned for 256 GRF, and the same
+  // number of free GRFs means the same with 512 GRF. Fewer than 256 GRF keep
+  // the threshold of 256 GRF, so the adjustments do not start to apply to the
+  // blocks they never applied to.
+  int getInitialPressureThreshold(SchedulingConfig::Option Delta) {
+    constexpr int MinNumGRF = 256;
+    return std::max(getNumGRF(), MinNumGRF) - C->get(Delta);
+  }
+
   // Returns additional RP margin when initial BB pressure is high,
   // compensating for cross-BB live-range overhead (e.g. in loop bodies).
   int getHighInitialPressureMargin() {
     int Margin = C->get(SchedulingConfig::Option::HighInitialPressureRPMargin);
     if (Margin <= 0)
       return 0;
-    int Threshold = C->get(SchedulingConfig::Option::HighInitialPressureThreshold);
+    int Threshold = getInitialPressureThreshold(SchedulingConfig::Option::HighInitialPressureThresholdDelta);
     if (InitialPressureInRegisters > Threshold)
       return Margin;
     return 0;
@@ -575,12 +590,14 @@ public:
   //   isRegpressureHigh (MW -> RP transition):
   //     adjustment = GreedyRPThresholdDelta + CodeSchedulingRPMargin
   //                + highInitialPressureMargin
-  //                + [if initialRP >= minInitialRP]: staticFragAdj + densityMargin
+  //                + [if initialRP >= max(numGRF, 256) - minInitialRPDelta]:
+  //                    staticFragAdj + densityMargin
   //
   //   isRegpressureCritical (per-load decisions in RP mode):
   //     adjustment = CodeSchedulingRPMargin + staticFragAdj
   //                + highInitialPressureMargin
-  //                + [if applyDensityToCritical OR initialRP < maxInitialRP]:
+  //                + [if applyDensityToCritical OR
+  //                      initialRP < max(numGRF, 256) - maxInitialRPDelta]:
   //                    densityMargin
   //
   // The IR-level RP estimate underestimates actual VISA/RA demand because
@@ -602,8 +619,9 @@ public:
                            static_cast<int>(IGC_GET_FLAG_VALUE(CodeSchedulingRPMargin));
 
     // Gate large-load adjustments (density margin + static frag) on initial BB pressure
-    int MinInitialRP = C->get(SchedulingConfig::Option::LargeLoadHighRPAdjustmentsMinInitialRP);
-    bool ApplyLargeLoadAdj = (MinInitialRP == 0) || (InitialPressureInRegisters >= MinInitialRP);
+    bool ApplyLargeLoadAdj =
+        InitialPressureInRegisters >=
+        getInitialPressureThreshold(SchedulingConfig::Option::LargeLoadHighRPAdjustmentsMinInitialRPDelta);
 
     if (ApplyLargeLoadAdj && C->get(SchedulingConfig::Option::ApplyStaticFragAdjustmentToHighRP)) {
       HighRPAdjustment += getStaticFragAdjustment(I);
@@ -618,9 +636,10 @@ public:
   bool isRegpressureCritical(Instruction *I = nullptr) {
     int TotalAdjustment = static_cast<int>(IGC_GET_FLAG_VALUE(CodeSchedulingRPMargin)) + getStaticFragAdjustment(I) +
                           getHighInitialPressureMargin();
-    int MaxInitialRP = C->get(SchedulingConfig::Option::LargeLoadDensityMarginCriticalMaxInitialRP);
-    bool ApplyDensityToCritical = C->get(SchedulingConfig::Option::LargeLoadDensityMarginApplyToCritical) ||
-                                  (MaxInitialRP != 0 && InitialPressureInRegisters < MaxInitialRP);
+    bool ApplyDensityToCritical =
+        C->get(SchedulingConfig::Option::LargeLoadDensityMarginApplyToCritical) ||
+        InitialPressureInRegisters <
+            getInitialPressureThreshold(SchedulingConfig::Option::LargeLoadDensityMarginCriticalMaxInitialRPDelta);
     if (ApplyDensityToCritical)
       TotalAdjustment += getLargeLoadDensityMargin();
     return compareRPWithThreshold<true>(TotalAdjustment, I);
@@ -903,27 +922,30 @@ private:
       auto SourceVecSize = computeSizeInBytes(SourceVec, SIMD, WI, *DL);
       HangingLiveVarsVec.emplace_back(std::make_unique<HangingLiveVarsInfo>(SourceVecSize, Type));
       auto *HLV = HangingLiveVarsVec.back().get();
+      // One HLV covers all subvectors of the source vector, so that a vector
+      // with both no-op and copied subvectors is released once. A no-op
+      // subvector uses the registers of the vector until the subvector dies,
+      // at its LastIE. A copied subvector reads the vector until its LastEE.
       for (auto *DT : VSA->getDestVectorsForSourceVector(SourceVec)) {
-        auto *CurrentLastIE = DT->getLastIE();
-        auto *CurrentLastEE = DT->getLastEE();
-        if (Type == HANGING_VECTORS) {
-          HLV->LiveVars.insert(CurrentLastEE);
-          HangingLiveVars[CurrentLastEE] = HLV;
-        } else {
-          if (Type == HANGING_NOOP_VECTORS) {
-            // If we are creating a HangingLiveVarsInfo for no-op vectors, we use LastIE
-            // because it is the last instruction that kills the whole vector
-            HLV->LiveVars.insert(CurrentLastIE);
-            HangingLiveVars[CurrentLastIE] = HLV;
-          }
-        }
+        Instruction *LiveVar = DT->isNoOp() ? static_cast<Instruction *>(DT->getLastIE()) : DT->getLastEE();
+        HLV->LiveVars.insert(LiveVar);
+        HangingLiveVars[LiveVar] = HLV;
+      }
+      // The source vector is live until its own last use too, which can come
+      // after its subvectors die, or out of the block. An operand dies as its
+      // real op, behind no-op casts, so the real op of the source vector is
+      // the hanging value. A source vector that is a no-op subvector of a
+      // larger vector stays a value of the larger vector's HLV.
+      Value *SourceOp = getRealOp(SourceVec);
+      if (!HangingLiveVars.count(SourceOp)) {
+        HLV->LiveVars.insert(SourceOp);
+        HangingLiveVars[SourceOp] = HLV;
+        if (Update)
+          PrintDumpLevel(VerbosityLevel::High, " (adding vector " << getName(SourceOp) << " to HLV)");
       }
       if (Update)
         PrintDumpLevel(VerbosityLevel::High,
-                       " (populating HLV with "
-                           << HLV->LiveVars.size()
-                           << (Type == HANGING_NOOP_VECTORS ? " IEs, vector size " : " EEs, vector size ") << HLV->Size
-                           << ")");
+                       " (populating HLV with " << HLV->LiveVars.size() << " values, vector size " << HLV->Size << ")");
       return HLV;
     };
 
@@ -998,7 +1020,9 @@ private:
           }
 
           if (HLV->LiveVars.empty()) {
-            // If there are no live vars, we don't need to keep the HLV
+            // If there are no live vars, we don't need to keep the HLV. It is
+            // empty only when FirstScalar is its only scalar, so FirstScalar is
+            // its only entry in HangingLiveVars.
             HangingLiveVarsVec.pop_back();
             HangingLiveVars.erase(FirstScalar);
             PrintDumpLevel(VerbosityLevel::High, " (no live vars, removing HLV as soon as it's created)");
@@ -1118,26 +1142,20 @@ private:
         if (HangingLiveVars.count(RealOp)) {
           auto HLV = HangingLiveVars[RealOp];
 
+          // HLV->Size holds all the registers of the hanging values, so only
+          // the last of them to die decreases the pressure, whichever it is.
           if (HLV->LiveVars.count(RealOp) && HLV->LiveVars.size() == 1) // This op is the only live var left
           {
             if (Update)
               PrintDumpLevel(VerbosityLevel::High, " (hanging vector dies)");
-            if (HLV->Type == HANGING_SCALARS_TO_VECTOR || HLV->Type == HANGING_VECTOR_TO_SCALARS) {
-              // only scalars die
-              RPDecrease = HLV->Size;
-            } else {
-              // in the vector shuffle case it's possible that the subvector also dies
-              RPDecrease += HLV->Size;
-            }
+            RPDecrease = HLV->Size;
           } else {
             if (Update)
               PrintDumpLevel(VerbosityLevel::High,
                              " (hanging vector, left vars: "
                                  << (HLV->LiveVars.count(RealOp) ? HLV->LiveVars.size() - 1 : HLV->LiveVars.size())
                                  << ")");
-            if (HLV->Type == HANGING_SCALARS_TO_VECTOR || HLV->Type == HANGING_VECTOR_TO_SCALARS) {
-              RPDecrease = 0; // We don't decrease pressure, because the vector is still alive
-            }
+            RPDecrease = 0; // We don't decrease pressure, because the vector is still alive
           }
           if (Update) {
             HLV->LiveVars.erase(RealOp);
@@ -1904,21 +1922,29 @@ private:
         }
       }
 
-      // Step 2: Group chains that share operands (transitive closure)
+      // Step 2: Group chains whose heads share an A or B matrix defined in this
+      // block (transitive closure). These are operands 1 and 2 of every DPAS
+      // intrinsic. The other operands are the accumulator, the precisions, the
+      // systolic depth, the repeat count and the callee, which all heads of one
+      // DPAS configuration share. A matrix that lives across the block, such as
+      // a loop-invariant one, stays live when the heads are fired together, so
+      // it does not link their chains.
+      auto SharesMatrix = [BB](Instruction *HeadA, Instruction *HeadB) {
+        for (unsigned OpA : {1u, 2u}) {
+          auto *Matrix = dyn_cast<Instruction>(HeadA->getOperand(OpA));
+          if (!Matrix || Matrix->getParent() != BB)
+            continue;
+          for (unsigned OpB : {1u, 2u})
+            if (HeadB->getOperand(OpB) == Matrix)
+              return true;
+        }
+        return false;
+      };
       {
         int NextGroupId = 0;
         for (size_t i = 0; i < DPASChains.size(); i++) {
           for (size_t j = i + 1; j < DPASChains.size(); j++) {
-            bool SharesOperand = false;
-            for (unsigned op = 1; op < DPASChains[i].Head->getNumOperands() && !SharesOperand; op++) {
-              for (unsigned op2 = 1; op2 < DPASChains[j].Head->getNumOperands(); op2++) {
-                if (DPASChains[i].Head->getOperand(op) == DPASChains[j].Head->getOperand(op2)) {
-                  SharesOperand = true;
-                  break;
-                }
-              }
-            }
-            if (!SharesOperand)
+            if (!SharesMatrix(DPASChains[i].Head, DPASChains[j].Head))
               continue;
 
             int GidI = DPASChains[i].GroupIdx;
