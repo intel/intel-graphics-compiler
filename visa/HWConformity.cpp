@@ -4081,6 +4081,21 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST *inst, int srcPos,
   }
 
   if (src->isImm()) {
+    if (inst->opcode() == G4_dp4a) {
+      // DP4A only supports a 16-bit immediate in src0.
+      if (srcPos != 0 || !canBeImm) {
+        return false;
+      }
+      G4_Type immType = IS_SIGNED_INT(src->getType()) ? Type_W : Type_UW;
+      int64_t value = src->asImm()->getImm();
+      if (!G4_Imm::isInTypeRange(value, immType) ||
+          (VISA_WA_CHECK(builder.getPWaTable(), WaNoSimd16TernarySrc0Imm) &&
+           inst->getExecSize() == g4::SIMD16)) {
+        return false;
+      }
+      inst->setSrc(builder.createImm(value, immType), srcPos);
+      return true;
+    }
     // either src0 or src2 can be 16b imm, but not both
     // permanent WA: simd16 inst can't have src0 imm.
     // Instead of splitting, we just add a move

@@ -2289,6 +2289,9 @@ int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd *&cisa_opnd,
   TIME_SCOPE(VISA_BUILDER_CREATE_OPND);
 
   cisa_opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
+  cisa_opnd->tag = OPERAND_IMMEDIATE;
+  cisa_opnd->_opnd.v_opnd.tag = OPERAND_IMMEDIATE;
+  cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd.type = isaType;
   if (IS_GEN_BOTH_PATH) {
     G4_Type g4type = GetGenTypeFromVISAType(isaType);
 
@@ -2309,14 +2312,12 @@ int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd *&cisa_opnd,
           *static_cast<const unsigned *>(value), Type_HF);
     } else {
       int64_t tmpValue = typecastVals(value, isaType);
+      cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.lval = tmpValue;
       cisa_opnd->g4opnd = m_builder->createImmWithLowerType(tmpValue, g4type);
     }
   }
   if (IS_VISA_BOTH_PATH) {
     cisa_opnd->opnd_type = CISA_OPND_VECTOR;
-    cisa_opnd->tag = OPERAND_IMMEDIATE;
-    cisa_opnd->_opnd.v_opnd.tag = OPERAND_IMMEDIATE;
-    cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd.type = isaType;
 
     int size = CISATypeTable[isaType].typeSize;
 
@@ -2686,6 +2687,34 @@ int VISAKernelImpl::AppendVISAArithmeticInst(
       status = m_builder->translateVISAArithmeticDoubleSQRTInst(
           opcode, executionSize, emask, g4Pred, g4SatMode, nullptr,
           tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd);
+    } else if (opcode == ISA_DP4A) {
+      auto getSrc = [&](VISA_VectorOpnd *src) -> G4_Operand * {
+        if (!src || !src->g4opnd->isImm() || src->tag != OPERAND_IMMEDIATE) {
+          return GET_G4_OPNG(src);
+        }
+
+        // DP4A needs the declared D/UD type. The initial G4 immediate may
+        // have been narrowed before the opcode was known, thus need
+        // to recreate the imm with the orignal D/UD
+        VISA_Type type = src->_opnd.v_opnd.getImmediateType();
+        // sanity check
+        if (type != ISA_TYPE_D && type != ISA_TYPE_UD)
+          return src->g4opnd;
+
+        // If g4opnd has the original type, we are done.
+        G4_Type g4Type = GetGenTypeFromVISAType(type);
+        if (src->g4opnd->getType() == g4Type)
+          return src->g4opnd;
+
+        // Recreate the imm with the original type
+        uint32_t value = src->_opnd.v_opnd.opnd_val.const_opnd._val.ival;
+        return m_builder->createImm(typecastVals(&value, type), g4Type);
+      };
+
+      status = m_builder->translateVISAArithmeticInst(
+          opcode, executionSize, emask, g4Pred, g4SatMode, nullptr,
+          tmpDst->g4opnd->asDstRegRegion(), getSrc(src0), GET_G4_OPNG(src1),
+          getSrc(src2), NULL);
     } else {
       status = m_builder->translateVISAArithmeticInst(
           opcode, executionSize, emask, g4Pred, g4SatMode, nullptr,

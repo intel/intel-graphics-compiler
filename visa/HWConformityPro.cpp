@@ -3191,9 +3191,18 @@ void HWConformityPro::fix3SrcInstEncodeRestriction(INST_LIST_ITER it,
   for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
     auto src = inst->getSrc(i);
     if (src->isImm()) {
-      // Either src0 or src2 can be 16b imm
-      if ((i == 0 || i == 2) && src->getTypeSize() <= 2)
+      if (inst->opcode() == G4_dp4a) {
+        // DP4A only supports a 16-bit immediate in src0.
+        G4_Type immType = IS_SIGNED_INT(src->getType()) ? Type_W : Type_UW;
+        int64_t value = src->asImm()->getImm();
+        if (i == 0 && G4_Imm::isInTypeRange(value, immType)) {
+          inst->setSrc(builder.createImm(value, immType), i);
+          continue;
+        }
+      } else if ((i == 0 || i == 2) && src->getTypeSize() <= 2) {
+        // Either src0 or src2 can be 16b imm.
         continue;
+      }
     } else if (!src->isIndirect()){
       // FIXME: Src1/src2 has no regioning and must be aligned to dst. It will
       // be done in fixRegRegionInt(/Math/Float)Pipe. So no need to check
