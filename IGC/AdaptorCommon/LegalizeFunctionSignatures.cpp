@@ -402,20 +402,15 @@ void LegalizeFunctionSignatures::fixFunctionBodies(Module &M) {
         }
         break;
       case RetLowering::StructValue:
-        for (Instruction &I : NewF->getEntryBlock()) {
-          auto *AI = dyn_cast<AllocaInst>(&I);
-          if (AI && AI->getAllocatedType() == NewF->getReturnType()) {
-            SRetPtr = AI;
-            SRetTy = NewF->getReturnType();
-            break;
-          }
-        }
-        if (SRetPtr) {
-          for (ReturnInst *RI : Returns) {
-            IGCLLVM::IRBuilder<> RetBuilder(RI);
-            RetBuilder.CreateRet(loadFromStruct(RetBuilder, SRetPtr, SRetTy));
-            RI->eraseFromParent();
-          }
+        // Split a returned whole-struct load from an alloca into field loads. Any other return value
+        // stays as it is: another alloca of the return type holds a different value.
+        for (ReturnInst *RI : Returns) {
+          auto *LI = dyn_cast<LoadInst>(RI->getReturnValue());
+          if (!LI || !isa<AllocaInst>(LI->getPointerOperand()->stripPointerCasts()))
+            continue;
+          IGCLLVM::IRBuilder<> RetBuilder(RI);
+          RetBuilder.CreateRet(loadFromStruct(RetBuilder, LI->getPointerOperand(), NewF->getReturnType()));
+          RI->eraseFromParent();
         }
         break;
       case RetLowering::WidenInt:
