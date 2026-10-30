@@ -1959,7 +1959,16 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB *bb, G4_Type extype,
                                  (dst_elsize * h_stride) < extypesize &&
                                  !(builder.hasMixMode() && dstHFMixModeInst);
   unsigned short dst_byte_offset;
-  builder.tryToAlignOperand(dst, dst_byte_offset, extypesize);
+  if (!builder.tryToAlignOperand(dst, dst_byte_offset, extypesize) &&
+      byteDst && dst_byte_offset % extypesize == 1) {
+    // A byte dst may start at byte 1 of the execution channel. But when the
+    // dst itself can't be aligned, tryToAlignOperand leaves its root declare
+    // unaligned, so the offset it reports does not hold once RA places the
+    // declare. Align the root declare to the execution type instead.
+    uint32_t rootOffset = 0;
+    if (builder.tryToAlignOperandRootDcl(dst, rootOffset, extypesize))
+      dst_byte_offset = static_cast<unsigned short>(rootOffset);
+  }
   if (!((dst_byte_offset % extypesize == 0) ||
        /*
         * If destination is UB or B, the destination subregnum can be aligned
