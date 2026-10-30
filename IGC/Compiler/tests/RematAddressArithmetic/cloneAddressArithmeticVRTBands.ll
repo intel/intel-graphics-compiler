@@ -27,10 +27,15 @@
 ; RUN:   --regkey=RematChainLimit=10 --regkey=RematSingleFlowRematEnabled=0 --regkey=RematFlowThreshold=100 \
 ; RUN:   --regkey=RematRPELimit=5 --platformlnl | FileCheck %s --check-prefix=FALLBACK
 
-; Xe3P platform (CRI)
+; Xe3P platform (CRI), with and without efficient 64-bit addressing
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-clone-address-arithmetic \
 ; RUN:   --regkey=RematChainLimit=10 --regkey=RematSingleFlowRematEnabled=0 --regkey=RematFlowThreshold=100 \
-; RUN:   --regkey=RematRPELimit=5 --regkey=RematVRTProximityPercent=5 --platformCri | FileCheck %s --check-prefix=P5CRI
+; RUN:   --regkey=RematRPELimit=5 --regkey=RematVRTProximityPercent=5 --regkey=EnableEfficient64b=1 \
+; RUN:   --platformCri | FileCheck %s --check-prefix=P5CRI
+; RUN: igc_opt --opaque-pointers %s -S -o - -igc-clone-address-arithmetic \
+; RUN:   --regkey=RematChainLimit=10 --regkey=RematSingleFlowRematEnabled=0 --regkey=RematFlowThreshold=100 \
+; RUN:   --regkey=RematRPELimit=5 --regkey=RematVRTProximityPercent=5 --regkey=EnableEfficient64b=0 \
+; RUN:   --platformCri | FileCheck %s --check-prefix=P5CRI-NO-EFFICIENT-64B
 
 ; Max register pressure of the four kernels, as reported by the register
 ; estimator: @small = 8, @fight = 164, @far = 188, @spill = 268 GRF.
@@ -62,6 +67,13 @@
 ; P5CRI-NOT: !remat
 ; P5CRI-LABEL: define spir_kernel void @spill
 ; P5CRI-NOT: !remat
+
+; vISA cannot select the 512-GRF mode without efficient 64-bit addressing, so the
+; top budget is 256 and @spill (268) remats.
+; P5CRI-NO-EFFICIENT-64B-LABEL: define spir_kernel void @far
+; P5CRI-NO-EFFICIENT-64B-NOT: !remat
+; P5CRI-NO-EFFICIENT-64B-LABEL: define spir_kernel void @spill
+; P5CRI-NO-EFFICIENT-64B: !remat
 
 ; Same Xe3 table as P5, but the tighter 2% proximity puts the 160 band
 ; threshold at 163, just below @fight's 164, so @fight no longer remats.

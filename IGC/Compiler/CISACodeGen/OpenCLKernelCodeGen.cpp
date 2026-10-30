@@ -2645,7 +2645,7 @@ static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, ui
     return false;
   }
 
-  auto VRTTable = pCtx->platform.getVRTTable();
+  auto VRTTable = pCtx->platform.getVRTTable(/*SelectableOnly=*/true);
   bool NotSpecifiedDirectly = pCtx->getNumGRFPerThread(false, F) == 0;
   if (IGC_IS_FLAG_ENABLED(EnableVRTSimd16Drop) && !VRTTable.empty() && NotSpecifiedDirectly) {
     if (isPastHighestVRTBudget(VRTTable, simd32Pressure, IGC_GET_FLAG_VALUE(VRTSimd16DropBudgetPercent)))

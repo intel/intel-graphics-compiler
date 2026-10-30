@@ -945,15 +945,9 @@ void CodeLoopSinking::collectVRTGRFTargets(Function &F) {
       !CTX->isAutoGRFSelectionEnabled(&F))
     return;
 
-  for (const auto &[NumGRF, ThreadsPerEU] : CTX->platform.getVRTTable()) {
+  for (const auto &[NumGRF, ThreadsPerEU] : CTX->getAutoGRFVRTTable()) {
     if (NumGRF < static_cast<int>(CodeGenContext::DEFAULT_TOTAL_GRF_NUM))
       continue;
-    if (!VRTGRFTargets.empty() && VRTGRFTargets.back().ThreadsPerEU == static_cast<unsigned>(ThreadsPerEU)) {
-      VRTGRFTargets.back().NumGRF = NumGRF;
-      continue;
-    }
-    IGC_ASSERT_MESSAGE(VRTGRFTargets.empty() || VRTGRFTargets.back().ThreadsPerEU > static_cast<unsigned>(ThreadsPerEU),
-                       "VRT table must not gain threads per EU with a larger GRF budget");
     VRTGRFTargets.push_back({static_cast<unsigned>(NumGRF), static_cast<unsigned>(ThreadsPerEU)});
   }
 }

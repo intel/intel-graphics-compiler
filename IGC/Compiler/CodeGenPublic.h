@@ -1170,6 +1170,13 @@ public:
   virtual uint32_t getNumGRFPerThread(bool returnDefault = true, const llvm::Function *F = nullptr);
   virtual void setNumGRFPerThread(uint32_t value) { m_NumGRFPerThread = value; }
   virtual bool isAutoGRFSelectionEnabled(const llvm::Function *F = nullptr) const { return false; };
+  // Returns the largest GRF number that vISA's automatic VRT selection may use,
+  // or 0 for no limit. RaiseTo512 raises it as for an OpenCL recompilation.
+  unsigned getVRTGRFCeiling(bool RaiseTo512 = false) const;
+  // Returns the modes of getMaxGRFVRTTable that vISA's automatic selection may
+  // use, without the raised ceiling of a recompilation. The ceiling does not
+  // limit a requested GRF number.
+  llvm::SmallVector<VRT::ModeEntry, 8> getAutoGRFVRTTable() const;
   virtual bool forceGlobalMemoryAllocation() const;
   virtual bool allocatePrivateAsGlobalBuffer() const;
   virtual bool noLocalToGenericOptionEnabled() const;

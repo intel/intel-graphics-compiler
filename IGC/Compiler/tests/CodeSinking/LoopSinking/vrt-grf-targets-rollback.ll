@@ -8,8 +8,8 @@
 ;
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt --opaque-pointers -platformCri --regkey DumpLoopSink=1 --regkey PrintToConsole=1 \
-; RUN:   --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
+; RUN: igc_opt --opaque-pointers -platformCri --regkey EnableEfficient64b=1 --regkey DumpLoopSink=1 \
+; RUN:   --regkey PrintToConsole=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
 ; RUN:   | FileCheck %s --check-prefixes=CRI,NOSINK
 ; RUN: igc_opt --opaque-pointers -platformPtl --regkey DumpLoopSink=1 --regkey PrintToConsole=1 \
 ; RUN:   --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
@@ -28,6 +28,8 @@
 ; On CRI the loop fits the 512-GRF budget with 4 threads per EU, and the pass
 ; sinks toward 192 GRFs (8 threads per EU). The sunk loop still needs the
 ; 512-GRF budget, so the sinking only adds work to the loop and is reverted.
+; The CRI run enables efficient 64-bit addressing, which the 512-GRF budget
+; needs.
 ;
 ; On PTL the loop exceeds the largest budget (256 GRFs). The sunk loop fits
 ; the 256-GRF budget, so the sinking is kept, although it does not reach the

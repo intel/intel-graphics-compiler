@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/STLExtras.h"
 
 #include "skuwa/iacm_g10_rev_id.h"
 #include "skuwa/iacm_g11_rev_id.h"
@@ -864,9 +865,10 @@ public:
   bool supportsVRT() const { return isCoreChildOf(IGFX_XE3_CORE); }
   bool supportsSampleResultLatencySink() const { return isCoreChildOf(IGFX_XE3_CORE); }
 
-  // Returns the VRT mode table of this platform, or an empty table when the
-  // platform does not support VRT.
-  llvm::ArrayRef<VRT::ModeEntry> getVRTTable() const {
+private:
+  // Returns the VRT mode table of this platform, ordered by increasing GRF
+  // number, or an empty table when the platform does not support VRT.
+  llvm::ArrayRef<VRT::ModeEntry> getVRTModeTable() const {
     if (!supportsVRT())
       return {};
     if (m_platformInfo.eRenderCoreFamily == IGFX_XE3_CORE || m_platformInfo.eProductFamily == IGFX_PTL) {
@@ -877,6 +879,49 @@ public:
       return VRT::ModeTableXe3P;
     }
     return {};
+  }
+
+public:
+  // Returns the VRT modes of this platform, ordered by increasing GRF number, or
+  // an empty table when the platform does not support VRT. With SelectableOnly
+  // it keeps only the modes that vISA can select: a supported GRF number, and
+  // above 256 GRF only with efficient 64-bit addressing.
+  llvm::SmallVector<VRT::ModeEntry, 16> getVRTTable(bool SelectableOnly = false) const {
+    llvm::ArrayRef<VRT::ModeEntry> ModeTable = getVRTModeTable();
+    if (!SelectableOnly)
+      return llvm::SmallVector<VRT::ModeEntry, 16>(ModeTable.begin(), ModeTable.end());
+    auto SupportedGRFSizes = getSupportedGRFSizes();
+    llvm::SmallVector<VRT::ModeEntry, 16> Modes;
+    for (const VRT::ModeEntry &Mode : ModeTable) {
+      auto NumGRF = static_cast<uint32_t>(Mode.first);
+      if (!llvm::is_contained(SupportedGRFSizes, NumGRF))
+        continue;
+      // vISA enables the modes above 256 GRF only with efficient 64-bit addressing.
+      if (NumGRF > 256 && !hasEfficient64bEnabled())
+        continue;
+      Modes.push_back(Mode);
+    }
+    return Modes;
+  }
+
+  // Returns the selectable VRT modes of getVRTTable with only the largest GRF
+  // budget for each number of HW threads per EU, ordered by decreasing number of
+  // threads. A nonzero MaxNumGRF, a GRF ceiling of the compilation, drops the
+  // modes above it.
+  llvm::SmallVector<VRT::ModeEntry, 8> getMaxGRFVRTTable(unsigned MaxNumGRF = 0) const {
+    llvm::SmallVector<VRT::ModeEntry, 8> Modes;
+    // Modes with the same number of threads are adjacent in the table, and the
+    // last one has the largest budget. The ceiling applies before the merge, so a
+    // smaller mode with the same number of threads stays.
+    for (const VRT::ModeEntry &Mode : getVRTTable(/*SelectableOnly=*/true)) {
+      if (MaxNumGRF != 0 && static_cast<unsigned>(Mode.first) > MaxNumGRF)
+        continue;
+      if (!Modes.empty() && Modes.back().second == Mode.second)
+        Modes.back() = Mode;
+      else
+        Modes.push_back(Mode);
+    }
+    return Modes;
   }
 
 

@@ -8,12 +8,19 @@
 ;
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt --opaque-pointers -platformCri --regkey DumpLoopSink=1 --regkey PrintToConsole=1 \
-; RUN:   --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
+; RUN: igc_opt --opaque-pointers -platformCri --regkey EnableEfficient64b=1 --regkey DumpLoopSink=1 \
+; RUN:   --regkey PrintToConsole=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
 ; RUN:   | FileCheck %s --check-prefixes=CRI,SINK
 ; RUN: igc_opt --opaque-pointers -platformPtl --regkey DumpLoopSink=1 --regkey PrintToConsole=1 \
 ; RUN:   --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
 ; RUN:   | FileCheck %s --check-prefixes=PTL,SINK
+; RUN: igc_opt --opaque-pointers -platformNvl --regkey EnableEfficient64b=1 --regkey DumpLoopSink=1 \
+; RUN:   --regkey PrintToConsole=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
+; RUN:   | FileCheck %s --check-prefixes=PTL,SINK
+; RUN: igc_opt --opaque-pointers -platformNvl --regkey EnableEfficient64b=1 --regkey ForceVRTGRFCeiling=512 \
+; RUN:   --regkey DumpLoopSink=1 --regkey PrintToConsole=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa \
+; RUN:   --igc-code-loop-sinking -S %s 2>&1 \
+; RUN:   | FileCheck %s --check-prefixes=NVL-CEILING-512,SINK
 ; RUN: igc_opt --opaque-pointers -platformCri --regkey LoopSinkUseVRTTargets=0 --regkey DumpLoopSink=1 \
 ; RUN:   --regkey PrintToConsole=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
 ; RUN:   | FileCheck %s --check-prefixes=BUDGET128,SINK
@@ -34,8 +41,11 @@
 ; On CRI the loop fits the 512-GRF budget with 4 threads per EU. Every budget
 ; up to 192 GRFs gives 8, so the pass sinks toward 192 GRFs. On PTL the loop
 ; exceeds the largest budget (256 GRFs), and 128 GRFs gives the most threads,
-; so the pass sinks toward 128 GRFs. A forced GRF count, platforms without
-; VRT, and the disabled regkey keep their fixed budgets.
+; so the pass sinks toward 128 GRFs. NVL behaves like PTL, because vISA's
+; automatic selection there stops at a 256-GRF ceiling; with a raised ceiling
+; the loop fits the 512-GRF budget with 2 threads per EU. A forced GRF count,
+; platforms without VRT, and the disabled regkey keep their fixed budgets. The
+; 512-GRF budget needs efficient 64-bit addressing.
 ;
 ; CRI: Checking loop with preheader ph:
 ; CRI: VRT threads per EU at the loop pressure = 4
@@ -44,6 +54,10 @@
 ; CRI: >> Sinking in the loop with preheader ph
 ; CRI-NEXT: Targeting new own regpressure in the loop = 182
 ; CRI-NOT: Reverting the changes
+;
+; NVL-CEILING-512: Checking loop with preheader ph:
+; NVL-CEILING-512: VRT threads per EU at the loop pressure = 2
+; NVL-CEILING-512-NEXT: Trying VRT target 128 GRFs, 8 threads per EU
 ;
 ; PTL: Checking loop with preheader ph:
 ; PTL: VRT threads per EU at the loop pressure = 0

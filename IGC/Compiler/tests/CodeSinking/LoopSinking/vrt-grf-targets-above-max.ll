@@ -8,8 +8,8 @@
 ;
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt --opaque-pointers -platformCri --regkey DumpLoopSink=1 --regkey PrintToConsole=1 \
-; RUN:   --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
+; RUN: igc_opt --opaque-pointers -platformCri --regkey EnableEfficient64b=1 --regkey DumpLoopSink=1 \
+; RUN:   --regkey PrintToConsole=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
 ; RUN:   | FileCheck %s --check-prefixes=CRI,SINK
 ; RUN: igc_opt --opaque-pointers -platformPtl --regkey DumpLoopSink=1 --regkey PrintToConsole=1 \
 ; RUN:   --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
@@ -28,6 +28,8 @@
 ;
 ; On PTL even the largest budget (256 GRFs) is out of reach, and so is the
 ; default 128-GRF budget on CRI with the regkey disabled; nothing is sunk.
+; The CRI run enables efficient 64-bit addressing, which the 512-GRF budget
+; needs.
 ;
 ; CRI: Checking loop with preheader ph:
 ; CRI: VRT threads per EU at the loop pressure = 0

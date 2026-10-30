@@ -736,7 +736,7 @@ unsigned int CloneAddressArithmetic::pressureBudget(Function &F) {
     if (Budget && MaxPressure > Budget)
       return Budget;
   }
-  auto VRTTable = CGCtx->platform.getVRTTable();
+  auto VRTTable = CGCtx->platform.getVRTTable(/*SelectableOnly=*/true);
   if (!VRTTable.empty() && (int)MaxPressure > VRTTable.back().first)
     return VRTTable.back().first;
   return 0;
@@ -838,7 +838,7 @@ bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
   unsigned int PressureLimit = 0.01f * (float)m_rpeLimitPercent * (float)GRFSize;
   MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
 
-  auto VRTTable = CGCtx->platform.getVRTTable();
+  auto VRTTable = CGCtx->platform.getVRTTable(/*SelectableOnly=*/true);
   if (!VRTTable.empty()) {
     unsigned int Proximity = IGC_GET_FLAG_VALUE(RematVRTProximityPercent);
     bool ShouldRemat = shouldRematForVRT(VRTTable, MaxPressure, Proximity);

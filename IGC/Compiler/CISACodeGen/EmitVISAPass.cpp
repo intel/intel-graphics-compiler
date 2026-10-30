@@ -613,7 +613,7 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function
   // false --> return 0 if nothing was set through flags
   auto GRFPerThread = m_pCtx->getNumGRFPerThread(false, F);
   bool NotSpecifiedDirectly = GRFPerThread == 0;
-  auto VRTTable = m_pCtx->platform.getVRTTable();
+  auto VRTTable = m_pCtx->platform.getVRTTable(/*SelectableOnly=*/true);
   if (IGC_IS_FLAG_ENABLED(EnableVRTEarlyRetry) && !VRTTable.empty() && NotSpecifiedDirectly) {
     return isPastHighestVRTBudget(VRTTable, MaxRegPressure, IGC_GET_FLAG_VALUE(VRTEarlyRetryBudgetPercent));
   }

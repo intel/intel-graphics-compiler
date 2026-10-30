@@ -874,6 +874,28 @@ uint32_t CodeGenContext::getNumGRFPerThread(bool returnDefault, const llvm::Func
   return (returnDefault ? DEFAULT_TOTAL_GRF_NUM : 0);
 }
 
+unsigned CodeGenContext::getVRTGRFCeiling(bool RaiseTo512) const {
+  unsigned Ceiling = 0;
+  if (platform.forceMaxGrf256() && m_DriverInfo.allowDefault256GrfSize())
+    Ceiling = 256;
+
+  if (RaiseTo512)
+    Ceiling = 512;
+
+  // For UMD AIL config specific, such as GRF 512, override the default
+  if (getModuleMetaData()->compOpt.ForceVRTGRFCeiling)
+    Ceiling = getModuleMetaData()->compOpt.ForceVRTGRFCeiling;
+
+  // If regkey is set (> 0), override the ceiling
+  if (auto ForcedKeyValue = IGC_GET_FLAG_VALUE(ForceVRTGRFCeiling))
+    Ceiling = ForcedKeyValue;
+  return Ceiling;
+}
+
+llvm::SmallVector<VRT::ModeEntry, 8> CodeGenContext::getAutoGRFVRTTable() const {
+  return platform.getMaxGRFVRTTable(getVRTGRFCeiling());
+}
+
 bool CodeGenContext::forceGlobalMemoryAllocation() const { return false; }
 
 bool CodeGenContext::allocatePrivateAsGlobalBuffer() const { return false; }

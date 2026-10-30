@@ -5130,33 +5130,15 @@ void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInli
   if (lowerBoundGRF > 0 && vbuilder->GetuInt32Option(vISA_MinGRFNum) == 0) {
     SaveOption(vISA_MinGRFNum, lowerBoundGRF);
   }
-
-  unsigned int userVRTGRFCeiling = 0;
-
-  if (m_program->m_Platform->forceMaxGrf256()) {
-    if (context->m_DriverInfo.allowDefault256GrfSize()) {
-      userVRTGRFCeiling = 256;
-    }
-  }
-
   // On OCL recompilation, raise the ceiling to 512 for an eligible kernel from its final SIMD
   // width and DPAS state; VRT still picks the count.
+  bool raiseVRTGRFCeilingTo512 = false;
   if (context->type == ShaderType::OPENCL_SHADER) {
     auto *clCtx = static_cast<OpenCLProgramContext *>(context);
-    if (clCtx->kernelQualifiesFor512(m_program->m_State.GetHasDPAS(), m_program->m_State.m_dispatchSize,
-                                     m_program->entry))
-      userVRTGRFCeiling = 512;
+    raiseVRTGRFCeilingTo512 = clCtx->kernelQualifiesFor512(m_program->m_State.GetHasDPAS(),
+                                                           m_program->m_State.m_dispatchSize, m_program->entry);
   }
-
-  // For UMD AIL config specific, such as GRF 512, override the default
-  if (context->getModuleMetaData()->compOpt.ForceVRTGRFCeiling) {
-    userVRTGRFCeiling = context->getModuleMetaData()->compOpt.ForceVRTGRFCeiling;
-  }
-
-  // If regkey is set (> 0), override userVRTGRFCeiling
-  if (auto forcedKeyValue = IGC_GET_FLAG_VALUE(ForceVRTGRFCeiling)) {
-    userVRTGRFCeiling = forcedKeyValue;
-  }
+  unsigned int userVRTGRFCeiling = context->getVRTGRFCeiling(raiseVRTGRFCeilingTo512);
 
   // choose the minimum of the previously configured upperBoundGRF and the user requested maxGrfLimit
   if (userVRTGRFCeiling) {

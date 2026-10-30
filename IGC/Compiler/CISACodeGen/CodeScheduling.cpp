@@ -128,41 +128,14 @@ struct SchedulingGRFTarget {
   unsigned ThreadsPerEU = 0;
 };
 
-static llvm::SmallVector<SchedulingGRFTarget, 4> buildAutoGRFTargets(const CPlatform &Platform,
-                                                                     llvm::ArrayRef<VRT::ModeEntry> VRTTable) {
+static llvm::SmallVector<SchedulingGRFTarget, 4> buildAutoGRFTargets(const CodeGenContext &Ctx) {
   // Static-sharing platforms have two automatic GRF modes and no VRT table.
-  if (VRTTable.empty())
+  if (Ctx.platform.getVRTTable().empty())
     return {{128, 8}, {256, 4}};
 
   llvm::SmallVector<SchedulingGRFTarget, 4> GRFTargets;
-  llvm::DenseMap<unsigned, unsigned> LargestGRFByThreadCount;
-  auto SupportedGRFSizes = Platform.getSupportedGRFSizes();
-
-  for (const auto &[NumGRFValue, ThreadsPerEUValue] : VRTTable) {
-    if (NumGRFValue <= 0 || ThreadsPerEUValue <= 0)
-      continue;
-
-    unsigned NumGRF = static_cast<unsigned>(NumGRFValue);
-    unsigned ThreadsPerEU = static_cast<unsigned>(ThreadsPerEUValue);
-    if (std::find(SupportedGRFSizes.begin(), SupportedGRFSizes.end(), NumGRF) == SupportedGRFSizes.end())
-      continue;
-
-    // vISA does not enable CRI's 512-GRF mode without efficient 64-bit addressing.
-    if (Platform.GetProductFamily() == IGFX_CRI && NumGRF == 512 && !Platform.hasEfficient64bEnabled())
-      continue;
-
-    auto It = LargestGRFByThreadCount.find(ThreadsPerEU);
-    if (It == LargestGRFByThreadCount.end())
-      LargestGRFByThreadCount[ThreadsPerEU] = NumGRF;
-    else
-      It->second = std::max(It->second, NumGRF);
-  }
-
-  for (const auto &[ThreadsPerEU, NumGRF] : LargestGRFByThreadCount)
-    GRFTargets.push_back({NumGRF, ThreadsPerEU});
-
-  std::sort(GRFTargets.begin(), GRFTargets.end(),
-            [](const SchedulingGRFTarget &A, const SchedulingGRFTarget &B) { return A.ThreadsPerEU > B.ThreadsPerEU; });
+  for (const auto &[NumGRF, ThreadsPerEU] : Ctx.getAutoGRFVRTTable())
+    GRFTargets.push_back({static_cast<unsigned>(NumGRF), static_cast<unsigned>(ThreadsPerEU)});
   return GRFTargets;
 }
 
@@ -4928,11 +4901,10 @@ bool CodeScheduling::runOnFunction(Function &F) {
   WI = &FRPE->getWIAnalysis(&F);
   FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
-  const auto VRTTable = CTX->platform.getVRTTable();
   const bool UseAutoGRFScheduling = CTX->getNumGRFPerThread(false, &F) == 0 && CTX->isAutoGRFSelectionEnabled(&F);
   llvm::SmallVector<SchedulingGRFTarget, 4> GRFTargets;
   if (UseAutoGRFScheduling)
-    GRFTargets = buildAutoGRFTargets(CTX->platform, VRTTable);
+    GRFTargets = buildAutoGRFTargets(*CTX);
 
   FunctionScheduler Scheduler(F, RPE, FRPE, AA, VSA, RCA, CTX, Config, GRFTargets, LogStream, FGA);
   bool Changed = Scheduler.schedule();
