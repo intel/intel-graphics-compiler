@@ -1793,7 +1793,10 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl, uint16_t offset,
     }
     }
 
-    if (status == VISA_SUCCESS) {
+    // Pseudo inputs describe compiler-generated memory ranges, not payload
+    // registers. Their offsets may be larger than the physical GRF file and
+    // must not be used as GRF indices.
+    if (status == VISA_SUCCESS && !input->isPseudoInput()) {
       m_builder->bindInputDecl(dcl, offset);
     }
     input->dcl = dcl;
