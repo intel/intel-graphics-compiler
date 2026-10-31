@@ -61,15 +61,12 @@ private:
   llvm::SmallVector<Instruction *, 32> generatedLoadStores;
   bool m_needPrivateBranches = false;
   bool m_needLocalBranches = false;
-  bool m_usePredication = false;
 
   uint64_t m_numAdditionalControlFlows = 0;
 
   Type *getPointerAsIntType(LLVMContext &Ctx, unsigned AS);
   void emitVerboseWarning(Instruction &I);
-  bool canResolveGASWithPredicates(Instruction &I) const;
   void resolveGAS(Instruction &I, Value *pointerOperand);
-  void resolveGASWithPredicates(Instruction &I, Value *pointerOperand);
   void resolveGASWithoutBranches(Instruction &I, Value *pointerOperand);
 };
 } // namespace
@@ -94,8 +91,6 @@ bool GenericAddressDynamicResolution::runOnFunction(Function &F) {
   GASInfo &GI = getAnalysis<CastToGASAnalysis>().getGASInfo();
   m_needPrivateBranches = !GI.isPrivateAllocatedInGlobalMemory() && GI.canGenericPointToPrivate(F);
   m_needLocalBranches = !GI.isNoLocalToGenericOptionEnabled() && GI.canGenericPointToLocal(F);
-  m_usePredication = IGC_IS_FLAG_ENABLED(EnablePredicatedGASDynamicResolution) && m_ctx->platform.hasLSC() &&
-                     m_ctx->platform.LSCEnabled();
 
   bool modified = false;
 
@@ -179,8 +174,6 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction &I) {
   if (pointerAddressSpace == ADDRESS_SPACE_GENERIC) {
     if (!m_needPrivateBranches && !m_needLocalBranches) {
       resolveGASWithoutBranches(I, pointerOperand);
-    } else if (canResolveGASWithPredicates(I)) {
-      resolveGASWithPredicates(I, pointerOperand);
     } else {
       resolveGAS(I, pointerOperand);
     }
@@ -336,80 +329,6 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction &I, Value *pointerO
     }
   }
 
-  I.eraseFromParent();
-}
-
-bool GenericAddressDynamicResolution::canResolveGASWithPredicates(Instruction &I) const {
-  if (!m_usePredication)
-    return false;
-  // Predicated intrinsics can't express volatile or atomic ordering.
-  if (auto *LI = dyn_cast<LoadInst>(&I))
-    return LI->isSimple();
-  if (auto *SI = dyn_cast<StoreInst>(&I))
-    return SI->isSimple();
-  return true;
-}
-
-void GenericAddressDynamicResolution::resolveGASWithPredicates(Instruction &I, Value *pointerOperand) {
-  IGCLLVM::IRBuilder<> builder(&I);
-  auto *pointerType = cast<PointerType>(pointerOperand->getType());
-
-  Type *intPtrTy = getPointerAsIntType(pointerOperand->getContext(), ADDRESS_SPACE_GENERIC);
-  Value *tag = builder.CreateLShr(builder.CreatePtrToInt(pointerOperand, intPtrTy), 61);
-  Value *isPrivate = m_needPrivateBranches ? builder.CreateICmpEQ(tag, builder.getInt64(1), "isPrivate") : nullptr;
-  Value *isLocal = m_needLocalBranches ? builder.CreateICmpEQ(tag, builder.getInt64(2), "isLocal") : nullptr;
-  Value *notGlobal = (isPrivate && isLocal) ? builder.CreateOr(isPrivate, isLocal) : (isPrivate ? isPrivate : isLocal);
-  Value *isGlobal = builder.CreateNot(notGlobal, "isGlobal");
-
-  Type *loadTy = nullptr;
-  Value *storedValue = nullptr;
-  Value *predicate = nullptr;
-  Value *mergeValue = nullptr;
-  Value *alignment = nullptr;
-  if (auto *LI = dyn_cast<LoadInst>(&I)) {
-    loadTy = LI->getType();
-    mergeValue = PoisonValue::get(loadTy);
-    alignment = builder.getInt64(LI->getAlign().value());
-  } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
-    storedValue = SI->getValueOperand();
-    alignment = builder.getInt64(SI->getAlign().value());
-  } else if (auto *PLI = dyn_cast<PredicatedLoadIntrinsic>(&I)) {
-    loadTy = PLI->getType();
-    mergeValue = PLI->getMergeValue();
-    predicate = PLI->getPredicate();
-    alignment = PLI->getAlignmentValue();
-  } else {
-    auto *PSI = cast<PredicatedStoreIntrinsic>(&I);
-    storedValue = PSI->getValueOperand();
-    predicate = PSI->getPredicate();
-    alignment = PSI->getAlignmentValue();
-  }
-
-  // The address space predicates are mutually exclusive, so chaining the merge
-  // values gives each lane either its loaded value or the original merge value.
-  auto emitAccess = [&](IGC::ADDRESS_SPACE addressSpace, Value *asPredicate, const Twine &loadName) {
-    Value *ptr = builder.CreateAddrSpaceCast(pointerOperand, IGCLLVM::PointerType::get(pointerType, addressSpace));
-    if (predicate)
-      asPredicate = builder.CreateAnd(predicate, asPredicate);
-    if (storedValue) {
-      Function *storeFunc = IGC::GetDeclaration(m_module, GenISAIntrinsic::GenISA_PredicatedStore,
-                                                {ptr->getType(), storedValue->getType()}, {});
-      builder.CreateCall(storeFunc, {ptr, storedValue, alignment, asPredicate});
-      return;
-    }
-    Function *loadFunc =
-        IGC::GetDeclaration(m_module, GenISAIntrinsic::GenISA_PredicatedLoad, {loadTy, ptr->getType(), loadTy}, {});
-    mergeValue = builder.CreateCall(loadFunc, {ptr, alignment, asPredicate, mergeValue}, loadName);
-  };
-
-  emitAccess(ADDRESS_SPACE_GLOBAL, isGlobal, "globalLoad");
-  if (isLocal)
-    emitAccess(ADDRESS_SPACE_LOCAL, isLocal, "localLoad");
-  if (isPrivate)
-    emitAccess(ADDRESS_SPACE_PRIVATE, isPrivate, "privateLoad");
-
-  if (loadTy)
-    I.replaceAllUsesWith(mergeValue);
   I.eraseFromParent();
 }
 
