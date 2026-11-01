@@ -984,9 +984,11 @@ bool CodeLoopSinking::loopSink(Function &F) {
       Changed |= loopSink(L, SinkMode, TargetGRF);
   }
 
+  uint SIMD = numLanes(IGC::bestGuessSIMDSize(CTX, &F, FGA));
   PressurePair ExternalPair = FRPE->getExternalPressurePairForFunction(&F);
-  unsigned SIMD = numLanes(IGC::bestGuessSIMDSize(CTX, &F, FGA));
-  PressurePair Pair = RPE->getMaxPressurePairForFunction(F, SIMD, WI);
+  unsigned int MaxPressure = getMaxRegCountForFunction(&F);
+  unsigned RegSize = CTX->platform.getGRFSize();
+  PressurePair Pair = {MaxPressure * RegSize, 0};
   RPE->publishNormalizedPressurePair(F, Pair + ExternalPair, SIMD);
 
   return Changed;
