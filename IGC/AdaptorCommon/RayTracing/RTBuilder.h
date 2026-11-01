@@ -435,6 +435,9 @@ private:
 public:
   Type *getSMStack2Ty() const;
   Type *getRTStack2Ty() const;
+  // Copies the bytes of a getRTStack2Ty() object that belong to its stack id. The strided memory
+  // styles interleave three other ids' live stacks in the struct's `pad`, which is skipped.
+  void createRTStack2Copy(Value *Dst, Value *Src, uint32_t Align);
   Type *getRTStack2PtrTy(bool async = true) const;
   Type *getRTStack2PtrTy(RTMemoryAccessMode Mode, bool async = true) const;
   Type *getRayDispatchGlobalDataPtrTy(Module &M, IGC::ADDRESS_SPACE Addrspace);

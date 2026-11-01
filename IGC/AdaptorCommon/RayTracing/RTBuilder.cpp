@@ -2107,6 +2107,48 @@ Type *RTBuilder::getRTStack2Ty() const {
   return {};
 }
 
+namespace {
+template <typename RTStack2T, typename = void> struct RTStack2OwnedRanges {
+  static SmallVector<std::pair<uint32_t, uint32_t>, 2> get() { return {{0u, uint32_t(sizeof(RTStack2T))}}; }
+};
+
+template <typename RTStack2T> struct RTStack2OwnedRanges<RTStack2T, std::void_t<decltype(RTStack2T::pad)>> {
+  static constexpr uint32_t PadBegin = offsetof(RTStack2T, pad);
+  static constexpr uint32_t PadEnd = PadBegin + sizeof(RTStack2T::pad);
+  static_assert(PadBegin + (sizeof(RTStack2T) - PadEnd) == sizeofRTStack2<RTStack2T>(),
+                "the owned ranges must cover the logical RTStack2");
+  static SmallVector<std::pair<uint32_t, uint32_t>, 2> get() {
+    return {{0u, PadBegin}, {PadEnd, uint32_t(sizeof(RTStack2T)) - PadEnd}};
+  }
+};
+} // namespace
+
+void RTBuilder::createRTStack2Copy(Value *Dst, Value *Src, uint32_t Align) {
+  SmallVector<std::pair<uint32_t, uint32_t>, 2> Ranges;
+  switch (getMemoryStyle()) {
+#define STYLE(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    Ranges = RTStack2OwnedRanges<RTStack2<RTStackFormat::X>>::get();                                                   \
+    break;
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+  }
+  IGC_ASSERT(!Ranges.empty());
+
+  auto byteOffset = [&](Value *Ptr, uint32_t Offset) -> Value * {
+    if (Offset == 0)
+      return Ptr;
+    Ptr = this->CreateBitCast(Ptr, IGCLLVM::getInt8PtrTy(*this, Ptr->getType()->getPointerAddressSpace()));
+    return this->CreateInBoundsGEP(this->getInt8Ty(), Ptr, this->getInt64(Offset));
+  };
+  for (auto [Offset, Size] : Ranges) {
+    IGC_ASSERT(Offset % Align == 0);
+    Value *DstRange = byteOffset(Dst, Offset);
+    Value *SrcRange = byteOffset(Src, Offset);
+    this->CreateMemCpy(DstRange, SrcRange, this->getInt64(Size), Align);
+  }
+}
+
 Type *RTBuilder::getRTStack2PtrTy(bool async) const {
   auto &rtInfo = Ctx.getModuleMetaData()->rtInfo;
   auto &SSO = async ? rtInfo.RTAsyncStackSurfaceStateOffset : rtInfo.RTSyncStackSurfaceStateOffset;

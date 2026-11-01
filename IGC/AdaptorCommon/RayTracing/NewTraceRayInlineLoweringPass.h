@@ -171,7 +171,6 @@ private:
       auto key = std::make_pair(IRB.GetInsertBlock(), rqObject);
       if (m_CrossBlockVectorizationStacks.find(key) == m_CrossBlockVectorizationStacks.end()) {
 
-        auto &DL = m_pCGCtx->getModule()->getDataLayout();
         llvm::RTBuilder::InsertPointGuard g(IRB);
 
         IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(&key.first->getParent()->getEntryBlock()));
@@ -185,8 +184,7 @@ private:
         else
           IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(key.first));
 
-        IRB.CreateMemCpy(SMStack, getStackPtr(IRB, rqObject), IRB.getInt64(DL.getTypeAllocSize(IRB.getRTStack2Ty())),
-                         RayDispatchGlobalData::StackChunkSize);
+        IRB.createRTStack2Copy(SMStack, getStackPtr(IRB, rqObject), RayDispatchGlobalData::StackChunkSize);
         m_CrossBlockVectorizationStacks[key] = SMStack;
       }
 
