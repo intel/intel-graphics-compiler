@@ -212,7 +212,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_device_barrier.html
 
-> **Experimentally supported on**: All platforms
+> **Supported on**: All platforms
 
 **Capabilities**:
 
@@ -441,7 +441,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_rounded_divide_sqrt.html
 
-> **Experimentally supported on**: XE_HP+ (XE_HP_SDV, DG2, PVC, METEORLAKE, ARL H, ARL S, ARL U, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
+> **Supported on**: XE_HP+ (XE_HP_SDV, DG2, PVC, METEORLAKE, ARL H, ARL S, ARL U, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
 
 **Capabilities**:
 

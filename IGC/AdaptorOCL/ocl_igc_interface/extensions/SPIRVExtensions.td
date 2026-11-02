@@ -526,13 +526,13 @@ def SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate : ExperimentalExtension
   isCoreChildOf<IGFX_XE3P_CORE>
 >;
 
-def SPV_INTEL_device_barrier : ExperimentalExtension<
+def SPV_INTEL_device_barrier : Extension<
   "SPV_INTEL_device_barrier",
   [ Capability<"DeviceBarrierINTEL"> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_device_barrier.html"
 >;
 
-def SPV_INTEL_rounded_divide_sqrt : ExperimentalExtension<
+def SPV_INTEL_rounded_divide_sqrt : Extension<
   "SPV_INTEL_rounded_divide_sqrt",
   [ Capability<"RoundedDivideSqrtINTEL"> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_rounded_divide_sqrt.html",

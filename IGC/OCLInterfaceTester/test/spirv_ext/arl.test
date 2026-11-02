@@ -46,6 +46,12 @@
 # CHECK-NEXT:     - id: 6441
 # CHECK-NEXT:       name: CacheControlsINTEL
 #
+# CHECK-NEXT: - name: SPV_INTEL_device_barrier
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_device_barrier.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6185
+# CHECK-NEXT:       name: DeviceBarrierINTEL
+#
 # CHECK-NEXT: - name: SPV_INTEL_fp_fast_math_mode
 # CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_fp_fast_math_mode.html'
 # CHECK-NEXT:   supported_capabilities:
@@ -87,6 +93,12 @@
 # CHECK-NEXT:   supported_capabilities:
 # CHECK-NEXT:     - id: 6257
 # CHECK-NEXT:       name: PredicatedIOINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_rounded_divide_sqrt
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_rounded_divide_sqrt.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6265
+# CHECK-NEXT:       name: RoundedDivideSqrtINTEL
 #
 # CHECK-NEXT: - name: SPV_INTEL_split_barrier
 # CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_split_barrier.html'
