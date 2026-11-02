@@ -84,6 +84,9 @@ inline bool IsSlmFence(Instruction *inst) {
 ////////////////////////////////////////////////////////////////////////////////
 inline bool IsSlmStoreOrAtomic(Instruction *inst) {
   Instruction *store = nullptr;
+  if (auto *predStore = dyn_cast<PredicatedStoreIntrinsic>(inst)) {
+    return predStore->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL;
+  }
   if (GenIntrinsicInst *intr = dyn_cast<GenIntrinsicInst>(inst)) {
     const GenISAIntrinsic::ID id = intr->getIntrinsicID();
     if (id == GenISAIntrinsic::GenISA_LSCStore || id == GenISAIntrinsic::GenISA_LSCStoreBlock ||
