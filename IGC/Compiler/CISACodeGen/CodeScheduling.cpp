@@ -372,6 +372,8 @@ public:
     TotalNumOf2dLoads = RPT.TotalNumOf2dLoads;
     InitialPressureInRegisters = RPT.InitialPressureInRegisters;
     LargeLoadDensityMargin = RPT.LargeLoadDensityMargin;
+    ChainStartDPAS = RPT.ChainStartDPAS;
+    OpenDPASChains = RPT.OpenDPASChains;
 
     // deepcopy HangingLiveVarsVec and HangingLiveVars. HangingLiveVars also
     // keeps the values that already died: the entry of the first scalar of a
@@ -508,6 +510,13 @@ public:
     int FragDivisor = C->get(SchedulingConfig::Option::LargeLoadFragDivisor);
     LargeLoadDensityMargin =
         (OverheadPerLoad > 0 && FragDivisor > 0) ? (TotalNumOf2dLoads * OverheadPerLoad / FragDivisor) : 0;
+
+    ChainStartDPAS.clear();
+    for (auto &I : *BB) {
+      if (isDPAS(&I) && isa<Constant>(I.getOperand(DPASAccumulatorOperand)))
+        ChainStartDPAS.push_back(&I);
+    }
+    OpenDPASChains = 0;
   }
 
   // Returns the static fragmentation adjustment for a large 2D block read,
@@ -554,6 +563,27 @@ public:
   // causes fragmentation waste invisible to the IR-level RP estimator.
   int getLargeLoadDensityMargin() { return LargeLoadDensityMargin; }
 
+  // Returns the bytes that a 2D block read reserves for the result of the
+  // first DPAS while no DPAS chain of the block is open. The first DPAS has a
+  // constant accumulator, so it increases the register pressure by its result
+  // size (see ChainStartDPAS). Without the reservation, MaxWeight issues reads
+  // up to the threshold, and the first DPAS goes over it. Any unplaced DPAS
+  // with a constant accumulator can come first, so the smallest result is
+  // reserved.
+  int32_t getFirstDPASResultReservation(Instruction *I) {
+    if (!C->get(SchedulingConfig::Option::ReserveFirstDPASResultForLoads) || OpenDPASChains > 0 || !is2dBlockRead(I) ||
+        BBCurrent.contains(I))
+      return 0;
+    int32_t Reservation = 0;
+    for (auto *DPAS : ChainStartDPAS) {
+      if (BBCurrent.contains(DPAS))
+        continue;
+      auto Size = static_cast<int32_t>(computeSizeInBytes(DPAS, SIMD, WI, *DL));
+      Reservation = Reservation == 0 ? Size : std::min(Reservation, Size);
+    }
+    return Reservation;
+  }
+
   bool isRegpressureLow(Instruction *I = nullptr) {
     return compareRPWithThreshold<false>(C->get(SchedulingConfig::Option::LowRPThresholdDelta), I);
   }
@@ -587,6 +617,10 @@ public:
   // rejections. Critical uses a tight base (~5 GRF) and always applies
   // staticFragAdj to prevent late-schedule spill overshoots once already in
   // RP mode.
+  //
+  // For a 2D block read, currentPressure also includes the reservation for the
+  // first DPAS result while no DPAS chain is open
+  // (getFirstDPASResultReservation).
   bool isRegpressureHigh(Instruction *I = nullptr) {
     int HighRPAdjustment = C->get(SchedulingConfig::Option::GreedyRPThresholdDelta) +
                            static_cast<int>(IGC_GET_FLAG_VALUE(CodeSchedulingRPMargin));
@@ -629,7 +663,7 @@ public:
   int32_t getCurrentPressure(Instruction *I = nullptr) {
     auto CurrentPressureAdjusted = CurrentPressure;
     if (I != nullptr)
-      CurrentPressureAdjusted += estimate(I);
+      CurrentPressureAdjusted += estimate(I) + getFirstDPASResultReservation(I);
     auto ExternalPressure = static_cast<int32_t>(FRPE->getExternalPressureForFunction(F));
     auto CurrentPressureInRegisters =
         static_cast<int32_t>(RPE->bytesToRegisters(CurrentPressureAdjusted)) + ExternalPressure;
@@ -738,6 +772,16 @@ private:
   int32_t InitialPressureInRegisters = 0;
   // Load-density-based RA fragmentation margin
   int32_t LargeLoadDensityMargin = 0;
+
+  // DPAS of the block with a constant accumulator, usually zero. Each one
+  // starts a DPAS chain and writes its result to new registers, so placing it
+  // increases the register pressure by the result size. A DPAS that
+  // accumulates into the result of the previous DPAS of its chain replaces
+  // that result and does not increase the register pressure.
+  SmallVector<Instruction *, 16> ChainStartDPAS;
+  // Number of open DPAS chains: placed DPAS whose result an unplaced DPAS of
+  // the block still accumulates into
+  int32_t OpenDPASChains = 0;
 
   ValueSet BBIn;
   ValueSet BBOut;
@@ -1157,11 +1201,40 @@ private:
         CurrentNumOf2dLoads++;
       }
 
+      if (isDPAS(I)) {
+        updateOpenDPASChains(I);
+      }
+
       // Print log dump only on Update in order not to output duplicating information
       PrintDumpLevel(VerbosityLevel::High, "\n\n");
     }
 
     return ResultSizeInBytes;
+  }
+
+  // Returns true when an unplaced DPAS of the block accumulates into the result
+  // of DPAS, so the chain of DPAS continues after it.
+  bool hasUnplacedAccumulatingDPAS(Instruction *DPAS) {
+    return llvm::any_of(DPAS->users(), [&](User *U) {
+      auto *UI = dyn_cast<Instruction>(U);
+      return UI && UI->getParent() == BB && isDPAS(UI) && UI->getOperand(DPASAccumulatorOperand) == DPAS &&
+             !BBCurrent.contains(UI);
+    });
+  }
+
+  // A chain is open while its last placed DPAS has an unplaced DPAS that
+  // accumulates into its result. Placing the next DPAS of the chain moves the
+  // open end from the accumulator to the placed DPAS, so the count does not
+  // change. The first DPAS of a chain opens it, and the last one closes it.
+  void updateOpenDPASChains(Instruction *PlacedDPAS) {
+    auto *Accumulator = dyn_cast<Instruction>(PlacedDPAS->getOperand(DPASAccumulatorOperand));
+    if (Accumulator && Accumulator->getParent() == BB && isDPAS(Accumulator) &&
+        !hasUnplacedAccumulatingDPAS(Accumulator)) {
+      IGC_ASSERT(OpenDPASChains > 0);
+      OpenDPASChains--;
+    }
+    if (hasUnplacedAccumulatingDPAS(PlacedDPAS))
+      OpenDPASChains++;
   }
 
   bool isShuffled2dBlockRead(Instruction *I) {

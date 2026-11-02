@@ -217,6 +217,12 @@ DECLARE_SCHEDULING_OPTION(LargeLoadHighRPAdjustmentsMinInitialRPDelta, 96,
                           "the number of GRFs minus this delta (160 GRF for 256 GRF). Fewer "
                           "than 256 GRF use the threshold of 256 GRF. A delta of at least the "
                           "number of GRFs always applies them")
+DECLARE_SCHEDULING_OPTION(ReserveFirstDPASResultForLoads, 1,
+                          "Heuristic: while no DPAS chain of the block is open, the register pressure "
+                          "checks of a 2D block read add the result size of the smallest DPAS with a "
+                          "constant accumulator. Such a DPAS starts a chain and writes its result to new "
+                          "registers, so it increases the register pressure; the next DPAS of the chain "
+                          "replaces its accumulator and does not (0=disabled, 1=enabled)")
 
 // Other
 DECLARE_SCHEDULING_OPTION(ForceSIMDSize, 0,
