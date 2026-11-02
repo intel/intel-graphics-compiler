@@ -4326,6 +4326,11 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
         // above
       } else if (requestedNumGRF == 0) {
         SaveOption(vISA_AutoGRFSelection, true);
+      } else if (ClContext->getNumGRFForRequestedThreads(m_program->entry) > 0) {
+        // Number of threads per EU set per kernel function (by user annotation)
+        // or per module (by compiler option). NumGRFSetting/vISA_TotalGRFNum
+        // above already holds the GRF number for that thread count, or the
+        // number of a 128/256/512-GRF option, which wins.
       } else if (m_program->IsRegularGRFRequested()) {
        // Number of threads per EU is set per kernel function (by compiler
        // option)
@@ -5119,8 +5124,12 @@ void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInli
   InitVISABuilderOptions(VISAPlatform, canAbortOnSpill, hasStackCall, builderOpt == VISA_BUILDER_BOTH);
 
   if (numThreadsPerEU > 0) {
-    // Number of threads per EU is set per kernel (by function MD)
-    SaveOption(vISA_HWThreadNumberPerEU, unsigned(numThreadsPerEU));
+    // Number of threads per EU is set per kernel (by function MD). If
+    // getNumGRFForRequestedThreads maps it to a GRF number, vISA_TotalGRFNum
+    // already holds the kernel's GRF number and the thread count must not
+    // override it.
+    if (context->getNumGRFForRequestedThreads(m_program->entry) == 0)
+      SaveOption(vISA_HWThreadNumberPerEU, unsigned(numThreadsPerEU));
   } else if (numThreadsPerEU == 0) {
     // "Auto" mode per kernel function - use compiler heuristics to determin
     // number of threads per EU

@@ -90,6 +90,58 @@ int32_t OpenCLProgramContext::getRequestedNumGRF(const llvm::Function *F) const 
   return static_cast<int32_t>(numGRF);
 }
 
+int32_t OpenCLProgramContext::getNumGRFForRequestedThreads(const llvm::Function *F) const {
+  auto Modes = platform.getVRTTable(/*SelectableOnly=*/false, /*StaticModes=*/true);
+  if (Modes.empty())
+    return 0;
+
+  // The per-kernel "num-thread-per-eu" annotation overrides the module option.
+  // Its value 0 requests automatic GRF selection.
+  int32_t NumThreads = getNumThreadsPerEU();
+  if (F && F->hasFnAttribute("num-thread-per-eu")) {
+    llvm::StringRef Value = F->getFnAttribute("num-thread-per-eu").getValueAsString();
+    bool ParseFailed = Value.getAsInteger(10, NumThreads);
+    if (ParseFailed)
+      return 0;
+  }
+  if (NumThreads <= 0)
+    return 0;
+
+  // These GRF requests reach vISA outside getNumGRFPerThread, so vISA keeps
+  // resolving their conflict with the thread count as before.
+  auto KernelNameMatches = [F](const std::vector<std::string> &SubNames) {
+    return F && llvm::any_of(SubNames, [F](const std::string &SubName) { return F->getName().contains(SubName); });
+  };
+  if (getExpGRFSize() != 0 || KernelNameMatches(m_Options.RegularGRFKernels) ||
+      KernelNameMatches(m_Options.LargeGRFKernels))
+    return 0;
+
+  // vISA gets the GRF number as TotalGRFNum, which the ceiling of automatic
+  // selection does not limit, so the modes above the ceiling stay available.
+  // A smaller GRF number with the same number of threads gives no extra thread,
+  // so take the largest one.
+  auto MaxGRFModes = platform.getMaxGRFVRTTable(/*MaxNumGRF=*/0, /*StaticModes=*/true);
+  auto HasNumThreads = [NumThreads](const VRT::ModeEntry &Mode) { return Mode.second == NumThreads; };
+  if (auto It = llvm::find_if(MaxGRFModes, HasNumThreads); It != MaxGRFModes.end())
+    return It->first;
+
+  // vISA does not enable every mode for automatic selection, but its thread
+  // mapping takes the first mode with the requested number of threads. Keep that
+  // mode when automatic selection can use none of the modes with that many
+  // threads.
+  if (auto It = llvm::find_if(Modes, HasNumThreads); It != Modes.end())
+    return It->first;
+
+  // A thread count without a mode takes the next larger count, because more
+  // threads are rarely worse, or the largest count if every mode has fewer
+  // threads. The modes are ordered by decreasing number of threads.
+  int32_t NumGRF = 0;
+  for (const auto &[ModeNumGRF, ModeThreads] : MaxGRFModes)
+    if (ModeThreads > NumThreads || NumGRF == 0)
+      NumGRF = ModeNumGRF;
+  return NumGRF;
+}
+
 uint32_t OpenCLProgramContext::getNumGRFPerThread(bool ReturnDefault, const llvm::Function *F) {
   int32_t RequestedNumGRF = getRequestedNumGRF(F);
   if (RequestedNumGRF > 0)
@@ -104,6 +156,9 @@ uint32_t OpenCLProgramContext::getNumGRFPerThread(bool ReturnDefault, const llvm
     } else if (m_InternalOptions.Intel512GRFPerThread || m_Options.Intel512GRFPerThread) {
       return 512;
     }
+    // A GRF number requested by an option wins over a requested number of threads.
+    if (int32_t NumGRFForThreads = getNumGRFForRequestedThreads(F))
+      return static_cast<uint32_t>(NumGRFForThreads);
   }
 
   // On recompilation, report the lifted 512 budget so RP optimizations plan for it.
@@ -145,6 +200,9 @@ bool OpenCLProgramContext::isAutoGRFSelectionEnabled(const llvm::Function *F) co
   int32_t requestedNumGRF = getRequestedNumGRF(F);
   if (requestedNumGRF >= 0)
     return requestedNumGRF == 0;
+
+  if (getNumGRFForRequestedThreads(F) != 0)
+    return false;
 
   if (getNumThreadsPerEU() == 0)
     return true;

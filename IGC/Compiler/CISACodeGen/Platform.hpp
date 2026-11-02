@@ -883,11 +883,16 @@ private:
 
 public:
   // Returns the VRT modes of this platform, ordered by increasing GRF number, or
-  // an empty table when the platform does not support VRT. With SelectableOnly
-  // it keeps only the modes that vISA can select: a supported GRF number, and
-  // above 256 GRF only with efficient 64-bit addressing.
-  llvm::SmallVector<VRT::ModeEntry, 16> getVRTTable(bool SelectableOnly = false) const {
+  // an empty table when the platform does not support VRT. With StaticModes, a
+  // platform with static register sharing but without VRT gets its two modes
+  // instead, 128 GRF with 8 threads and 256 GRF with 4 threads. With
+  // SelectableOnly it keeps only the modes that vISA can select: a supported GRF
+  // number, and above 256 GRF only with efficient 64-bit addressing.
+  llvm::SmallVector<VRT::ModeEntry, 16> getVRTTable(bool SelectableOnly = false, bool StaticModes = false) const {
+    static constexpr VRT::ModeEntry StaticModeTable[] = {{128, 8}, {256, 4}};
     llvm::ArrayRef<VRT::ModeEntry> ModeTable = getVRTModeTable();
+    if (ModeTable.empty() && StaticModes && supportsStaticRegSharing())
+      ModeTable = StaticModeTable;
     if (!SelectableOnly)
       return llvm::SmallVector<VRT::ModeEntry, 16>(ModeTable.begin(), ModeTable.end());
     auto SupportedGRFSizes = getSupportedGRFSizes();
@@ -907,13 +912,13 @@ public:
   // Returns the selectable VRT modes of getVRTTable with only the largest GRF
   // budget for each number of HW threads per EU, ordered by decreasing number of
   // threads. A nonzero MaxNumGRF, a GRF ceiling of the compilation, drops the
-  // modes above it.
-  llvm::SmallVector<VRT::ModeEntry, 8> getMaxGRFVRTTable(unsigned MaxNumGRF = 0) const {
+  // modes above it. StaticModes is passed to getVRTTable.
+  llvm::SmallVector<VRT::ModeEntry, 8> getMaxGRFVRTTable(unsigned MaxNumGRF = 0, bool StaticModes = false) const {
     llvm::SmallVector<VRT::ModeEntry, 8> Modes;
     // Modes with the same number of threads are adjacent in the table, and the
     // last one has the largest budget. The ceiling applies before the merge, so a
     // smaller mode with the same number of threads stays.
-    for (const VRT::ModeEntry &Mode : getVRTTable(/*SelectableOnly=*/true)) {
+    for (const VRT::ModeEntry &Mode : getVRTTable(/*SelectableOnly=*/true, StaticModes)) {
       if (MaxNumGRF != 0 && static_cast<unsigned>(Mode.first) > MaxNumGRF)
         continue;
       if (!Modes.empty() && Modes.back().second == Mode.second)

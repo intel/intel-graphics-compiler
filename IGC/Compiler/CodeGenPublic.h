@@ -1171,6 +1171,7 @@ public:
   virtual uint32_t getNumGRFPerThread(bool returnDefault = true, const llvm::Function *F = nullptr);
   virtual void setNumGRFPerThread(uint32_t value) { m_NumGRFPerThread = value; }
   virtual bool isAutoGRFSelectionEnabled(const llvm::Function *F = nullptr) const { return false; };
+  virtual int32_t getNumGRFForRequestedThreads(const llvm::Function *F) const { return 0; }
   // Returns the largest GRF number that vISA's automatic VRT selection may use,
   // or 0 for no limit. RaiseTo512 raises it as for an OpenCL recompilation.
   unsigned getVRTGRFCeiling(bool RaiseTo512 = false) const;
