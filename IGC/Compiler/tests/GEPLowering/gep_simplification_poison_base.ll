@@ -8,14 +8,18 @@
 ;
 ; REQUIRES: llvm-18-plus, regkeys
 ;
-; RUN: igc_opt -platformpvc --igc-gep-lowering -regkey=EnableGEPSimplification=1,TestGEPSimplification=1 -S %s | FileCheck %s
+; RUN: igc_opt -platformpvc --igc-gep-lowering -regkey=EnableGEPSimplification=1,TestGEPSimplification=1,EnableGEPSimplificationPoisonSafeBases=1 -S %s | FileCheck %s
+; RUN: igc_opt -platformpvc --igc-gep-lowering -regkey=EnableGEPSimplification=1,TestGEPSimplification=1 -S %s | FileCheck %s --check-prefix=DEFAULT
 ;
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-n8:16:32"
 
-; %base is poison for odd %x, where only %derived is used: no rebase on it.
+; %base is poison for odd %x, where only %derived is used: no rebase on it
+; unless the restrictions are disabled (default).
 ; CHECK-LABEL: @disjoint_or_base(
 ; CHECK: %derived = getelementptr inbounds float, ptr addrspace(1) %src, i64 %derived.idx.64
+; DEFAULT-LABEL: @disjoint_or_base(
+; DEFAULT: getelementptr inbounds float, ptr addrspace(1) %base, i64 1
 define spir_kernel void @disjoint_or_base(ptr addrspace(1) %src, ptr addrspace(1) %dst, i32 %x) {
   %base.idx = or disjoint i32 %x, 1
   %base.idx.64 = zext i32 %base.idx to i64
@@ -30,11 +34,16 @@ define spir_kernel void @disjoint_or_base(ptr addrspace(1) %src, ptr addrspace(1
   ret void
 }
 
-; %base may be poison only through its flags where %derived is not: drop them.
+; %base may be poison only through its flags where %derived is not: drop them
+; unless the restrictions are disabled (default).
 ; CHECK-LABEL: @droppable_flags_base(
 ; CHECK: %base.idx = add i64 %x, 2
 ; CHECK: %base = getelementptr float, ptr addrspace(1) %src, i64 %base.idx
 ; CHECK: getelementptr float, ptr addrspace(1) %base, i64 -1
+; DEFAULT-LABEL: @droppable_flags_base(
+; DEFAULT: %base.idx = add nuw i64 %x, 2
+; DEFAULT: %base = getelementptr inbounds float, ptr addrspace(1) %src, i64 %base.idx
+; DEFAULT: getelementptr inbounds float, ptr addrspace(1) %base, i64 -1
 define spir_kernel void @droppable_flags_base(ptr addrspace(1) %src, ptr addrspace(1) %dst, i64 %x, i1 %use.base) {
   %base.idx = add nuw i64 %x, 2
   %base = getelementptr inbounds float, ptr addrspace(1) %src, i64 %base.idx
