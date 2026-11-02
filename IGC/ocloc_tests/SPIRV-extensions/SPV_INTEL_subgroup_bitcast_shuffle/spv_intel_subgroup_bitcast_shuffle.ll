@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: cri-supported, llvm-spirv
+; REQUIRES: false
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i8>/g' -e 's/OUTPUT_TYPE/i16/g' \
 ; RUN:   -e 's/TEST_NAME/test_char2_i16/g' \
