@@ -19306,7 +19306,7 @@ void EmitPass::emitLSCVectorLoad_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32, 
       // - mergeValDest == ldDest: merge value was copied directly to load destination
       bool mergeValInDest = mergeVal == nullptr || mergeValDest == ldDest;
       CVariable *copyPred = mergeValInDest ? inputPredicate : nullptr;
-      emitVectorCopy(ldDest, tDest, vSize, 0, 0, false, copyPred);
+      emitVectorCopy(ldDest, tDest, vSize, 0, 0, (m_currShader->m_SIMDSize > SIMDMode::SIMD8), copyPred);
     }
     return;
   }
