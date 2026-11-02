@@ -2567,6 +2567,118 @@ bool IGCVectCombine::matchJointBroadcastConcat(ShuffleVectorInst *Shuffle) {
   return true;
 }
 
+bool IGCVectCombine::canMatchVectorMad() {
+
+  if (IGC_IS_FLAG_DISABLED(VectorizerAllowFMADMatching) || IGC_IS_FLAG_ENABLED(DisableMatchMad))
+    return false;
+
+  auto *ModMD = CGCtx->getModuleMetaData();
+  if (ModMD->isPrecise || ModMD->compOpt.disableMathRefactoring)
+    return false;
+
+  if (CGCtx->type == ShaderType::COMPUTE_SHADER && ModMD->disableMatchMadOptimizationForCS)
+    return false;
+
+  return true;
+}
+
+bool IGCVectCombine::matchUniformMulDistribution(BinaryOperator *Mul) {
+
+  IGC_ASSERT_MESSAGE(llvm::isa<IGCLLVM::FixedVectorType>(Mul->getType()) &&
+                         Mul->getType()->getScalarType()->isFloatTy(),
+                     "uniform mul distribution expects a float vector fmul");
+
+  auto HasDistributionFlags = [](Instruction *I) {
+    return I->hasAllowReassoc() && I->hasNoSignedZeros() && I->hasAllowContract();
+  };
+
+  BinaryOperator *Add = nullptr;
+  Value *NonUniform = nullptr;
+  Value *Uniform = nullptr;
+  Value *Factor = nullptr;
+  for (unsigned i = 0; i < 2 && !Add; ++i) {
+    auto *Candidate = llvm::dyn_cast<BinaryOperator>(Mul->getOperand(i));
+    if (!Candidate || !Candidate->hasOneUse())
+      continue;
+
+    auto OpCode = Candidate->getOpcode();
+    if (OpCode != Instruction::FSub && OpCode != Instruction::FAdd)
+      continue;
+
+    Value *Other = Mul->getOperand(1 - i);
+    if (!WI->isUniform(Other))
+      continue;
+
+    Value *Lhs = Candidate->getOperand(0);
+    Value *Rhs = Candidate->getOperand(1);
+    if (OpCode == Instruction::FAdd && WI->isUniform(Lhs))
+      std::swap(Lhs, Rhs);
+
+    if (WI->isUniform(Lhs) || !WI->isUniform(Rhs))
+      continue;
+
+    Add = Candidate;
+    NonUniform = Lhs;
+    Uniform = Rhs;
+    Factor = Other;
+  }
+
+  if (!Add)
+    return false;
+
+  PRINT_LOG("uniform mul distribution candidate: ");
+  PRINT_INST_NL(Mul);
+
+  // #TODO: it might still be profitable if another block is not a loop block
+  if (Add->getParent() != Mul->getParent()) {
+    PRINT_LOG_NL("candidates for distribution are not in the same BB");
+    return false;
+  }
+
+  if (!HasDistributionFlags(Add) || !HasDistributionFlags(Mul)) {
+    PRINT_LOG_NL("fast math flags do not allow distribution");
+    return false;
+  }
+
+  // A * C - B is already a mad, distributing it only adds the uniform mul
+  auto *PreMul = llvm::dyn_cast<BinaryOperator>(NonUniform);
+  if (PreMul && PreMul->getOpcode() == Instruction::FMul) {
+    PRINT_LOG_NL("non uniform operand is a product, probably already forms a mad");
+    return false;
+  }
+
+  // (A - B) * C + D is already a mad
+  if (Mul->hasOneUse()) {
+    auto *User = llvm::dyn_cast<BinaryOperator>(*Mul->user_begin());
+    if (User && (User->getOpcode() == Instruction::FAdd || User->getOpcode() == Instruction::FSub)) {
+      PRINT_LOG_NL("product probably already forms a mad with its user, bail");
+      return false;
+    }
+  }
+
+  IGCLLVM::IRBuilder<> Builder(Mul);
+  Builder.SetCurrentDebugLocation(Mul->getDebugLoc());
+
+  FastMathFlags FMF = Mul->getFastMathFlags();
+  FMF &= Add->getFastMathFlags();
+  Builder.setFastMathFlags(FMF);
+
+  Value *UniformMul = Builder.CreateFMul(Uniform, Factor, "uniform_mul");
+  Value *DistributedMul = Builder.CreateFMul(NonUniform, Factor, "distributed_mul");
+  auto *Distributed = llvm::cast<Instruction>(Add->getOpcode() == Instruction::FSub
+                                                  ? Builder.CreateFSub(DistributedMul, UniformMul, "distributed_fsub")
+                                                  : Builder.CreateFAdd(DistributedMul, UniformMul, "distributed_fadd"));
+  Distributed->setHasAllowReassoc(false);
+
+  PRINT_LOG("distributed into: ");
+  PRINT_INST_NL(Distributed);
+
+  Mul->replaceAllUsesWith(Distributed);
+  Mul->eraseFromParent();
+  Add->eraseFromParent();
+  return true;
+}
+
 bool IGCVectCombine::runOnFunction(llvm::Function &F) {
 
   SIMDSize = checkSIMD(F, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
@@ -2579,16 +2691,25 @@ bool IGCVectCombine::runOnFunction(llvm::Function &F) {
   PRINT_LOG_NL("VectCombine 0.1");
 
   M = F.getParent();
+  WI = &getAnalysis<WIAnalysis>();
 
   VecArr Shuffles;
+  VecArr Muls;
   for (auto &BB : F)
     for (auto &Inst : BB)
       if (llvm::isa<ShuffleVectorInst>(&Inst))
         Shuffles.push_back(&Inst);
+      else if (Inst.getOpcode() == Instruction::FMul && llvm::isa<IGCLLVM::FixedVectorType>(Inst.getType()) &&
+               Inst.getType()->getScalarType()->isFloatTy())
+        Muls.push_back(&Inst);
 
   bool Changed = false;
   for (auto *Shuffle : Shuffles)
     Changed |= matchJointBroadcastConcat(llvm::cast<ShuffleVectorInst>(Shuffle));
+
+  if (canMatchVectorMad())
+    for (auto *Mul : Muls)
+      Changed |= matchUniformMulDistribution(llvm::cast<BinaryOperator>(Mul));
 
   writeLog();
   return Changed;

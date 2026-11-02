@@ -191,6 +191,8 @@ class IGCVectCombine : public llvm::FunctionPass, IGCVectorizerCommon {
   bool getJointBroadcastLanes(llvm::Value *V, llvm::Value *&Src, llvm::Value *&HelperLane, unsigned &FirstLane,
                               unsigned &NumLanes);
   bool matchJointBroadcastConcat(llvm::ShuffleVectorInst *Shuffle);
+  bool canMatchVectorMad();
+  bool matchUniformMulDistribution(llvm::BinaryOperator *Mul);
 
 public:
   llvm::StringRef getPassName() const override { return "IGCVectCombine"; }
@@ -200,6 +202,7 @@ public:
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<WIAnalysis>();
   }
   IGCVectCombine();
   static char ID;
