@@ -591,6 +591,27 @@ static bool isPastHighestVRTBudget(llvm::ArrayRef<VRT::ModeEntry> Table, unsigne
   return MaxRegPressure > Cutoff;
 }
 
+static bool hasSignificantLICM(CodeGenContext *Ctx, MetaDataUtils *pMdUtils, llvm::Function *F) {
+  constexpr uint64_t LICMHoistedPercentThreshold = 10;
+
+  // LICM_STAT is gathered for the whole module, so it is only attibuted to F
+  // when F is a kernel and the only function defined in the module.
+  if (!isEntryFunc(pMdUtils, F))
+    return false;
+
+  for (const llvm::Function &OtherF : *F->getParent()) {
+    if (&OtherF != F && !OtherF.isDeclaration())
+      return false;
+  }
+
+  int Hoisted = Ctx->instrStat[LICM_STAT][BEGIN] - Ctx->instrStat[LICM_STAT][END];
+  if (Hoisted <= 0)
+    return false;
+
+  uint64_t NumInsts = F->getInstructionCount();
+  return NumInsts && (uint64_t)Hoisted * 100 >= NumInsts * LICMHoistedPercentThreshold;
+}
+
 bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function *F) {
   // we only skip first compilation stage, if compilation pipeline
   // was configured to start from retry already, otherwise we do nothing
@@ -606,6 +627,9 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function
   // Codegen works efficiently for kernels with 1 BB,
   // so give it a chance to compile on the first stage
   if (F->size() == 1)
+    return false;
+
+  if (hasSignificantLICM(m_pCtx, pMdUtils, F))
     return false;
 
   auto MaxRegPressure = getMaxRegPressureInFunctionGroup(F);
