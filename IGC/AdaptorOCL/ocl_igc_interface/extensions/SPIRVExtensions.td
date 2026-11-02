@@ -539,6 +539,13 @@ def SPV_INTEL_rounded_divide_sqrt : Extension<
   isCoreChildOf<IGFX_XE_HP_CORE>
 >;
 
+def SPV_INTEL_subgroup_bitcast_shuffle : ExperimentalExtension<
+  "SPV_INTEL_subgroup_bitcast_shuffle",
+  [ Capability<"SubgroupBitcastShuffleINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroup_bitcast_shuffle.html",
+  isCoreChildOf<IGFX_XE_HPC_CORE>
+>;
+
 def SPV_EXT_ocp_microscaling_types : ExperimentalExtension<
   "SPV_EXT_ocp_microscaling_types",
   [ Capability<"Float4EXT"> ],

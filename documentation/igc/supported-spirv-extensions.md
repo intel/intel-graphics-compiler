@@ -473,6 +473,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_INTEL_subgroup_bitcast_shuffle
+
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroup_bitcast_shuffle.html
+
+> **Experimentally supported on**: XE_HPC+ (PVC, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
+
+**Capabilities**:
+
+- **SubgroupBitcastShuffleINTEL**
+
+---
+
 ## SPV_INTEL_subgroup_buffer_prefetch
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroup_buffer_prefetch.html
