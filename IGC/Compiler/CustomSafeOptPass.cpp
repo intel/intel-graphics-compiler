@@ -4415,6 +4415,8 @@ Constant *IGCConstProp::ConstantFoldCmpInst(CmpInst *CI) {
         continue;
       Constant *Result = ConstantFoldCompareInstOperands(CI->getPredicate(), Opnd, cast<Constant>(RHS),
                                                          CI->getFunction()->getParent()->getDataLayout());
+      if (!Result)
+        return nullptr;
       if (!Result->isAllOnesValue())
         AllTrue = false;
       if (!Result->isNullValue())
