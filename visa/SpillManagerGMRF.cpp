@@ -3456,6 +3456,8 @@ G4_Declare *SpillManagerGRF::getOrCreateAddrSpillFillDcl(
             spilledAddrTakenDcl->getElemType(), DeclareType::Tmp,
             spilledAddrTakenDcl->getRegVar());
         temp->setAddrSpillFill();
+        // Later passes (e.g. spill/fill coalescing) query RA info for temp.
+        gra.addVarToRA(temp);
         G4_AddrExp *newAddExp = builder_->createAddrExp(
             temp->getRegVar(), addrExp->getOffset(), addrExp->getType());
         setAddrTakenSpillFill(addrExp, newAddExp);

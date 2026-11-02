@@ -1543,6 +1543,7 @@ private:
     // It's assumed that dcl has already been added to vars vector. To add newly
     // created RA variables to the vector pre-RA, addVarToRA() can be used.
     auto dclid = dcl->getDeclId();
+    vISA_ASSERT(dclid < vars.size(), "dcl was not added to RA vars");
     return vars[dclid];
   }
 
