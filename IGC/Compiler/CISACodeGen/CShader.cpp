@@ -1396,9 +1396,16 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value *val, uint32_t &mask) {
       }
     }
   } else if (llvm::BitCastInst *inst = dyn_cast<BitCastInst>(val)) {
+    // A 64-bit split, bitcast i64 -> <2 x i32>, whose half is read in place
+    // from the i64 (tryMatchI64Half, MatchBitwiseI64Halves, MatchPackPair)
+    // leaves that half's extract in the IR but not emitted. Such an extract
+    // must not keep its half in the mask, or the split writes a dead mov.
+    const bool isI64Split = inst->getSrcTy()->isIntegerTy(64) && nbElement == 2;
     for (auto I = inst->user_begin(), E = inst->user_end(); I != E; ++I) {
       if (llvm::ExtractElementInst *extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I)) {
         if (llvm::ConstantInt *index = llvm::dyn_cast<ConstantInt>(extract->getIndexOperand())) {
+          if (isI64Split && !m_CG->NeedInstruction(*extract))
+            continue;
           uint indexBit = BIT(static_cast<uint>(index->getZExtValue()));
           mask |= indexBit;
           continue;
