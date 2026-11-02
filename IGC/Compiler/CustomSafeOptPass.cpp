@@ -2634,7 +2634,7 @@ void CustomSafeOptPass::visitInsertElementInst(llvm::InsertElementInst &I) {
 
   while (true) {
 
-    if (!match(CurrentInst, m_InsertElt(m_Instruction(NextInst), m_Value(), m_ConstantInt(Index))))
+    if (!match(CurrentInst, m_InsertElt(m_Instruction(NextInst), m_Value(), m_ConstantInt(Index))) || Index >= VWidth)
       return;
 
     VisitedMask.setBit(Index);
