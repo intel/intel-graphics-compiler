@@ -20,7 +20,6 @@ SPDX-License-Identifier: MIT
 #include "DeSSA.hpp"
 #include "messageEncoding.hpp"
 #include "PayloadMapping.hpp"
-#include "RegisterAccessBoundsChecks.hpp"
 #include "VectorProcess.hpp"
 #include "ShaderCodeGen.hpp"
 #include "MemOpt.h" // helper functions related struct value.
@@ -7063,7 +7062,8 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
 
   // Wrapping a variable lane id + delta to that size likewise keeps every
   // in-range lane.
-  const bool WrapShuffleIdx = needsRegisterAccessBoundsChecks(*m_currShader->GetContext());
+  const bool WrapShuffleIdx = !m_currShader->m_Platform->supportsOutOfBoundsGrfAccess() &&
+                              m_currShader->m_DriverInfo->needsRegisterAccessBoundsChecks();
 
   // Join current and Next Data
   SBasicBlock::SimdShuffleDownSrcTy srcPair(CurrentOp, NextOp);

@@ -7,8 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; Lane id + delta below twice the SIMD size selects from current or next and
-; must be kept; only larger indices may wrap into the combined data. The pass
-; side is in Compiler/tests/RegisterAccessBoundsChecks/simd-shuffle-down.ll.
+; must be kept; only larger indices may wrap into the combined data.
 
 ; REQUIRES: regkeys, cri-supported
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
