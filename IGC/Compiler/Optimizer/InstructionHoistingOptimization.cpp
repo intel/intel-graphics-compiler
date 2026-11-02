@@ -235,7 +235,7 @@ private:
   }
 
   inline void InsertHoistableInstruction(Instruction *hoistInstr) {
-    auto isDuplicate = [](std::vector<Instruction *> hoistedInstr, Instruction *newInstr) -> bool {
+    auto isDuplicate = [](const std::vector<Instruction *> &hoistedInstr, Instruction *newInstr) -> bool {
       auto it = std::find(hoistedInstr.begin(), hoistedInstr.end(), newInstr);
       return it != hoistedInstr.end();
     };

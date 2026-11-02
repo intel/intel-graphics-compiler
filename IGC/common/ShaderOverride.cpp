@@ -179,10 +179,13 @@ void overrideShaderIGA(PLATFORM const &platform, void *&genxbin, int &binSize, s
 
 #else
   // linux
+#ifndef IGA_LIB_SUFFIX
+#define IGA_LIB_SUFFIX ""
+#endif
 #ifdef __x86_64__
-  char igaName[] = "libiga64.so";
+  char igaName[] = "libiga64" IGA_LIB_SUFFIX ".so";
 #else
-  char igaName[] = "libiga32.so";
+  char igaName[] = "libiga32" IGA_LIB_SUFFIX ".so";
 #endif
 
   hModule = dlopen(igaName, RTLD_LAZY);

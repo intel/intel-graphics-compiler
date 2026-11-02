@@ -53,9 +53,7 @@ struct ImageImplicitArgInfo {
 struct ImageImplicitArgs {
   uint8_t structSize;
   uint8_t structVersion;
-  //
-  // 6 bytes padding for 8-byte alignment of following fields
-  //
+  uint8_t padding[6];
   uint64_t imageWidth;
   uint64_t imageHeight;
   uint64_t imageDepth;

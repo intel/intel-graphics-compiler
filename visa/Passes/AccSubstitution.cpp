@@ -931,6 +931,12 @@ struct AccAssignment {
                                  });
     vISA_ASSERT(acc0Iter != activeIntervals.end(),
            "expect to find interval with acc0");
+    // vISA_ASSERT compiles out under NDEBUG, so the not-found path stays live in
+    // release builds: *acc0Iter would dereference end() and erase(end()) would
+    // hand list's in-object sentinel node to operator delete. GCC 16 proves that
+    // path reachable and rejects it with -Werror=free-nonheap-object.
+    if (acc0Iter == activeIntervals.end())
+      return;
     auto spillInterval = *acc0Iter;
     vISA_ASSERT(!spillInterval->isPreAssigned, "overlapping pre-assigned acc0");
     spillInterval->assignedAcc = -1;

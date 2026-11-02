@@ -100,7 +100,7 @@ function(build_bif_bitcode)
       COMMAND "${CMAKE_COMMAND}" "-DIGC_BIF_CONFIG=${IGC_BIF_CONFIG}"
           -P "${IGC_BIF_CMAKE_DIR}/BiFBuildBitcode.cmake"
       DEPENDS "${BiFModule_SRC_SHA_PATH}" "${IGC_BIF_CONFIG}" ${bif-tool-deps}
-          "${IGC_BUILD__PROJ__IBiF_matrix_generator}"
+          IBiF_matrix_generator_run
       COMMENT "Building BiF package"
       VERBATIM)
   set(target "${IGC_BUILD__PROJ_NAME_PREFIX}BiFModuleCache")

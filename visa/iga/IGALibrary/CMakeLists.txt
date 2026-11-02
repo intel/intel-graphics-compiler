@@ -318,8 +318,9 @@ endif(WIN32)
 set(IGA_DLL_LINK_FLAGS ${IGA_LINK_FLAGS})
 
     # trb: why do we APPEND here instead of replacing these?
+    set(_igaDllOutputName "iga${TARGET_MODIFIER}")
     set_property(TARGET IGA_DLL APPEND PROPERTY
-        OUTPUT_NAME                                 "iga${TARGET_MODIFIER}"
+        OUTPUT_NAME                                 "${_igaDllOutputName}"
         )
 set_property(TARGET IGA_DLL APPEND PROPERTY
     COMPILE_DEFINITIONS                         ${IGA_DLL_DEFINITIONS}

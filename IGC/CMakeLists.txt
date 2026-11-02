@@ -1711,8 +1711,13 @@ if(IGC_BUILD__VC_ENABLED)
       set(OS_NAME_ARCH_LOWER_CASE "linux")
     endif()
     set(OPT_LLVM_BUILD_TYPE "SharedRelease")
+
+    if(OS_NAME STREQUAL "Ubuntu")
+      set(LLVM_PREBUILD_PATH_SUFFIX prebuild-llvm/Linux/Ubuntu/${OS_VERSION_NUMBER}/${OPT_LLVM_BUILD_TYPE})
+    endif()
+
+    set(LLVM_PACKAGES_BASE ${IGC_BUILD__GFX_DEV_SRC_DIR}/../${LLVM_PREBUILD_PATH_SUFFIX})
     set(IGC_BUILD__CMOPT_DEFAULT_DIR ${IGC_BUILD__GFX_DEV_SRC_DIR}/../cmc/cm-opt/llvm-${LLVM_VERSION_MAJOR}/${OS_NAME_ARCH_LOWER_CASE}/${OS_NAME_LOWER_CASE}/${OS_VERSION_NUMBER})
-    set(LLVM_PACKAGES_BASE ${IGC_BUILD__GFX_DEV_SRC_DIR}/../prebuild-llvm/Linux/Ubuntu/${OS_VERSION_NUMBER}/${OPT_LLVM_BUILD_TYPE})
 
     # Escape hatch for trees without the internal LLVM prebuild (e.g. open-source builds).
     set(IGC_OPTION__VC_LIT_LLVM_DIR "" CACHE PATH
@@ -1743,18 +1748,23 @@ if(IGC_BUILD__VC_ENABLED)
       if(IS_DIRECTORY "${LLVM_PACKAGES_DIR}")
         message(STATUS "LLVM packages directory found: ${LLVM_PACKAGES_DIR}")
         file(MAKE_DIRECTORY "${IGC_BUILD__CMOPT_DEFAULT_DIR}")
-        file(GLOB LLVM_DEB_PACKAGES "${LLVM_PACKAGES_DIR}/*.deb")
-        foreach(pkg ${LLVM_DEB_PACKAGES})
-          message(STATUS "Extracting ${pkg} to ${IGC_BUILD__CMOPT_DEFAULT_DIR}")
-          execute_process(
-            COMMAND dpkg-deb -x "${pkg}" "${IGC_BUILD__CMOPT_DEFAULT_DIR}"
-            RESULT_VARIABLE dpkg_result
-          )
-          if(NOT dpkg_result EQUAL 0)
-            message(WARNING "Failed to extract ${pkg}")
-          endif()
-        endforeach()
-        set(IGC_BUILD__CMOPT_DEFAULT_DIR "${IGC_BUILD__CMOPT_DEFAULT_DIR}/usr")
+        if(OS_NAME STREQUAL "Ubuntu")
+          file(GLOB LLVM_DEB_PACKAGES "${LLVM_PACKAGES_DIR}/*.deb")
+          foreach(pkg ${LLVM_DEB_PACKAGES})
+            message(STATUS "Extracting ${pkg} to ${IGC_BUILD__CMOPT_DEFAULT_DIR}")
+            execute_process(
+              COMMAND dpkg-deb -x "${pkg}" "${IGC_BUILD__CMOPT_DEFAULT_DIR}"
+              RESULT_VARIABLE dpkg_result
+            )
+            if(NOT dpkg_result EQUAL 0)
+              message(WARNING "Failed to extract ${pkg}")
+            endif()
+          endforeach()
+        endif()
+        # Ubuntu .deb packages include usr/ prefix in their structure
+        if(OS_NAME STREQUAL "Ubuntu")
+          set(IGC_BUILD__CMOPT_DEFAULT_DIR "${IGC_BUILD__CMOPT_DEFAULT_DIR}/usr")
+        endif()
       else()
         message(FATAL_ERROR
           "Pre-built shared linked opt and llc are required for VC LIT testing, "
