@@ -124,9 +124,13 @@ define spir_kernel void @block_read_base(ptr addrspace(1) %src, i32 %x) {
   ret void
 }
 
-; %base is read only when selected, so it may be poison where %derived is read.
+; %base is read only when selected, so its flags may not hold: rebase on a fresh base.
 ; CHECK-LABEL: @selected_block_read_base(
-; CHECK: %derived = getelementptr inbounds i16, ptr addrspace(1) %src, i64 %derived.idx.64
+; CHECK: [[X:%.*]] = sext i32 %x to i64
+; CHECK: [[IDX:%.*]] = add nsw i64 [[X]], 1
+; CHECK: [[BASE:%.*]] = getelementptr i16, ptr addrspace(1) %src, i64 [[IDX]]
+; CHECK: [[DERIVED:%.*]] = getelementptr i16, ptr addrspace(1) [[BASE]], i64 1
+; CHECK: select i1 %use.base, ptr addrspace(1) [[BASE]], ptr addrspace(1) [[DERIVED]]
 define spir_kernel void @selected_block_read_base(ptr addrspace(1) %src, i32 %x, i1 %use.base) {
   %base.idx = add nsw i32 %x, 1
   %base.idx.64 = sext i32 %base.idx to i64

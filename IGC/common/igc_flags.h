@@ -1523,6 +1523,9 @@ DECLARE_IGC_REGKEY(bool, EnableMadLoopSlice, true, "Enables slicing of MAD chain
 DECLARE_IGC_REGKEY(bool, EnableGEPSimplification, true, "Enable GEP simplification", ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableGEPSimplificationPoisonSafeBases, false,
                    "Rebase GEPs in GEP simplification only on bases that add no poison", ALWAYS)
+DECLARE_IGC_REGKEY(bool, EnableGEPSimplificationFreshBases, true,
+                   "With EnableGEPSimplificationPoisonSafeBases, rebase GEPs without a reusable base on fresh bases",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(bool, TestGEPSimplification, false,
                    "[Test] Testing GEP simplification without actually lowering GEP. Used in lit test", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableSystemMemoryCachingInGPUForConstantBuffers, false,

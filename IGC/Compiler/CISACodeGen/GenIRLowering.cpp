@@ -397,17 +397,166 @@ bool GenIRLowering::runOnFunction(Function &F) {
   return Changed;
 }
 
+// Heuristic bound on the expression size of an offset worth rebasing on.
+static constexpr unsigned DiffSizeThreshold = 3;
+
+// A GEP with a single index, and the base and offset it is rebased on, if any.
+struct PointerExpr {
+  GetElementPtrInst *GEP;
+  const SCEV *Idx;
+  SmallPtrSet<const Value *, 8> PoisonSources;
+  GetElementPtrInst *Base = nullptr;
+  const SCEV *Offset = nullptr;
+};
+// GEPs grouped by their pointer operand.
+using PointerExprMap = DenseMap<Value *, SmallVector<PointerExpr, 32>>;
+
+static bool haveSameTypes(const PointerExpr &Base, const PointerExpr &Derived) {
+  return Base.GEP->getResultElementType() == Derived.GEP->getResultElementType() &&
+         Base.Idx->getType() == Derived.Idx->getType();
+}
+
+// Rebasing must not add poison: a GEP would inherit all of its base's sources.
+static bool addsNoPoison(const PointerExpr &Base, const PointerExpr &Derived) {
+  return set_is_subset(Base.PoisonSources, Derived.PoisonSources);
+}
+
+// The base to rebase on: the first candidate with a constant offset, else the
+// first with a single-value offset, else the last with the smallest offset.
+// Constant and single-value offsets may save a few instructions; the rest is a
+// heuristic and may be further tuned.
+struct RebaseBase {
+  int Pos = -1;
+  const SCEV *Offset = nullptr;
+  unsigned MinSize = DiffSizeThreshold;
+  bool IsSizeOne = false;
+  bool IsFinal = false;
+
+  void offer(unsigned I, const SCEV *Diff) {
+    unsigned Size = Diff->getExpressionSize();
+    if (IsFinal || Size > MinSize)
+      return;
+    if (isa<SCEVConstant>(Diff)) {
+      Pos = I;
+      Offset = Diff;
+      IsFinal = true;
+      return;
+    }
+    if (!IsSizeOne) {
+      Pos = I;
+      Offset = Diff;
+      MinSize = Size;
+      IsSizeOne = Size == 1;
+    }
+  }
+};
+
+enum class CandidateKind { Unusable, PoisonUnsafe, PoisonSafe };
+
+struct RebaseBases {
+  RebaseBase Safe;
+  // Among all usable candidates, including those the poison-safety checks reject.
+  RebaseBase Any;
+};
+
+static RebaseBases findRebaseBase(ScalarEvolution &SE, const SCEV *Idx, ArrayRef<PointerExpr> Candidates,
+                                  function_ref<CandidateKind(const PointerExpr &)> Classify) {
+  RebaseBase Safe, Any;
+  for (unsigned I = 0; I != Candidates.size() && !Safe.IsFinal; ++I) {
+    CandidateKind Kind = Classify(Candidates[I]);
+    if (Kind == CandidateKind::Unusable)
+      continue;
+    const SCEV *Diff = SE.getMinusSCEV(Idx, Candidates[I].Idx);
+    Any.offer(I, Diff);
+    if (Kind == CandidateKind::PoisonSafe)
+      Safe.offer(I, Diff);
+  }
+  return {Safe, Any};
+}
+
+#if LLVM_VERSION_MAJOR >= 18
+// sext(V) to Ty, pushed through the no-signed-wrap arithmetic computing V. Each
+// step relies only on the flags of V's own operations: if one fails, V is poison
+// anyway. Leaves stay opaque so that SCEV can't look into them through flags
+// that may not hold.
+static const SCEV *getSExtThroughNoWrap(ScalarEvolution &SE, Value *V, Type *Ty, unsigned Depth = 0) {
+  auto Recurse = [&](unsigned OpNo) {
+    return getSExtThroughNoWrap(SE, cast<User>(V)->getOperand(OpNo), Ty, Depth + 1);
+  };
+  auto Leaf = [&] {
+    const SCEV *Opaque = isa<Constant>(V) ? SE.getSCEV(V) : SE.getUnknown(V);
+    return SE.getNoopOrSignExtend(Opaque, Ty);
+  };
+  constexpr unsigned MaxDepth = 8;
+  if (Depth >= MaxDepth)
+    return Leaf();
+  if (isa<SExtInst>(V))
+    return Recurse(0);
+  if (auto *Disjoint = dyn_cast<PossiblyDisjointInst>(V); Disjoint && Disjoint->isDisjoint())
+    return SE.getAddExpr(Recurse(0), Recurse(1));
+  if (auto *Op = dyn_cast<OverflowingBinaryOperator>(V); Op && Op->hasNoSignedWrap()) {
+    switch (Op->getOpcode()) {
+    case Instruction::Add:
+      return SE.getAddExpr(Recurse(0), Recurse(1));
+    case Instruction::Sub:
+      return SE.getMinusSCEV(Recurse(0), Recurse(1));
+    case Instruction::Mul:
+      return SE.getMulExpr(Recurse(0), Recurse(1));
+    case Instruction::Shl:
+      if (auto *Amt = dyn_cast<ConstantInt>(Op->getOperand(1)); Amt && Amt->getZExtValue() < Ty->getIntegerBitWidth())
+        return SE.getMulExpr(Recurse(0),
+                             SE.getConstant(APInt::getOneBitSet(Ty->getIntegerBitWidth(), Amt->getZExtValue())));
+      break;
+    default:
+      break;
+    }
+  }
+  return Leaf();
+}
+#endif
+
+// Fresh bases are expanded from the GEPs' own indices, in the pointer's index
+// width since GEP sign-extends to it before adding.
+static PointerExprMap findFreshBases(ScalarEvolution &SE, const DataLayout &DL, ArrayRef<GetElementPtrInst *> GEPs) {
+  PointerExprMap Pointers;
+#if LLVM_VERSION_MAJOR < 18
+  // Below LLVM 18, SCEV reports no poison sources, so the subset check would
+  // admit any base.
+  return Pointers;
+#else
+  SmallPtrSet<GetElementPtrInst *, 32> Bases;
+  for (auto *GEP : GEPs) {
+    Value *Idx = GEP->getOperand(1);
+    Type *IndexTy = DL.getIndexType(GEP->getPointerOperandType());
+    if (Idx->getType()->getIntegerBitWidth() > IndexTy->getIntegerBitWidth())
+      continue;
+    PointerExpr New{GEP, getSExtThroughNoWrap(SE, Idx, IndexTy)};
+    IGCLLVM::getPoisonGeneratingValues(SE, New.PoisonSources, New.Idx);
+    auto &Exprs = Pointers[GEP->getPointerOperand()];
+    RebaseBase Base = findRebaseBase(SE, New.Idx, Exprs, [&](const PointerExpr &Candidate) {
+                        bool Usable = haveSameTypes(Candidate, New) && addsNoPoison(Candidate, New);
+                        return Usable ? CandidateKind::PoisonSafe : CandidateKind::Unusable;
+                      }).Safe;
+    if (Base.Offset) {
+      New.Base = Exprs[Base.Pos].GEP;
+      New.Offset = Base.Offset;
+      Bases.insert(New.Base);
+    }
+    Exprs.push_back(std::move(New));
+  }
+  // Rebuild reused roots too, so that derived GEPs don't inherit their
+  // poison-generating flags.
+  for (auto &B : Pointers)
+    for (PointerExpr &P : B.second)
+      if (!P.Offset && Bases.contains(P.GEP))
+        P.Offset = P.Idx;
+  return Pointers;
+#endif
+}
+
 // For each basic block, simplify GEPs based on the analysis result from SCEV.
 bool GEPLowering::simplifyGEP(BasicBlock &BB) {
-  // Pointers with the form base + zext(idx).
-  struct PointerExpr {
-    GetElementPtrInst *GEP;
-    const SCEV *Idx;
-    GetElementPtrInst *Base = nullptr; // A simplified offset if any.
-    const SCEV *Offset = nullptr;      // A simplified offset if any.
-  };
-  // Each visited base pointer have a collection of base expr.
-  DenseMap<Value *, SmallVector<PointerExpr, 128>> Pointers;
+  PointerExprMap Pointers;
 
   auto IsUsedByBindless = [](const GetElementPtrInst *GEP) {
     for (auto *U : GEP->users())
@@ -433,6 +582,12 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
   // only if the base is actually reused.
   DenseMap<GetElementPtrInst *, SmallVector<Instruction *, 4>> ReusableBases;
   bool PoisonSafeBases = IGC_IS_FLAG_ENABLED(EnableGEPSimplificationPoisonSafeBases);
+  bool FreshBases = PoisonSafeBases && IGC_IS_FLAG_ENABLED(EnableGEPSimplificationFreshBases);
+
+  SmallVector<GetElementPtrInst *, 32> GEPsWithoutBase;
+  // GEPs without a base only because of the poison-safety checks, and the bases
+  // those checks rejected for them.
+  DenseSet<GetElementPtrInst *> BlockedRebases;
 
   bool Changed = false;
   for (auto BI = BB.begin(), BE = BB.end(); BI != BE; ++BI) {
@@ -474,59 +629,17 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
     Value *Base = GEP->getPointerOperand();
     auto &Exprs = Pointers[Base];
 
-    auto EI = Exprs.begin();
-    auto EE = Exprs.end();
-    const SCEV *Offset = nullptr;
-
-    // Let GEP_a be one gep from Pointers[Base];
-    // GEP (it is 'GEP' var in this loop iteration) reuses GEP_a's address
-    // as its base
-    //   1. if GEP_a is the first in Pointer[Base] such that diff of GEP_a
-    //      and GEP is constant; otherwise
-    //   2. if GEP_a is the first in Pointers[Base] such that diff of GEP_a
-    //      and GEP is 1 (a single value), otherwise
-    //   3. if GEP_a has the smallest diff or if more than one GEPs with the
-    //      same diff, GEP_a is the last one in Pointers[Base].
-    // Both 1 and 2 may potentially save a few instructions. 3 is a
-    // heuristic and may be further tuned.
-    constexpr unsigned DIFF_SIZE_THRESHOLD = 3;
-    unsigned MinDiff = DIFF_SIZE_THRESHOLD;
-    bool isDiffOne = false;
-    GetElementPtrInst *BaseWithMinDiff = nullptr;
-    SmallPtrSet<const Value *, 8> GEPPoisonSources;
+    PointerExpr New{GEP, E};
     if (PoisonSafeBases)
-      IGCLLVM::getPoisonGeneratingValues(*SE, GEPPoisonSources, E);
-    for (/*EMPTY*/; EI != EE; ++EI) {
-      if (EI->GEP->getResultElementType() != GEP->getResultElementType() || E->getType() != EI->Idx->getType())
-        continue;
-      if (PoisonSafeBases) {
-        if (!ReusableBases.count(EI->GEP))
-          continue;
-        // Rebasing must not add poison: GEP would inherit all of its base's sources.
-        SmallPtrSet<const Value *, 8> BasePoisonSources;
-        IGCLLVM::getPoisonGeneratingValues(*SE, BasePoisonSources, EI->Idx);
-        bool NoPoisonAdded = set_is_subset(BasePoisonSources, GEPPoisonSources);
-        if (!NoPoisonAdded)
-          continue;
-      }
-
-      auto *Diff = SE->getMinusSCEV(E, EI->Idx);
-      unsigned exprSize = Diff->getExpressionSize();
-      if (exprSize <= MinDiff) {
-        if (isa<SCEVConstant>(Diff)) {
-          BaseWithMinDiff = EI->GEP;
-          Offset = Diff;
-          MinDiff = exprSize;
-          break;
-        }
-        if (!isDiffOne) {
-          BaseWithMinDiff = EI->GEP;
-          Offset = Diff;
-          MinDiff = exprSize;
-          isDiffOne = (MinDiff == 1);
-        }
-      }
-    }
+      IGCLLVM::getPoisonGeneratingValues(*SE, New.PoisonSources, E);
+    auto [SafeBase, AnyBase] = findRebaseBase(*SE, E, Exprs, [&](const PointerExpr &Candidate) {
+      if (!haveSameTypes(Candidate, New))
+        return CandidateKind::Unusable;
+      if (!PoisonSafeBases)
+        return CandidateKind::PoisonSafe;
+      bool Safe = ReusableBases.count(Candidate.GEP) && addsNoPoison(Candidate, New);
+      return Safe ? CandidateKind::PoisonSafe : CandidateKind::PoisonUnsafe;
+    });
     if (PoisonSafeBases) {
       // A GEP may be poison where it is unused, e.g. after speculation, while SCEV
       // equates it with a non-poison expression (as in StraightLineStrengthReduce).
@@ -543,12 +656,20 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
           ReusableBases[GEP] = std::move(DropPoisonGeneratingInsts);
       }
     }
-    // Not found, add this GEP as a potential base expr.
-    if (!Offset) {
-      Exprs.emplace_back(PointerExpr{GEP, E, nullptr, nullptr});
-      continue;
+    if (SafeBase.Offset) {
+      New.Base = Exprs[SafeBase.Pos].GEP;
+      New.Offset = SafeBase.Offset;
+    } else {
+      if (FreshBases && isa<SExtInst>(GEP->getOperand(1)))
+        GEPsWithoutBase.push_back(GEP);
+      // A rebased candidate is already rewritten on its own base.
+      bool BlockedOnRoot = AnyBase.Offset && !Exprs[AnyBase.Pos].Offset;
+      if (BlockedOnRoot) {
+        BlockedRebases.insert(GEP);
+        BlockedRebases.insert(Exprs[AnyBase.Pos].GEP);
+      }
     }
-    Exprs.emplace_back(PointerExpr{GEP, E, BaseWithMinDiff, Offset});
+    Exprs.push_back(std::move(New));
   }
   // The bases gain uses their poison-generating flags were never proven for.
   // Drop them all first: a drop list may reach into another bucket, whose
@@ -559,25 +680,39 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
         for (Instruction *I : ReusableBases[P.Base])
           IGCLLVM::dropPoisonGeneratingAnnotations(I);
   std::vector<Instruction *> DeadInsts;
-  for (const auto &B : Pointers) {
-    for (auto PI = B.second.rbegin(), PE = B.second.rend(); PI != PE; ++PI) {
-      auto &P = *PI;
-      if (P.Offset) {
+  // Bases are rewritten after the GEPs derived from them, which follow through
+  // replaceAllUsesWith.
+  auto Rebase = [&](const PointerExprMap &Ptrs, bool KeepInBounds) {
+    for (const auto &B : Ptrs) {
+      for (const PointerExpr &P : reverse(B.second)) {
+        if (!P.Offset)
+          continue;
         IGCLLVM::IGCSCEVExpander E(*SE, *DL, "gep-simplification");
-        Value *V = E.expandCodeFor(P.Offset, P.Idx->getType(), P.GEP);
+        Value *V = E.expandCodeFor(P.Offset, P.Offset->getType(), P.GEP);
         Builder->SetInsertPoint(P.GEP);
-        Type *Ty = P.Base->getResultElementType();
-        Value *Idx = Builder->CreateSExt(V, P.GEP->getOperand(1)->getType());
+        Type *IdxTy = P.GEP->getOperand(1)->getType();
+        if (V->getType()->getIntegerBitWidth() < IdxTy->getIntegerBitWidth())
+          V = Builder->CreateSExt(V, IdxTy);
+        Value *Base = P.Base ? P.Base : P.GEP->getPointerOperand();
         // inbounds needs an in-bounds base, which a dropped inbounds no longer
         // guarantees; P.GEP may have lost its own as a base of a later GEP.
-        auto *NewGEP = P.GEP->isInBounds() && P.Base->isInBounds() ? Builder->CreateInBoundsGEP(Ty, P.Base, Idx)
-                                                                   : Builder->CreateGEP(Ty, P.Base, Idx);
+        bool InBounds = KeepInBounds && P.GEP->isInBounds() && P.Base->isInBounds();
+        Type *Ty = P.GEP->getSourceElementType();
+        Value *NewGEP = InBounds ? Builder->CreateInBoundsGEP(Ty, Base, V) : Builder->CreateGEP(Ty, Base, V);
         P.GEP->replaceAllUsesWith(NewGEP);
         DeadInsts.push_back(P.GEP);
         Changed = true;
       }
     }
-  }
+  };
+  Rebase(Pointers, /*KeepInBounds=*/true);
+  SmallVector<GetElementPtrInst *, 32> FreshCandidates;
+  for (GetElementPtrInst *GEP : GEPsWithoutBase)
+    if (BlockedRebases.contains(GEP))
+      FreshCandidates.push_back(GEP);
+  // No inbounds: a fresh base may be out of bounds where only a derived address
+  // is used.
+  Rebase(findFreshBases(*SE, *DL, FreshCandidates), /*KeepInBounds=*/false);
   for (auto *I : DeadInsts)
     RecursivelyDeleteTriviallyDeadInstructions(I);
   return Changed;
