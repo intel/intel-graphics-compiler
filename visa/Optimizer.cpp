@@ -926,7 +926,7 @@ void Optimizer::accSubPostSchedule() {
     kernel.fg.localDataFlowAnalysis();
   }
 
-  AccSubPass accSub(builder, kernel);
+  AccSubPass accSub(builder, kernel, /*isPostSchedule*/ true);
   accSub.run();
 }
 

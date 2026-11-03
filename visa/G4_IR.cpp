@@ -944,6 +944,22 @@ bool G4_INST::distanceHonourInstruction() const {
   return true;
 }
 
+// This mirrors the WAR distance rule in G4_BB_SB::SBDDD() in SWSB_G4IR.cpp. A
+// distance dependence makes WRITEINST wait until this instruction completes,
+// the same as RAW.
+bool G4_INST::hasWARDistanceDep(const G4_INST *writeInst) const {
+  if (!builder.hasSWSB() || !distanceHonourInstruction())
+    return false;
+
+  if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+    return !writeInst->distanceHonourInstruction() ||
+           getInstructionPipeXe() != writeInst->getInstructionPipeXe();
+
+  // Single in-order ALU pipe: distance dependence across function units.
+  return writeInst->isSend() || writeInst->isDpas() ||
+         writeInst->isMathPipeInst() != isMathPipeInst();
+}
+
 bool G4_INST::tokenHonourInstruction() const {
   if (isSend() || isDpas()) {
     return true;

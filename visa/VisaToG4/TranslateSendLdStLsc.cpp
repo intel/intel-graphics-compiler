@@ -2865,6 +2865,9 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(G4_Predicate *pred,
         G4_SrcRegRegion *srcImplAcc = createSrc(phyregpool.getAcc0Reg(), 0, 0,
                                                 getRegionStride1(), Type_D);
         machInst->setImplAccSrc(srcImplAcc);
+        G4_DstRegRegion *dstImplAcc =
+            createDst(phyregpool.getAcc0Reg(), 0, 0, 1, Type_D);
+        machInst->setImplAccDst(dstImplAcc);
         mulInst->addDefUse(machInst, Opnd_implAccSrc);
       }
 

@@ -3873,6 +3873,12 @@ uint32_t DDD::getEdgeLatency_old(Node *node, Node *succNode, DepType depT) const
   case WAR:
     if (kernel->fg.builder->modelSendSrcReadLatency() && inst->isSend()) {
       latency = LT.getSendSrcReadLatency(inst);
+    } else if (kernel->fg.builder->schedWARDistanceDepAsRAW() &&
+               succNode != nullptr &&
+               inst->hasWARDistanceDep(succNode->getInstructions()->front())) {
+      // SWSB resolves this WAR with a distance dependence, which stalls the
+      // write until the read instruction completes, the same as RAW.
+      latency = LT.getLatency(inst);
     } else {
       latency = UNCOMPR_LATENCY;
     }
