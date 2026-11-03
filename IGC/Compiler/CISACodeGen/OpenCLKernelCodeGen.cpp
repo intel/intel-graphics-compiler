@@ -2333,6 +2333,18 @@ static bool verifyHasOOBScratch(OpenCLProgramContext *ctx, COpenCLKernel *simd8S
   return result;
 }
 
+static bool hasAnyCompiledShader(COpenCLKernel *simd8Shader, COpenCLKernel *simd16Shader, COpenCLKernel *simd32Shader) {
+  for (COpenCLKernel *shader : {simd8Shader, simd16Shader, simd32Shader}) {
+    if (COpenCLKernel::IsValidShader(shader))
+      return true;
+    // DumpVISAASMToConsole stops after vISA compilation, before the binary is
+    // emitted.
+    if (IGC_IS_FLAG_ENABLED(DumpVISAASMToConsole) && COpenCLKernel::IsVisaCompiledSuccessfullyForShader(shader))
+      return true;
+  }
+  return false;
+}
+
 static void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &shaders) {
   COMPILER_TIME_START(ctx, TIME_CodeGen);
   COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
@@ -2514,6 +2526,12 @@ void CodeGen(OpenCLProgramContext *ctx) {
             ctx->EmitError(errorMsg.c_str(), shader->entry);
           }
         }
+      } else if (!ctx->HasError() && !IGC::isIntelSymbolTableVoidProgram(pFunc) &&
+                 !hasAnyCompiledShader(simd8Shader, simd16Shader, simd32Shader)) {
+        // Without a binary the runtime fails to find the kernel only at
+        // clCreateKernel / zeKernelCreate time. The symbol table dummy kernel
+        // is not compiled when there is no symbol table.
+        ctx->EmitError("Failed to compile the kernel in any SIMD size", pFunc);
       }
     }
   }
