@@ -517,15 +517,18 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
   preprocessPrintfArgs(printfCall);
 
   // An inline format string needs a runtime length to size the record and the
-  // copy. emitStrlenWithNull() splits the block, so capture 'currentBBlock' after.
+  // copy. emitFormatStringScan() splits the block, so capture 'currentBBlock' after.
   SPrintfArgDescriptor *fmtDesc = &m_argDescriptors[0];
   bool inlineFmtString = fmtDesc->inlineFmtString;
   Value *inlineFmtLenWithNull = nullptr;
   Value *inlineFmtAlignedLen = nullptr;
+  Value *inlineFmtNumConversions = nullptr;
 
   Value *dataSizeVal = ConstantInt::get(m_int32Type, getTotalDataSize());
   if (inlineFmtString) {
-    inlineFmtLenWithNull = emitStrlenWithNull(fmtDesc->value, &printfCall);
+    FormatStringScan fmtScan = emitFormatStringScan(fmtDesc->value, &printfCall);
+    inlineFmtLenWithNull = fmtScan.lenWithNull;
+    inlineFmtNumConversions = fmtScan.numConversions;
     // alignedLen = (lenWithNull + 3) & ~3
     Value *lenPlus3 = BinaryOperator::CreateAdd(inlineFmtLenWithNull, ConstantInt::get(m_int32Type, 3), "",
                                                 IGCLLVM::insertPosition(&printfCall));
@@ -535,6 +538,21 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
     // only the padded string bytes are extra.
     dataSizeVal =
         BinaryOperator::CreateAdd(dataSizeVal, inlineFmtAlignedLen, "data_size", IGCLLVM::insertPosition(&printfCall));
+
+    // The runtime has no record length: it consumes as many arguments as the
+    // format has conversions and parses what follows as the next record. A
+    // static format drops the surplus in preprocessPrintfArgs(); here the count
+    // is known only at run time, so surplus arguments are neither reserved nor
+    // written.
+    IRBuilder<> B(&printfCall);
+    B.SetCurrentDebugLocation(m_DL);
+    for (size_t i = 1, size = m_argDescriptors.size(); i < size; ++i) {
+      Value *isSurplus = B.CreateICmpUGE(ConstantInt::get(m_int32Type, i - 1), inlineFmtNumConversions);
+      Value *surplusSize =
+          B.CreateSelect(isSurplus, ConstantInt::get(m_int32Type, getArgRecordSize(m_argDescriptors[i])),
+                         ConstantInt::get(m_int32Type, 0));
+      dataSizeVal = B.CreateSub(dataSizeVal, surplusSize, "data_size");
+    }
   }
 
   BasicBlock *currentBBlock = printfCall.getParent();
@@ -602,6 +620,12 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
   // write_offset += 4;
   Value *constVal4 = ConstantInt::get(m_ptrSizeIntType, 4);
 
+  // With an inline format string each argument is written in its own block,
+  // skipped from the first surplus one on; see the data size above.
+  BasicBlock *writeBBlock = bblockTrue;
+  BasicBlock *writeDoneBBlock =
+      inlineFmtString ? BasicBlock::Create(*m_context, "write_args_done", &F, bblockJoin) : nullptr;
+
   for (size_t i = 0, size = m_argDescriptors.size(); i < size; ++i) {
     SPrintfArgDescriptor *argDesc = &m_argDescriptors[i];
     Value *printfArg = argDesc->value;
@@ -610,8 +634,18 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
     // Inline format string: [marker:u64][byteLength:u32][bytes padded to 4].
     if (i == 0 && argDesc->inlineFmtString) {
       writeOffset = cast<Instruction>(emitInlineFormatString(writeOffset, argDesc, inlineFmtLenWithNull,
-                                                             inlineFmtAlignedLen, bblockTrue, isPrintfBuiltin));
+                                                             inlineFmtAlignedLen, writeBBlock, isPrintfBuiltin));
       continue;
+    }
+
+    if (inlineFmtString) {
+      BasicBlock *argBBlock = BasicBlock::Create(*m_context, "write_arg", &F, writeDoneBBlock);
+      Instruction *isConsumed =
+          CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_ULT, ConstantInt::get(m_int32Type, i - 1),
+                          inlineFmtNumConversions, "", writeBBlock);
+      isConsumed->setDebugLoc(m_DL);
+      IGCLLVM::CondBrInst::Create(isConsumed, argBBlock, writeDoneBBlock, writeBBlock)->setDebugLoc(m_DL);
+      writeBBlock = argBBlock;
     }
 
     // We don't store the dataType for format string (which is the first entry in m_argDescriptors).
@@ -620,12 +654,12 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
       Value *argTypeVal = ConstantInt::get(m_int32Type, (unsigned int)dataType);
       writeOffsetPtr = CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset,
                                         IGCLLVM::PointerType::get(m_int32Type, ADDRESS_SPACE_GLOBAL),
-                                        "write_offset_ptr", bblockTrue);
+                                        "write_offset_ptr", writeBBlock);
       writeOffsetPtr->setDebugLoc(m_DL);
-      genStoreInternal(argTypeVal, writeOffsetPtr, bblockTrue, m_DL, isPrintfBuiltin);
+      genStoreInternal(argTypeVal, writeOffsetPtr, writeBBlock, m_DL, isPrintfBuiltin);
 
       // write_offset += 4
-      writeOffset = BinaryOperator::CreateAdd(writeOffset, constVal4, "write_offset", bblockTrue);
+      writeOffset = BinaryOperator::CreateAdd(writeOffset, constVal4, "write_offset", writeBBlock);
       writeOffset->setDebugLoc(m_DL);
 
       // For vector arguments, add vector size after type ID.
@@ -633,35 +667,38 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
         Value *vecSizeVal = ConstantInt::get(m_int32Type, argDesc->vecSize);
         writeOffsetPtr = CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset,
                                           IGCLLVM::PointerType::get(m_int32Type, ADDRESS_SPACE_GLOBAL),
-                                          "write_offset_ptr", bblockTrue);
+                                          "write_offset_ptr", writeBBlock);
         writeOffsetPtr->setDebugLoc(m_DL);
-        genStoreInternal(vecSizeVal, writeOffsetPtr, bblockTrue, m_DL, isPrintfBuiltin);
+        genStoreInternal(vecSizeVal, writeOffsetPtr, writeBBlock, m_DL, isPrintfBuiltin);
 
         // write_offset += 4
-        writeOffset = BinaryOperator::CreateAdd(writeOffset, constVal4, "write_offset", bblockTrue);
+        writeOffset = BinaryOperator::CreateAdd(writeOffset, constVal4, "write_offset", writeBBlock);
         writeOffset->setDebugLoc(m_DL);
       }
     }
 
-    writeOffsetPtr = generateCastToPtr(argDesc, writeOffset, bblockTrue);
+    writeOffsetPtr = generateCastToPtr(argDesc, writeOffset, writeBBlock);
     writeOffsetPtr->setDebugLoc(m_DL);
 
     if (dataType == SHADER_PRINTF_STRING_LITERAL && m_CGContext->type == ShaderType::OPENCL_SHADER) {
       printfArg = CastInst::Create(Instruction::CastOps::PtrToInt, argDesc->value, Type::getInt64Ty(*m_context), "",
-                                   bblockTrue);
+                                   writeBBlock);
     }
 
     // *write_offset = argument[i].value
-    genStoreInternal(printfArg, writeOffsetPtr, bblockTrue, m_DL, isPrintfBuiltin);
+    genStoreInternal(printfArg, writeOffsetPtr, writeBBlock, m_DL, isPrintfBuiltin);
 
     // write_offset += argument[i].size
     Value *offsetInc = ConstantInt::get(m_ptrSizeIntType, getArgTypeSize(dataType, argDesc->vecSize));
-    writeOffset = BinaryOperator::CreateAdd(writeOffset, offsetInc, "write_offset", bblockTrue);
+    writeOffset = BinaryOperator::CreateAdd(writeOffset, offsetInc, "write_offset", writeBBlock);
     writeOffset->setDebugLoc(m_DL);
   } // for (SPrintfArgDescriptor *argDesc : m_argDescriptors)
 
-  IGCLLVM::UncondBrInst *uncondBrInst = IGCLLVM::UncondBrInst::Create(bblockJoin, bblockTrue);
+  IGCLLVM::UncondBrInst *uncondBrInst =
+      IGCLLVM::UncondBrInst::Create(writeDoneBBlock ? writeDoneBBlock : bblockJoin, writeBBlock);
   uncondBrInst->setDebugLoc(m_DL);
+  if (writeDoneBBlock)
+    IGCLLVM::UncondBrInst::Create(bblockJoin, writeDoneBBlock)->setDebugLoc(m_DL);
 
   //  ----------- Fill "false" block ----------------
   // end_offset = write_offset + 4
@@ -931,18 +968,15 @@ unsigned int OpenCLPrintfResolution::getTotalDataSize() {
 
   // Skip 0-th operand (format string) and count total size of
   // the remaining arguments.
-  for (size_t i = 1, size = m_argDescriptors.size(); i < size; ++i) {
-    argDesc = &m_argDescriptors[i];
-    // Add size of the data type identifier.
-    dataSize += 4;
-    // Vector arguments require additional type identifier - number of elements.
-    if (argDesc->vecSize > 0) {
-      dataSize += 4;
-    }
-    // Add size of the data itself.
-    dataSize += getArgTypeSize(argDesc->argType, argDesc->vecSize);
-  }
+  for (size_t i = 1, size = m_argDescriptors.size(); i < size; ++i)
+    dataSize += getArgRecordSize(m_argDescriptors[i]);
   return dataSize;
+}
+
+unsigned int OpenCLPrintfResolution::getArgRecordSize(const SPrintfArgDescriptor &argDesc) {
+  // Data type identifier, then for vectors the number of elements.
+  unsigned int size = argDesc.vecSize > 0 ? 8 : 4;
+  return size + getArgTypeSize(argDesc.argType, argDesc.vecSize);
 }
 
 IGC::SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value *printfArg,
@@ -1035,10 +1069,9 @@ Instruction *OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor *arg
   return CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset, castedType, "write_offset_ptr", bblock);
 }
 
-Value *OpenCLPrintfResolution::emitStrlenWithNull(Value *strPtr, Instruction *insertBefore) {
-  // Scan bytes from strPtr until the null terminator and return the index past
-  // it (length including null). doneBB is reached only from the loop, so the
-  // returned value dominates it.
+OpenCLPrintfResolution::FormatStringScan OpenCLPrintfResolution::emitFormatStringScan(Value *strPtr,
+                                                                                      Instruction *insertBefore) {
+  // doneBB is reached only from the loop, so the returned values dominate it.
   Type *i8Ty = Type::getInt8Ty(*m_context);
   BasicBlock *entryBB = insertBefore->getParent();
   Function *F = entryBB->getParent();
@@ -1061,15 +1094,29 @@ Value *OpenCLPrintfResolution::emitStrlenWithNull(Value *strPtr, Instruction *in
   B.SetCurrentDebugLocation(m_DL);
   PHINode *idx = B.CreatePHI(m_int32Type, 2, "strlen_idx");
   idx->addIncoming(ConstantInt::get(m_int32Type, 0), entryBB);
+  PHINode *count = B.CreatePHI(m_int32Type, 2, "fmt_conv_count");
+  count->addIncoming(ConstantInt::get(m_int32Type, 0), entryBB);
+  PHINode *afterOpen = B.CreatePHI(B.getInt1Ty(), 2, "fmt_after_open");
+  afterOpen->addIncoming(B.getFalse(), entryBB);
   Value *gepIndices[] = {idx};
   Value *elemPtr = B.CreateGEP(i8Ty, strPtr, gepIndices, "strlen_ptr");
   Value *ch = B.CreateLoad(i8Ty, elemPtr, "strlen_ch");
   Value *idxNext = B.CreateAdd(idx, ConstantInt::get(m_int32Type, 1), "strlen_idx_next");
   idx->addIncoming(idxNext, loopBB);
+
+  // A '%' opens a conversion unless it closes a "%%" opened by the previous byte,
+  // in which case that byte's count is taken back.
+  Value *isPercent = B.CreateICmpEQ(ch, ConstantInt::get(i8Ty, '%'), "fmt_is_percent");
+  Value *delta = B.CreateSelect(afterOpen, ConstantInt::getSigned(m_int32Type, -1), ConstantInt::get(m_int32Type, 1));
+  delta = B.CreateSelect(isPercent, delta, ConstantInt::get(m_int32Type, 0));
+  Value *countNext = B.CreateAdd(count, delta, "fmt_conv_count_next");
+  count->addIncoming(countNext, loopBB);
+  afterOpen->addIncoming(B.CreateAnd(isPercent, B.CreateNot(afterOpen)), loopBB);
+
   Value *isNull = B.CreateICmpEQ(ch, ConstantInt::get(i8Ty, 0), "strlen_is_null");
   B.CreateCondBr(isNull, doneBB, loopBB);
 
-  return idxNext;
+  return {idxNext, countNext};
 }
 
 #if LLVM_VERSION_MAJOR >= 16

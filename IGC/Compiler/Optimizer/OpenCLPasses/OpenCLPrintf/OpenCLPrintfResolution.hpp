@@ -132,6 +132,10 @@ private:
   // to keep the printf arguments.
   unsigned int getTotalDataSize();
 
+  // Returns the size (in bytes) a value argument takes in the printf record,
+  // including its type identifier(s).
+  unsigned int getArgRecordSize(const SPrintfArgDescriptor &argDesc);
+
   // Returns the size (in bytes) of printf argument type.
   unsigned int getArgTypeSize(IGC::SHADER_PRINTF_TYPE argType, uint vecSize);
 
@@ -146,9 +150,14 @@ private:
   llvm::Instruction *generateCastToPtr(SPrintfArgDescriptor *argDesc, llvm::Value *writeOffset,
                                        llvm::BasicBlock *bblock);
 
-  // Emit a runtime strlen loop over 'strPtr'; returns the length including the
-  // null terminator as i32. Splits the block containing 'insertBefore'.
-  llvm::Value *emitStrlenWithNull(llvm::Value *strPtr, llvm::Instruction *insertBefore);
+  struct FormatStringScan {
+    llvm::Value *lenWithNull;    // i32 length including the null terminator.
+    llvm::Value *numConversions; // i32, counted as getNumFormatSpecifiers() does.
+  };
+
+  // Emit a runtime loop over the null-terminated 'strPtr' computing its length
+  // and conversion count. Splits the block containing 'insertBefore'.
+  FormatStringScan emitFormatStringScan(llvm::Value *strPtr, llvm::Instruction *insertBefore);
 
   // Emit an inline format-string record ([flag|length : u64][bytes padded to 4])
   // at 'writeOffset' in the printf output buffer and return the advanced offset.
