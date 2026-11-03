@@ -5854,10 +5854,10 @@ void FCmpPaternMatch::visitSelectInst(SelectInst &I) {
     bool isSelWithConstants = false;
     ConstantFP *Cfp1 = dyn_cast<ConstantFP>(I.getOperand(1));
     ConstantFP *Cfp2 = dyn_cast<ConstantFP>(I.getOperand(2));
-    if (Cfp1 && Cfp1->getValueAPF().isFiniteNonZero() && Cfp2 && Cfp2->isZero()) {
+    if (Cfp1 && Cfp1->getValueAPF().isFiniteNonZero() && Cfp2 && Cfp2->getValueAPF().isPosZero()) {
       isSelWithConstants = true;
     }
-    if (Cfp1 && Cfp1->isZero() && Cfp2 && Cfp2->getValueAPF().isFiniteNonZero()) {
+    if (Cfp1 && Cfp1->getValueAPF().isPosZero() && Cfp2 && Cfp2->getValueAPF().isFiniteNonZero()) {
       isSelWithConstants = true;
       swapNodesFromSel = true;
     }
