@@ -889,13 +889,65 @@ bool AccSubPass::replaceDstWithAcc(G4_INST *inst, int accNum) {
 
 struct AccAssignment {
   std::vector<bool> freeAccs;
+  // The last expired interval of each acc, nullptr if none. Its uses are the
+  // last reads of the acc. Pre-assigned intervals are not recorded, since their
+  // acc is read implicitly rather than through their uses.
+  std::vector<const AccInterval *> lastExpired;
   std::list<AccInterval *> activeIntervals;
   IR_Builder &builder;
   int curAcc = 0; // The allocation start point for round robin
+  // Cycles between two instructions of a thread.
+  int issueCycles = 1;
+  // The latencies of the cross pipeline reads of an acc. nullptr means no
+  // restriction on reusing an acc.
+  const LatencyTable *LT = nullptr;
 
-  AccAssignment(int numGeneralAcc, IR_Builder &m_builder, bool initToTrue)
-      : builder(m_builder) {
+  AccAssignment(int numGeneralAcc, IR_Builder &m_builder, bool initToTrue,
+                int issueCycles_, const LatencyTable *lt)
+      : builder(m_builder), issueCycles(issueCycles_), LT(lt) {
     freeAccs.resize(numGeneralAcc, initToTrue);
+    lastExpired.resize(numGeneralAcc, nullptr);
+  }
+
+  // Return true if READINST and WRITEINST are in different ALU pipelines, so
+  // that SWSB resolves the WAR from READINST to WRITEINST with a distance
+  // dependence.
+  static bool isCrossPipeWAR(const G4_INST *readInst,
+                             const G4_INST *writeInst) {
+    return readInst->hasWARDistanceDep(writeInst) &&
+           writeInst->distanceHonourInstruction() &&
+           readInst->getInstructionPipeXe() !=
+               writeInst->getInstructionPipeXe();
+  }
+
+  // Return the estimated WAR stall in cycles if interval writes accID, or -1 if
+  // accID should not be used because a read of it is too close. Only the cross
+  // pipeline reads of the acc are counted. The write must wait until such read
+  // completes, the same as RAW. A thread issues an instruction every
+  // issueCycles cycles, so the stall is the latency of the read minus the
+  // distance times issueCycles. A read is too close if it stalls the write.
+  int getWARStall(int accID, const AccInterval *interval) const {
+    const AccInterval *prev = lastExpired[accID];
+    if (!LT || !prev) {
+      return 0;
+    }
+    G4_INST *writeInst = interval->inst;
+    int stall = 0;
+    for (auto I = prev->inst->use_begin(), E = prev->inst->use_end(); I != E;
+         ++I) {
+      G4_INST *readInst = I->first;
+      int dist = writeInst->getLocalId() - readInst->getLocalId();
+      if (dist <= 0 || !isCrossPipeWAR(readInst, writeInst)) {
+        continue;
+      }
+      int latency = (int)LT->getLatency(readInst);
+      int minDist = (latency + issueCycles - 1) / issueCycles;
+      if (dist < minDist) {
+        return -1;
+      }
+      stall = std::max(stall, latency - dist * issueCycles);
+    }
+    return stall;
   }
 
   // expire all intervals that end before the given interval
@@ -906,11 +958,14 @@ struct AccAssignment {
       if (active->lastUse <= interval->inst->getLocalId()) {
         vISA_ASSERT(!freeAccs[active->assignedAcc],
                "active interval's acc should not be free");
+        const AccInterval *expired = active->isPreAssigned ? nullptr : active;
         freeAccs[active->assignedAcc] = true;
+        lastExpired[active->assignedAcc] = expired;
         if (builder.needBothAcc(active->inst->getDst())) {
           vISA_ASSERT(!freeAccs[active->assignedAcc + 1],
                  "active interval's acc should not be free");
           freeAccs[active->assignedAcc + 1] = true;
+          lastExpired[active->assignedAcc + 1] = expired;
         }
         iter = activeIntervals.erase(iter);
 #ifdef DEBUG_VERBOSE_ON
@@ -964,27 +1019,39 @@ struct AccAssignment {
     activeIntervals.push_back(interval);
   }
 
-  bool assignAcc(AccInterval *interval, int startReg, int endReg, int step,
-                 unsigned forbidden) {
+  // Find the free acc in [startReg, endReg) with the smallest WAR stall.
+  // Returns -1 if there is none, otherwise the acc and its stall in bestStall.
+  // The first acc wins on a tie.
+  int findAcc(AccInterval *interval, int startReg, int endReg, int step,
+              unsigned forbidden, int &bestStall) const {
+    bool needBothAcc = builder.needBothAcc(interval->inst->getDst());
+    int bestAcc = -1;
     for (int i = startReg; i < endReg; i += step) {
       if (forbidden & (1 << i)) {
         continue;
       }
-      if (freeAccs[i] &&
-        (!builder.needBothAcc(interval->inst->getDst()) ||
-        ((i + 1 < endReg) && freeAccs[i + 1]))) {
-        interval->assignedAcc = i;
-        freeAccs[i] = false;
-        if (builder.needBothAcc(interval->inst->getDst())) {
-          freeAccs[i + 1] = false;
+      if (!freeAccs[i] ||
+          (needBothAcc && (i + 1 >= endReg || !freeAccs[i + 1]))) {
+        continue;
+      }
+      int stall = getWARStall(i, interval);
+      if (needBothAcc && stall >= 0) {
+        int stall1 = getWARStall(i + 1, interval);
+        stall = stall1 < 0 ? -1 : std::max(stall, stall1);
+      }
+      // The read is too close, leave the interval in GRF rather than use it.
+      if (stall < 0) {
+        continue;
+      }
+      if (bestAcc == -1 || stall < bestStall) {
+        bestAcc = i;
+        bestStall = stall;
+        if (stall == 0) {
+          break;
         }
-
-        activeIntervals.push_back(interval);
-        return true;
       }
     }
-
-    return false;
+    return bestAcc;
   }
 
   // pick a free acc for this interval
@@ -1039,29 +1106,35 @@ struct AccAssignment {
       }
     }
 
-    if (assignAcc(interval, startReg, endReg, step, forbidden)) {
-      if (builder.doRoundRobinAccSub()) {
-        curAcc = interval->assignedAcc;
-        curAcc += step;       // Assign to next start
-        if (curAcc >= endReg) // Wrap back
-        {
-          curAcc = 0;
-        }
-      }
-      return true;
-    } else if (curAcc != 0) {
-      if (assignAcc(interval, 0, curAcc, step, forbidden)) {
-        curAcc = interval->assignedAcc;
-        curAcc += step;
-        if (curAcc >= endReg) {
-          curAcc = 0;
-        }
-
-        return true;
+    // Search from startReg first, then wrap back for round robin.
+    int stall = 0;
+    int acc = findAcc(interval, startReg, endReg, step, forbidden, stall);
+    if ((acc == -1 || stall > 0) && curAcc != 0) {
+      int wrapStall = 0;
+      int wrapAcc = findAcc(interval, 0, curAcc, step, forbidden, wrapStall);
+      if (wrapAcc != -1 && (acc == -1 || wrapStall < stall)) {
+        acc = wrapAcc;
       }
     }
+    if (acc == -1) {
+      return false;
+    }
 
-    return false;
+    interval->assignedAcc = acc;
+    freeAccs[acc] = false;
+    if (builder.needBothAcc(interval->inst->getDst())) {
+      freeAccs[acc + 1] = false;
+    }
+    activeIntervals.push_back(interval);
+
+    if (builder.doRoundRobinAccSub() || curAcc != 0) {
+      curAcc = acc + step;  // Assign to next start
+      if (curAcc >= endReg) // Wrap back
+      {
+        curAcc = 0;
+      }
+    }
+    return true;
   }
 };
 
@@ -1112,7 +1185,8 @@ void AccSubPass::doAccSub(G4_BB *bb) {
   }
 
   // modified linear scan to assign free accs to intervals
-  AccAssignment accAssign(numGeneralAcc, builder, true);
+  AccAssignment accAssign(numGeneralAcc, builder, true, issueCycles,
+                          LT.get());
 
   for (auto interval : intervals) {
     // expire intervals
@@ -1181,7 +1255,8 @@ void AccSubPass::doAccSub(G4_BB *bb) {
   // Rescan the spilled and failed cases to do ACC substitution in peephole.
   if (failIntervals.size() && spillIntervals.size()) {
     for (auto spillInterval : spillIntervals) {
-      AccAssignment accAssign(numGeneralAcc, builder, false);
+      AccAssignment accAssign(numGeneralAcc, builder, false, issueCycles,
+                              LT.get());
       accAssign.freeAccs[spillInterval->spilledAcc] = true;
       if (builder.needBothAcc(spillInterval->inst->getDst())) {
         accAssign.freeAccs[spillInterval->spilledAcc + 1] = true;
@@ -1273,6 +1348,13 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
       int lastUseId = useIter == instEnd ? bb->back()->getLocalId()
                                          : (*useIter)->getLocalId();
       AccInterval *newInterval = new AccInterval(inst, lastUseId, true);
+
+      if (inst->getImplAccDst() &&
+          inst->getImplAccDst()->getBase()->asAreg()->getArchRegType() ==
+              AREG_ACC1) {
+        newInterval->setAssignedAcc(1);
+      }
+
       intervals.push_back(newInterval);
     } else {
       int lastUseId = 0;
@@ -1427,7 +1509,8 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
   }
 
   // modified linear scan to assign free accs to intervals
-  AccAssignment accAssign(numGeneralAcc, builder, true);
+  AccAssignment accAssign(numGeneralAcc, builder, true, issueCycles,
+                          LT.get());
 
   for (auto *interval : intervals) {
     if (interval->isRemoved)
@@ -1510,7 +1593,8 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
   // Rescan the spilled and failed cases to do ACC substitution in peephole.
   if (failIntervals.size() && spillIntervals.size()) {
     for (auto spillInterval : spillIntervals) {
-      AccAssignment accAssign(numGeneralAcc, builder, false);
+      AccAssignment accAssign(numGeneralAcc, builder, false, issueCycles,
+                              LT.get());
       accAssign.freeAccs[spillInterval->spilledAcc] = true;
       if (builder.needBothAcc(spillInterval->inst->getDst())) {
         accAssign.freeAccs[spillInterval->spilledAcc + 1] = true;

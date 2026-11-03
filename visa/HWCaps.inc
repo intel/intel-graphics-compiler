@@ -601,6 +601,16 @@ bool enablePreSchedACC() const {
   return getOption(vISA_PreSchedForAcc);
 }
 
+// Post-RA scheduling treats a WAR that SWSB resolves with a distance dependence
+// as RAW, as the write waits until the read instruction completes.
+bool schedWARDistanceDepAsRAW() const {
+  return getPlatform() >= Xe3P_CRI;
+}
+
+// Post-schedule acc substitution avoids writing an acc soon after a cross
+// pipeline read of it, which SWSB resolves with a distance dependence.
+bool avoidAccCrossPipeWAR() const { return schedWARDistanceDepAsRAW(); }
+
 bool hasDoubleAcc() const { return getOption(vISA_hasDoubleAcc); }
 
 bool hasHFMathGRFAlign() const {

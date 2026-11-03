@@ -778,6 +778,9 @@ public:
   bool isMathPipeInst() const;
   bool distanceHonourInstruction() const;
   bool tokenHonourInstruction() const;
+  // Return true if SWSB resolves the WAR dependence from this instruction (the
+  // reader) to WRITEINST with a distance dependence.
+  bool hasWARDistanceDep(const G4_INST *writeInst) const;
   bool hasNoPipe() const;
   bool isS0Opnd(G4_Operand *opnd) const;
   bool isLongPipeType(G4_Type type) const;

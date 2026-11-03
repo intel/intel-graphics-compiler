@@ -11,6 +11,9 @@ SPDX-License-Identifier: MIT
 
 #include "../BuildIR.h"
 #include "../FlowGraph.h"
+#include "../LocalScheduler/LatencyTable.h"
+
+#include <memory>
 
 // Replace local GRF variables with accumulator. This offers a number of
 // benefits:
@@ -29,11 +32,27 @@ class AccSubPass {
 
   IR_Builder &builder;
   G4_Kernel &kernel;
+  // Cycles between two instructions of a thread, as the scheduler models with
+  // multiple threads per EU. Converts the latency of a read into a distance.
+  int issueCycles = 1;
+  // Used to keep a write of an acc away from a cross pipeline read of it, which
+  // SWSB resolves with a distance dependence. Only created after post-RA
+  // scheduling, since no scheduling will move the WAR dependent instructions
+  // apart anymore.
+  std::unique_ptr<LatencyTable> LT;
 
   bool replaceDstWithAcc(G4_INST *inst, int accNum);
 
 public:
-  AccSubPass(IR_Builder &B, G4_Kernel &K) : builder(B), kernel(K) {}
+  AccSubPass(IR_Builder &B, G4_Kernel &K, bool isPostSchedule = false)
+      : builder(B), kernel(K) {
+    if (isPostSchedule && B.avoidAccCrossPipeWAR()) {
+      LT = LatencyTable::createLatencyTable(B);
+      if (B.useMultiThreadLatency())
+        issueCycles =
+            std::max(1, (int)(K.getNumThreads() / B.getCoIssueUints()));
+    }
+  }
 
   AccSubPass(const AccSubPass &) = delete;
   AccSubPass& operator=(const AccSubPass&) = delete;
