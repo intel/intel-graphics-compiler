@@ -440,7 +440,9 @@ void LivenessAnalysis::detectNeverDefinedVarRows() {
 void LivenessAnalysis::collectNoMaskVars() {
   for (auto bb : gra.kernel.fg) {
     for (auto inst : *bb) {
-      if (!inst->isWriteEnableInst())
+      // pseudo_kill (e.g. from lifetime.start) writes no data, so it is not a
+      // NoMask def that a later default-mask def could fail to cover.
+      if (!inst->isWriteEnableInst() || inst->isPseudoKill())
         continue;
 
       auto inDivergentContext = [&]() {
