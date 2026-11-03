@@ -1760,6 +1760,19 @@ public:
     return simdMode;
   }
 
+  // Returns the default minimum SIMD mode for pixel shaders
+  // based on the platform only.
+  SIMDMode getPSMinSIMDMode() const {
+    SIMDMode simdMode = SIMDMode::UNKNOWN;
+
+    // Step 1: get platform-dependent default mode.
+    {
+      simdMode = getMinDispatchMode();
+    }
+
+    return simdMode;
+  }
+
 
   bool enableSimpleAluVectorizer() const {
     bool enabled = IGC_IS_FLAG_ENABLED(EnableSimpleAluVectorizer);

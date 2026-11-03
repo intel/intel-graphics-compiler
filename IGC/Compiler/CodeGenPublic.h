@@ -435,7 +435,8 @@ enum SIMDInfoBit {
   SIMD_FORCE_CONTENT,  // 9: force this simd due to shader content (simd32 if
                        // WaveActive, barriers + interlocks)
   SIMD_FORCE_HINT,     // 10: force this simd by hint(s) (now for WaveSize only)
-  SIMD_INFO_RESERVED   // 11: *** If new entry is added, make sure it still
+  SIMD_SKIP_LOWERING,  // 11: skip this SIMD due to avoiding SIMD lowering
+  SIMD_INFO_RESERVED   // 12: *** If new entry is added, make sure it still
                        // fits in m_SIMDInfo ***
 };
 

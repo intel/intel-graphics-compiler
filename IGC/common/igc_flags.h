@@ -1454,6 +1454,12 @@ DECLARE_IGC_REGKEY_ENUM(EnableDualSIMD8, -1,
                         "0 - force disabled, "
                         "1 - force enabled",
                         TRIBOOL_OPTIONS, ALWAYS)
+DECLARE_IGC_REGKEY_ENUM(EnablePSSIMD16, -1,
+                        "Enable all SIMD16 compilation modes for Pixel Shaders on supported platforms. "
+                        "-1 - default behavior (platform default), "
+                        "0 - force disabled, "
+                        "1 - force enabled",
+                        TRIBOOL_OPTIONS, ALWAYS)
 DECLARE_IGC_REGKEY(bool, RemoveLegacyOCLStatelessPrivateMemoryCases, false,
                    "Remove cases where OCL uses stateless private memory. XeHP and above only! [OCL only]", ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnablePostCullPatchFIFOLP, true, "Enable Post-Cull Patch Decoupling FIFO. GEN12LP.", ALWAYS)
