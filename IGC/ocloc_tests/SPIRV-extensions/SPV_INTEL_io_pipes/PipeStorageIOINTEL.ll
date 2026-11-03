@@ -1,11 +1,10 @@
-; ShaderDumpTranslationOnly is unavailable in Linux Release builds.
-; UNSUPPORTED: system-windows, release
+; Check pipe-storage translation and IO decorations with opaque pointers.
 ; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-16-plus
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; RUN: llvm-spirv %t.bc %OPAQUE_PTR_FLAG% --spirv-ext=+SPV_INTEL_fpga_reg -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1 PrintToConsole=1 PrintBefore=igc-spir-metadata-translation'" 2>&1 | FileCheck %s
 
 ; CHECK-DAG: %spirv.ConstantPipeStorage = type { i32, i32, i32 }
 ; CHECK-DAG: %"[[CL_PIPE_STORAGE_NAME:[^"]+]]" = type { ptr addrspace(1) }
@@ -20,11 +19,10 @@ target datalayout = "e-p:32:32-i64:64-v16:16-v24:32-v32:32-v48:64-v96:128-v192:2
 target triple = "spir-unknown-unknown"
 
 %spirv.ConstantPipeStorage = type { i32, i32, i32 }
-%"class.cl::pipe_storage<int __attribute__((ext_vector_type(4))), 1>" = type { %spirv.PipeStorage addrspace(1)* }
-%spirv.PipeStorage = type opaque
+%"class.cl::pipe_storage<int __attribute__((ext_vector_type(4))), 1>" = type { ptr addrspace(1) }
 
 @_ZN2cl9__details29OpConstantPipeStorage_CreatorILi16ELi16ELi1EE5valueE = linkonce_odr addrspace(1) global %spirv.ConstantPipeStorage { i32 16, i32 16, i32 1 }, align 4
-@mygpipe = addrspace(1) global %"class.cl::pipe_storage<int __attribute__((ext_vector_type(4))), 1>" { %spirv.PipeStorage addrspace(1)* bitcast (%spirv.ConstantPipeStorage addrspace(1)* @_ZN2cl9__details29OpConstantPipeStorage_CreatorILi16ELi16ELi1EE5valueE to %spirv.PipeStorage addrspace(1)*) }, align 4, !io_pipe_id !5
+@mygpipe = addrspace(1) global %"class.cl::pipe_storage<int __attribute__((ext_vector_type(4))), 1>" { ptr addrspace(1) @_ZN2cl9__details29OpConstantPipeStorage_CreatorILi16ELi16ELi1EE5valueE }, align 4, !io_pipe_id !5
 
 ; Function Attrs: nounwind
 define spir_kernel void @worker() {
