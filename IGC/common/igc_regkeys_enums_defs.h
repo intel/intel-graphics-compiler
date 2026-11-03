@@ -157,6 +157,15 @@ SPDX-License-Identifier: MIT
   REMAT_FLAG(REMAT_DATAFLOW, 0x10, "Remat dataflow instructions")
 #endif // REMAT_FLAG
 
+#ifdef SIMD1_OPT_FLAG
+#define SIMD1_OPT_MASK                                                                                                 \
+  SIMD1_OPT_FLAG(SLM, 0x01, "SLM accesses")                                                                            \
+  SIMD1_OPT_FLAG(TGM, 0x02, "typed global memory accesses")                                                            \
+  SIMD1_OPT_FLAG(UGM, 0x04, "untyped global memory accesses")                                                          \
+  SIMD1_OPT_FLAG(RuntimeUniformCheck, 0x08, "runtime uniformity check for nonuniform addresses, test only")            \
+  SIMD1_OPT_FLAG(AllowDualKSPPS, 0x10, "allow pixel shader with dual KSP")
+#endif // SIMD1_OPT_FLAG
+
 #ifdef INJECT_PRINTF_OPTION
 #define INJECT_PRINTF_OPTIONS                                                                                          \
   INJECT_PRINTF_OPTION(InjectPrintfNone, 0)                                                                            \

@@ -22,6 +22,36 @@ using namespace llvm;
 
 namespace IGC {
 
+/// Bits of the EnableTransformSimd1Loads / EnableTransformSimd1Stores regkeys
+/// (same layout for both). Defined by SIMD1_OPT_MASK in igc_regkeys_enums_defs.h.
+enum class Simd1Opt : unsigned {
+#define SIMD1_OPT_FLAG(Name, Val, Description) Name = Val,
+#include "igc_regkeys_enums_defs.h"
+  SIMD1_OPT_MASK
+#undef SIMD1_OPT_FLAG
+#undef SIMD1_OPT_MASK
+};
+
+/// Decoded form of an EnableTransformSimd1{Loads,Stores} regkey value.
+struct Simd1Flags {
+  bool SLM = false;
+  bool TGM = false;
+  bool UGM = false;
+  bool RuntimeUniformCheck = false;
+  bool AllowDualKSPPS = false;
+
+  static Simd1Flags decode(unsigned Value) {
+    Simd1Flags Flags;
+    Flags.SLM = (Value & static_cast<unsigned>(Simd1Opt::SLM)) != 0;
+    Flags.TGM = (Value & static_cast<unsigned>(Simd1Opt::TGM)) != 0;
+    Flags.UGM = (Value & static_cast<unsigned>(Simd1Opt::UGM)) != 0;
+    Flags.RuntimeUniformCheck = (Value & static_cast<unsigned>(Simd1Opt::RuntimeUniformCheck)) != 0;
+    Flags.AllowDualKSPPS = (Value & static_cast<unsigned>(Simd1Opt::AllowDualKSPPS)) != 0;
+    return Flags;
+  }
+  bool anyMemoryType() const { return SLM || TGM || UGM; }
+};
+
 /// Combined pass that collapses SIMD32 loads and stores into SIMD1
 /// when addresses are uniform, reducing register pressure.
 /// Controlled independently by EnableTransformSimd1Loads and
@@ -61,19 +91,12 @@ private:
   };
   DenseMap<BasicBlock *, BBWaveInfo> mBBWaveInfoMap;
 
-  bool mAllowLoadRuntimeUniformCheck = false;
-  bool mAllowStoreRuntimeUniformCheck = false;
+  Simd1Flags mLoads;  // enabled load kinds, active only if the pass runs for loads
+  Simd1Flags mStores; // enabled store kinds, active only if the pass runs for stores
 
   bool mChanged = false;
 
-  // --- Load-specific state ---
-  unsigned mLoadType = 0; // bit0 - SLM; bit1 - TGM; bit2 - UGM
-
   // --- Store-specific state ---
-  unsigned mStoreType = 0; // bit0 - SLM; bit1 - TGM; bit2 - UGM
-  Value *mSimdLaneId = nullptr;
-  Value *mClusterActiveLeader = nullptr;
-  Value *mAmILeader = nullptr;
   SmallVector<LdRawIntrinsic *, 8> mDeferredClusterUGMLoads;
   SmallVector<Instruction *, 8> mDeferredStores;
 

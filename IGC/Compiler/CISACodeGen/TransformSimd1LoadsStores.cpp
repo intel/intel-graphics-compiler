@@ -33,23 +33,19 @@ TransformSimd1LoadsStores::TransformSimd1LoadsStores() : FunctionPass(ID) {
 bool TransformSimd1LoadsStores::runOnFunction(Function &F) {
   mCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-  unsigned loadFlagValue = IGC_GET_FLAG_VALUE(EnableTransformSimd1Loads);
-  unsigned storeFlagValue = IGC_GET_FLAG_VALUE(EnableTransformSimd1Stores);
+  const Simd1Flags LoadFlags = Simd1Flags::decode(IGC_GET_FLAG_VALUE(EnableTransformSimd1Loads));
+  const Simd1Flags StoreFlags = Simd1Flags::decode(IGC_GET_FLAG_VALUE(EnableTransformSimd1Stores));
 
   bool isDualKSPPS = mCtx->type == ShaderType::PIXEL_SHADER && mCtx->platform.hasDualKSPPS();
 
-  // bit4 (16) - allow pixel shader with dual KSP
-  bool loadAllowPS = (loadFlagValue & 16) != 0;
-  bool storeAllowPS = (storeFlagValue & 16) != 0;
-
-  bool enableLoads = loadFlagValue != 0 &&
+  bool enableLoads = LoadFlags.anyMemoryType() &&
                      mCtx->m_retryManager->GetLastSpillSize() < IGC_GET_FLAG_VALUE(TransformSimd1LoadsSpillThreshold) &&
-                     (loadAllowPS || !isDualKSPPS);
+                     (LoadFlags.AllowDualKSPPS || !isDualKSPPS);
 
   bool enableStores =
-      storeFlagValue != 0 &&
+      StoreFlags.anyMemoryType() &&
       mCtx->m_retryManager->GetLastSpillSize() < IGC_GET_FLAG_VALUE(TransformSimd1StoresSpillThreshold) &&
-      (storeAllowPS || !isDualKSPPS);
+      (StoreFlags.AllowDualKSPPS || !isDualKSPPS);
 
   if (!enableLoads && !enableStores)
     return false;
@@ -62,16 +58,8 @@ bool TransformSimd1LoadsStores::runOnFunction(Function &F) {
   mDeferredStores.clear();
   mBBWaveInfoMap.clear();
 
-  mLoadType = enableLoads ? loadFlagValue : 0;
-  mStoreType = enableStores ? storeFlagValue : 0;
-
-  // bit3 (8) - allow runtime uniformity check
-  mAllowLoadRuntimeUniformCheck = (mLoadType & 8) != 0;
-  mAllowStoreRuntimeUniformCheck = (mStoreType & 8) != 0;
-
-  // Early exit if neither loads nor stores are enabled
-  if (mLoadType == 0 && mStoreType == 0)
-    return false;
+  mLoads = enableLoads ? LoadFlags : Simd1Flags();
+  mStores = enableStores ? StoreFlags : Simd1Flags();
 
   visit(F);
 
@@ -438,7 +426,7 @@ void TransformSimd1LoadsStores::multiversionStore(Instruction *I) {
 }
 
 void TransformSimd1LoadsStores::visitLoadInst(LoadInst &I) {
-  bool modeSelected = (mLoadType & 1); // bit0 - SLM load
+  bool modeSelected = mLoads.SLM;
   if (!modeSelected)
     return;
 
@@ -478,7 +466,7 @@ void TransformSimd1LoadsStores::visitLoadInst(LoadInst &I) {
 }
 
 void TransformSimd1LoadsStores::loadTGM(GenIntrinsicInst *I) {
-  bool modeSelected = (mLoadType & 2); // bit1
+  bool modeSelected = mLoads.TGM;
   if (!modeSelected)
     return;
 
@@ -535,7 +523,7 @@ void TransformSimd1LoadsStores::loadTGM(GenIntrinsicInst *I) {
 }
 
 void TransformSimd1LoadsStores::loadUGM(LdRawIntrinsic *I) {
-  bool modeSelected = (mLoadType & 4); // bit2
+  bool modeSelected = mLoads.UGM;
   if (!modeSelected)
     return;
 
@@ -605,7 +593,7 @@ void TransformSimd1LoadsStores::loadUGM(LdRawIntrinsic *I) {
 
   // Address is nonuniform: try runtime uniformity check if enabled
   // (following the AtomicWaveFuse multiversioning pattern)
-  if (mAllowLoadRuntimeUniformCheck) {
+  if (mLoads.RuntimeUniformCheck) {
     mDeferredClusterUGMLoads.push_back(I);
   }
 }
@@ -620,7 +608,7 @@ void TransformSimd1LoadsStores::loadUGM(LdRawIntrinsic *I) {
 //   store i32 %WaveShufIdx, i32 addrspace(3)* inttoptr (i32 8 to i32 addrspace(3)*), align 8
 // clang-format on
 void TransformSimd1LoadsStores::visitStoreInst(StoreInst &I) {
-  bool modeSelected = (mStoreType & 1); // bit0
+  bool modeSelected = mStores.SLM;
   if (!modeSelected)
     return;
 
@@ -654,7 +642,7 @@ void TransformSimd1LoadsStores::visitStoreInst(StoreInst &I) {
     return;
 
   // Nonuniform dest requires runtime check, only do it if enabled
-  if (!destUniform && !mAllowStoreRuntimeUniformCheck)
+  if (!destUniform && !mStores.RuntimeUniformCheck)
     return;
 
   // Nonuniform dest: defer for branch-based multiversioning (see multiversionStore).
@@ -674,7 +662,7 @@ void TransformSimd1LoadsStores::visitStoreInst(StoreInst &I) {
 }
 
 void TransformSimd1LoadsStores::storeTGM(GenIntrinsicInst *I) {
-  bool modeSelected = (mStoreType & 2); // bit1
+  bool modeSelected = mStores.TGM;
   if (!modeSelected)
     return;
 
@@ -693,7 +681,7 @@ void TransformSimd1LoadsStores::storeTGM(GenIntrinsicInst *I) {
 
   bool coordsUniform = isUniform(u, v, r, LOD);
 
-  if (!coordsUniform && !mAllowStoreRuntimeUniformCheck)
+  if (!coordsUniform && !mStores.RuntimeUniformCheck)
     return;
 
   if (!isNonuniform(x, y, z, w))
@@ -714,7 +702,7 @@ void TransformSimd1LoadsStores::storeTGM(GenIntrinsicInst *I) {
 }
 
 void TransformSimd1LoadsStores::storeUGM(StoreRawIntrinsic *I) {
-  bool modeSelected = (mStoreType & 4); // bit2
+  bool modeSelected = mStores.UGM;
   if (!modeSelected)
     return;
 
@@ -740,7 +728,7 @@ void TransformSimd1LoadsStores::storeUGM(StoreRawIntrinsic *I) {
     return;
 
   // Nonuniform offset requires runtime check, only do it if enabled
-  if (!offsetUniform && !mAllowStoreRuntimeUniformCheck)
+  if (!offsetUniform && !mStores.RuntimeUniformCheck)
     return;
 
   // Nonuniform offset: defer for branch-based multiversioning (see multiversionStore).

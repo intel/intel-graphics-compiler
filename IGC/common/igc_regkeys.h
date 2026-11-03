@@ -60,6 +60,7 @@ SPDX-License-Identifier: MIT
   #Name " [" Description "]=" IGC_REGKEY_STRINGIFY(Val) ","
 #define NEW_INLINE_RAYTRACING_FLAG(Name, Val, Description) #Name " [" Description "]=" IGC_REGKEY_STRINGIFY(Val) ","
 #define REMAT_FLAG(Name, Val, Description) #Name " [" Description "]=" IGC_REGKEY_STRINGIFY(Val) ","
+#define SIMD1_OPT_FLAG(Name, Val, Description) #Name " [" Description "]=" IGC_REGKEY_STRINGIFY(Val) ","
 
 #define INJECT_PRINTF_OPTION(Name, Val) #Name "=" IGC_REGKEY_STRINGIFY(Val) ","
 
@@ -72,6 +73,8 @@ SPDX-License-Identifier: MIT
 
 #undef NEW_INLINE_RAYTRACING_FLAG
 #undef REMAT_FLAG
+#undef SIMD1_OPT_FLAG
+#undef SIMD1_OPT_MASK
 #undef LSC_CACHE_CTRL_OPTION
 #undef LSC_CACHE_CTRL_OPTIONS
 #undef LSC_CACHE_CTRL_LOAD_OPTION
