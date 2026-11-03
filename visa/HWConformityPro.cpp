@@ -3675,7 +3675,15 @@ void HWConformityPro::fix2SrcInstImm(INST_LIST_ITER it, G4_BB *bb) {
   // Src0 can not be imm for binary instructions
   if (src0 && (src0->isImm() || src0->isAddrExp())) {
     if (INST_COMMUTATIVE(inst->opcode()) && !src1->isImm()) {
-      if (src0->isImm() && isFPNaNImm(src0->asImm())) {
+      // mul allows D*W but not W*D. Don't swap a D immediate into src1 when
+      // src1 is not D; move it into a register instead.
+      bool isDImmTimesNonD = inst->opcode() == G4_mul && src0->isImm() &&
+                             IS_DTYPE(src0->getType()) &&
+                             !IS_DTYPE(src1->getType());
+      if (isDImmTimesNonD) {
+        replaceSrc(it, bb, 0, G4_Operand::GetNonVectorImmType(src0->getType()),
+                   /*tmpStride*/ 0, Any);
+      } else if (src0->isImm() && isFPNaNImm(src0->asImm())) {
         // Swapping a float NaN from src0 to src1 would change the NaN
         // payload (HW priority: Src0 > Src1 > Src2). Materialise instead.
         replaceSrc(it, bb, 0, G4_Operand::GetNonVectorImmType(src0->getType()),
