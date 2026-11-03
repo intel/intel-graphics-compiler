@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ; RUN: igc_opt %s --opaque-pointers -platformpvc -igc-emit-visa -simd-mode 16 -regkey DumpVISAASMToConsole,AddVISADumpDeclarationsToEnd=1,VectorAlias=1,VectorAliasBaseOutlivesSub=1 | FileCheck %s --check-prefixes=CHECK,CHECK-ON
-; RUN: igc_opt %s --opaque-pointers -platformpvc -igc-emit-visa -simd-mode 16 -regkey DumpVISAASMToConsole,AddVISADumpDeclarationsToEnd=1,VectorAlias=1 | FileCheck %s --check-prefixes=CHECK,CHECK-OFF
+; RUN: igc_opt %s --opaque-pointers -platformpvc -igc-emit-visa -simd-mode 16 -regkey DumpVISAASMToConsole,AddVISADumpDeclarationsToEnd=1,VectorAlias=1,VectorAliasBaseOutlivesSub=0 | FileCheck %s --check-prefixes=CHECK,CHECK-OFF
 
 ; VectorAliasBaseOutlivesSub: sub-vector aliasing (extractFrom) is allowed
 ; without a target (dpas, load, store, ...) if the base vector is live wherever
