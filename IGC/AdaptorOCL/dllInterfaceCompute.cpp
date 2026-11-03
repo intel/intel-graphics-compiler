@@ -200,14 +200,6 @@ bool VerifyPlatformConsistency(const PLATFORM &Platform, std::string &Diagnostic
   return true;
 }
 
-bool VerifyPlatformRequirements(const IGC::CPlatform &Platform, const STB_TranslateInputArgs &InputArgs,
-                                std::string &Diagnostic) {
-  Diagnostic.clear();
-
-
-  return true;
-}
-
 static bool IsDeviceBinaryFormat(const TB_DATA_FORMAT &format) {
   return (format == TB_DATA_FORMAT_DEVICE_BINARY) || (format == TB_DATA_FORMAT_COHERENT_DEVICE_BINARY) ||
          (format == TB_DATA_FORMAT_NON_COHERENT_DEVICE_BINARY);
@@ -257,12 +249,6 @@ bool CIGCTranslationBlock::Translate(const STB_TranslateInputArgs *pInputArgs, S
   IGC::SetGTSystemInfo(&m_SysInfo, &IGCPlatform);
   IGC::SetWorkaroundTable(&m_SkuTable, &IGCPlatform);
   IGC::SetCompilerCaps(&m_SkuTable, &IGCPlatform);
-
-  std::string RequirementsDiagnostic;
-  if (!VerifyPlatformRequirements(IGCPlatform, InputArgsCopy, RequirementsDiagnostic)) {
-    SetOutputMessage(RequirementsDiagnostic, *pOutputArgs);
-    return false;
-  }
 
   try {
     if (m_DataFormatInput == TB_DATA_FORMAT_ELF) {
