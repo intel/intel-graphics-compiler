@@ -1858,7 +1858,7 @@ DECLARE_IGC_REGKEY(DWORD, VectorAlias, -1,
                    "Vector aliasing control under EnableVariableAlias. -1 - context default. "
                    "Some features are still experimental",
                    ALWAYS)
-DECLARE_IGC_REGKEY(bool, VectorAliasBaseOutlivesSub, true,
+DECLARE_IGC_REGKEY(bool, VectorAliasBaseOutlivesSub, false,
                    "Allow sub-vector aliasing (extractFrom) without a target if the base vector is live "
                    "wherever the sub-vector is live",
                    ALWAYS)
