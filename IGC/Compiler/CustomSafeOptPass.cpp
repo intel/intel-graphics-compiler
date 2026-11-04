@@ -3921,8 +3921,9 @@ void GenSpecificPattern::visitZExtInst(ZExtInst &ZEI) {
     IGC_ASSERT(I1);
     for (auto U : I1->users()) {
       Instruction *inst = dyn_cast<Instruction>(U);
-      if (isActualAddInstr(inst) && match(inst, addcPattern2) && I1 == I2 && ZEI.getType() == I2->getType() &&
-          I2->getType()->isIntegerTy(32) && inst->getParent() == ZEI.getParent() && inst->comesBefore(&ZEI)) {
+      if (isActualAddInstr(inst) && match(inst, addcPattern2) && C1->isOne() && I1 == I2 &&
+          ZEI.getType() == I2->getType() && I2->getType()->isIntegerTy(32) && inst->getParent() == ZEI.getParent() &&
+          inst->comesBefore(&ZEI)) {
         createAddcIntrinsicPattern(ZEI, I1, C1, I2, *inst);
         return;
       }
