@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Analysis/ValueTracking.h"
 #include "common/igc_regkeys.hpp"
 #include <cmath>
 #include <limits>
@@ -180,8 +181,8 @@ struct IntDivConstantReduction : public FunctionPass {
 
   ///////////////////////////////////////////////////////////////////////////
   // Support for powers of two (unsigned is handled in the main case)
-  Value *expandPowerOf2Signed(IRBuilder<> &B, bool isMod, BinaryOperator *divRem, Value *dividend,
-                              const APInt &divisor) {
+  Value *expandPowerOf2Signed(IRBuilder<> &B, bool IsMod, BinaryOperator *DivRem, Value *Dividend,
+                              const APInt &Divisor) {
     // Signed power of two use a shift/add sequence.
     // (It's a little harder because of negative values.)
     //
@@ -196,34 +197,35 @@ struct IntDivConstantReduction : public FunctionPass {
     //
     // c.f. Hacker's Delight 10-2
     //    for the remainder/modulus algorithm
-    int shiftAmt;
-    int64_t twoToTheKminus1;
-    if (divisor.isNonNegative()) {
-      shiftAmt = divisor.logBase2();
-      twoToTheKminus1 = ((1LL << shiftAmt) - 1);
-    } else { // negative divisor (including MIN_VAL)
-      shiftAmt = (-divisor).logBase2();
-      twoToTheKminus1 = ((1LL << shiftAmt) - 1);
-    }
+    //
+    // A dividend that is a multiple of 2^k (an 'exact' sdiv, or k known trailing zero bits, e.g. 'gid * 8' divided
+    // by 2) needs no fix-up: the quotient is 'ashr exact' (negated for a negative divisor, also right for INT_MIN,
+    // where the dividend is 0 or INT_MIN) and the remainder is 0. LLVM 14 InstCombine folds the remainder and the
+    // 'sdiv exact' cases already, but not an sdiv that is exact only by known bits (LLVM 16 does).
+    const unsigned BitSize = Divisor.getBitWidth();
+    const unsigned ShiftAmt = Divisor.countTrailingZeros(); // log2(|divisor|), also for MIN_VAL
+    const bool IsExact = (!IsMod && DivRem->isExact()) ||
+                         IGCLLVM::computeKnownBits(Dividend, DivRem->getModule()->getDataLayout(), nullptr, DivRem)
+                                 .countMinTrailingZeros() >= ShiftAmt;
+    if (IsExact && IsMod)
+      return ConstantInt::get(Dividend->getType(), 0);
 
-    ///////////////////////////////////////////////////////////////////////
-    // Compute 2^k - 1 (to fixup negative dividends)
-    Value *result = getPowerOf2SignedFixupDividend(B, dividend, shiftAmt, twoToTheKminus1, isMod);
-    if (isMod) {
+    // 2^k - 1, which fixes up negative dividends. An APInt: 1 << 63 overflows int64_t for a 64-bit MIN_VAL divisor.
+    const APInt LowBits = APInt::getLowBitsSet(BitSize, ShiftAmt);
+    Value *Result = IsExact ? Dividend : getPowerOf2SignedFixupDividend(B, Dividend, ShiftAmt, LowBits, IsMod);
+    if (IsMod) {
       // C.f. Hacker's Delight 10-2
       // faster than using the re-multiply quotient and subtract
-      result = B.CreateAnd(result, llvm::ConstantInt::getSigned(result->getType(), -(1LL << shiftAmt)));
-      result = B.CreateSub(dividend, result, "rem");
+      Result = B.CreateAnd(Result, ConstantInt::get(Result->getType(), ~LowBits)); // -2^k
+      Result = B.CreateSub(Dividend, Result, "rem");
     } else {
-      if (divisor.isNegative()) {
-        result = B.CreateAShr(result, shiftAmt, "neg_qot");
-        result = B.CreateNeg(result, "qot");
-      } else {
-        result = B.CreateAShr(result, shiftAmt, "qot");
+      Result = B.CreateAShr(Result, ShiftAmt, Divisor.isNegative() ? "neg_qot" : "qot", IsExact);
+      if (Divisor.isNegative()) {
+        Result = B.CreateNeg(Result, "qot");
       }
     }
 
-    return result;
+    return Result;
   }
 
   // gets the fixed up signed dividend for power of two
@@ -231,19 +233,19 @@ struct IntDivConstantReduction : public FunctionPass {
   // The value of EnableConstIntDivReduction controls this
   //   either via shifts (3), compare and select (2),
   //   or a via a predicated add (1 or anything else)
-  Value *getPowerOf2SignedFixupDividend(IRBuilder<> &B, Value *dividend, int shiftAmt, int64_t twoToTheKminus1,
-                                        bool isMod) {
-    const int bitSize = dividend->getType()->getIntegerBitWidth();
-    auto algorithm = IGC_GET_FLAG_VALUE(EnableConstIntDivReduction);
-    if (algorithm == 3) {
+  Value *getPowerOf2SignedFixupDividend(IRBuilder<> &B, Value *Dividend, int ShiftAmt, const APInt &TwoToTheKMinus1,
+                                        bool IsMod) {
+    const int BitSize = Dividend->getType()->getIntegerBitWidth();
+    auto Algorithm = IGC_GET_FLAG_VALUE(EnableConstIntDivReduction);
+    if (Algorithm == 3) {
       // shift-only version of this:
       //   %t0 = %ashr  %dividend, K-1
       //   %t1 = %lshr  %t0, BIT_SIZE-K
       //   %d2 = add %dividend, %t1
       //   ... as before ...
-      Value *t0 = B.CreateAShr(dividend, shiftAmt - 1);
-      Value *t1 = B.CreateLShr(t0, bitSize - shiftAmt);
-      return B.CreateAdd(t1, dividend);
+      Value *T0 = B.CreateAShr(Dividend, ShiftAmt - 1);
+      Value *T1 = B.CreateLShr(T0, BitSize - ShiftAmt);
+      return B.CreateAdd(T1, Dividend);
     } else {
       // this handles both the conditional add and select version.
       //
@@ -260,10 +262,10 @@ struct IntDivConstantReduction : public FunctionPass {
       //          cmp    (f0.0)lt  null:d num:d       0:d
       //          sel.f0.0         rounding:d   (2^K-1):d   0:d
       //          add              num:d   num:d  rounding:d
-      Value *zero = IGC::getConstantSInt(B, bitSize, 0);
-      Value *isNegative = B.CreateICmpSLT(dividend, zero, "is-neg");
-      ConstantInt *twoKm1 = IGC::getConstantSInt(B, bitSize, twoToTheKminus1);
-      return CreatePredicatedAdd(bitSize, B, currDivRem, isNegative, dividend, twoKm1);
+      Value *Zero = IGC::getConstantSInt(B, BitSize, 0);
+      Value *IsNegative = B.CreateICmpSLT(Dividend, Zero, "is-neg");
+      ConstantInt *TwoKMinus1 = ConstantInt::get(B.getContext(), TwoToTheKMinus1);
+      return CreatePredicatedAdd(BitSize, B, currDivRem, IsNegative, Dividend, TwoKMinus1);
     }
   }
 

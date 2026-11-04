@@ -868,6 +868,11 @@ DECLARE_IGC_REGKEY(DWORD, SimplifyCFGBonusInstThreshold, 2,
                    "Max instructions SimplifyCFG will clone to merge two branches sharing a destination "
                    "(short-circuit || chains) in the existing post-unroll CFG cleanup. 0 - use LLVM's default of 1.",
                    DEBUG_ONLY)
+DECLARE_IGC_REGKEY_BITMASK(ConstantBranchFoldingMask, 0x3,
+                           "Fold branches on constant conditions and delete the blocks they make unreachable, where "
+                           "conditions become constant after the last SimplifyCFG. OptimizeIR and CodegenLegalization "
+                           "select pass locations; MergeBlocks additionally enables block merging at those locations.",
+                           CONSTANT_BRANCH_FOLDING_MASK, ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableFoldImpliedSelectCond, true,
                    "Enable folding nested selects using implied outer conditions.", ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableReusePredicatedLoad, true, "Enable reuse of redundant predicated loads.", ALWAYS)

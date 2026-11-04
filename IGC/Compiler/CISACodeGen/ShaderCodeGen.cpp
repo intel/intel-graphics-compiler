@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/AtomicOptPass.hpp"
 #include "Compiler/CISACodeGen/BlockMemOpAddrScalarizationPass.hpp"
 #include "Compiler/CISACodeGen/SinkCommonOffsetFromGEP.h"
+#include "Compiler/CISACodeGen/ConstantBranchFolding.hpp"
 #include "Compiler/CISACodeGen/ConstantCoalescing.hpp"
 #include "Compiler/CISACodeGen/CheckInstrTypes.hpp"
 #include "Compiler/CISACodeGen/EstimateFunctionSize.h"
@@ -1281,6 +1282,13 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
   mpm.add(new WAFMinFMax());
 
+  // LowerSIMDSize, InstCombine and InstSimplify above can turn branch conditions into constants, and nothing in
+  // codegen folds them: EmitVISA would emit a predicated goto on an immediate flag plus the dead block and a join.
+  if (!isOptDisabled && (IGC_GET_FLAG_VALUE(ConstantBranchFoldingMask) &
+                         static_cast<unsigned>(ConstantBranchFoldingOpt::CodegenLegalization))) {
+    mpm.add(createConstantBranchFoldingPass());
+  }
+
   mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Legalization, STATS_COUNTER_END));
 
   COMPILER_TIME_END(&ctx, TIME_CG_Add_Legalization_Passes);
@@ -1871,6 +1879,12 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
       mpm.add(llvm::createDeadCodeEliminationPass());
       mpm.add(llvm::createEarlyCSEPass());
+      // The InstCombine and EarlyCSE above can turn branch conditions into constants (known bits, dominating
+      // conditions), and no SimplifyCFG runs after them: the dead edge, its block and the phis it feeds would reach
+      // codegen. A SimplifyCFG here would re-form the switches LowerSwitch lowered, so only fold the branches.
+      if (IGC_GET_FLAG_VALUE(ConstantBranchFoldingMask) & static_cast<unsigned>(ConstantBranchFoldingOpt::OptimizeIR)) {
+        mpm.add(createConstantBranchFoldingPass());
+      }
        // need to be before code sinking
       GFX_ONLY_PASS { mpm.add(createInsertBranchOptPass()); }
 

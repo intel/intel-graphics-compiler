@@ -43,6 +43,7 @@ void initializeCleanPHINodePass(llvm::PassRegistry &);
 void initializeCoalescingEnginePass(llvm::PassRegistry &);
 void initializeCodeGenContextWrapperPass(llvm::PassRegistry &);
 void initializeCodeGenPatternMatchPass(llvm::PassRegistry &);
+void initializeConstantBranchFoldingPass(llvm::PassRegistry &);
 void initializeConstantCoalescingPass(llvm::PassRegistry &);
 void initializeScalarLCSSAConstantCoalescingPass(llvm::PassRegistry &);
 void initializeCorrectlyRoundedDivSqrtLPMPass(llvm::PassRegistry &);

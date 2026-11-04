@@ -157,6 +157,15 @@ SPDX-License-Identifier: MIT
   REMAT_FLAG(REMAT_DATAFLOW, 0x10, "Remat dataflow instructions")
 #endif // REMAT_FLAG
 
+#ifdef CONSTANT_BRANCH_FOLDING_FLAG
+#define CONSTANT_BRANCH_FOLDING_MASK                                                                                   \
+  CONSTANT_BRANCH_FOLDING_FLAG(OptimizeIR, 0x1, "After post-unroll InstCombine and EarlyCSE in OptimizeIR")            \
+  CONSTANT_BRANCH_FOLDING_FLAG(CodegenLegalization, 0x2,                                                               \
+                               "After LowerSIMDSize and InstSimplify in codegen legalization")                         \
+  CONSTANT_BRANCH_FOLDING_FLAG(MergeBlocks, 0x4,                                                                       \
+                               "At enabled locations, also merge blocks into their sole unconditional predecessor")
+#endif
+
 #ifdef SIMD1_OPT_FLAG
 #define SIMD1_OPT_MASK                                                                                                 \
   SIMD1_OPT_FLAG(SLM, 0x01, "SLM accesses")                                                                            \

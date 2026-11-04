@@ -86,6 +86,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeCastToGASAnalysisPass(Registry);
   initializeCastToGASInfoPass(Registry);
   initializeCastToGASInfoWrapperPass(Registry);
+  initializeConstantBranchFoldingPass(Registry);
   initializeConstantCoalescingPass(Registry);
   initializeCorrectlyRoundedDivSqrtLPMPass(Registry);
   initializeConvertMSAAPayloadTo16BitPass(Registry);
