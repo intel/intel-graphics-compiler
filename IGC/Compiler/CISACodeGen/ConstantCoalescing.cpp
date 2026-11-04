@@ -1840,6 +1840,24 @@ Value *ConstantCoalescing::SimpleBaseOffset(Value *elt_idxv, uint64_t &offset, E
       if (or_offset < GetOffsetAlignment(inst0, NULL)) {
         return src0;
       }
+
+      // The or_offset < GetOffsetAlignment(X) test above misses some disjoint
+      // ors because GetOffsetAlignment() counts a constant PHI incoming value
+      // as alignment 1, e.g.:
+      //   %iv  = phi i32 [ 0, %ph ], [ %iv.next, %latch ]  ; %iv.next = add %iv, 2
+      //   %a0  = shl i32 %iv, 5                            ; 64-byte aligned
+      //   %a1  = or i32 %a0, 32                            ; == %a0 + 32
+      //
+      //   GetOffsetAlignment(): aligned(%iv) = min(1,    2) = 1  =>  %a0 is 32-aligned
+      //   computeKnownBits():   aligned(%iv) = min(2^32, 2) = 2  =>  %a0 is 64-aligned
+      //                         (0 has 32 trailing zeros)
+      //
+      // Recognize `or X, C` as disjoint and treat it as `add X, C` if
+      // computeKnownBits() shows every set bit of C is zero in X, so loads at
+      // X + C can be coalesced with loads at X.
+      if (or_csrc1->getValue().isSubsetOf(computeKnownBits(expr->getOperand(0), *dataLayout).Zero)) {
+        return src0;
+      }
     }
   }
   offset = 0;
