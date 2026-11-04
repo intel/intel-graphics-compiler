@@ -366,6 +366,10 @@ bool RematChecker::materializable(const Instruction &I) const {
     case Intrinsic::fabs:
     case Intrinsic::sqrt:
     case Intrinsic::pow:
+    case Intrinsic::umin:
+    case Intrinsic::umax:
+    case Intrinsic::smin:
+    case Intrinsic::smax:
       return true;
     default:
       REMAT_DIAG_SET_REASON(RejectionReason::LLVM_INTRINSIC);
