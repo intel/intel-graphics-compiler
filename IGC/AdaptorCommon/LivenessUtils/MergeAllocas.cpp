@@ -36,6 +36,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Instructions.h"
 
+#include <optional>
+
 using namespace llvm;
 using namespace IGC;
 
@@ -46,9 +48,15 @@ static size_t GetByteSize(Type *T, const DataLayout *DL) {
   return 0;
 }
 
+// Returns std::nullopt for allocas with non-constant array size.
+static std::optional<size_t> GetAllocaByteSize(const AllocaInst *AI, const DataLayout *DL) {
+  if (auto *ArraySize = dyn_cast<ConstantInt>(AI->getArraySize()))
+    return GetByteSize(AI->getAllocatedType(), DL) * static_cast<size_t>(ArraySize->getZExtValue());
+  return std::nullopt;
+}
+
 static MergeAllocas::AllocaInfo GetAllocaInfo(AllocaInst *allocaI, AllocationLivenessAnalyzer::LivenessData *LD,
-                                              const DataLayout *DL) {
-  size_t allocationSize = GetByteSize(allocaI->getAllocatedType(), DL);
+                                              size_t allocationSize, const DataLayout *DL) {
   return {{},
           allocaI,
           LD,
@@ -57,8 +65,7 @@ static MergeAllocas::AllocaInfo GetAllocaInfo(AllocaInst *allocaI, AllocationLiv
           allocationSize,
           static_cast<size_t>(DL->getPrefTypeAlign(allocaI->getAllocatedType()).value()),
           0,
-          allocaI->getMetadata("uniform") != nullptr,
-          !isa<ConstantInt>(allocaI->getArraySize())};
+          allocaI->getMetadata("uniform") != nullptr};
 }
 
 static size_t GetStartingOffset(size_t startOffset, size_t alignment) {
@@ -70,9 +77,6 @@ static size_t GetStartingOffset(size_t startOffset, size_t alignment) {
 }
 
 static bool AddNonOverlappingAlloca(MergeAllocas::AllocaInfo *MergableAlloca, MergeAllocas::AllocaInfo *NewAlloca) {
-  if (MergableAlloca->isVLA || NewAlloca->isVLA) {
-    return false;
-  }
   if (MergableAlloca->isUniform != NewAlloca->isUniform) {
     return false;
   }
@@ -209,8 +213,8 @@ bool MergeAllocas::runOnFunction(Function &F) {
   // First we sort analysis results based on allocation size, from larger to
   // smaller.
   llvm::sort(ABLA, [&](const auto &a, const auto &b) {
-    return GetByteSize(cast<AllocaInst>(a.first)->getAllocatedType(), DataLayout) >
-           GetByteSize(cast<AllocaInst>(b.first)->getAllocatedType(), DataLayout);
+    return GetAllocaByteSize(cast<AllocaInst>(a.first), DataLayout).value_or(0) >
+           GetAllocaByteSize(cast<AllocaInst>(b.first), DataLayout).value_or(0);
   });
 
   // Reserve space for all alloca infos so we can use pointers to them.
@@ -224,7 +228,12 @@ bool MergeAllocas::runOnFunction(Function &F) {
     if (skipInstruction(F, *currLD))
       continue;
 
-    AllAllocasInfos[currentIndex] = GetAllocaInfo(cast<AllocaInst>(currI), currLD, DataLayout);
+    auto allocationSize = GetAllocaByteSize(cast<AllocaInst>(currI), DataLayout);
+    // Allocas with non-constant size can't be merged.
+    if (!allocationSize.has_value())
+      continue;
+
+    AllAllocasInfos[currentIndex] = GetAllocaInfo(cast<AllocaInst>(currI), currLD, *allocationSize, DataLayout);
     AllocaInfo &AllocaInfo = AllAllocasInfos[currentIndex];
     currentIndex++;
 
@@ -238,7 +247,7 @@ bool MergeAllocas::runOnFunction(Function &F) {
     }
     // Alloca overlaps with all of the current ones so it will be added as new
     // element.
-    if (!added && AllocaInfo.allocationSize != 0 && !AllocaInfo.isVLA) {
+    if (!added && AllocaInfo.allocationSize != 0) {
       MergableAllocas.push_back(&AllocaInfo);
     }
   }
