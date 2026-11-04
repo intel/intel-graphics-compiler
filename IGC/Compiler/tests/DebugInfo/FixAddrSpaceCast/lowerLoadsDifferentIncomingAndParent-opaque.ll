@@ -13,7 +13,9 @@
 ; FixAddrSpaceCast
 ; ------------------------------------------------
 ; Test checks if, in case that incoming Phi value has different parent then incoming block, it is correctly
-; handled and new Phi is created correctly.
+; handled and new Phi is created correctly. The lowered load must land in the incoming block
+; (%cond.between), not in the block that defines the addrspacecast (%cond.false3459), so that it keeps
+; observing the memory state seen on that edge.
 ; ------------------------------------------------
 
 ; CHECK-LABEL: cond.true3442:
@@ -21,8 +23,11 @@
 ; CHECK: br label %cond.end3465
 
 ; CHECK-LABEL: cond.false3459
+; CHECK-NEXT:  br label %cond.between
+
+; CHECK-LABEL: cond.between:
 ; CHECK:  [[T4:%.*]] = load i32, ptr addrspace(3) %arrayidx3464, align 4
-; CHECK:  br label %cond.between
+; CHECK:  br label %cond.end3465
 
 ; CHECK-LABEL: cond.end3465:
 ; CHECK: [[T5:%.*]] = phi i32 [ [[T2]], %cond.true3442 ], [ [[T4]], %cond.between ]
