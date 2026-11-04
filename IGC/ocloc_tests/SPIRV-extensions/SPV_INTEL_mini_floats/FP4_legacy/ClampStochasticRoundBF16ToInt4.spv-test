@@ -40,7 +40,7 @@
 ; CHECK: dnscl.bftoint4.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
 ; CHECK-NOT: dnscl.bftoint4
 ; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
-; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=64
 ; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
 
@@ -117,7 +117,7 @@
 ; CHECK: dnscl.bftoint4.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
 ; CHECK-NOT: dnscl.bftoint4
 ; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
-; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=64
 ; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
 

@@ -21,10 +21,10 @@
 ; CHECK-16-LABEL: .kernel "test"
 ; CHECK-16:      lsc_load.ugm (M1, 16)  [[V:[a-zA-Z0-9_]+]]:d32x4
 ; Plain pack of two extracts of %v.
-; CHECK-16:      mov (M1, 16) [[A:[a-zA-Z0-9_]+]]_0v(0,0)<2> [[V]]_0v(0,0)<1;1,0>
-; CHECK-16-NEXT: mov (M1, 16) [[A]]_0v(0,1)<2> [[V]]_0v(2,0)<1;1,0>
+; CHECK-16:      mov (M1, 16) [[A:[a-zA-Z0-9_]+]]_1v(0,0)<2> [[V]]_0v(0,0)<1;1,0>
+; CHECK-16-NEXT: mov (M1, 16) [[A]]_1v(0,1)<2> [[V]]_0v(2,0)<1;1,0>
 ; Live base: element 0 is read from %s (an alias of %a), element 1 from %v.
-; CHECK-16:      mov (M1, 16) [[B:[a-zA-Z0-9_]+]]_0v(0,0)<2> [[A]]_0v(0,0)<1;1,0>
+; CHECK-16:      mov (M1, 16) [[B:[a-zA-Z0-9_]+]]_0v(0,0)<2> [[A]]_1v(0,0)<1;1,0>
 ; CHECK-16-NEXT: mov (M1, 16) [[B]]_0v(0,1)<2> [[V]]_0v(3,0)<1;1,0>
 ; Halves of i64 values: hi of %x, lo of %b.
 ; CHECK-16:      lsc_load.ugm (M1, 16)  [[X:[a-zA-Z0-9_]+]]:d64
@@ -45,12 +45,12 @@
 ;
 ; CHECK-32-LABEL: .kernel "test"
 ; CHECK-32:      lsc_load.ugm (M1, 32)  [[V:[a-zA-Z0-9_]+]]:d32x4
-; CHECK-32:      mov (M1, 16) [[A:[a-zA-Z0-9_]+]]_0v(0,0)<2> [[V]]_0v(0,0)<1;1,0>
-; CHECK-32-NEXT: mov (M5, 16) [[A]]_0v(2,0)<2> [[V]]_0v(1,0)<1;1,0>
-; CHECK-32-NEXT: mov (M1, 16) [[A]]_0v(0,1)<2> [[V]]_0v(4,0)<1;1,0>
-; CHECK-32-NEXT: mov (M5, 16) [[A]]_0v(2,1)<2> [[V]]_0v(5,0)<1;1,0>
-; CHECK-32:      mov (M1, 16) [[B:[a-zA-Z0-9_]+]]_0v(0,0)<2> [[A]]_0v(0,0)<1;1,0>
-; CHECK-32-NEXT: mov (M5, 16) [[B]]_0v(2,0)<2> [[A]]_0v(1,0)<1;1,0>
+; CHECK-32:      mov (M1, 16) [[A:[a-zA-Z0-9_]+]]_1v(0,0)<2> [[V]]_0v(0,0)<1;1,0>
+; CHECK-32-NEXT: mov (M5, 16) [[A]]_1v(2,0)<2> [[V]]_0v(1,0)<1;1,0>
+; CHECK-32-NEXT: mov (M1, 16) [[A]]_1v(0,1)<2> [[V]]_0v(4,0)<1;1,0>
+; CHECK-32-NEXT: mov (M5, 16) [[A]]_1v(2,1)<2> [[V]]_0v(5,0)<1;1,0>
+; CHECK-32:      mov (M1, 16) [[B:[a-zA-Z0-9_]+]]_0v(0,0)<2> [[A]]_1v(0,0)<1;1,0>
+; CHECK-32-NEXT: mov (M5, 16) [[B]]_0v(2,0)<2> [[A]]_1v(1,0)<1;1,0>
 ; CHECK-32-NEXT: mov (M1, 16) [[B]]_0v(0,1)<2> [[V]]_0v(6,0)<1;1,0>
 ; CHECK-32-NEXT: mov (M5, 16) [[B]]_0v(2,1)<2> [[V]]_0v(7,0)<1;1,0>
 ; CHECK-32:      lsc_load.ugm (M1, 32)  [[X:[a-zA-Z0-9_]+]]:d64

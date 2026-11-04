@@ -3357,7 +3357,14 @@ int16_t GetVectorAliasControl(const CodeGenContext *ctx) {
   if (value > -1)
     return static_cast<int16_t>(value);
 
-  return 0x1;
+  if (ctx->type != ShaderType::OPENCL_SHADER)
+    return 1; // only isolated subvectors
+
+  if (ctx->m_enableSubroutine)
+    return 1;
+
+  // OpenCL: isolated subvectors (0x1) + isolated and non-isolated extractelement (0x8)
+  return 0x9;
 }
 
 ExtractBoundsResult ExtractBounds(llvm::Use &U, llvm::AssumptionCache &AC, llvm::Instruction *CtxI,

@@ -8,15 +8,28 @@
 
 ; REQUIRES: regkeys
 
-; RUN: igc_opt --opaque-pointers -platformpvc -igc-emit-visa %s -regkey DumpVISAASMToConsole | FileCheck %s
+; Aliasing of isolated values only
+; RUN: igc_opt --opaque-pointers -platformpvc -igc-emit-visa %s -regkey DumpVISAASMToConsole,VectorAlias=1 \
+; RUN: | FileCheck %s --check-prefix=CHECK-VRA1
 
-; CHECK: .kernel "foo"
-; CHECK:      mov (M1_NM, 1) [[VEC:[A-Za-z0-9_]+]](0,0)<1> 0x1:d
-; CHECK:      mov (M1_NM, 1) [[VEC]](0,1)<1> 0x2:d
-; CHECK:      mov (M1_NM, 1) [[E0:[A-Za-z0-9_]+]](0,0)<1> [[VEC]](0,0)<0;1,0>
-; CHECK:      mov (M1_NM, 1) [[E1:[A-Za-z0-9_]+]](0,0)<1> [[VEC]](0,1)<0;1,0>
-; CHECK:      or (M1_NM, 1) {{[A-Za-z0-9_]+}}(0,0)<1> [[E0]](0,0)<0;1,0>
-; CHECK:      or (M1_NM, 1) {{[A-Za-z0-9_]+}}(0,0)<1> [[E1]](0,0)<0;1,0>
+; Aliasing of isolated and non-isolated values
+; RUN: igc_opt --opaque-pointers -platformpvc -igc-emit-visa %s -regkey DumpVISAASMToConsole,VectorAlias=9 \
+; RUN: | FileCheck %s --check-prefix=CHECK-VRA9
+
+; CHECK-VRA1: .kernel "foo"
+; CHECK-VRA1:      mov (M1_NM, 1) [[VEC:[A-Za-z0-9_]+]](0,0)<1> 0x1:d
+; CHECK-VRA1:      mov (M1_NM, 1) [[VEC]](0,1)<1> 0x2:d
+; CHECK-VRA1:      mov (M1_NM, 1) [[E0:[A-Za-z0-9_]+]](0,0)<1> [[VEC]](0,0)<0;1,0>
+; CHECK-VRA1:      mov (M1_NM, 1) [[E1:[A-Za-z0-9_]+]](0,0)<1> [[VEC]](0,1)<0;1,0>
+; CHECK-VRA1:      or (M1_NM, 1) {{[A-Za-z0-9_]+}}(0,0)<1> [[E0]](0,0)<0;1,0>
+; CHECK-VRA1:      or (M1_NM, 1) {{[A-Za-z0-9_]+}}(0,0)<1> [[E1]](0,0)<0;1,0>
+
+; CHECK-VRA9: .kernel "foo"
+; CHECK-VRA9:      mov (M1_NM, 1) [[VEC:[A-Za-z0-9_]+]](0,0)<1> 0x1:d
+; CHECK-VRA9:      mov (M1_NM, 1) [[VEC]](0,1)<1> 0x2:d
+; CHECK-VRA9-NOT:  mov (M1_NM, 1) {{[A-Za-z0-9_]+}}(0,0)<1> [[VEC]]
+; CHECK-VRA9:      or (M1_NM, 1) {{[A-Za-z0-9_]+}}(0,0)<1> [[VEC]](0,0)<0;1,0>
+; CHECK-VRA9:      or (M1_NM, 1) {{[A-Za-z0-9_]+}}(0,0)<1> [[VEC]](0,1)<0;1,0>
 
 define spir_kernel void @foo(ptr addrspace(1) %p) {
 entry:

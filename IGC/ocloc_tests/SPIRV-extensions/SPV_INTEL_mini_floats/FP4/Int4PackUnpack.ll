@@ -21,7 +21,7 @@ define spir_kernel void @test_shufflevector_uniform(<3 x half> addrspace(1)* %in
 ; CHECK-LABEL: .kernel "test_shufflevector_uniform"
 ; CHECK: dnscl.hftoe2m1.mode0.rne (M1_NM, 1) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 %null.0
 ; CHECK-NOT: dnscl.hftoe2m1
-; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=1
+; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=2
 ; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=1
 ; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=1
   %privateMem = alloca <3 x i4>, align 2
@@ -45,7 +45,7 @@ define spir_kernel void @test_shufflevector_non_uniform(<3 x half> addrspace(1)*
 ; CHECK-LABEL: .kernel "test_shufflevector_non_uniform"
 ; CHECK: dnscl.hftoe2m1.mode0.rne (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 %null.0
 ; CHECK-NOT: dnscl.hftoe2m1
-; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=64
 ; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
   %privateMem = alloca <3 x i4>, align 2

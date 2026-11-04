@@ -68,7 +68,7 @@ define spir_kernel void @BF16_to_E2M1_vector3(<3 x bfloat> addrspace(1)* %input,
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_vector3"
 ; CHECK: dnscl.bftoe2m1.mode0.rne (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 %null.0
 ; CHECK-NOT: dnscl.bftoe2m1
-; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=64
 ; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
   %gid = call spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32 0)
