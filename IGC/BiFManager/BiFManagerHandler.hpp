@@ -107,6 +107,11 @@ public:
   // Function which checks if the pVar is a global variable from built-in function from BiFModule
   // pVar : Global variable to be check
   static bool IsBiF(llvm::GlobalVariable *pVar);
+  // Function which checks if BiFModule defines a function with this mangled name for the pointer size of
+  // pModule, without loading BiFModule
+  // pModule : User module
+  // FuncName : Function name to be check
+  static bool IsBiFDefined(llvm::Module *pModule, llvm::StringRef FuncName);
 };
 } // namespace BiFManager
 } // namespace IGC

@@ -1,0 +1,214 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+
+; Builtin calls on vector sizes BiF doesn't implement must not survive
+; LongVectorBuiltinScalarization, and every kernel must reach vISA. Width 5
+; is unrolled, 17 and 1024 are a loop over the element index.
+
+; REQUIRES: regkeys, spirv-as, pvc-supported
+; RUN: spirv-as --target-env spv1.3 -o %t.spv %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'PrintToConsole=1 PrintAfter=igc-long-vector-builtin-scalarization'" 2>&1 \
+; RUN:   | FileCheck %s --check-prefix=CHECK-IR --implicit-check-not=Dv5_ --implicit-check-not=Dv17_ --implicit-check-not=Dv1024_
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefix=CHECK-VISA
+
+; LongVectorEXT (5425) is a raw word, see OpTypeVectorIdEXT.spvasm.
+
+               OpCapability Addresses
+               OpCapability Kernel
+               OpCapability Float16Buffer
+               OpCapability GroupNonUniformShuffle
+               OpCapability !5425
+               OpExtension "SPV_EXT_long_vector"
+       %ocl = OpExtInstImport "OpenCL.std"
+               OpMemoryModel Physical64 OpenCL
+               OpEntryPoint Kernel %k_fma "k_fma"
+               OpEntryPoint Kernel %k_fma17 "k_fma17"
+               OpEntryPoint Kernel %k_fma1024 "k_fma1024"
+               OpEntryPoint Kernel %k_convert_sat "k_convert_sat"
+               OpEntryPoint Kernel %k_dot_any "k_dot_any"
+               OpEntryPoint Kernel %k_select_shuffle2 "k_select_shuffle2"
+               OpEntryPoint Kernel %k_vloadn_vstoren "k_vloadn_vstoren"
+               OpEntryPoint Kernel %k_vload_halfn "k_vload_halfn"
+               OpEntryPoint Kernel %k_subgroup_shuffle "k_subgroup_shuffle"
+               OpDecorate %sat SaturatedConversion
+       %void = OpTypeVoid
+       %bool = OpTypeBool
+       %uint = OpTypeInt 32 0
+      %ulong = OpTypeInt 64 0
+      %float = OpTypeFloat 32
+       %half = OpTypeFloat 16
+    %float5 = OpTypeVector %float 5
+   %float17 = OpTypeVector %float 17
+ %float1024 = OpTypeVector %float 1024
+     %uint5 = OpTypeVector %uint 5
+     %bool5 = OpTypeVector %bool 5
+     %uint0 = OpConstant %uint 0
+     %uint1 = OpConstant %uint 1
+     %uint3 = OpConstant %uint 3
+    %ulong0 = OpConstant %ulong 0
+     %p_f5 = OpTypePointer CrossWorkgroup %float5
+    %p_f17 = OpTypePointer CrossWorkgroup %float17
+  %p_f1024 = OpTypePointer CrossWorkgroup %float1024
+     %p_u5 = OpTypePointer CrossWorkgroup %uint5
+      %p_f = OpTypePointer CrossWorkgroup %float
+      %p_u = OpTypePointer CrossWorkgroup %uint
+      %p_h = OpTypePointer CrossWorkgroup %half
+   %fn_f5 = OpTypeFunction %void %p_f5
+  %fn_f17 = OpTypeFunction %void %p_f17
+%fn_f1024 = OpTypeFunction %void %p_f1024
+ %fn_f5u5 = OpTypeFunction %void %p_f5 %p_u5
+  %fn_f5u = OpTypeFunction %void %p_f5 %p_u
+    %fn_f = OpTypeFunction %void %p_f
+  %fn_hf5 = OpTypeFunction %void %p_h %p_f5
+
+      %k_fma = OpFunction %void None %fn_f5
+       %fma_p = OpFunctionParameter %p_f5
+     %fma_e = OpLabel
+       %fma_x = OpLoad %float5 %fma_p Aligned 32
+       %fma_r = OpExtInst %float5 %ocl fma %fma_x %fma_x %fma_x
+               OpStore %fma_p %fma_r Aligned 32
+               OpReturn
+               OpFunctionEnd
+
+    %k_fma17 = OpFunction %void None %fn_f17
+     %fma17_p = OpFunctionParameter %p_f17
+   %fma17_e = OpLabel
+     %fma17_x = OpLoad %float17 %fma17_p Aligned 128
+     %fma17_r = OpExtInst %float17 %ocl fma %fma17_x %fma17_x %fma17_x
+               OpStore %fma17_p %fma17_r Aligned 128
+               OpReturn
+               OpFunctionEnd
+
+  %k_fma1024 = OpFunction %void None %fn_f1024
+   %fma1024_p = OpFunctionParameter %p_f1024
+ %fma1024_e = OpLabel
+   %fma1024_x = OpLoad %float1024 %fma1024_p Aligned 4096
+   %fma1024_r = OpExtInst %float1024 %ocl fma %fma1024_x %fma1024_x %fma1024_x
+               OpStore %fma1024_p %fma1024_r Aligned 4096
+               OpReturn
+               OpFunctionEnd
+
+%k_convert_sat = OpFunction %void None %fn_f5u5
+       %cvt_x = OpFunctionParameter %p_f5
+       %cvt_y = OpFunctionParameter %p_u5
+     %cvt_e = OpLabel
+       %cvt_v = OpLoad %float5 %cvt_x Aligned 32
+         %sat = OpConvertFToS %uint5 %cvt_v
+               OpStore %cvt_y %sat Aligned 32
+               OpReturn
+               OpFunctionEnd
+
+  %k_dot_any = OpFunction %void None %fn_f5u
+      %dot_x = OpFunctionParameter %p_f5
+      %dot_y = OpFunctionParameter %p_u
+    %dot_e = OpLabel
+      %dot_v = OpLoad %float5 %dot_x Aligned 32
+      %dot_r = OpDot %float %dot_v %dot_v
+      %dot_c = OpFOrdLessThan %bool5 %dot_v %dot_v
+      %any_r = OpAny %bool %dot_c
+      %any_u = OpSelect %uint %any_r %uint1 %uint0
+      %dot_u = OpBitcast %uint %dot_r
+      %dot_s = OpIAdd %uint %dot_u %any_u
+               OpStore %dot_y %dot_s Aligned 4
+               OpReturn
+               OpFunctionEnd
+
+%k_select_shuffle2 = OpFunction %void None %fn_f5u5
+       %sel_x = OpFunctionParameter %p_f5
+       %sel_m = OpFunctionParameter %p_u5
+     %sel_e = OpLabel
+      %sel_xv = OpLoad %float5 %sel_x Aligned 32
+      %sel_mv = OpLoad %uint5 %sel_m Aligned 32
+      %sel_xu = OpBitcast %uint5 %sel_xv
+      %sel_r = OpExtInst %uint5 %ocl select %sel_xu %sel_mv %sel_mv
+     %shuf_r = OpExtInst %float5 %ocl shuffle2 %sel_xv %sel_xv %sel_r
+               OpStore %sel_x %shuf_r Aligned 32
+               OpReturn
+               OpFunctionEnd
+
+%k_vloadn_vstoren = OpFunction %void None %fn_f
+      %vln_p = OpFunctionParameter %p_f
+    %vln_e = OpLabel
+      %vln_v = OpExtInst %float5 %ocl vloadn %ulong0 %vln_p 5
+      %vsn_r = OpExtInst %void %ocl vstoren %vln_v %ulong0 %vln_p
+               OpReturn
+               OpFunctionEnd
+
+%k_vload_halfn = OpFunction %void None %fn_hf5
+      %vlh_h = OpFunctionParameter %p_h
+      %vlh_f = OpFunctionParameter %p_f5
+    %vlh_e = OpLabel
+      %vlh_v = OpExtInst %float5 %ocl vload_halfn %ulong0 %vlh_h 5
+      %vsh_r = OpExtInst %void %ocl vstore_halfn_r %vlh_v %ulong0 %vlh_h RTZ
+               OpStore %vlh_f %vlh_v Aligned 32
+               OpReturn
+               OpFunctionEnd
+
+%k_subgroup_shuffle = OpFunction %void None %fn_f5
+       %sg_p = OpFunctionParameter %p_f5
+     %sg_e = OpLabel
+       %sg_x = OpLoad %float5 %sg_p Aligned 32
+       %sg_r = OpGroupNonUniformShuffle %float5 %uint3 %sg_x %uint1
+               OpStore %sg_p %sg_r Aligned 32
+               OpReturn
+               OpFunctionEnd
+
+; CHECK-IR-LABEL: define spir_kernel void @k_fma(
+; CHECK-IR-COUNT-5: call spir_func float @_Z15__spirv_ocl_fmafff(
+
+; CHECK-IR-LABEL: define spir_kernel void @k_fma17(
+; CHECK-IR:       long.vector.loop:
+; CHECK-IR:         extractelement <17 x float> %{{.*}}, i32 %lane
+; CHECK-IR:         call spir_func float @_Z15__spirv_ocl_fmafff(
+; CHECK-IR:         insertelement <17 x float> %acc, float %{{.*}}, i32 %lane
+
+; CHECK-IR-LABEL: define spir_kernel void @k_fma1024(
+; CHECK-IR:       long.vector.loop:
+; CHECK-IR:         extractelement <1024 x float> %{{.*}}, i32 %lane
+; CHECK-IR:         call spir_func float @_Z15__spirv_ocl_fmafff(
+; CHECK-IR:         insertelement <1024 x float> %acc, float %{{.*}}, i32 %lane
+
+; CHECK-IR-LABEL: define spir_kernel void @k_convert_sat(
+; CHECK-IR-COUNT-5: call spir_func i32 @_Z28__spirv_ConvertFToS_Rint_satf(
+
+; CHECK-IR-LABEL: define spir_kernel void @k_dot_any(
+; CHECK-IR:         fmul float
+; CHECK-IR-COUNT-4: call spir_func float @_Z15__spirv_ocl_fmafff(
+; CHECK-IR:         fcmp olt <5 x float>
+; CHECK-IR-COUNT-4: or i8
+
+; CHECK-IR-LABEL: define spir_kernel void @k_select_shuffle2(
+; CHECK-IR:         icmp slt <5 x i32> %{{.*}}, zeroinitializer
+; CHECK-IR:         select <5 x i1>
+; CHECK-IR:         and i32 %{{.*}}, 15
+; CHECK-IR:         urem i32 %{{.*}}, 5
+; CHECK-IR:         icmp ult i32 %{{.*}}, 10
+
+; CHECK-IR-LABEL: define spir_kernel void @k_vloadn_vstoren(
+; CHECK-IR:         load <5 x float>
+; CHECK-IR:         store <5 x float>
+
+; CHECK-IR-LABEL: define spir_kernel void @k_vload_halfn(
+; CHECK-IR:         load <5 x half>
+; CHECK-IR:         fpext <5 x half> %{{.*}} to <5 x float>
+; CHECK-IR-COUNT-5: call spir_func half @_Z26__spirv_FConvert_Rhalf_rtzf(
+; CHECK-IR:         store <5 x half>
+
+; CHECK-IR-LABEL: define spir_kernel void @k_subgroup_shuffle(
+; CHECK-IR-COUNT-5: call spir_func float @_Z30__spirv_GroupNonUniformShuffleifj(i32 3, float %{{.*}}, i32 1)
+
+; CHECK-VISA-DAG: .kernel "k_fma"
+; CHECK-VISA-DAG: .kernel "k_fma17"
+; CHECK-VISA-DAG: .kernel "k_fma1024"
+; CHECK-VISA-DAG: .kernel "k_convert_sat"
+; CHECK-VISA-DAG: .kernel "k_dot_any"
+; CHECK-VISA-DAG: .kernel "k_select_shuffle2"
+; CHECK-VISA-DAG: .kernel "k_vloadn_vstoren"
+; CHECK-VISA-DAG: .kernel "k_vload_halfn"
+; CHECK-VISA-DAG: .kernel "k_subgroup_shuffle"

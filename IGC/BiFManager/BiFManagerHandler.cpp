@@ -192,6 +192,11 @@ bool BiFManagerHandler::IsBiF(llvm::Function *pFunc) { return pFunc->getMetadata
 
 bool BiFManagerHandler::IsBiF(llvm::GlobalVariable *pVar) { return pVar->getMetadata(bifMark) != nullptr; }
 
+bool BiFManagerHandler::IsBiFDefined(llvm::Module *pModule, llvm::StringRef FuncName) {
+  std::string Name = FuncName.str();
+  return (isModulePtrSize32(pModule) ? GetDepList32(Name) : GetDepList64(Name))[0] > -1;
+}
+
 void BiFManagerHandler::SetCallbackLinker(
     const std::function<void(llvm::Module &, const llvm::StringSet<> &)> &CallbackLinker) {
   this->CallbackLinker = CallbackLinker;

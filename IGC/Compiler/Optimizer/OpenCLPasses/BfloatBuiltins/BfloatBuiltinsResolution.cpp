@@ -111,8 +111,11 @@ void BfloatBuiltinsResolution::visitCallInst(CallInst &CI) {
   if (!callInstUsesBfloat(CI))
     return;
 
-  StringRef MangledName = CI.getCalledFunction()->getName();
+  if (std::optional<std::string> NewFuncName = getResolvedName(CI.getCalledFunction()->getName()))
+    CallInstPairs.push_back({&CI, *NewFuncName});
+}
 
+std::optional<std::string> BfloatBuiltinsResolution::getResolvedName(StringRef MangledName) {
   // Strip any ".old" suffixes that may have been added by resolving
   // calls to the same function in other kernels processed earlier.
   while (MangledName.consume_back(".old"))
@@ -130,7 +133,7 @@ void BfloatBuiltinsResolution::visitCallInst(CallInst &CI) {
     }
 
     if (!ContainsSupported)
-      return;
+      return std::nullopt;
   }
 
   std::string MangledNameForDemangling = MangledName.str();
@@ -163,11 +166,10 @@ void BfloatBuiltinsResolution::visitCallInst(CallInst &CI) {
     }
 
     if (!IsSupported)
-      return;
+      return std::nullopt;
   }
 
-  std::string NewFuncName = replaceAll(MangledName, "DF16b", "s");
-  CallInstPairs.push_back({&CI, NewFuncName});
+  return replaceAll(MangledName, "DF16b", "s");
 }
 
 static Value *bitcastBfloatToI16(IRBuilder<> *Builder, Value *V) {

@@ -19,6 +19,9 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/IR/IRBuilder.h>
 #include <llvmWrapper/IR/Instructions.h>
 
+#include <optional>
+#include <string>
+
 namespace IGC {
 class CodeGenContext;
 }
@@ -34,6 +37,10 @@ public:
 
   bool run(llvm::Function &F);
   void visitCallInst(llvm::CallInst &CI);
+
+  /// The i16 name a call to bfloat builtin \p MangledName is redirected to, or
+  /// std::nullopt if this pass leaves it alone.
+  static std::optional<std::string> getResolvedName(llvm::StringRef MangledName);
 
   struct CallInstNamePair {
     llvm::CallInst *CI;

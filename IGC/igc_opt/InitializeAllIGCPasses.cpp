@@ -370,6 +370,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeSubgroup2DBlockIoResolutionLPMPass(Registry);
   initializeSpvSubgroupMMAResolutionLPMPass(Registry);
   initializeSpvSubgroupBitcastShuffleResolutionLPMPass(Registry);
+  initializeLongVectorBuiltinScalarizationLPMPass(Registry);
   initializeInjectPrintfLPMPass(Registry);
   initializeWaveShuffleIndexSinkingPass(Registry);
   IGC::initializeAddRequiredMemoryFencesPass(Registry);

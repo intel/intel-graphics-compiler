@@ -146,6 +146,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/Subgroup2DBlockIoResolution/Subgroup2DBlockIoResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/SpvSubgroupMMAResolution/SpvSubgroupMMAResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/SpvSubgroupBitcastShuffleResolution/SpvSubgroupBitcastShuffleResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/LongVectorBuiltinScalarization/LongVectorBuiltinScalarization.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProcessBICodeAssumption/ProcessBICodeAssumption.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/FoldZeroInitAllocaIntoMemset/FoldZeroInitAllocaIntoMemset.hpp"
 
@@ -312,6 +313,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
   }
 
   IGC_ADD_PASS_AUTO(npmSPIR, lpmSPIR, PreprocessSPVIR);
+  IGC_ADD_PASS_AUTO(npmSPIR, lpmSPIR, LongVectorBuiltinScalarization);
   IGC_ADD_PASS_AUTO(npmSPIR, lpmSPIR, PromoteSubByte);
   IGC_ADD_PASS(npmSPIR, lpmSPIR, FreezeOutOfRangeShiftsNPM(), createFreezeOutOfRangeShiftsPass());
   IGC_ADD_PASS(npmSPIR, lpmSPIR, TypesLegalizationPassNPM(), new TypesLegalizationPassLPM());
