@@ -5521,9 +5521,10 @@ bool GenStrengthReduction::processInst(Instruction *Inst) {
           Inv->setFastMathFlags(Inst->getFastMathFlags());
           Inv->setDebugLoc(Inst->getDebugLoc());
         }
+        Inv->andIRFlags(I);
 
         Instruction *Mul = BinaryOperator::CreateFMul(I->getOperand(0), Inv, "", IGCLLVM::insertPosition(I));
-        Mul->setFastMathFlags(Inst->getFastMathFlags());
+        Mul->setFastMathFlags(I->getFastMathFlags());
         Mul->setDebugLoc(I->getDebugLoc());
         I->replaceAllUsesWith(Mul);
         // Don't erase it as doing so would invalidate iterator in this func's caller

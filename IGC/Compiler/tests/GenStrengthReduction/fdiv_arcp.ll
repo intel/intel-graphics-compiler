@@ -81,3 +81,21 @@ entry:
   store double %add1, ptr addrspace(1) %a, align 8
   ret void
 }
+
+; fdivs sharing a divisor must keep their own fast-math flags, and the shared
+; reciprocal may only keep the flags common to all of them.
+define spir_kernel void @test_fdiv_shared_divisor_fmf(float %x, float %z, float %y, ptr addrspace(1) %a, ptr addrspace(1) %b) {
+entry:
+; CHECK-LABEL: test_fdiv_shared_divisor_fmf
+; CHECK:    [[INV:%.*]] = fdiv arcp float 1.000000e+00, %y
+; CHECK:    [[MUL0:%.*]] = fmul nnan ninf arcp float %x, [[INV]]
+; CHECK:    store float [[MUL0]], ptr addrspace(1) %a, align 4
+; CHECK:    [[MUL1:%.*]] = fmul arcp float %z, [[INV]]
+; CHECK:    store float [[MUL1]], ptr addrspace(1) %b, align 4
+; CHECK:    ret void
+  %d0 = fdiv nnan ninf arcp float %x, %y
+  store float %d0, ptr addrspace(1) %a, align 4
+  %d1 = fdiv arcp float %z, %y
+  store float %d1, ptr addrspace(1) %b, align 4
+  ret void
+}
