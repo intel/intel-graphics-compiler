@@ -249,8 +249,10 @@ G4_DstRegRegion *HWConformity::insertMovAfter(INST_LIST_ITER &it,
   // to the newly inserted MOV instruction. And newExecSize always equals its
   // origal execution size for G4_sel. In other words, we must not set NoMask
   // for SIMD1 G4_sel inst after inserting MOV inst.
+  // Keep the channel offset of an inst with a cond mod, as it selects the flag
+  // bit that is written.
   if (newExecSize == 1 && !inst->getPredicate()) {
-    inst->setNoMask(true);
+    inst->setNoMask(!inst->getCondMod());
   }
 
   return builder.createDstRegRegion(dcl, scale);

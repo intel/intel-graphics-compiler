@@ -2794,9 +2794,10 @@ HWConformityPro::insertMovAfterAndGetInserted(INST_LIST_ITER it, G4_BB *bb,
   // for SIMD1 G4_sel inst after inserting MOV inst.
   // Keep the channel offset of an inst with an implicit acc dst, as it
   // selects the acc register (e.g., (1|M16) addc writes acc1, which a
-  // following add reads explicitly).
+  // following add reads explicitly). Likewise keep it for an inst with a cond
+  // mod, as the channel offset selects the flag bit that is written.
   if (newExecSize == 1 && !inst->getPredicate()) {
-    inst->setNoMask(!inst->getImplAccDst());
+    inst->setNoMask(!inst->getImplAccDst() && !inst->getCondMod());
   }
 
   return std::make_pair(builder.createDstRegRegion(dcl, scale), wasMovInserted);
