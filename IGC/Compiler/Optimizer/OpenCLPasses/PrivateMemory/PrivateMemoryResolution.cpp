@@ -466,6 +466,18 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
   return changed;
 }
 
+// Find the nearest common dominator of the blocks of all reachable Uses.
+static BasicBlock *findReachableUsesDominator(const DominatorTree &DT, ArrayRef<Instruction *> Uses) {
+  BasicBlock *DomBB = nullptr;
+  for (Instruction *Use : Uses) {
+    BasicBlock *UseBB = Use->getParent();
+    if (!DT.isReachableFromEntry(UseBB))
+      continue;
+    DomBB = DomBB ? DT.findNearestCommonDominator(DomBB, UseBB) : UseBB;
+  }
+  return DomBB;
+}
+
 // Sink allocas into its first dominating use if possible. Alloca instructions
 // are placed in the first basic block which dominates all other blocks. During
 // alloca resolution, all address computations are done in the first block. And
@@ -538,22 +550,7 @@ static void sinkAllocas(SmallVectorImpl<AllocaInst *> &Allocas, bool highAllocaR
       Calcuated = true;
     }
 
-    // Find the Nearest Common Denominator for all the uses
-    Instruction *DomUse = UInsts[0];
-    BasicBlock *DomBB = DomUse->getParent();
-    for (unsigned i = 1; i < UInsts.size(); ++i) {
-      Instruction *Use = UInsts[i];
-      BasicBlock *UseBB = Use->getParent();
-
-      // skip unreachable BB
-      if (UseBB->use_empty() && !UseBB->isEntryBlock())
-        continue;
-
-      DomBB = DT.findNearestCommonDominator(DomBB, UseBB);
-      if (!DomBB) {
-        break;
-      }
-    }
+    BasicBlock *DomBB = findReachableUsesDominator(DT, UInsts);
 
     // Find the nearest Denominator outside loops to prevent multiple allocations
     // In case when we have too many allocas that increase RegPressure, skip this optimization
@@ -618,22 +615,7 @@ static void sinkAllocaSingleUse(SmallVectorImpl<AllocaInst *> &Allocas) {
         Calcuated = true;
       }
 
-      // Find the Nearest Common Denominator for all the uses
-      Instruction *DomUse = UInsts[0];
-      BasicBlock *DomBB = DomUse->getParent();
-      for (unsigned i = 1; i < UInsts.size(); ++i) {
-        Instruction *Use = UInsts[i];
-        BasicBlock *UseBB = Use->getParent();
-
-        // skip unreachable BB
-        if (UseBB->use_empty() && !UseBB->isEntryBlock())
-          continue;
-
-        DomBB = DT.findNearestCommonDominator(DomBB, UseBB);
-        if (!DomBB) {
-          break;
-        }
-      }
+      BasicBlock *DomBB = findReachableUsesDominator(DT, UInsts);
 
       if (DomBB) {
         // If DomBB has a use in it, insert it just before the first use.

@@ -45,16 +45,71 @@ end:
   ret void
 }
 
+define spir_kernel void @test_skip_dead_loop( i32 %src, i32 %bufferOffset, i32 %bufferOffset1) #0 {
+; CHECK-LABEL: @test_skip_dead_loop(
+; CHECK:  dead:
+; CHECK-TYPED:    store i32 %src, i32* [[PRIVATEBUFFER:%.*]], align 4
+; CHECK-OPAQUE:    store i32 %src, ptr [[PRIVATEBUFFER:%.*]], align 4
+; CHECK:  next:
+; CHECK-TYPED:    [[PRIVATEBUFFER]] = bitcast i8* {{%.*}} to i32*
+; CHECK-OPAQUE:    [[PRIVATEBUFFER]] = getelementptr i8, ptr {{%.*}}, i64 {{%.*}}
+; CHECK-TYPED:    store i32 %src, i32* [[PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    store i32 %src, ptr [[PRIVATEBUFFER]], align 4
+; CHECK-TYPED:    [[LOAD1:%.*]] = load i32, i32* [[PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    [[LOAD1:%.*]] = load i32, ptr [[PRIVATEBUFFER]], align 4
+entry:
+  %0 = alloca i32, align 4
+  br label %next
+
+dead:
+  store i32 %src, i32* %0, align 4
+  br label %dead
+
+next:
+  store i32 %src, i32* %0, align 4
+  %1 = load i32, i32* %0, align 4
+  ret void
+}
+
+define spir_kernel void @test_skip_first_use( i32 %src, i32 %bufferOffset, i32 %bufferOffset1) #0 {
+; CHECK-LABEL: @test_skip_first_use(
+; CHECK:  next:
+; CHECK-TYPED:    [[PRIVATEBUFFER:%.*]] = bitcast i8* {{%.*}} to i32*
+; CHECK-OPAQUE:    [[PRIVATEBUFFER:%.*]] = getelementptr i8, ptr {{%.*}}, i64 {{%.*}}
+; CHECK-TYPED:    store i32 %src, i32* [[PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    store i32 %src, ptr [[PRIVATEBUFFER]], align 4
+; CHECK-TYPED:    [[LOAD1:%.*]] = load i32, i32* [[PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    [[LOAD1:%.*]] = load i32, ptr [[PRIVATEBUFFER]], align 4
+; CHECK:  unused:
+; CHECK-TYPED:    store i32 %src, i32* [[PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    store i32 %src, ptr [[PRIVATEBUFFER]], align 4
+; CHECK-TYPED:    [[LOAD2:%.*]] = load i32, i32* [[PRIVATEBUFFER]], align 4
+; CHECK-OPAQUE:    [[LOAD2:%.*]] = load i32, ptr [[PRIVATEBUFFER]], align 4
+entry:
+  %0 = alloca i32, align 4
+  br label %next
+
+next:
+  store i32 %src, i32* %0, align 4
+  %1 = load i32, i32* %0, align 4
+  ret void
+
+unused:                         ; No predecessors!
+  store i32 %src, i32* %0, align 4
+  %2 = load i32, i32* %0, align 4
+  unreachable
+}
+
 attributes #0 = { convergent noinline nounwind optnone "less-precise-fpmad"="true" }
 
 !IGCMetadata = !{!3}
-!igc.functions = !{!17}
+!igc.functions = !{!17, !39, !40}
 
 !3 = !{!"ModuleMD", !4, !7, !13, !10}
 !4 = !{!"compOpt", !5, !6}
 !5 = !{!"OptDisable", i1 true}
 !6 = !{!"UseScratchSpacePrivateMemory", i1 true}
-!7 = !{!"FuncMD", !11, !12}
+!7 = !{!"FuncMD", !11, !12, !35, !36, !37, !38}
 !10 = !{!"privateMemoryPerWI", i32 0}
 !11 = !{!"FuncMDMap[0]", void (i32, i32, i32)* @test_skip}
 !12 = !{!"FuncMDValue[0]", !10, !34}
@@ -69,3 +124,9 @@ attributes #0 = { convergent noinline nounwind optnone "less-precise-fpmad"="tru
 !32 = !{!"explicitArgNum", i32 1}
 !33 = !{!"implicitArgInfoListVec[1]", !31, !32}
 !34 = !{!"implicitArgInfoList", !30, !33}
+!35 = !{!"FuncMDMap[1]", void (i32, i32, i32)* @test_skip_dead_loop}
+!36 = !{!"FuncMDValue[1]", !10, !34}
+!37 = !{!"FuncMDMap[2]", void (i32, i32, i32)* @test_skip_first_use}
+!38 = !{!"FuncMDValue[2]", !10, !34}
+!39 = !{void (i32, i32, i32)* @test_skip_dead_loop, !18}
+!40 = !{void (i32, i32, i32)* @test_skip_first_use, !18}
