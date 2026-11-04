@@ -797,7 +797,7 @@ bool SOALayoutChecker::isAlignedDynamicOffset(Value *Idx, uint64_t Stride, uint6
 }
 
 bool SOALayoutChecker::isAlignedChain(const Value *Ptr, uint64_t TargetAlignment) const {
-  uint64_t ConstBytes = 0;
+  int64_t ConstBytes = 0;
   while (Ptr != &allocaRef) {
     if (auto *GEP = dyn_cast<GetElementPtrInst>(Ptr)) {
       for (auto GTI = gep_type_begin(GEP), GTE = gep_type_end(GEP); GTI != GTE; ++GTI) {
@@ -808,7 +808,7 @@ bool SOALayoutChecker::isAlignedChain(const Value *Ptr, uint64_t TargetAlignment
         }
         uint64_t Stride = pDL->getTypeAllocSize(GTI.getIndexedType());
         if (auto *CI = dyn_cast<ConstantInt>(Idx)) {
-          ConstBytes += (uint64_t)CI->getSExtValue() * Stride;
+          ConstBytes += CI->getSExtValue() * (int64_t)Stride;
           continue;
         }
         // A dynamic index contributes an unknown multiple of its stride, so it keeps the
@@ -839,7 +839,7 @@ bool SOALayoutChecker::isAlignedChain(const Value *Ptr, uint64_t TargetAlignment
     // so it can not be assumed aligned.
     return false;
   }
-  return (ConstBytes % TargetAlignment) == 0;
+  return (ConstBytes % (int64_t)TargetAlignment) == 0;
 }
 
 // On the heterogeneous-struct path an i8-typed GEP contributes a raw byte offset to the linearOffset
@@ -855,7 +855,7 @@ bool SOALayoutChecker::isSupportedByteGEP(GetElementPtrInst *GEP) const {
   // A constant offset folds straight into linearOffset. LLVM's memcpy lowering of a struct emits such a
   // GEP for each chunk-sized piece, e.g. `gep i8, ptr %sd, 16`.
   if (auto *CI = dyn_cast<ConstantInt>(GEP->getOperand(1)))
-    return (CI->getZExtValue() % SOAPartitionBytes) == 0;
+    return (CI->getSExtValue() % SOAPartitionBytes) == 0;
 
   // A dynamic offset (e.g. a field index scaled by the field size) can only be proven aligned from the
   // value itself. The constant-typed-GEP base it is chained onto contributes an offset getOrGatherInfo
@@ -1077,7 +1077,6 @@ static bool isElementAlignedByteGEP(const GetElementPtrInst &GEP, uint64_t index
   if (indexUnitBytes == 0 || !isByteOffsetGEP(GEP))
     return false;
   auto *Offset = dyn_cast<ConstantInt>(GEP.getOperand(1));
-  // handleGEPInst zero-extends before dividing, so a negative offset would not round-trip.
   if (!Offset || Offset->isNegative())
     return false;
   return (Offset->getZExtValue() % indexUnitBytes) == 0;
@@ -1790,9 +1789,9 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *
     }
 
     // The 1st operand is the byte offset, convert bytes to element count.
-    Value *byteIndex = IRB.CreateZExtOrTrunc(pGEP->getOperand(1), IRB.getInt32Ty());
+    Value *byteIndex = IRB.CreateSExtOrTrunc(pGEP->getOperand(1), IRB.getInt32Ty());
     if (elementBytes > 1)
-      byteIndex = IRB.CreateUDiv(byteIndex, IRB.getInt32(elementBytes));
+      byteIndex = IRB.CreateSDiv(byteIndex, IRB.getInt32(elementBytes));
 
     pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, byteIndex);
     pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, idx);
@@ -1838,18 +1837,18 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *
       IGC_ASSERT_MESSAGE(pGEP->getNumIndices() >= 1, "Struct GEP must have at least one index");
 
       // Walk the GEP indices, accumulating the offset into the flat promoted vector.
-      uint32_t ByteOffset = 0;
+      int64_t ByteOffset = 0;
       Value *DynLaneOffset = nullptr;
 
       // Add (Op * StrideBytes) to the running offset: constants fold into ByteOffset,
       // dynamic indices are converted to a lane count and accumulated in DynLaneOffset.
       auto AddIndexStride = [&](Value *Op, uint32_t StrideBytes) {
         if (auto *CI = dyn_cast<ConstantInt>(Op)) {
-          ByteOffset += (uint32_t)CI->getZExtValue() * StrideBytes;
+          ByteOffset += CI->getSExtValue() * (int64_t)StrideBytes;
         } else {
           IGC_ASSERT_MESSAGE(StrideBytes % m_promotedLaneBytes == 0,
                              "Dynamic GEP index stride not a multiple of promoted lane size");
-          Value *Op32 = IRB.CreateZExtOrTrunc(Op, IRB.getInt32Ty());
+          Value *Op32 = IRB.CreateSExtOrTrunc(Op, IRB.getInt32Ty());
           Value *Lanes = IRB.CreateMul(Op32, IRB.getInt32(StrideBytes / m_promotedLaneBytes));
           DynLaneOffset = DynLaneOffset ? IRB.CreateAdd(DynLaneOffset, Lanes) : Lanes;
         }
@@ -1881,9 +1880,9 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *
           break;
         }
       }
-      IGC_ASSERT_MESSAGE(ByteOffset % m_promotedLaneBytes == 0,
+      IGC_ASSERT_MESSAGE(ByteOffset % (int64_t)m_promotedLaneBytes == 0,
                          "Struct field byte offset not aligned to promoted lane size");
-      Value *ElemIdx = IRB.CreateAdd(idx, IRB.getInt32(ByteOffset / m_promotedLaneBytes));
+      Value *ElemIdx = IRB.CreateAdd(idx, IRB.getInt32((uint32_t)(ByteOffset / (int64_t)m_promotedLaneBytes)));
       if (DynLaneOffset) {
         ElemIdx = IRB.CreateAdd(ElemIdx, DynLaneOffset);
       }
@@ -1904,7 +1903,7 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *
                        "GEPs shouldn't index into vector elements.");
     // https://llvm.org/docs/GetElementPtr.html#can-gep-index-into-vector-elements
 
-    auto GepOpnd = IRB.CreateZExtOrTrunc(pGEP->getOperand(i + 1), IRB.getInt32Ty());
+    auto GepOpnd = IRB.CreateSExtOrTrunc(pGEP->getOperand(i + 1), IRB.getInt32Ty());
 
     auto [arr_sz, eltTy] = getArrSizeAndEltType(T);
 
