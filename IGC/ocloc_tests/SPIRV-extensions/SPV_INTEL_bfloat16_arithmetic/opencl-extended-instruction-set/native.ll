@@ -370,6 +370,14 @@ define spir_func bfloat @test_spirv_ocl_nan(i16 %data1) {
   ret bfloat %result
 }
 
+; CHECK-LABEL: .function "test_spirv_ocl_nan_v2
+define spir_func <2 x bfloat> @test_spirv_ocl_nan_v2(<2 x i16> %data1) {
+  ; CHECK: mov (M1_NM, {{[0-9]+}}) [[DST:.*]](0,0)<1> 0x7fff0000:f
+  ; CHECK-DAG: .decl [[DST]] v_type=G type=bf
+  %result = call spir_func <2 x bfloat> @_Z24__spirv_ocl_nan__RDF16b2Dv2_t(<2 x i16> %data1)
+  ret <2 x bfloat> %result
+}
+
 ; CHECK-LABEL: .function "test_spirv_ocl_nextafter
 define spir_func bfloat @test_spirv_ocl_nextafter(bfloat %data1, bfloat %data2, bfloat %data3) {
   ; This instruction is not upconverted to float. It is handled via a sequence of short instructions.
@@ -591,6 +599,7 @@ declare spir_func bfloat @_Z22__spirv_ocl_native_sinDF16b(bfloat)
 declare spir_func bfloat @_Z23__spirv_ocl_native_sqrtDF16b(bfloat)
 declare spir_func bfloat @_Z22__spirv_ocl_native_tanDF16b(bfloat)
 declare spir_func bfloat @_Z23__spirv_ocl_nan__RDF16bt(i16)
+declare spir_func <2 x bfloat> @_Z24__spirv_ocl_nan__RDF16b2Dv2_t(<2 x i16>)
 declare spir_func bfloat @_Z21__spirv_ocl_nextafterDF16bDF16b(bfloat, bfloat)
 declare spir_func bfloat @_Z15__spirv_ocl_fmaDF16bDF16bDF16b(bfloat, bfloat, bfloat)
 
