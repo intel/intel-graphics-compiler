@@ -556,7 +556,7 @@ bool SOALayoutChecker::hasUnsupportedAccess(bool IsNewAlgo) const {
       } else if (MismatchDetectionStrategy == DefaultLowerGEPStrategy) {
         // DefaultLowerGEPStrategy uses its own transpose helper - TransposeHelperPromote
         auto LaneSize = pDL->getTypeAllocSize(pInfo->baseType->getScalarType());
-        if (!isAlignedChain(Ptr, LaneSize))
+        if (!isAlignedChain(Ptr, LaneSize, true))
           return true;
         // To avoid 0 extending and overwriting of unintended data, require access to be multiple of lane size.
         if (IsStore && AccBytes % LaneSize != 0)
@@ -796,7 +796,7 @@ bool SOALayoutChecker::isAlignedDynamicOffset(Value *Idx, uint64_t Stride, uint6
   return KB.countMinTrailingZeros() + IGCLLVM::countr_zero(Stride) >= Log2_32(TargetAlignment);
 }
 
-bool SOALayoutChecker::isAlignedChain(const Value *Ptr, uint64_t TargetAlignment) const {
+bool SOALayoutChecker::isAlignedChain(const Value *Ptr, uint64_t TargetAlignment, bool CheckAllLinks) const {
   int64_t ConstBytes = 0;
   while (Ptr != &allocaRef) {
     if (auto *GEP = dyn_cast<GetElementPtrInst>(Ptr)) {
@@ -818,6 +818,8 @@ bool SOALayoutChecker::isAlignedChain(const Value *Ptr, uint64_t TargetAlignment
           return false;
       }
       Ptr = GEP->getPointerOperand();
+      if (CheckAllLinks && ConstBytes % (int64_t)TargetAlignment != 0)
+        return false;
       continue;
     }
     if (auto *CI = dyn_cast<CastInst>(Ptr)) {

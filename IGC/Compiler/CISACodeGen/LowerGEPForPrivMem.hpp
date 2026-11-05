@@ -163,7 +163,7 @@ private:
   bool hasUnsupportedAccess(bool IsNewAlgo) const;
   // Return true if every byte offset \p Ptr can carry relative to the alloca is provably a
   // multiple of given alignment.
-  bool isAlignedChain(const llvm::Value *Ptr, uint64_t TargetAlignment) const;
+  bool isAlignedChain(const llvm::Value *Ptr, uint64_t TargetAlignment, bool CheckAllLinks = false) const;
   // Return true if a dynamic GEP index contributing \p Idx * \p Stride bytes provably keeps
   // the running byte offset a multiple of given alignment.
   bool isAlignedDynamicOffset(llvm::Value *Idx, uint64_t Stride, uint64_t TargetAlignment) const;
