@@ -200,9 +200,6 @@ class GenXLowering : public FunctionPass {
   DominatorTree *DT = nullptr;
   const GenXSubtarget *ST = nullptr;
   SmallVector<Instruction *, 8> ToErase;
-  // Shared negations created by lowerConstMinusRegionIndex, keyed by the
-  // negated value.
-  DenseMap<Value *, Value *> NegCache;
   const DataLayout *DL = nullptr;
 
 public:
@@ -256,7 +253,6 @@ private:
   bool lowerUnorderedFCmpInst(FCmpInst *Inst);
   bool lowerSqrt(CallInst *CI);
   bool widenByteOp(Instruction *Inst);
-  bool lowerConstMinusRegionIndex(Instruction *Inst);
   bool lowerGenXMul(CallInst *CI, unsigned IntrinsicID);
   bool lowerGenXMulSat(CallInst *CI, unsigned IntrinsicID);
   bool lowerGenXIMad(CallInst *CI, unsigned IntrinsicID);
@@ -344,7 +340,6 @@ bool GenXLowering::runOnFunction(Function &F) {
   DL = &F.getParent()->getDataLayout();
   // First split any phi nodes with struct type.
   splitStructPhis(&F);
-  NegCache.clear();
   // Create a list of basic blocks in the order we want to process them, before
   // we start the lowering. This is because lowering can split a basic block.
   SmallVector<BasicBlock *, 8> BBs;
@@ -377,7 +372,6 @@ bool GenXLowering::runOnFunction(Function &F) {
        i != e; ++i)
     (*i)->eraseFromParent();
   ToErase.clear();
-  NegCache.clear();
   return true;
 }
 
@@ -1818,8 +1812,6 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerShr(Inst);
     if (Inst->getOpcode() == Instruction::Mul)
       return lowerMul64(Inst);
-    if (Inst->getOpcode() == Instruction::Sub)
-      return lowerConstMinusRegionIndex(Inst);
     return false;
   }
   if (Inst->getOpcode() == Instruction::ICmp)
@@ -2028,115 +2020,6 @@ bool GenXLowering::processInst(Instruction *Inst) {
   if (InsertValueInst *IV = dyn_cast<InsertValueInst>(Inst))
     return lowerInsertValue(IV);
   return false;
-}
-
-/***********************************************************************
- * isOnlyUsedAsRegionIndex : check that every use of V is, possibly through a
- * chain of constant add/sub/or, the variable index of a rdregion/wrregion.
- */
-static bool isOnlyUsedAsRegionIndex(const Value *V, unsigned Depth = 0) {
-  if (V->use_empty() || Depth > 4)
-    return false;
-  for (const Use &U : V->uses()) {
-    const auto *User = cast<Instruction>(U.getUser());
-    switch (GenXIntrinsic::getGenXIntrinsicID(User)) {
-    case GenXIntrinsic::genx_rdregioni:
-    case GenXIntrinsic::genx_rdregionf:
-      if (U.getOperandNo() == GenXIntrinsic::GenXRegion::RdIndexOperandNum)
-        continue;
-      return false;
-    case GenXIntrinsic::genx_wrregioni:
-    case GenXIntrinsic::genx_wrregionf:
-      if (U.getOperandNo() == GenXIntrinsic::GenXRegion::WrIndexOperandNum)
-        continue;
-      return false;
-    default:
-      break;
-    }
-    switch (User->getOpcode()) {
-    case Instruction::Add:
-    case Instruction::Sub:
-    case Instruction::Or:
-      if (U.getOperandNo() == 0 && isa<ConstantInt>(User->getOperand(1)) &&
-          isOnlyUsedAsRegionIndex(User, Depth + 1))
-        continue;
-      return false;
-    default:
-      return false;
-    }
-  }
-  return true;
-}
-
-/***********************************************************************
- * lowerConstMinusRegionIndex : rewrite "sub C, X", used as a variable region
- * index, into "add (neg X), C".
- *
- * Newer LLVM canonicalizes "add (mul X, -N), C" into "sub C, (shl X, ..)".
- * GenXBaling::getIndexAdd/getIndexOr, which GenXCategory uses to turn the
- * index into llvm.genx.add.addr, only recognize a constant on the right-hand
- * side. With the constant on the left every such index becomes an independent
- * address computation instead of a constant offset applied to one shared
- * address base. Recreate the shared base: neg(X) is computed once per X
- * (as "mul Y, -N" when X is "shl/mul Y, const") and the constant becomes a
- * baled-in immediate offset.
- */
-bool GenXLowering::lowerConstMinusRegionIndex(Instruction *Inst) {
-  IGC_ASSERT(Inst->getOpcode() == Instruction::Sub);
-  auto *IntTy = dyn_cast<IntegerType>(Inst->getType());
-  if (!IntTy)
-    return false;
-  auto *C = dyn_cast<ConstantInt>(Inst->getOperand(0));
-  if (!C || C->isZero())
-    return false;
-  Value *X = Inst->getOperand(1);
-  if (isa<Constant>(X) || !isOnlyUsedAsRegionIndex(Inst))
-    return false;
-
-  Value *&Neg = NegCache[X];
-  if (!Neg) {
-    // Defining the negation right after X guarantees it dominates every use
-    // of X, so it can be shared between all the "sub C, X".
-    IRBuilder<> Builder(Inst);
-    if (auto *XI = dyn_cast<Instruction>(X)) {
-      Instruction *InsertPt = isa<PHINode>(XI)
-                                  ? &*XI->getParent()->getFirstInsertionPt()
-                                  : XI->getNextNode();
-      Builder.SetInsertPoint(InsertPt);
-    } else {
-      Builder.SetInsertPoint(
-          &*Inst->getFunction()->getEntryBlock().getFirstInsertionPt());
-    }
-    Builder.SetCurrentDebugLocation(Inst->getDebugLoc());
-    Value *Base = nullptr;
-    // The scale is negated in APInt, so the arithmetic is modular and well
-    // defined for any constant, including the minimum signed value.
-    APInt NegScale;
-    if (auto *BO = dyn_cast<BinaryOperator>(X)) {
-      if (auto *CI = dyn_cast<ConstantInt>(BO->getOperand(1))) {
-        const APInt &CV = CI->getValue();
-        if (BO->getOpcode() == Instruction::Shl && CV.ult(CV.getBitWidth())) {
-          Base = BO->getOperand(0);
-          NegScale = -APInt::getOneBitSet(CV.getBitWidth(), CV.getZExtValue());
-        } else if (BO->getOpcode() == Instruction::Mul) {
-          Base = BO->getOperand(0);
-          NegScale = -CV;
-        }
-      }
-    }
-    if (Base)
-      Neg = Builder.CreateMul(Base, ConstantInt::get(Base->getType(), NegScale),
-                              X->getName() + ".neg");
-    else
-      Neg = Builder.CreateNeg(X, X->getName() + ".neg");
-  }
-
-  IRBuilder<> Builder(Inst);
-  Value *Add = Builder.CreateAdd(Neg, C, Inst->getName());
-  cast<Instruction>(Add)->setDebugLoc(Inst->getDebugLoc());
-  Inst->replaceAllUsesWith(Add);
-  ToErase.push_back(Inst);
-  return true;
 }
 
 /***********************************************************************
