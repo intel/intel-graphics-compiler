@@ -57,7 +57,6 @@ protected:
   /// such as types, intrinsic functions, etc.
   struct {
     std::set<unsigned int> FPTypeSizes;
-    std::set<unsigned int> vectorTypeSizes;
     std::set<unsigned int> Instructions;
     std::set<llvm::Intrinsic::ID> IGCLLVMIntrinsics; // LLVM intrinsics supported by IGC
   } m_IGC_IR_spec;

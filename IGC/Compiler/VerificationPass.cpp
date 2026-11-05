@@ -46,8 +46,6 @@ void VerificationPass::initVerificationPass() {
 
 #define IGC_IR_FP_TYPE(name, size) m_IGC_IR_spec.FPTypeSizes.insert(size);
 
-#define IGC_IR_VECTOR_TYPE(name, size) m_IGC_IR_spec.vectorTypeSizes.insert(size);
-
 #define IGC_IR_LLVM_INTRINSIC(name) m_IGC_IR_spec.IGCLLVMIntrinsics.insert(Intrinsic::name);
 
 #define IGC_IR_LLVM_INSTRUCTION(name)                                                                                  \
@@ -63,7 +61,6 @@ void VerificationPass::initVerificationPass() {
 
 #undef IGC_IR_INTEGER_TYPE
 #undef IGC_IR_FP_TYPE
-#undef IGC_IR_VECTOR_TYPE
 #undef IGC_IR_LLVM_INTRINSIC
 #undef IGC_IR_LLVM_INSTRUCTION
 #undef SPECIFIC_INSTRUCTION_VERIFIER
@@ -128,7 +125,6 @@ bool VerificationPass::verifyInstruction(Instruction &inst) {
   // IGC_IR_spec.hpp, it will be called before the common verification.
 
 #define IGC_IR_FP_TYPE(name, size)
-#define IGC_IR_VECTOR_TYPE(name, size)
 #define IGC_IR_LLVM_INTRINSIC(name)
 #define IGC_IR_LLVM_INSTRUCTION(name)
 #define DECLARE_OPCODE(llvm_name, inst_class, name, modifiers, sat, pred, condMod, mathIntrinsic, atomicIntrinsic,     \
@@ -143,7 +139,6 @@ bool VerificationPass::verifyInstruction(Instruction &inst) {
 #include "IGC_IR_spec.hpp"
 
 #undef IGC_IR_FP_TYPE
-#undef IGC_IR_VECTOR_TYPE
 #undef IGC_IR_LLVM_INTRINSIC
 #undef IGC_IR_LLVM_INSTRUCTION
 #undef SPECIFIC_INSTRUCTION_VERIFIER
@@ -251,17 +246,11 @@ bool VerificationPass::verifyType(Type *type, Value *val) {
     // All integer types are valide
     break;
 
-  case IGCLLVM::VectorTyID: {
-    auto VType = cast<IGCLLVM::FixedVectorType>(type);
-    unsigned typeSize = (unsigned)VType->getNumElements();
-    if (!m_IGC_IR_spec.vectorTypeSizes.count(typeSize)) {
-      m_messagesToDump << "Unexpected vector size found in value:\n";
-      printValue(val);
-      success = false;
-    }
-    success &= verifyType(VType->getElementType(), val);
+  case IGCLLVM::VectorTyID:
+    // Codegen legalizes any number of elements, and SPV_EXT_long_vector allows
+    // any positive number in the input.
+    success &= verifyType(cast<IGCLLVM::FixedVectorType>(type)->getElementType(), val);
     break;
-  }
 
   case Type::PointerTyID: {
     // int addrSpace = type->getPointerAddressSpace();

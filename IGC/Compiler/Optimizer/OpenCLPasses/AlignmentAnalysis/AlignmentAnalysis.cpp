@@ -165,9 +165,9 @@ void AlignmentAnalysis::setArgumentAlignmentBasedOnOptionalMetadata(Function &F)
         uint64_t VectorSize = 0;
         KernelArgType = KernelArgType.drop_front(ScalarType.size());
         if (!KernelArgType.getAsInteger(10, VectorSize)) {
-          if (VectorSize == 3)
-            VectorSize = 4;
-          Alignment = Align(VectorSize * Alignment.value());
+          // A 3-element vector and any cl_ext_long_vector width outside of
+          // 2, 4, 8, 16 are aligned as the next power of 2 elements.
+          Alignment = Align(llvm::PowerOf2Ceil(VectorSize) * Alignment.value());
         }
       } else if (StructType *StTy = getKernelArgStructType(*Arg, KernelArgType)) {
         Alignment = m_DL->getABITypeAlign(StTy);
