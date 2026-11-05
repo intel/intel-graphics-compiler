@@ -831,8 +831,9 @@ bool GenXPredToSimdCF::analizeInsts(BBContainer *Container, Value *Cond) {
     return false;
   bool RetVal = false;
   auto *Pred = (cast<Instruction>(Cond))->getOperand(0);
+  // Cast operand may be an Argument or a Constant, keep it as a Value.
   if (auto *Cast = dyn_cast<CastInst>(Pred))
-    Pred = dyn_cast<Instruction>(Cast->getOperand(0));
+    Pred = Cast->getOperand(0);
 
   LLVM_DEBUG(dbgs() << " ----- '    Node loop "
                     << (cast<Instruction>(Cond))->getFunction()->getName()
