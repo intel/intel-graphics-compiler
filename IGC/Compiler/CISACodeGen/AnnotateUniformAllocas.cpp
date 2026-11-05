@@ -38,21 +38,13 @@ bool AnnotateUniformAllocas::runOnFunction(Function &F) {
   IGC_ASSERT(WI != nullptr);
   visit(F);
 
-  while (!AssumeToErase.empty()) {
-    auto Inst = AssumeToErase.pop_back_val();
-    bool IsAssume = false;
-    if (llvm::GenIntrinsicInst *pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(Inst)) {
-      IsAssume = (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_assume_uniform);
-    }
-    if (IsAssume || isInstructionTriviallyDead(Inst)) {
-      for (Use &OpU : Inst->operands()) {
-        Value *OpV = OpU.get();
-        if (Instruction *OpI = dyn_cast<Instruction>(OpV))
-          AssumeToErase.push_back(OpI);
-      }
-      Inst->eraseFromParent();
-    }
+  for (Instruction *Assume : AssumeToErase) {
+    Value *OpV = Assume->getOperand(0);
+    Assume->eraseFromParent();
+    RecursivelyDeleteTriviallyDeadInstructions(OpV);
+    m_changed = true;
   }
+  AssumeToErase.clear();
   return m_changed;
 }
 
