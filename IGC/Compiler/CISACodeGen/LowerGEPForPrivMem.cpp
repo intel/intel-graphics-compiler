@@ -1845,11 +1845,15 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *
       auto AddIndexStride = [&](Value *Op, uint32_t StrideBytes) {
         if (auto *CI = dyn_cast<ConstantInt>(Op)) {
           ByteOffset += CI->getSExtValue() * (int64_t)StrideBytes;
-        } else {
-          IGC_ASSERT_MESSAGE(StrideBytes % m_promotedLaneBytes == 0,
-                             "Dynamic GEP index stride not a multiple of promoted lane size");
+        } else if (StrideBytes % m_promotedLaneBytes == 0) {
           Value *Op32 = IRB.CreateSExtOrTrunc(Op, IRB.getInt32Ty());
           Value *Lanes = IRB.CreateMul(Op32, IRB.getInt32(StrideBytes / m_promotedLaneBytes));
+          DynLaneOffset = DynLaneOffset ? IRB.CreateAdd(DynLaneOffset, Lanes) : Lanes;
+        } else {
+          // Avoid cases where directly dividing stride with lane would yield 0 due to integer truncation.
+          Value *Op32 = IRB.CreateSExtOrTrunc(Op, IRB.getInt32Ty());
+          Value *Lanes = IRB.CreateMul(Op32, IRB.getInt32(StrideBytes));
+          Lanes = IRB.CreateSDiv(Lanes, IRB.getInt32(m_promotedLaneBytes));
           DynLaneOffset = DynLaneOffset ? IRB.CreateAdd(DynLaneOffset, Lanes) : Lanes;
         }
       };
