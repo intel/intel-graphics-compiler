@@ -1945,10 +1945,12 @@ void TransposeHelper::handleGEPInstNew(llvm::GetElementPtrInst *pGEP, llvm::Valu
 // to exactly NeedBits = N * DstBits, then expand to either a scalar or <N * DstScalarType>.
 //
 // Note, "lane" here means one element of the promoted vecotr <M * SrcScalarTy>.
-static Value *loadEltsFromVecAlloca(unsigned N, AllocaInst *pVecAlloca, Value *pScalarizedIdx,
-                                    IGCLLVM::IRBuilder<> &IRB, Type *DstScalarTy) {
-  IGC_ASSERT(pVecAlloca && pScalarizedIdx && DstScalarTy);
-  IGC_ASSERT(N >= 1);
+static Value *loadEltsFromVecAlloca(Type *DstTy, AllocaInst *pVecAlloca, Value *pScalarizedIdx,
+                                    IGCLLVM::IRBuilder<> &IRB) {
+  IGC_ASSERT(DstTy && pVecAlloca && pScalarizedIdx);
+  auto *DstVecTy = dyn_cast<IGCLLVM::FixedVectorType>(DstTy);
+  const unsigned N = DstVecTy ? (unsigned)DstVecTy->getNumElements() : 1;
+  Type *DstScalarTy = DstTy->getScalarType();
 
   // Promoted vector type and its scalar element type (destination lanes are of this type).
   auto *PromotedVecTy = cast<IGCLLVM::FixedVectorType>(pVecAlloca->getAllocatedType());
@@ -1986,7 +1988,7 @@ static Value *loadEltsFromVecAlloca(unsigned N, AllocaInst *pVecAlloca, Value *p
 
   // 1. Fast path
   if (SrcBits == DstBits) {
-    if (N == 1) {
+    if (!DstVecTy) {
       // This is scalar read: extract one lane, legalize type, and return.
       Value *Elem = IRB.CreateExtractElement(Whole, pScalarizedIdx);
       Type *Ty = Elem->getType();
@@ -2051,7 +2053,7 @@ static Value *loadEltsFromVecAlloca(unsigned N, AllocaInst *pVecAlloca, Value *p
   Value *NeedInt = (NeedBits == K * SrcBits) ? BigInt : IRB.CreateTrunc(BigInt, IRB.getIntNTy((unsigned)NeedBits));
 
   // Expand to the user-visible return type.
-  if (N == 1) {
+  if (!DstVecTy) {
     // For scalars, i{DstBits} into DstScalarTy.
     return intToDstScalar(NeedInt);
   }
@@ -2082,10 +2084,7 @@ void TransposeHelperPromote::handleLoadInst(LoadInst *pLoad, Value *pScalarizedI
   IGC_ASSERT(nullptr != pLoad);
   IGC_ASSERT(pLoad->isSimple());
   IGCLLVM::IRBuilder<> IRB(pLoad);
-  IGC_ASSERT(nullptr != pLoad->getType());
-  unsigned N =
-      pLoad->getType()->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(pLoad->getType())->getNumElements() : 1;
-  Value *Val = loadEltsFromVecAlloca(N, pVecAlloca, pScalarizedIdx, IRB, pLoad->getType()->getScalarType());
+  Value *Val = loadEltsFromVecAlloca(pLoad->getType(), pVecAlloca, pScalarizedIdx, IRB);
   pLoad->replaceAllUsesWith(Val);
   pLoad->eraseFromParent();
 }
