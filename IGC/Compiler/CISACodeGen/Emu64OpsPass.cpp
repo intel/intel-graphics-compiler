@@ -516,6 +516,10 @@ ValuePair Emu64Ops::getExpandedValues(Value *V) {
   }
 
   if (ConstantExpr *CE = dyn_cast<ConstantExpr>(V)) {
+    // The high half may be an instruction (LLVM 22 has no lshr ConstantExpr),
+    // so expand in the entry block, which dominates every use.
+    BuilderType::InsertPointGuard Guard(*IRB);
+    IRB->SetInsertPoint(&*TheFunction->getEntryBlock().getFirstInsertionPt());
     Value *Lo = nullptr;
     Value *Hi = nullptr;
     if (isa<PtrToIntOperator>(CE)) {
@@ -615,6 +619,7 @@ bool Emu64Ops::populatePHIs(Function &F) {
       PHINode *Hi = cast<PHINode>(H);
       for (auto &Op : PN->operands()) {
         BasicBlock *BB = PN->getIncomingBlock(Op);
+        IRB->SetInsertPoint(BB->getTerminator());
         std::tie(L, H) = getExpandedValues(Op.get());
         Lo->addIncoming(L, BB);
         Hi->addIncoming(H, BB);

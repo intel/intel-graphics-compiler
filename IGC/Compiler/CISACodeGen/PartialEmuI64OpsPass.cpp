@@ -523,6 +523,10 @@ ValuePair PartialEmuI64Ops::getExpandedValues(Value *V) {
   }
 
   if (ConstantExpr *CE = dyn_cast<ConstantExpr>(V)) {
+    // The high half may be an instruction (LLVM 22 has no lshr ConstantExpr),
+    // so expand in the entry block, which dominates every use.
+    BuilderType::InsertPointGuard Guard(*IRB);
+    IRB->SetInsertPoint(&*TheFunction->getEntryBlock().getFirstInsertionPt());
     Value *Lo = nullptr;
     Value *Hi = nullptr;
     if (isa<PtrToIntOperator>(CE)) {
