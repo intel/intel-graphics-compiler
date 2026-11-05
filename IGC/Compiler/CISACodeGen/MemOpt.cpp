@@ -5256,6 +5256,17 @@ void getAllDefinedMembers(const Value *IVI, SmallVectorImpl<std::vector<unsigned
   if (auto *S = dyn_cast<ConstantAggregate>(V)) {
     std::vector<unsigned> indices = {};
     searchForDefinedMembers(S, indices, fieldsTBC);
+  } else if (!isa<UndefValue>(V)) {
+    // Any other base (argument, call, phi, select, zeroinitializer) defines every member.
+    fieldsTBC.clear();
+    auto *StTy = cast<StructType>(IVI->getType());
+    for (unsigned i = StTy->getNumElements(); i-- > 0;) {
+      auto *SubTy = dyn_cast<StructType>(StTy->getElementType(i));
+      if (!SubTy)
+        fieldsTBC.push_back({i});
+      for (unsigned j = SubTy ? SubTy->getNumElements() : 0; j-- > 0;)
+        fieldsTBC.push_back({i, j});
+    }
   }
 
   // reverse the vector to get the ascending order of indices
