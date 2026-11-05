@@ -1547,6 +1547,43 @@ void Legalization::visitShuffleVectorInst(ShuffleVectorInst &I) {
   // The two inputs are guaranteed to be of the same type
   IGCLLVM::FixedVectorType *inType = cast<IGCLLVM::FixedVectorType>(src0->getType());
   int inCount = int_cast<int>(inType->getNumElements());
+
+  // A full splat (every mask element is the same index, e.g. <1, 1, 1, 1>)
+  // becomes one extract and a chain of inserts into undef. The generic code
+  // below extracts once per lane and may start the chain from the source
+  // vector, which forces a copy of the whole source if it stays live.
+  unsigned int ResCount = resType->getNumElements();
+  ConstantInt *SplatIndex = dyn_cast<ConstantInt>(mask->getAggregateElement(0U));
+  bool IsFullSplat = SplatIndex && ResCount > 1;
+  for (unsigned int DstIndex = 1; IsFullSplat && DstIndex < ResCount; ++DstIndex)
+    IsFullSplat = mask->getAggregateElement(DstIndex) == SplatIndex;
+
+  if (IsFullSplat) {
+    int IndexVal = int_cast<int>(SplatIndex->getZExtValue());
+    Value *SrcVector = IndexVal < inCount ? src0 : src1;
+    int SrcIndex = IndexVal < inCount ? IndexVal : IndexVal - inCount;
+    Value *SrcVal = nullptr;
+    if (Constant *ConstSrc = dyn_cast<Constant>(SrcVector))
+      SrcVal = ConstSrc->getAggregateElement(SrcIndex);
+    else
+      SrcVal = findInsert(SrcVector, SrcIndex);
+    if (!SrcVal) {
+      Instruction *EEI = ExtractElementInst::Create(SrcVector, ConstantInt::get(SplatIndex->getType(), SrcIndex), "",
+                                                    IGCLLVM::insertPosition(&I));
+      EEI->setDebugLoc(I.getDebugLoc());
+      SrcVal = EEI;
+    }
+    for (unsigned int DstIndex = 0; DstIndex < ResCount; ++DstIndex) {
+      Instruction *IEI = InsertElementInst::Create(newVec, SrcVal, ConstantInt::get(SplatIndex->getType(), DstIndex),
+                                                   "", IGCLLVM::insertPosition(&I));
+      IEI->setDebugLoc(I.getDebugLoc());
+      newVec = IEI;
+    }
+    I.replaceAllUsesWith(newVec);
+    I.eraseFromParent();
+    return;
+  }
+
   int inBase = 2; // 2 means using undef
   // if inType == resType, use src0/src1 as the input
   if (inType == resType) {

@@ -174,8 +174,51 @@ define <4 x i32> @test_shuffle_insert_el(<4 x i32> %src1, <4 x i32> %src2) {
   ret <4 x i32> %2
 }
 
+; full splat: one extract, inserted into undef rather than into the source
+define <4 x float> @test_shuffle_splat(<4 x float> %src1) {
+; CHECK-LABEL: define <4 x float> @test_shuffle_splat(
+; CHECK-SAME: <4 x float> [[SRC1:%.*]]) {
+; CHECK-NEXT:    [[TMP1:%.*]] = extractelement <4 x float> [[SRC1]], i32 0
+; CHECK-NEXT:    [[TMP2:%.*]] = insertelement <4 x float> undef, float [[TMP1]], i32 0
+; CHECK-NEXT:    [[TMP3:%.*]] = insertelement <4 x float> [[TMP2]], float [[TMP1]], i32 1
+; CHECK-NEXT:    [[TMP4:%.*]] = insertelement <4 x float> [[TMP3]], float [[TMP1]], i32 2
+; CHECK-NEXT:    [[TMP5:%.*]] = insertelement <4 x float> [[TMP4]], float [[TMP1]], i32 3
+; CHECK-NEXT:    ret <4 x float> [[TMP5]]
+;
+  %1 = shufflevector <4 x float> %src1, <4 x float> poison, <4 x i32> zeroinitializer
+  ret <4 x float> %1
+}
 
-!igc.functions = !{!0, !1, !2, !3, !4, !5, !6, !7, !8, !9}
+; full splat of an element of the second source
+define <3 x i32> @test_shuffle_splat_src2(<4 x i32> %src1, <4 x i32> %src2) {
+; CHECK-LABEL: define <3 x i32> @test_shuffle_splat_src2(
+; CHECK-SAME: <4 x i32> [[SRC1:%.*]], <4 x i32> [[SRC2:%.*]]) {
+; CHECK-NEXT:    [[TMP1:%.*]] = extractelement <4 x i32> [[SRC2]], i32 2
+; CHECK-NEXT:    [[TMP2:%.*]] = insertelement <3 x i32> undef, i32 [[TMP1]], i32 0
+; CHECK-NEXT:    [[TMP3:%.*]] = insertelement <3 x i32> [[TMP2]], i32 [[TMP1]], i32 1
+; CHECK-NEXT:    [[TMP4:%.*]] = insertelement <3 x i32> [[TMP3]], i32 [[TMP1]], i32 2
+; CHECK-NEXT:    ret <3 x i32> [[TMP4]]
+;
+  %1 = shufflevector <4 x i32> %src1, <4 x i32> %src2, <3 x i32> <i32 6, i32 6, i32 6>
+  ret <3 x i32> %1
+}
+
+; not a full splat (poison lane): generic lowering, src1 is reused
+define <4 x i32> @test_shuffle_splat_partial(<4 x i32> %src1) {
+; CHECK-LABEL: define <4 x i32> @test_shuffle_splat_partial(
+; CHECK-SAME: <4 x i32> [[SRC1:%.*]]) {
+; CHECK-NEXT:    [[TMP1:%.*]] = extractelement <4 x i32> [[SRC1]], i32 2
+; CHECK-NEXT:    [[TMP2:%.*]] = insertelement <4 x i32> [[SRC1]], i32 [[TMP1]], i32 0
+; CHECK-NEXT:    [[TMP3:%.*]] = extractelement <4 x i32> [[SRC1]], i32 2
+; CHECK-NEXT:    [[TMP4:%.*]] = insertelement <4 x i32> [[TMP2]], i32 [[TMP3]], i32 1
+; CHECK-NEXT:    ret <4 x i32> [[TMP4]]
+;
+  %1 = shufflevector <4 x i32> %src1, <4 x i32> poison, <4 x i32> <i32 2, i32 2, i32 2, i32 poison>
+  ret <4 x i32> %1
+}
+
+
+!igc.functions = !{!0, !1, !2, !3, !4, !5, !6, !7, !8, !9, !11, !12, !13}
 
 !0 = !{<4 x i32> (<4 x i32>, <4 x i32>)* @test_shuffle_samecount, !10}
 !1 = !{<4 x i32> (<4 x i32>, <4 x i32>)* @test_shuffle_s1idx_match, !10}
@@ -188,3 +231,6 @@ define <4 x i32> @test_shuffle_insert_el(<4 x i32> %src1, <4 x i32> %src2) {
 !8 = !{<4 x i32> (<4 x i32>)* @test_shuffle_undef, !10}
 !9 = !{<4 x i32> (<4 x i32>, <4 x i32>)* @test_shuffle_insert_el, !10}
 !10 = !{}
+!11 = !{<4 x float> (<4 x float>)* @test_shuffle_splat, !10}
+!12 = !{<3 x i32> (<4 x i32>, <4 x i32>)* @test_shuffle_splat_src2, !10}
+!13 = !{<4 x i32> (<4 x i32>)* @test_shuffle_splat_partial, !10}
