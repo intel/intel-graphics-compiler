@@ -139,8 +139,15 @@ static bool isPromotableStructType(const Module &M, Type *Ty, bool IsStackCall) 
   return IGC_IS_FLAG_ENABLED(EnableByValStructArgPromotion) && isFlatStruct(M, Ty, MaxSizeInBits);
 }
 
+// Vectors wider than OpenCL C's 16 elements, from SPV_EXT_long_vector, would be
+// whole GRF variables at the call.
+static bool isLongVector(Type *Ty) {
+  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+  return VTy && VTy->getNumElements() > 16;
+}
+
 static bool canReturnInRegisters(const Module &M, Type *Ty, bool IsStackCall) {
-  if (Ty->isArrayTy())
+  if (Ty->isArrayTy() || isLongVector(Ty))
     return false;
   auto *STy = dyn_cast<StructType>(Ty);
   if (!STy)
@@ -158,6 +165,8 @@ static ArgLowering classifyArg(const Module &M, Type *Ty, AttributeSet Attrs, bo
     return isPromotableStructType(M, ByValTy, IsStackCall) ? ArgLowering::ByValToValue : ArgLowering::Keep;
   if (Ty->isAggregateType())
     return isPromotableStructType(M, Ty, IsStackCall) ? ArgLowering::Keep : ArgLowering::ValueToByVal;
+  if (isLongVector(Ty))
+    return ArgLowering::ValueToByVal;
   if (!isLegalIntVectorType(M, Ty))
     return ArgLowering::WidenInt;
   return ArgLowering::Keep;
