@@ -12295,7 +12295,10 @@ void GlobalRA::splitOnSpill(bool fastCompile, GraphColor &coloring,
       kernel.getOption(vISA_DoSplitOnSpill)) {
     RA_TRACE(std::cout << "\t--var split around loop\n");
     LoopVarSplit loopSplit(kernel, &coloring, &liveAnalysis);
-    kernel.fg.getLoops().computePreheaders();
+    // RA set up the CFG once; a block added now is missing from every
+    // per-block analysis, such as points-to. regAlloc() created the
+    // preheaders already.
+    kernel.fg.getLoops().computePreheaders(/*CreateMissing=*/false);
     loopSplit.run();
   }
 }
