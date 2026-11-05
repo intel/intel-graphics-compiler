@@ -1794,7 +1794,7 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl, uint16_t offset,
     }
 
     if (status == VISA_SUCCESS) {
-      m_builder->bindInputDecl(dcl, offset);
+      status = m_builder->bindInputDecl(dcl, offset);
     }
     input->dcl = dcl;
     // used in asm generation
