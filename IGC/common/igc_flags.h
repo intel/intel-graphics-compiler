@@ -1867,6 +1867,10 @@ DECLARE_IGC_REGKEY(
     "Sink decode code of lane-varying loads below the last same-resource send so the sends can fuse into "
     "one resource loop",
     DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, HoistResourceLoopSends, true,
+                   "Let the resource-loop decode sink move a send of another resource, and read-only code, below a run "
+                   "of same-resource sends, so sends of one resource that are apart share a resource loop",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, SelectResourceLoopSampler, true,
                    "Merge if/else arms that sample the same non-uniform texture with different samplers into one "
                    "sample with a per-lane sampler select, so they share one resource loop",

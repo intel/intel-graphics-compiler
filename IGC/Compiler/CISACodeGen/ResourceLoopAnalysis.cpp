@@ -63,6 +63,26 @@ static bool isResourceLoopBarrier(const Instruction *Inst) {
   return isa<CallInst>(Inst) || Inst->isTerminator() || Inst->mayReadOrWriteMemory();
 }
 
+// A volatile ldraw is a volatile read that is not a LoadInst: neither mayHaveSideEffects() nor isSimple() see it.
+static bool isVolatileLdRaw(const Instruction *Inst) {
+  auto *LI = dyn_cast<LdRawIntrinsic>(Inst);
+  return LI && LI->isVolatile();
+}
+
+// Code that can be reordered with a read-only send, so that the send can move across it: it has no side effect at all
+// (no memory write, no throw, always returns), and it is not tied to the other active lanes. This covers arithmetic,
+// casts, pure LLVM intrinsics (sqrt, maxnum, ...) and plain or intrinsic reads; it is not limited to reads. A volatile
+// read, whether a load or an ldraw, keeps its place.
+static bool canReorderWithRead(const Instruction *Inst) {
+  if (Inst->isTerminator() || Inst->mayHaveSideEffects() || isVolatileLdRaw(Inst))
+    return false;
+  if (auto *LI = dyn_cast<LoadInst>(Inst))
+    return LI->isSimple();
+  if (auto *CI = dyn_cast<CallInst>(Inst))
+    return !CI->isConvergent() && !CI->isInlineAsm();
+  return true;
+}
+
 // An instruction that is not part of a send ends the resource loop that is being built. Shared by
 // ResourceLoopAnalysis and ResourceLoopDecodeSink, so that the sink never builds a run the analysis would split.
 static bool endsResourceLoop(const Instruction *Inst, WIAnalysis *WI) {
@@ -504,6 +524,10 @@ bool ResourceLoopDecodeSink::processBlock(BasicBlock &BB, WIAnalysis *WI, unsign
   // The search for the next send of a run stops after this many instructions since the previous send of the run, which
   // keeps the pass cheap on long blocks.
   constexpr unsigned MaxScanSinceSend = 128;
+  // Sends of other resources that a run may jump over to reach its next send. Each one, with the code that consumes
+  // it, ends up below the run, so its operands stay live longer.
+  constexpr unsigned MaxForeignSends = 8;
+  const bool CrossSends = IGC_IS_FLAG_ENABLED(HoistResourceLoopSends);
 
   bool Changed = false;
   for (auto It = BB.begin(); It != BB.end(); ++It) {
@@ -521,6 +545,7 @@ bool ResourceLoopDecodeSink::processBlock(BasicBlock &BB, WIAnalysis *WI, unsign
     // Instructions looked at since the first send of this run or the last send that joined it. It belongs to this
     // run only: the outer loop steps over instructions that are not sends without scanning.
     unsigned Scanned = 0;
+    unsigned ForeignSends = 0;
     for (auto Scan = std::next(It); Scan != BB.end() && Scanned++ < MaxScanSinceSend; ++Scan) {
       Instruction *J = &*Scan;
       unsigned JTy = 0;
@@ -529,8 +554,21 @@ bool ResourceLoopDecodeSink::processBlock(BasicBlock &BB, WIAnalysis *WI, unsign
       bool DependsOnSends = any_of(J->operands(), [&](Value *Op) { return Dependent.contains(Op); });
 
       if (IsSend) {
-        if (JTy != OpTy || !isSameResource(JRes, Res) || !(JSamp == Samp || isSameResource(JSamp, Samp)) ||
-            DependsOnSends)
+        bool SameKind = JTy == OpTy && isSameResource(JRes, Res) && (JSamp == Samp || isSameResource(JSamp, Samp));
+        if (!SameKind && CrossSends) {
+          // a volatile read of another resource keeps its place, like any other volatile read
+          if (isVolatileLdRaw(J))
+            break;
+          // A send of another resource would split the run. Both are reads, so it can move below the run like any
+          // other code: it is treated as code that consumes the run, which also stops a later send of the run from
+          // using its result.
+          if (++ForeignSends > MaxForeignSends)
+            break;
+          Decode.push_back(J);
+          Dependent.insert(J);
+          continue;
+        }
+        if (!SameKind || DependsOnSends)
           break;
         Sends.push_back(J);
         Dependent.insert(J);
@@ -540,8 +578,10 @@ bool ResourceLoopDecodeSink::processBlock(BasicBlock &BB, WIAnalysis *WI, unsign
         continue;
       }
 
-      // anything that could not be moved down or reordered ends the run
-      if (isResourceLoopBarrier(J) || isa<PHINode>(J))
+      // anything that could not be moved down or reordered ends the run. With HoistResourceLoopSends (CrossSends) a
+      // read that is not a send can move below the run too, because the sends are reads and no write is crossed.
+      // Without it, any read and any call is a barrier.
+      if (isa<PHINode>(J) || (CrossSends ? !canReorderWithRead(J) : isResourceLoopBarrier(J)))
         break;
       if (DependsOnSends) {
         Decode.push_back(J);
