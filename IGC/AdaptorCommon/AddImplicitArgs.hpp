@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/Pass.h>
 #include <llvm/Analysis/CallGraph.h>
 #include <llvm/IR/PassManager.h>
@@ -62,6 +63,9 @@ public:
   static bool hasStackCallInCG(const llvm::Function *pFunc);
 
 private:
+  /// @brief  hasStackCallInCG worker. Tracks visited functions so call graph cycles terminate.
+  static bool hasStackCallInCG(const llvm::Function *pFunc, llvm::SmallPtrSetImpl<const llvm::Function *> &Visited);
+
   /// @brief  Create the type of the new function,
   ///         including all explicit and needed impliict parameters
   /// @param  pFunc           The old function

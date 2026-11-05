@@ -165,13 +165,21 @@ bool AddImplicitArgs::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::C
 }
 
 bool AddImplicitArgs::hasStackCallInCG(const Function *F) {
+  SmallPtrSet<const Function *, 16> Visited;
+  return hasStackCallInCG(F, Visited);
+}
+
+bool AddImplicitArgs::hasStackCallInCG(const Function *F, SmallPtrSetImpl<const Function *> &Visited) {
   if (F->hasFnAttribute("visaStackCall") || F->hasFnAttribute("referenced-indirectly"))
     return true;
+
+  if (!Visited.insert(F).second)
+    return false;
 
   for (auto u = F->user_begin(), e = F->user_end(); u != e; u++) {
     if (const CallInst *call = dyn_cast<CallInst>(*u)) {
       const Function *parent = call->getParent()->getParent();
-      if (parent != F && hasStackCallInCG(parent))
+      if (parent != F && hasStackCallInCG(parent, Visited))
         return true;
     }
   }
