@@ -82,6 +82,7 @@ public:
   /// @brief Scalarize an instruction
   /// @param I Instruction to scalarize
   void visitUnaryOperator(llvm::UnaryOperator &UI);
+  void visitFreezeInst(llvm::FreezeInst &FI);
   void visitBinaryOperator(llvm::BinaryOperator &BI);
   void visitCmpInst(llvm::CmpInst &CI);
   void visitCastInst(llvm::CastInst &CI);

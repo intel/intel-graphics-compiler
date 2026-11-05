@@ -384,6 +384,33 @@ void ScalarizeFunction::visitUnaryOperator(UnaryOperator &UI) {
   m_removedInsts.insert(&UI);
 }
 
+// freeze applies to each element of a vector separately.
+void ScalarizeFunction::visitFreezeInst(FreezeInst &FI) {
+  auto *InstType = dyn_cast<IGCLLVM::FixedVectorType>(FI.getType());
+  if (FI.getFunction()->hasOptNone())
+    return recoverNonScalarizableInst(&FI);
+  if (!InstType)
+    return;
+
+  SCMEntry *NewEntry = getSCMEntry(&FI);
+  unsigned NumElements = int_cast<unsigned>(InstType->getNumElements());
+  SmallVector<Value *, MAX_INPUT_VECTOR_WIDTH> Operand0;
+  bool Op0IsConst;
+  obtainScalarizedValues(Operand0, &Op0IsConst, FI.getOperand(0), FI);
+  if (Op0IsConst)
+    return;
+
+  SmallVector<Value *, MAX_INPUT_VECTOR_WIDTH> NewScalarizedInsts(NumElements);
+  for (unsigned I = 0; I < NumElements; ++I) {
+    auto *NewFI = new FreezeInst(Operand0[I], FI.getName(), IGCLLVM::insertPosition(&FI));
+    NewFI->copyMetadata(FI);
+    NewScalarizedInsts[I] = NewFI;
+  }
+
+  updateSCMEntryWithValues(NewEntry, &(NewScalarizedInsts[0]), &FI, true);
+  m_removedInsts.insert(&FI);
+}
+
 void ScalarizeFunction::visitBinaryOperator(BinaryOperator &BI) {
   V_PRINT(scalarizer, "\t\tBinary instruction\n");
   IGC_ASSERT_MESSAGE(&BI, "instruction type dynamic cast failed");
