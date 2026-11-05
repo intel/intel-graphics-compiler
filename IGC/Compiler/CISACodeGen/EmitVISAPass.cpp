@@ -19465,6 +19465,11 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr, Value *uniformBa
       m_destination = mergeVar;
       m_currShader->UpdateSymbolMap(inst, mergeVar);
       isDestReplacedWithMerge = true;
+    } else if (mergeVar->IsUndef() && !sharesStorage(m_destination, inst)) {
+      // The copy of an undef merge value is dropped, which leaves the destination
+      // with only a predicated definition. vISA doesn't treat that as a kill, so
+      // the destination would be live from the kernel entry.
+      m_encoder->Lifetime(LIFETIME_START, m_destination);
     }
   }
 
