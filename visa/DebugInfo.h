@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -160,6 +161,17 @@ public:
   void liveAt(uint32_t cisaOff);
   void getLiveIntervals(std::vector<std::pair<uint32_t, uint32_t>> &intervals);
   void clearLiveIntervals() { liveIntervals.clear(); }
+  // Ends every live interval before VISAIndex.
+  void endBefore(uint32_t VISAIndex) {
+    for (auto it = liveIntervals.begin(); it != liveIntervals.end();) {
+      if (it->first >= VISAIndex) {
+        it = liveIntervals.erase(it);
+        continue;
+      }
+      it->second = std::min(it->second, VISAIndex - 1);
+      ++it;
+    }
+  }
 
   DebugLiveIntervalState getState() const { return state; }
 

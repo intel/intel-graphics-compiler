@@ -695,6 +695,16 @@ std::tuple<Caching,Caching,Caching> G4_SendgDesc::getCaching() const {
     return STCCS[cachingEnc];
 }
 
+void G4_SendgDesc::setCaching(
+    const std::tuple<Caching, Caching, Caching> &caching) {
+  bool isLd = MsgOpIsLoad(getOp());
+  vISA_ASSERT(isLd || MsgOpIsStore(getOp()),
+              "caching can only be set on a load or store");
+  uint32_t cachingEnc = isLd ? irb.LSCComputeCachingEncodingLoad(caching)
+                             : irb.LSCComputeCachingEncodingStore(caching);
+  descValue = (descValue & ~(0xFull << 16)) | ((uint64_t)cachingEnc << 16);
+}
+
 std::optional<ImmOff> G4_SendgDesc::getOffset() const {
   const auto op = getOp();
   if (!isLSC() || sfid == SFID::TGM || !MsgOpIsLoadStoreAtomic(op)) {
