@@ -456,7 +456,7 @@ public:
     if (builder.isEfficient64bEnabled()) {
       // if there are data to be loaded from the indirect data buffer, then
       // the indirect data pointer must be the first QW of the inline register
-      bool foundKaPtr = numPerThreadGRF == 0 && numCrossThreadDW == 0;
+      bool foundKaPtr = !needsPayloadLoads();
       const uint32_t inputCount = kernel.fg.builder->getInputCount();
       for (unsigned id = 0; id < inputCount && !foundKaPtr; id++) {
         const input_info_t *ii = kernel.fg.builder->getInputArg(id);
@@ -1051,6 +1051,18 @@ public:
     }
   } // emitLoadSequence
 
+  bool needsPayloadLoads() const {
+    // hasInlineData() is implicitly true with efficient 64b addressing.
+    // For shaders with scratch attributes, the frontend must explicitly
+    // request inline data; graphics push constants do not hold a payload
+    // pointer just because efficient 64b addressing is enabled.
+    if (kernel.isScratchLocationSet() && !builder.getOption(vISA_useInlineData))
+      return false;
+    return builder.needsToLoadLocalID() ||
+           (builder.needsToLoadCrossThreadConstantData() &&
+            numCrossThreadDW > 0);
+  }
+
   void emitLoadSequenceForCompute() {
     // clang-format off
     ////////////////////////////////////////////
@@ -1239,6 +1251,7 @@ public:
                                 uint32_t numDws) {
       int totalDwsLoaded = 0;
       while (numDws > 0) {
+        builder.getJitInfo()->usesIndirectDataAddress = true;
         auto loadDws = roundDwordsToLegalSizeLSC(numDws);
         emitLoadToGRF(ast, ind0, dstReg, src0, loadDws, 4 * totalDwsLoaded, true);
         dstReg += loadDws / builder.numEltPerGRF<Type_UD>();
@@ -1377,15 +1390,7 @@ public:
                        crossThreadLoadStartGRF, src0, numCrossThreadDW);
 
       if (hasScratchAccess) {
-        G4_SrcRegRegion *movScraSrc0 =
-          builder.createSrc(inlineDataReg->getRegVar(), 0, 1,
-                          builder.getRegionScalar(), Type_UQ);
-        G4_DstRegRegion *movScraDst =
-          builder.createDstRegRegion(builder.getSpillSurfaceEfficient64b(), 1);
-        G4_INST *movScraInst =
-          builder.createMov(nullptr, g4::SIMD1, movScraDst, movScraSrc0,
-                          InstOpt_WriteEnable | InstOpt_NoCompact, false);
-        instBuffer.push_back(movScraInst);
+        emitScratchPointer(inlineDataReg);
       }
 
       G4_BB *crossThreadBB = flushInstBufToNewBB();
@@ -1399,124 +1404,43 @@ public:
     }
   }
 
-  // this routine is exercised for 3D shaders only
-  // some differences between compute and 3D shaders
-  // - Scratch pointer is not part of inline data in 3D shaders; passed as
-  // a push constant
-  // - IGC sets a kernel attribute to denote the GRF location of the
-  // scratch pointer. This location is in reference to r0
-  // - Domain, geometry, hull, vertex and pixel shaders do not have inline data
-  // whereas raytracing and mesh shaders have inline data
-  void emitLoadSequenceFor3D() {
-
-    // The following attributes must be set for the shaders below:
-    // VS,HS,DS,GS,PS: ATTR_ScratchInlineOffset
-    // CS: ATTR_ScratchInlineOffset
-    // RT: ATTR_ScratchIndirectRegOffset and ATTR_ScratchIndirectMemOffset
-    // Note that a shader that has ATTR_ScratchInlineOffset,
-    // ATTR_ScratchIndirectRegOFfset and ATTR_ScratchIndirectMemOffset is not
-    // valid and backend will throw an assert
-    const bool needsCrossThreadReloc =
-        kernel.getOption(vISA_emitCrossThreadOffR0Reloc);
-
-    // if immediate offsets are not enabled,
-    // create an array of temporary registers to use in loading elements
+  void emitScratchPointer(G4_Declare *inlineDataReg = nullptr) {
+    vISA_ASSERT_INPUT(builder.isEfficient64bEnabled(),
+                      "scratch location requires efficient 64b addressing");
+    // Keep the existing scratch setup shared by compute and 3D. Its loads
+    // do not consume the indirect payload address.
     int nextTmp = 0;
-    std::array<G4_Declare *,4> rtmps {};
+    std::array<G4_Declare *, 4> rtmps{};
+    for (int i = 0; i < (int)rtmps.size(); ++i) {
+      rtmps[i] = builder.createHardwiredDeclare(
+          1, Type_UQ,
+          kernel.getNumRegTotal() == 512 ? kernel.getNumRegTotal() - i - 2
+                                         : kernel.getNumRegTotal() - i - 1,
+          0);
+    }
 
-    for (int i = 0; i < (int)rtmps.size(); i++)
-      rtmps[i] = builder.createHardwiredDeclare(1, Type_UQ,
-          kernel.getNumRegTotal() == 512 ?
-          kernel.getNumRegTotal() - i - 2 :
-          kernel.getNumRegTotal() - i - 1, 0);
-
-    // (W) load.ugm.a32u.d32x[numDwords]t.ca.cc (1) r[dstGRF]  [s0.0+src0:1+addrOffBytes]
-    auto emitLoadToGRFD64 = [&](
-      AddrSizeType ast,
-      G4_SrcRegRegion* ind0,
-      unsigned dstGRF,
-      G4_SrcRegRegion* src0,
-      unsigned numDwords,
-      int addrOffBytes,
-      bool isTranspose)
-      {
-        VecElems vecElems = ToVecElems(numDwords);
-        vISA_ASSERT(vecElems != VecElems::INVALID, "invalid vec size");
-
-        auto sendDstDcl =
-          builder.createHardwiredDeclare(numDwords, Type_UD, dstGRF, 0);
-        auto dstRead = builder.createDstRegRegion(sendDstDcl, 1);
-
-        int addrScale = 1;
-        G4_SendgDesc *desc = builder.createUntypedVecDesc(
-            SFID::UGM, MsgOp::LOAD, g4::SIMD1, false, DataSize::D64, vecElems,
-            (isTranspose) ? DataOrder::TRANSPOSE : DataOrder::NONTRANSPOSE, ast,
-            addrScale, addrOffBytes, 0,
-            std::make_tuple(Caching::CA, Caching::CA, Caching::UC),
-            builder.getOption(vISA_enableOverfetch)
-        );
-
-        // offset was not able to be encoded in the send's descriptor
-        if (addrOffBytes > 0) {
-          if (ast == AddrSizeType::GLB_A64_A64 && nextTmp == 0) {
-            // Address type of A64 will take up 2 GRFs
-            // This means we need to have a dcl that has enough room to accomodate
-            // 2 GRFs without going out of bounds. Without this check, we may
-            //   assign a register say r127 (total grf = 128) for address payload
-            //   resulting in out-of-bounds (r127:2).
-            nextTmp = 1;
-          }
-          G4_Declare* tmpDcl = rtmps[nextTmp++];
-          if (nextTmp == (int)rtmps.size())
-            nextTmp = 0;
-          G4_DstRegRegion* dst = builder.createDstRegRegion(tmpDcl, 1);
-          auto addInst =
-            builder.createBinOp(G4_add, g4::SIMD1, dst, src0,
-              builder.createImm(addrOffBytes, Type_UD),
-              InstOpt_WriteEnable | InstOpt_NoCompact,
-              false);
-          instBuffer.push_back(addInst);
-
-          src0 = builder.createSrcRegRegion(tmpDcl, builder.getRegionScalar());
-          addrOffBytes = 0;
-        }
-
-        vISA_ASSERT(addrOffBytes == 0, "failed to set immediate offset");
-
-        G4_InstSend* sendInst =
-          builder.createLscSendgInst(nullptr, dstRead, src0, nullptr,
-            g4::SIMD1, desc,
-            InstOpt_WriteEnable | InstOpt_NoCompact,
-            ind0);
-        instBuffer.push_back(sendInst);
-      };
-
-    // (W) load.ugm.a32u.d32x[numDwords]t.ca.cc (1) r[dstGRF]  [s0.0+src0:1+addrOffBytes]
-    auto emitLoadToGRF = [&](
-      AddrSizeType ast,
-      G4_SrcRegRegion *ind0,
-      unsigned dstGRF,
-      G4_SrcRegRegion *src0,
-      unsigned numDwords,
-      int addrOffBytes,
-      bool isTranspose)
-    {
+    // Load the scratch pointer from its separately supplied base and offset.
+    auto emitLoadToGRFD64 = [&](AddrSizeType ast, G4_SrcRegRegion *ind0,
+                                unsigned dstGRF, G4_SrcRegRegion *src0,
+                                unsigned numDwords, int addrOffBytes,
+                                bool isTranspose) {
       VecElems vecElems = ToVecElems(numDwords);
       vISA_ASSERT(vecElems != VecElems::INVALID, "invalid vec size");
 
       auto sendDstDcl =
-        builder.createHardwiredDeclare(numDwords, Type_UD, dstGRF, 0);
+          builder.createHardwiredDeclare(numDwords, Type_UD, dstGRF, 0);
       auto dstRead = builder.createDstRegRegion(sendDstDcl, 1);
 
       int addrScale = 1;
       G4_SendgDesc *desc = builder.createUntypedVecDesc(
-          SFID::UGM, MsgOp::LOAD, g4::SIMD1, false, DataSize::D32, vecElems,
+          SFID::UGM, MsgOp::LOAD, g4::SIMD1, false, DataSize::D64, vecElems,
           (isTranspose) ? DataOrder::TRANSPOSE : DataOrder::NONTRANSPOSE, ast,
           addrScale, addrOffBytes, 0,
           std::make_tuple(Caching::CA, Caching::CA, Caching::UC),
           builder.getOption(vISA_enableOverfetch)
       );
 
+      // offset was not able to be encoded in the send's descriptor
       if (addrOffBytes > 0) {
         if (ast == AddrSizeType::GLB_A64_A64 && nextTmp == 0) {
           // Address type of A64 will take up 2 GRFs
@@ -1533,49 +1457,19 @@ public:
         auto addInst =
             builder.createBinOp(G4_add, g4::SIMD1, dst, src0,
                                 builder.createImm(addrOffBytes, Type_UD),
-                                InstOpt_WriteEnable | InstOpt_NoCompact,
-                                false);
+                                InstOpt_WriteEnable | InstOpt_NoCompact, false);
         instBuffer.push_back(addInst);
 
         src0 = builder.createSrcRegRegion(tmpDcl, builder.getRegionScalar());
         addrOffBytes = 0;
       }
+
       vISA_ASSERT(addrOffBytes == 0, "failed to set immediate offset");
 
-      G4_InstSend *sendInst =
-        builder.createLscSendgInst(nullptr, dstRead, src0, nullptr,
-                                   g4::SIMD1, desc,
-                                   InstOpt_WriteEnable | InstOpt_NoCompact,
-                                   ind0);
+      G4_InstSend *sendInst = builder.createLscSendgInst(
+          nullptr, dstRead, src0, nullptr, g4::SIMD1, desc,
+          InstOpt_WriteEnable | InstOpt_NoCompact, ind0);
       instBuffer.push_back(sendInst);
-    }; // emitLoadToGRF
-
-    auto emitLoadSequence = [&](AddrSizeType ast, G4_SrcRegRegion *ind0,
-                                unsigned dstReg, G4_SrcRegRegion *src0,
-                                uint32_t numDws) {
-      int totalDwsLoaded = 0;
-      while (numDws > 0) {
-        auto loadDws = roundDwordsToLegalSizeLSC(numDws);
-        emitLoadToGRF(ast, ind0, dstReg, src0, loadDws, 4 * totalDwsLoaded, true);
-        dstReg += loadDws / builder.numEltPerGRF<Type_UD>();
-        totalDwsLoaded += (int)loadDws;
-        numDws -= loadDws;
-        if (numDws > 0) {
-          src0 = builder.duplicateOperand(src0);
-          if (ind0)
-            ind0 = builder.duplicateOperand(ind0);
-        }
-      }
-    }; // emitLoadSequence
-
-    // copies out the emitted instructions into a new G4_BB
-    auto flushInstBufToNewBB = [&]() {
-      G4_BB *bb = kernel.fg.createNewBB();
-      std::for_each(instBuffer.begin(), instBuffer.end(),
-                    [](G4_INST *inst) { inst->invalidateVISAId(); });
-      bb->insert(bb->begin(), instBuffer.begin(), instBuffer.end());
-      instBuffer.clear();
-      return bb;
     };
 
     auto generateSequenceGivenScratchInlineOffset = [&](int scratchInlineOffset) {
@@ -1583,17 +1477,12 @@ public:
       // to know where the scratch pointer is located
       vISA_ASSERT_INPUT(scratchInlineOffset > 0,
           "scratch inline offset attribute should be non-zero");
-      // this attribute should be specified only for graphics part
-      vISA_ASSERT_INPUT(kernel.getPlatform() >= Xe3P_Graphics,
-                        "attribute should be specified for 3d shaders");
       // check if scratch location specified is qword aligned
       vISA_ASSERT_INPUT(scratchInlineOffset % TypeSize(Type_UQ) == 0,
         "scratch pointer offset must be aligned to QW");
 
-      // scratch surface pointer location differs between compute and 3D kernels
-      // For compute, the scratch pointer is the second qword in the inline data
-      // register. For 3D, the scratch surface pointer will be passed as a push
-      // constant. The attribute will be an offset from r0
+      // Scratch may be inline for compute or a push constant for graphics.
+      // The attribute gives the byte offset from r0 in both cases.
       auto scratchLocation = scratchInlineOffset / kernel.getGRFSize();
       int scratchSubRegOffset =
         (scratchInlineOffset % kernel.getGRFSize()) / TypeSize(Type_UQ);
@@ -1617,9 +1506,6 @@ public:
 
     auto generateSequenceGivenScratchRegMemOffsets =
       [&] (int scratchRegOffset, int scratchMemOffset) {
-        // this attribute should be specified only for graphics part
-        vISA_ASSERT_INPUT(kernel.getPlatform() >= Xe3P_Graphics,
-                          "attribute should be specified for 3d shaders");
         // check if scratch location specified is qword aligned
         vISA_ASSERT_INPUT(scratchRegOffset % TypeSize(Type_UQ) == 0,
           "scratch pointer offset must be aligned to QW");
@@ -1685,113 +1571,92 @@ public:
         instBuffer.push_back(movScraInst);
     };
 
-    if (builder.needsToLoadCrossThreadConstantData()) {
-      // cross_thread_prolog:
-      //   [ (W) mov (1) s0.3:uq @RELOC ]
-      //   [ (W) load.ugm...a64 (1) .... [s0.3 + indirectDataReg:1 + IMMOFF] ] (sequence of loads)
-      appendLabel("cross_thread_prolog");
-
-      G4_SrcRegRegion *crossThreadInd0 = nullptr;
-      if (needsCrossThreadReloc) {
-        G4_DstRegRegion *movDst = builder.createS0Dst(3, Type_UQ);
-        auto movSrc0 =
-            builder.createRelocImm(GenRelocType::R_SYM_ADDR_32,
-                                   CROSS_THREAD_OFF_R0_RELOCATION_NAME,
-                                   0, Type_UQ);
-        auto movInst =
-            builder.createMov(nullptr, g4::SIMD1, movDst, movSrc0,
-                              InstOpt_WriteEnable | InstOpt_NoCompact, false);
-        RelocationEntry::createRelocation(builder.kernel, *movInst, 0,
-                                          CROSS_THREAD_OFF_R0_RELOCATION_NAME,
-                                          GenRelocType::R_SYM_ADDR_32);
-        instBuffer.push_back(movInst);
-
-        crossThreadInd0 = builder.createS0Src(3);
-      }
-
-      // Used by 3D shaders to specify the offset that holds the scratch surface
-      // pointer for spills/fills
-      int scratchInlineOffset =
-          kernel.getInt32KernelAttr(Attributes::ATTR_ScratchInlineOffset);
-
-      // raytracing shaders invoked via bindless thread dispatch (e.g.,
-      // closest-hit shader) do not have access to inline data which contains
-      // the scratch pointer. The scratch pointer is available in the RTGlobals
-      // and must be loaded (preferably with ca.ca.ca cache controls) in the
-      // kernel prologue prior to any scratch messages. For these shaders, the
-      // scratch location will be communicated using two attribute values: scratch
-      // indirect reg offset, and scratch indirect mem offset. For example, if
-      // the scratch indirect reg and mem offsets are 128 bytes and 80 bytes
-      // respectively, then the scratch pointer is located at memory location
-      // [r2 + 0x80]. This means the prolog must have a SIMD1 load to this
-      // location and load the scratch location
-
-      int scratchRegOffset =
-          kernel.getInt32KernelAttr(Attributes::ATTR_ScratchIndirectRegOffset);
-      int scratchMemOffset =
-          kernel.getInt32KernelAttr(Attributes::ATTR_ScratchIndirectMemOffset);
-
-      if (scratchInlineOffset > 0 &&
-          (scratchRegOffset + scratchMemOffset) > 0) {
-        vISA_ASSERT_INPUT(false,
-            "only one scratch kernel attribute must be specified");
-      }
-
-      bool hasScratchAccess =
-          kernel.isPrivateMemUsed() ||
-          builder.getJitInfo()->stats.spillMemUsed > 0 ||
-          builder.usesStack();
-
-      // get inline data address from inlineDataReg.0:uq
-      auto inlineDataReg =
-        builder.createHardwiredDeclare(8, Type_UQ,
-                                       perThreadLoadStartGRF + numPerThreadGRF,
-                                       0);
-      inlineDataReg->setName("inlineDataRegister");
-
-      G4_SrcRegRegion *src0 =
-          builder.createSrcRegRegion(inlineDataReg, builder.getRegionScalar());
-
-      // for VS,HS,DS,GS,PS, do not generate the load sequence
-      if (scratchInlineOffset == 0) {
-        emitLoadSequence(AddrSizeType::GLB_A64_A64, crossThreadInd0,
-                       crossThreadLoadStartGRF, src0, numCrossThreadDW);
-      }
-
-      if (hasScratchAccess) {
-        if (scratchInlineOffset > 0) {
-          generateSequenceGivenScratchInlineOffset(scratchInlineOffset);
-        } else if ((scratchRegOffset + scratchMemOffset) > 0) {
-          generateSequenceGivenScratchRegMemOffsets(scratchRegOffset, scratchMemOffset);
-        } else {
-          vISA_ASSERT_INPUT(false, "scratch offset should be non-zero");
-        }
-      }
-
-      G4_BB *crossThreadBB = flushInstBufToNewBB();
-
-      kernel.fg.addPrologBB(crossThreadBB);
-      kernel.setCrossThreadPayloadBB(crossThreadBB);
-    } // cross_thread_prolog
+    const int scratchInlineOffset =
+        kernel.getInt32KernelAttr(Attributes::ATTR_ScratchInlineOffset);
+    const int scratchRegOffset =
+        kernel.getInt32KernelAttr(Attributes::ATTR_ScratchIndirectRegOffset);
+    const int scratchMemOffset =
+        kernel.getInt32KernelAttr(Attributes::ATTR_ScratchIndirectMemOffset);
+    vISA_ASSERT_INPUT(scratchInlineOffset == 0 ||
+                          (scratchRegOffset + scratchMemOffset) == 0,
+                      "only one scratch location must be specified");
+    // Attribute offsets describe the final GRF layout, just like .input.
+    // Software local-ID loading moves inline data beyond the per-thread
+    // region before this setup runs; do not relocate the attributes again.
+    if (builder.getOption(vISA_useInlineData) && builder.needsToLoadLocalID() &&
+        kernel.isScratchLocationSet()) {
+      const unsigned localIdStart = perThreadLoadStartGRF * kernel.getGRFSize();
+      const unsigned localIdEnd =
+          (perThreadLoadStartGRF + numPerThreadGRF) * kernel.getGRFSize();
+      // Check the GRF source: the scratch pointer itself for direct access,
+      // or the lookup base for indirect access. The memory offset is unrelated
+      // to the GRF layout; a zero register offset can name r0.
+      const unsigned scratchSourceGRFOffset =
+          scratchInlineOffset > 0 ? scratchInlineOffset : scratchRegOffset;
+      if (scratchSourceGRFOffset >= localIdStart &&
+          scratchSourceGRFOffset < localIdEnd)
+        vISA_ASSERT_INPUT(false, "scratch attribute overlaps loaded local IDs; "
+                                 "use the final GRF offset");
+    }
+    if (scratchInlineOffset > 0) {
+      generateSequenceGivenScratchInlineOffset(scratchInlineOffset);
+    } else if ((scratchRegOffset + scratchMemOffset) > 0) {
+      generateSequenceGivenScratchRegMemOffsets(scratchRegOffset,
+                                                scratchMemOffset);
+    } else {
+      vISA_ASSERT_INPUT(inlineDataReg, "scratch location must be specified");
+      auto src = builder.createSrc(inlineDataReg->getRegVar(), 0, 1,
+                                   builder.getRegionScalar(), Type_UQ);
+      auto dst =
+          builder.createDstRegRegion(builder.getSpillSurfaceEfficient64b(), 1);
+      instBuffer.push_back(
+          builder.createMov(nullptr, g4::SIMD1, dst, src,
+                            InstOpt_WriteEnable | InstOpt_NoCompact, false));
+    }
   }
-}; // class PayloadLoader
 
+  // With no indirect payload loads, only scratch attributes need processing.
+  // Graphics stages without inline data must never interpret their push
+  // constants as a payload address.
+  void emitScratchSetup() {
+    vISA_ASSERT(!needsPayloadLoads(),
+                "payload loads must use the compute path");
+    vISA_ASSERT(kernel.isScratchLocationSet(),
+                "scratch attributes are required");
+    const bool hasScratchAccess =
+        kernel.isPrivateMemUsed() ||
+        builder.getJitInfo()->stats.spillMemUsed > 0 || builder.usesStack();
+    if (!hasScratchAccess)
+      return;
+
+    appendLabel("cross_thread_prolog");
+    emitScratchPointer();
+    G4_BB *bb = kernel.fg.createNewBB();
+    for (G4_INST *inst : instBuffer)
+      inst->invalidateVISAId();
+    bb->insert(bb->begin(), instBuffer.begin(), instBuffer.end());
+    instBuffer.clear();
+    kernel.fg.addPrologBB(bb);
+    kernel.setCrossThreadPayloadBB(bb);
+  }
+
+}; // class PayloadLoader
 
 void Optimizer::loadThreadPayload() {
   if (!builder.loadThreadPayload() || !builder.getIsKernel()) {
     return;
   }
-  PayloadLoader pl {builder, kernel, fg};
+  PayloadLoader pl{builder, kernel, fg};
   if (builder.isEfficient64bEnabled()) {
     if (kernel.getPlatform() >= Xe3P_Graphics) {
-      // check if IGC has provided scratch location
-      if (kernel.isScratchLocationSet()) {
-        // if provided, use the 3D code path
-        pl.emitLoadSequenceFor3D();
+      // Payload loads are required independently of the scratch location.
+      if (pl.needsPayloadLoads()) {
+        pl.emitLoadSequenceForCompute();
+      } else if (kernel.isScratchLocationSet()) {
+        // No indirect payload read: only the attribute-based scratch setup.
+        pl.emitScratchSetup();
       } else {
-        // if scratch location is not provided, fall back to compute path
-        // VK and DX compute shaders use the same assumptions regarding scratch
-        // location as general compute shaders
+        // Legacy compute kernels without scratch attributes use the fixed slot.
         pl.emitLoadSequenceForCompute();
       }
     } else

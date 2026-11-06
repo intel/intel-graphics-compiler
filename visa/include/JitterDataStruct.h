@@ -250,6 +250,9 @@ struct FINALIZER_INFO {
   uint32_t offsetToSkipPerThreadDataLoad = 0;
   uint32_t offsetToSkipCrossThreadDataLoad = 0;
 
+  // The emitted payload loads consume the address supplied in inline data.
+  bool usesIndirectDataAddress = false;
+
   // When two entries prolog is added for setting FFID
   // for compute (GP or GP1), skip this offset to set FFID_GP1.
   // Will set FFID_GP if not skip
