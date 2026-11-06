@@ -906,7 +906,7 @@ bool CodeGenContext::mustDistinguishBetweenPrivateAndGlobalPtr() const { return 
 
 bool CodeGenContext::enableTakeGlobalAddress() const { return false; }
 
-int16_t CodeGenContext::getVectorCoalescingControl() const { return 0; }
+int16_t CodeGenContext::getVectorCoalescingControl(bool) const { return 0; }
 
 uint32_t CodeGenContext::getPrivateMemoryMinimalSizePerThread() const { return 0; }
 

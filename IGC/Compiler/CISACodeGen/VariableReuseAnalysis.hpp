@@ -229,7 +229,7 @@ public:
   void visitExtractElementInst(llvm::ExtractElementInst &I);
 
   bool isAliasedValue(llvm::Value *V) {
-    if (m_pCtx->getVectorCoalescingControl() > 0) {
+    if (m_VectorAliasControl > 0) {
       return isAliased(V);
     }
     return false;
@@ -421,9 +421,9 @@ private:
   // VectorAlias bit fields: [1:0] sub-vector aliasing, [3:2] extractElement
   // aliasing, [5:4] lifetime-start. Within each field, 1 = isolated values
   // only, 2 = isolated and non-isolated.
-  uint16_t subVecAliasLevel() const { return m_pCtx->getVectorCoalescingControl() & 0x3; }
-  uint16_t extractEltAliasLevel() const { return (m_pCtx->getVectorCoalescingControl() >> 2) & 0x3; }
-  uint16_t lifeTimeLevel() const { return (m_pCtx->getVectorCoalescingControl() >> 4) & 0x3; }
+  uint16_t subVecAliasLevel() const { return m_VectorAliasControl & 0x3; }
+  uint16_t extractEltAliasLevel() const { return (m_VectorAliasControl >> 2) & 0x3; }
+  uint16_t lifeTimeLevel() const { return (m_VectorAliasControl >> 4) & 0x3; }
 
   // For alias(S, B), each participating value is classified into one of
   // three states.
@@ -449,6 +449,7 @@ private:
   bool checkSubAlign(e_alignment &BaseAlign, llvm::Value *Subvec, llvm::Value *Basevec, int Base_ix);
 
   CodeGenContext *m_pCtx;
+  int16_t m_VectorAliasControl = 0;
   WIAnalysis *m_WIA;
   DeSSA *m_DeSSA;
   CodeGenPatternMatch *m_PatternMatch;

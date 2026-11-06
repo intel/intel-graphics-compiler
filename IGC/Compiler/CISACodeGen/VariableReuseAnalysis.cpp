@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "VariableReuseAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CodeGenPublic.h"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "common/LLVMWarningsPush.hpp"
@@ -162,6 +163,15 @@ bool VariableReuseAnalysis::runOnFunction(Function &F) {
   }
   m_PatternMatch = &getAnalysis<CodeGenPatternMatch>();
   m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  {
+    // Use the function group (real call graph at codegen time) to find out if this group has calls.
+    bool HasCalls = false;
+    if (auto *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>()) {
+      if (FunctionGroup *FG = FGA->getGroup(&F))
+        HasCalls = FG->hasSubroutine() || FG->hasStackCall() || FG->hasIndirectCall() || FGA->isIndirectCallGroup(FG);
+    }
+    m_VectorAliasControl = m_pCtx->getVectorCoalescingControl(HasCalls);
+  }
   m_coalescingEngine = &getAnalysis<CoalescingEngine>();
   m_DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   m_DL = &F.getParent()->getDataLayout();

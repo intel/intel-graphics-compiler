@@ -250,12 +250,12 @@ bool OpenCLProgramContext::enableTakeGlobalAddress() const {
   return m_Options.EnableTakeGlobalAddress || getModuleMetaData()->capabilities.globalVariableDecorationsINTEL;
 }
 
-int16_t OpenCLProgramContext::getVectorCoalescingControl() const {
+int16_t OpenCLProgramContext::getVectorCoalescingControl(bool HasCalls) const {
   // cmdline option > registry key
   int val = m_InternalOptions.VectorCoalescingControl;
   if (val < 0) {
     // no cmdline option
-    val = GetVectorAliasControl(this);
+    val = GetVectorAliasControl(this, HasCalls);
   }
   return val;
 }

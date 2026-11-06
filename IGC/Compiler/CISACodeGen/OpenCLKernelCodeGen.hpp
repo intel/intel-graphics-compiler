@@ -85,7 +85,7 @@ public:
   bool mustDistinguishBetweenPrivateAndGlobalPtr() const override;
   void setDistinguishBetweenPrivateAndGlobalPtr(bool);
   bool enableTakeGlobalAddress() const override;
-  int16_t getVectorCoalescingControl() const override;
+  int16_t getVectorCoalescingControl(bool HasCalls = false) const override;
   uint32_t getPrivateMemoryMinimalSizePerThread() const override;
   uint32_t getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const override;
   bool isBufferBoundsChecking() const override;

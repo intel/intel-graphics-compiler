@@ -1184,7 +1184,7 @@ public:
   virtual bool noLocalToGenericOptionEnabled() const;
   virtual bool mustDistinguishBetweenPrivateAndGlobalPtr() const;
   virtual bool enableTakeGlobalAddress() const;
-  virtual int16_t getVectorCoalescingControl() const;
+  virtual int16_t getVectorCoalescingControl(bool HasCalls = false) const;
   virtual uint32_t getPrivateMemoryMinimalSizePerThread() const;
   virtual uint32_t getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const;
   bool isPOSH() const;

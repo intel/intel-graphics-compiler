@@ -699,7 +699,7 @@ bool AllowPullingKernelArguments(const CodeGenContext *ctx);
 // In-memory size of a kernel argument
 uint64_t getKernelArgAllocSize(const llvm::Argument &Arg, const llvm::DataLayout &DL);
 
-int16_t GetVectorAliasControl(const CodeGenContext *ctx);
+int16_t GetVectorAliasControl(const CodeGenContext *ctx, bool HasCalls = false);
 
 struct ExtractBoundsResult {
   llvm::Value *SourceValue = nullptr;

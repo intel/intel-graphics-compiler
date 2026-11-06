@@ -3351,7 +3351,10 @@ uint64_t getKernelArgAllocSize(const llvm::Argument &Arg, const llvm::DataLayout
 }
 
 // Returns VectorAlias regkey value. If not set (-1), returns default for current context.
-int16_t GetVectorAliasControl(const CodeGenContext *ctx) {
+// HasCalls: the function group being compiled has subroutines or stack calls
+// Callers that only check for zero/non-zero may leave it false; it only selects between
+// non-zero defaults.
+int16_t GetVectorAliasControl(const CodeGenContext *ctx, bool HasCalls) {
   const int value = static_cast<int>(IGC_GET_FLAG_VALUE(VectorAlias));
 
   if (value > -1)
@@ -3360,7 +3363,7 @@ int16_t GetVectorAliasControl(const CodeGenContext *ctx) {
   if (ctx->type != ShaderType::OPENCL_SHADER)
     return 1; // only isolated subvectors
 
-  if (ctx->m_enableSubroutine)
+  if (HasCalls)
     return 1;
 
   // OpenCL: isolated subvectors (0x1) + isolated and non-isolated extractelement (0x8)
