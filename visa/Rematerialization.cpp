@@ -581,6 +581,12 @@ bool Rematerialization::canRematerialize(G4_SrcRegRegion *src, G4_BB *bb,
       auto srcOpndRgn = srcOpnd->asSrcRegRegion();
       auto srcOpndTopDcl = srcOpndRgn->getTopDcl();
 
+      // A call writes the stack-call argument and return variables without an
+      // explicit def, so a unique def found for them does not reach this use.
+      if (kernel.fg.builder->isPreDefArg(srcOpndTopDcl) ||
+          kernel.fg.builder->isPreDefRet(srcOpndTopDcl))
+        return false;
+
       if (doNumRematCheck && getNumRemats(srcOpndTopDcl) == 0) {
         return false;
       }
