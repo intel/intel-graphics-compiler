@@ -329,8 +329,8 @@ public:
                    e_alignment AliaseeAlign = EALIGN_AUTO);
   SSubVecDesc *getOrCreateSubVecDesc(llvm::Value *V);
   SBaseVecDesc *getOrCreateBaseVecDesc(llvm::Value *V, e_alignment A);
-  void getAllAliasVals(ValueVectorTy &AliasVals, llvm::Value *Aliaser, llvm::Value *VecAliasee, int Idx);
-  bool hasMultiValuedAliasVal(llvm::Value *Aliaser, llvm::Value *VecAliasee, int Idx);
+  void getAllAliasVals(ValueVectorTy &AliasVals, llvm::Value *Aliaser, llvm::Value *BaseVec, int Idx);
+  bool hasMultiValuedAliasVal(llvm::Value *Aliaser, llvm::Value *BaseVec, int Idx);
 
   // No need to emit code for instructions in this map due to aliasing
   llvm::DenseMap<llvm::Instruction *, int> m_HasBecomeNoopInsts;
@@ -405,8 +405,8 @@ private:
   bool processExtractFrom(VecInsEltInfoTy &AllIEIs);
   bool processInsertTo(llvm::BasicBlock *BB, VecInsEltInfoTy &AllIEIs);
 
-  // Check if sub can be aliased to Base[Base_ix:size(sub)-1]
-  bool aliasInterfere(llvm::Value *Sub, llvm::Value *Base, int Base_ix);
+  // Check if sub can be aliased to BaseVec[Base_ix:size(sub)-1]
+  bool aliasInterfere(llvm::Value *Sub, llvm::Value *BaseVec, int Base_ix);
 
   bool isLoopCarried(llvm::Value *V) const;
 

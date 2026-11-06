@@ -651,7 +651,7 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst &I) {
       return;
 
     // case 3: DeSSA CC not empty
-    if (aliasInterfere(EEI_nv, vec_nv, iIdx))
+    if (aliasInterfere(EEI_nv, vecVal, iIdx))
       return;
 
     // Aliasing a loop-carried EEI to a vector makes the whole vector live
@@ -660,7 +660,7 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst &I) {
     // and liveness of each extracts.
     if (isLoopCarried(EEI_nv))
       return;
-  } else if (hasMultiValuedAliasVal(EEI_nv, vec_nv, iIdx) && aliasInterfere(EEI_nv, vec_nv, iIdx)) {
+  } else if (hasMultiValuedAliasVal(EEI_nv, vecVal, iIdx) && aliasInterfere(EEI_nv, vecVal, iIdx)) {
     // EEI and vecVal are single-valued, so they hold the same value and do
     // not need an interference check. But a value aliased earlier to the same
     // elements of vecVal may not be single-valued: another value in its DeSSA
@@ -1318,7 +1318,7 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy &AllIEIs) {
       return false;
     }
 
-    if (aliasInterfere(Sub_nv, Base_nv, BaseStartIx)) {
+    if (aliasInterfere(Sub_nv, BaseVec, BaseStartIx)) {
       return false;
     }
   }
@@ -1472,7 +1472,7 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &All
       if (hasAnyDCCAsAliaser(V_nv))
         continue;
 
-      if (aliasInterfere(V_nv, Base_nv, V_ix)) {
+      if (aliasInterfere(V_nv, FirstIEI, V_ix)) {
         continue;
       }
     }
@@ -1512,52 +1512,63 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &All
 }
 
 // Return all values that would share registers with Aliaser if Aliaser were
-// aliased to (made a sub-vector of) VecAliasee starting at index Idx:
+// aliased to (made a sub-vector of) BaseVec starting at index Idx.
+// Aliaser is a DeSSA node value. BaseVec is not: it is the original vector
+// that Idx indexes. Below, VecAliasee is BaseVec's DeSSA node value. It can
+// have another element size than BaseVec (e.g. if BaseVec is a bitcast that
+// DeSSA aliased to it), so BaseVec is needed to turn Idx into a byte offset.
+// The returned values are:
 //   - VecAliasee itself, and
-//   - the aliasers of VecAliasee's base vector that overlap Aliaser's elements.
+//   - the aliasers of VecAliasee's base vector that overlap Aliaser's bytes.
 // VecAliasee can be:
 //   - an aliaser (a sub-vector of another base vector). Its base is that
-//     vector, and Idx is moved by VecAliasee's offset in it; or
+//     vector, and the offset is moved by VecAliasee's offset in it; or
 //   - a base vector that already has aliasers. Its base is VecAliasee.
 // Otherwise, only VecAliasee is returned.
-void VariableReuseAnalysis::getAllAliasVals(ValueVectorTy &AliasVals, Value *Aliaser, Value *VecAliasee, int Idx) {
+void VariableReuseAnalysis::getAllAliasVals(ValueVectorTy &AliasVals, Value *Aliaser, Value *BaseVec, int Idx) {
+  Value *VecAliasee = m_DeSSA->getNodeValue(BaseVec);
   AliasVals.clear();
   AliasVals.push_back(VecAliasee);
 
+  // Compare byte offsets, not element indices: the aliasers of a base vector
+  // can have different element sizes, so their StartElementOffset are in
+  // different units.
+  int StartByte = Idx * getScalarTypeStoreSize(BaseVec->getType(), m_DL);
   SBaseVecDesc *baseV = nullptr;
   if (auto II = m_aliasMap.find(VecAliasee); II != m_aliasMap.end()) {
     SSubVecDesc *aliaseeSV = II->second;
     baseV = aliaseeSV->Aliasee;
-    // Idx is relative to VecAliasee; aliasers' offsets are relative to baseV.
-    Idx += aliaseeSV->StartElementOffset;
+    // StartByte is relative to VecAliasee; aliasers' offsets are relative to baseV.
+    StartByte += aliaseeSV->StartByteOffset;
   } else if (auto BI = m_baseVecMap.find(VecAliasee); BI != m_baseVecMap.end()) {
     baseV = BI->second;
   }
   if (!baseV)
     return;
 
-  int nelts = getNumElts(Aliaser);
-  int Idx_end = Idx + nelts - 1;
+  auto getByteSize = [this](Value *V) { return getNumElts(V) * getScalarTypeStoreSize(V->getType(), m_DL); };
+  // [start, end) byte ranges in baseV
+  int EndByte = StartByte + getByteSize(Aliaser);
   for (SSubVecDesc *SV : baseV->Aliasers) {
     // An aliaser VecAliasee is in baseV->Aliasers too; it is already added.
     if (SV->Aliaser == VecAliasee)
       continue;
-    int start = SV->StartElementOffset;
-    int end = start + SV->NumElts - 1;
-    if ((start > Idx_end) || (end < Idx))
+    int start = SV->StartByteOffset;
+    int end = start + getByteSize(SV->Aliaser);
+    if ((start >= EndByte) || (end <= StartByte))
       continue;
     AliasVals.push_back(SV->Aliaser);
   }
 }
 
 // Return true if any value that would share registers with Aliaser if Aliaser
-// were aliased to (made a sub-vector of) VecAliasee starting at index Idx is
+// were aliased to (made a sub-vector of) BaseVec starting at index Idx is
 // not single-valued (it is in a DeSSA congruent class). A value that is not
 // single-valued can write the shared registers while Aliaser is live, so such
 // an alias needs an interference check.
-bool VariableReuseAnalysis::hasMultiValuedAliasVal(Value *Aliaser, Value *VecAliasee, int Idx) {
+bool VariableReuseAnalysis::hasMultiValuedAliasVal(Value *Aliaser, Value *BaseVec, int Idx) {
   ValueVectorTy AliasVals;
-  getAllAliasVals(AliasVals, Aliaser, VecAliasee, Idx);
+  getAllAliasVals(AliasVals, Aliaser, BaseVec, Idx);
   for (Value *V : AliasVals) {
     if (!m_DeSSA->isSingleValued(V))
       return true;
@@ -1590,15 +1601,16 @@ bool VariableReuseAnalysis::isLoopCarried(Value *V) const {
   return false;
 }
 
-// Given two values : Sub and (Base, BaseIdx), check if theses two value
-// interfere each other. Assume these two values are dessa node values.
-bool VariableReuseAnalysis::aliasInterfere(Value *Sub, Value *Base, int BaseIdx) {
+// Given two values : Sub and (BaseVec, BaseIdx), check if these two values
+// interfere with each other. Sub is a dessa node value. BaseVec is the
+// original vector (not its dessa node value), and BaseIdx is its element index.
+bool VariableReuseAnalysis::aliasInterfere(Value *Sub, Value *BaseVec, int BaseIdx) {
   // Vec0 : set of values aliased to Sub (as aliasee). Sub cannot be aliaser
   //        as algo does not make an aliaser twice.
-  // Vec1 : set of values aliased to Sub if Sub aliases to (Base, BaseIdx).
+  // Vec1 : set of values aliased to Sub if Sub aliases to (BaseVec, BaseIdx).
   ValueVectorTy Vec0, Vec1;
   Vec0.push_back(Sub);
-  getAllAliasVals(Vec1, Sub, Base, BaseIdx);
+  getAllAliasVals(Vec1, Sub, BaseVec, BaseIdx);
   auto II0 = m_baseVecMap.find(Sub);
   if (II0 != m_baseVecMap.end()) {
     SBaseVecDesc *BV0 = II0->second;
