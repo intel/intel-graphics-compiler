@@ -893,7 +893,7 @@ DECLARE_IGC_REGKEY(bool, EnableUnsafeFPRangeNormalize, false,
                    "UNSAFE: a square that underflows makes the quotient +/-Inf. By default the pattern requires ninf "
                    "and bounds to [-1.5, 1.5]",
                    DEBUG_ONLY)
-DECLARE_IGC_REGKEY(bool, EnableFoldProvableFCmp, true,
+DECLARE_IGC_REGKEY(bool, EnableFoldProvableFCmp, false,
                    "Fold fcmp instructions whose result FPRangeAnalysis can prove, and delete the control flow that "
                    "becomes dead",
                    ALWAYS)
