@@ -135,6 +135,7 @@ SPDX-License-Identifier: MIT
 #include <algorithm>
 #include <iterator>
 #include <numeric>
+#include <optional>
 
 #define DEBUG_TYPE "genx-lowering"
 
@@ -200,6 +201,16 @@ class GenXLowering : public FunctionPass {
   DominatorTree *DT = nullptr;
   const GenXSubtarget *ST = nullptr;
   SmallVector<Instruction *, 8> ToErase;
+  // Shared bases ("sub Cmin, X") created by lowerConstMinusRegionIndex, keyed
+  // by X and basic block, and the set of such bases (they must not be rewritten
+  // again).
+  DenseMap<std::pair<Value *, BasicBlock *>, Instruction *> BaseCache;
+  SmallPtrSet<Instruction *, 8> CMBases;
+  // Dominator tree for lowerConstMinusRegionIndex, built on first use and
+  // shared by all its queries. Lowering can split blocks, so it is rebuilt if
+  // the number of blocks has changed since it was built.
+  std::optional<DominatorTree> CMDT;
+  size_t CMDTBlocks = 0;
   const DataLayout *DL = nullptr;
 
 public:
@@ -253,6 +264,7 @@ private:
   bool lowerUnorderedFCmpInst(FCmpInst *Inst);
   bool lowerSqrt(CallInst *CI);
   bool widenByteOp(Instruction *Inst);
+  bool lowerConstMinusRegionIndex(Instruction *Inst);
   bool lowerGenXMul(CallInst *CI, unsigned IntrinsicID);
   bool lowerGenXMulSat(CallInst *CI, unsigned IntrinsicID);
   bool lowerGenXIMad(CallInst *CI, unsigned IntrinsicID);
@@ -340,6 +352,9 @@ bool GenXLowering::runOnFunction(Function &F) {
   DL = &F.getParent()->getDataLayout();
   // First split any phi nodes with struct type.
   splitStructPhis(&F);
+  BaseCache.clear();
+  CMBases.clear();
+  CMDT.reset();
   // Create a list of basic blocks in the order we want to process them, before
   // we start the lowering. This is because lowering can split a basic block.
   SmallVector<BasicBlock *, 8> BBs;
@@ -372,6 +387,9 @@ bool GenXLowering::runOnFunction(Function &F) {
        i != e; ++i)
     (*i)->eraseFromParent();
   ToErase.clear();
+  BaseCache.clear();
+  CMBases.clear();
+  CMDT.reset();
   return true;
 }
 
@@ -1812,6 +1830,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerShr(Inst);
     if (Inst->getOpcode() == Instruction::Mul)
       return lowerMul64(Inst);
+    if (Inst->getOpcode() == Instruction::Sub)
+      return lowerConstMinusRegionIndex(Inst);
     return false;
   }
   if (Inst->getOpcode() == Instruction::ICmp)
@@ -2020,6 +2040,245 @@ bool GenXLowering::processInst(Instruction *Inst) {
   if (InsertValueInst *IV = dyn_cast<InsertValueInst>(Inst))
     return lowerInsertValue(IV);
   return false;
+}
+
+/***********************************************************************
+ * isOnlyUsedAsRegionIndex : check that every use of V is, possibly through a
+ * chain of constant add/sub/or, the variable index of a rdregion/wrregion.
+ */
+static bool isOnlyUsedAsRegionIndex(const Value *V, unsigned Depth = 0) {
+  if (V->use_empty() || Depth > 4)
+    return false;
+  for (const Use &U : V->uses()) {
+    const auto *User = cast<Instruction>(U.getUser());
+    switch (GenXIntrinsic::getGenXIntrinsicID(User)) {
+    case GenXIntrinsic::genx_rdregioni:
+    case GenXIntrinsic::genx_rdregionf:
+      if (U.getOperandNo() == GenXIntrinsic::GenXRegion::RdIndexOperandNum)
+        continue;
+      return false;
+    case GenXIntrinsic::genx_wrregioni:
+    case GenXIntrinsic::genx_wrregionf:
+      if (U.getOperandNo() == GenXIntrinsic::GenXRegion::WrIndexOperandNum)
+        continue;
+      return false;
+    default:
+      break;
+    }
+    switch (User->getOpcode()) {
+    case Instruction::Add:
+    case Instruction::Sub:
+    case Instruction::Or:
+      if (U.getOperandNo() == 0 && isa<ConstantInt>(User->getOperand(1)) &&
+          isOnlyUsedAsRegionIndex(User, Depth + 1))
+        continue;
+      return false;
+    default:
+      return false;
+    }
+  }
+  return true;
+}
+
+/***********************************************************************
+ * collectIndexUseBlocks : collect the blocks of the rdregion/wrregion that use
+ * V as their variable index. All gets the blocks of the uses that go through a
+ * chain of constant add/sub/or as well; Direct only the blocks of the uses
+ * where V itself is the index.
+ */
+static void collectIndexUseBlocks(const Value *V,
+                                  SmallPtrSetImpl<const BasicBlock *> &Direct,
+                                  SmallPtrSetImpl<const BasicBlock *> &All,
+                                  bool IsDirect = true) {
+  for (const Use &U : V->uses()) {
+    const auto *User = cast<Instruction>(U.getUser());
+    switch (GenXIntrinsic::getGenXIntrinsicID(User)) {
+    case GenXIntrinsic::genx_rdregioni:
+    case GenXIntrinsic::genx_rdregionf:
+      if (U.getOperandNo() == GenXIntrinsic::GenXRegion::RdIndexOperandNum) {
+        All.insert(User->getParent());
+        if (IsDirect)
+          Direct.insert(User->getParent());
+      }
+      continue;
+    case GenXIntrinsic::genx_wrregioni:
+    case GenXIntrinsic::genx_wrregionf:
+      if (U.getOperandNo() == GenXIntrinsic::GenXRegion::WrIndexOperandNum) {
+        All.insert(User->getParent());
+        if (IsDirect)
+          Direct.insert(User->getParent());
+      }
+      continue;
+    default:
+      break;
+    }
+    switch (User->getOpcode()) {
+    case Instruction::Add:
+    case Instruction::Sub:
+    case Instruction::Or:
+      if (U.getOperandNo() == 0 && isa<ConstantInt>(User->getOperand(1)))
+        collectIndexUseBlocks(User, Direct, All, /*IsDirect=*/false);
+      break;
+    default:
+      break;
+    }
+  }
+}
+
+/***********************************************************************
+ * lowerConstMinusRegionIndex : rewrite "sub C, X", used as a variable region
+ * index, into "add Base, (C - Cmin)" where Base = "sub Cmin, X" is shared by
+ * all such indices of X in the same basic block and Cmin is the smallest of
+ * their constants.
+ *
+ * Newer LLVM canonicalizes "add (mul X, -N), C" into "sub C, (shl X, ..)".
+ * GenXBaling::getIndexAdd/getIndexOr, which GenXCategory uses to turn the
+ * index into llvm.genx.add.addr, only recognize a constant on the right-hand
+ * side. With the constant on the left every such index becomes an independent
+ * address computation instead of a constant offset applied to one shared
+ * address base.
+ *
+ * The shared base must itself be a valid (non-negative) index wherever it is
+ * used: GenXAddressCommoning assumes the variable part of an address is in
+ * range and only the baled-in immediate offset is added to it. Basing on
+ * "sub Cmin, X" rather than on "neg X" gives this, because the base then equals
+ * one of the original indices and every other index is the base plus a
+ * non-negative constant. getIndexAdd does not look through the base (its
+ * constant is on the left), so GenXCategory cannot fold Cmin back out of it.
+ *
+ * For the base to be a known-valid index at every place it is used, the sub
+ * with the constant Cmin must be directly a region index in a block that
+ * dominates all the region instructions that use any of the rewritten indices:
+ * that index has then already been executed, with the same X, before any of
+ * the others is. A sub that only reaches the region through an add/or chain
+ * may be negative on its own (the chain constant brings the final index back in
+ * range), so it never provides Cmin and is only rewritten if its constant is
+ * not below Cmin. If no sub qualifies, nothing is rewritten.
+ *
+ * The indices are only shared inside one basic block, where the base is placed
+ * in front of the first of them.
+ */
+bool GenXLowering::lowerConstMinusRegionIndex(Instruction *Inst) {
+  IGC_ASSERT(Inst->getOpcode() == Instruction::Sub);
+  auto *IntTy = dyn_cast<IntegerType>(Inst->getType());
+  auto *C = dyn_cast<ConstantInt>(Inst->getOperand(0));
+  if (!IntTy || !C || C->isZero())
+    return false;
+  Value *X = Inst->getOperand(1);
+  // The bases created below are "sub Cmin, X" themselves.
+  if (CMBases.contains(Inst) || isa<Constant>(X) ||
+      !isOnlyUsedAsRegionIndex(Inst))
+    return false;
+
+  BasicBlock *BB = Inst->getParent();
+  // BaseCache holds a null entry when X has nothing to share a base for in BB.
+  auto CacheIt = BaseCache.find({X, BB});
+  if (CacheIt != BaseCache.end() && !CacheIt->second)
+    return false;
+  Instruction *Base = CacheIt != BaseCache.end() ? CacheIt->second : nullptr;
+  if (!Base) {
+    // The candidate indices: the subs of X in this block that are only used as
+    // region indices.
+    struct Candidate {
+      Instruction *Sub;
+      APInt C;
+      SmallPtrSet<const BasicBlock *, 4> Direct;
+      SmallPtrSet<const BasicBlock *, 4> All;
+    };
+    SmallVector<Candidate, 8> Cands;
+    for (User *U : X->users()) {
+      auto *S = dyn_cast<Instruction>(U);
+      if (!S || S->getParent() != BB || S->getOpcode() != Instruction::Sub ||
+          S->getOperand(1) != X)
+        continue;
+      auto *SC = dyn_cast<ConstantInt>(S->getOperand(0));
+      if (!SC || SC->isZero() || CMBases.contains(S) ||
+          !isOnlyUsedAsRegionIndex(S))
+        continue;
+      Candidate &Cand = Cands.emplace_back();
+      Cand.Sub = S;
+      Cand.C = SC->getValue();
+      collectIndexUseBlocks(S, Cand.Direct, Cand.All);
+    }
+    // A lone index has nothing to share a base with.
+    if (Cands.size() < 2) {
+      BaseCache[{X, BB}] = nullptr;
+      return false;
+    }
+    llvm::sort(Cands, [](const Candidate &L, const Candidate &R) {
+      return L.C.slt(R.C);
+    });
+
+    // Find the smallest Cmin that is a known-valid index everywhere the
+    // indices with a constant not below it are used.
+    std::optional<APInt> CMin;
+    SmallPtrSet<Instruction *, 8> Indices;
+    for (const Candidate &M : Cands) {
+      if (M.Direct.empty())
+        continue;
+      SmallVector<const Candidate *, 8> Rewritten;
+      for (const Candidate &Cand : Cands)
+        if (Cand.C.sge(M.C))
+          Rewritten.push_back(&Cand);
+      // A lone index has nothing to share a base with.
+      if (Rewritten.size() < 2)
+        continue;
+      Function *F = BB->getParent();
+      if (!CMDT || CMDTBlocks != F->size()) {
+        CMDT.emplace(*F);
+        CMDTBlocks = F->size();
+      }
+      bool Dominates = any_of(M.Direct, [&](const BasicBlock *D) {
+        return all_of(Rewritten, [&](const Candidate *Cand) {
+          return all_of(Cand->All, [&](const BasicBlock *B) {
+            return CMDT->dominates(D, B);
+          });
+        });
+      });
+      if (!Dominates)
+        continue;
+      CMin = M.C;
+      for (const Candidate *Cand : Rewritten)
+        Indices.insert(Cand->Sub);
+      break;
+    }
+    if (!CMin) {
+      BaseCache[{X, BB}] = nullptr;
+      return false;
+    }
+    // Define the base in front of the first of the indices. X dominates all of
+    // them, so it dominates the insertion point too.
+    Instruction *First = nullptr;
+    for (Instruction &I : *BB) {
+      if (Indices.contains(&I)) {
+        First = &I;
+        break;
+      }
+    }
+    IGC_ASSERT(First);
+    IRBuilder<> Builder(First);
+    Builder.SetCurrentDebugLocation(First->getDebugLoc());
+    Base = cast<Instruction>(Builder.CreateSub(ConstantInt::get(IntTy, *CMin),
+                                               X, X->getName() + ".cmbase"));
+    BaseCache[{X, BB}] = Base;
+    CMBases.insert(Base);
+  }
+
+  // An index below the base's constant is left as it is.
+  const APInt &BaseC = cast<ConstantInt>(Base->getOperand(0))->getValue();
+  if (C->getValue().slt(BaseC))
+    return false;
+  Value *NewIdx = Base;
+  APInt Delta = C->getValue() - BaseC;
+  if (!Delta.isZero()) {
+    IRBuilder<> Builder(Inst);
+    NewIdx = Builder.CreateAdd(Base, ConstantInt::get(IntTy, Delta),
+                               Inst->getName());
+    cast<Instruction>(NewIdx)->setDebugLoc(Inst->getDebugLoc());
+  }
+  Inst->replaceAllUsesWith(NewIdx);
+  ToErase.push_back(Inst);
+  return true;
 }
 
 /***********************************************************************
