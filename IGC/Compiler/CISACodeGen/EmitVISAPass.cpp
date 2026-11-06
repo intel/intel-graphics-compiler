@@ -21801,10 +21801,13 @@ bool EmitPass::ResourceLoopSubIteration(ResourceDescriptor &resource, SamplerDes
   CVariable *resourceFlag = nullptr;
   CVariable *samplerFlag = nullptr;
   CVariable *offset = nullptr;
+  // element size the lane offset was computed for
+  unsigned offsetElemSize = 0;
 
   if (!uniformResource) {
     ResourceDescriptor uniformResource;
     resourceFlag = m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
+    offsetElemSize = resource.m_resource->GetElemSize();
     uniformResource.m_surfaceType = resource.m_surfaceType;
     uniformResource.m_resource = UniformCopy(resource.m_resource, offset, prevFlag, false, needSafeguard);
     uniformResource.m_isConstant = resource.m_isConstant;
@@ -21847,7 +21850,24 @@ bool EmitPass::ResourceLoopSubIteration(ResourceDescriptor &resource, SamplerDes
     SamplerDescriptor uniformSampler;
     samplerFlag = m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
     uniformSampler.m_samplerType = sampler.m_samplerType;
-    uniformSampler.m_sampler = UniformCopy(sampler.m_sampler, offset);
+    // The lane offset is a byte offset: the one computed for the resource is only right for a sampler of the same
+    // element size (a 32-bit texture next to a 64-bit sampler would read the sampler from the wrong lane), rescale it
+    // otherwise.
+    CVariable *samplerOffset = offset;
+    const unsigned samplerElemSize = sampler.m_sampler->GetElemSize();
+    if (offset && offsetElemSize != samplerElemSize) {
+      IGC_ASSERT(offsetElemSize && samplerElemSize && isPowerOf2_32(offsetElemSize) && isPowerOf2_32(samplerElemSize));
+      samplerOffset = m_currShader->GetNewVariable(1, ISA_TYPE_UW, EALIGN_WORD, true, CName::NONE);
+      if (samplerElemSize > offsetElemSize) {
+        m_encoder->Shl(samplerOffset, offset,
+                       m_currShader->ImmToVariable(Log2_32(samplerElemSize) - Log2_32(offsetElemSize), ISA_TYPE_W));
+      } else {
+        m_encoder->Shr(samplerOffset, offset,
+                       m_currShader->ImmToVariable(Log2_32(offsetElemSize) - Log2_32(samplerElemSize), ISA_TYPE_W));
+      }
+      m_encoder->Push();
+    }
+    uniformSampler.m_sampler = UniformCopy(sampler.m_sampler, samplerOffset);
     uniformSampler.m_SamplerStateIndex = sampler.m_SamplerStateIndex;
     if (sampler.m_sampler->isQType()) {
       CVariable *samplerDW = m_currShader->GetNewAlias(sampler.m_sampler, ISA_TYPE_UD, 0, 2);

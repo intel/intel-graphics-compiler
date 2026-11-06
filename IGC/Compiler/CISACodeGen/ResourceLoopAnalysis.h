@@ -108,4 +108,8 @@ llvm::FunctionPass *createResourceLoopAnalysisPass();
 // Moves the dependent "decode" code of a lane-varying send (unpack, convert, scale) below the last send of
 // a run of same-resource sends, so that ResourceLoopAnalysis can fuse the run into a single resource loop.
 llvm::FunctionPass *createResourceLoopDecodeSinkPass();
+
+// Merges the two arms of an if/else that sample the same non-uniform texture with different samplers into one
+// sample in the dominating block, selecting the sampler per lane, so the arms need one resource loop, not two.
+llvm::FunctionPass *createResourceLoopSamplerSelectPass();
 } // namespace IGC

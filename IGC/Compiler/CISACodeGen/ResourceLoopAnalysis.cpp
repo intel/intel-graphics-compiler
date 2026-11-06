@@ -10,9 +10,14 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
+#include "common/ResourceAddrSpace.h"
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
+#include <llvm/IR/ValueHandle.h>
+#include <llvm/Analysis/ValueTracking.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/Debug.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -626,4 +631,238 @@ bool ResourceLoopDecodeSink::processBlock(BasicBlock &BB, WIAnalysis *WI, unsign
     It = Last->getIterator();
   }
   return Changed;
+}
+
+namespace {
+// See createResourceLoopSamplerSelectPass in the header.
+class ResourceLoopSamplerSelect : public FunctionPass {
+public:
+  static char ID;
+  ResourceLoopSamplerSelect() : FunctionPass(ID) {
+    initializeResourceLoopSamplerSelectPass(*PassRegistry::getPassRegistry());
+  }
+  StringRef getPassName() const override { return "Resource Loop Sampler Select"; }
+  bool runOnFunction(Function &F) override;
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.setPreservesCFG(); // samples move into the dominating block, no block is added or removed
+    AU.addRequired<WIAnalysis>();
+  }
+
+private:
+  bool processBranch(IGCLLVM::CondBrInst &Br, WIAnalysis *WI);
+};
+} // namespace
+
+char ResourceLoopSamplerSelect::ID = 0;
+
+#define PASS_FLAG "resource-loop-sampler-select"
+#define PASS_DESCRIPTION "Merge if/else samples that differ only in the sampler into one sample with a sampler select"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(ResourceLoopSamplerSelect, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
+IGC_INITIALIZE_PASS_END(ResourceLoopSamplerSelect, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+#undef PASS_FLAG
+#undef PASS_DESCRIPTION
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+
+llvm::FunctionPass *IGC::createResourceLoopSamplerSelectPass() { return new ResourceLoopSamplerSelect; }
+
+bool ResourceLoopSamplerSelect::runOnFunction(Function &F) {
+  auto *WI = &getAnalysis<WIAnalysis>();
+  bool Changed = false;
+  for (BasicBlock &BB : F) {
+    if (auto *Br = dyn_cast<IGCLLVM::CondBrInst>(BB.getTerminator()))
+      Changed |= processBranch(*Br, WI);
+  }
+  return Changed;
+}
+
+// Only samples with an explicit LOD or gradient: they do not depend on the neighbouring lanes, so executing them for
+// the lanes of both arms cannot change a result.
+static bool isExplicitLodSample(const Instruction *Inst) {
+  auto *GII = dyn_cast<GenIntrinsicInst>(Inst);
+  if (!GII)
+    return false;
+  switch (GII->getIntrinsicID()) {
+  case GenISAIntrinsic::GenISA_sampleLptr:
+  case GenISAIntrinsic::GenISA_sampleLCptr:
+  case GenISAIntrinsic::GenISA_sampleDptr:
+  case GenISAIntrinsic::GenISA_sampleDCptr:
+    return true;
+  default:
+    return false;
+  }
+}
+
+// An arm of a diamond whose only instructions that touch memory are explicit-LOD samples. Collects those samples.
+static bool collectArmSamples(BasicBlock *Arm, BasicBlock *Head, BasicBlock *Join,
+                              SmallVectorImpl<SampleIntrinsic *> &Samples) {
+  if (Arm->getSinglePredecessor() != Head)
+    return false;
+  Instruction *Term = Arm->getTerminator();
+  if (!isa<IGCLLVM::UncondBrInst>(Term) || Term->getSuccessor(0) != Join)
+    return false;
+  for (Instruction &I : *Arm) {
+    if (I.isTerminator())
+      break;
+    if (isExplicitLodSample(&I))
+      Samples.push_back(cast<SampleIntrinsic>(&I));
+    else if (I.mayHaveSideEffects() || I.mayReadFromMemory())
+      return false;
+  }
+  return !Samples.empty();
+}
+
+// The address a sampler or texture pointer is made of. They are an inttoptr of a computed address: use that address, in
+// its own width. The merged sampler has to keep the width of the samplers it replaces, and has to be as wide as the
+// texture: a resource loop copies a non-uniform sampler with the lane offset it computed for the texture, so a sampler
+// of another element size than the texture is a risk (EmitPass rescales the offset, but the merge does not depend on
+// it). Returns null for any other pointer.
+static Value *getIntToPtrAddress(Value *Ptr) {
+  if (auto *ITP = dyn_cast<IntToPtrInst>(Ptr))
+    if (ITP->getOperand(0)->getType()->isIntegerTy(32) || ITP->getOperand(0)->getType()->isIntegerTy(64))
+      return ITP->getOperand(0);
+  return nullptr;
+}
+
+// True if the two samplers can be told apart by their address only: both are indirect (or bindless, where the address
+// is the pointer value) and their address spaces differ in no more than the bufId tag, which identifies the access.
+// A direct sampler keeps its index in the address space, so it cannot be selected per lane.
+static bool areInterchangeableSamplers(Value *A, Value *B) {
+  auto *PA = dyn_cast<PointerType>(A->getType());
+  auto *PB = dyn_cast<PointerType>(B->getType());
+  if (!PA || !PB)
+    return false;
+  unsigned ASA = PA->getAddressSpace(), ASB = PB->getAddressSpace();
+  bool DirectA = false, DirectB = false;
+  unsigned BufIdA = 0, BufIdB = 0;
+  BufferType TypeA = DecodeAS4GFXResource(ASA, DirectA, BufIdA);
+  BufferType TypeB = DecodeAS4GFXResource(ASB, DirectB, BufIdB);
+  if (TypeA != TypeB || (TypeA != BINDLESS_SAMPLER && (DirectA || DirectB)))
+    return false;
+  GFXResourceAddrSpace MaskedA, MaskedB;
+  MaskedA.u32Val = ASA;
+  MaskedB.u32Val = ASB;
+  if (!DirectA) // for an indirect sampler the bufId only tags the access
+    MaskedA.bits.bufId = MaskedB.bits.bufId = 0;
+  return MaskedA.u32Val == MaskedB.u32Val;
+}
+
+// The longest chain of pure instructions in an arm that is compared or hoisted with a sample (descriptor address
+// computation: zext, add, add, inttoptr).
+constexpr unsigned MaxArmChainDepth = 6;
+
+// True if V is defined outside of the arm, or by pure code of the arm that can be hoisted to the head.
+static bool isHoistable(Value *V, BasicBlock *Arm, unsigned Depth = 0) {
+  auto *I = dyn_cast<Instruction>(V);
+  if (!I || I->getParent() != Arm)
+    return true;
+  if (Depth > MaxArmChainDepth || isa<PHINode>(I) || isa<CallInst>(I) || !isSafeToSpeculativelyExecute(I))
+    return false;
+  return all_of(I->operands(), [&](Value *Op) { return isHoistable(Op, Arm, Depth + 1); });
+}
+
+// Moves the pure code of the arm that V depends on, then V, before InsertPt. It now runs for the lanes of both arms, so
+// it does not keep the source location of one of them.
+static void hoistInto(Value *V, BasicBlock *Arm, Instruction *InsertPt) {
+  auto *I = dyn_cast<Instruction>(V);
+  if (!I || I->getParent() != Arm)
+    return;
+  for (Value *Op : I->operands())
+    hoistInto(Op, Arm, InsertPt);
+  IGCLLVM::moveBefore(I, InsertPt);
+  I->dropLocation();
+}
+
+// True if A and B are the same value, or the same computation (with the same nsw/nuw/exact/fast-math flags, as only the
+// then arm's copy is kept) in the then and else arm. Hoisting one copy then makes the other one dead, which the later
+// passes (no CSE across the arms) cannot do.
+static bool isSameComputation(Value *A, Value *B, BasicBlock *ThenBB, BasicBlock *ElseBB, unsigned Depth = 0) {
+  if (A == B)
+    return true;
+  auto *IA = dyn_cast<Instruction>(A);
+  auto *IB = dyn_cast<Instruction>(B);
+  if (!IA || !IB || IA->getParent() != ThenBB || IB->getParent() != ElseBB || Depth > MaxArmChainDepth ||
+      !IA->isSameOperationAs(IB) || isa<PHINode>(IA) || isa<CallInst>(IA))
+    return false;
+  // the nsw/nuw/exact/fast-math flags are not part of isSameOperationAs
+  if (IA->getRawSubclassOptionalData() != IB->getRawSubclassOptionalData())
+    return false;
+  for (unsigned Op = 0; Op < IA->getNumOperands(); ++Op)
+    if (!isSameComputation(IA->getOperand(Op), IB->getOperand(Op), ThenBB, ElseBB, Depth + 1))
+      return false;
+  return true;
+}
+
+bool ResourceLoopSamplerSelect::processBranch(IGCLLVM::CondBrInst &Br, WIAnalysis *WI) {
+  BasicBlock *Head = Br.getParent();
+  BasicBlock *ThenBB = Br.getSuccessor(0);
+  BasicBlock *ElseBB = Br.getSuccessor(1);
+  if (ThenBB == ElseBB)
+    return false;
+  Instruction *ThenTerm = ThenBB->getTerminator();
+  if (!isa<IGCLLVM::UncondBrInst>(ThenTerm))
+    return false;
+  BasicBlock *Join = ThenTerm->getSuccessor(0);
+
+  SmallVector<SampleIntrinsic *, 4> ThenSamples, ElseSamples;
+  if (!collectArmSamples(ThenBB, Head, Join, ThenSamples) || !collectArmSamples(ElseBB, Head, Join, ElseSamples) ||
+      ThenSamples.size() != ElseSamples.size())
+    return false;
+
+  // Pair the samples in order: same intrinsic, the same computation of every operand except the sampler, and a
+  // non-uniform texture, so a resource loop is needed anyway and the per-lane sampler adds none. The code in the arms
+  // that the merged sample needs must be pure, to move it to the head.
+  for (unsigned I = 0; I < ThenSamples.size(); ++I) {
+    SampleIntrinsic *T = ThenSamples[I], *E = ElseSamples[I];
+    if (T->getIntrinsicID() != E->getIntrinsicID() || T->getType() != E->getType() ||
+        T->getNumOperands() != E->getNumOperands())
+      return false;
+    unsigned SamplerIdx = T->getSamplerIndex();
+    // the callee is not compared: it is overloaded on the sampler type
+    for (unsigned Op = 0; Op < IGCLLVM::getNumArgOperands(T); ++Op) {
+      if (Op != SamplerIdx && !isSameComputation(T->getOperand(Op), E->getOperand(Op), ThenBB, ElseBB))
+        return false;
+      if (!isHoistable(T->getOperand(Op), ThenBB))
+        return false;
+    }
+    // Identical samplers: nothing to select, leave the pair alone. Different samplers must also be interchangeable, and
+    // made of addresses of the width of the texture's.
+    Value *AddrT = getIntToPtrAddress(T->getSamplerValue()), *AddrE = getIntToPtrAddress(E->getSamplerValue());
+    Value *TexAddr = getIntToPtrAddress(T->getTextureValue());
+    if (T->getSamplerValue() == E->getSamplerValue() || !AddrT || !AddrE || AddrT->getType() != AddrE->getType() ||
+        !TexAddr || TexAddr->getType() != AddrT->getType() ||
+        !areInterchangeableSamplers(T->getSamplerValue(), E->getSamplerValue()) ||
+        WI->isUniform(T->getTextureValue()) || !isHoistable(E->getSamplerValue(), ElseBB))
+      return false;
+  }
+
+  for (unsigned I = 0; I < ThenSamples.size(); ++I) {
+    SampleIntrinsic *T = ThenSamples[I], *E = ElseSamples[I];
+    for (unsigned Op = 0; Op < IGCLLVM::getNumArgOperands(T); ++Op)
+      hoistInto(T->getOperand(Op), ThenBB, &Br);
+    hoistInto(E->getSamplerValue(), ElseBB, &Br);
+    IRBuilder<> B(&Br);
+    Value *Addr = B.CreateSelect(Br.getCondition(), getIntToPtrAddress(T->getSamplerValue()),
+                                 getIntToPtrAddress(E->getSamplerValue()), "samplerSelect");
+    // The indirect sampler address spaces of the two arms only tell the accesses apart: keep the one of the then arm.
+    Value *Sampler = B.CreateIntToPtr(Addr, T->getSamplerValue()->getType());
+    auto *Merged = cast<CallInst>(T->clone());
+    Merged->setOperand(T->getSamplerIndex(), Sampler);
+    IGCLLVM::insertBefore(Merged, &Br);
+    Merged->dropLocation(); // it stands for the sample of both arms
+    Merged->takeName(T);
+    T->replaceAllUsesWith(Merged);
+    E->replaceAllUsesWith(Merged);
+    // Weak handles: deleting one candidate can free another one (a repeated operand, or an operand chain).
+    SmallVector<WeakTrackingVH, 16> DeadCandidates(T->op_begin(), T->op_end());
+    DeadCandidates.append(E->op_begin(), E->op_end());
+    T->eraseFromParent();
+    E->eraseFromParent();
+    // the else arm's copies of the hoisted computation, and the then arm's sampler, are dead now
+    RecursivelyDeleteTriviallyDeadInstructionsPermissive(DeadCandidates);
+  }
+  return true;
 }
