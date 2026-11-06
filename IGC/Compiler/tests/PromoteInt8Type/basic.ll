@@ -114,8 +114,8 @@ define i8 @test_lshr(i8 %src1) {
 define i8 @test_shl(i8 %src1, i8 %src2) {
 ; CHECK-LABEL: @test_shl(
 ; CHECK:    [[B2S:%.*]] = sext i8 [[SRC1:%.*]] to i16
-; CHECK:    [[B2S1:%.*]] = sext i8 [[SRC2:%.*]] to i16
-; CHECK:    [[B2S2:%.*]] = shl i16 [[B2S]], [[B2S1]]
+; CHECK:    [[AMT:%.*]] = zext i8 [[SRC2:%.*]] to i16
+; CHECK:    [[B2S2:%.*]] = shl i16 [[B2S]], [[AMT]]
 ; CHECK:    [[TMP1:%.*]] = trunc i16 [[B2S2]] to i8
 ; CHECK:    ret i8 [[TMP1]]
 ;

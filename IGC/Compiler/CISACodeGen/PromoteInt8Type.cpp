@@ -134,9 +134,16 @@ private:
   Value *getI16Value(Value *V, bool IsZExt);
   // Given an i16 value, return i8 value trunced from i16
   Value *getI8Value(Value *V);
-  // Given an i8 value, return either signed or unsigned i16 value
+  // Given an i8 value, return its i16 value. Only the low byte of an already
+  // promoted value is meaningful.
   Value *getSI16Value(Value *V) { return getI16Value(V, false); }
-  Value *getUI16Value(Value *V) { return getI16Value(V, true); }
+  // Users that need the whole unsigned value, like a vector index or a shift
+  // amount, get it zero-extended again from the low byte.
+  Value *getZExtI16Value(Value *V) {
+    if (!isI8Type(V) || isa<Constant>(V))
+      return getI16Value(V, true);
+    return m_builder->CreateZExt(getI8Value(V), Type::getInt16Ty(V->getContext()), "b2s");
+  }
 
   // For vector value, mainly for extElt/InsElt
   Value *createI16Value(Value *V, bool IsZExt);
@@ -534,19 +541,19 @@ void PromoteInt8Type::promoteInstructions() {
         case Instruction::AShr: {
           IGC_ASSERT(nullptr != v1);
           Value *nV0 = m_builder->CreateSExt(getI8Value(v0), i16Ty, "b2s");
-          newVal = m_builder->CreateAShr(nV0, getUI16Value(v1), "b2s");
+          newVal = m_builder->CreateAShr(nV0, getZExtI16Value(v1), "b2s");
           break;
         }
         case Instruction::LShr: {
           IGC_ASSERT(nullptr != v1);
           Value *nV0 = m_builder->CreateZExt(getI8Value(v0), i16Ty, "b2s");
-          newVal = m_builder->CreateLShr(nV0, getUI16Value(v1), "b2s");
+          newVal = m_builder->CreateLShr(nV0, getZExtI16Value(v1), "b2s");
           break;
         }
         case Instruction::Shl: {
           IGC_ASSERT(nullptr != v1);
           // upper 8-bit does not matter
-          newVal = m_builder->CreateShl(getSI16Value(v0), getUI16Value(v1), "b2s");
+          newVal = m_builder->CreateShl(getSI16Value(v0), getZExtI16Value(v1), "b2s");
           break;
         }
         case Instruction::ZExt:
@@ -599,7 +606,7 @@ void PromoteInt8Type::promoteInstructions() {
           if (vinfo && !vinfo->NeedPromote) {
             // not promote vector operand, rather promote dest (EEI).
             m_builder->SetInsertPoint(BB, Inst->getIterator());
-            Value *nV1 = getUI16Value(v1);
+            Value *nV1 = getZExtI16Value(v1);
             if (nV1 != v1) {
               Inst->setOperand(1, nV1);
             }
@@ -608,7 +615,7 @@ void PromoteInt8Type::promoteInstructions() {
             isDead = false;
           } else {
             // Promote vector operand and create a new EEI
-            newVal = m_builder->CreateExtractElement(getSI16Value(v0), getUI16Value(v1), "b2s");
+            newVal = m_builder->CreateExtractElement(getSI16Value(v0), getZExtI16Value(v1), "b2s");
           }
           break;
         }
@@ -617,7 +624,7 @@ void PromoteInt8Type::promoteInstructions() {
           [[maybe_unused]] ValueInfo *vinfo = getValInfo(Inst->getOperand(0));
           IGC_ASSERT_MESSAGE((!vinfo || vinfo->NeedPromote), "IEI's vector operands and dst shall be both promoted!");
           Value *v2 = Inst->getOperand(2);
-          newVal = m_builder->CreateInsertElement(getSI16Value(v0), getSI16Value(v1), getUI16Value(v2), "b2s");
+          newVal = m_builder->CreateInsertElement(getSI16Value(v0), getSI16Value(v1), getZExtI16Value(v2), "b2s");
           break;
         }
         case Instruction::Freeze: {

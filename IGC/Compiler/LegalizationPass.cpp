@@ -2259,11 +2259,11 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
     if (BitWidth == 16 || BitWidth == 32 || BitWidth == 64)
       break;
 
-    Value *newValue = Elems == 1 ? nullptr : UndefValue::get(instrType);
+    Value *newValue = instrType->isVectorTy() ? PoisonValue::get(instrType) : nullptr;
     for (unsigned i = 0; i < Elems; i++) {
       Value *ElVal = src0;
       Value *ElRes = nullptr;
-      if (Elems > 1) {
+      if (instrType->isVectorTy()) {
         ElVal = Builder.CreateExtractElement(src0, ConstantInt::get(Type::getInt32Ty(I.getContext()), i));
       }
 
@@ -2283,7 +2283,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
       ElRes = Builder.CreateLShr(ElRes, shiftAmount);
       ElRes = Builder.CreateTrunc(ElRes, intType);
 
-      if (Elems > 1) {
+      if (instrType->isVectorTy()) {
         newValue = Builder.CreateInsertElement(newValue, ElRes, Builder.getInt32(i));
       } else
         newValue = ElRes;
@@ -2306,11 +2306,11 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
     Function *bfrevFunc =
         GenISAIntrinsic::getDeclaration(m_ctx->getModule(), GenISAIntrinsic::GenISA_bfrev, Builder.getInt32Ty());
 
-    Value *newValue = Elems == 1 ? nullptr : UndefValue::get(instrType);
+    Value *newValue = instrType->isVectorTy() ? PoisonValue::get(instrType) : nullptr;
     for (unsigned i = 0; i < Elems; i++) {
       Value *ElVal = src0;
       Value *ElRes = nullptr;
-      if (Elems > 1) {
+      if (instrType->isVectorTy()) {
         ElVal = Builder.CreateExtractElement(src0, ConstantInt::get(Type::getInt32Ty(I.getContext()), i));
       }
       if (BitWidth > 32 && BitWidth <= 64) {
@@ -2340,7 +2340,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
         } else
           ElRes = Call;
       }
-      if (Elems > 1) {
+      if (instrType->isVectorTy()) {
         newValue = Builder.CreateInsertElement(newValue, ElRes, Builder.getInt32(i));
       } else
         newValue = ElRes;

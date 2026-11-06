@@ -45,7 +45,7 @@ define <4 x i32> @f3(<4 x i32> %a) #0 {
 ; CHECK-LABEL: define <4 x i32> @f3
 ; CHECK: %1 = extractelement <4 x i32> %a, i32 0
 ; CHECK: %2 = call i32 @llvm.genx.GenISA.bfrev.i32(i32 %1)
-; CHECK: %3 = insertelement <4 x i32> undef, i32 %2, i32 0
+; CHECK: %3 = insertelement <4 x i32> poison, i32 %2, i32 0
 ; CHECK: %4 = extractelement <4 x i32> %a, i32 1
 ; CHECK: %5 = call i32 @llvm.genx.GenISA.bfrev.i32(i32 %4)
 ; CHECK: %6 = insertelement <4 x i32> %3, i32 %5, i32 1

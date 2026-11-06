@@ -927,6 +927,8 @@ void ScalarizeFunction::ScalarizeIntrinsic(IntrinsicInst &II) {
         CallInst::Create(IGCLLVM::getOrInsertDeclaration(II.getModule(), II.getIntrinsicID(), ScalarType),
                          ScalarOperands, II.getName() + ".scalar", IGCLLVM::insertPosition(&II));
     ScalarIntr->copyMetadata(II);
+    if (isa<FPMathOperator>(ScalarIntr))
+      ScalarIntr->copyFastMathFlags(&II);
     NewScalarizedInsts[i] = ScalarIntr;
   }
 
@@ -937,6 +939,7 @@ void ScalarizeFunction::ScalarizeIntrinsic(IntrinsicInst &II) {
 
 void ScalarizeFunction::visitIntrinsicInst(IntrinsicInst &II) {
   switch (II.getIntrinsicID()) {
+  case Intrinsic::copysign:
   case Intrinsic::fshl:
   case Intrinsic::smin:
   case Intrinsic::smax:

@@ -39,15 +39,33 @@ define <4 x i48> @f_v4i48(<4 x i48> %a) #0 {
 ; CHECK: %4 = lshr i64 %3, 16
 ; CHECK: %5 = trunc i64 %4 to i48
 
+; A single element vector still has to be unpacked.
+define <1 x i48> @f_v1i48(<1 x i48> %a) #0 {
+  %r = call <1 x i48> @llvm.bswap.v1i48(<1 x i48> %a)
+  ret <1 x i48> %r
+}
+
+; CHECK-LABEL: define <1 x i48> @f_v1i48
+; CHECK: %1 = extractelement <1 x i48> %a, i32 0
+; CHECK: %2 = zext i48 %1 to i64
+; CHECK: %3 = call i64 @llvm.bswap.i64(i64 %2)
+; CHECK: %4 = lshr i64 %3, 16
+; CHECK: %5 = trunc i64 %4 to i48
+; CHECK: %6 = insertelement <1 x i48> poison, i48 %5, i32 0
+; CHECK: ret <1 x i48> %6
+
 declare i48 @llvm.bswap.i48(i48) #1
+
+declare <1 x i48> @llvm.bswap.v1i48(<1 x i48>) #1
 
 declare <4 x i48> @llvm.bswap.v4i48(<4 x i48>) #1
 
 attributes #0 = { nounwind }
 attributes #1 = { nounwind readnone speculatable }
 
-!igc.functions = !{!0, !1}
+!igc.functions = !{!0, !1, !2}
 
 !0 = !{i48 (i48)* @f_i48, !5}
 !1 = !{<4 x i48> (<4 x i48>)* @f_v4i48, !5}
+!2 = !{<1 x i48> (<1 x i48>)* @f_v1i48, !5}
 !5 = !{}

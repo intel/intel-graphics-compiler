@@ -46,7 +46,7 @@ define <4 x i32> @f3(<4 x i32> %a) #0 {
 ; CHECK-LABEL: define <4 x i32> @f3
 ; CHECK: %1 = extractelement <4 x i32> %a, i32 0
 ; CHECK: %2 = call i32 @llvm.genx.GenISA.bfrev.i32(i32 %1)
-; CHECK: %3 = insertelement <4 x i32> undef, i32 %2, i32 0
+; CHECK: %3 = insertelement <4 x i32> poison, i32 %2, i32 0
 ; CHECK: %4 = extractelement <4 x i32> %a, i32 1
 ; CHECK: %5 = call i32 @llvm.genx.GenISA.bfrev.i32(i32 %4)
 ; CHECK: %6 = insertelement <4 x i32> %3, i32 %5, i32 1
@@ -126,12 +126,27 @@ declare i9 @llvm.bitreverse.i9(i9) #1
 
 declare i3 @llvm.bitreverse.i3(i3) #1
 
+; A single element vector still has to be unpacked.
+define <1 x i8> @f8(<1 x i8> %a) #0 {
+; CHECK-LABEL: define <1 x i8> @f8
+; CHECK: %1 = extractelement <1 x i8> %a, i32 0
+; CHECK: %2 = zext i8 %1 to i32
+; CHECK: %3 = call i32 @llvm.genx.GenISA.bfrev.i32(i32 %2)
+; CHECK: %4 = lshr i32 %3, 24
+; CHECK: %5 = trunc i32 %4 to i8
+; CHECK: %6 = insertelement <1 x i8> poison, i8 %5, i32 0
+; CHECK: ret <1 x i8> %6
+  %1 = call <1 x i8> @llvm.bitreverse.v1i8(<1 x i8> %a)
+  ret <1 x i8> %1
+}
+
 declare <4 x i32> @llvm.bitreverse.v4i32(<4 x i32>) #1
+declare <1 x i8> @llvm.bitreverse.v1i8(<1 x i8>) #1
 
 attributes #0 = { nounwind }
 attributes #1 = { nounwind readnone speculatable }
 
-!igc.functions = !{!0, !1, !2, !4, !5, !6, !7}
+!igc.functions = !{!0, !1, !2, !4, !5, !6, !7, !8}
 
 !0 = !{i8 (i8)* @f1, !3}
 !1 = !{i64 (i64)* @f2, !3}
@@ -141,3 +156,4 @@ attributes #1 = { nounwind readnone speculatable }
 !5 = !{i44 (i44)* @f5, !3}
 !6 = !{i9 (i9)* @f6, !3}
 !7 = !{i3 (i3)* @f7, !3}
+!8 = !{<1 x i8> (<1 x i8>)* @f8, !3}
