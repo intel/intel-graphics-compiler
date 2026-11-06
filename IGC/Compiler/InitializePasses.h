@@ -278,7 +278,6 @@ void initializeRegisterEstimatorPass(llvm::PassRegistry &);
 void initializeVariableReuseAnalysisPass(llvm::PassRegistry &);
 void initializeResourceLoopAnalysisPass(llvm::PassRegistry &);
 void initializeResourceLoopDecodeSinkPass(llvm::PassRegistry &);
-void initializeResourceLoopSamplerSelectPass(llvm::PassRegistry &);
 void initializeTranslationTablePass(llvm::PassRegistry &);
 void initializeTrivialUnnecessaryTGMFenceEliminationPass(llvm::PassRegistry &);
 void initializeSLMConstPropPass(llvm::PassRegistry &);

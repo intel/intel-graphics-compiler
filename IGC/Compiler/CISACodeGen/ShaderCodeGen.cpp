@@ -433,11 +433,6 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     mpm.add(new RegisterEstimator());
   }
 
-  // Merge if/else sample arms that differ only in the sampler, so the sink and ResourceLoopAnalysis see one send.
-  if (IGC_IS_FLAG_ENABLED(SelectResourceLoopSampler) && IGC_IS_FLAG_ENABLED(FuseResourceLoop)) {
-    mpm.add(createResourceLoopSamplerSelectPass());
-  }
-
   // Move the decode code of lane-varying sends below the last send of a run, before ResourceLoopAnalysis (scheduled by
   // EmitPass) looks at it.
   if (IGC_IS_FLAG_ENABLED(SinkResourceLoopDecode) && IGC_IS_FLAG_ENABLED(FuseResourceLoop)) {
