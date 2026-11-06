@@ -66,6 +66,7 @@ void initializeFixInvalidFuncNamePass(llvm::PassRegistry &);
 void initializePrintCodeGenContextPassPass(llvm::PassRegistry &);
 void initializeSerializePrintMetaDataPassPass(llvm::PassRegistry &);
 void initializeLSCCacheHintsPass(llvm::PassRegistry &);
+void initializeLongVectorsOptPass(llvm::PassRegistry &);
 } // namespace IGC
 
 void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
@@ -386,4 +387,5 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeSimpleAluVectorizerPass(Registry);
   initializeRedundantOpsCSEPassPass(Registry);
   initializeStateIndexAddrChainCanonicalizePass(Registry);
+  IGC::initializeLongVectorsOptPass(Registry);
 }

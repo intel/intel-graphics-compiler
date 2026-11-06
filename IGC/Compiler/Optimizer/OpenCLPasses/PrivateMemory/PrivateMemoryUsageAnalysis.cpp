@@ -10,7 +10,12 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/LongVectorsOpt.h"
 #include "Probe/Assertion.h"
+
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/InstIterator.h>
+#include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
 using namespace IGC;
@@ -80,6 +85,14 @@ bool PrivateMemoryUsageAnalysis::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUt
   return changed;
 }
 
+static bool hasLongVectorsOptCandidate(const Function &F) {
+  const DataLayout &DL = F.getParent()->getDataLayout();
+  auto IsCandidate = [&](Type *Ty) { return isLongVectorsOptCandidate(Ty, DL); };
+  if (IsCandidate(F.getReturnType()) || any_of(F.args(), [&](const Argument &A) { return IsCandidate(A.getType()); }))
+    return true;
+  return any_of(instructions(F), [&](const Instruction &I) { return IsCandidate(I.getType()); });
+}
+
 bool PrivateMemoryUsageAnalysis::runOnFunction(Function &F) {
   // Processing new function
   m_hasPrivateMem = false;
@@ -113,6 +126,12 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function &F) {
     if (pCtx->m_hasDPEmu || pCtx->m_hasDPConvEmu) {
       m_hasPrivateMem = true;
     }
+  }
+
+  // LongVectorsOpt runs after this analysis and may put long vectors in
+  // allocas it creates itself.
+  if (!m_hasPrivateMem && IGC_IS_FLAG_DISABLED(DisableLongVectorsOpt) && hasLongVectorsOptCandidate(F)) {
+    m_hasPrivateMem = true;
   }
 
   // Add private memory implicit arg

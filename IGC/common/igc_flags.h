@@ -1528,6 +1528,11 @@ DECLARE_IGC_REGKEY(bool, EnableGEPSimplificationFreshBases, true,
                    ALWAYS)
 DECLARE_IGC_REGKEY(bool, TestGEPSimplification, false,
                    "[Test] Testing GEP simplification without actually lowering GEP. Used in lit test", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, DisableLongVectorsOpt, false, "Disable long-vectors optimization pass", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(DWORD, LongVectorsOptThreshold, 128,
+                   "Specifies the threshold value in bytes for the vector to process."
+                   "Only vectors bigger than the threshold are processed.",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableSystemMemoryCachingInGPUForConstantBuffers, false,
                    "Disables caching system memory in GPU for loads from constant buffers", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableInsertingPairedResourcePointer, true,

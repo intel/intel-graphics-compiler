@@ -384,6 +384,7 @@ private:
   Instruction *widenSubDWordLoadToI32(Instruction *Inst);
   // Split load/store that cannot be re-layout or is too big.
   uint32_t getSplitByteSize(Instruction *I, WIAnalysisRunner &WI) const;
+  uint32_t getLSCUniformSplitByteSize(uint64_t Alignment) const;
   bool splitLoadStore(Instruction *Inst, V2SMap &vecToSubVec, WIAnalysisRunner &WI);
   bool splitLoad(AbstractLoadInst &LI, V2SMap &vecToSubVec, WIAnalysisRunner &WI);
   bool splitStore(AbstractStoreInst &SI, V2SMap &vecToSubVec, WIAnalysisRunner &WI);
@@ -636,6 +637,13 @@ void VectorPreProcess::createSplitMergeValues(Instruction *Inst, Value *OrigMerg
   NewMergeVals.push_back(NewMergeVal);
 }
 
+uint32_t VectorPreProcess::getLSCUniformSplitByteSize(uint64_t Alignment) const {
+  uint32_t bytes =
+      Alignment >= 8 ? (uint32_t)VPConst::LSC_D64_UNIFORM_SPLIT_SIZE : (uint32_t)VPConst::LSC_D32_UNIFORM_SPLIT_SIZE;
+  // 64 x D64 is 16 GRFs on platforms with 32-byte GRFs.
+  return std::min(bytes, m_CGCtx->platform.getMaxLSCBlockMsgSize());
+}
+
 uint32_t VectorPreProcess::getSplitByteSize(Instruction *I, WIAnalysisRunner &WI) const {
   uint32_t bytes = 0;
   std::optional<AbstractLoadInst> ALI = AbstractLoadInst::get(I, *m_DL);
@@ -646,10 +654,8 @@ uint32_t VectorPreProcess::getSplitByteSize(Instruction *I, WIAnalysisRunner &WI
     bytes = (uint32_t)VPConst::SPLIT_SIZE;
     if (WI.isUniform(ALI->getPointerOperand()) &&
         (m_CGCtx->platform.LSCEnabled() || IGC_GET_FLAG_VALUE(UniformMemOpt4OW))) {
-      if (ALI->getAlignment() >= 8)
-        bytes = (uint32_t)VPConst::LSC_D64_UNIFORM_SPLIT_SIZE;
-      else if (ALI->getAlignment() >= 4)
-        bytes = (uint32_t)VPConst::LSC_D32_UNIFORM_SPLIT_SIZE;
+      if (ALI->getAlignment() >= 4)
+        bytes = getLSCUniformSplitByteSize(ALI->getAlignment());
     }
   } else if (isa<StoreInst, PredicatedStoreIntrinsic>(I)) {
     IGC_ASSERT(ASI.has_value());
@@ -657,10 +663,8 @@ uint32_t VectorPreProcess::getSplitByteSize(Instruction *I, WIAnalysisRunner &WI
     Value *Addr = ASI->getPointerOperand();
     Value *Data = ASI->getValueOperand();
     if (m_CGCtx->platform.LSCEnabled() && WI.isUniform(Addr) && WI.isUniform(Data)) {
-      if (ASI->getAlignment() >= 8)
-        bytes = (uint32_t)VPConst::LSC_D64_UNIFORM_SPLIT_SIZE;
-      else if (ASI->getAlignment() >= 4)
-        bytes = (uint32_t)VPConst::LSC_D32_UNIFORM_SPLIT_SIZE;
+      if (ASI->getAlignment() >= 4)
+        bytes = getLSCUniformSplitByteSize(ASI->getAlignment());
     }
   } else if (isa<LdRawIntrinsic, StoreRawIntrinsic>(I)) {
     uint32_t alignment =
@@ -673,11 +677,8 @@ uint32_t VectorPreProcess::getSplitByteSize(Instruction *I, WIAnalysisRunner &WI
     bytes = (uint32_t)VPConst::RAW_SPLIT_SIZE;
     if (EmitPass::shouldGenerateLSCQuery(*m_CGCtx, I) == Tristate::True) {
       if (WI.isUniform(bufferAddr) && WI.isUniform(offset) && (data == nullptr || WI.isUniform(data))) {
-        if (alignment >= 8) {
-          bytes = (uint32_t)VPConst::LSC_D64_UNIFORM_SPLIT_SIZE;
-        } else if (alignment >= 4) {
-          bytes = (uint32_t)VPConst::LSC_D32_UNIFORM_SPLIT_SIZE;
-        }
+        if (alignment >= 4)
+          bytes = getLSCUniformSplitByteSize(alignment);
       } else {
         bytes = (uint32_t)VPConst::SPLIT_SIZE;
       }

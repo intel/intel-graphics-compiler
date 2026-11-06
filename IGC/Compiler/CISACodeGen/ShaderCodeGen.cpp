@@ -147,6 +147,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/DynamicTextureFolding.h"
 #include "Compiler/SampleMultiversioning.hpp"
+#include "Compiler/LongVectorsOpt.h"
 #include "Compiler/InitializePasses.h"
 #include "Compiler/GenRotate.hpp"
 #include "Compiler/Optimizer/Scalarizer.h"
@@ -1453,6 +1454,9 @@ void OptimizeIR(CodeGenContext *const pContext) {
       mpm.add(createSinkPointerConstAddPass());
     }
 
+    if (IGC_IS_FLAG_DISABLED(DisableLongVectorsOpt)) {
+      mpm.add(createLongVectorsOptPass());
+    }
        // Do inter-procedural constant propagation early.
     if (pContext->m_enableSubroutine) {
       // Here, we propagate function attributes across calls.  Remaining
