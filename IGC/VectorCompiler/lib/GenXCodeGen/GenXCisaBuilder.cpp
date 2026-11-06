@@ -2668,8 +2668,8 @@ static unsigned getResultedTypeSize(Type *Ty, const DataLayout &DL) {
       TySz += getResultedTypeSize(Ty, DL);
   } else if (Ty->isPointerTy())
     // FIXME: fix data layout description.
-    TySz =
-        vc::isFunctionPointerType(Ty) ? genx::DWordBytes : DL.getPointerSize();
+    TySz = vc::isFunctionPointerType(Ty) ? vc::getTypeSize(Ty, &DL).inBytes()
+                                         : DL.getPointerSize();
   else {
     TySz = Ty->getPrimitiveSizeInBits() / CHAR_BIT;
     IGC_ASSERT_MESSAGE(TySz, "Ty is not primitive?");

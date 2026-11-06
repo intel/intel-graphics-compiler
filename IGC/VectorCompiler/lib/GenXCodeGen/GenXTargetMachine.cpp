@@ -140,9 +140,15 @@ static cl::opt<unsigned> PeelLoopDpasNullAccMin(
              "accumulator operand to peel the loop with first iteration"));
 
 // There's another copy of DL string in clang/lib/Basic/Targets.cpp
-static std::string getDL(bool Is64Bit) {
-  return Is64Bit ? "e-p:64:64-p3:32:32-p6:32:32-i64:64-n8:16:32:64"
-                 : "e-p:32:32-p3:32:32-p6:32:32-i64:64-n8:16:32:64";
+static std::string getDL(const Triple &TT, StringRef CPU, StringRef FS,
+                         bool Is64Bit) {
+  std::string DL = Is64Bit ? "e-p:64:64-p3:32:32-p6:32:32-i64:64-n8:16:32:64"
+                           : "e-p:32:32-p3:32:32-p6:32:32-i64:64-n8:16:32:64";
+  // Function pointers are 64-bit with efficient 64-bit addressing, see
+  // vc::getTypeSize.
+  if (Is64Bit && GenXSubtarget(TT, CPU.str(), FS.str()).hasEfficient64b())
+    DL += "-p9:64:64";
+  return DL;
 }
 
 namespace {
@@ -434,7 +440,7 @@ GenXTargetMachine::GenXTargetMachine(const Target &T, const Triple &TT,
                                      IGCLLVM::CodeGenOptLevel OL, bool Is64Bit,
                                      std::unique_ptr<GenXBackendConfig> BC)
     : IGCLLVM::LLVMTargetMachine(
-          T, getDL(Is64Bit), TT, CPU, FS, Options,
+          T, getDL(TT, CPU, FS, Is64Bit), TT, CPU, FS, Options,
           RM ? IGCLLVM::getValue(RM) : Reloc::Model::Static,
           CM ? IGCLLVM::getValue(CM) : CodeModel::Model::Small, OL),
       TLOF(createTLOF(getTargetTriple())), BC(std::move(BC)), Is64Bit(Is64Bit),

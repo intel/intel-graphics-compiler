@@ -962,8 +962,8 @@ TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed,
     IGC_ASSERT(BytesPerElement == QWordBytes);
     VisaType = ISA_TYPE_DF;
   } else if (auto *PtrTy = dyn_cast<PointerType>(ElementTy)) {
-    BytesPerElement = DL.getPointerTypeSize(PtrTy);
-    if (BytesPerElement == DWordBytes || vc::isFunctionPointerType(PtrTy))
+    BytesPerElement = vc::getTypeSize(PtrTy, &DL).inBytes();
+    if (BytesPerElement == DWordBytes)
       VisaType = ISA_TYPE_UD;
     else if (BytesPerElement == QWordBytes)
       VisaType = ISA_TYPE_UQ;

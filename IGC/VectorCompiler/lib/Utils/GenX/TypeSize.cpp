@@ -9,14 +9,26 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/General/Types.h"
 #include "vc/Utils/GenX/TypeSize.h"
 #include "llvmWrapper/IR/Type.h"
+#include "llvm/IR/DataLayout.h"
+
+#include <string>
+
+// The data layout specifies the function pointer size only for targets where
+// function pointers are not 32-bit.
+static bool hasFunctionPointerSpec(const llvm::DataLayout &DL) {
+  static const std::string Spec =
+      "-p" + std::to_string(vc::AddrSpace::CodeSectionINTEL) + ":";
+  return DL.getStringRepresentation().find(Spec) != std::string::npos;
+}
 
 vc::TypeSizeWrapper vc::getTypeSize(llvm::Type *Ty,
                                     const llvm::DataLayout *DL) {
   IGC_ASSERT(Ty && Ty->isSized());
   // FIXME: it's better to use DataLayout to get function pointers type size, so
   // we should remove it when such pointers will be in separate address space.
-  // Size of function pointers is always 32 bit.
-  if (vc::isFunctionPointerType(Ty->getScalarType())) {
+  // Size of function pointers is 32 bit unless DataLayout specifies it.
+  if (vc::isFunctionPointerType(Ty->getScalarType()) &&
+      !(DL && hasFunctionPointerSpec(*DL))) {
     auto NumElements =
         llvm::isa<IGCLLVM::FixedVectorType>(Ty)
             ? llvm::cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements()
