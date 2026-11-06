@@ -7217,8 +7217,9 @@ void HWConformity::fixSrcRegion(G4_INST *inst) {
         if (srcRegion->isRegionWH() &&
             srcRegion->width == inst->getExecSize()) {
           // r[a0.0]<E, S> -> r[a0.0]<S;1,0>
-          src->setRegion(builder,
-                         builder.createRegionDesc(srcRegion->horzStride, 1, 0));
+          // If ExecSize = Width = 1, VertStride must be 0 (scalar).
+          uint16_t newVs = inst->getExecSize() == 1 ? 0 : srcRegion->horzStride;
+          src->setRegion(builder, builder.createRegionDesc(newVs, 1, 0));
         }
         // ToDo: add other legalization
         continue;
