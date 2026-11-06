@@ -2123,7 +2123,7 @@ template <typename RTStack2T> struct RTStack2OwnedRanges<RTStack2T, std::void_t<
 };
 } // namespace
 
-void RTBuilder::createRTStack2Copy(Value *Dst, Value *Src, uint32_t Align) {
+void RTBuilder::createRTStack2Copy(Value *Dst, uint64_t DstAlign, Value *Src, uint64_t SrcAlign) {
   SmallVector<std::pair<uint32_t, uint32_t>, 2> Ranges;
   switch (getMemoryStyle()) {
 #define STYLE(X)                                                                                                       \
@@ -2142,10 +2142,10 @@ void RTBuilder::createRTStack2Copy(Value *Dst, Value *Src, uint32_t Align) {
     return this->CreateInBoundsGEP(this->getInt8Ty(), Ptr, this->getInt64(Offset));
   };
   for (auto [Offset, Size] : Ranges) {
-    IGC_ASSERT(Offset % Align == 0);
+    IGC_ASSERT(Offset % DstAlign == 0 && Offset % SrcAlign == 0);
     Value *DstRange = byteOffset(Dst, Offset);
     Value *SrcRange = byteOffset(Src, Offset);
-    this->CreateMemCpy(DstRange, SrcRange, this->getInt64(Size), Align);
+    this->CreateMemCpy(DstRange, DstAlign, SrcRange, SrcAlign, this->getInt64(Size));
   }
 }
 

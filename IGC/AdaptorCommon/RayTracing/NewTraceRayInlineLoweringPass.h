@@ -184,7 +184,8 @@ private:
         else
           IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(key.first));
 
-        IRB.createRTStack2Copy(SMStack, getStackPtr(IRB, rqObject), RayDispatchGlobalData::StackChunkSize);
+        IRB.createRTStack2Copy(SMStack, SMStack->getAlign().value(), getStackPtr(IRB, rqObject),
+                               RayDispatchGlobalData::StackChunkSize);
         m_CrossBlockVectorizationStacks[key] = SMStack;
       }
 

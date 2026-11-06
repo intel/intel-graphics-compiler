@@ -437,7 +437,7 @@ public:
   Type *getRTStack2Ty() const;
   // Copies the bytes of a getRTStack2Ty() object that belong to its stack id. The strided memory
   // styles interleave three other ids' live stacks in the struct's `pad`, which is skipped.
-  void createRTStack2Copy(Value *Dst, Value *Src, uint32_t Align);
+  void createRTStack2Copy(Value *Dst, uint64_t DstAlign, Value *Src, uint64_t SrcAlign);
   Type *getRTStack2PtrTy(bool async = true) const;
   Type *getRTStack2PtrTy(RTMemoryAccessMode Mode, bool async = true) const;
   Type *getRayDispatchGlobalDataPtrTy(Module &M, IGC::ADDRESS_SPACE Addrspace);
