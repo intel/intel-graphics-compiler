@@ -470,7 +470,7 @@ std::vector<G4_BB *> &Loop::getLoopExits() {
   return loopExits;
 }
 
-G4_BB *LoopDetection::getPreheader(Loop *loop) {
+G4_BB *LoopDetection::getPreheader(Loop *loop, bool CreateMissing) {
   if (loop->preHeader)
     return loop->preHeader;
 
@@ -508,6 +508,9 @@ G4_BB *LoopDetection::getPreheader(Loop *loop) {
     loop->preHeader = enteringNode;
     return enteringNode;
   }
+
+  if (!CreateMissing)
+    return nullptr;
 
   // a valid pre-header wasnt found, so create one and return it
   // unless any pred uses SIMD CF to loop header
@@ -601,11 +604,11 @@ Loop *LoopDetection::getOuterMostLoop(const G4_BB *bb) {
   return L;
 }
 
-void LoopDetection::computePreheaders() {
+void LoopDetection::computePreheaders(bool CreateMissing) {
   recomputeIfStale();
 
   for (auto &loop : allLoops) {
-    (void)getPreheader(&loop);
+    (void)getPreheader(&loop, CreateMissing);
   }
 }
 
