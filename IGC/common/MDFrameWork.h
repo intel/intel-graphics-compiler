@@ -471,6 +471,7 @@ enum class ShaderTypeMD
         unsigned VISAPreSchedRPThreshold                     = 0;
         unsigned VISAPreSchedCtrl                            = 0;
         unsigned SetLoopUnrollThreshold                      = 0;
+        unsigned SetLoopUnrollCount                          = 0;
         bool UnsafeMathOptimizations                         = false;
         bool disableCustomUnsafeOpts                         = false;
         bool disableReducePow                                = false;
@@ -605,6 +606,7 @@ enum class ShaderTypeMD
         unsigned int VISAPreSchedCtrl = 0; // 0 means use the default
         unsigned int VISAPreSchedScheduleExtraGRF = 0; // additional GRF for latency scheduling
         unsigned int SetLoopUnrollThreshold = 0; // 0 means use the default
+        unsigned int SetLoopUnrollCount = 0; // 0 means use the default
         bool forceSpillCompression = false;
         bool allowLowerSimd = false;
         bool disableSimd32Slicing = false;
