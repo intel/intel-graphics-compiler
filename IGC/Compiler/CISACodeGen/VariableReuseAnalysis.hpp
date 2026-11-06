@@ -330,6 +330,7 @@ public:
   SSubVecDesc *getOrCreateSubVecDesc(llvm::Value *V);
   SBaseVecDesc *getOrCreateBaseVecDesc(llvm::Value *V, e_alignment A);
   void getAllAliasVals(ValueVectorTy &AliasVals, llvm::Value *Aliaser, llvm::Value *VecAliasee, int Idx);
+  bool hasMultiValuedAliasVal(llvm::Value *Aliaser, llvm::Value *VecAliasee, int Idx);
 
   // No need to emit code for instructions in this map due to aliasing
   llvm::DenseMap<llvm::Instruction *, int> m_HasBecomeNoopInsts;

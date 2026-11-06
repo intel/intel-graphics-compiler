@@ -650,6 +650,18 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst &I) {
     // and liveness of each extracts.
     if (isLoopCarried(EEI_nv))
       return;
+  } else if (hasMultiValuedAliasVal(EEI_nv, vec_nv, iIdx) && aliasInterfere(EEI_nv, vec_nv, iIdx)) {
+    // EEI and vecVal are single-valued, so they hold the same value and do
+    // not need an interference check. But a value aliased earlier to the same
+    // elements of vecVal may not be single-valued: another value in its DeSSA
+    // congruent class can write those registers while EEI is live. In this
+    // case, check interference. For example, if a is aliased to v[0] first:
+    //   then: a = extractelement v, 0    ; {a, x, r} is one DCC, so all in v[0]
+    //   else: e = extractelement v, 0    ; if e is aliased to v[0] too,
+    //         x = mul e, 3               ; x overwrites e here,
+    //         store e                    ; but e is still used here
+    //   exit: r = phi [a, then], [x, else]
+    return;
   }
 
   // EEI's offset in vecVal must meet the alignment required by EEI and the
@@ -1489,26 +1501,58 @@ bool VariableReuseAnalysis::processInsertTo(BasicBlock *BB, VecInsEltInfoTy &All
   return hasAlias;
 }
 
-// Return all aliased values of VecAliasee, given the alias:
-//           Aliaser->(VecAliasee, Idx)
+// Return all values that would share registers with Aliaser if Aliaser were
+// aliased to (made a sub-vector of) VecAliasee starting at index Idx:
+//   - VecAliasee itself, and
+//   - the aliasers of VecAliasee's base vector that overlap Aliaser's elements.
+// VecAliasee can be:
+//   - an aliaser (a sub-vector of another base vector). Its base is that
+//     vector, and Idx is moved by VecAliasee's offset in it; or
+//   - a base vector that already has aliasers. Its base is VecAliasee.
+// Otherwise, only VecAliasee is returned.
 void VariableReuseAnalysis::getAllAliasVals(ValueVectorTy &AliasVals, Value *Aliaser, Value *VecAliasee, int Idx) {
   AliasVals.clear();
-  auto II = m_aliasMap.find(VecAliasee);
   AliasVals.push_back(VecAliasee);
-  if (II != m_aliasMap.end()) {
+
+  SBaseVecDesc *baseV = nullptr;
+  if (auto II = m_aliasMap.find(VecAliasee); II != m_aliasMap.end()) {
     SSubVecDesc *aliaseeSV = II->second;
-    SBaseVecDesc *baseV = aliaseeSV->Aliasee;
-    int nelts = getNumElts(Aliaser);
-    int Idx_end = Idx + nelts - 1;
-    for (int i = 0, sz = (int)(baseV->Aliasers.size()); i < sz; ++i) {
-      SSubVecDesc *SV = baseV->Aliasers[i];
-      int start = SV->StartElementOffset;
-      int end = start + SV->NumElts - 1;
-      if ((start > Idx_end) || (end < Idx))
-        continue;
-      AliasVals.push_back(SV->Aliaser);
-    }
+    baseV = aliaseeSV->Aliasee;
+    // Idx is relative to VecAliasee; aliasers' offsets are relative to baseV.
+    Idx += aliaseeSV->StartElementOffset;
+  } else if (auto BI = m_baseVecMap.find(VecAliasee); BI != m_baseVecMap.end()) {
+    baseV = BI->second;
   }
+  if (!baseV)
+    return;
+
+  int nelts = getNumElts(Aliaser);
+  int Idx_end = Idx + nelts - 1;
+  for (SSubVecDesc *SV : baseV->Aliasers) {
+    // An aliaser VecAliasee is in baseV->Aliasers too; it is already added.
+    if (SV->Aliaser == VecAliasee)
+      continue;
+    int start = SV->StartElementOffset;
+    int end = start + SV->NumElts - 1;
+    if ((start > Idx_end) || (end < Idx))
+      continue;
+    AliasVals.push_back(SV->Aliaser);
+  }
+}
+
+// Return true if any value that would share registers with Aliaser if Aliaser
+// were aliased to (made a sub-vector of) VecAliasee starting at index Idx is
+// not single-valued (it is in a DeSSA congruent class). A value that is not
+// single-valued can write the shared registers while Aliaser is live, so such
+// an alias needs an interference check.
+bool VariableReuseAnalysis::hasMultiValuedAliasVal(Value *Aliaser, Value *VecAliasee, int Idx) {
+  ValueVectorTy AliasVals;
+  getAllAliasVals(AliasVals, Aliaser, VecAliasee, Idx);
+  for (Value *V : AliasVals) {
+    if (!m_DeSSA->isSingleValued(V))
+      return true;
+  }
+  return false;
 }
 
 // Return true if V's DCC has a phi in a loop header. If V is aliased to a
