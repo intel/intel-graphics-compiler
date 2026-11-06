@@ -604,16 +604,7 @@ void TransposeHelper::handleStoreInst(StoreInst *Store,
       ScalarizedIdx = IRB.CreateZExtOrTrunc(
           ScalarizedIdx, Type::getInt16Ty(Store->getContext()));
     }
-    if (auto *ConstIdx = dyn_cast<Constant>(ScalarizedIdx))
-      R.Indirect = llvm::ConstantFoldBinaryOpOperands(
-          Instruction::Mul, ConstIdx,
-          ConstantInt::get(
-              IRB.getInt16Ty(),
-              DL->getTypeSizeInBits(NewStoreVal->getType()->getScalarType()) /
-                  genx::ByteBits),
-          *DL);
-    else
-      R.Indirect = ScalarizedIdx;
+    R.Indirect = ScalarizedIdx;
     WriteOut =
         R.createWrRegion(WriteOut, NewStoreVal, Store->getName() + ".promoted",
                          Store, Store->getDebugLoc());
