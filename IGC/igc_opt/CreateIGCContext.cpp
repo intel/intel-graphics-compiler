@@ -38,6 +38,11 @@ static cl::opt<bool> HasEmu64BitInsts("has-emulated-64-bit-insts",
                                       cl::desc("Set info about containing emulated 64 bit insts."), cl::init(false),
                                       cl::Hidden);
 
+static cl::opt<bool> EnableSubroutine("enable-subroutine",
+                                      cl::desc("Set CodeGenContext::m_enableSubroutine, as done for modules "
+                                               "with user functions in the regular compilation flow."),
+                                      cl::init(false), cl::Hidden);
+
 static cl::opt<ShaderType>
     ShaderTypeOption(cl::desc("Specify the type of shader being compiled:"),
                      cl::values(clEnumValN(ShaderType::VERTEX_SHADER, "inputvs", "Vertex Shader"),
@@ -183,6 +188,9 @@ IGC::CodeGenContext *CreateCodeGenContext() {
 
   if (pCtx && HasEmu64BitInsts)
     pCtx->m_hasEmu64BitInsts = true;
+
+  if (pCtx && EnableSubroutine)
+    pCtx->m_enableSubroutine = true;
 
   return pCtx;
 }

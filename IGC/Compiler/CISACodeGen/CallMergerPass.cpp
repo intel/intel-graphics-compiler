@@ -89,6 +89,31 @@ void mergeCalls(Function *F, CallInst *call1, CallInst *call2) {
     PN->addIncoming(arg2, parentBB2);
     args.push_back(PN);
   }
+
+  // Both call blocks are about to branch to newBB instead of successorBB, so
+  // PHIs in successorBB have to take their incoming values through newBB.
+  SmallVector<PHINode *> EraseList;
+  for (PHINode &SuccPN : successorBB->phis()) {
+    Value *Val1 = SuccPN.getIncomingValueForBlock(parentBB1);
+    Value *Val2 = SuccPN.getIncomingValueForBlock(parentBB2);
+    Value *NewVal = Val1;
+    if (Val1 != Val2) {
+      auto *PN = Builder.CreatePHI(SuccPN.getType(), 2);
+      PN->addIncoming(Val1, parentBB1);
+      PN->addIncoming(Val2, parentBB2);
+      NewVal = PN;
+    }
+    SuccPN.removeIncomingValue(parentBB1, /*DeletePHIIfEmpty=*/false);
+    SuccPN.removeIncomingValue(parentBB2, /*DeletePHIIfEmpty=*/false);
+    if (SuccPN.getNumIncomingValues() == 0) {
+      EraseList.push_back(&SuccPN);
+      SuccPN.replaceAllUsesWith(NewVal);
+    } else {
+      SuccPN.addIncoming(NewVal, newBB);
+    }
+  }
+  llvm::for_each(EraseList, [](PHINode *PN) { PN->eraseFromParent(); });
+
   auto *newCall = Builder.CreateCall(call1->getCalledFunction(), args);
   newCall->setCallingConv(call1->getCallingConv());
   newCall->setAttributes(call1->getAttributes());
@@ -109,6 +134,8 @@ void mergeCalls(Function *F, CallInst *call1, CallInst *call2) {
   call2->eraseFromParent();
 }
 
+bool haveSameParent(CallInst *call1, CallInst *call2) { return call1->getParent() == call2->getParent(); }
+
 bool haveSingleCommonSuccessor(CallInst *call1, CallInst *call2) {
   auto *successor1 = call1->getParent()->getSingleSuccessor();
   auto *successor2 = call2->getParent()->getSingleSuccessor();
@@ -116,18 +143,6 @@ bool haveSingleCommonSuccessor(CallInst *call1, CallInst *call2) {
     return false;
   }
   return true;
-}
-
-bool isAfterInstInBB(Instruction *inst1, Instruction *inst2) {
-  for (auto &I : *inst1->getParent()) {
-    if (&I == inst1) {
-      return false;
-    }
-    if (&I == inst2) {
-      return true;
-    }
-  }
-  return false;
 }
 
 bool hasUsesInCurrentBB(CallInst *call) {
@@ -152,7 +167,7 @@ bool hasUsesInCurrentBB(CallInst *call) {
         if (userI == call || userI->getParent() != currentBB) {
           continue;
         }
-        if (isAfterInstInBB(call, userI)) {
+        if (userI->comesBefore(call)) {
           continue;
         }
         return true;
@@ -182,6 +197,18 @@ bool hasSameUsesAs(CallInst *call1, CallInst *call2) {
   return true;
 }
 
+bool hasSideEffectsAfterCall(CallInst *call) {
+  auto *CurrentBB = call->getParent();
+  auto It = call->getIterator();
+  for (++It; It != CurrentBB->end(); ++It) {
+    llvm::Instruction &NextInst = *It;
+    if (NextInst.mayReadOrWriteMemory() || NextInst.mayHaveSideEffects()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void filterCallSites(CallSiteMap &callSites, EstimateFunctionSize *EFS) {
   SmallVector<Function *, 4> elementsToErase;
   size_t PerFuncThreshold = IGC_GET_FLAG_VALUE(SubroutineInlinerThreshold);
@@ -207,8 +234,9 @@ void filterCallSites(CallSiteMap &callSites, EstimateFunctionSize *EFS) {
 
     // We can merge calls with common successor, without result or args having uses in
     // call block. We also only merge function calls with same use list.
-    if (!haveSingleCommonSuccessor(callInsts[0], callInsts[1]) || hasUsesInCurrentBB(callInsts[0]) ||
-        hasUsesInCurrentBB(callInsts[1]) || !hasSameUsesAs(callInsts[0], callInsts[1])) {
+    if (!haveSingleCommonSuccessor(callInsts[0], callInsts[1]) || haveSameParent(callInsts[0], callInsts[1]) ||
+        hasUsesInCurrentBB(callInsts[0]) || hasUsesInCurrentBB(callInsts[1]) || hasSideEffectsAfterCall(callInsts[0]) ||
+        hasSideEffectsAfterCall(callInsts[1]) || !hasSameUsesAs(callInsts[0], callInsts[1])) {
       elementsToErase.push_back(calledFunc);
       continue;
     }
@@ -238,6 +266,10 @@ bool CallMerger::runOnFunction(Function &F) {
   }
 
   for (auto &[calledFunc, callInsts] : callSites) {
+    // Verify that previous merging didn't invalidate the conditions for merging.
+    if (!haveSingleCommonSuccessor(callInsts[0], callInsts[1])) {
+      continue;
+    }
     mergeCalls(&F, callInsts[0], callInsts[1]);
   }
 
