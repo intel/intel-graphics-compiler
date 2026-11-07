@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include <charconv>
 #include <limits>
 #include <string_view>
+#include <utility>
 
 namespace {
 enum class UmdRegkeyType { Bool, Int, Uint, Enum, Bitmask, String };
@@ -117,8 +118,15 @@ bool isAllowedEnumValue(std::string_view allowedValues, int32_t value) {
   return false;
 }
 
-bool parseUmdRegkeyValue(std::string_view text, const UmdRegkeyDescriptor &descriptor, uint32_t &value) {
-  if (text.empty() || descriptor.type == UmdRegkeyType::String)
+bool parseUmdRegkeyValue(std::string_view text, const UmdRegkeyDescriptor &descriptor, IGC::UmdRegkeyValue &value) {
+  if (descriptor.type == UmdRegkeyType::String) {
+    if (text.size() >= sizeof(debugString) || text.find('\0') != std::string_view::npos)
+      return false;
+    value = std::string(text);
+    return true;
+  }
+
+  if (text.empty())
     return false;
 
   if (descriptor.type == UmdRegkeyType::Int || descriptor.type == UmdRegkeyType::Enum) {
@@ -171,9 +179,9 @@ UmdRegkeyMap ParseUmdRegkeys(const char *options, size_t size) {
     if (!descriptor)
       continue;
 
-    uint32_t value = 0;
+    UmdRegkeyValue value;
     if (parseUmdRegkeyValue(text, *descriptor, value))
-      parsedOptions[std::string(name)] = value;
+      parsedOptions[std::string(name)] = std::move(value);
   }
   return parsedOptions;
 }
@@ -223,7 +231,6 @@ const UmdRegkeyMap *GetCurrentUmdRegkeys() { return CurrentUmdRegkeys; }
 #include <sstream>
 #include <string_view>
 #include <string>
-#include <utility>
 #include <vector>
 #include "Probe/Assertion.h"
 

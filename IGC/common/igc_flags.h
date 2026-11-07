@@ -141,12 +141,12 @@ DECLARE_IGC_REGKEY(DWORD, DpasSrc1RSBufferSize, 0,
                    "Override the dpas src1 read suppression buffer size, in bytes. 0 keeps the platform value", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, DisableMixMode, 0, "Disables mix mode in vISA BE.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, DisableHFMath, 0, "Disables HF math instructions.", DEBUG_ONLY)
-DECLARE_IGC_REGKEY(debugString, VISAOptions, 0, "Options to vISA. Space-separated options.", ALWAYS)
+DECLARE_IGC_REGKEY_UMD(debugString, VISAOptions, 0, "Options to vISA. Space-separated options.", ALWAYS)
 DECLARE_IGC_REGKEY(DWORD, disableIGASyntax, false, "Disables GEN isa text output using IGA and new syntax.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, disableCompaction, false, "Disables compaction.", ALWAYS)
-DECLARE_IGC_REGKEY(DWORD, TotalGRFNum, 0, "Total GRF setting for both IGC-LLVM and vISA", ALWAYS)
-DECLARE_IGC_REGKEY(DWORD, TotalGRFNum4CS, 0,
-                   "Total GRF setting for both IGC-LLVM and vISA, for ComputeShader-only experiment.", DEBUG_ONLY)
+DECLARE_IGC_REGKEY_UMD(DWORD, TotalGRFNum, 0, "Total GRF setting for both IGC-LLVM and vISA", ALWAYS)
+DECLARE_IGC_REGKEY_UMD(DWORD, TotalGRFNum4CS, 0,
+                       "Total GRF setting for both IGC-LLVM and vISA, for ComputeShader-only experiment.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, ReservedRegisterNum, 0, "Reserve register number for spill cost testing.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, ExpandPlane, false, "Enable pln to mad macro expansion.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableGatherRSFusionSyncWA, false,
