@@ -1743,6 +1743,21 @@ SpillManagerGRF::createSpillSendMsgDescOWord(const IR_Builder &builder,
   return std::make_tuple(message, execSize);
 }
 
+unsigned SpillManagerGRF::getScratchHWordOffset(G4_RegVar *base,
+                                               unsigned regOff) {
+  int offset = getDisp(base);
+  getSpillOffset(offset);
+  return (offset + regOff * builder_->getGRFSize()) >>
+         SCRATCH_SPACE_ADDRESS_UNIT;
+}
+
+template <class REGION_TYPE>
+unsigned SpillManagerGRF::getScratchHWordOffset(REGION_TYPE *region) {
+  int offset = getRegionDisp(region);
+  getSpillOffset(offset);
+  return offset >> SCRATCH_SPACE_ADDRESS_UNIT;
+}
+
 // Create the message descriptor for a spill send instruction for spilled
 // post destinations of send instructions.
 G4_Imm *SpillManagerGRF::createSpillSendMsgDesc(unsigned regOff,
@@ -2085,8 +2100,8 @@ G4_INST *SpillManagerGRF::createSpillSendInstr(G4_Declare *spillRangeDcl,
     messageDescImm = createSpillSendMsgDesc(spillOff, height, execSize,
                                             rvar->getBaseRegVar());
 #ifdef _DEBUG
-    int offset =
-        (messageDescImm->getInt() & 0xFFF) * builder_->numEltPerGRF<Type_UB>();
+    int offset = getScratchHWordOffset(rvar->getBaseRegVar(), spillOff) *
+                 builder_->numEltPerGRF<Type_UB>();
     vISA_ASSERT(offset >= globalScratchOffset, "incorrect offset");
 #endif
   } else {
@@ -2104,9 +2119,11 @@ G4_INST *SpillManagerGRF::createSpillSendInstr(G4_Declare *spillRangeDcl,
 
     auto off = G4_SpillIntrinsic::InvalidOffset;
     G4_Declare *fp = nullptr;
-    if (useScratchMsg_)
-      off = (messageDescImm->getInt() & 0xfff);
-    else {
+    if (useScratchMsg_) {
+      G4_RegVar *r = spillRangeDcl->getRegVar();
+      G4_RegVarTmp *rvar = static_cast<G4_RegVarTmp *>(r);
+      off = getScratchHWordOffset(rvar->getBaseRegVar(), spillOff);
+    } else {
       if (builder_->usesStack()) {
         G4_RegVar *r = spillRangeDcl->getRegVar();
         G4_RegVarTmp *rvar = static_cast<G4_RegVarTmp *>(r);
@@ -2160,10 +2177,9 @@ SpillManagerGRF::createSpillSendInstr(G4_Declare *spillRangeDcl,
     G4_Declare *fp = nullptr;
     auto spillExecSize = execSize;
     if (useScratchMsg_) {
-      auto [messageDescImm, retSize] =
-          createSpillSendMsgDesc(spilledRangeRegion, execSize);
-      spillExecSize = retSize;
-      off = (messageDescImm->getInt() & 0xfff);
+      spillExecSize =
+          std::get<1>(createSpillSendMsgDesc(spilledRangeRegion, execSize));
+      off = getScratchHWordOffset(spilledRangeRegion);
     } else {
       if (builder_->usesStack()) {
         G4_RegVar *r = spillRangeDcl->getRegVar();
@@ -2319,8 +2335,8 @@ G4_INST *SpillManagerGRF::createFillSendInstr(G4_Declare *fillRangeDcl,
     messageDescImm = createFillSendMsgDesc(spillOff, height, execSize,
                                            rvar->getBaseRegVar());
 #ifdef _DEBUG
-    int offset =
-        (messageDescImm->getInt() & 0xFFF) * builder_->numEltPerGRF<Type_UB>();
+    int offset = getScratchHWordOffset(rvar->getBaseRegVar(), spillOff) *
+                 builder_->numEltPerGRF<Type_UB>();
     vISA_ASSERT(offset >= globalScratchOffset, "incorrect offset");
 #endif
   } else {
@@ -2335,9 +2351,11 @@ G4_INST *SpillManagerGRF::createFillSendInstr(G4_Declare *fillRangeDcl,
 
   unsigned int off = G4_FillIntrinsic::InvalidOffset;
   G4_Declare *fp = nullptr;
-  if (useScratchMsg_)
-    off = (messageDescImm->getInt() & 0xfff);
-  else {
+  if (useScratchMsg_) {
+    G4_RegVar *r = fillRangeDcl->getRegVar();
+    G4_RegVarTmp *rvar = static_cast<G4_RegVarTmp *>(r);
+    off = getScratchHWordOffset(rvar->getBaseRegVar(), spillOff);
+  } else {
     if (builder_->usesStack()) {
       // compute hword offset to emit later when expanding spill/fill intrinsic
       G4_RegVar *r = fillRangeDcl->getRegVar();
@@ -2382,10 +2400,7 @@ G4_INST *SpillManagerGRF::createFillSendInstr(
   unsigned segmentByteSize = getSegmentByteSize(filledRangeRegion, oldExecSize);
   G4_Declare *fp = nullptr;
   if (useScratchMsg_) {
-    G4_Imm *messageDescImm =
-        createFillSendMsgDesc(filledRangeRegion, oldExecSize);
-
-    off = (messageDescImm->getInt() & 0xfff);
+    off = getScratchHWordOffset(filledRangeRegion);
     if (filledRangeRegion->crossGRF(*builder_)) {
       segmentByteSize = 2 * builder_->numEltPerGRF<Type_UB>();
     }
@@ -2910,10 +2925,12 @@ bool SpillManagerGRF::usesOWOrLSC(G4_DstRegRegion *spilledRegion) {
   // * platform supports LSC and/or OW
   // * but we favor HW scratch, offset permitting
   //
-  // If offset exceeds encoding limit, we emit OW/LSC instead.
+  // If offset exceeds encoding limit, we emit OW/LSC instead, except for HW
+  // scratch without LSC, see GlobalRA::expandSpillNonStackcall.
   int spillOffset = (int)getSegmentDisp(spilledRegion, inst->getExecSize());
   getSpillOffset(spillOffset);
-  return spillOffset >= SCRATCH_MSG_LIMIT;
+  return spillOffset >= SCRATCH_MSG_LIMIT &&
+         (!useScratchMsg_ || gra.useLscForSpillFill);
 }
 
 // Create the code to create the spill range and save it to spill memory.
@@ -5422,6 +5439,40 @@ void GlobalRA::insertSlot1HwordR0Reset(G4_BB *bb, INST_LIST_ITER &instIt) {
   }
 }
 
+// HWord scratch messages encode a 12-bit offset relative to the scratch base
+// in r0.5, so they can only start in the first SCRATCH_MSG_LIMIT bytes past
+// it. Messages starting further away move r0.5 to the window they start in
+// for their duration. The r0.5 writes also order them against all other scratch
+// messages, whose descriptor offsets the scheduler compares to find memory
+// dependences.
+static constexpr uint32_t HWordScratchWindow =
+    SCRATCH_MSG_LIMIT / HWORD_BYTE_SIZE;
+
+// Insert
+//   (W)    add (1|M0)    r0.5:ud    r0.5:ud    bytes:d
+// before instIt to move the scratch base, and return its position.
+INST_LIST_ITER GlobalRA::insertScratchBaseAdd(G4_BB *bb, INST_LIST_ITER instIt,
+                                              int bytes) {
+  auto &builder = kernel.fg.builder;
+  vISA_ASSERT(!builder->hasScratchSurface(),
+              "r0.5 doesn't hold a scratch address on this platform");
+  G4_DstRegRegion *r0_5Dst = builder->createDst(
+      builder->getBuiltinR0()->getRegVar(), 0, 5, 1, Type_UD);
+  G4_Imm *addImm = builder->createImm(bytes, Type_D);
+  G4_SrcRegRegion *r0_5Src =
+      builder->createSrc(builder->getBuiltinR0()->getRegVar(), 0, 5,
+                         builder->getRegionScalar(), Type_UD);
+  G4_InstOption options =
+      bb->isAllLaneActive() ? InstOpt_NoOpt : InstOpt_WriteEnable;
+  G4_INST *addInst = builder->createBinOp(G4_opcode::G4_add, g4::SIMD1,
+                                          r0_5Dst, r0_5Src, addImm, options,
+                                          false);
+  if (EUFusionNoMaskWANeeded() && options & InstOpt_WriteEnable) {
+    addEUFusionNoMaskWAInst(bb, addInst);
+  }
+  return bb->insertBefore(instIt, addInst);
+}
+
 void GlobalRA::expandSpillNonStackcall(uint32_t numRows, uint32_t offset,
                                        short rowOffset, G4_SrcRegRegion *header,
                                        G4_SrcRegRegion *payload, G4_BB *bb,
@@ -5477,16 +5528,18 @@ void GlobalRA::expandSpillNonStackcall(uint32_t numRows, uint32_t offset,
 
       auto region = builder->getRegionStride1();
 
-      uint32_t spillMsgDesc =
-          computeSpillMsgDesc(getPayloadSizeGRF(numRows), offset, *builder);
-      auto msgDesc = builder->createWriteMsgDesc(SFID::DP_DC0, spillMsgDesc,
-                                                 getPayloadSizeGRF(numRows));
+      uint32_t rows = getPayloadSizeGRF(numRows);
+      uint32_t window = offset / HWordScratchWindow;
+      uint32_t spillMsgDesc = computeSpillMsgDesc(
+          rows, offset % HWordScratchWindow, *builder);
+      auto msgDesc =
+          builder->createWriteMsgDesc(SFID::DP_DC0, spillMsgDesc, rows);
       G4_Imm *msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
 
       G4_SrcRegRegion *headerOpnd =
           builder->createSrcRegRegion(builder->getBuiltinR0(), region);
       G4_Imm *extDesc = builder->createImm(msgDesc->getExtendedDesc(), Type_UD);
-      G4_ExecSize execSize = numRows > 1 ? g4::SIMD16 : g4::SIMD8;
+      G4_ExecSize execSize = rows > 1 ? g4::SIMD16 : g4::SIMD8;
 
       auto sendInst = builder->createInternalSplitSendInst(
           execSize, inst->getDst(), headerOpnd, payloadToUse, msgDescImm,
@@ -5504,9 +5557,16 @@ void GlobalRA::expandSpillNonStackcall(uint32_t numRows, uint32_t offset,
         addEUFusionNoMaskWAInst(bb, sendInst);
       }
 
-      numRows -= getPayloadSizeGRF(numRows);
-      offset += getPayloadSizeGRF(numRows);
-      rowOffset += getPayloadSizeGRF(numRows);
+      // Move the scratch base to the message's window, and back after it.
+      if (window > 0) {
+        int bytes = window * SCRATCH_MSG_LIMIT;
+        insertScratchBaseAdd(bb, std::next(instIt), -bytes);
+        instIt = insertScratchBaseAdd(bb, instIt, bytes);
+      }
+
+      numRows -= rows;
+      offset += rows;
+      rowOffset += rows;
     }
 
     insertSlot1HwordR0Reset(bb, origInstIt);
@@ -5738,12 +5798,13 @@ void GlobalRA::expandFillNonStackcall(uint32_t numRows, uint32_t offset,
       G4_SrcRegRegion *headerOpnd =
           builder->createSrcRegRegion(builder->getBuiltinR0(), region);
 
+      uint32_t rows = getPayloadSizeGRF(numRows);
+      uint32_t window = offset / HWordScratchWindow;
       uint32_t fillMsgDesc =
-          computeFillMsgDesc(getPayloadSizeGRF(numRows), offset, *builder);
+          computeFillMsgDesc(rows, offset % HWordScratchWindow, *builder);
 
       G4_SendDescRaw *msgDesc = kernel.fg.builder->createSendMsgDesc(
-          fillMsgDesc, getPayloadSizeGRF(numRows), 1, SFID::DP_DC0, 0, 0,
-          SendAccess::READ_ONLY);
+          fillMsgDesc, rows, 1, SFID::DP_DC0, 0, 0, SendAccess::READ_ONLY);
 
       G4_Imm *msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
 
@@ -5763,9 +5824,29 @@ void GlobalRA::expandFillNonStackcall(uint32_t numRows, uint32_t offset,
         addEUFusionNoMaskWAInst(bb, sendInst);
       }
 
-      numRows -= getPayloadSizeGRF(numRows);
-      offset += getPayloadSizeGRF(numRows);
-      rowOffset += getPayloadSizeGRF(numRows);
+      // Move the scratch base to the message's window, and back after it
+      // unless the fill overwrites r0 (see markSlot1HwordSpillFill).
+      if (window > 0) {
+        int bytes = window * SCRATCH_MSG_LIMIT;
+        unsigned dstRegNum = resultRgn->getBase()
+                                 ->asRegVar()
+                                 ->getPhyReg()
+                                 ->asGreg()
+                                 ->getRegNum() +
+                             rowOffset;
+        unsigned r0RegNum = builder->getBuiltinR0()
+                                ->getRegVar()
+                                ->getPhyReg()
+                                ->asGreg()
+                                ->getRegNum();
+        if (r0RegNum < dstRegNum || r0RegNum >= dstRegNum + rows)
+          insertScratchBaseAdd(bb, std::next(instIt), -bytes);
+        instIt = insertScratchBaseAdd(bb, instIt, bytes);
+      }
+
+      numRows -= rows;
+      offset += rows;
+      rowOffset += rows;
     }
 
     insertSlot1HwordR0Reset(bb, origInstIt);
