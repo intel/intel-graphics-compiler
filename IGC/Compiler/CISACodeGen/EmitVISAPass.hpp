@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "CastToGASAnalysis.h"
 #include "ResourceLoopAnalysis.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenPublicEnums.h"
 #include "Probe/Assertion.h"
 
 #include "common/LLVMWarningsPush.hpp"
