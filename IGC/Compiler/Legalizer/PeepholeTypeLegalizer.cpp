@@ -1582,11 +1582,12 @@ void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction &I) {
     Value *prevValue = prevInst;
 
     while (!isa<UndefValue>(prevValue)) {
-      if (InsertElementInst *insert = cast<InsertElementInst>(prevValue)) {
+      if (InsertElementInst *insert = dyn_cast<InsertElementInst>(prevValue)) {
         inserts.push_back(insert);
         prevValue = insert->getOperand(0);
       } else {
-        IGC_ASSERT_MESSAGE(0, "Unsupported i1 bitcast pattern");
+        if (!lowerBoolVectorToIntBitCast(I))
+          IGC_ASSERT_MESSAGE(0, "Unsupported i1 bitcast pattern");
         return;
       }
     }
@@ -1627,10 +1628,37 @@ void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction &I) {
     break;
   }
   default:
+    if (lowerBoolVectorToIntBitCast(I))
+      break;
     IGC_ASSERT_MESSAGE(isLegalInteger(I.getOperand(0)->getType()->getScalarSizeInBits()),
                        "Unexpected illegal type width");
     break;
   }
+}
+
+// Codegen can't emit a bool-vector-to-int bitcast, so pack each lane's bit through a select instead.
+bool PeepholeTypeLegalizer::lowerBoolVectorToIntBitCast(Instruction &I) {
+  auto *SrcType = dyn_cast<IGCLLVM::FixedVectorType>(I.getOperand(0)->getType());
+  auto *DstType = dyn_cast<IntegerType>(I.getType());
+  if (!SrcType || !DstType || !SrcType->getElementType()->isIntegerTy(1) || !isLegalInteger(DstType->getBitWidth()))
+    return false;
+
+  unsigned NumElements = (unsigned)SrcType->getNumElements();
+  SmallVector<Constant *, 64> LaneBits;
+  for (unsigned Idx = 0; Idx < NumElements; ++Idx)
+    LaneBits.push_back(ConstantInt::get(DstType, APInt::getOneBitSet(DstType->getBitWidth(), Idx)));
+
+  m_builder->SetInsertPoint(&I);
+  Value *Bits = m_builder->CreateSelect(I.getOperand(0), ConstantVector::get(LaneBits),
+                                        Constant::getNullValue(IGCLLVM::FixedVectorType::get(DstType, NumElements)));
+  Value *Result = m_builder->CreateExtractElement(Bits, m_builder->getInt32(0));
+  for (unsigned Idx = 1; Idx < NumElements; ++Idx)
+    Result = m_builder->CreateOr(Result, m_builder->CreateExtractElement(Bits, m_builder->getInt32(Idx)));
+
+  I.replaceAllUsesWith(Result);
+  I.eraseFromParent();
+  Changed = true;
+  return true;
 }
 
 void PeepholeTypeLegalizer::cleanupBitCastTruncInst(Instruction &I) {

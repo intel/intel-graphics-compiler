@@ -54,6 +54,7 @@ public:
   void cleanupZExtInst(Instruction &I);
   void cleanupTruncInst(Instruction &I);
   void cleanupBitCastInst(Instruction &I);
+  bool lowerBoolVectorToIntBitCast(Instruction &I);
   void cleanupBitCastTruncInst(Instruction &I);
 
 private:
