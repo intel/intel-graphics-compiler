@@ -63,7 +63,7 @@ static MergeAllocas::AllocaInfo GetAllocaInfo(AllocaInst *allocaI, AllocationLiv
           allocaI->getAddressSpace(),
           allocationSize,
           allocationSize,
-          static_cast<size_t>(DL->getPrefTypeAlign(allocaI->getAllocatedType()).value()),
+          static_cast<size_t>(std::max(allocaI->getAlign(), DL->getPrefTypeAlign(allocaI->getAllocatedType())).value()),
           0,
           allocaI->getMetadata("uniform") != nullptr};
 }
@@ -114,14 +114,14 @@ static bool AddNonOverlappingAlloca(MergeAllocas::AllocaInfo *MergableAlloca, Me
 
   // Check if we have still space in existing alloca to add new alloca
   if (MergableAlloca->remainingSize >= NewAlloca->allocationSize) {
-    size_t currentOffset = MergableAlloca->allocationSize - MergableAlloca->remainingSize;
-    size_t newStartingOffset = GetStartingOffset(currentOffset, NewAlloca->alignment);
-    size_t sizeWithPadding = NewAlloca->allocationSize + (newStartingOffset - currentOffset);
+    // Align the offset within the top level alloca, not within MergableAlloca.
+    size_t currentOffset = MergableAlloca->offset + MergableAlloca->allocationSize - MergableAlloca->remainingSize;
+    size_t newAllocaOffset = GetStartingOffset(currentOffset, NewAlloca->alignment);
+    size_t sizeWithPadding = NewAlloca->allocationSize + (newAllocaOffset - currentOffset);
     // When adding alignment in consideration we can't fit new alloca.
     if (sizeWithPadding > MergableAlloca->remainingSize) {
       return false;
     }
-    size_t newAllocaOffset = newStartingOffset + MergableAlloca->offset;
     if (newAllocaOffset != 0 && IGC_IS_FLAG_ENABLED(DisableMergingOfMultipleAllocasWithOffset)) {
       return false;
     }
@@ -135,7 +135,7 @@ static bool AddNonOverlappingAlloca(MergeAllocas::AllocaInfo *MergableAlloca, Me
 }
 
 static void ReplaceAllocas(const MergeAllocas::AllocaInfo &MergableAlloca, Function &F) {
-  Instruction *topAlloca = MergableAlloca.allocaI;
+  AllocaInst *topAlloca = MergableAlloca.allocaI;
   IGCLLVM::moveBefore(topAlloca, IGCLLVM::getFirstNonPHI(&F.getEntryBlock()));
   topAlloca->setName(VALUE_NAME("MergedAlloca"));
 
@@ -150,9 +150,13 @@ static void ReplaceAllocas(const MergeAllocas::AllocaInfo &MergableAlloca, Funct
     auto *subAlloca = allocasToReplace.pop_back_val();
 
     auto *subInst = subAlloca->allocaI;
-    auto *ReplacementValue = topAlloca;
+    Instruction *ReplacementValue = topAlloca;
+    // Merged alloca must satisfy the strictest alignment of the allocas it replaces.
+    if (subAlloca->alignment > topAlloca->getAlign().value())
+      topAlloca->setAlignment(Align(subAlloca->alignment));
 
-    if (topAlloca->getType() != subInst->getType()) {
+    // With opaque pointers the types match, but a non-zero offset still needs a GEP.
+    if (topAlloca->getType() != subInst->getType() || subAlloca->offset != 0) {
       auto *InsertionPoint = (topAllocaBitcast != nullptr) ? topAllocaBitcast : topAlloca;
       Builder.SetInsertPoint(InsertionPoint->getNextNode());
 
