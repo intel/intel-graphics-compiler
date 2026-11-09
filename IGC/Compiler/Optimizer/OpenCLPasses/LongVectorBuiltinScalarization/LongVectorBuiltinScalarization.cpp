@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "LongVectorBuiltinScalarization.hpp"
 #include "LongVectorMangling.hpp"
+#include "PerElementEmitter.hpp"
 
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CodeGenPublicEnums.h"
@@ -56,12 +57,6 @@ PreservedAnalyses LongVectorBuiltinScalarizationNPM::run(Module &M, ModuleAnalys
 #endif // LLVM_VERSION_MAJOR >= 16
 
 namespace {
-
-// BiF unrolls its vector variants up to 16 elements. Unrolling further inlines
-// the scalar BiF body once per element: pow on 1024 floats took over 250 s.
-// Wider vectors get a loop, which LoopUnroll still unrolls after BiF inlining
-// if the body is small.
-constexpr unsigned MaxUnrolledWidth = 16;
 
 // BiF implements bfloat builtins on i16, and BfloatBuiltinsResolution renames
 // the calls only after this pass.
@@ -178,92 +173,6 @@ void replaceInst(Instruction &I, Value *V) {
   I.replaceAllUsesWith(V);
   I.eraseFromParent();
 }
-
-/// Emits an operation on N-wide vectors element by element in place of \p I:
-/// unrolled up to MaxUnrolledWidth elements, otherwise as a loop.
-class PerElementEmitter {
-public:
-  PerElementEmitter(Instruction &I, unsigned NumElements) : I(I), NumElements(NumElements), B(&I) {}
-
-  /// Inserts before \p I, or into the loop body while a callback runs.
-  IRBuilder<> &builder() { return B; }
-
-  bool isLoop() const { return NumElements > MaxUnrolledWidth; }
-
-  /// Calls \p Body for each element index and returns the vector of its
-  /// results, or null if \p ResultTy is null.
-  Value *emit(IGCLLVM::FixedVectorType *ResultTy, function_ref<Value *(Value *Lane)> Body) {
-    if (!isLoop()) {
-      Value *Result = ResultTy ? PoisonValue::get(ResultTy) : nullptr;
-      for (unsigned L = 0; L < NumElements; ++L) {
-        Value *R = Body(B.getInt32(L));
-        if (ResultTy)
-          Result = B.CreateInsertElement(Result, R, B.getInt32(L));
-      }
-      return Result;
-    }
-    PHINode *Lane = beginLoop();
-    PHINode *Acc = nullptr;
-    if (ResultTy) {
-      Acc = B.CreatePHI(ResultTy, 2, "acc");
-      Acc->addIncoming(PoisonValue::get(ResultTy), Head);
-    }
-    Value *R = Body(Lane);
-    Value *Result = nullptr;
-    if (Acc) {
-      Result = B.CreateInsertElement(Acc, R, Lane);
-      Acc->addIncoming(Result, B.GetInsertBlock());
-    }
-    endLoop(Lane, NumElements);
-    return Result;
-  }
-
-  /// Folds \p Count steps into \p Init: Acc = Step(Acc, S) for S = 0 .. Count - 1.
-  /// Returns the final accumulator.
-  Value *reduce(Value *Init, unsigned Count, function_ref<Value *(Value *Acc, Value *S)> Step) {
-    if (!isLoop()) {
-      Value *Acc = Init;
-      for (unsigned S = 0; S < Count; ++S)
-        Acc = Step(Acc, B.getInt32(S));
-      return Acc;
-    }
-    PHINode *S = beginLoop();
-    PHINode *Acc = B.CreatePHI(Init->getType(), 2, "acc");
-    Acc->addIncoming(Init, Head);
-    Value *Result = Step(Acc, S);
-    Acc->addIncoming(Result, B.GetInsertBlock());
-    endLoop(S, Count);
-    return Result;
-  }
-
-private:
-  Instruction &I;
-  unsigned NumElements;
-  IRBuilder<> B;
-  BasicBlock *Head = nullptr;
-  BasicBlock *Loop = nullptr;
-  BasicBlock *Tail = nullptr;
-
-  // Splits the block at I and returns the counter of a loop placed before it,
-  // with the builder in the loop body.
-  PHINode *beginLoop() {
-    Head = I.getParent();
-    Tail = Head->splitBasicBlock(I.getIterator(), "long.vector.tail");
-    Loop = BasicBlock::Create(I.getContext(), "long.vector.loop", I.getFunction(), Tail);
-    Head->getTerminator()->setSuccessor(0, Loop);
-    B.SetInsertPoint(Loop);
-    PHINode *Counter = B.CreatePHI(B.getInt32Ty(), 2, "lane");
-    Counter->addIncoming(B.getInt32(0), Head);
-    return Counter;
-  }
-
-  void endLoop(PHINode *Counter, unsigned TripCount) {
-    Value *Next = B.CreateAdd(Counter, B.getInt32(1));
-    Counter->addIncoming(Next, B.GetInsertBlock());
-    B.CreateCondBr(B.CreateICmpULT(Next, B.getInt32(TripCount)), Loop, Tail);
-    B.SetInsertPoint(&I);
-  }
-};
 
 FunctionCallee getScalarBuiltin(Function &VecFn, const MangledFunction &F, Type *RetTy, ArrayRef<Type *> ArgTys) {
   FunctionType *FT = FunctionType::get(RetTy, ArgTys, false);
@@ -757,10 +666,6 @@ LowerFn getCustomLowering(StringRef BaseName) {
       .Case("__spirv_UMulExtended", lowerMulExtended<false>)
       .Case("__spirv_SMulExtended", lowerMulExtended<true>)
       .Default(nullptr);
-}
-
-bool isOpenCLVectorWidth(unsigned NumElements) {
-  return NumElements == 2 || NumElements == 3 || NumElements == 4 || NumElements == 8 || NumElements == 16;
 }
 
 // The kernel metadata isn't set up yet, so EmitError can't attribute the error

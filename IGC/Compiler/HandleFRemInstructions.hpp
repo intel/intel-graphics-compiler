@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/SmallVector.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/PassManager.h>
@@ -35,8 +36,11 @@ public:
   void visitFRem(llvm::BinaryOperator &I);
 
 private:
+  void replaceFRem(llvm::BinaryOperator &I);
+
   llvm::Module *m_module = nullptr;
   bool m_changed = false;
+  llvm::SmallVector<llvm::BinaryOperator *, 8> m_FRems;
 };
 
 // Legacy Pass Manager wrapper.

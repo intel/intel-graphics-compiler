@@ -9,11 +9,12 @@ SPDX-License-Identifier: MIT
 #include "Compiler/HandleFRemInstructions.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/Optimizer/OpenCLPasses/LongVectorBuiltinScalarization/PerElementEmitter.hpp"
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/Instructions.h"
 
@@ -33,7 +34,9 @@ HandleFRemInstructionsLPM::HandleFRemInstructionsLPM() : ModulePass(ID) {
   initializeHandleFRemInstructionsLPMPass(*PassRegistry::getPassRegistry());
 }
 
-void HandleFRemInstructions::visitFRem(llvm::BinaryOperator &I) {
+void HandleFRemInstructions::visitFRem(llvm::BinaryOperator &I) { m_FRems.push_back(&I); }
+
+void HandleFRemInstructions::replaceFRem(llvm::BinaryOperator &I) {
   auto Val1 = I.getOperand(0);
   auto Val2 = I.getOperand(1);
   auto ValType = Val1->getType();
@@ -44,6 +47,7 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator &I) {
 
   std::string VecStr = "";
   std::string FpTypeStr;
+  IRBuilder<> Builder(&I);
 
   if (ScalarType->isHalfTy() || ScalarType->isFloatTy() || ScalarType->isDoubleTy()) {
     auto TypeWidth = ScalarType->getScalarSizeInBits();
@@ -54,39 +58,42 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator &I) {
     ValType = ValType->isVectorTy() ? IGCLLVM::FixedVectorType::get(
                                           FloatTy, (unsigned)cast<IGCLLVM::FixedVectorType>(ValType)->getNumElements())
                                     : FloatTy;
-
-    auto Val1Float = new FPExtInst(Val1, ValType, "", IGCLLVM::insertPosition(&I));
-    Val1Float->setDebugLoc(I.getDebugLoc());
-    auto Val2Float = new FPExtInst(Val2, ValType, "", IGCLLVM::insertPosition(&I));
-    Val2Float->setDebugLoc(I.getDebugLoc());
-    Val1 = Val1Float;
-    Val2 = Val2Float;
+    Val1 = Builder.CreateFPExt(Val1, ValType);
+    Val2 = Builder.CreateFPExt(Val2, ValType);
   } else {
     IGC_ASSERT_MESSAGE(0, "Unsupported type");
   }
 
-  SmallVector<Type *, 2> ArgsTypes{ValType, ValType};
+  // SPV_EXT_long_vector allows widths BiF has no OpFRem variant for. These
+  // call the scalar variant for each element.
+  auto *VecType = dyn_cast<IGCLLVM::FixedVectorType>(ValType);
+  bool PerElement = VecType && !isOpenCLVectorWidth((unsigned)VecType->getNumElements());
+  if (VecType && !PerElement)
+    VecStr = "v" + std::to_string(VecType->getNumElements());
 
-  if (ValType->isVectorTy()) {
-    auto VecCount = cast<IGCLLVM::FixedVectorType>(ValType)->getNumElements();
-    if (VecCount == 2 || VecCount == 3 || VecCount == 4 || VecCount == 8 || VecCount == 16) {
-      VecStr = "v" + std::to_string(VecCount);
-    } else {
-      IGC_ASSERT_MESSAGE(0, "Unsupported vector size");
-    }
-  }
+  Type *CalleeType = PerElement ? ValType->getScalarType() : ValType;
   std::string TypeStr = "_" + VecStr + FpTypeStr;
   std::string FuncName = "__builtin_spirv_OpFRem" + TypeStr + TypeStr;
-  auto FT = FunctionType::get(Val1->getType(), ArgsTypes, false);
+  auto FT = FunctionType::get(CalleeType, {CalleeType, CalleeType}, false);
   auto Callee = m_module->getOrInsertFunction(FuncName, FT);
-  SmallVector<Value *, 2> FuncArgs{Val1, Val2};
-  Instruction *NewFRem = CallInst::Create(Callee, FuncArgs, "");
-  if (IGCLLVM::isBFloatTy(ScalarType)) {
-    IGCLLVM::insertBefore(NewFRem, &I);
-    NewFRem->setDebugLoc(I.getDebugLoc());
-    NewFRem = new FPTruncInst(NewFRem, I.getOperand(0)->getType());
+
+  Value *NewFRem = nullptr;
+  if (PerElement) {
+    PerElementEmitter E(I, (unsigned)VecType->getNumElements());
+    IRBuilder<> &B = E.builder();
+    NewFRem = E.emit(VecType, [&](Value *Lane) {
+      return B.CreateCall(Callee, {B.CreateExtractElement(Val1, Lane), B.CreateExtractElement(Val2, Lane)});
+    });
+    // The loop moves I to a new block.
+    Builder.SetInsertPoint(&I);
+  } else {
+    NewFRem = Builder.CreateCall(Callee, {Val1, Val2});
   }
-  ReplaceInstWithInst(&I, NewFRem);
+  if (IGCLLVM::isBFloatTy(ScalarType))
+    NewFRem = Builder.CreateFPTrunc(NewFRem, I.getType());
+  NewFRem->takeName(&I);
+  I.replaceAllUsesWith(NewFRem);
+  I.eraseFromParent();
   m_changed = true;
 }
 
@@ -95,6 +102,9 @@ bool HandleFRemInstructions::run(llvm::Module &M) {
   m_module = &M;
 
   visit(M);
+  for (BinaryOperator *I : m_FRems)
+    replaceFRem(*I);
+  m_FRems.clear();
 
   m_module = nullptr;
   return m_changed;

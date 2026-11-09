@@ -17,6 +17,7 @@ set(IGC_BUILD__SRC__OpenCLPasses_LongVectorBuiltinScalarization ${IGC_BUILD__SRC
 set(IGC_BUILD__HDR__LongVectorBuiltinScalarization
     "${CMAKE_CURRENT_SOURCE_DIR}/LongVectorBuiltinScalarization.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LongVectorMangling.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/PerElementEmitter.hpp"
   )
 set(IGC_BUILD__HDR__OpenCLPasses_LongVectorBuiltinScalarization ${IGC_BUILD__HDR__LongVectorBuiltinScalarization} PARENT_SCOPE)
 
