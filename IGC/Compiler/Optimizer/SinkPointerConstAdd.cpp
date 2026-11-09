@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/ADT/SmallVector.h"
 #include "common/LLVMWarningsPop.hpp"
 
 // Simple pass which sinks constant add operations in pointer calculations
@@ -40,10 +41,6 @@ public:
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
   virtual llvm::StringRef getPassName() const override { return "SinkPointerConstAdd"; }
   static char ID;
-
-private:
-  bool getConstantOffset(llvm::Value *value, int64_t &offset, int64_t sign);
-  bool sinkConstantThroughCast(llvm::Value *value, int64_t &offset, int64_t sign, bool acrossSExt);
 };
 
 #define PASS_FLAG "igc-sink-ptr-const-add"
@@ -52,105 +49,81 @@ private:
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS(SinkPointerConstAddPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-enum class ExtensionKind {
-  Signed,
-  Zero,
+// Type the searched values are in: the inttoptr operand, where wrapping is
+// harmless, or a value below a zext / sext, which must not wrap.
+enum class Domain { Wide, ZExt, SExt };
+
+// Change of a value once the constant is removed: dir is its unsigned sign,
+// nuwExact / nswExact tell whether the value's users keep nuw / nsw.
+struct ValueShift {
+  int dir = 0;
+  bool nuwExact = false;
+  bool nswExact = false;
 };
 
-template <typename Fn>
-static bool HandleAddSub(Instruction *I, int64_t &offset, int64_t sign, ExtensionKind kind, Fn recurseFn) {
+// constInst is replaced by keptOp; afterwards old root == new root - delta.
+// keepFlags lists the instructions up to the root with their valid flags.
+struct SinkPlan {
+  Instruction *constInst = nullptr;
+  Value *keptOp = nullptr;
+  int64_t delta = 0;
+  ValueShift shift;
+  SmallVector<std::pair<Instruction *, ValueShift>, 4> keepFlags;
+};
 
-  auto widenConstant = [kind](ConstantInt *c) -> int64_t {
-    return kind == ExtensionKind::Signed ? c->getSExtValue() : static_cast<int64_t>(c->getZExtValue());
-  };
-
-  auto opcode = I->getOpcode();
-
-  if (auto *CO = dyn_cast<ConstantInt>(I->getOperand(1))) {
-
-    offset += sign * (opcode == Instruction::Add ? widenConstant(CO) : -widenConstant(CO));
-    I->replaceAllUsesWith(I->getOperand(0));
-    I->eraseFromParent();
-    return true;
-  }
-
-  if (auto *CO = dyn_cast<ConstantInt>(I->getOperand(0))) {
-
-    if (opcode == Instruction::Sub)
-      // Cannot sink constant on the left side of subtraction
-      return false;
-
-    offset += sign * widenConstant(CO);
-    I->replaceAllUsesWith(I->getOperand(1));
-    I->eraseFromParent();
-    return true;
-  }
-
-  // operand(0) always keeps the caller's sign; operand(1) is negated when I is a
-  // Sub, since anything sunk out of the subtrahend must flip polarity.
-  Value *operands[] = {I->getOperand(0), I->getOperand(1)};
-  int64_t operandSigns[] = {sign, opcode == Instruction::Sub ? -sign : sign};
-
-  for (int idx = 0; idx < 2; ++idx) {
-
-    auto *opI = dyn_cast<Instruction>(operands[idx]);
-    if (!opI)
-      continue;
-
-    // This is a simple pass, only sink within the same basic block
-    if (opI->getParent() != I->getParent())
-      continue;
-
-    if (!recurseFn(operands[idx], offset, operandSigns[idx]))
-      continue;
-
-    return true;
-  }
-
-  return false;
+// Lowering a sum or raising a difference cannot make an unsigned add/sub wrap.
+static bool shrinksSumOrGrowsDifference(unsigned opcode, int64_t dir) {
+  return (dir < 0 && opcode == Instruction::Add) || (dir > 0 && opcode == Instruction::Sub);
 }
 
-bool SinkPointerConstAddPass::getConstantOffset(Value *value, int64_t &offset, int64_t sign) {
-  // Recursively search for constant add operations - this will stop after the first const add found,
-  // and should be called repeatedly until no more const adds can be sunk.
+// Shift of the add/sub I once its constant operand is removed.
+static ValueShift shiftOfRemovedConstant(Instruction *I) {
+  ValueShift shift;
+  shift.dir = I->getOpcode() == Instruction::Add ? -1 : 1;
+  shift.nuwExact = I->hasNoUnsignedWrap();
+  shift.nswExact = shift.nuwExact && I->hasNoSignedWrap();
+  return shift;
+}
 
-  if (!value->hasOneUse()) {
-    return false; // We cannot sink constant add if the value is used more than once.
-  }
+// Shift of the add/sub I once its operand opIdx changes by opShift. nsw is
+// only kept on top of nuw, which bounds the operands' signs.
+static ValueShift shiftThroughOperand(Instruction *I, unsigned opIdx, const ValueShift &opShift) {
+  auto opcode = I->getOpcode();
+  ValueShift shift;
+  shift.dir = (opcode == Instruction::Sub && opIdx == 1) ? -opShift.dir : opShift.dir;
+  shift.nuwExact = opShift.nuwExact && I->hasNoUnsignedWrap() && shrinksSumOrGrowsDifference(opcode, shift.dir);
+  shift.nswExact = shift.nuwExact && opShift.nswExact && I->hasNoSignedWrap();
+  return shift;
+}
 
-  auto *I = dyn_cast<Instruction>(value);
+static bool findConstant(Value *value, Domain domain, SinkPlan &plan);
 
-  if (!I)
+static bool findConstantThroughCast(Instruction *I, SinkPlan &plan) {
+  // Only sink within the same basic block.
+  auto *opI = dyn_cast<Instruction>(I->getOperand(0));
+  if (!opI || opI->getParent() != I->getParent())
     return false;
 
-  auto opcode = I->getOpcode();
+  const bool isZExt = I->getOpcode() == Instruction::ZExt;
+  if (!findConstant(opI, isZExt ? Domain::ZExt : Domain::SExt, plan))
+    return false;
 
-  switch (opcode) {
-
-  case Instruction::SExt:
-  case Instruction::ZExt: {
-    // check if we are leaving current block
-    // if yes - bail, doing this across blocks is a net loss
-    auto *operandInst = dyn_cast<Instruction>(I->getOperand(0));
-    if (operandInst && operandInst->getParent() != I->getParent())
-      return false;
-
-    return sinkConstantThroughCast(I->getOperand(0), offset, sign, opcode == Instruction::SExt);
-  } break;
-  case Instruction::Add:
-  case Instruction::Sub:
-    return HandleAddSub(I, offset, sign, ExtensionKind::Signed, [this](Value *value, int64_t &offset, int64_t sign) {
-      return getConstantOffset(value, offset, sign);
-    });
-    break;
-  default:
-    break;
+  // A zext result stays non-negative, so its change is exact. A sext result
+  // may go from -1 to 0, so nothing is proven.
+  plan.shift = ValueShift();
+  if (isZExt) {
+    plan.shift.dir = (plan.delta > 0) - (plan.delta < 0); // 1 - 0 or 0 - 1 or 0 - 0
+    plan.shift.nuwExact = true;
+    plan.shift.nswExact = true;
   }
-
-  return false;
+  return true;
 }
 
-bool SinkPointerConstAddPass::sinkConstantThroughCast(Value *value, int64_t &offset, int64_t sign, bool acrossSExt) {
+// Finds the first constant in the add/sub tree at value that can be sunk,
+// without modifying the IR. Below a cast, no add/sub on the way may wrap once
+// it is removed.
+static bool findConstant(Value *value, Domain domain, SinkPlan &plan) {
+  // The value is rewritten in place, so it must have no other users.
   if (!value->hasOneUse())
     return false;
 
@@ -158,18 +131,93 @@ bool SinkPointerConstAddPass::sinkConstantThroughCast(Value *value, int64_t &off
   if (!I)
     return false;
 
-  auto opcode = I->getOpcode();
+  const auto opcode = I->getOpcode();
+  if (domain == Domain::Wide && (opcode == Instruction::ZExt || opcode == Instruction::SExt))
+    return findConstantThroughCast(I, plan);
+
   if (opcode != Instruction::Add && opcode != Instruction::Sub)
     return false;
 
-  const bool flagOK = acrossSExt ? I->hasNoSignedWrap() : I->hasNoUnsignedWrap();
-  if (!flagOK)
+  if ((domain == Domain::ZExt && !I->hasNoUnsignedWrap()) || (domain == Domain::SExt && !I->hasNoSignedWrap()))
     return false;
 
-  return HandleAddSub(I, offset, sign, acrossSExt ? ExtensionKind::Signed : ExtensionKind::Zero,
-                      [this, acrossSExt](Value *value, int64_t &offset, int64_t sign) {
-                        return sinkConstantThroughCast(value, offset, sign, acrossSExt);
-                      });
+  auto widenConstant = [domain](ConstantInt *c) -> int64_t {
+    return domain == Domain::ZExt ? static_cast<int64_t>(c->getZExtValue()) : c->getSExtValue();
+  };
+
+  // I is replaced by an existing value, so nothing can wrap at this level.
+  if (auto *CO = dyn_cast<ConstantInt>(I->getOperand(1))) {
+    const int64_t c = widenConstant(CO);
+    plan.constInst = I;
+    plan.keptOp = I->getOperand(0);
+    plan.delta = opcode == Instruction::Add ? -c : c;
+    plan.shift = shiftOfRemovedConstant(I);
+    return true;
+  }
+
+  if (auto *CO = dyn_cast<ConstantInt>(I->getOperand(0))) {
+    // Cannot sink constant on the left side of subtraction
+    if (opcode == Instruction::Sub)
+      return false;
+
+    plan.constInst = I;
+    plan.keptOp = I->getOperand(1);
+    plan.delta = -widenConstant(CO);
+    plan.shift = shiftOfRemovedConstant(I);
+    return true;
+  }
+
+  for (unsigned idx = 0; idx < 2; ++idx) {
+    auto *opI = dyn_cast<Instruction>(I->getOperand(idx));
+    if (!opI)
+      continue;
+
+    // This is a simple pass, only sink within the same basic block
+    if (opI->getParent() != I->getParent())
+      continue;
+
+    const size_t keepFlagsSize = plan.keepFlags.size();
+    if (!findConstant(opI, domain, plan))
+      continue;
+
+    // A change of the subtrahend changes the difference the opposite way.
+    const int64_t delta = (opcode == Instruction::Sub && idx == 1) ? -plan.delta : plan.delta;
+    const ValueShift shift = shiftThroughOperand(I, idx, plan.shift);
+
+    // Below a cast, I must keep the flag matching the extension.
+    const bool keepsExtFlag = domain == Domain::Wide || (domain == Domain::ZExt && shift.nuwExact) ||
+                              (domain == Domain::SExt && shift.nswExact);
+    if (!keepsExtFlag) {
+      plan.keepFlags.resize(keepFlagsSize);
+      continue;
+    }
+
+    plan.delta = delta;
+    plan.shift = shift;
+    plan.keepFlags.push_back({I, shift});
+    return true;
+  }
+
+  return false;
+}
+
+// Sinks one constant from the tree at root into offset.
+static bool sinkOneConstant(Value *root, int64_t &offset) {
+  SinkPlan plan;
+  if (!findConstant(root, Domain::Wide, plan))
+    return false;
+
+  for (auto &[I, keep] : plan.keepFlags) {
+    if (!keep.nuwExact)
+      I->setHasNoUnsignedWrap(false);
+    if (!keep.nswExact)
+      I->setHasNoSignedWrap(false);
+  }
+
+  plan.constInst->replaceAllUsesWith(plan.keptOp);
+  plan.constInst->eraseFromParent();
+  offset -= plan.delta;
+  return true;
 }
 
 bool SinkPointerConstAddPass::runOnFunction(llvm::Function &F) {
@@ -189,7 +237,7 @@ bool SinkPointerConstAddPass::runOnFunction(llvm::Function &F) {
   for (auto &intrinsic : intToPtrInsts) {
     int64_t offset = 0;
     // Keep sinking constant adds until no more can be sunk
-    while (getConstantOffset(intrinsic->getOperand(0), offset, /*sign=*/1)) {
+    while (sinkOneConstant(intrinsic->getOperand(0), offset)) {
       changed = true;
     }
 
