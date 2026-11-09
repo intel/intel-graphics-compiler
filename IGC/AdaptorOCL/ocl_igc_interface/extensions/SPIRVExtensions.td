@@ -88,8 +88,7 @@ def SPV_EXT_optnone : Extension<
 // Relaxes the address space of the printf format string. Format strings that
 // resolve to a compile-time global use the existing relocation path; others are
 // emitted inline into the printf buffer at runtime. No new capability.
-// Experimental: accepted by the SPIR-V reader but not advertised.
-def SPV_EXT_relaxed_printf_string_address_space : ExperimentalExtension<
+def SPV_EXT_relaxed_printf_string_address_space : Extension<
   "SPV_EXT_relaxed_printf_string_address_space",
   [],
   "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/EXT/SPV_EXT_relaxed_printf_string_address_space.asciidoc"

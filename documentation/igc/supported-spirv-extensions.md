@@ -55,7 +55,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/EXT/SPV_EXT_relaxed_printf_string_address_space.asciidoc
 
-> **Experimentally supported on**: All platforms
+> **Supported on**: All platforms
 
 **Capabilities**:
 

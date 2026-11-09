@@ -15,6 +15,10 @@
 # CHECK-NEXT:     - id: 6094
 # CHECK-NEXT:       name: OptNoneEXT
 #
+# CHECK-NEXT: - name: SPV_EXT_relaxed_printf_string_address_space
+# CHECK-NEXT:   spec_url: 'https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/EXT/SPV_EXT_relaxed_printf_string_address_space.asciidoc'
+# CHECK-NEXT:   supported_capabilities: []
+#
 # CHECK-NEXT: - name: SPV_EXT_shader_atomic_float_add
 # CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float_add.html'
 # CHECK-NEXT:   supported_capabilities:
