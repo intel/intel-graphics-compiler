@@ -216,6 +216,11 @@ public:
   /// Adjust adapter to adjust the loop unrolling threshold
   virtual unsigned int GetLoopUnrollThreshold() const { return 4000; }
 
+  /// The loop unroll threshold gates the size of the whole shader. When enabled, a loop is only allowed to grow the
+  /// shader up to the part of the threshold that is still unused, so one loop cannot exhaust the gate for all the
+  /// loops that are visited after it.
+  virtual bool LimitLoopUnrollToRemainingBudget() const { return false; }
+
   /// Need HDC memory fence when raster order views are used
   virtual bool NeedUavPixelSyncAddedInPSLowering() const { return true; }
 

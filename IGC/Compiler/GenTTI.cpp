@@ -315,6 +315,13 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   uint32_t registerPressureEst = (uint32_t)(IGC_GET_FLAG_VALUE(SetRegisterPressureThresholdForLoopUnroll) *
                                             (ctx->getNumGRFPerThread(true, L->getHeader()->getParent()) / 128.0));
   bool lowPressure = (this->ctx->m_tempCount < registerPressureEst) && (totalInstCountInShader < LoopUnrollThreshold);
+  // Threshold for shaders with high register pressure. It is also the lower bound of the per-loop threshold below.
+  unsigned HighRegPressureThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThresholdForHighRegPressure);
+  if (!IGC_IS_FLAG_SET(SetLoopUnrollThresholdForHighRegPressure) &&
+      ctx->getModuleMetaData()->compOpt.SetLoopUnrollThresholdForHighRegPressure > 0) {
+    HighRegPressureThreshold = ctx->getModuleMetaData()->compOpt.SetLoopUnrollThresholdForHighRegPressure;
+  }
+
   // For OCL shaders, do a two-step loop unrolling. The first
   // unrolling is simple and full, and the second runs after
   // LICM, which allows partial unrolling. Same for other APIs?
@@ -323,13 +330,16 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
     UP.Threshold = LoopUnrollThreshold;
     UP.PartialThreshold = LoopUnrollThreshold;
     UP.Partial = true;
+    if (ctx->m_DriverInfo.LimitLoopUnrollToRemainingBudget() && totalInstCountInShader < LoopUnrollThreshold) {
+      // The shader-size threshold bounds the whole shader, not each loop separately. Let a loop grow the shader only
+      // up to the budget still unused (but not below the high-pressure threshold), so one loop cannot exhaust it and
+      // push all later loops to the high-pressure settings.
+      unsigned Remaining = std::max(LoopUnrollThreshold - totalInstCountInShader, HighRegPressureThreshold);
+      UP.Threshold = std::min(UP.Threshold, Remaining);
+      UP.PartialThreshold = std::min(UP.PartialThreshold, Remaining);
+    }
   } else // for high registry pressure shaders, limit the unrolling to small loops and only fully unroll
   {
-    unsigned HighRegPressureThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThresholdForHighRegPressure);
-    if (!IGC_IS_FLAG_SET(SetLoopUnrollThresholdForHighRegPressure) &&
-        ctx->getModuleMetaData()->compOpt.SetLoopUnrollThresholdForHighRegPressure > 0) {
-      HighRegPressureThreshold = ctx->getModuleMetaData()->compOpt.SetLoopUnrollThresholdForHighRegPressure;
-    }
     UP.Threshold = HighRegPressureThreshold;
     UP.PartialThreshold = HighRegPressureThreshold;
     // This is similiar to LLVM OptForSize scenario in LoopUnrollPass
