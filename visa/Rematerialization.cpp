@@ -783,14 +783,19 @@ bool Rematerialization::canRematerialize(G4_SrcRegRegion *src, G4_BB *bb,
     }
   }
 
+  // The rounding mode in cr0 also applies to conversions to a float type, like
+  // mov (16) dst:f src:d, whose execution type is the integer source type.
+  G4_DstRegRegion *uniqueDefDst = uniqueDefInst->getDst();
+  if (cr0DefBB &&
+      (IS_TYPE_FLOAT_ALL(uniqueDefInst->getExecType()) ||
+       (uniqueDefDst && IS_TYPE_FLOAT_ALL(uniqueDefDst->getType())))) {
+    return false;
+  }
+
   // Record remats in loop only for non-scalar operations. This is a heuristic
   // used to not remat excessively in loops.
   if (!inSameLoop && uniqueDefInst->getExecSize() > 1)
     incNumRematsInLoop();
-
-  if (cr0DefBB && IS_TYPE_FLOAT_ALL(uniqueDefInst->getExecType())) {
-    return false;
-  }
 
   return true;
 }
