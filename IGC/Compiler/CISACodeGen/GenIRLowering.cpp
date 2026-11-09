@@ -1298,6 +1298,10 @@ bool GenIRLowering::combineFMaxFMin(CallInst *GII, BasicBlock::iterator &BBI) co
   if (!CMin->isZero() || !CMax->isExactlyValue(1.f))
     return false;
 
+  // Saturation is not supported on a bfloat destination; keep the clamp as min/max.
+  if (GII->getType()->getScalarType()->isBFloatTy())
+    return false;
+
   // TODO: optimize chained fsat, i.e. combine
   // (fsat (fsat x)) into (fsat x)
 

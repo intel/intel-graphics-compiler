@@ -7106,7 +7106,8 @@ bool isOne(llvm::Value *zero) {
 bool isSat(llvm::Instruction *sat, llvm::Value *&source, bool &isUnsigned) {
   bool found = false;
   llvm::Value *sources[2] = {0};
-  bool floatMatch = sat->getType()->isFloatingPointTy();
+  // Saturation is not supported on a bfloat destination.
+  bool floatMatch = sat->getType()->isFloatingPointTy() && !sat->getType()->isBFloatTy();
   GenIntrinsicInst *intrin = dyn_cast<GenIntrinsicInst>(sat);
   if (intrin && (intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_fsat ||
                  intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_usat ||
