@@ -1,0 +1,207 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; REQUIRES: spirv-as, regkeys, nvl-p-b0-supported, ptl-supported
+
+; RT writeback ignores the execution mask, so in a traversal loop the raw
+; TraceRaySync result must have no user but the masked snapshot. Otherwise
+; DeSSA may coalesce it with the fence PHI, and the next dispatch overwrites
+; the status of lanes that already left the loop.
+
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+
+; RUN: ocloc compile -spirv_input -file %t.spv -device nvl-p-b0 -options "-igc_opts 'PrintToConsole=1,PrintBefore=EmitPass'" 2>&1 | FileCheck %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device ptl-h -options "-igc_opts 'PrintToConsole=1,PrintBefore=EmitPass'" 2>&1 | FileCheck %s
+
+; CHECK-LABEL: define spir_kernel void @traversal_loop(
+; CHECK: [[RAW0:%[0-9]+]] = call i32 @llvm.genx.GenISA.TraceRaySync
+; CHECK-NEXT: call i32 @llvm.genx.GenISA.ReadTraceRaySyncResult(i32 [[RAW0]])
+; CHECK-NOT: [[RAW0]]{{[^0-9]}}
+; CHECK: [[RAW1:%[0-9]+]] = call i32 @llvm.genx.GenISA.TraceRaySync
+; CHECK-NEXT: call i32 @llvm.genx.GenISA.ReadTraceRaySyncResult(i32 [[RAW1]])
+; CHECK-NOT: [[RAW0]]{{[^0-9]}}
+; CHECK-NOT: [[RAW1]]{{[^0-9]}}
+; CHECK: ret void
+
+; Generated from the following OpenCL C source:
+;
+; kernel void traversal_loop(global int *out, intel_raytracing_acceleration_structure_t accel) {
+;   intel_ray_desc_t raydesc = {0};
+;   intel_ray_query_t query = intel_ray_query_init(raydesc, accel);
+;   intel_ray_query_start_traversal(query);
+;   intel_ray_query_sync(query);
+;   while (!intel_is_traversal_done(query)) {
+;     if (intel_get_hit_candidate(query, intel_hit_type_potential_hit) == intel_candidate_type_triangle)
+;       intel_ray_query_commit_potential_hit(query);
+;     intel_ray_query_start_traversal(query);
+;     intel_ray_query_sync(query);
+;   }
+;   out[get_global_id(0)] = intel_has_committed_hit(query);
+; }
+
+               OpCapability Addresses
+               OpCapability Linkage
+               OpCapability Kernel
+               OpCapability Int64
+               OpCapability Int8
+          %1 = OpExtInstImport "OpenCL.std"
+               OpMemoryModel Physical64 OpenCL
+               OpEntryPoint Kernel %38 "traversal_loop" %__spirv_BuiltInGlobalInvocationId
+               OpExecutionMode %38 ContractionOff
+         %80 = OpString "kernel_arg_type.traversal_loop.int*,struct intel_raytracing_acceleration_structure_opaque_t*,"
+         %81 = OpString "kernel_arg_type_qual.traversal_loop.,,"
+               OpSource OpenCL_C 300000
+               OpName %__spirv_BuiltInGlobalInvocationId "__spirv_BuiltInGlobalInvocationId"
+               OpName %struct_intel_ray_desc_t "struct.intel_ray_desc_t"
+               OpName %struct_intel_float3 "struct.intel_float3"
+               OpName %intel_ray_query_init "intel_ray_query_init"
+               OpName %intel_ray_query_start_traversal "intel_ray_query_start_traversal"
+               OpName %intel_ray_query_sync "intel_ray_query_sync"
+               OpName %intel_is_traversal_done "intel_is_traversal_done"
+               OpName %intel_get_hit_candidate "intel_get_hit_candidate"
+               OpName %intel_ray_query_commit_potential_hit "intel_ray_query_commit_potential_hit"
+               OpName %intel_has_committed_hit "intel_has_committed_hit"
+               OpName %out "out"
+               OpName %accel "accel"
+               OpName %entry "entry"
+               OpName %__clang_ocl_kern_imp_traversal_loop "__clang_ocl_kern_imp_traversal_loop"
+               OpName %out_0 "out"
+               OpName %accel_0 "accel"
+               OpName %entry_0 "entry"
+               OpName %while_cond "while.cond"
+               OpName %while_body "while.body"
+               OpName %if_then "if.then"
+               OpName %if_end "if.end"
+               OpName %while_end "while.end"
+               OpName %raydesc "raydesc"
+               OpName %call "call"
+               OpName %call1 "call1"
+               OpName %lnot "lnot"
+               OpName %call2 "call2"
+               OpName %cmp "cmp"
+               OpName %call3 "call3"
+               OpName %conv "conv"
+               OpName %call4 "call4"
+               OpName %arrayidx "arrayidx"
+               OpDecorate %__spirv_BuiltInGlobalInvocationId LinkageAttributes "__spirv_BuiltInGlobalInvocationId" Import
+               OpDecorate %__spirv_BuiltInGlobalInvocationId Constant
+               OpDecorate %__spirv_BuiltInGlobalInvocationId BuiltIn GlobalInvocationId
+               OpDecorate %intel_ray_query_init LinkageAttributes "intel_ray_query_init" Import
+               OpDecorate %16 FuncParamAttr ByVal
+               OpDecorate %16 Alignment 4
+               OpDecorate %intel_ray_query_start_traversal LinkageAttributes "intel_ray_query_start_traversal" Import
+               OpDecorate %intel_ray_query_sync LinkageAttributes "intel_ray_query_sync" Import
+               OpDecorate %intel_is_traversal_done LinkageAttributes "intel_is_traversal_done" Import
+               OpDecorate %intel_is_traversal_done FuncParamAttr Zext
+               OpDecorate %intel_get_hit_candidate LinkageAttributes "intel_get_hit_candidate" Import
+               OpDecorate %intel_ray_query_commit_potential_hit LinkageAttributes "intel_ray_query_commit_potential_hit" Import
+               OpDecorate %intel_has_committed_hit LinkageAttributes "intel_has_committed_hit" Import
+               OpDecorate %intel_has_committed_hit FuncParamAttr Zext
+               OpDecorate %out Alignment 4
+               OpDecorate %__clang_ocl_kern_imp_traversal_loop LinkageAttributes "__clang_ocl_kern_imp_traversal_loop" Export
+               OpDecorate %out_0 Alignment 4
+               OpDecorate %raydesc Alignment 4
+               OpDecorate %58 Alignment 4
+      %ulong = OpTypeInt 64 0
+      %uchar = OpTypeInt 8 0
+       %uint = OpTypeInt 32 0
+   %ulong_44 = OpConstant %ulong 44
+     %uint_1 = OpConstant %uint 1
+     %uint_0 = OpConstant %uint 0
+    %ulong_0 = OpConstant %ulong 0
+    %v3ulong = OpTypeVector %ulong 3
+%_ptr_Input_v3ulong = OpTypePointer Input %v3ulong
+%_ptr_Function_uchar = OpTypePointer Function %uchar
+      %float = OpTypeFloat 32
+%struct_intel_float3 = OpTypeStruct %float %float %float
+%struct_intel_ray_desc_t = OpTypeStruct %struct_intel_float3 %struct_intel_float3 %float %float %uint %uint %uint
+%_ptr_Function_struct_intel_ray_desc_t = OpTypePointer Function %struct_intel_ray_desc_t
+%_ptr_CrossWorkgroup_uchar = OpTypePointer CrossWorkgroup %uchar
+         %14 = OpTypeFunction %_ptr_Function_uchar %_ptr_Function_struct_intel_ray_desc_t %_ptr_CrossWorkgroup_uchar
+       %void = OpTypeVoid
+         %19 = OpTypeFunction %void %_ptr_Function_uchar
+       %bool = OpTypeBool
+         %25 = OpTypeFunction %bool %_ptr_Function_uchar
+         %28 = OpTypeFunction %uint %_ptr_Function_uchar %uint
+%_ptr_CrossWorkgroup_uint = OpTypePointer CrossWorkgroup %uint
+         %37 = OpTypeFunction %void %_ptr_CrossWorkgroup_uint %_ptr_CrossWorkgroup_uchar
+%_arr_uchar_ulong_44 = OpTypeArray %uchar %ulong_44
+%_ptr_Function__arr_uchar_ulong_44 = OpTypePointer Function %_arr_uchar_ulong_44
+%__spirv_BuiltInGlobalInvocationId = OpVariable %_ptr_Input_v3ulong Input
+         %56 = OpConstantNull %_arr_uchar_ulong_44
+       %true = OpConstantTrue %bool
+%intel_ray_query_init = OpFunction %_ptr_Function_uchar None %14
+         %16 = OpFunctionParameter %_ptr_Function_struct_intel_ray_desc_t
+         %17 = OpFunctionParameter %_ptr_CrossWorkgroup_uchar
+               OpFunctionEnd
+%intel_ray_query_start_traversal = OpFunction %void None %19
+         %21 = OpFunctionParameter %_ptr_Function_uchar
+               OpFunctionEnd
+%intel_ray_query_sync = OpFunction %void None %19
+         %23 = OpFunctionParameter %_ptr_Function_uchar
+               OpFunctionEnd
+%intel_is_traversal_done = OpFunction %bool None %25
+         %27 = OpFunctionParameter %_ptr_Function_uchar
+               OpFunctionEnd
+%intel_get_hit_candidate = OpFunction %uint None %28
+         %30 = OpFunctionParameter %_ptr_Function_uchar
+         %31 = OpFunctionParameter %uint
+               OpFunctionEnd
+%intel_ray_query_commit_potential_hit = OpFunction %void None %19
+         %33 = OpFunctionParameter %_ptr_Function_uchar
+               OpFunctionEnd
+%intel_has_committed_hit = OpFunction %bool None %25
+         %35 = OpFunctionParameter %_ptr_Function_uchar
+               OpFunctionEnd
+         %38 = OpFunction %void None %37
+        %out = OpFunctionParameter %_ptr_CrossWorkgroup_uint
+      %accel = OpFunctionParameter %_ptr_CrossWorkgroup_uchar
+      %entry = OpLabel
+         %45 = OpFunctionCall %void %__clang_ocl_kern_imp_traversal_loop %out %accel
+               OpReturn
+               OpFunctionEnd
+%__clang_ocl_kern_imp_traversal_loop = OpFunction %void Inline %37
+      %out_0 = OpFunctionParameter %_ptr_CrossWorkgroup_uint
+    %accel_0 = OpFunctionParameter %_ptr_CrossWorkgroup_uchar
+    %entry_0 = OpLabel
+    %raydesc = OpVariable %_ptr_Function_struct_intel_ray_desc_t Function
+         %58 = OpVariable %_ptr_Function__arr_uchar_ulong_44 Function %56
+               OpLifetimeStart %raydesc 0
+         %53 = OpBitcast %_ptr_Function_uchar %raydesc
+         %59 = OpBitcast %_ptr_Function_uchar %58
+               OpCopyMemorySized %53 %59 %ulong_44 Aligned 4
+       %call = OpFunctionCall %_ptr_Function_uchar %intel_ray_query_init %raydesc %accel_0
+         %61 = OpFunctionCall %void %intel_ray_query_start_traversal %call
+         %62 = OpFunctionCall %void %intel_ray_query_sync %call
+               OpBranch %while_cond
+ %while_cond = OpLabel
+      %call1 = OpFunctionCall %bool %intel_is_traversal_done %call
+       %lnot = OpLogicalNotEqual %bool %call1 %true
+               OpBranchConditional %lnot %while_body %while_end
+ %while_body = OpLabel
+      %call2 = OpFunctionCall %uint %intel_get_hit_candidate %call %uint_1
+        %cmp = OpIEqual %bool %call2 %uint_0
+               OpBranchConditional %cmp %if_then %if_end
+    %if_then = OpLabel
+         %70 = OpFunctionCall %void %intel_ray_query_commit_potential_hit %call
+               OpBranch %if_end
+     %if_end = OpLabel
+         %71 = OpFunctionCall %void %intel_ray_query_start_traversal %call
+         %72 = OpFunctionCall %void %intel_ray_query_sync %call
+               OpBranch %while_cond
+  %while_end = OpLabel
+      %call3 = OpFunctionCall %bool %intel_has_committed_hit %call
+       %conv = OpSelect %uint %call3 %uint_1 %uint_0
+         %75 = OpLoad %v3ulong %__spirv_BuiltInGlobalInvocationId Aligned 32
+         %76 = OpCompositeExtract %ulong %75 0
+      %call4 = OpSelect %ulong %true %76 %ulong_0
+   %arrayidx = OpInBoundsPtrAccessChain %_ptr_CrossWorkgroup_uint %out_0 %call4
+               OpStore %arrayidx %conv Aligned 4
+               OpLifetimeStop %raydesc 0
+               OpReturn
+               OpFunctionEnd

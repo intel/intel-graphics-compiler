@@ -1,0 +1,98 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; REQUIRES: spirv-as, regkeys
+
+; intel_ray_query_init and intel_ray_query_start_traversal marked the potential
+; hit done and valid for the memory based traversal-done check. That check now
+; reads the dispatch return value, so the bits are no longer written.
+; 0x10010000 is the pair of bits.
+;
+; One CHECK-NOT covers both writes: the kernel reaches __basic_rtstack_init
+; through intel_ray_query_init and then calls intel_ray_query_start_traversal.
+; Only one store survives, the second sets bits the first one already set.
+
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+
+; RUN: %if nvl-p-b0-supported %{ ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1'" -device nvl-p-b0 2>&1 | FileCheck %s %}
+; RUN: %if nvl-p-b0-supported %{ ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1,DisableRayQueryReturnOptimization=1'" -device nvl-p-b0 2>&1 | FileCheck %s --check-prefix=DISABLED %}
+
+; CHECK: .kernel "test"
+; CHECK-NOT: 0x10010000
+
+; DISABLED: 0x10010000
+
+; Generated from the following OpenCL C source:
+;
+; kernel void test() {
+;   intel_ray_desc_t raydesc;
+;   intel_raytracing_acceleration_structure_t hwaccel_ptr;
+;   intel_ray_query_t query = intel_ray_query_init(raydesc, hwaccel_ptr);
+;   intel_ray_query_start_traversal(query);
+; }
+
+               OpCapability Addresses
+               OpCapability Linkage
+               OpCapability Kernel
+               OpCapability Int8
+          %1 = OpExtInstImport "OpenCL.std"
+               OpMemoryModel Physical64 OpenCL
+               OpEntryPoint Kernel %19 "test"
+               OpExecutionMode %19 ContractionOff
+         %28 = OpString "kernel_arg_type.test."
+         %29 = OpString "kernel_arg_type_qual.test."
+               OpSource OpenCL_C 300000
+               OpName %struct_intel_ray_desc_t "struct.intel_ray_desc_t"
+               OpName %struct_intel_float3 "struct.intel_float3"
+               OpName %intel_ray_query_init "intel_ray_query_init"
+               OpName %intel_ray_query_start_traversal "intel_ray_query_start_traversal"
+               OpName %entry "entry"
+               OpName %__clang_ocl_kern_imp_test "__clang_ocl_kern_imp_test"
+               OpName %entry_0 "entry"
+               OpName %raydesc "raydesc"
+               OpName %call "call"
+               OpDecorate %intel_ray_query_init LinkageAttributes "intel_ray_query_init" Import
+               OpDecorate %12 FuncParamAttr ByVal
+               OpDecorate %12 Alignment 4
+               OpDecorate %intel_ray_query_start_traversal LinkageAttributes "intel_ray_query_start_traversal" Import
+               OpDecorate %__clang_ocl_kern_imp_test LinkageAttributes "__clang_ocl_kern_imp_test" Export
+               OpDecorate %raydesc Alignment 4
+      %uchar = OpTypeInt 8 0
+       %uint = OpTypeInt 32 0
+%_ptr_Function_uchar = OpTypePointer Function %uchar
+      %float = OpTypeFloat 32
+%struct_intel_float3 = OpTypeStruct %float %float %float
+%struct_intel_ray_desc_t = OpTypeStruct %struct_intel_float3 %struct_intel_float3 %float %float %uint %uint %uint
+%_ptr_Function_struct_intel_ray_desc_t = OpTypePointer Function %struct_intel_ray_desc_t
+%_ptr_CrossWorkgroup_uchar = OpTypePointer CrossWorkgroup %uchar
+         %10 = OpTypeFunction %_ptr_Function_uchar %_ptr_Function_struct_intel_ray_desc_t %_ptr_CrossWorkgroup_uchar
+       %void = OpTypeVoid
+         %15 = OpTypeFunction %void %_ptr_Function_uchar
+         %18 = OpTypeFunction %void
+         %25 = OpUndef %_ptr_CrossWorkgroup_uchar
+%intel_ray_query_init = OpFunction %_ptr_Function_uchar None %10
+         %12 = OpFunctionParameter %_ptr_Function_struct_intel_ray_desc_t
+         %13 = OpFunctionParameter %_ptr_CrossWorkgroup_uchar
+               OpFunctionEnd
+%intel_ray_query_start_traversal = OpFunction %void None %15
+         %17 = OpFunctionParameter %_ptr_Function_uchar
+               OpFunctionEnd
+         %19 = OpFunction %void None %18
+      %entry = OpLabel
+         %22 = OpFunctionCall %void %__clang_ocl_kern_imp_test
+               OpReturn
+               OpFunctionEnd
+%__clang_ocl_kern_imp_test = OpFunction %void Inline %18
+    %entry_0 = OpLabel
+    %raydesc = OpVariable %_ptr_Function_struct_intel_ray_desc_t Function
+               OpLifetimeStart %raydesc 0
+       %call = OpFunctionCall %_ptr_Function_uchar %intel_ray_query_init %raydesc %25
+         %27 = OpFunctionCall %void %intel_ray_query_start_traversal %call
+               OpLifetimeStop %raydesc 0
+               OpReturn
+               OpFunctionEnd

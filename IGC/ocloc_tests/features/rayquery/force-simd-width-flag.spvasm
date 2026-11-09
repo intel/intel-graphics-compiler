@@ -1,0 +1,131 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; REQUIRES: spirv-as, regkeys
+
+; This test ensures successful compilation on three platforms: DG2, NVL-P-B0, and PTL-H.
+; Each platform follows different code paths to select the SIMD size.
+; - Minimum SIMD size (for general kernels):
+;     DG2: 8, NVL-P-B0: 16, PTL-H: 16
+; - For kernels with ray query:
+;     DG2:      maximum SIMD size supported is 16, preferred is 8
+;     NVL-P-B0: maximum SIMD size supported is 32, preferred is 16
+;     PTL-H:    maximum SIMD size supported is 16, preferred is 16
+
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+
+; RUN: %if nvl-p-b0-supported %{ ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1'" -device nvl-p-b0 2>&1 | FileCheck %s --check-prefix CHECK-NVLP-DEFAULT %}
+; CHECK-NVLP-DEFAULT: .kernel_attr SimdSize=16
+
+; RUN: %if nvl-p-b0-supported %{ not ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'ForceOCLSIMDWidth=8'" -device nvl-p-b0 2>&1 | FileCheck %s --check-prefix CHECK-NVLP-FORCE-8 %}
+; CHECK-NVLP-FORCE-8: error: SIMD size of 8 has been forced when SIMD size of at least 16 is required on this platform
+
+; RUN: %if nvl-p-b0-supported %{ ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1,ForceOCLSIMDWidth=16'" -device nvl-p-b0 2>&1 | FileCheck %s --check-prefix CHECK-NVLP-FORCE-16 %}
+; CHECK-NVLP-FORCE-16: .kernel_attr SimdSize=16
+
+; RUN: %if nvl-p-b0-supported %{ ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1,ForceOCLSIMDWidth=32'" -device nvl-p-b0 2>&1 | FileCheck %s --check-prefix CHECK-NVLP-FORCE-32 %}
+; CHECK-NVLP-FORCE-32: .kernel_attr SimdSize=32
+
+
+
+; RUN: %if ptl-h-supported %{ ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1'" -device ptl-h 2>&1 | FileCheck %s --check-prefix CHECK-PTLH-DEFAULT %}
+; CHECK-PTLH-DEFAULT: .kernel_attr SimdSize=16
+
+; RUN: %if ptl-h-supported %{ not ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'ForceOCLSIMDWidth=8'" -device ptl-h 2>&1 | FileCheck %s --check-prefix CHECK-PTLH-FORCE-8 %}
+; CHECK-PTLH-FORCE-8: error: SIMD size of 8 has been forced when SIMD size of at least 16 is required on this platform
+
+; RUN: %if ptl-h-supported %{ ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1,ForceOCLSIMDWidth=16'" -device ptl-h 2>&1 | FileCheck %s --check-prefix CHECK-PTLH-FORCE-16 %}
+; CHECK-PTLH-FORCE-16: .kernel_attr SimdSize=16
+
+; RUN: %if ptl-h-supported %{ not ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'ForceOCLSIMDWidth=32'" -device ptl-h 2>&1 | FileCheck %s --check-prefix CHECK-PTLH-FORCE-32 %}
+; CHECK-PTLH-FORCE-32: error: in kernel 'test': Failed to compile the forced SIMD size of 32
+
+
+
+; RUN: %if dg2-supported %{ ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1'" -device dg2 2>&1 | FileCheck %s --check-prefix CHECK-DG2-DEFAULT %}
+; CHECK-DG2-DEFAULT: .kernel_attr SimdSize=16
+
+; RUN: %if dg2-supported %{ ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1,ForceOCLSIMDWidth=8'" -device dg2 2>&1 | FileCheck %s --check-prefix CHECK-DG2-FORCE-8 %}
+; CHECK-DG2-FORCE-8: .kernel_attr SimdSize=8
+
+; RUN: %if dg2-supported %{ ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1,ForceOCLSIMDWidth=16'" -device dg2 2>&1 | FileCheck %s --check-prefix CHECK-DG2-FORCE-16 %}
+; CHECK-DG2-FORCE-16: .kernel_attr SimdSize=16
+
+; RUN: %if dg2-supported %{ not ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'ForceOCLSIMDWidth=32'" -device dg2 2>&1 | FileCheck %s --check-prefix CHECK-DG2-FORCE-32 %}
+; CHECK-DG2-FORCE-32: error: in kernel 'test': Failed to compile the forced SIMD size of 32
+
+; Generated from the following OpenCL C source:
+;
+; kernel void test()
+; {
+;     intel_ray_desc_t raydesc;
+;     intel_raytracing_acceleration_structure_t hwaccel_ptr;
+;     intel_ray_query_t query = intel_ray_query_init(raydesc, hwaccel_ptr);
+;     intel_ray_query_start_traversal(query);
+; }
+
+               OpCapability Addresses
+               OpCapability Linkage
+               OpCapability Kernel
+               OpCapability Int8
+          %1 = OpExtInstImport "OpenCL.std"
+               OpMemoryModel Physical64 OpenCL
+               OpEntryPoint Kernel %19 "test"
+               OpExecutionMode %19 ContractionOff
+         %28 = OpString "kernel_arg_type.test."
+         %29 = OpString "kernel_arg_type_qual.test."
+               OpSource OpenCL_C 300000
+               OpName %struct_intel_ray_desc_t "struct.intel_ray_desc_t"
+               OpName %struct_intel_float3 "struct.intel_float3"
+               OpName %intel_ray_query_init "intel_ray_query_init"
+               OpName %intel_ray_query_start_traversal "intel_ray_query_start_traversal"
+               OpName %entry "entry"
+               OpName %__clang_ocl_kern_imp_test "__clang_ocl_kern_imp_test"
+               OpName %entry_0 "entry"
+               OpName %raydesc "raydesc"
+               OpName %call "call"
+               OpDecorate %intel_ray_query_init LinkageAttributes "intel_ray_query_init" Import
+               OpDecorate %12 FuncParamAttr ByVal
+               OpDecorate %12 Alignment 4
+               OpDecorate %intel_ray_query_start_traversal LinkageAttributes "intel_ray_query_start_traversal" Import
+               OpDecorate %__clang_ocl_kern_imp_test LinkageAttributes "__clang_ocl_kern_imp_test" Export
+               OpDecorate %raydesc Alignment 4
+      %uchar = OpTypeInt 8 0
+       %uint = OpTypeInt 32 0
+%_ptr_Function_uchar = OpTypePointer Function %uchar
+      %float = OpTypeFloat 32
+%struct_intel_float3 = OpTypeStruct %float %float %float
+%struct_intel_ray_desc_t = OpTypeStruct %struct_intel_float3 %struct_intel_float3 %float %float %uint %uint %uint
+%_ptr_Function_struct_intel_ray_desc_t = OpTypePointer Function %struct_intel_ray_desc_t
+%_ptr_CrossWorkgroup_uchar = OpTypePointer CrossWorkgroup %uchar
+         %10 = OpTypeFunction %_ptr_Function_uchar %_ptr_Function_struct_intel_ray_desc_t %_ptr_CrossWorkgroup_uchar
+       %void = OpTypeVoid
+         %15 = OpTypeFunction %void %_ptr_Function_uchar
+         %18 = OpTypeFunction %void
+         %25 = OpUndef %_ptr_CrossWorkgroup_uchar
+%intel_ray_query_init = OpFunction %_ptr_Function_uchar None %10
+         %12 = OpFunctionParameter %_ptr_Function_struct_intel_ray_desc_t
+         %13 = OpFunctionParameter %_ptr_CrossWorkgroup_uchar
+               OpFunctionEnd
+%intel_ray_query_start_traversal = OpFunction %void None %15
+         %17 = OpFunctionParameter %_ptr_Function_uchar
+               OpFunctionEnd
+         %19 = OpFunction %void None %18
+      %entry = OpLabel
+         %22 = OpFunctionCall %void %__clang_ocl_kern_imp_test
+               OpReturn
+               OpFunctionEnd
+%__clang_ocl_kern_imp_test = OpFunction %void Inline %18
+    %entry_0 = OpLabel
+    %raydesc = OpVariable %_ptr_Function_struct_intel_ray_desc_t Function
+               OpLifetimeStart %raydesc 0
+       %call = OpFunctionCall %_ptr_Function_uchar %intel_ray_query_init %raydesc %25
+         %27 = OpFunctionCall %void %intel_ray_query_start_traversal %call
+               OpLifetimeStop %raydesc 0
+               OpReturn
+               OpFunctionEnd

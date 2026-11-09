@@ -1,0 +1,155 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; REQUIRES: spirv-as, regkeys, nvl-p-b0-supported
+
+; With the ray query return value:
+; - intel_ray_query_init does not initialize the potential hit, so the
+;   committed hit holds the only t = INFINITY store,
+; - an accept-first commit stores COMMITTED_STATUS = CANDIDATE_TYPE + 1,
+; - intel_has_committed_hit tests COMMITTED_STATUS (bits 2:1) of the fence.
+
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+
+; RUN: ocloc compile -spirv_input -file %t.spv -device nvl-p-b0 -options "-igc_opts 'PrintToConsole=1,PrintAfter=igc-resolve-ocl-raytracing-builtins'" 2>&1 | FileCheck %s
+
+; CHECK: store float {{0x7FF0000000000000|\+inf}}
+; CHECK-NOT: store float {{0x7FF0000000000000|\+inf}}
+; CHECK: add nuw nsw i64 %{{.*}}, 2
+; CHECK: [[STATUS:%.*]] = and i64 %{{.*}}, 6
+; CHECK-NEXT: icmp ne i64 [[STATUS]], 0
+
+; Generated from the following OpenCL C source:
+;
+; kernel void test(global int *out, intel_raytracing_acceleration_structure_t accel) {
+;   intel_ray_desc_t raydesc = {0};
+;   raydesc.flags = intel_ray_flags_accept_first_hit_and_end_search;
+;   intel_ray_query_t query = intel_ray_query_init(raydesc, accel);
+;   intel_ray_query_start_traversal(query);
+;   intel_ray_query_sync(query);
+;   intel_ray_query_commit_potential_hit(query);
+;   out[0] = intel_has_committed_hit(query);
+; }
+
+               OpCapability Addresses
+               OpCapability Linkage
+               OpCapability Kernel
+               OpCapability Int64
+               OpCapability Int8
+          %1 = OpExtInstImport "OpenCL.std"
+               OpMemoryModel Physical64 OpenCL
+               OpEntryPoint Kernel %28 "test"
+               OpExecutionMode %28 ContractionOff
+         %60 = OpString "kernel_arg_type.test.int*,struct intel_raytracing_acceleration_structure_opaque_t*,"
+         %61 = OpString "kernel_arg_type_qual.test.,,"
+               OpSource OpenCL_C 300000
+               OpName %struct_intel_ray_desc_t "struct.intel_ray_desc_t"
+               OpName %struct_intel_float3 "struct.intel_float3"
+               OpName %intel_ray_query_init "intel_ray_query_init"
+               OpName %intel_ray_query_start_traversal "intel_ray_query_start_traversal"
+               OpName %intel_ray_query_sync "intel_ray_query_sync"
+               OpName %intel_ray_query_commit_potential_hit "intel_ray_query_commit_potential_hit"
+               OpName %intel_has_committed_hit "intel_has_committed_hit"
+               OpName %out "out"
+               OpName %accel "accel"
+               OpName %entry "entry"
+               OpName %__clang_ocl_kern_imp_test "__clang_ocl_kern_imp_test"
+               OpName %out_0 "out"
+               OpName %accel_0 "accel"
+               OpName %entry_0 "entry"
+               OpName %raydesc "raydesc"
+               OpName %flags "flags"
+               OpName %call "call"
+               OpName %call1 "call1"
+               OpName %conv "conv"
+               OpName %arrayidx "arrayidx"
+               OpDecorate %intel_ray_query_init LinkageAttributes "intel_ray_query_init" Import
+               OpDecorate %12 FuncParamAttr ByVal
+               OpDecorate %12 Alignment 4
+               OpDecorate %intel_ray_query_start_traversal LinkageAttributes "intel_ray_query_start_traversal" Import
+               OpDecorate %intel_ray_query_sync LinkageAttributes "intel_ray_query_sync" Import
+               OpDecorate %intel_ray_query_commit_potential_hit LinkageAttributes "intel_ray_query_commit_potential_hit" Import
+               OpDecorate %intel_has_committed_hit LinkageAttributes "intel_has_committed_hit" Import
+               OpDecorate %intel_has_committed_hit FuncParamAttr Zext
+               OpDecorate %out Alignment 4
+               OpDecorate %__clang_ocl_kern_imp_test LinkageAttributes "__clang_ocl_kern_imp_test" Export
+               OpDecorate %out_0 Alignment 4
+               OpDecorate %raydesc Alignment 4
+               OpDecorate %44 Alignment 4
+      %uchar = OpTypeInt 8 0
+       %uint = OpTypeInt 32 0
+      %ulong = OpTypeInt 64 0
+   %ulong_44 = OpConstant %ulong 44
+     %uint_0 = OpConstant %uint 0
+     %uint_5 = OpConstant %uint 5
+     %uint_4 = OpConstant %uint 4
+     %uint_1 = OpConstant %uint 1
+    %ulong_0 = OpConstant %ulong 0
+%_ptr_Function_uchar = OpTypePointer Function %uchar
+      %float = OpTypeFloat 32
+%struct_intel_float3 = OpTypeStruct %float %float %float
+%struct_intel_ray_desc_t = OpTypeStruct %struct_intel_float3 %struct_intel_float3 %float %float %uint %uint %uint
+%_ptr_Function_struct_intel_ray_desc_t = OpTypePointer Function %struct_intel_ray_desc_t
+%_ptr_CrossWorkgroup_uchar = OpTypePointer CrossWorkgroup %uchar
+         %10 = OpTypeFunction %_ptr_Function_uchar %_ptr_Function_struct_intel_ray_desc_t %_ptr_CrossWorkgroup_uchar
+       %void = OpTypeVoid
+         %15 = OpTypeFunction %void %_ptr_Function_uchar
+       %bool = OpTypeBool
+         %23 = OpTypeFunction %bool %_ptr_Function_uchar
+%_ptr_CrossWorkgroup_uint = OpTypePointer CrossWorkgroup %uint
+         %27 = OpTypeFunction %void %_ptr_CrossWorkgroup_uint %_ptr_CrossWorkgroup_uchar
+%_arr_uchar_ulong_44 = OpTypeArray %uchar %ulong_44
+%_ptr_Function__arr_uchar_ulong_44 = OpTypePointer Function %_arr_uchar_ulong_44
+%_ptr_Function_uint = OpTypePointer Function %uint
+         %42 = OpConstantNull %_arr_uchar_ulong_44
+%intel_ray_query_init = OpFunction %_ptr_Function_uchar None %10
+         %12 = OpFunctionParameter %_ptr_Function_struct_intel_ray_desc_t
+         %13 = OpFunctionParameter %_ptr_CrossWorkgroup_uchar
+               OpFunctionEnd
+%intel_ray_query_start_traversal = OpFunction %void None %15
+         %17 = OpFunctionParameter %_ptr_Function_uchar
+               OpFunctionEnd
+%intel_ray_query_sync = OpFunction %void None %15
+         %19 = OpFunctionParameter %_ptr_Function_uchar
+               OpFunctionEnd
+%intel_ray_query_commit_potential_hit = OpFunction %void None %15
+         %21 = OpFunctionParameter %_ptr_Function_uchar
+               OpFunctionEnd
+%intel_has_committed_hit = OpFunction %bool None %23
+         %25 = OpFunctionParameter %_ptr_Function_uchar
+               OpFunctionEnd
+         %28 = OpFunction %void None %27
+        %out = OpFunctionParameter %_ptr_CrossWorkgroup_uint
+      %accel = OpFunctionParameter %_ptr_CrossWorkgroup_uchar
+      %entry = OpLabel
+         %35 = OpFunctionCall %void %__clang_ocl_kern_imp_test %out %accel
+               OpReturn
+               OpFunctionEnd
+%__clang_ocl_kern_imp_test = OpFunction %void Inline %27
+      %out_0 = OpFunctionParameter %_ptr_CrossWorkgroup_uint
+    %accel_0 = OpFunctionParameter %_ptr_CrossWorkgroup_uchar
+    %entry_0 = OpLabel
+    %raydesc = OpVariable %_ptr_Function_struct_intel_ray_desc_t Function
+         %44 = OpVariable %_ptr_Function__arr_uchar_ulong_44 Function %42
+               OpLifetimeStart %raydesc 0
+         %38 = OpBitcast %_ptr_Function_uchar %raydesc
+         %45 = OpBitcast %_ptr_Function_uchar %44
+               OpCopyMemorySized %38 %45 %ulong_44 Aligned 4
+      %flags = OpInBoundsPtrAccessChain %_ptr_Function_uint %raydesc %uint_0 %uint_5
+               OpStore %flags %uint_4 Aligned 4
+       %call = OpFunctionCall %_ptr_Function_uchar %intel_ray_query_init %raydesc %accel_0
+         %52 = OpFunctionCall %void %intel_ray_query_start_traversal %call
+         %53 = OpFunctionCall %void %intel_ray_query_sync %call
+         %54 = OpFunctionCall %void %intel_ray_query_commit_potential_hit %call
+      %call1 = OpFunctionCall %bool %intel_has_committed_hit %call
+       %conv = OpSelect %uint %call1 %uint_1 %uint_0
+   %arrayidx = OpInBoundsPtrAccessChain %_ptr_CrossWorkgroup_uint %out_0 %ulong_0
+               OpStore %arrayidx %conv Aligned 4
+               OpLifetimeStop %raydesc 0
+               OpReturn
+               OpFunctionEnd
