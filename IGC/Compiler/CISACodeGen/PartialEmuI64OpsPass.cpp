@@ -479,6 +479,12 @@ bool Preprocessor::replaceDisjointOrWithAdd(Instruction *I, SmallVectorImpl<Inst
   if (!IsDisjoint && !IGCLLVM::haveNoCommonBitsSet(LHS, RHS, *Emu->DL, nullptr, Or, Emu->DT))
     return false;
 
+  // Packing 32-bit halves, e.g. `{0, hi} | zext(lo)`: two 32-bit ops are cheaper than a 64-bit `add`.
+  for (Value *Op : {LHS, RHS}) {
+    if (IGCLLVM::computeKnownBits(Op, *Emu->DL, nullptr, Or, Emu->DT).countMinTrailingZeros() >= 32)
+      return false;
+  }
+
   BinaryOperator *Add = BinaryOperator::CreateAdd(LHS, RHS, "", IGCLLVM::insertPosition(Or));
   Add->setHasNoUnsignedWrap(true);
   Add->setHasNoSignedWrap(true);
