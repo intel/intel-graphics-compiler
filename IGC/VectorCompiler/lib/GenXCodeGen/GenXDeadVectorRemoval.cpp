@@ -219,6 +219,9 @@ Constant *GenXDeadVectorRemoval::trySimplify(ConstantData *CD,
 
   // LLVM 23+ represents FP vector splats as vector-typed ConstantFP.
   if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(CD->getType())) {
+    // Keep zero splats whole, as ConstantAggregateZero was before LLVM 23.
+    if (CD->isNullValue())
+      return CD;
     IGC_ASSERT(LiveElems[0].size() == VTy->getNumElements());
     SmallVector<Constant *, 8> Elems;
     for (unsigned Idx = 0; Idx < VTy->getNumElements(); Idx++) {
