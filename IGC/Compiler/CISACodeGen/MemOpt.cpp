@@ -2303,19 +2303,21 @@ bool SymbolicPointer::checkTerms(const Term *T, const Term *OtherT, int64_t &Off
   if (!T || !OtherT)
     return true;
 
+  // The shared symbolic part of both terms cancels only if it is scaled
+  // equally; otherwise the difference is runtime-dependent.
+  if (T->Scale != OtherT->Scale)
+    return true;
+
   auto *Inst = dyn_cast<BinaryOperator>(T->Idx.getPointer());
   auto *OtherInst = dyn_cast<BinaryOperator>(OtherT->Idx.getPointer());
   if (checkInstructions(Inst, OtherInst))
     return true;
 
   // OpNum == 3 is a sentinel set by checkInstructions() when both operands of
-  // the top-level instructions are identical. Guard here before calling
-  // getOperand(OpNum) to avoid an out-of-bounds access on a two-operand
-  // BinaryOperator.
-  // When scales differ the offset contribution is runtime-dependent; reject the
-  // merge. When scales are equal the contributions cancel to zero; accept.
+  // the top-level instructions are identical, so the terms are equal. Return
+  // before getOperand(OpNum), which would be out of bounds.
   if (OpNum == 3)
-    return T->Scale != OtherT->Scale;
+    return false;
 
   auto InstOp0 = dyn_cast<BinaryOperator>(Inst->getOperand(OpNum));
   auto OtherInstOp0 = dyn_cast<BinaryOperator>(OtherInst->getOperand(OpNum));
@@ -2323,7 +2325,7 @@ bool SymbolicPointer::checkTerms(const Term *T, const Term *OtherT, int64_t &Off
     return true;
 
   if (OpNum == 3)
-    return T->Scale != OtherT->Scale;
+    return false;
 
   auto ConstInt = dyn_cast<ConstantInt>(InstOp0->getOperand(OpNum));
   auto OtherConstInt = dyn_cast<ConstantInt>(OtherInstOp0->getOperand(OpNum));
