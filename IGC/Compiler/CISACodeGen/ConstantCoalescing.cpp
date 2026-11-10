@@ -2046,13 +2046,17 @@ Instruction *ConstantCoalescing::CreateChunkLoad(Instruction *seedi, BufChunk *c
     Type *vty = IGCLLVM::FixedVectorType::get(load->getType()->getScalarType(), chunk->chunkSize);
     unsigned addrSpace = (cast<PointerType>(cb_ptr->getType()))->getAddressSpace();
     PointerType *pty = IGCLLVM::PointerType::get(vty, addrSpace);
-    // cannot use irbuilder to create IntToPtr. It may create ConstantExpr instead of instruction
-    Instruction *ptr =
-        IntToPtrInst::Create(Instruction::IntToPtr, eac, pty, "chunkPtr", IGCLLVM::insertPosition(seedi));
-    m_TT->RegisterNewValueAndAssignID(ptr);
-    // Update debug location
-    ptr->setDebugLoc(irBuilder->getCurrentDebugLocation());
-    wiAns->incUpdateDepend(ptr, wiAns->whichDepend(seedi));
+    Value *ptr = nullptr;
+    if (auto *P2I = dyn_cast<PtrToIntInst>(eac); P2I && P2I->getOperand(0)->getType() == pty) {
+      ptr = P2I->getOperand(0);
+    } else {
+      // cannot use irbuilder to create IntToPtr. It may create ConstantExpr instead of instruction
+      ptr = IntToPtrInst::Create(Instruction::IntToPtr, eac, pty, "chunkPtr", IGCLLVM::insertPosition(seedi));
+      m_TT->RegisterNewValueAndAssignID(ptr);
+      // Update debug location
+      cast<Instruction>(ptr)->setDebugLoc(irBuilder->getCurrentDebugLocation());
+      wiAns->incUpdateDepend(ptr, wiAns->whichDepend(seedi));
+    }
     chunkLoad = irBuilder->CreateLoad(vty, ptr);
     chunkLoad->setAlignment(getAlign(alignment));
     CopyMetadata(chunkLoad, seedi);
