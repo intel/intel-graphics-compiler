@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: spirv-as, regkeys, nvl-p-b0-supported, ptl-supported
+; REQUIRES: spirv-as, regkeys, nvl-p-b0-supported, ptl-supported, llvm-16-plus
 
 ; RT writeback ignores the execution mask, so in a traversal loop the raw
 ; TraceRaySync result must have no user but the masked snapshot. Otherwise
