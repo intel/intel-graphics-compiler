@@ -1870,9 +1870,7 @@ CGenSystemInstructionKernelProgram *CGenSystemInstructionKernelProgram::Create(c
     } else if (mode & SYSTEM_THREAD_MODE_CSR) {
       if (sysInfo.SliceCount == 1 && sysInfo.SubSliceCount == 4) {
         SIPIndex = XE3_CSR_DEBUG_BINDLESS_config_1x4;
-      }
-      // else if(sysInfo.SliceCount == 2 && sysInfo.SubSliceCount == 6)  or default case
-      {
+      } else {
         SIPIndex = XE3_CSR_DEBUG_BINDLESS_config_2x6;
       }
     }
