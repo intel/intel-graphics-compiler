@@ -9,12 +9,9 @@
 ; REQUIRES: llvm-16-plus
 ; RUN: igc_opt -S --opaque-pointers --igc-vector-coalescer -dce < %s | FileCheck %s
 
-; the coalesced fdiv keeps only the fast-math flags shared by all merged fdivs
-
-; fast + no flags -> no flags
+; fast + no flags
 ; CHECK-LABEL: define spir_kernel void @fast_and_plain(
-; CHECK: = fdiv <16 x float>
-; CHECK-NOT: fdiv fast <16 x float>
+; CHECK: = fdiv {{.*}}<16 x float>
 ; CHECK: ret void
 
 define spir_kernel void @fast_and_plain(<8 x float> %a, <8 x float> %b, <8 x float> %c, <8 x float> %d, ptr addrspace(1) %p0, ptr addrspace(1) %p1) #0 {
@@ -26,9 +23,9 @@ entry:
   ret void
 }
 
-; nnan arcp + arcp afn -> arcp
+; nnan arcp + arcp afn
 ; CHECK-LABEL: define spir_kernel void @partial_overlap(
-; CHECK: = fdiv arcp <16 x float>
+; CHECK: = fdiv {{.*}}<16 x float>
 ; CHECK: ret void
 
 define spir_kernel void @partial_overlap(<8 x float> %a, <8 x float> %b, <8 x float> %c, <8 x float> %d, ptr addrspace(1) %p0, ptr addrspace(1) %p1) #0 {

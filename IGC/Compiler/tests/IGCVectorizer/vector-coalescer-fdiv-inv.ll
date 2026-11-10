@@ -22,8 +22,8 @@
 ; CHECK-NOT: shufflevector <8 x float> {{<float 1.000000e\+00|splat \(float 1.000000e\+00\)}}
 ; CHECK: [[DEN:%.*]] = shufflevector <8 x float> %in2, <8 x float> %in4, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 ; CHECK: [[VECT:%.*]] = fdiv fast <16 x float> {{<float 1.000000e\+00(, float 1.000000e\+00){15}>|splat \(float 1.000000e\+00\)}}, [[DEN]]
-; CHECK: [[OUT_0:%.*]] = shufflevector <16 x float> [[VECT]], <16 x float> {{poison|undef}}, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
-; CHECK: [[OUT_1:%.*]] = shufflevector <16 x float> [[VECT]], <16 x float> {{poison|undef}}, <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
+; CHECK-DAG: [[OUT_0:%.*]] = shufflevector <16 x float> [[VECT]], <16 x float> {{poison|undef}}, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
+; CHECK-DAG: [[OUT_1:%.*]] = shufflevector <16 x float> [[VECT]], <16 x float> {{poison|undef}}, <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 ; CHECK: call void @llvm.genx.GenISA.LSC2DBlockWrite.v8f32(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0, <8 x float> [[OUT_0]])
 ; CHECK: call void @llvm.genx.GenISA.LSC2DBlockWrite.v8f32(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0, <8 x float> [[OUT_1]])
 
