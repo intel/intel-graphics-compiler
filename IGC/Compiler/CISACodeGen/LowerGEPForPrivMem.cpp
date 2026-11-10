@@ -32,6 +32,8 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include <algorithm>
+#include <optional>
+#include <tuple>
 
 #define MAX_ALLOCA_PROMOTE_GRF_NUM 48
 #define MAX_PRESSURE_GRF_NUM 90
@@ -483,9 +485,11 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *
 }
 
 SOALayoutChecker::SOALayoutChecker(AllocaInst &allocaToCheck, bool isOCL,
-                                   IGC::MismatchDetectionStrategy mismatchDetectionStrategy)
+                                   IGC::MismatchDetectionStrategy mismatchDetectionStrategy,
+                                   const SupportedSoAFnArgs *SoAFnArgs)
     : allocaRef(allocaToCheck) {
   MismatchDetectionStrategy = mismatchDetectionStrategy;
+  SupportedFnArgs = SoAFnArgs;
   auto F = allocaToCheck.getParent()->getParent();
   pDL = &F->getParent()->getDataLayout();
   newAlgoControl = IGC_GET_FLAG_VALUE(EnablePrivMemNewSOATranspose);
@@ -498,6 +502,69 @@ SOALayoutChecker::SOALayoutChecker(AllocaInst &allocaToCheck, bool isOCL,
 bool SOALayoutChecker::hasUnsupportedAccess(bool IsNewAlgo) const {
   llvm::SmallPtrSet<llvm::Value *, 32> Seen;
   llvm::SmallVector<llvm::Value *, 32> Worklist;
+
+  auto hasCallInstSupportedAccess = [&](llvm::CallInst *CI, llvm::Value *V) {
+    llvm::SmallVector<llvm::Argument *, 4> CalleeArgs;
+    if (!getSupportedCalleeArgs(*CI, V, CalleeArgs))
+      return false;
+    if (!CalleeArgs.empty() && !hasZeroOffset(V))
+      return false;
+    Worklist.append(CalleeArgs.begin(), CalleeArgs.end());
+    return true;
+  };
+
+  auto getStoreLoadInfo = [](llvm::Value *U, llvm::Value *V) -> std::tuple<llvm::Type *, llvm::Value *, bool> {
+    if (auto *PLI = llvm::dyn_cast<llvm::PredicatedLoadIntrinsic>(U)) {
+      return {PLI->getType(), PLI->getPointerOperand(), false};
+    } else if (auto *LI = llvm::dyn_cast<llvm::LoadInst>(U)) {
+      return {LI->getType(), LI->getPointerOperand(), false};
+    } else if (auto *SI = llvm::dyn_cast<llvm::StoreInst>(U)) {
+      if (SI->getPointerOperand() == V) {
+        return {SI->getValueOperand()->getType(), V, true};
+      }
+    }
+    return {nullptr, nullptr, false};
+  };
+
+  auto hasUnsupportedLoadStoreAccess = [&](llvm::Value *U, llvm::Value *V) -> std::optional<bool> {
+    auto [AccTy, Ptr, IsStore] = getStoreLoadInfo(U, V);
+    if (!AccTy)
+      return std::nullopt;
+    uint64_t AccBytes = pDL->getTypeStoreSize(AccTy);
+    if (IsNewAlgo) {
+      // New SoA algorithm - TransposePrivMem
+      // Accesses smaller than the partition size must be a power of two due to intra chunk offset calculations.
+      if (AccBytes < SOAPartitionBytes && !isPowerOf2_32((uint32_t)AccBytes))
+        return true;
+      // Access needs to be aligned to its size or the partition size. Smaller accesses due to chunk offset
+      // calculation and larger due to splitting in partition sized chunks.
+      if (!isAlignedChain(Ptr, (AccBytes < SOAPartitionBytes) ? AccBytes : SOAPartitionBytes))
+        return true;
+      // Accesses greater than partition size are not supported unless EnableAggressiveSOAPromotion is on and their
+      // size is a multiple of the partition size - refer to getMultiChunkVecTy.
+      if (AccBytes > SOAPartitionBytes &&
+          (IGC_IS_FLAG_DISABLED(EnableAggressiveSOAPromotion) || (AccBytes % SOAPartitionBytes) != 0))
+        return true;
+    } else if (MismatchDetectionStrategy == DefaultLowerGEPStrategy) {
+      // DefaultLowerGEPStrategy uses its own transpose helper - TransposeHelperPromote
+      auto LaneSize = pDL->getTypeAllocSize(pInfo->baseType->getScalarType());
+      if (!isAlignedChain(Ptr, LaneSize, true))
+        return true;
+      // To avoid 0 extending and overwriting of unintended data, require access to be multiple of lane size.
+      if (IsStore && AccBytes % LaneSize != 0)
+        return true;
+    } else {
+      // Legacy SoA algorithm - TransposeHelperPrivateMem
+      auto LaneSize = pDL->getTypeAllocSize(pInfo->baseType);
+      if (!isAlignedChain(Ptr, LaneSize))
+        return true;
+      // Vector access are emitted as single load/store instructions, so they must fit within a lane.
+      if (pInfo->baseType->isVectorTy() && AccBytes > LaneSize)
+        return true;
+    }
+    return false;
+  };
+
   Worklist.push_back(&allocaRef);
   while (!Worklist.empty()) {
     llvm::Value *V = Worklist.pop_back_val();
@@ -517,58 +584,19 @@ bool SOALayoutChecker::hasUnsupportedAccess(bool IsNewAlgo) const {
         continue;
       }
 
-      llvm::Type *AccTy = nullptr;
-      llvm::Value *Ptr = nullptr;
-      bool IsStore = false;
-      if (auto *PLI = llvm::dyn_cast<llvm::PredicatedLoadIntrinsic>(U)) {
-        AccTy = PLI->getType();
-        Ptr = PLI->getPointerOperand();
+      auto UnsupportedAccess = hasUnsupportedLoadStoreAccess(U, V);
+      if (UnsupportedAccess.has_value()) {
+        if (UnsupportedAccess.value()) {
+          return true;
+        }
+        continue;
+      }
+
+      if (auto *CI = llvm::dyn_cast<llvm::CallInst>(U)) {
+        if (!hasCallInstSupportedAccess(CI, V))
+          return true;
       } else if (llvm::isa<llvm::CallBase>(U)) {
         return true;
-      } else if (auto *LI = llvm::dyn_cast<llvm::LoadInst>(U)) {
-        AccTy = LI->getType();
-        Ptr = LI->getPointerOperand();
-      } else if (auto *SI = llvm::dyn_cast<llvm::StoreInst>(U)) {
-        if (SI->getPointerOperand() == V) {
-          AccTy = SI->getValueOperand()->getType();
-          Ptr = V;
-          IsStore = true;
-        }
-      }
-      if (!AccTy)
-        continue;
-
-      uint64_t AccBytes = pDL->getTypeStoreSize(AccTy);
-      if (IsNewAlgo) {
-        // New SoA algorithm - TransposePrivMem
-        // Accesses smaller than the partition size must be a power of two due to intra chunk offset calculations.
-        if (AccBytes < SOAPartitionBytes && !isPowerOf2_32((uint32_t)AccBytes))
-          return true;
-        // Access needs to be aligned to its size or the partition size. Smaller accesses due to chunk offset
-        // calculation and larger due to splitting in partition sized chunks.
-        if (!isAlignedChain(Ptr, (AccBytes < SOAPartitionBytes) ? AccBytes : SOAPartitionBytes))
-          return true;
-        // Accesses greater than partition size are not supported unless EnableAggressiveSOAPromotion is on and their
-        // size is a multiple of the partition size - refer to getMultiChunkVecTy.
-        if (AccBytes > SOAPartitionBytes &&
-            (IGC_IS_FLAG_DISABLED(EnableAggressiveSOAPromotion) || (AccBytes % SOAPartitionBytes) != 0))
-          return true;
-      } else if (MismatchDetectionStrategy == DefaultLowerGEPStrategy) {
-        // DefaultLowerGEPStrategy uses its own transpose helper - TransposeHelperPromote
-        auto LaneSize = pDL->getTypeAllocSize(pInfo->baseType->getScalarType());
-        if (!isAlignedChain(Ptr, LaneSize, true))
-          return true;
-        // To avoid 0 extending and overwriting of unintended data, require access to be multiple of lane size.
-        if (IsStore && AccBytes % LaneSize != 0)
-          return true;
-      } else {
-        // Legacy SoA algorithm - TransposeHelperPrivateMem
-        auto LaneSize = pDL->getTypeAllocSize(pInfo->baseType);
-        if (!isAlignedChain(Ptr, LaneSize))
-          return true;
-        // Vector access are emitted as single load/store instructions, so they must fit within a lane.
-        if (pInfo->baseType->isVectorTy() && AccBytes > LaneSize)
-          return true;
       }
     }
   }
@@ -784,6 +812,32 @@ bool SOALayoutChecker::isChunkSpanningType(Type *Ty) const {
   return !Ty->isVectorTy() && Bytes > SOAPartitionBytes && (Bytes % SOAPartitionBytes) == 0;
 }
 
+bool SOALayoutChecker::hasZeroOffset(const llvm::Value *V) const {
+  while (true) {
+    if (auto *GEP = llvm::dyn_cast<llvm::GetElementPtrInst>(V)) {
+      if (!GEP->hasAllZeroIndices())
+        return false;
+      V = GEP->getPointerOperand();
+    } else if (auto *BC = llvm::dyn_cast<llvm::BitCastInst>(V)) {
+      V = BC->getOperand(0);
+    } else if (auto *BC = llvm::dyn_cast<llvm::AddrSpaceCastInst>(V)) {
+      V = BC->getOperand(0);
+    } else if (auto *PHI = llvm::dyn_cast<llvm::PHINode>(V); PHI && PHI->getNumIncomingValues() == 1) {
+      V = PHI->getIncomingValue(0);
+    } else {
+      return isSoARoot(V);
+    }
+  }
+}
+
+bool SOALayoutChecker::isSoARoot(const llvm::Value *Ptr) const {
+  if (Ptr == &allocaRef)
+    return true;
+  if (auto *A = llvm::dyn_cast<llvm::Argument>(Ptr); A && isSupportedArg(A))
+    return true;
+  return false;
+}
+
 // Return true if a dynamic GEP index contributing Idx * Stride bytes provably leaves the running
 // byte offset a multiple of given alignment. Only the trailing zeros of Idx are known, and they
 // add to those of the stride, so the product is aligned when the two together cover
@@ -798,7 +852,7 @@ bool SOALayoutChecker::isAlignedDynamicOffset(Value *Idx, uint64_t Stride, uint6
 
 bool SOALayoutChecker::isAlignedChain(const Value *Ptr, uint64_t TargetAlignment, bool CheckAllLinks) const {
   int64_t ConstBytes = 0;
-  while (Ptr != &allocaRef) {
+  while (true) {
     if (auto *GEP = dyn_cast<GetElementPtrInst>(Ptr)) {
       for (auto GTI = gep_type_begin(GEP), GTE = gep_type_end(GEP); GTI != GTE; ++GTI) {
         Value *Idx = GTI.getOperand();
@@ -837,7 +891,9 @@ bool SOALayoutChecker::isAlignedChain(const Value *Ptr, uint64_t TargetAlignment
       Ptr = PHI->getIncomingValue(0);
       continue;
     }
-    // Unknown origin (a select, a function argument, ...): the offset cannot be proven,
+    if (isSoARoot(Ptr))
+      break;
+    // Unknown origin (a select, unsupported function argument, ...): the offset cannot be proven,
     // so it can not be assumed aligned.
     return false;
   }
@@ -903,7 +959,7 @@ bool SOALayoutChecker::hasPartitionAlignedGEPOffset(GetElementPtrInst *GEP, bool
 }
 
 // TODO: Consider a worklist-based implementation instead.
-bool SOALayoutChecker::checkUsers(Instruction &I) {
+bool SOALayoutChecker::checkUsers(Value &I) {
   if (IGC_IS_FLAG_ENABLED(DisableSOAPromotion)) {
     return false;
   }
@@ -911,10 +967,10 @@ bool SOALayoutChecker::checkUsers(Instruction &I) {
   // The walk needs no cycle guard: the only visitors that recurse back into
   // checkUsers() are bitcast, addrspacecast, GEP and PHI, and visitPHINode()
   // rejects every PHI with more than one incoming value.
-  llvm::SaveAndRestore<Instruction *> RestoreParentOnExit(parentLevelInst, &I);
+  llvm::SaveAndRestore<Value *> RestoreParentOnExit(ParentLevelVal, &I);
   for (Value::user_iterator userIt = I.user_begin(), userE = I.user_end(); userIt != userE; ++userIt) {
     auto &userInst = *cast<Instruction>(*userIt);
-    parentLevelInst = &I;
+    ParentLevelVal = &I;
     if (!visit(userInst)) {
       return false;
     }
@@ -1156,36 +1212,6 @@ bool SOALayoutChecker::visitGetElementPtrInst(GetElementPtrInst &GEP) {
   return checkUsers(GEP);
 }
 
-// Walk back from V through GEP/BitCast/AddrSpaceCast/PHI to determine whether
-// V is derived from alloca via a restricted chain of pointer-preserving
-// instructions. Returns true on success. Does not require constant offsets;
-// it only proves that V is *some* address within the same alloca buffer.
-// PHI nodes are followed: all incoming values must trace to the same alloca.
-//
-// Like checkUsers(), this needs no visited set or cycle guard. It is only ever
-// called on the sole incoming value of a PHI the forward walk has already
-// reached from the alloca, so it just retraces that walk backwards.
-static bool tracesToAlloca(llvm::Value *V, llvm::AllocaInst *Alloca) {
-  IGC_ASSERT_MESSAGE(V != nullptr, "tracesToAlloca on a null value");
-  if (V == Alloca) {
-    return true;
-  }
-  if (auto *GEP = llvm::dyn_cast<llvm::GetElementPtrInst>(V)) {
-    return tracesToAlloca(GEP->getPointerOperand(), Alloca);
-  }
-  if (auto *CI = llvm::dyn_cast<llvm::CastInst>(V)) {
-    return tracesToAlloca(CI->getOperand(0), Alloca);
-  }
-  if (auto *PHI = llvm::dyn_cast<llvm::PHINode>(V)) {
-    unsigned NumIncoming = PHI->getNumIncomingValues();
-    if (NumIncoming == 1) {
-      return tracesToAlloca(PHI->getIncomingValue(0), Alloca);
-    }
-    return false;
-  }
-  return false;
-}
-
 // addrspacecast is an addrspace re-tag of the same address — exactly
 // analogous to a same-element-type bitcast for layout purposes — so we walk
 // through it transparently to its users.
@@ -1201,7 +1227,7 @@ bool SOALayoutChecker::visitPHINode(PHINode &PHI) {
   if (!IGC_IS_FLAG_ENABLED(EnableAggressiveSOAPromotion)) {
     return false;
   }
-  if (PHI.getNumIncomingValues() != 1 || !tracesToAlloca(PHI.getIncomingValue(0), &allocaRef)) {
+  if (PHI.getNumIncomingValues() != 1) {
     return false;
   }
   return checkUsers(PHI);
@@ -1212,18 +1238,56 @@ bool SOALayoutChecker::visitIntrinsicInst(IntrinsicInst &II) {
   return IID == llvm::Intrinsic::lifetime_start || IID == llvm::Intrinsic::lifetime_end;
 }
 
+bool SOALayoutChecker::isSupportedArg(const Argument *Arg) const {
+  if (!SupportedFnArgs)
+    return false;
+  auto *F = Arg->getParent();
+  auto It = SupportedFnArgs->find(F);
+  if (It == SupportedFnArgs->end())
+    return false;
+  auto &ArgInfos = It->second;
+
+  auto InfoIt = llvm::find_if(ArgInfos, [&](const SoAArgInfo &Info) { return Info.ArgIndex == Arg->getArgNo(); });
+  if (InfoIt == ArgInfos.end())
+    return false;
+
+  IGC_ASSERT_MESSAGE(llvm::is_contained(InfoIt->TracedAllocas, &allocaRef),
+                     "SOALayoutChecker reached an arg whose TracedAllocas do not include checked alloca;");
+  return true;
+}
+
+bool SOALayoutChecker::getSupportedCalleeArgs(const CallInst &CI, const Value *V,
+                                              SmallVectorImpl<Argument *> &CalleeArgs) const {
+  Function *Callee = CI.getCalledFunction();
+  if (!Callee)
+    return false;
+  for (unsigned ArgNo = 0; ArgNo != CI.arg_size(); ++ArgNo) {
+    if (CI.getArgOperand(ArgNo) != V)
+      continue;
+    if (ArgNo >= Callee->arg_size())
+      return false;
+    Argument *Arg = Callee->getArg(ArgNo);
+    if (!isSupportedArg(Arg))
+      return false;
+    CalleeArgs.push_back(Arg);
+  }
+  return true;
+}
+
 bool SOALayoutChecker::visitCallInst(CallInst &CI) {
   // GenISA intrinsics have getIntrinsicID()==not_intrinsic, so InstVisitor routes them here, not to
   // visitIntrinsicInst.
+
+  // Only TransposePrivMem supports predicated loads and cross function allocas.
+  if (!pInfo->useNewAlgoTranspose) {
+    return false;
+  }
+
   // A GenISA_PredicatedLoad can be SoA-promoted like the plain
   // load it replaced: the transpose only rewrites the pointer operand, preserving
   // the predicate so the masked, non-faulting access semantics are kept.
   if (auto *PLI = dyn_cast<PredicatedLoadIntrinsic>(&CI)) {
     if (!PLI->isSimple()) {
-      return false;
-    }
-    // Only TransposePrivMem supports predicated loads.
-    if (MismatchDetectionStrategy == DefaultLowerGEPStrategy || !pInfo->useNewAlgoTranspose) {
       return false;
     }
     const bool isVectorLoad = PLI->getType()->isVectorTy();
@@ -1235,7 +1299,10 @@ bool SOALayoutChecker::visitCallInst(CallInst &CI) {
     return !MismatchDetected(*PLI);
   }
 
-  return false;
+  SmallVector<Argument *, 4> CalleeArgs;
+  if (!getSupportedCalleeArgs(CI, ParentLevelVal, CalleeArgs) || CalleeArgs.empty())
+    return false;
+  return llvm::all_of(CalleeArgs, [&](Argument *Arg) { return checkUsers(*Arg); });
 }
 
 /// Can the user type be treated as a same-footprint reinterpretation of
@@ -1308,6 +1375,15 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
 
     // Start with the alloca itself
     worklist.push_back(&allocaRef);
+    // Also check the accesses in the callees, through the args that receive a pointer to this alloca.
+    if (SupportedFnArgs) {
+      for (const auto &[F, ArgInfos] : *SupportedFnArgs) {
+        for (const SoAArgInfo &Info : ArgInfos) {
+          if (llvm::is_contained(Info.TracedAllocas, &allocaRef))
+            worklist.push_back(F->getArg(Info.ArgIndex));
+        }
+      }
+    }
 
     while (!worklist.empty()) {
       Value *current = worklist.pop_back_val();
@@ -1404,7 +1480,7 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
 
   auto vecTySize = pUserTy->getScalarSizeInBits();
 
-  auto *pgep = dyn_cast<GetElementPtrInst>(parentLevelInst);
+  auto *pgep = dyn_cast<GetElementPtrInst>(ParentLevelVal);
   // For heterogeneous-struct promotion the parent GEP's element type says nothing about the access:
   // handleGEPInstNew reduces the chain to an exact byte offset (already proven chunk-aligned by
   // visitGetElementPtrInst) and the load/store handlers split the access into SOAPartitionBytes
@@ -1497,7 +1573,7 @@ bool SOALayoutChecker::visitStoreInst(StoreInst &SI) {
 
   // If the value we came from is what gets written instead, the alloca pointer
   // escapes into memory and cannot be promoted.
-  if (SI.getPointerOperand() != parentLevelInst || pValueOp == parentLevelInst) {
+  if (SI.getPointerOperand() != ParentLevelVal || pValueOp == ParentLevelVal) {
     return false;
   }
 
@@ -1594,7 +1670,7 @@ void LowerGEPForPrivMem::visitAllocaInst(AllocaInst &I) {
   m_allocasToPrivMem.push_back(&I);
 }
 
-void TransposeHelper::HandleAllocaSources(Instruction *v, Value *idx) {
+void TransposeHelper::HandleAllocaSources(Value *v, Value *idx) {
   SmallVector<Value *, 10> instructions;
   for (Value::user_iterator it = v->user_begin(), e = v->user_end(); it != e; ++it) {
     Value *inst = cast<Value>(*it);

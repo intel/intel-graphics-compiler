@@ -2297,6 +2297,7 @@ DECLARE_IGC_REGKEY(bool, EnableAggressiveSOAPromotion, true,
                    "If true, enables the aggressive SoA-promotion capabilities. "
                    "Top-level/flattened homogeneous struct promotion, heterogeneous struct fields etc",
                    ALWAYS)
+DECLARE_IGC_REGKEY(bool, EnableSOAAcrossCalls, false, "Allow cross functions SoA promotion", ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableSOAPromotionDisablingHeuristic, false,
                    "Enable heuristic to disable SOA promotion when it may be not beneficial", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableSOAPromotion, false,

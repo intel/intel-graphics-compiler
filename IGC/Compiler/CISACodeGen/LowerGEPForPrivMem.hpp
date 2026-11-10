@@ -38,6 +38,13 @@ enum MismatchDetectionStrategy {
   DefaultLowerGEPStrategy                             // LowerGEP
 };
 
+struct SoAArgInfo {
+  unsigned int ArgIndex;
+  llvm::SmallVector<llvm::AllocaInst *, 8> TracedAllocas;
+  unsigned int PartitionBytes = 0;
+};
+using SupportedSoAFnArgs = llvm::DenseMap<llvm::Function *, llvm::SmallVector<SoAArgInfo, 8>>;
+
 /// Tries to promote array in private memory to indexable vector
 /// Uses register pressure to make sure it won't cause spilling
 llvm::FunctionPass *createPromotePrivateArrayToReg();
@@ -83,7 +90,8 @@ public:
   friend llvm::InstVisitor<SOALayoutChecker, bool>;
 
   // isOCL is for testing, it will be removed once testing is done.
-  SOALayoutChecker(llvm::AllocaInst &allocaToCheck, bool isOCL, MismatchDetectionStrategy mismatchDetectionStrategy);
+  SOALayoutChecker(llvm::AllocaInst &allocaToCheck, bool isOCL, MismatchDetectionStrategy mismatchDetectionStrategy,
+                   const SupportedSoAFnArgs *SoAFnArgs = nullptr);
   SOALayoutChecker() = delete;
   ~SOALayoutChecker() = default;
   SOALayoutChecker(const SOALayoutChecker &) = delete;
@@ -121,6 +129,7 @@ private:
   const llvm::DataLayout *pDL;
   std::unique_ptr<SOALayoutInfo> pInfo;
   MismatchDetectionStrategy MismatchDetectionStrategy = DefaultLowerGEPStrategy;
+  const SupportedSoAFnArgs *SupportedFnArgs;
 
   // ===== fields for new algo =====
   // todo: combine the new and old together
@@ -167,18 +176,23 @@ private:
   // Return true if a dynamic GEP index contributing \p Idx * \p Stride bytes provably keeps
   // the running byte offset a multiple of given alignment.
   bool isAlignedDynamicOffset(llvm::Value *Idx, uint64_t Stride, uint64_t TargetAlignment) const;
+  bool hasZeroOffset(const llvm::Value *V) const;
+  bool isSoARoot(const llvm::Value *Ptr) const;
+  bool isSupportedArg(const llvm::Argument *Arg) const;
+  bool getSupportedCalleeArgs(const llvm::CallInst &CI, const llvm::Value *V,
+                              llvm::SmallVectorImpl<llvm::Argument *> &CalleeArgs) const;
   // ===== end of fields for new algo =====
 
   bool isVectorSOA = true;
-  llvm::Instruction *parentLevelInst = nullptr;
+  llvm::Value *ParentLevelVal = nullptr;
 
-  /// This method visits the direct users of the instruction, abrupting
+  /// This method visits the direct users of the value, aborting
   /// traversal if a false value is returned by any of the visits.
   ///
   /// TODO: Consider a worklist-based implementation instead. If achieved, it
   /// would make sense to rename the method into `enqueueUsers', in adherence with
   /// the convention set by llvm::PtrUseVisitor.
-  bool checkUsers(llvm::Instruction &I);
+  bool checkUsers(llvm::Value &I);
 
   /// Given the purpose of the analysis, we can only handle memory
   /// instructions. Default to 'false'.
@@ -203,7 +217,7 @@ class TransposeHelper {
 public:
   TransposeHelper(const llvm::DataLayout &DL, bool vectorIndex)
       : m_vectorIndex(vectorIndex), m_DL(DL), m_promotedLaneBytes(0), m_idxUnitBytes(0) {}
-  void HandleAllocaSources(llvm::Instruction *v, llvm::Value *idx);
+  void HandleAllocaSources(llvm::Value *v, llvm::Value *idx);
   void handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *idx);
   // Temporary, this is to replace HandleGEPInst
   void handleGEPInstNew(llvm::GetElementPtrInst *pGEP, llvm::Value *idx);

@@ -28,6 +28,12 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DebugInfo.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/IntrinsicInst.h"
+#include <llvm/ADT/SCCIterator.h>
+#include <llvm/ADT/STLExtras.h>
+#include <llvm/ADT/SmallSet.h>
+#include <llvm/ADT/SmallVector.h>
+#include <llvm/IR/Argument.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvmWrapper/ADT/Optional.h>
 #include "Probe/Assertion.h"
@@ -75,6 +81,8 @@ public:
   /// @return true if there were resolved alloca, false otherwise.
   bool resolveAllocaInstructions(bool privateOnStack, bool hasOptNone);
 
+  void releaseMemory() override { SupportedFnArgs.clear(); }
+
 private:
   struct arrayIndex {
     llvm::GetElementPtrInst *gep;
@@ -85,6 +93,12 @@ private:
   static bool testTransposedMemory(const Type *pTmpType, const Type *const pTypeOfAccessedObject,
                                    uint64_t tmpAllocaSize, const uint64_t bufferSizeLimit);
 
+
+  void collectCrossFunctionInfo(llvm::Module &M);
+
+  /// @brief  Rewrite the memory accesses through the callee arguments that receive a SoA-promoted pointer.
+  /// @return true if any function was changed.
+  bool resolvePromotedArguments();
 
   /// @brief  The module level alloca information
   ModuleAllocaAnalysis *m_ModAllocaInfo = nullptr;
@@ -97,6 +111,9 @@ private:
 
   /// @brief - CodeGen context, cached in runOnModule
   CodeGenContext *m_pCtx = nullptr;
+
+  /// @brief - Function arguments that are supported for cross call SoA promotion.
+  SupportedSoAFnArgs SupportedFnArgs;
 };
 
 class TransposePrivMem : public TransposeHelper {
@@ -226,6 +243,308 @@ void PrivateMemoryResolution::expandPrivateMemoryForVla(uint32_t &maxPrivateMem,
 }
 
 
+// Alloca that flows to the function call argument can only be promoted if all other flows to that argument can be
+// promoted. Return only allocas that are on supported path.
+static SmallVector<AllocaInst *, 8>
+traceArgToAlloca(Function &F, unsigned ArgIdx, SmallPtrSetImpl<Function *> &UnsupportedFns,
+                 DenseMap<Argument *, SmallVector<AllocaInst *, 8>> &ArgToAllocaCache) {
+  SmallPtrSet<AllocaInst *, 8> RootAllocas;
+  for (Use &U : F.uses()) {
+    auto *CI = dyn_cast<CallInst>(U.getUser());
+    if (!CI)
+      continue;
+    if (!CI->isCallee(&U) || !CI->getFunctionType() || CI->getFunctionType() != F.getFunctionType())
+      return {};
+    auto *V = CI->getArgOperand(ArgIdx);
+    while (true) {
+      if (auto *GEP = dyn_cast<GetElementPtrInst>(V)) {
+        V = GEP->getPointerOperand();
+      } else if (auto *CastI = dyn_cast<CastInst>(V)) {
+        if (!isa<BitCastInst>(CastI) && !isa<AddrSpaceCastInst>(CastI)) {
+          return {};
+        }
+        V = CastI->getOperand(0);
+      } else if (auto *PHI = dyn_cast<PHINode>(V)) {
+        if (PHI->getNumIncomingValues() != 1)
+          return {};
+        V = PHI->getIncomingValue(0);
+      } else if (auto *AI = dyn_cast<AllocaInst>(V)) {
+        RootAllocas.insert(AI);
+        break;
+      } else if (auto *Arg = dyn_cast<Argument>(V)) {
+        if (!Arg->getType()->isPointerTy() || Arg->hasStructRetAttr() || Arg->hasByValAttr()) {
+          return {};
+        }
+        if (UnsupportedFns.count(Arg->getParent()))
+          return {};
+
+        // Use memoized result if available
+        if (auto It = ArgToAllocaCache.find(Arg); It != ArgToAllocaCache.end()) {
+          if (It->second.empty())
+            return {};
+          RootAllocas.insert(It->second.begin(), It->second.end());
+          break;
+        }
+        auto SubCallAllocas = traceArgToAlloca(*Arg->getParent(), Arg->getArgNo(), UnsupportedFns, ArgToAllocaCache);
+        ArgToAllocaCache[Arg] = SubCallAllocas;
+        if (SubCallAllocas.empty())
+          return {};
+        RootAllocas.insert(SubCallAllocas.begin(), SubCallAllocas.end());
+        break;
+      } else {
+        return {};
+      }
+    }
+  }
+  return SmallVector<AllocaInst *, 8>(RootAllocas.begin(), RootAllocas.end());
+}
+
+// Trace the uses of an alloca or a function arg to all args it reaches.
+static std::optional<SmallVector<Argument *, 8>>
+traceUsesToArgs(Value *Root, SmallPtrSetImpl<Function *> &UnsupportedFns,
+                DenseMap<Argument *, std::optional<SmallVector<Argument *, 8>>> &ArgToArgCache) {
+  SmallSet<Argument *, 8> RootArgs;
+  SmallVector<Value *, 8> Worklist;
+  SmallPtrSet<Value *, 8> Seen;
+  Worklist.push_back(Root);
+
+  while (!Worklist.empty()) {
+    llvm::Value *V = Worklist.pop_back_val();
+    if (!Seen.insert(V).second) {
+      continue;
+    }
+    for (User *U : V->users()) {
+      if (auto *II = llvm::dyn_cast<llvm::IntrinsicInst>(U)) {
+        llvm::Intrinsic::ID IID = II->getIntrinsicID();
+        if (IID == llvm::Intrinsic::lifetime_start || IID == llvm::Intrinsic::lifetime_end || isDebugInst(II))
+          continue;
+      }
+      if (llvm::isa<llvm::GetElementPtrInst, llvm::BitCastInst, llvm::AddrSpaceCastInst>(U)) {
+        Worklist.push_back(U);
+        continue;
+      }
+      if (PHINode *PN = dyn_cast<PHINode>(U)) {
+        if (PN->getNumIncomingValues() != 1) {
+          return std::nullopt;
+        }
+        Worklist.push_back(PN);
+        continue;
+      }
+      if (llvm::isa<llvm::LoadInst>(U)) {
+        continue;
+      }
+      if (auto *SI = llvm::dyn_cast<llvm::StoreInst>(U)) {
+        if (SI->getValueOperand() == V) {
+          return std::nullopt;
+        }
+        continue;
+      }
+      if (auto *CI = llvm::dyn_cast<llvm::CallInst>(U)) {
+        auto *Callee = CI->getCalledFunction();
+        if (!Callee || UnsupportedFns.count(Callee) || !CI->getFunctionType() ||
+            CI->getFunctionType() != Callee->getFunctionType())
+          return std::nullopt;
+        for (unsigned I = 0; I < CI->arg_size(); ++I) {
+          if (CI->getArgOperand(I) != V) {
+            continue;
+          }
+          auto *Arg = Callee->getArg(I);
+          RootArgs.insert(Arg);
+
+          // Use memoized result if available
+          if (auto It = ArgToArgCache.find(Arg); It != ArgToArgCache.end()) {
+            if (!It->second.has_value())
+              return std::nullopt;
+            RootArgs.insert(It->second->begin(), It->second->end());
+            continue;
+          }
+          auto CalleeArgs = traceUsesToArgs(Arg, UnsupportedFns, ArgToArgCache);
+          ArgToArgCache[Arg] = CalleeArgs;
+          if (!CalleeArgs.has_value())
+            return std::nullopt;
+          RootArgs.insert(CalleeArgs->begin(), CalleeArgs->end());
+        }
+        continue;
+      }
+      return std::nullopt;
+    }
+  }
+  return SmallVector<Argument *, 8>(RootArgs.begin(), RootArgs.end());
+}
+
+// Prune SupportedFnArgs if some of the allocas that reach args we think are supported also reach unsupported args.
+static void pruneSupportedFnArgs(SupportedSoAFnArgs &SupportedFnArgs,
+                                 const SmallPtrSetImpl<AllocaInst *> &AllocasReachingArgs) {
+  // Initially fill rejected allocas with those that have flow from args, but that themselves have unsupported flows
+  SmallPtrSet<AllocaInst *, 8> RejectedAllocas;
+  llvm::for_each(SupportedFnArgs, [&](auto &KV) {
+    llvm::for_each(KV.second, [&](const SoAArgInfo &Info) {
+      for (AllocaInst *AI : Info.TracedAllocas) {
+        if (!AllocasReachingArgs.count(AI))
+          RejectedAllocas.insert(AI);
+      }
+    });
+  });
+
+  // Do optimistic (assume all arguments in SupportedFnArgs are supported) check if alloca is allowed, and collect
+  // partition sizes for valid allocas.
+  DenseMap<AllocaInst *, unsigned int> AllocaToPartitionSize;
+  for (AllocaInst *AI : AllocasReachingArgs) {
+    if (RejectedAllocas.contains(AI)) {
+      continue;
+    }
+    IGC::SOALayoutChecker Checker(*AI, true, OpenCLShaderStrategy, &SupportedFnArgs);
+    IGC::SOALayoutInfo Info = Checker.getOrGatherInfo();
+    if (!Info.canUseSOALayout || !Info.useNewAlgoTranspose) {
+      RejectedAllocas.insert(AI);
+      continue;
+    }
+    AllocaToPartitionSize[AI] = Info.SOAPartitionBytes;
+  }
+
+  // Args that are reached from multiple allocas have to have same partition size.
+  llvm::for_each(SupportedFnArgs, [&](auto &KV) {
+    auto &ArgInfos = KV.second;
+    llvm::erase_if(ArgInfos, [&](const SoAArgInfo &Info) {
+      if (Info.TracedAllocas.size() <= 1)
+        return false;
+      unsigned int PartitionSize = AllocaToPartitionSize.lookup(Info.TracedAllocas.front());
+      for (AllocaInst *AI : Info.TracedAllocas) {
+        if (AllocaToPartitionSize.lookup(AI) != PartitionSize) {
+          RejectedAllocas.insert(Info.TracedAllocas.begin(), Info.TracedAllocas.end());
+          return true;
+        }
+      }
+      return false;
+    });
+  });
+
+  // Iterate until a fixpoint is reached where no more allocas or args are rejected.
+  bool IsChanged = true;
+  while (IsChanged) {
+    IsChanged = false;
+
+    // An arg with flow to a rejected alloca is not supported, and neither are the other allocas that flow to it.
+    for (auto &[_, ArgInfos] : SupportedFnArgs) {
+      size_t NumArgs = ArgInfos.size();
+      llvm::erase_if(ArgInfos, [&](const SoAArgInfo &Info) {
+        if (llvm::none_of(Info.TracedAllocas, [&](AllocaInst *AI) { return RejectedAllocas.count(AI); }))
+          return false;
+        RejectedAllocas.insert(Info.TracedAllocas.begin(), Info.TracedAllocas.end());
+        return true;
+      });
+      IsChanged |= ArgInfos.size() != NumArgs;
+    }
+  }
+
+  // Record partition size for the arg SoA promotion
+  for (auto &[_, ArgInfos] : SupportedFnArgs) {
+    for (SoAArgInfo &Info : ArgInfos) {
+      IGC_ASSERT_MESSAGE(!Info.TracedAllocas.empty(), "supported arg without traced allocas");
+      Info.PartitionBytes = AllocaToPartitionSize.lookup(Info.TracedAllocas.front());
+    }
+  }
+
+  SmallVector<Function *, 8> EmptyFns;
+  llvm::for_each(SupportedFnArgs, [&](auto &KV) {
+    if (KV.second.empty())
+      EmptyFns.push_back(KV.first);
+  });
+  llvm::for_each(EmptyFns, [&](Function *F) { SupportedFnArgs.erase(F); });
+}
+
+void PrivateMemoryResolution::collectCrossFunctionInfo(llvm::Module &M) {
+  auto *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
+  llvm::SmallPtrSet<llvm::Function *, 8> UnsupportedFns;
+
+  auto collectRecursiveFns = [&] {
+    auto &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+
+    for (auto I = scc_begin(&CG); !I.isAtEnd(); ++I) {
+      if (!I.hasCycle())
+        continue;
+
+      for (CallGraphNode *N : *I)
+        if (Function *F = N->getFunction())
+          UnsupportedFns.insert(F);
+    }
+  };
+
+  auto hasUnsupportedAttr = [](Function &F) {
+    return F.hasFnAttribute("visaStackCall") || F.hasFnAttribute("hasRecursion") || F.hasFnAttribute("hasVLA") ||
+           F.hasFnAttribute("referenced-indirectly");
+  };
+
+  auto hasUnsupportedFGInfo = [&](Function &F) {
+    auto *FG = FGA ? FGA->getGroup(&F) : nullptr;
+    return (FG && (FG->hasStackCall() || FG->hasVariableLengthAlloca() || FGA->isIndirectCallGroup(FG) ||
+                   FG->hasInlineAsm() || FG->hasRecursion()));
+  };
+
+  collectRecursiveFns();
+
+  for (auto &F : M) {
+    if (F.isDeclaration() || F.hasAddressTaken() || F.getFunctionType()->isVarArg() || hasUnsupportedAttr(F) ||
+        hasUnsupportedFGInfo(F) || m_pMdUtils->findFunctionsInfoItem(&F) == m_pMdUtils->end_FunctionsInfo()) {
+      UnsupportedFns.insert(&F);
+    }
+  }
+  // memoization helpers
+  DenseMap<Argument *, SmallVector<AllocaInst *, 8>> ArgToAllocaCache;
+  DenseMap<Argument *, std::optional<SmallVector<Argument *, 8>>> ArgToArgCache;
+
+  SmallPtrSet<AllocaInst *, 8> AllocasReachingArgs;
+  for (auto &F : M) {
+    if (UnsupportedFns.count(&F)) {
+      continue;
+    }
+
+    for (unsigned I = 0; I < F.arg_size(); ++I) {
+      auto *Arg = F.getArg(I);
+      if (Arg->getType()->isPointerTy() && !Arg->hasStructRetAttr() && !Arg->hasByValAttr()) {
+        auto Allocas = traceArgToAlloca(F, I, UnsupportedFns, ArgToAllocaCache);
+        if (Allocas.empty()) {
+          continue;
+        }
+        SupportedFnArgs[&F].push_back({I, Allocas});
+      }
+    }
+
+    // Assume allocas are only in the entry block of the function
+    for (auto &I : F.getEntryBlock()) {
+      if (auto *Alloca = dyn_cast<AllocaInst>(&I)) {
+        auto Args = traceUsesToArgs(Alloca, UnsupportedFns, ArgToArgCache);
+        if (Args.has_value() && !Args.value().empty()) {
+          AllocasReachingArgs.insert(Alloca);
+        }
+      }
+    }
+  }
+
+  pruneSupportedFnArgs(SupportedFnArgs, AllocasReachingArgs);
+}
+
+bool PrivateMemoryResolution::resolvePromotedArguments() {
+  bool Changed = false;
+  for (auto &[F, ArgInfos] : SupportedFnArgs) {
+    const DataLayout &DL = F->getParent()->getDataLayout();
+    Function *SimdSizeFunc = GenISAIntrinsic::getDeclaration(F->getParent(), GenISAIntrinsic::GenISA_simdSize);
+    // The caller passes the address of the lane's SoA buffer, so the callee only needs the simd size to stride
+    // between chunks.
+    IGCLLVM::IRBuilder<> Builder(&*F->getEntryBlock().getFirstInsertionPt());
+    Value *SimdSize = Builder.CreateCall(SimdSizeFunc, {}, VALUE_NAME("simdSize"));
+    for (const SoAArgInfo &Info : ArgInfos) {
+      Argument *Arg = F->getArg(Info.ArgIndex);
+      Value *BaseAsInt = Builder.CreatePtrToInt(Arg, DL.getIntPtrType(Arg->getType()), VALUE_NAME("privBaseInt"));
+      TransposePrivMem Helper(DL, BaseAsInt, SimdSize, Info.PartitionBytes);
+      Helper.HandleAllocaSources(Arg, Builder.getInt32(0));
+      Helper.EraseDeadCode();
+      Changed = true;
+    }
+  }
+  return Changed;
+}
+
 bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
   // Get the analysis
   m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -248,6 +567,11 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
     modMD.MinNOSPushConstantSize += Ctx.getRegisterPointerSizeInBits(ADDRESS_SPACE_GLOBAL) / dwordSizeInBits;
   }
   modMD.compOpt.UseScratchSpacePrivateMemory = bRet;
+
+  if (IGC_IS_FLAG_ENABLED(EnableSOAAcrossCalls) && IGC_IS_FLAG_DISABLED(DisableSOAPromotion) &&
+      Ctx.type == ShaderType::OPENCL_SHADER && !modMD.compOpt.UseScratchSpacePrivateMemory) {
+    collectCrossFunctionInfo(M);
+  }
 
   for (Function &F : M) {
     m_currFunction = &F;
@@ -306,6 +630,8 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
       }
     }
   }
+
+  changed |= resolvePromotedArguments();
 
   if (FGA) {
     auto DL = M.getDataLayout();
@@ -1264,7 +1590,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
 
       // If we can use SOA layout transpose the memory
       IGC::SOALayoutChecker SOAChecker(*pAI, Ctx.type == ShaderType::OPENCL_SHADER,
-                                       UseScratchSpacePrivateMemoryOrUseStatelessStrategy);
+                                       UseScratchSpacePrivateMemoryOrUseStatelessStrategy, &SupportedFnArgs);
       IGC::SOALayoutInfo SOAInfo = SOAChecker.getOrGatherInfo();
       // TransposeMemLayout is not prepared to work on 64-bit pointers (originally, the private address space is
       // expressed by 32-bit pointers). Address space casting
@@ -1430,7 +1756,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
     Value *bufferBase;
 
     // If we can use SOA layout transpose the memory
-    IGC::SOALayoutChecker SOAChecker(*pAI, Ctx.type == ShaderType::OPENCL_SHADER, OpenCLShaderStrategy);
+    IGC::SOALayoutChecker SOAChecker(*pAI, Ctx.type == ShaderType::OPENCL_SHADER, OpenCLShaderStrategy,
+                                     &SupportedFnArgs);
     IGC::SOALayoutInfo SOAInfo = SOAChecker.getOrGatherInfo();
     if (!isUniform && SOAInfo.canUseSOALayout && SOAInfo.useNewAlgoTranspose) {
       uint32_t chunksize = SOAInfo.SOAPartitionBytes;
