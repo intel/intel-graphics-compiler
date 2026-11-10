@@ -2255,7 +2255,12 @@ bool GenXLowering::lowerConstMinusRegionIndex(Instruction *Inst) {
         break;
       }
     }
+    // All the indices are in BB, so First is always found.
     IGC_ASSERT(First);
+    if (!First) {
+      BaseCache[{X, BB}] = nullptr;
+      return false;
+    }
     IRBuilder<> Builder(First);
     Builder.SetCurrentDebugLocation(First->getDebugLoc());
     Base = cast<Instruction>(Builder.CreateSub(ConstantInt::get(IntTy, *CMin),
