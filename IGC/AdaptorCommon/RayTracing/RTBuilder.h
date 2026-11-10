@@ -438,6 +438,10 @@ public:
   // Copies the bytes of a getRTStack2Ty() object that belong to its stack id. The strided memory
   // styles interleave three other ids' live stacks in the struct's `pad`, which is skipped.
   void createRTStack2Copy(Value *Dst, uint64_t DstAlign, Value *Src, uint64_t SrcAlign);
+  bool isRTStack2Strided() const;
+  // Load leaves the explicit pad poison; store never writes it.
+  Value *createRTStack2Load(Value *Ptr);
+  void createRTStack2Store(Value *Stack, Value *Ptr);
   Type *getRTStack2PtrTy(bool async = true) const;
   Type *getRTStack2PtrTy(RTMemoryAccessMode Mode, bool async = true) const;
   Type *getRayDispatchGlobalDataPtrTy(Module &M, IGC::ADDRESS_SPACE Addrspace);

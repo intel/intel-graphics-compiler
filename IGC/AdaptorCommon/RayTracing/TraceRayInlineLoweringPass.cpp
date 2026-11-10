@@ -485,12 +485,20 @@ void TraceRayInlineLoweringPass::LowerSyncStackToShadowMemory(Function &F) {
                                    ? LSC_L1IAR_L3IAR
                                    : LSC_L1IAR_WB_L3C_WB;
 
-      for (uint i = 0; i < getSyncStackSize() / m_CGCtx->platform.LSCCachelineSize(); i++) {
-        builder.CreateCall(
-            fn, {HWStackPointer, builder.getInt32(i * m_CGCtx->platform.LSCCachelineSize()),
-                 builder.getInt32(
-                     LSC_DATA_SIZE_32b), // doesn't matter what we put here because the entire cacheline is invalidated
-                 builder.getInt32(LSC_DATA_ELEMS_1), builder.getInt32(CacheCtrl)});
+      if (builder.isRTStack2Strided()) {
+        for (bool Committed : {true, false}) {
+          auto *Sector = builder.getHitAddress(HWStackPointer, Committed);
+          for (uint32_t Offset = 0; Offset < builder.getRTStackSectorSize(RayDispatchGlobalData::StackChunkSize);
+               Offset += m_CGCtx->platform.LSCCachelineSize()) {
+            builder.CreateCall(fn, {Sector, builder.getInt32(Offset), builder.getInt32(LSC_DATA_SIZE_32b),
+                                    builder.getInt32(LSC_DATA_ELEMS_1), builder.getInt32(CacheCtrl)});
+          }
+        }
+      } else {
+        for (uint32_t Offset = 0; Offset < RTStackFormat::getSyncStackSize();
+             Offset += m_CGCtx->platform.LSCCachelineSize())
+          builder.CreateCall(fn, {HWStackPointer, builder.getInt32(Offset), builder.getInt32(LSC_DATA_SIZE_32b),
+                                  builder.getInt32(LSC_DATA_ELEMS_1), builder.getInt32(CacheCtrl)});
       }
     }
   }

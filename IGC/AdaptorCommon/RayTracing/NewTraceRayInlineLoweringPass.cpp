@@ -857,11 +857,19 @@ void InlineRaytracing::InsertCacheControl(RTBuilder &IRB, RTBuilder::SyncStackPo
                                  ? LSC_L1IAR_L3IAR
                                  : LSC_L1IAR_WB_L3C_WB;
 
-    for (uint i = 0; i < IRB.getSyncStackSize() / m_pCGCtx->platform.LSCCachelineSize(); i++) {
-      IRB.CreateCall(fn, {stackPtr, IRB.getInt32(i * m_pCGCtx->platform.LSCCachelineSize()),
-                          IRB.getInt32(LSC_DATA_SIZE_32b), // doesn't matter what we put here because
-                                                           // the entire cacheline is invalidated
-                          IRB.getInt32(LSC_DATA_ELEMS_1), IRB.getInt32(CacheCtrl)});
+    if (IRB.isRTStack2Strided()) {
+      for (bool Committed : {true, false}) {
+        auto *Sector = IRB.getHitAddress(stackPtr, Committed);
+        for (uint32_t Offset = 0; Offset < IRB.getRTStackSectorSize(RayDispatchGlobalData::StackChunkSize);
+             Offset += m_pCGCtx->platform.LSCCachelineSize()) {
+          IRB.CreateCall(fn, {Sector, IRB.getInt32(Offset), IRB.getInt32(LSC_DATA_SIZE_32b),
+                              IRB.getInt32(LSC_DATA_ELEMS_1), IRB.getInt32(CacheCtrl)});
+        }
+      }
+    } else {
+      for (uint32_t Offset = 0; Offset < IRB.getSyncStackSize(); Offset += m_pCGCtx->platform.LSCCachelineSize())
+        IRB.CreateCall(fn, {stackPtr, IRB.getInt32(Offset), IRB.getInt32(LSC_DATA_SIZE_32b),
+                            IRB.getInt32(LSC_DATA_ELEMS_1), IRB.getInt32(CacheCtrl)});
     }
   }
 }
@@ -875,7 +883,7 @@ void InlineRaytracing::StopAndStartRayquery(RTBuilder &IRB, Instruction *I, Valu
     // spill the raytracing stack to the register file
     auto *stackPtr = getStackPtr(IRB, rqObject);
 
-    liveStack = IRB.CreateLoad(IRB.getRTStack2Ty(), stackPtr);
+    liveStack = IRB.createRTStack2Load(stackPtr);
 
     // handle cache control
     InsertCacheControl(IRB, stackPtr);
@@ -895,7 +903,7 @@ void InlineRaytracing::StopAndStartRayquery(RTBuilder &IRB, Instruction *I, Valu
     // fill the raytracing stack from the register file
     auto *stackPtr = getStackPtr(IRB, rqObject);
 
-    IRB.CreateStore(liveStack, stackPtr);
+    IRB.createRTStack2Store(liveStack, stackPtr);
   }
 }
 

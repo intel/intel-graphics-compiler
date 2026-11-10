@@ -2121,11 +2121,10 @@ template <typename RTStack2T> struct RTStack2OwnedRanges<RTStack2T, std::void_t<
     return {{0u, PadBegin}, {PadEnd, uint32_t(sizeof(RTStack2T)) - PadEnd}};
   }
 };
-} // namespace
 
-void RTBuilder::createRTStack2Copy(Value *Dst, uint64_t DstAlign, Value *Src, uint64_t SrcAlign) {
+static SmallVector<std::pair<uint32_t, uint32_t>, 2> getRTStack2OwnedRanges(RTMemoryStyle Style) {
   SmallVector<std::pair<uint32_t, uint32_t>, 2> Ranges;
-  switch (getMemoryStyle()) {
+  switch (Style) {
 #define STYLE(X)                                                                                                       \
   case RTMemoryStyle::X:                                                                                               \
     Ranges = RTStack2OwnedRanges<RTStack2<RTStackFormat::X>>::get();                                                   \
@@ -2134,7 +2133,52 @@ void RTBuilder::createRTStack2Copy(Value *Dst, uint64_t DstAlign, Value *Src, ui
 #undef STYLE
   }
   IGC_ASSERT(!Ranges.empty());
+  return Ranges;
+}
 
+static SmallVector<unsigned, 8> getRTStack2OwnedFields(RTMemoryStyle Style, StructType *Ty, const DataLayout &DL) {
+  auto Ranges = getRTStack2OwnedRanges(Style);
+  auto *Layout = DL.getStructLayout(Ty);
+  SmallVector<unsigned, 8> Fields;
+  uint64_t Covered = 0;
+  for (unsigned I = 0; I < Ty->getNumElements(); ++I) {
+    uint64_t Begin = Layout->getElementOffset(I);
+    uint64_t Size = DL.getTypeAllocSize(Ty->getElementType(I));
+    if (llvm::any_of(Ranges, [&](const auto &Range) {
+          return Begin >= Range.first && Begin + Size <= uint64_t(Range.first) + Range.second;
+        })) {
+      Fields.push_back(I);
+      Covered += Size;
+    }
+  }
+  uint64_t Expected = 0;
+  for (const auto &Range : Ranges)
+    Expected += Range.second;
+  IGC_ASSERT(Covered == Expected);
+  return Fields;
+}
+} // namespace
+
+bool RTBuilder::isRTStack2Strided() const { return getRTStack2OwnedRanges(getMemoryStyle()).size() > 1; }
+
+Value *RTBuilder::createRTStack2Load(Value *Ptr) {
+  auto *Ty = cast<StructType>(getRTStack2Ty());
+  Value *Stack = PoisonValue::get(Ty);
+  for (unsigned I : getRTStack2OwnedFields(getMemoryStyle(), Ty, Ctx.getModule()->getDataLayout())) {
+    Value *Field = CreateLoad(Ty->getElementType(I), CreateStructGEP(Ty, Ptr, I));
+    Stack = CreateInsertValue(Stack, Field, I);
+  }
+  return Stack;
+}
+
+void RTBuilder::createRTStack2Store(Value *Stack, Value *Ptr) {
+  auto *Ty = cast<StructType>(getRTStack2Ty());
+  for (unsigned I : getRTStack2OwnedFields(getMemoryStyle(), Ty, Ctx.getModule()->getDataLayout()))
+    CreateStore(CreateExtractValue(Stack, I), CreateStructGEP(Ty, Ptr, I));
+}
+
+void RTBuilder::createRTStack2Copy(Value *Dst, uint64_t DstAlign, Value *Src, uint64_t SrcAlign) {
+  auto Ranges = getRTStack2OwnedRanges(getMemoryStyle());
   auto byteOffset = [&](Value *Ptr, uint32_t Offset) -> Value * {
     if (Offset == 0)
       return Ptr;
