@@ -41,7 +41,6 @@ IGC is continuously built and tested on the following 64-bit Linux operating sys
 
 * Ubuntu 26.04
 * Ubuntu 24.04
-* Ubuntu 22.04
 
 
 ## Documentation

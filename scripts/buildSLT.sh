@@ -9,7 +9,7 @@
 #============================ end_copyright_notice =============================
 
 set -e
-# UBUNTU_VERSION   supported value [ 22.04, 24.04, 26.04 ]                                   default 24.04
+# UBUNTU_VERSION   supported value [ 24.04, 26.04 ]                                          default 24.04
 # LLVM_VERSION     supported value [ 16, 17, 22 ]                                            default 22
 # example run:     UBUNTU_VERSION=24.04 LLVM_VERSION=22 sh /home/buildSLT.sh
 
