@@ -47,7 +47,7 @@ char OpenCLPrintfResolutionLPM::ID = 0;
 // ================================
 /*
   ======================================================================
-  | DWORD  bufferSize             Size of the buffer in bytes          |  <-- This value is incremented by atomic_add
+  | DWORD  bufferSize             Size of the buffer in bytes          |  <-- Advanced by atomic_cmpxchg
   |====================================================================|
   | DWORD  stringIndex_ch_0       Index of format string for channel 0 |  \
   |--------------------------------------------------------------------|  |
@@ -458,10 +458,21 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
 
      Note: we use STATELESS mode for printf buffer access.
     ---------------------------------------------------------------------------
-        writeOffset = atomic_add(bufferPtr, dataSize);
+        writeOffset = bufferSize;                    \
+        for (;;) {                                   |
+            room = bufferSize - writeOffset;         |
+            fits = writeOffset < bufferSize &&       |
+                   dataSize <= room;                 |
+            newOffset = fits ?                       | reserve.loop
+                writeOffset + dataSize : bufferSize; |
+            prev = atomic_cmpxchg(bufferPtr,         |
+                       writeOffset, newOffset);      |
+            if (prev == writeOffset)                 |
+                break;                               |
+            writeOffset = prev;                      |
+        }                                            /
         writePtr = bufferPtr + writeOffset;
-        endOffset = writeOffset + dataSize;
-        if (endOffset < bufferSize) {                \
+        if (fits) {                                  \
             // Write the format string index         |
             *writePtr = stringIndex;                 |
             writePtr += 4;                           |
@@ -488,8 +499,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
             // Check if the remaining output                             |
             // buffer space is enough for writing                        |
             //invalid string index.                                      |
-            endOffset = writeOffset + 4;                                 |
-            if (endOffset < bufferSize) {           \                    | bblockFalse
+            if (writeOffset + 4 <= bufferSize) {    \                    | bblockFalse
                 // Write the invalid string index.  | bblockErrorString  |
                 *writePtr = -1;                     |                    |
             }                                       /                    |
@@ -501,7 +511,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
        This is done with special builtin with following signature:
        int __builtin_IB_printf_to_buffer(global char* buf, global char* currentOffset, int bufSize, ...);
          buf - pointer to the begging of the buffer.
-         currentOffset - pointer to the location with the current offset that will be atomically incremented.
+         currentOffset - pointer to the location with the current offset that is atomically advanced.
            In the case of regular printf this offset is on the first DWORD of printfBuffer.
            E.g. in assert buffer it is on the third DWORD.
           bufSize - total size of the buffer.
@@ -555,9 +565,6 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
     }
   }
 
-  BasicBlock *currentBBlock = printfCall.getParent();
-
-  // writeOffset = atomic_add(bufferPtr, dataSize)
   // OCL runs this pass before the PRINTF_BUFFER implicit arg exists, so fetch the
   // buffer via intrinsic (resolved later); RT reads the materialized arg.
   Value *basebufferPtr;
@@ -569,20 +576,15 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
     basebufferPtr = implicitArgs.getImplicitArgValue(F, ImplicitArg::PRINTF_BUFFER, MdUtils);
 
   Value *currentOffsetPtr = isPrintfBuiltin ? printfCall.getArgOperand(1) : basebufferPtr;
-  Instruction *writeOffsetStart = genAtomicAdd(currentOffsetPtr, dataSizeVal, printfCall, "write_offset");
-  writeOffsetStart->setDebugLoc(m_DL);
-
-  Instruction *writeOffset = writeOffsetStart;
-  Instruction *writeOffsetPtr = nullptr;
-
-  // end_offset = write_offset + data_size
-  Instruction *endOffset =
-      BinaryOperator::CreateAdd(writeOffset, dataSizeVal, "end_offset", IGCLLVM::insertPosition(&printfCall));
-  endOffset->setDebugLoc(m_DL);
-
   Value *bufferMaxSize = isPrintfBuiltin
                              ? printfCall.getArgOperand(2)
                              : ConstantInt::get(m_int32Type, m_CGContext->m_DriverInfo.getPrintfBufferSize());
+
+  BufferReservation reservation = emitBufferReservation(currentOffsetPtr, dataSizeVal, bufferMaxSize, &printfCall);
+  BasicBlock *currentBBlock = printfCall.getParent();
+
+  Instruction *writeOffset = reservation.offset;
+  Instruction *writeOffsetPtr = nullptr;
 
   // write_ptr = buffer_ptr + write_offset;
   if (m_ptrSizeIntType != writeOffset->getType()) {
@@ -598,10 +600,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
   writeOffsetAdd->setDebugLoc(m_DL);
   writeOffset = writeOffsetAdd;
 
-  // if (end_offset < output_buffer_size))
-  Instruction *cmp1 = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_ULE, endOffset, bufferMaxSize, "",
-                                      IGCLLVM::insertPosition(&printfCall));
-  cmp1->setDebugLoc(m_DL);
+  Value *cmp1 = reservation.fits;
 
   // Since we need to insert a branch here, the current basic block should be
   // splitted into two parts.
@@ -701,15 +700,10 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
     IGCLLVM::UncondBrInst::Create(bblockJoin, writeDoneBBlock)->setDebugLoc(m_DL);
 
   //  ----------- Fill "false" block ----------------
-  // end_offset = write_offset + 4
-  Value *constVal4_32 = ConstantInt::get(m_int32Type, 4);
-  endOffset = BinaryOperator::CreateAdd(writeOffsetStart, constVal4_32, "end_offset", bblockFalse);
-  endOffset->setDebugLoc(m_DL);
-  // if (end_offset < output_buffer_size)
-  Instruction *cmp2 = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_ULE, endOffset, bufferMaxSize, "", bblockFalse);
-  cmp2->setDebugLoc(m_DL);
-  // Here, we generate code that checks if the error string index can be
-  // written into the output buffer.
+  // The failing lane that still saw room moved the counter to the end of the
+  // buffer, so it is the only one writing the error string index and nothing is
+  // written after it.
+  Value *cmp2 = reservation.errorFits;
   BasicBlock *bblockErrorString = BasicBlock::Create(*m_context, "write_error_string", &F, bblockJoin);
   BasicBlock *bblockFalseJoin = BasicBlock::Create(*m_context, "bblockFalseJoin", &F, bblockJoin);
 
@@ -895,31 +889,43 @@ void OpenCLPrintfResolution::preprocessPrintfArgs(CallInst &printfCall) {
     appendPrintfValueArg(printfCall, printfCall.getOperand(i));
 }
 
-CallInst *OpenCLPrintfResolution::genAtomicAdd(Value *outputBufferPtr, Value *dataSize, CallInst &printfCall,
-                                               StringRef name) {
-  // outputBufferPtr->getType() could be "i8 addrspace(1)*", and the atomic prototype
-  // requires "i32 addrspace(1)*":
-  //
-  //   %writeOffset = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* <outputBufferPtr>,
-  //                                                               i32 <dataSize>)
-  //
-  Type *bufPtrType = IGCLLVM::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
-  if (outputBufferPtr->getType() != bufPtrType) {
-    outputBufferPtr = CastInst::Create(Instruction::CastOps::BitCast, outputBufferPtr, bufPtrType, "ptrBC",
-                                       IGCLLVM::insertPosition(&printfCall));
-  }
+OpenCLPrintfResolution::BufferReservation OpenCLPrintfResolution::emitBufferReservation(Value *counterPtr, Value *size,
+                                                                                        Value *bufferSize,
+                                                                                        Instruction *insertBefore) {
+  BasicBlock *entryBB = insertBefore->getParent();
+  Function *F = entryBB->getParent();
+  BasicBlock *doneBB = entryBB->splitBasicBlock(insertBefore->getIterator(), "reserve.done");
+  BasicBlock *loopBB = BasicBlock::Create(*m_context, "reserve.loop", F, doneBB);
 
-  if (m_atomicAddFunc == nullptr) {
-    Type *argTypes[] = {outputBufferPtr->getType(), dataSize->getType()};
-    FunctionType *atomicFuncType = FunctionType::get(dataSize->getType(), argTypes, false);
-    m_atomicAddFunc = cast<Function>(
-        m_module->getOrInsertFunction("__builtin_IB_atomic_add_global_i32", atomicFuncType, AttributeList()));
-  }
-  std::vector<Value *> args;
-  args.push_back(outputBufferPtr);
-  args.push_back(dataSize);
+  entryBB->getTerminator()->eraseFromParent();
+  IRBuilder<> B(entryBB);
+  B.SetCurrentDebugLocation(m_DL);
+  Type *counterPtrTy = IGCLLVM::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
+  if (counterPtr->getType() != counterPtrTy)
+    counterPtr = B.CreateBitCast(counterPtr, counterPtrTy, "ptrBC");
+  B.CreateBr(loopBB);
 
-  return CallInst::Create(m_atomicAddFunc, args, name, IGCLLVM::insertPosition(&printfCall));
+  // Starting from the buffer size makes the first cmpxchg an atomic read that
+  // also fails the call right away once the buffer is full.
+  B.SetInsertPoint(loopBB);
+  PHINode *offset = B.CreatePHI(m_int32Type, 2, "write_offset");
+  offset->addIncoming(bufferSize, entryBB);
+  Value *hasRoom = B.CreateICmpULT(offset, bufferSize, "has_room");
+  Value *room = B.CreateSub(bufferSize, offset, "room");
+  Value *fits = B.CreateAnd(hasRoom, B.CreateICmpULE(size, room), "fits");
+  // A record that doesn't fit takes the rest of the buffer, so the counter
+  // never exceeds the buffer size and never wraps.
+  Value *newOffset = B.CreateSelect(fits, B.CreateAdd(offset, size), bufferSize, "new_offset");
+  Type *argTypes[] = {counterPtrTy, m_int32Type, m_int32Type};
+  Function *cmpXchg = cast<Function>(m_module->getOrInsertFunction(
+      "__builtin_IB_atomic_cmpxchg_global_i32", FunctionType::get(m_int32Type, argTypes, false), AttributeList()));
+  Value *prevOffset = B.CreateCall(cmpXchg, {counterPtr, offset, newOffset}, "prev_offset");
+  offset->addIncoming(prevOffset, loopBB);
+  B.CreateCondBr(B.CreateICmpEQ(prevOffset, offset, "reserved"), doneBB, loopBB);
+
+  B.SetInsertPoint(insertBefore);
+  Value *errorFits = B.CreateAnd(hasRoom, B.CreateICmpULE(B.getInt32(4), room), "error_fits");
+  return {offset, fits, errorFits};
 }
 
 Value *OpenCLPrintfResolution::genPrintfBufferPtr(Function &F) {

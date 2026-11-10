@@ -86,15 +86,29 @@ exit:
 ; CHECK-TYPED-NEXT: %[[JOIN_PHI:.+]] = phi i8 addrspace(2)* [ %[[STR1_STR2_SEL]], %switch_b1 ], [ %[[STR2_STR3_PHI]], %switch_b2 ], [ %[[STR1_GEP]], %entry ]
 ; CHECK-OPAQUE-NEXT: %[[JOIN_PHI:.+]] = phi ptr addrspace(2) [ %[[STR1_STR2_SEL]], %switch_b1 ], [ %[[STR2_STR3_PHI]], %switch_b2 ], [ %[[STR1_GEP]], %entry ]
 ; CHECK-TYPED-NEXT: %ptrBC = bitcast i8 addrspace(1)* %printfBufferPtr to i32 addrspace(1)*
-; CHECK-TYPED-NEXT: %write_offset = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* %ptrBC, i32 8)
-; CHECK-OPAQUE-NEXT: %write_offset = call i32 @__builtin_IB_atomic_add_global_i32(ptr addrspace(1) %printfBufferPtr, i32 8)
-; CHECK-NEXT: %end_offset = add i32 %write_offset, 8
+; CHECK-NEXT: br label %reserve.loop
+;
+; CHECK: reserve.loop:
+; CHECK-NEXT: %write_offset = phi i32 [ 4194304, %printf_bb ], [ %prev_offset, %reserve.loop ]
+; CHECK-NEXT: %has_room = icmp ult i32 %write_offset, 4194304
+; CHECK-NEXT: %room = sub i32 4194304, %write_offset
+; CHECK-NEXT: %[[SIZE_FITS:.+]] = icmp ule i32 8, %room
+; CHECK-NEXT: %fits = and i1 %has_room, %[[SIZE_FITS]]
+; CHECK-NEXT: %[[END:.+]] = add i32 %write_offset, 8
+; CHECK-NEXT: %new_offset = select i1 %fits, i32 %[[END]], i32 4194304
+; CHECK-TYPED-NEXT: %prev_offset = call i32 @__builtin_IB_atomic_cmpxchg_global_i32(i32 addrspace(1)* %ptrBC, i32 %write_offset, i32 %new_offset)
+; CHECK-OPAQUE-NEXT: %prev_offset = call i32 @__builtin_IB_atomic_cmpxchg_global_i32(ptr addrspace(1) %printfBufferPtr, i32 %write_offset, i32 %new_offset)
+; CHECK-NEXT: %reserved = icmp eq i32 %prev_offset, %write_offset
+; CHECK-NEXT: br i1 %reserved, label %reserve.done, label %reserve.loop
+;
+; CHECK: reserve.done:
+; CHECK-NEXT: %[[ERROR_SIZE_FITS:.+]] = icmp ule i32 4, %room
+; CHECK-NEXT: %error_fits = and i1 %has_room, %[[ERROR_SIZE_FITS]]
 ; CHECK-NEXT: %[[WRITE_OFFSET_EXT:write_offset.*]] = zext i32 %write_offset to i64
 ; CHECK-TYPED-NEXT: %buffer_ptr = ptrtoint i8 addrspace(1)* %printfBufferPtr to i64
 ; CHECK-OPAQUE-NEXT: %buffer_ptr = ptrtoint ptr addrspace(1) %printfBufferPtr to i64
 ; CHECK-NEXT: %[[WRITE_OFFSET_ADD:write_offset.*]] = add i64 %buffer_ptr, %[[WRITE_OFFSET_EXT]]
-; CHECK-NEXT: %[[BUF_CHECK:.+]] = icmp ule i32 %end_offset, 4194304
-; CHECK-NEXT: br i1 %[[BUF_CHECK]], label %write_offset_true, label %write_offset_false
+; CHECK-NEXT: br i1 %fits, label %write_offset_true, label %write_offset_false
 ;
 ; CHECK: write_offset_true:
 ; CHECK-TYPED-NEXT: %write_offset_ptr = inttoptr i64 %[[WRITE_OFFSET_ADD]] to i64 addrspace(1)*
@@ -108,22 +122,20 @@ exit:
 ; CHECK: br label %bblockJoin
 ;
 ; CHECK: write_offset_false:
-; CHECK-NEXT: %[[END_OFFSET_FALSE:end_offset.*]] = add i32 %write_offset, 4
-; CHECK-NEXT: %[[BUF_CHECK_ERR:.+]] = icmp ule i32 %[[END_OFFSET_FALSE]], 4194304
-; CHECK-NEXT: br i1 %[[BUF_CHECK_ERR]], label %write_error_string, label %bblockFalseJoin
+; CHECK-NEXT: br i1 %error_fits, label %write_error_string, label %bblockFalseJoin
 ;
 ; CHECK: write_error_string:
-; CHECK-TYPED-NEXT: %write_offset_ptr5 = inttoptr i64 %[[WRITE_OFFSET_ADD]] to i32 addrspace(1)*
-; CHECK-OPAQUE-NEXT: %write_offset_ptr5 = inttoptr i64 %[[WRITE_OFFSET_ADD]] to ptr addrspace(1)
-; CHECK-TYPED-NEXT: store i32 -1, i32 addrspace(1)* %write_offset_ptr5, align 4
-; CHECK-OPAQUE-NEXT: store i32 -1, ptr addrspace(1) %write_offset_ptr5, align 4
+; CHECK-TYPED-NEXT: %[[ERROR_PTR:write_offset_ptr[0-9]+]] = inttoptr i64 %[[WRITE_OFFSET_ADD]] to i32 addrspace(1)*
+; CHECK-OPAQUE-NEXT: %[[ERROR_PTR:write_offset_ptr[0-9]+]] = inttoptr i64 %[[WRITE_OFFSET_ADD]] to ptr addrspace(1)
+; CHECK-TYPED-NEXT: store i32 -1, i32 addrspace(1)* %[[ERROR_PTR]], align 4
+; CHECK-OPAQUE-NEXT: store i32 -1, ptr addrspace(1) %[[ERROR_PTR]], align 4
 ; CHECK-NEXT: br label %bblockFalseJoin
 ;
 ; CHECK: bblockFalseJoin:
 ; CHECK-NEXT: br label %bblockJoin
 ;
 ; CHECK: bblockJoin:
-; CHECK-NEXT: %printf_ret_val = select i1 %[[BUF_CHECK]], i32 0, i32 -1
+; CHECK-NEXT: %printf_ret_val = select i1 %fits, i32 0, i32 -1
 ; CHECK-NEXT: br label %exit
 ;
 ; CHECK: exit:

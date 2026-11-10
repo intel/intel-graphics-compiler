@@ -20,7 +20,7 @@ define spir_kernel void @test(ptr addrspace(1) %out, <8 x i32> %r0, <8 x i32> %p
 ; CHECK:       strlen.loop:
 ; CHECK:         [[CH:%.*]] = load i8
 ; CHECK:         icmp eq i8 [[CH]], 0
-; CHECK:       call i32 @__builtin_IB_atomic_add_global_i32
+; CHECK:       call i32 @__builtin_IB_atomic_cmpxchg_global_i32
 ; CHECK:         or i64 {{.*}}, -9223372036854775808
 ; CHECK:         store i64 {{.*}}, ptr addrspace(1)
 ; CHECK:         call void @llvm.memcpy.p1.p0.i32

@@ -37,7 +37,14 @@ define spir_kernel void @test(ptr addrspace(1) %fmt, i32 %a, <2 x i32> %b, <8 x 
 ; CHECK:         [[SKIP_B:%.*]] = icmp uge i32 1, [[COUNT_NEXT]]
 ; CHECK:         [[SKIP_B_SIZE:%.*]] = select i1 [[SKIP_B]], i32 16, i32 0
 ; CHECK:         [[SIZE2:%.*]] = sub i32 [[SIZE1]], [[SKIP_B_SIZE]]
-; CHECK:         call i32 @__builtin_IB_atomic_add_global_i32(ptr addrspace(1) {{.*}}, i32 [[SIZE2]])
+; The runtime record size has no upper bound, so it is compared with the room
+; left instead of adding it to the offset.
+; CHECK:       reserve.loop:
+; CHECK:         [[OFFSET:%.*]] = phi i32
+; CHECK:         [[ROOM:%.*]] = sub i32 4194304, [[OFFSET]]
+; CHECK:         icmp ule i32 [[SIZE2]], [[ROOM]]
+; CHECK:         add i32 [[OFFSET]], [[SIZE2]]
+; CHECK:         call i32 @__builtin_IB_atomic_cmpxchg_global_i32(
 ; CHECK:       write_offset_true:
 ; CHECK:         call void @llvm.memcpy.p1.p1.i32
 ; CHECK:         [[USE_A:%.*]] = icmp ult i32 0, [[COUNT_NEXT]]

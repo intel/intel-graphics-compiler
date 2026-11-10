@@ -116,11 +116,17 @@ private:
   bool walkStringOperandImpl(llvm::Value *arg, llvm::SmallVectorImpl<llvm::GlobalVariable *> *globals,
                              llvm::SmallPtrSetImpl<llvm::Value *> &visited);
 
-  // Generates atomic_add function call:
-  //   ret_val = atomic_add(output_buffer_ptr, data_size)
-  // Returns the ret_val.
-  llvm::CallInst *genAtomicAdd(llvm::Value *outputBufferPtr, llvm::Value *dataSize, llvm::CallInst &printfCall,
-                               llvm::StringRef name);
+  struct BufferReservation {
+    llvm::Instruction *offset; // i32 offset of the record, or of the error string index.
+    llvm::Value *fits;         // i1, false if the record wasn't reserved.
+    llvm::Value *errorFits;    // i1, the error string index can be written at 'offset'.
+  };
+
+  // Emit a cmpxchg loop on the i32 counter at 'counterPtr' that reserves 'size'
+  // bytes if they fit in 'bufferSize' and moves the counter to the end of the
+  // buffer otherwise. Splits the block containing 'insertBefore'.
+  BufferReservation emitBufferReservation(llvm::Value *counterPtr, llvm::Value *size, llvm::Value *bufferSize,
+                                          llvm::Instruction *insertBefore);
 
   // Returns the printf output buffer pointer for OCL, where this pass runs before
   // the PRINTF_BUFFER implicit arg is materialized. Emits a GenISA_getPrintfBuffer
@@ -168,7 +174,6 @@ private:
 private:
   IGCLLVM::Module *m_module = nullptr;
   llvm::LLVMContext *m_context = nullptr;
-  llvm::Function *m_atomicAddFunc = nullptr;
   llvm::Value *m_printfBufferPtr = nullptr; // per-function cache; reset in runOnFunction
   unsigned int m_stringIndex{};
   std::map<std::string, unsigned int> m_MapStringStringIndex{};

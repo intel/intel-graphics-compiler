@@ -33,10 +33,11 @@ entry:
 ; CHECK:    [[C:%[A-z0-9]*]] = call spir_func signext i8 @modify_char()
 ; CHECK-TYPED:    [[FMT:%[A-z0-9]*]] = getelementptr inbounds [28 x i8], [28 x i8] addrspace(2)* @.str, i64 0, i64 0
 ; CHECK-OPAQUE:    [[FMT:%[A-z0-9]*]] = getelementptr inbounds [28 x i8], ptr addrspace(2) @.str, i64 0, i64 0
-; CHECK-TYPED:    [[PTRBC:%[A-z0-9]*]] = bitcast i8 addrspace(1)* [[PB]] to i32 addrspace(1)*
 ; Only the format-string pointer is reserved (8 bytes); both excess arguments are dropped.
-; CHECK-TYPED:    call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* [[PTRBC]], i32 8)
-; CHECK-OPAQUE:    call i32 @__builtin_IB_atomic_add_global_i32(ptr addrspace(1) [[PB]], i32 8)
+; CHECK-TYPED:    [[PTRBC:%[A-z0-9]*]] = bitcast i8 addrspace(1)* [[PB]] to i32 addrspace(1)*
+; CHECK:    add i32 %write_offset, 8
+; CHECK-TYPED:    call i32 @__builtin_IB_atomic_cmpxchg_global_i32(i32 addrspace(1)* [[PTRBC]],
+; CHECK-OPAQUE:    call i32 @__builtin_IB_atomic_cmpxchg_global_i32(ptr addrspace(1) [[PB]],
 ; CHECK:  write_offset_true:
 ; CHECK-TYPED:    [[WOPTR:%[A-z0-9]*]] = inttoptr i64 {{.*}} to i64 addrspace(1)*
 ; CHECK-OPAQUE:    [[WOPTR:%[A-z0-9]*]] = inttoptr i64 {{.*}} to ptr addrspace(1)
