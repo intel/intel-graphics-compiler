@@ -164,7 +164,11 @@ IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(ConstantCoalescing, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-ConstantCoalescing::ConstantCoalescing() : FunctionPass(ID) {
+// Used when the pass is created by name, e.g. igc_opt -igc-constant-coalescing.
+ConstantCoalescing::ConstantCoalescing()
+    : ConstantCoalescing(IGC_IS_FLAG_ENABLED(EnableScalarLCSSAInConstantCoalescing)) {}
+
+ConstantCoalescing::ConstantCoalescing(bool EnableScalarLCSSA) : FunctionPass(ID), m_useScalarLCSSA(EnableScalarLCSSA) {
   curFunc = NULL;
   irBuilder = NULL;
   initializeConstantCoalescingPass(*PassRegistry::getPassRegistry());
@@ -176,7 +180,7 @@ void ConstantCoalescing::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<DominatorTreeWrapperPass>();
   AU.addRequired<llvm::LoopInfoWrapperPass>();
   // Form scalar exit PHIs before computing uniformity for coalescing.
-  if (IGC_IS_FLAG_ENABLED(EnableScalarLCSSAInConstantCoalescing))
+  if (m_useScalarLCSSA)
     AU.addRequired<ScalarLCSSAConstantCoalescing>();
   AU.addRequired<WIAnalysis>();
   AU.addRequired<MetaDataUtilsWrapper>();
@@ -500,7 +504,7 @@ bool ConstantCoalescing::isProfitableLoad(const Instruction *I, uint32_t &MaxElt
 // the loop through scalar exit PHIs.
 bool ConstantCoalescing::IsLoopExitOfChunkBase(const BufChunk *chunk, const Instruction *load, Value *eltIdxV,
                                                LoopExitAccess &exitAccess) const {
-  if (IGC_IS_FLAG_DISABLED(EnableScalarLCSSAInConstantCoalescing))
+  if (!m_useScalarLCSSA)
     return false;
   auto *basePhi = dyn_cast_or_null<PHINode>(eltIdxV);
   auto *inLoopBase = dyn_cast_or_null<Instruction>(chunk->baseIdxV);
@@ -583,8 +587,8 @@ static bool mayAccessOOB(uint addrSpace) {
 // chunk's existing footprint.
 bool ConstantCoalescing::CanMergeWithoutOOB(const BufChunk *chunk, uint64_t newStart, uint64_t newSize, uint addrSpace,
                                             const LoopExitAccess *exitAccess) const {
-  // Keep the original coalescing when EnableScalarLCSSAInConstantCoalescing=false.
-  if (IGC_IS_FLAG_DISABLED(EnableScalarLCSSAInConstantCoalescing))
+  // Keep the original coalescing when scalar LCSSA is off.
+  if (!m_useScalarLCSSA)
     return true;
   // It's safe to reuse elements the chunk already reads.
   if (newStart >= chunk->chunkStart && newStart + newSize <= chunk->chunkStart + chunk->chunkSize)
@@ -792,9 +796,8 @@ void ConstantCoalescing::ProcessBlock(BasicBlock *blk, std::vector<BufChunk *> &
         if (wiAns->isUniform(ldRaw)) {
           MergeUniformLoad(ldRaw, ldRaw->getResourceValue(), addrSpace, baseOffsetInBytes, offsetInBytes, maxEltPlus,
                            Extension, baseOffsetInBytes ? indcb_owloads : dircb_owloads);
-        } else if (IGC_IS_FLAG_ENABLED(EnableScalarLCSSAInConstantCoalescing) &&
-                   MergeUniformLoad(ldRaw, ldRaw->getResourceValue(), addrSpace, baseOffsetInBytes, offsetInBytes,
-                                    maxEltPlus, Extension, indcb_owloads)) {
+        } else if (m_useScalarLCSSA && MergeUniformLoad(ldRaw, ldRaw->getResourceValue(), addrSpace, baseOffsetInBytes,
+                                                        offsetInBytes, maxEltPlus, Extension, indcb_owloads)) {
           // A nonuniform load after a loop whose base is an exit PHI, typically one added by
           // ScalarLCSSAConstantCoalescing. The PHI's value is uniform in the loop but nonuniform when
           // lanes leave on different iterations. The load still has a chance to merge into a uniform
@@ -854,9 +857,8 @@ void ConstantCoalescing::ProcessBlock(BasicBlock *blk, std::vector<BufChunk *> &
               MergeUniformLoad(LI, buf_idxv, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, Extension, indcb_owloads);
             else
               MergeUniformLoad(LI, buf_idxv, addrSpace, nullptr, offsetInBytes, maxEltPlus, Extension, dircb_owloads);
-          } else if (IGC_IS_FLAG_ENABLED(EnableScalarLCSSAInConstantCoalescing) &&
-                     MergeUniformLoad(LI, buf_idxv, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, Extension,
-                                      indcb_owloads)) {
+          } else if (m_useScalarLCSSA && MergeUniformLoad(LI, buf_idxv, addrSpace, elt_idxv, offsetInBytes, maxEltPlus,
+                                                          Extension, indcb_owloads)) {
             // A nonuniform load after a loop whose base is an exit PHI, typically one added by
             // ScalarLCSSAConstantCoalescing. The PHI's value is uniform in the loop but nonuniform when
             // lanes leave on different iterations. The load still has a chance to merge into a uniform
@@ -900,9 +902,8 @@ void ConstantCoalescing::ProcessBlock(BasicBlock *blk, std::vector<BufChunk *> &
           if ((int64_t)offsetInBytes >= 0) {
             if (wiAns->isUniform(LI)) { // uniform
               MergeUniformLoad(LI, nullptr, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, Extension, indcb_owloads);
-            } else if (IGC_IS_FLAG_ENABLED(EnableScalarLCSSAInConstantCoalescing) &&
-                       MergeUniformLoad(LI, nullptr, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, Extension,
-                                        indcb_owloads)) {
+            } else if (m_useScalarLCSSA && MergeUniformLoad(LI, nullptr, addrSpace, elt_idxv, offsetInBytes, maxEltPlus,
+                                                            Extension, indcb_owloads)) {
               // A nonuniform load after a loop whose base is an exit PHI, typically one added by
               // ScalarLCSSAConstantCoalescing. The PHI's value is uniform in the loop but nonuniform when
               // lanes leave on different iterations. The load still has a chance to merge into a uniform
@@ -1510,9 +1511,8 @@ bool ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
     chunk_vec.push_back(cov_chunk);
     // A previous invocation may already have carried this chunk out of a loop.
     // Record that storage too, so repeated coalescing cannot reset the budget.
-    Loop *L = IGC_IS_FLAG_ENABLED(EnableScalarLCSSAInConstantCoalescing)
-                  ? getAnalysis<LoopInfoWrapperPass>().getLoopInfo().getLoopFor(load->getParent())
-                  : nullptr;
+    Loop *L =
+        m_useScalarLCSSA ? getAnalysis<LoopInfoWrapperPass>().getLoopInfo().getLoopFor(load->getParent()) : nullptr;
     if (L) {
       auto isVaryingExitPhi = [&](User *U) {
         auto *phi = dyn_cast<PHINode>(U);

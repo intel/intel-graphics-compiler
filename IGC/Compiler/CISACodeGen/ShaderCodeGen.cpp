@@ -1167,7 +1167,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescing) && !ctx.getModuleMetaData()->compOpt.DisableConstantCoalescing &&
       !isOptDisabledForModule(ctx.getModuleMetaData(), IGCOpts::ConstantCoalescingPass)) {
     mpm.add(createBreakCriticalEdgesPass());
-    mpm.add(new ConstantCoalescing());
+    mpm.add(new ConstantCoalescing(IGC_IS_FLAG_ENABLED(EnableScalarLCSSAInConstantCoalescing)));
   }
 
   if (ctx.type == ShaderType::RAYTRACING_SHADER || ctx.hasSyncRTCalls()) {

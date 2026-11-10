@@ -61,6 +61,7 @@ class ConstantCoalescing : public llvm::FunctionPass {
 public:
   static char ID;
   ConstantCoalescing();
+  explicit ConstantCoalescing(bool EnableScalarLCSSA);
 
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
 
@@ -229,6 +230,8 @@ private:
   llvm::DenseMap<llvm::BasicBlock *, unsigned> m_uniformExitPressure;
   // Dispatch width the snapshot and the recorded exit storage are measured at.
   unsigned m_uniformExitSIMD = 0;
+  // Whether to run scalar LCSSA, so more loads in a loop can be coalesced as uniform loads.
+  const bool m_useScalarLCSSA;
   // agent to modify the llvm-ir
   IRBuilderWrapper *irBuilder;
   // maintain the uniformness info
