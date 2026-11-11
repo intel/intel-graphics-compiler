@@ -204,7 +204,8 @@ public:
   std::vector<Loop *> getTopLoops();
   Loop *getInnerMostLoop(const G4_BB *);
   Loop *getOuterMostLoop(const G4_BB *);
-  void computePreheaders();
+  // With CreateMissing false, only loops that already have a preheader get one.
+  void computePreheaders(bool CreateMissing = true);
 
   std::vector<Loop *>::iterator begin() { return topLoops.begin(); }
   std::vector<Loop *>::iterator end() { return topLoops.end(); }
@@ -236,7 +237,7 @@ private:
   void populateLoop(BackEdge &);
   void computeLoopTree();
   void addLoop(Loop *newLoop, Loop *aParent);
-  G4_BB *getPreheader(Loop *loop);
+  G4_BB *getPreheader(Loop *loop, bool CreateMissing = true);
   void computeInnermostLoops();
 };
 } // namespace vISA
