@@ -371,6 +371,13 @@ enum class FclPchCacheMode : unsigned {
 #undef FCL_PCH_CACHE_MODE
 #undef FCL_PCH_CACHE_MODES
 };
+enum class StateIndexCanonMode : unsigned {
+#define STATE_INDEX_CANON_MODE(Name, Val, Description) Name = Val,
+#include "igc_regkeys_enums_defs.h"
+  STATE_INDEX_CANON_MODES
+#undef STATE_INDEX_CANON_MODE
+#undef STATE_INDEX_CANON_MODES
+};
 enum class NewInlineRaytracingMask : unsigned {
   None = 0,
 #define NEW_INLINE_RAYTRACING_FLAG(Name, Val, Description) Name = Val,

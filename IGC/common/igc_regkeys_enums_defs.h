@@ -188,6 +188,14 @@ SPDX-License-Identifier: MIT
   FCL_PCH_CACHE_MODE(OnDisk, 2, "In-memory and persistent on-disk auto-PCH cache")
 #endif // FCL_PCH_CACHE_MODE
 
+#ifdef STATE_INDEX_CANON_MODE
+#define STATE_INDEX_CANON_MODES                                                                                        \
+  STATE_INDEX_CANON_MODE(Off, 0, "Pass disabled")                                                                      \
+  STATE_INDEX_CANON_MODE(Basic, 1, "Hoist buried constants of the address chain")                                      \
+  STATE_INDEX_CANON_MODE(FoldZExt, 2, "Also fold zext(add X, C) descriptor offsets")                                   \
+  STATE_INDEX_CANON_MODE(MergeBases, 3, "Also merge equivalent bases in a block")
+#endif // STATE_INDEX_CANON_MODE
+
 #ifdef FLOATING_POINT_MODE_OVERRIDE_OPTION
 #define FLOATING_POINT_MODE_OVERRIDE_OPTIONS                                                                           \
   FLOATING_POINT_MODE_OVERRIDE_OPTION(IEEE, 0, "IEEE default")                                                         \

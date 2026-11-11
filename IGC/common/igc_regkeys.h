@@ -56,6 +56,7 @@ SPDX-License-Identifier: MIT
 #define RTMEMORY_STYLE_OPTION(Name, Val) #Name "=" IGC_REGKEY_STRINGIFY(Val) ","
 #define FILENAME_COLLISION_MODE(Name, Val, Description) #Name " [" Description "]=" IGC_REGKEY_STRINGIFY(Val) ","
 #define FCL_PCH_CACHE_MODE(Name, Val, Description) #Name " [" Description "]=" IGC_REGKEY_STRINGIFY(Val) ","
+#define STATE_INDEX_CANON_MODE(Name, Val, Description) #Name " [" Description "]=" IGC_REGKEY_STRINGIFY(Val) ","
 #define FLOATING_POINT_MODE_OVERRIDE_OPTION(Name, Val, Description)                                                    \
   #Name " [" Description "]=" IGC_REGKEY_STRINGIFY(Val) ","
 #define NEW_INLINE_RAYTRACING_FLAG(Name, Val, Description) #Name " [" Description "]=" IGC_REGKEY_STRINGIFY(Val) ","
@@ -99,6 +100,8 @@ SPDX-License-Identifier: MIT
 #undef FILENAME_COLLISION_MODES
 #undef FCL_PCH_CACHE_MODE
 #undef FCL_PCH_CACHE_MODES
+#undef STATE_INDEX_CANON_MODE
+#undef STATE_INDEX_CANON_MODES
 #undef FLOATING_POINT_MODE_OVERRIDE_OPTION
 #undef FLOATING_POINT_MODE_OVERRIDE_OPTIONS
 #undef INJECT_PRINTF_OPTION

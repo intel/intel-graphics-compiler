@@ -920,11 +920,16 @@ DECLARE_IGC_REGKEY(DWORD, RedundantOpsCrossBBNumBBThreshold, 500,
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableMatchDecomposedHalfExtract, true, "Reconstruct LLVM16+ decomposed half extraction",
                    DEBUG_ONLY)
-DECLARE_IGC_REGKEY(bool, EnableStateIndexAddrChainCanonicalize, true,
-                   "Enable surface state index address chain canonicalize pass", DEBUG_ONLY)
+DECLARE_IGC_REGKEY_ENUM(EnableStateIndexAddrChainCanonicalize, 1,
+                        "Surface state index address chain canonicalize pass mode", STATE_INDEX_CANON_MODES, DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, StateIndexAddrChainCanonicalizeInstThreshold, 3000,
                    "Disable StateIndexAddrChainCanonicalize when the function instruction count exceeds this "
                    "threshold. 0 = never disable based on inst count.",
+                   DEBUG_ONLY)
+DECLARE_IGC_REGKEY(DWORD, StateIndexUnifyBasesWindow, 8,
+                   "Merge a state-index base into an earlier equivalent copy only if it is within this many "
+                   "instructions of that copy's last use, so 64-bit bases don't stay live across the block. "
+                   "0 = no limit.",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableWIPhiStructuralEquivalence, true,
                    "Keep a phi at a divergent join uniform when all its incomings are "

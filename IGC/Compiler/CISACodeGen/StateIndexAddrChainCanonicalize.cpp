@@ -9,11 +9,17 @@ SPDX-License-Identifier: MIT
 #include "StateIndexAddrChainCanonicalize.hpp"
 
 #include "Compiler/CodeGenPublic.h"
+#include "Compiler/CISACodeGen/helper.h"
 #include "common/ResourceAddrSpace.h"
 #include "common/igc_regkeys.hpp"
 #include "Probe/Assertion.h"
 
+#include <functional>
+#include <optional>
+#include <utility>
+
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
@@ -31,6 +37,10 @@ using namespace IGC;
 // lookup needs only a one-shot
 //   m_IntToPtr(m_c_Add(m_Value, m_ConstantInt))
 // match — no mid-pattern-match IR mutation is required.
+//
+// Constants under `zext(add X, C)` are hoisted too (see matchZExtOfAddConst).
+// Equivalent bases are then merged per block (unifyBases) so constant-indexed
+// descriptor arrays share one base with different state indices.
 //
 // Targeting: runOnFunction skips inttoptr whose destination address space is
 // not stateful (isStatefulAddrSpace). The SSSize-alignment guard in analyze()
@@ -85,13 +95,59 @@ constexpr unsigned MaxDepth = 2;
 // the compound GRF pressure increase often outweighs the single saved add.
 constexpr unsigned MaxNonConstLeaves = 2;
 
+// Non-constant leaf; NeedsZExt marks X peeled out of `zext(add X, C)`.
+struct Leaf {
+  Value *V = nullptr;
+  bool NeedsZExt = false;
+};
+
 struct CanonPlan {
-  SmallVector<Value *, 4> NonConstLeaves;
+  SmallVector<Leaf, 4> NonConstLeaves;
   uint64_t ConstSum = 0;
   bool Viable = false;
   bool Bail = false;
   bool FoundBuriedConst = false;
+  // StateIndexCanonMode::FoldZExt: zext fold and shared chains.
+  bool FoldZExt = false;
+  // StateIndexCanonMode::MergeBases: reuse existing zext/add bases.
+  bool MergeBases = false;
+  // See matchZExtOfAddConst().
+  bool AssumeNoOffsetWrap = false;
 };
+
+// Max C for `zext(add i32 X, C)` without nuw. Covers the encodable index
+// range and rejects "negative" constants such as 0xFFFFFFC0 (X - 64).
+constexpr uint64_t MaxAssumedNoWrapOffset = 1u << 16;
+
+// Matches single-use `zext(add X, C)` so C can be hoisted:
+// zext(X + C) == zext(X) + C when X + C does not wrap. Exact with nuw.
+// Without nuw (dropped by frontend optimizations) it is accepted only for
+// bindless surfaces whose X is a driver-supplied base offset (argument, load
+// or call), not in-shader arithmetic: X is then an in-heap offset, and a wrap
+// of X + C would be an out-of-bounds descriptor access.
+static bool matchZExtOfAddConst(Value *V, bool AssumeNoOffsetWrap, Value *&X, ConstantInt *&C) {
+  auto *ZE = dyn_cast<ZExtInst>(V);
+  if (!ZE || !ZE->hasOneUse())
+    return false;
+  auto *Add = dyn_cast<BinaryOperator>(ZE->getOperand(0));
+  if (!Add || Add->getOpcode() != Instruction::Add || !Add->hasOneUse())
+    return false;
+  if (auto *CI = dyn_cast<ConstantInt>(Add->getOperand(1))) {
+    X = Add->getOperand(0);
+    C = CI;
+  } else if (auto *CI = dyn_cast<ConstantInt>(Add->getOperand(0))) {
+    X = Add->getOperand(1);
+    C = CI;
+  } else {
+    return false;
+  }
+  if (isa<Constant>(X))
+    return false;
+  if (Add->hasNoUnsignedWrap())
+    return true;
+  return AssumeNoOffsetWrap && Add->getType()->isIntegerTy(32) && C->getValue().ult(MaxAssumedNoWrapOffset) &&
+         isa<Argument, LoadInst, CallInst>(X);
+}
 
 static void collect(CanonPlan &Plan, Value *V, bool IsTop, unsigned Depth) {
   if (Plan.Bail)
@@ -104,9 +160,23 @@ static void collect(CanonPlan &Plan, Value *V, bool IsTop, unsigned Depth) {
     Plan.ConstSum += CI->getZExtValue();
     return;
   }
+  {
+    Value *X = nullptr;
+    ConstantInt *C = nullptr;
+    if (Plan.FoldZExt && matchZExtOfAddConst(V, Plan.AssumeNoOffsetWrap, X, C)) {
+      if (Depth > MaxDepth) {
+        Plan.Bail = true;
+        return;
+      }
+      Plan.FoundBuriedConst = true;
+      Plan.ConstSum += C->getZExtValue();
+      Plan.NonConstLeaves.push_back({X, /*NeedsZExt=*/true});
+      return;
+    }
+  }
   auto *I = dyn_cast<Instruction>(V);
   if (!I || I->getOpcode() != Instruction::Add || (!IsTop && !I->hasOneUse())) {
-    Plan.NonConstLeaves.push_back(V);
+    Plan.NonConstLeaves.push_back({V, /*NeedsZExt=*/false});
     return;
   }
   if (Depth > MaxDepth) {
@@ -121,9 +191,12 @@ static void collect(CanonPlan &Plan, Value *V, bool IsTop, unsigned Depth) {
 
 // Pure analysis: walks the add-chain rooted at I2P->getOperand(0). Does not
 // mutate IR. Bails on shapes where the rewrite would be a regression
-// (multi-use intermediates, multi-use top, deep chains, no buried constant).
-static CanonPlan analyze(IntToPtrInst *I2P, CodeGenContext *Ctx) {
+// (multi-use intermediates, a top user that is not a same-block stateful
+// inttoptr, deep chains, no buried constant).
+static CanonPlan analyze(IntToPtrInst *I2P, CodeGenContext *Ctx, StateIndexCanonMode Mode) {
   CanonPlan Plan;
+  Plan.FoldZExt = Mode >= StateIndexCanonMode::FoldZExt;
+  Plan.MergeBases = Mode >= StateIndexCanonMode::MergeBases;
 
   Value *Top = I2P->getOperand(0);
   // matchStateIndex requires the base to be 64-bit (PatternMatchPass.cpp).
@@ -131,11 +204,23 @@ static CanonPlan analyze(IntToPtrInst *I2P, CodeGenContext *Ctx) {
   // because matchStateIndex would reject the result on the width check.
   if (!Top->getType()->isIntegerTy(64))
     return Plan;
-  // Top must be single-use: if other consumers hold the chain alive, deleting
-  // it is impossible and we'd net out at "old chain + new chain" — strict
-  // regression.
-  if (!Top->hasOneUse())
+  if (!Plan.FoldZExt && !Top->hasOneUse())
     return Plan;
+  // Every user of Top must be a stateful inttoptr in this block: commit()
+  // rewrites them all. Any other user would keep the old chain alive and we'd
+  // net out at "old chain + new chain" — strict regression.
+  BasicBlock *I2PBlock = I2P->getParent();
+  bool MayBeSampler = false;
+  Plan.AssumeNoOffsetWrap = true;
+  for (User *U : Top->users()) {
+    auto *UI = dyn_cast<IntToPtrInst>(U);
+    if (!UI || UI->getParent() != I2PBlock || !isStatefulAddrSpace(UI->getType()->getPointerAddressSpace()))
+      return Plan;
+    BufferType BufTy = DecodeBufferType(UI->getType()->getPointerAddressSpace());
+    // Surfaces only; IsBindless excludes BINDLESS_SAMPLER.
+    Plan.AssumeNoOffsetWrap &= IsBindless(BufTy) || IsSSHbindless(BufTy);
+    MayBeSampler |= BufTy == BINDLESS_SAMPLER || BufTy == SAMPLER || BufTy == BUFFER_TYPE_UNKNOWN;
+  }
 
   collect(Plan, Top, true, 0);
 
@@ -155,9 +240,8 @@ static CanonPlan analyze(IntToPtrInst *I2P, CodeGenContext *Ctx) {
   // are the primary regression mechanism -- the leaf must stay live across
   // intervening blocks, increasing GRF pressure at join points. Same-BB
   // extensions are bounded by block size and typically benign.
-  BasicBlock *I2PBlock = I2P->getParent();
-  for (Value *Leaf : Plan.NonConstLeaves) {
-    if (auto *LI = dyn_cast<Instruction>(Leaf)) {
+  for (const Leaf &L : Plan.NonConstLeaves) {
+    if (auto *LI = dyn_cast<Instruction>(L.V)) {
       if (LI->getParent() != I2PBlock) {
         return Plan; // Plan.Viable remains false
       }
@@ -181,14 +265,10 @@ static CanonPlan analyze(IntToPtrInst *I2P, CodeGenContext *Ctx) {
     return Plan;
 
   // (3) Sampler-path guard: matchStateIndex uses GetBindlessSamplerSize()
-  //     (not getSurfaceStateSize()) and caps the sampler index at < 7 when
-  //     the inttoptr feeds a sampler intrinsic. We cannot distinguish
-  //     surface vs. sampler consumers at this point, so conservatively
-  //     reject chains whose constant sum would pass the surface check but
-  //     fail the sampler check. This avoids restructuring + live-range
-  //     extension for zero benefit on the sampler path.
+  //     and caps the sampler index at < 7. Only applies to pointers that may
+  //     be samplers; known surfaces would otherwise lose valid folds.
   unsigned BSSize = Ctx->platform.GetBindlessSamplerSize();
-  if (BSSize > 0 && Plan.ConstSum % BSSize == 0 && +Plan.ConstSum / BSSize >= 7)
+  if ((MayBeSampler || !Plan.FoldZExt) && BSSize > 0 && Plan.ConstSum % BSSize == 0 && Plan.ConstSum / BSSize >= 7)
     return Plan;
 
   // Note: live-range/RP risk is throttled at the function-level instruction
@@ -198,22 +278,142 @@ static CanonPlan analyze(IntToPtrInst *I2P, CodeGenContext *Ctx) {
   return Plan;
 }
 
-// Builds the new chain at the old top's position and rewires the inttoptr.
-// Old chain becomes dead and is DCE'd.
+// Finds a user of V before InsertPt in the same block satisfying Pred, so
+// chains can share one residual base. Skips instructions with poison-generating
+// flags (nuw/nsw/nneg): they may be poison where the new value is not.
+template <typename PredT> static Instruction *findDominatingUser(Value *V, Instruction *InsertPt, PredT Pred) {
+  for (User *U : V->users()) {
+    auto *UI = dyn_cast<Instruction>(U);
+    if (UI && UI != InsertPt && UI->getParent() == InsertPt->getParent() && UI->comesBefore(InsertPt) &&
+        !UI->hasPoisonGeneratingFlags() && Pred(UI))
+      return UI;
+  }
+  return nullptr;
+}
+
+static Value *getOrCreateZExt(IRBuilder<> &B, Value *V, Type *Ty) {
+  Instruction *InsertPt = &*B.GetInsertPoint();
+  if (Instruction *Existing =
+          findDominatingUser(V, InsertPt, [Ty](Instruction *I) { return isa<ZExtInst>(I) && I->getType() == Ty; }))
+    return Existing;
+  return B.CreateZExt(V, Ty);
+}
+
+static Value *getOrCreateAdd(IRBuilder<> &B, Value *L, Value *R) {
+  Instruction *InsertPt = &*B.GetInsertPoint();
+  if (Instruction *Existing = findDominatingUser(L, InsertPt, [L, R](Instruction *I) {
+        auto *BO = dyn_cast<BinaryOperator>(I);
+        return BO && BO->getOpcode() == Instruction::Add &&
+               ((BO->getOperand(0) == L && BO->getOperand(1) == R) ||
+                (BO->getOperand(0) == R && BO->getOperand(1) == L));
+      }))
+    return Existing;
+  return B.CreateAdd(L, R);
+}
+
+// Builds the new chain at the old top's position and rewires every inttoptr
+// user. Old chain becomes dead and is DCE'd.
 static void commit(IntToPtrInst *I2P, const CanonPlan &Plan) {
   IGC_ASSERT(Plan.Viable);
   Value *Top = I2P->getOperand(0);
+  Type *Ty = Top->getType();
 
   auto *TopI = cast<Instruction>(Top);
   IRBuilder<> B(TopI);
   B.SetCurrentDebugLocation(TopI->getDebugLoc());
-  Value *Acc = Plan.NonConstLeaves[0];
-  for (size_t i = 1; i < Plan.NonConstLeaves.size(); ++i)
-    Acc = B.CreateAdd(Acc, Plan.NonConstLeaves[i]);
-  Value *NewTop = B.CreateAdd(Acc, ConstantInt::get(Top->getType(), Plan.ConstSum));
+  auto materialize = [&](const Leaf &L) -> Value * {
+    if (!L.NeedsZExt)
+      return L.V;
+    return Plan.MergeBases ? getOrCreateZExt(B, L.V, Ty) : B.CreateZExt(L.V, Ty);
+  };
+  Value *Acc = materialize(Plan.NonConstLeaves[0]);
+  for (size_t i = 1; i < Plan.NonConstLeaves.size(); ++i) {
+    Value *R = materialize(Plan.NonConstLeaves[i]);
+    Acc = Plan.MergeBases ? getOrCreateAdd(B, Acc, R) : B.CreateAdd(Acc, R);
+  }
+  Value *NewTop = B.CreateAdd(Acc, ConstantInt::get(Ty, Plan.ConstSum));
 
-  I2P->setOperand(0, NewTop);
+  Top->replaceAllUsesWith(NewTop);
   RecursivelyDeleteTriviallyDeadInstructions(Top);
+}
+
+// Base of a stateful address: X in inttoptr(add(X, C)), else the operand.
+static Value *getAddrBase(IntToPtrInst *I2P) {
+  Value *V = I2P->getOperand(0);
+  if (auto *BO = dyn_cast<BinaryOperator>(V); BO && BO->getOpcode() == Instruction::Add) {
+    if (isa<ConstantInt>(BO->getOperand(1)))
+      return BO->getOperand(0);
+    if (isa<ConstantInt>(BO->getOperand(0)))
+      return BO->getOperand(1);
+  }
+  return V;
+}
+
+// `zext X` leaves compare by (X, type) so separate copies of one extension match.
+using LeafKey = std::pair<Value *, Type *>;
+using BaseKey = std::pair<LeafKey, LeafKey>;
+
+static LeafKey getLeafKey(Value *V) {
+  if (auto *ZE = dyn_cast<ZExtInst>(V); ZE && !ZE->hasPoisonGeneratingFlags())
+    return {ZE->getOperand(0), ZE->getType()};
+  return {V, nullptr};
+}
+
+// Key of a flag-free `add L, R`, independent of operand order.
+static std::optional<BaseKey> getBaseKey(Value *V) {
+  auto *BO = dyn_cast<BinaryOperator>(V);
+  if (!BO || BO->getOpcode() != Instruction::Add || BO->hasPoisonGeneratingFlags())
+    return {};
+  LeafKey A = getLeafKey(BO->getOperand(0)), B = getLeafKey(BO->getOperand(1));
+  auto Less = [](const LeafKey &X, const LeafKey &Y) {
+    std::less<const void *> L;
+    return X.first != Y.first ? L(X.first, Y.first) : L(X.second, Y.second);
+  };
+  if (Less(B, A))
+    std::swap(A, B);
+  return BaseKey{A, B};
+}
+
+// Merges equivalent bases of stateful addresses in BB, keeping the earliest.
+// SinkPointerConstAdd and commit() can leave several copies of one base, and
+// each copy takes its own s0 slot. Window bounds the distance to the previous
+// use, so a far copy keeps its own short live range (0 = no limit).
+static bool unifyBases(BasicBlock &BB, unsigned Window) {
+  struct Rep {
+    Instruction *I;
+    unsigned LastPos;
+  };
+  DenseMap<BaseKey, Rep> Reps;
+  bool Changed = false;
+  unsigned Pos = 0;
+  // Merged copies are always earlier than the current inttoptr, so
+  // early-increment iteration stays valid.
+  for (Instruction &I : make_early_inc_range(BB)) {
+    ++Pos;
+    auto *I2P = dyn_cast<IntToPtrInst>(&I);
+    if (!I2P || !isStatefulAddrSpace(I2P->getType()->getPointerAddressSpace()))
+      continue;
+    auto *Base = dyn_cast<Instruction>(getAddrBase(I2P));
+    if (!Base || Base->getParent() != &BB)
+      continue;
+    auto Key = getBaseKey(Base);
+    if (!Key)
+      continue;
+    auto [It, Inserted] = Reps.try_emplace(*Key, Rep{Base, Pos});
+    Rep &R = It->second;
+    if (Inserted || R.I == Base || (Window && Pos - R.LastPos > Window)) {
+      R = {Base, Pos};
+      continue;
+    }
+    // The earlier instruction dominates every use of the later one.
+    Instruction *Keep = R.I->comesBefore(Base) ? R.I : Base;
+    Instruction *Drop = Keep == R.I ? Base : R.I;
+    Drop->replaceAllUsesWith(Keep);
+    RecursivelyDeleteTriviallyDeadInstructions(Drop);
+    R = {Keep, Pos};
+    Changed = true;
+  }
+  return Changed;
 }
 
 } // namespace
@@ -221,7 +421,8 @@ static void commit(IntToPtrInst *I2P, const CanonPlan &Plan) {
 bool StateIndexAddrChainCanonicalize::runOnFunction(Function &F) {
   if (IGC_IS_FLAG_ENABLED(DisableStatefulFolding))
     return false;
-  if (IGC_IS_FLAG_DISABLED(EnableStateIndexAddrChainCanonicalize))
+  auto Mode = static_cast<StateIndexCanonMode>(IGC_GET_FLAG_VALUE(EnableStateIndexAddrChainCanonicalize));
+  if (Mode == StateIndexCanonMode::Off)
     return false;
 
   auto *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -253,13 +454,18 @@ bool StateIndexAddrChainCanonicalize::runOnFunction(Function &F) {
         continue;
       if (!IGC::isStatefulAddrSpace(I2P->getType()->getPointerAddressSpace()))
         continue;
-      CanonPlan Plan = analyze(I2P, Ctx);
+      CanonPlan Plan = analyze(I2P, Ctx, Mode);
       if (!Plan.Viable)
         continue;
       commit(I2P, Plan);
       Changed = true;
     }
   }
+  if (Mode < StateIndexCanonMode::MergeBases)
+    return Changed;
+  unsigned Window = IGC_GET_FLAG_VALUE(StateIndexUnifyBasesWindow);
+  for (BasicBlock &BB : F)
+    Changed |= unifyBases(BB, Window);
   return Changed;
 }
 
