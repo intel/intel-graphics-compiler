@@ -483,6 +483,11 @@ private:
   // map because it's used often, is faster than map, and
   // importantly it's dense so there's no savings to be had with a map.
   std::vector<FuncInfo *> instToFunc;
+  // Software workaround for fused-EU NoMask call return-address writes that can
+  // clobber data needed by an inactive thread. CM needs augmentation only for
+  // these return addresses.
+  const bool returnAddressOnlyCm;
+  const bool augWithHoles;
   const bool hasSubroutines = false;
   SparseBitVector varLiveOutOfAnyBB;
 

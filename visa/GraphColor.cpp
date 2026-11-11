@@ -3285,8 +3285,15 @@ Augmentation::Augmentation(Interference &i, const LivenessAnalysis &l,
     : kernel(g.kernel), intf(i), gra(g), liveAnalysis(l), lrs(g.incRA.getLRs()),
       fcallRetMap(g.fcallRetMap),
       refs(g.kernel, false, false, true, &g.pointsToAnalysis),
+      returnAddressOnlyCm(
+          g.kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM &&
+          g.kernel.fg.builder->hasFusedEU() &&
+          !g.kernel.fg.sortedFuncTable.empty()),
+      augWithHoles(g.kernel.getOption(vISA_NewAugmentation) &&
+                   g.kernel.getInt32KernelAttr(Attributes::ATTR_Target) !=
+                       VISA_CM),
       hasSubroutines(kernel.fg.sortedFuncTable.size() > 0 &&
-                     g.kernel.getOption(vISA_NewAugmentation)) {
+                     augWithHoles) {
   useGenericAugAlign =
       GlobalRA::useGenericAugAlign(kernel.getPlatformGeneration());
 }
@@ -6274,7 +6281,7 @@ void Augmentation::buildInterferenceIncompatibleMask() {
 
     if (callDclMap.count(newDcl) > 0) {
       storeOverlapWithCallRet(newDcl, globalVars);
-    } else {
+    } else if (!returnAddressOnlyCm) {
       buildSIMDIntfDcl(newDcl);
     }
 
@@ -6299,6 +6306,8 @@ void Augmentation::buildInterferenceIncompatibleMask() {
 void Augmentation::buildInteferenceForCallSiteOrRetDeclare(std::vector<G4_Declare*>& dcls,
                                                            MaskDeclares *mask) {
   for (auto newDcl : dcls) {
+    if (returnAddressOnlyCm && !lrs[newDcl->getRegVar()->getId()]->isRetIp())
+      continue;
     auto newDclAugMask = gra.getAugmentationMask(newDcl);
     auto intfNeededForNewDcl =
         (gra.incRA.isEnabled() && gra.incRA.hasAnyCandidates())
@@ -6392,7 +6401,7 @@ void Augmentation::buildInteferenceForCallsite(FuncInfo *func) {
     std::vector<G4_Declare *> maydefDcls(SBitToVector(maydef, lrs));
     buildInteferenceForCallSiteOrRetDeclare(maydefDcls, &overlapDclsWithFunc[func]);
   }
-  if (gra.useLocalRA) {
+  if (gra.useLocalRA && !returnAddressOnlyCm) {
     std::vector<G4_Declare *> lraDcls;
     for (uint32_t j = 0; j < kernel.getNumRegTotal(); j++) {
       if (localSummaryOfCallee[func].isGRFBusy(j)) {
@@ -6457,18 +6466,20 @@ void Augmentation::populateBBCache() {
 }
 
 void Augmentation::augmentIntfGraph() {
-  if (!(kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
-        !liveAnalysis.livenessClass(G4_ADDRESS) && kernel.fg.size() > 2)) {
-    if (!kernel.getOption(vISA_DumpRegChart)) {
-      return;
-    }
+  const bool needs3DAugmentation =
+      kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
+      !liveAnalysis.livenessClass(G4_ADDRESS);
+  const bool needsCmAugmentation =
+      returnAddressOnlyCm && liveAnalysis.livenessClass(G4_GRF);
+  const bool needsAugmentation =
+      (needs3DAugmentation || needsCmAugmentation) && kernel.fg.size() > 2;
+  if (!needsAugmentation && !kernel.getOption(vISA_DumpRegChart)) {
+    return;
   }
 
-  if (gra.useLocalRA) {
+  if (gra.useLocalRA && !returnAddressOnlyCm) {
     buildSummaryForCallees();
   }
-
-  bool augWithHoles = kernel.getOption(vISA_NewAugmentation);
 
   // First check whether any definitions exist with incompatible mask
   bool nonDefaultMaskDef = markNonDefaultMaskDef();
@@ -6544,7 +6555,7 @@ void Augmentation::augmentIntfGraph() {
     // Perform linear scan to augment graph
     buildInterferenceIncompatibleMask();
 
-    if (liveAnalysis.livenessClass(G4_GRF)) {
+    if (liveAnalysis.livenessClass(G4_GRF) && !returnAddressOnlyCm) {
       if ((GlobalRA::useGenericAugAlign(kernel.getPlatformGeneration()) &&
            kernel.getSimdSize() >= kernel.numEltPerGRF<Type_UD>()) ||
           (!GlobalRA::useGenericAugAlign(kernel.getPlatformGeneration()) &&
