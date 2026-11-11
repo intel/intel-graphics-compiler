@@ -1583,6 +1583,8 @@ private:
 
   void insertSlot1HwordR0Set(G4_BB *bb, INST_LIST_ITER &instIt);
   void insertSlot1HwordR0Reset(G4_BB *bb, INST_LIST_ITER &instIt);
+  INST_LIST_ITER insertScratchBaseAdd(G4_BB *bb, INST_LIST_ITER instIt,
+                                      int bytes);
 
   bool spillFillIntrinUsesLSC(G4_INST *spillFillIntrin);
   void expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt);
