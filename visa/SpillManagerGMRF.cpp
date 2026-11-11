@@ -6183,6 +6183,18 @@ unsigned GlobalRA::spillFillPropagation() {
   if (useLscForScatterSpill)
     return 0;
 
+  // The pass identifies spill slots by the offset in the intrinsics. OWord
+  // block spills and fills may carry theirs only in a message header, so the
+  // pass can neither tell their slots apart nor bound the spill area. Skip it
+  // and leave the caller's spill area size unchanged.
+  for (G4_BB *bb : kernel.fg)
+    for (G4_INST *inst : *bb)
+      if ((inst->isSpillIntrinsic() &&
+           !inst->asSpillIntrinsic()->isOffsetValid()) ||
+          (inst->isFillIntrinsic() &&
+           !inst->asFillIntrinsic()->isOffsetValid()))
+        return UINT_MAX;
+
   SpillFillPropagation sfp(kernel, builder, *this);
   sfp.run();
   return sfp.getMaxSpillAreaOffset();
