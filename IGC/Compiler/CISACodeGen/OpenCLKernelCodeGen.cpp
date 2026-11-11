@@ -2874,25 +2874,43 @@ bool COpenCLKernel::IsRegularGRFRequested() { return m_regularGRFRequested; }
 
 bool COpenCLKernel::IsLargeGRFRequested() { return m_largeGRFRequested; }
 
-bool COpenCLKernel::preventLargeGRFNumForReqdWorkGroupSize(SIMDMode simdMode) const {
-  // NEO runtime halves maxWorkGroupSize when numGrfRequired == largeGrfNumber
-  // and simdSize != 32. If the kernel has reqd_work_group_size that exceeds the
-  // halved maxWorkGroupSize, we must cap GRF count to avoid the conflict.
+uint32_t COpenCLKernel::getMaxGRFNumForReqdWorkGroupSize(SIMDMode simdMode) const {
+  // NEO reduces maxWorkGroupSize in proportion to the HW threads per EU of the
+  // GRF number. It allows the full size down to the threads per EU of 128 GRF,
+  // or to half of them for SIMD32. Returns the largest GRF number that still fits
+  // reqd_work_group_size, or 0 when no cap is needed.
   if (!m_Platform->isCoreChildOf(IGFX_XE_HP_CORE))
-    return false;
-
-  if (simdMode == SIMDMode::SIMD32)
-    return false;
+    return 0;
 
   uint32_t reqdWorkGroupSize = IGCMetaDataHelper::getThreadGroupSize(m_Context->getModuleMetaData(), entry);
   if (reqdWorkGroupSize == 0)
-    return false;
+    return 0;
 
   uint32_t maxWGSize = m_Context->getModuleMetaData()->csInfo.maxWorkGroupSize;
   if (maxWGSize == 0)
     maxWGSize = m_Platform->getOfflineCompilerMaxWorkGroupSize();
 
-  return reqdWorkGroupSize > maxWGSize / 2;
+  auto Modes = m_Platform->getMaxGRFVRTTable(/*MaxNumGRF=*/0, /*StaticModes=*/true);
+  auto DefaultMode = llvm::find_if(Modes, [](const VRT::ModeEntry &Mode) {
+    return static_cast<uint32_t>(Mode.first) >= CodeGenContext::DEFAULT_TOTAL_GRF_NUM;
+  });
+  if (DefaultMode == Modes.end())
+    return 0;
+
+  uint64_t FullSizeThreads = static_cast<uint64_t>(DefaultMode->second);
+  if (simdMode == SIMDMode::SIMD32)
+    FullSizeThreads = std::max<uint64_t>(FullSizeThreads / 2, 1);
+
+  // A work group that fits no mode keeps the smallest one, never the no-cap result 0.
+  uint32_t MaxNumGRF = static_cast<uint32_t>(Modes.front().first);
+  for (const VRT::ModeEntry &Mode : Modes) {
+    uint64_t Threads = std::min(static_cast<uint64_t>(Mode.second), FullSizeThreads);
+    if (static_cast<uint64_t>(reqdWorkGroupSize) * FullSizeThreads > static_cast<uint64_t>(maxWGSize) * Threads)
+      break;
+    MaxNumGRF = static_cast<uint32_t>(Mode.first);
+  }
+
+  return MaxNumGRF == static_cast<uint32_t>(Modes.back().first) ? 0 : MaxNumGRF;
 }
 
 SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP, llvm::Function &F,

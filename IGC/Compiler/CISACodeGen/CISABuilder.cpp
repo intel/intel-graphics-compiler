@@ -4359,10 +4359,10 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
         SaveOption(vISA_AutoGRFSelection, true);
 
         auto *oclKernel = static_cast<COpenCLKernel *>(m_program);
-        if (oclKernel->preventLargeGRFNumForReqdWorkGroupSize(m_program->m_State.m_dispatchSize))
-          // Cap GRF count for kernels with reqd_work_group_size that would
-          // exceed the runtime's reduced maxWorkGroupSize when using more GRFs.
-          SaveOption(vISA_MaxGRFNum, CodeGenContext::DEFAULT_TOTAL_GRF_NUM);
+        // Cap GRF count for kernels with reqd_work_group_size that would
+        // exceed the runtime's reduced maxWorkGroupSize when using more GRFs.
+        if (uint32_t maxGRFNum = oclKernel->getMaxGRFNumForReqdWorkGroupSize(m_program->m_State.m_dispatchSize))
+          SaveOption(vISA_MaxGRFNum, maxGRFNum);
       }
 
       // Emit warnings if mismatch is found in user input
@@ -5155,7 +5155,13 @@ void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInli
   }
 
   if (upperBoundGRF > 0 && vbuilder->GetuInt32Option(vISA_MaxGRFNum) == 0) {
-    SaveOption(vISA_MaxGRFNum, upperBoundGRF);
+    // Options saved by InitVISABuilderOptions reach vbuilder only in SetBuilderOptions.
+    uint32_t savedMaxGRFNum = 0;
+    for (const auto &OP : m_visaUserOptions)
+      if (OP.first == vISA_MaxGRFNum)
+        savedMaxGRFNum = OP.second.vInt32;
+    if (savedMaxGRFNum == 0 || upperBoundGRF < savedMaxGRFNum)
+      SaveOption(vISA_MaxGRFNum, upperBoundGRF);
   }
 
   // Pass all build options to builder
