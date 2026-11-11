@@ -2035,7 +2035,7 @@ CVariable *CShader::GetStructVariable(llvm::Value *v) {
         v = FirstInsertValueInst;
       }
     }
-  } else if (isa<SelectInst>(v)) {
+  } else if (isa<SelectInst, PHINode>(v)) {
     if (IGC_IS_FLAG_ENABLED(EnableDeSSA) && m_deSSA) {
       e_alignment pAlign = EALIGN_GRF;
       Value *rVal = m_deSSA->getRootValue(v, &pAlign);
