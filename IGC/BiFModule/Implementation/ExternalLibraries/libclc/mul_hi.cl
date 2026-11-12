@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -10,15 +10,16 @@ SPDX-License-Identifier: MIT
 #include "../../../Headers/spirv.h"
 #include "hadd.cl"
 
- //FOIL-based long mul_hi
- //
- // Summary: Treat mul_hi(long x, long y) as:
- // (a+b) * (c+d) where a and c are the high-order parts of x and y respectively
- // and b and d are the low-order parts of x and y.
- // Thinking back to algebra, we use FOIL to do the work.
+//FOIL-based long mul_hi
+//
+// Summary: Treat mul_hi(long x, long y) as:
+// (a+b) * (c+d) where a and c are the high-order parts of x and y respectively
+// and b and d are the low-order parts of x and y.
+// Thinking back to algebra, we use FOIL to do the work.
 
-INLINE OVERLOADABLE long libclc_mul_hi(long x, long y) {
-    long f, o, i;
+INLINE OVERLOADABLE long libclc_mul_hi(long x, long y)
+{
+    long  f, o, i;
     ulong l;
 
     //Move the high/low halves of x/y into the lower 32-bits of variables so

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "../../../Headers/spirv.h"
 
-INLINE OVERLOADABLE long libclc_hadd(long x, long y) {
+INLINE OVERLOADABLE long libclc_hadd(long x, long y)
+{
     return (x >> (long)1) + (y >> (long)1) + (x & y & (long)1);
 }

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -10,14 +10,13 @@ SPDX-License-Identifier: MIT
 #pragma OPENCL FP_CONTRACT OFF
 typedef struct
 {
-
     unsigned long _dExp_tbl_PH[16];
     unsigned long _dExp_tbl_PL[16];
     unsigned long _dExp_tbl_NH[16];
     unsigned long _dExp_tbl_NL[16];
     unsigned long _dbShifter_UISA;
     unsigned long _dbShifterP1_UISA;
-    unsigned int _iDomainRange_UISA;
+    unsigned int  _iDomainRange_UISA;
     unsigned long _lIndexMask_UISA;
     unsigned long _dPC2_UISA;
     unsigned long _dPC3_UISA;
@@ -36,7 +35,7 @@ typedef struct
 
     unsigned long _dbT[(1 << 7)][2];
     unsigned long _dbShifter;
-    unsigned int _iDomainRange;
+    unsigned int  _iDomainRange;
 
     unsigned long _dPC1;
     unsigned long _dPC2;
@@ -50,26 +49,70 @@ typedef struct
 
 } __internal_dsinh_la_data_t;
 static __constant __internal_dsinh_la_data_t __internal_dsinh_la_data = {
-    {
-     0x3fe0000000000000uL, 0x3fe0b5586cf9890fuL, 0x3fe172b83c7d517buL, 0x3fe2387a6e756238uL,
-     0x3fe306fe0a31b715uL, 0x3fe3dea64c123422uL, 0x3fe4bfdad5362a27uL, 0x3fe5ab07dd485429uL,
-     0x3fe6a09e667f3bcduL, 0x3fe7a11473eb0187uL, 0x3fe8ace5422aa0dbuL, 0x3fe9c49182a3f090uL,
-     0x3feae89f995ad3aduL, 0x3fec199bdd85529cuL, 0x3fed5818dcfba487uL, 0x3feea4afa2a490dauL},
-    {
-     0x0000000000000000uL, 0x3c88a62e4adc610buL, 0xbc719041b9d78a76uL, 0x3c89b07eb6c70573uL,
-     0x3c76f46ad23182e4uL, 0x3c7ada0911f09ebcuL, 0x3c6d4397afec42e2uL, 0x3c86324c054647aduL,
-     0xbc8bdd3413b26456uL, 0xbc741577ee04992fuL, 0x3c86e9f156864b27uL, 0x3c6c7c46b071f2beuL,
-     0x3c87a1cd345dcc81uL, 0x3c711065895048dduL, 0x3c72ed02d75b3707uL, 0xbc8e9c23179c2893uL},
-    {
-     0x3fe0000000000000uL, 0x3fdea4afa2a490dauL, 0x3fdd5818dcfba487uL, 0x3fdc199bdd85529cuL,
-     0x3fdae89f995ad3aduL, 0x3fd9c49182a3f090uL, 0x3fd8ace5422aa0dbuL, 0x3fd7a11473eb0187uL,
-     0x3fd6a09e667f3bcduL, 0x3fd5ab07dd485429uL, 0x3fd4bfdad5362a27uL, 0x3fd3dea64c123422uL,
-     0x3fd306fe0a31b715uL, 0x3fd2387a6e756238uL, 0x3fd172b83c7d517buL, 0x3fd0b5586cf9890fuL},
-    {
-     0x0000000000000000uL, 0xbc7e9c23179c2893uL, 0x3c62ed02d75b3707uL, 0x3c611065895048dduL,
-     0x3c77a1cd345dcc81uL, 0x3c5c7c46b071f2beuL, 0x3c76e9f156864b27uL, 0xbc641577ee04992fuL,
-     0xbc7bdd3413b26456uL, 0x3c76324c054647aduL, 0x3c5d4397afec42e2uL, 0x3c6ada0911f09ebcuL,
-     0x3c66f46ad23182e4uL, 0x3c79b07eb6c70573uL, 0xbc619041b9d78a76uL, 0x3c78a62e4adc610buL},
+    {0x3fe0000000000000uL,
+     0x3fe0b5586cf9890fuL,
+     0x3fe172b83c7d517buL,
+     0x3fe2387a6e756238uL,
+     0x3fe306fe0a31b715uL,
+     0x3fe3dea64c123422uL,
+     0x3fe4bfdad5362a27uL,
+     0x3fe5ab07dd485429uL,
+     0x3fe6a09e667f3bcduL,
+     0x3fe7a11473eb0187uL,
+     0x3fe8ace5422aa0dbuL,
+     0x3fe9c49182a3f090uL,
+     0x3feae89f995ad3aduL,
+     0x3fec199bdd85529cuL,
+     0x3fed5818dcfba487uL,
+     0x3feea4afa2a490dauL},
+    {0x0000000000000000uL,
+     0x3c88a62e4adc610buL,
+     0xbc719041b9d78a76uL,
+     0x3c89b07eb6c70573uL,
+     0x3c76f46ad23182e4uL,
+     0x3c7ada0911f09ebcuL,
+     0x3c6d4397afec42e2uL,
+     0x3c86324c054647aduL,
+     0xbc8bdd3413b26456uL,
+     0xbc741577ee04992fuL,
+     0x3c86e9f156864b27uL,
+     0x3c6c7c46b071f2beuL,
+     0x3c87a1cd345dcc81uL,
+     0x3c711065895048dduL,
+     0x3c72ed02d75b3707uL,
+     0xbc8e9c23179c2893uL},
+    {0x3fe0000000000000uL,
+     0x3fdea4afa2a490dauL,
+     0x3fdd5818dcfba487uL,
+     0x3fdc199bdd85529cuL,
+     0x3fdae89f995ad3aduL,
+     0x3fd9c49182a3f090uL,
+     0x3fd8ace5422aa0dbuL,
+     0x3fd7a11473eb0187uL,
+     0x3fd6a09e667f3bcduL,
+     0x3fd5ab07dd485429uL,
+     0x3fd4bfdad5362a27uL,
+     0x3fd3dea64c123422uL,
+     0x3fd306fe0a31b715uL,
+     0x3fd2387a6e756238uL,
+     0x3fd172b83c7d517buL,
+     0x3fd0b5586cf9890fuL},
+    {0x0000000000000000uL,
+     0xbc7e9c23179c2893uL,
+     0x3c62ed02d75b3707uL,
+     0x3c611065895048dduL,
+     0x3c77a1cd345dcc81uL,
+     0x3c5c7c46b071f2beuL,
+     0x3c76e9f156864b27uL,
+     0xbc641577ee04992fuL,
+     0xbc7bdd3413b26456uL,
+     0x3c76324c054647aduL,
+     0x3c5d4397afec42e2uL,
+     0x3c6ada0911f09ebcuL,
+     0x3c66f46ad23182e4uL,
+     0x3c79b07eb6c70573uL,
+     0xbc619041b9d78a76uL,
+     0x3c78a62e4adc610buL},
     0x42F8000000000000uL,
     0x42F8000000000001uL,
     0x4084ee33u,
@@ -88,8 +131,7 @@ static __constant __internal_dsinh_la_data_t __internal_dsinh_la_data = {
     0x8000000000000000uL,
     0x3FE0000000000000uL,
     0x0000000000000000uL,
-    {
-     {0x0000000000000000uL, 0x3FE0000000000000uL},
+    {{0x0000000000000000uL, 0x3FE0000000000000uL},
      {0x3F762E4A19BD1E74uL, 0x3FDFD3C22B8F71F1uL},
      {0x3F862E5F6A0DFD36uL, 0x3FDFA7C1819E90D8uL},
      {0x3F90A2E234040F5FuL, 0x3FDF7BFDAD9CBE14uL},
@@ -216,8 +258,7 @@ static __constant __internal_dsinh_la_data_t __internal_dsinh_la_data = {
      {0x3FE7239DF1E38286uL, 0x3FD059B0D3158574uL},
      {0x3FE75A72B9657E51uL, 0x3FD04315E86E7F85uL},
      {0x3FE791746262D0A8uL, 0x3FD02C9A3E778061uL},
-     {0x3FE7C8A35691D856uL, 0x3FD0163DA9FB3335uL}
-     },
+     {0x3FE7C8A35691D856uL, 0x3FD0163DA9FB3335uL}},
     0x42C8000000000000uL,
     0x40861d99u,
 
@@ -228,152 +269,54 @@ static __constant __internal_dsinh_la_data_t __internal_dsinh_la_data = {
     0x3F8111115712F425uL,
     0x7ff0000000000000uL,
     0x000000000000FFC0uL,
-    ((1 << 7) - 1)
-};
+    ((1 << 7) - 1)};
 
 static __constant _iml_v2_dp_union_t __dsinh_la_CoutTab[149] = {
 
-    0x00000000, 0x3FF00000,
-    0x00000000, 0x00000000,
-    0x3E778061, 0x3FF02C9A,
-    0x535B085D, 0xBC719083,
-    0xD3158574, 0x3FF059B0,
-    0xA475B465, 0x3C8D73E2,
-    0x18759BC8, 0x3FF08745,
-    0x4BB284FF, 0x3C6186BE,
-    0x6CF9890F, 0x3FF0B558,
-    0x4ADC610B, 0x3C98A62E,
-    0x32D3D1A2, 0x3FF0E3EC,
-    0x27C57B53, 0x3C403A17,
-    0xD0125B51, 0x3FF11301,
-    0x39449B3A, 0xBC96C510,
-    0xAEA92DE0, 0x3FF1429A,
-    0x9AF1369E, 0xBC932FBF,
-    0x3C7D517B, 0x3FF172B8,
-    0xB9D78A76, 0xBC819041,
-    0xEB6FCB75, 0x3FF1A35B,
-    0x7B4968E4, 0x3C8E5B4C,
-    0x3168B9AA, 0x3FF1D487,
-    0x00A2643C, 0x3C9E016E,
-    0x88628CD6, 0x3FF2063B,
-    0x814A8495, 0x3C8DC775,
-    0x6E756238, 0x3FF2387A,
-    0xB6C70573, 0x3C99B07E,
-    0x65E27CDD, 0x3FF26B45,
-    0x9940E9D9, 0x3C82BD33,
-    0xF51FDEE1, 0x3FF29E9D,
-    0xAFAD1255, 0x3C8612E8,
-    0xA6E4030B, 0x3FF2D285,
-    0x54DB41D5, 0x3C900247,
-    0x0A31B715, 0x3FF306FE,
-    0xD23182E4, 0x3C86F46A,
-    0xB26416FF, 0x3FF33C08,
-    0x843659A6, 0x3C932721,
-    0x373AA9CB, 0x3FF371A7,
-    0xBF42EAE2, 0xBC963AEA,
-    0x34E59FF7, 0x3FF3A7DB,
-    0xD661F5E3, 0xBC75E436,
-    0x4C123422, 0x3FF3DEA6,
-    0x11F09EBC, 0x3C8ADA09,
-    0x21F72E2A, 0x3FF4160A,
-    0x1C309278, 0xBC5EF369,
-    0x6061892D, 0x3FF44E08,
-    0x04EF80D0, 0x3C489B7A,
-    0xB5C13CD0, 0x3FF486A2,
-    0xB69062F0, 0x3C73C1A3,
-    0xD5362A27, 0x3FF4BFDA,
-    0xAFEC42E2, 0x3C7D4397,
-    0x769D2CA7, 0x3FF4F9B2,
-    0xD25957E3, 0xBC94B309,
-    0x569D4F82, 0x3FF5342B,
-    0x1DB13CAD, 0xBC807ABE,
-    0x36B527DA, 0x3FF56F47,
-    0x011D93AD, 0x3C99BB2C,
-    0xDD485429, 0x3FF5AB07,
-    0x054647AD, 0x3C96324C,
-    0x15AD2148, 0x3FF5E76F,
-    0x3080E65E, 0x3C9BA6F9,
-    0xB03A5585, 0x3FF6247E,
-    0x7E40B497, 0xBC9383C1,
-    0x82552225, 0x3FF66238,
-    0x87591C34, 0xBC9BB609,
-    0x667F3BCD, 0x3FF6A09E,
-    0x13B26456, 0xBC9BDD34,
-    0x3C651A2F, 0x3FF6DFB2,
-    0x683C88AB, 0xBC6BBE3A,
-    0xE8EC5F74, 0x3FF71F75,
-    0x86887A99, 0xBC816E47,
-    0x564267C9, 0x3FF75FEB,
-    0x57316DD3, 0xBC902459,
-    0x73EB0187, 0x3FF7A114,
-    0xEE04992F, 0xBC841577,
-    0x36CF4E62, 0x3FF7E2F3,
-    0xBA15797E, 0x3C705D02,
-    0x994CCE13, 0x3FF82589,
-    0xD41532D8, 0xBC9D4C1D,
-    0x9B4492ED, 0x3FF868D9,
-    0x9BD4F6BA, 0xBC9FC6F8,
-    0x422AA0DB, 0x3FF8ACE5,
-    0x56864B27, 0x3C96E9F1,
-    0x99157736, 0x3FF8F1AE,
-    0xA2E3976C, 0x3C85CC13,
-    0xB0CDC5E5, 0x3FF93737,
-    0x81B57EBC, 0xBC675FC7,
-    0x9FDE4E50, 0x3FF97D82,
-    0x7C1B85D1, 0xBC9D185B,
-    0x82A3F090, 0x3FF9C491,
-    0xB071F2BE, 0x3C7C7C46,
-    0x7B5DE565, 0x3FFA0C66,
-    0x5D1CD533, 0xBC935949,
-    0xB23E255D, 0x3FFA5503,
-    0xDB8D41E1, 0xBC9D2F6E,
-    0x5579FDBF, 0x3FFA9E6B,
-    0x0EF7FD31, 0x3C90FAC9,
-    0x995AD3AD, 0x3FFAE89F,
-    0x345DCC81, 0x3C97A1CD,
-    0xB84F15FB, 0x3FFB33A2,
-    0x3084D708, 0xBC62805E,
-    0xF2FB5E47, 0x3FFB7F76,
-    0x7E54AC3B, 0xBC75584F,
-    0x904BC1D2, 0x3FFBCC1E,
-    0x7A2D9E84, 0x3C823DD0,
-    0xDD85529C, 0x3FFC199B,
-    0x895048DD, 0x3C811065,
-    0x2E57D14B, 0x3FFC67F1,
-    0xFF483CAD, 0x3C92884D,
-    0xDCEF9069, 0x3FFCB720,
-    0xD1E949DB, 0x3C7503CB,
-    0x4A07897C, 0x3FFD072D,
-    0x43797A9C, 0xBC9CBC37,
-    0xDCFBA487, 0x3FFD5818,
-    0xD75B3707, 0x3C82ED02,
-    0x03DB3285, 0x3FFDA9E6,
-    0x696DB532, 0x3C9C2300,
-    0x337B9B5F, 0x3FFDFC97,
-    0x4F184B5C, 0xBC91A5CD,
-    0xE78B3FF6, 0x3FFE502E,
-    0x80A9CC8F, 0x3C839E89,
-    0xA2A490DA, 0x3FFEA4AF,
-    0x179C2893, 0xBC9E9C23,
-    0xEE615A27, 0x3FFEFA1B,
-    0x86A4B6B0, 0x3C9DC7F4,
-    0x5B6E4540, 0x3FFF5076,
-    0x2DD8A18B, 0x3C99D3E1,
-    0x819E90D8, 0x3FFFA7C1,
-    0xF3A5931E, 0x3C874853,
-    0x00000000, 0x40000000,
-    0x00000000, 0x00000000,
+    0x00000000, 0x3FF00000, 0x00000000, 0x00000000, 0x3E778061, 0x3FF02C9A, 0x535B085D,
+    0xBC719083, 0xD3158574, 0x3FF059B0, 0xA475B465, 0x3C8D73E2, 0x18759BC8, 0x3FF08745,
+    0x4BB284FF, 0x3C6186BE, 0x6CF9890F, 0x3FF0B558, 0x4ADC610B, 0x3C98A62E, 0x32D3D1A2,
+    0x3FF0E3EC, 0x27C57B53, 0x3C403A17, 0xD0125B51, 0x3FF11301, 0x39449B3A, 0xBC96C510,
+    0xAEA92DE0, 0x3FF1429A, 0x9AF1369E, 0xBC932FBF, 0x3C7D517B, 0x3FF172B8, 0xB9D78A76,
+    0xBC819041, 0xEB6FCB75, 0x3FF1A35B, 0x7B4968E4, 0x3C8E5B4C, 0x3168B9AA, 0x3FF1D487,
+    0x00A2643C, 0x3C9E016E, 0x88628CD6, 0x3FF2063B, 0x814A8495, 0x3C8DC775, 0x6E756238,
+    0x3FF2387A, 0xB6C70573, 0x3C99B07E, 0x65E27CDD, 0x3FF26B45, 0x9940E9D9, 0x3C82BD33,
+    0xF51FDEE1, 0x3FF29E9D, 0xAFAD1255, 0x3C8612E8, 0xA6E4030B, 0x3FF2D285, 0x54DB41D5,
+    0x3C900247, 0x0A31B715, 0x3FF306FE, 0xD23182E4, 0x3C86F46A, 0xB26416FF, 0x3FF33C08,
+    0x843659A6, 0x3C932721, 0x373AA9CB, 0x3FF371A7, 0xBF42EAE2, 0xBC963AEA, 0x34E59FF7,
+    0x3FF3A7DB, 0xD661F5E3, 0xBC75E436, 0x4C123422, 0x3FF3DEA6, 0x11F09EBC, 0x3C8ADA09,
+    0x21F72E2A, 0x3FF4160A, 0x1C309278, 0xBC5EF369, 0x6061892D, 0x3FF44E08, 0x04EF80D0,
+    0x3C489B7A, 0xB5C13CD0, 0x3FF486A2, 0xB69062F0, 0x3C73C1A3, 0xD5362A27, 0x3FF4BFDA,
+    0xAFEC42E2, 0x3C7D4397, 0x769D2CA7, 0x3FF4F9B2, 0xD25957E3, 0xBC94B309, 0x569D4F82,
+    0x3FF5342B, 0x1DB13CAD, 0xBC807ABE, 0x36B527DA, 0x3FF56F47, 0x011D93AD, 0x3C99BB2C,
+    0xDD485429, 0x3FF5AB07, 0x054647AD, 0x3C96324C, 0x15AD2148, 0x3FF5E76F, 0x3080E65E,
+    0x3C9BA6F9, 0xB03A5585, 0x3FF6247E, 0x7E40B497, 0xBC9383C1, 0x82552225, 0x3FF66238,
+    0x87591C34, 0xBC9BB609, 0x667F3BCD, 0x3FF6A09E, 0x13B26456, 0xBC9BDD34, 0x3C651A2F,
+    0x3FF6DFB2, 0x683C88AB, 0xBC6BBE3A, 0xE8EC5F74, 0x3FF71F75, 0x86887A99, 0xBC816E47,
+    0x564267C9, 0x3FF75FEB, 0x57316DD3, 0xBC902459, 0x73EB0187, 0x3FF7A114, 0xEE04992F,
+    0xBC841577, 0x36CF4E62, 0x3FF7E2F3, 0xBA15797E, 0x3C705D02, 0x994CCE13, 0x3FF82589,
+    0xD41532D8, 0xBC9D4C1D, 0x9B4492ED, 0x3FF868D9, 0x9BD4F6BA, 0xBC9FC6F8, 0x422AA0DB,
+    0x3FF8ACE5, 0x56864B27, 0x3C96E9F1, 0x99157736, 0x3FF8F1AE, 0xA2E3976C, 0x3C85CC13,
+    0xB0CDC5E5, 0x3FF93737, 0x81B57EBC, 0xBC675FC7, 0x9FDE4E50, 0x3FF97D82, 0x7C1B85D1,
+    0xBC9D185B, 0x82A3F090, 0x3FF9C491, 0xB071F2BE, 0x3C7C7C46, 0x7B5DE565, 0x3FFA0C66,
+    0x5D1CD533, 0xBC935949, 0xB23E255D, 0x3FFA5503, 0xDB8D41E1, 0xBC9D2F6E, 0x5579FDBF,
+    0x3FFA9E6B, 0x0EF7FD31, 0x3C90FAC9, 0x995AD3AD, 0x3FFAE89F, 0x345DCC81, 0x3C97A1CD,
+    0xB84F15FB, 0x3FFB33A2, 0x3084D708, 0xBC62805E, 0xF2FB5E47, 0x3FFB7F76, 0x7E54AC3B,
+    0xBC75584F, 0x904BC1D2, 0x3FFBCC1E, 0x7A2D9E84, 0x3C823DD0, 0xDD85529C, 0x3FFC199B,
+    0x895048DD, 0x3C811065, 0x2E57D14B, 0x3FFC67F1, 0xFF483CAD, 0x3C92884D, 0xDCEF9069,
+    0x3FFCB720, 0xD1E949DB, 0x3C7503CB, 0x4A07897C, 0x3FFD072D, 0x43797A9C, 0xBC9CBC37,
+    0xDCFBA487, 0x3FFD5818, 0xD75B3707, 0x3C82ED02, 0x03DB3285, 0x3FFDA9E6, 0x696DB532,
+    0x3C9C2300, 0x337B9B5F, 0x3FFDFC97, 0x4F184B5C, 0xBC91A5CD, 0xE78B3FF6, 0x3FFE502E,
+    0x80A9CC8F, 0x3C839E89, 0xA2A490DA, 0x3FFEA4AF, 0x179C2893, 0xBC9E9C23, 0xEE615A27,
+    0x3FFEFA1B, 0x86A4B6B0, 0x3C9DC7F4, 0x5B6E4540, 0x3FFF5076, 0x2DD8A18B, 0x3C99D3E1,
+    0x819E90D8, 0x3FFFA7C1, 0xF3A5931E, 0x3C874853, 0x00000000, 0x40000000, 0x00000000,
+    0x00000000,
 
-    0x00000000, 0x3FE00000,
-    0x555548F8, 0x3FC55555,
-    0x55558FCC, 0x3FA55555,
-    0x3AAF20D3, 0x3F811112,
-    0x1C2A3FFD, 0x3F56C16A,
+    0x00000000, 0x3FE00000, 0x555548F8, 0x3FC55555, 0x55558FCC, 0x3FA55555, 0x3AAF20D3,
+    0x3F811112, 0x1C2A3FFD, 0x3F56C16A,
 
-    0x55555555, 0x3FC55555,
-    0x11111111, 0x3F811111,
-    0x1A01A01A, 0x3F2A01A0,
-    0xA556C734, 0x3EC71DE3,
+    0x55555555, 0x3FC55555, 0x11111111, 0x3F811111, 0x1A01A01A, 0x3F2A01A0, 0xA556C734,
+    0x3EC71DE3,
 
     0x652B82FE, 0x40571547,
 
@@ -383,21 +326,17 @@ static __constant _iml_v2_dp_union_t __dsinh_la_CoutTab[149] = {
 
     0x8FB9F87E, 0x408633CE,
 
-    0xFEFA0000, 0x3F862E42,
-    0xBC9E3B3A, 0x3D1CF79A,
+    0xFEFA0000, 0x3F862E42, 0xBC9E3B3A, 0x3D1CF79A,
 
-    0x00000001, 0x00100000,
-    0xFFFFFFFF, 0x7FEFFFFF,
+    0x00000001, 0x00100000, 0xFFFFFFFF, 0x7FEFFFFF,
 
     0xDADBE120, 0x3F9BDB8C,
 
-    0xE7026820, 0x40357CD0
-};
+    0xE7026820, 0x40357CD0};
 
-__attribute__((always_inline))
-inline int __internal_dsinh_la_cout (double *a, double *r)
+__attribute__((always_inline)) inline int __internal_dsinh_la_cout(double *a, double *r)
 {
-    int nRet = 0;
+    int    nRet = 0;
     double M;
     double Nj;
     double R, RHi, RMid, RLo;
@@ -414,118 +353,143 @@ inline int __internal_dsinh_la_cout (double *a, double *r)
     double v1, v2, v3;
 
     _iml_uint32_t N, j;
-    int exp;
-    scale = ((__constant double *) __dsinh_la_CoutTab)[1];
-    dbIn = (*a);
+    int           exp;
+    scale = ((__constant double *)__dsinh_la_CoutTab)[1];
+    dbIn  = (*a);
 
-    if ((((((_iml_v2_dp_union_t *) & dbIn)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))
+    if ((((((_iml_v2_dp_union_t *)&dbIn)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))
     {
-
-        exp = ((((_iml_v2_dp_union_t *) & dbIn)->dwords.hi_dword >> 20) & 0x7FF);
+        exp = ((((_iml_v2_dp_union_t *)&dbIn)->dwords.hi_dword >> 20) & 0x7FF);
 
         if (exp > 0)
         {
             absAi = dbIn;
-            (((_iml_v2_dp_union_t *) & absAi)->dwords.hi_dword =
-             (((_iml_v2_dp_union_t *) & absAi)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
+            (((_iml_v2_dp_union_t *)&absAi)->dwords.hi_dword =
+                 (((_iml_v2_dp_union_t *)&absAi)->dwords.hi_dword & 0x7FFFFFFF) |
+                 ((_iml_uint32_t)(0) << 31));
 
             if (exp > (0x3FF - 54))
             {
-
-                if (absAi < ((__constant double *) __dsinh_la_CoutTab)[142])
+                if (absAi < ((__constant double *)__dsinh_la_CoutTab)[142])
                 {
-
-                    if (absAi < ((__constant double *) __dsinh_la_CoutTab)[148])
+                    if (absAi < ((__constant double *)__dsinh_la_CoutTab)[148])
                     {
-
-                        if (absAi >= ((__constant double *) __dsinh_la_CoutTab)[147])
+                        if (absAi >= ((__constant double *)__dsinh_la_CoutTab)[147])
                         {
+                            tmp1 =
+                                (absAi * ((__constant double *)__dsinh_la_CoutTab)[139]);
+                            Nj = (tmp1 + ((__constant double *)__dsinh_la_CoutTab)[140]);
+                            M  = (Nj - ((__constant double *)__dsinh_la_CoutTab)[140]);
 
-                            tmp1 = (absAi * ((__constant double *) __dsinh_la_CoutTab)[139]);
-                            Nj = (tmp1 + ((__constant double *) __dsinh_la_CoutTab)[140]);
-                            M = (Nj - ((__constant double *) __dsinh_la_CoutTab)[140]);
+                            tmp1 =
+                                (absAi -
+                                 M * ((__constant double *)__dsinh_la_CoutTab)[143]);
+                            MLog = (-M * ((__constant double *)__dsinh_la_CoutTab)[144]);
 
-                            tmp1 = (absAi - M * ((__constant double *) __dsinh_la_CoutTab)[143]);
-                            MLog = (-M * ((__constant double *) __dsinh_la_CoutTab)[144]);
+                            v1  = ((tmp1) + (MLog));
+                            v2  = ((tmp1)-v1);
+                            v3  = (v1 + v2);
+                            v2  = ((MLog) + v2);
+                            v3  = ((tmp1)-v3);
+                            v3  = (v2 + v3);
+                            R   = v1;
+                            RLo = v3;
+                            ;
 
-                            v1 = ((tmp1) + (MLog));
-                            v2 = ((tmp1) - v1);
-                            v3 = (v1 + v2);
-                            v2 = ((MLog) + v2);
-                            v3 = ((tmp1) - v3);
-                            v3 = (v2 + v3);
-                            R = v1;
-                            RLo = v3;;
-
-                            v1 = ((R) * (((__constant double *) __dsinh_la_CoutTab)[141]));
+                            v1 = ((R) * (((__constant double *)__dsinh_la_CoutTab)[141]));
                             v2 = (v1 - (R));
                             v1 = (v1 - v2);
-                            v2 = ((R) - v1);
-                            RHi = v1;
-                            RMid = v2;;
+                            v2 = ((R)-v1);
+                            RHi  = v1;
+                            RMid = v2;
+                            ;
 
                             rsq = R * R;
                             podd =
-                                ((((__constant double *) __dsinh_la_CoutTab)[133] * rsq + ((__constant double *) __dsinh_la_CoutTab)[131]) * rsq) * R;
+                                ((((__constant double *)__dsinh_la_CoutTab)[133] * rsq +
+                                  ((__constant double *)__dsinh_la_CoutTab)[131]) *
+                                 rsq) *
+                                R;
                             peven =
-                                (((((__constant double *) __dsinh_la_CoutTab)[134] * rsq + ((__constant double *) __dsinh_la_CoutTab)[132]) * rsq) +
-                                 ((__constant double *) __dsinh_la_CoutTab)[130]) * rsq;
+                                (((((__constant double *)__dsinh_la_CoutTab)[134] * rsq +
+                                   ((__constant double *)__dsinh_la_CoutTab)[132]) *
+                                  rsq) +
+                                 ((__constant double *)__dsinh_la_CoutTab)[130]) *
+                                rsq;
 
-                            N = (((_iml_v2_dp_union_t *) & Nj)->dwords.lo_dword);
+                            N = (((_iml_v2_dp_union_t *)&Nj)->dwords.lo_dword);
                             j = N & ((1 << 6) - 1);
                             N = N >> 6;
 
                             N = N + 0x3FF;
                             N = N & 0x7FF;
 
-                            (((_iml_v2_dp_union_t *) & scale)->dwords.hi_dword =
-                             (((_iml_v2_dp_union_t *) & scale)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (N - 1) & 0x7FF) << 20));
+                            (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword =
+                                 (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword &
+                                  0x800FFFFF) |
+                                 (((_iml_uint32_t)(N - 1) & 0x7FF) << 20));
 
-                            TpHi = ((__constant double *) __dsinh_la_CoutTab)[2 * (j)] * scale;
-                            TpLo = ((__constant double *) __dsinh_la_CoutTab)[2 * (j) + 1] * scale;
+                            TpHi = ((__constant double *)__dsinh_la_CoutTab)[2 * (j)] *
+                                   scale;
+                            TpLo =
+                                ((__constant double *)__dsinh_la_CoutTab)[2 * (j) + 1] *
+                                scale;
 
                             N = 2 * 0x3FF - N;
-                            (((_iml_v2_dp_union_t *) & scale)->dwords.hi_dword =
-                             (((_iml_v2_dp_union_t *) & scale)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (N - 2) & 0x7FF) << 20));
+                            (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword =
+                                 (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword &
+                                  0x800FFFFF) |
+                                 (((_iml_uint32_t)(N - 2) & 0x7FF) << 20));
 
-                            TmHi = ((__constant double *) __dsinh_la_CoutTab)[2 * (64 - (j))] * scale;
-                            TmLo = ((__constant double *) __dsinh_la_CoutTab)[2 * (64 - (j)) + 1] * scale;
+                            TmHi = ((__constant double *)
+                                        __dsinh_la_CoutTab)[2 * (64 - (j))] *
+                                   scale;
+                            TmLo = ((__constant double *)
+                                        __dsinh_la_CoutTab)[2 * (64 - (j)) + 1] *
+                                   scale;
 
-                            v1 = ((TpHi) + (-TmHi));
-                            tmp1 = ((TpHi) - v1);
-                            v2 = (tmp1 + (-TmHi));
-                            TdH = v1;
-                            TdL = v2;;
+                            v1   = ((TpHi) + (-TmHi));
+                            tmp1 = ((TpHi)-v1);
+                            v2   = (tmp1 + (-TmHi));
+                            TdH  = v1;
+                            TdL  = v2;
+                            ;
 
                             TdL -= TmLo;
                             TdL += TpLo;
 
-                            v1 = ((TdH) + (TdL));
-                            tmp1 = ((TdH) - v1);
-                            v2 = (tmp1 + (TdL));
-                            TdH = v1;
-                            TdL = v2;;
+                            v1   = ((TdH) + (TdL));
+                            tmp1 = ((TdH)-v1);
+                            v2   = (tmp1 + (TdL));
+                            TdH  = v1;
+                            TdL  = v2;
+                            ;
 
-                            v1 = ((TpHi) + (TmHi));
-                            tmp1 = ((TpHi) - v1);
-                            v2 = (tmp1 + (TmHi));
-                            TsH = v1;
-                            TsL = v2;;
+                            v1   = ((TpHi) + (TmHi));
+                            tmp1 = ((TpHi)-v1);
+                            v2   = (tmp1 + (TmHi));
+                            TsH  = v1;
+                            TsL  = v2;
+                            ;
                             tmp1 = (TpLo + TmLo);
                             TsL += tmp1;
 
-                            v1 = ((TsH) + (TsL));
-                            tmp1 = ((TsH) - v1);
-                            v2 = (tmp1 + (TsL));
-                            TsH = v1;
-                            TsL = v2;;
+                            v1   = ((TsH) + (TsL));
+                            tmp1 = ((TsH)-v1);
+                            v2   = (tmp1 + (TsL));
+                            TsH  = v1;
+                            TsL  = v2;
+                            ;
 
-                            v1 = ((TsH) * (((__constant double *) __dsinh_la_CoutTab)[141]));
-                            v2 = (v1 - (TsH));
-                            v1 = (v1 - v2);
-                            v2 = ((TsH) - v1);
+                            v1 =
+                                ((TsH) *
+                                 (((__constant double *)__dsinh_la_CoutTab)[141]));
+                            v2   = (v1 - (TsH));
+                            v1   = (v1 - v2);
+                            v2   = ((TsH)-v1);
                             TsHi = v1;
-                            TsLo = v2;;
+                            TsLo = v2;
+                            ;
 
                             pLo = (RLo * TsL);
                             pLo += (podd * TsL);
@@ -537,11 +501,12 @@ inline int __internal_dsinh_la_cout (double *a, double *r)
                             ph = (podd * TsH);
                             pl = (peven * TdH);
 
-                            v1 = ((ph) + (pl));
-                            tmp1 = ((ph) - v1);
-                            v2 = (tmp1 + (pl));
-                            pHi = v1;
-                            pl = v2;;
+                            v1   = ((ph) + (pl));
+                            tmp1 = ((ph)-v1);
+                            v2   = (tmp1 + (pl));
+                            pHi  = v1;
+                            pl   = v2;
+                            ;
                             pLo += pl;
 
                             pLo += (RMid * TsLo);
@@ -550,246 +515,267 @@ inline int __internal_dsinh_la_cout (double *a, double *r)
 
                             RHi = (RHi * TsHi);
 
-                            v1 = ((RHi) + (pHi));
-                            tmp1 = ((RHi) - v1);
-                            v2 = (tmp1 + (pHi));
-                            pHi = v1;
-                            pl = v2;;
+                            v1   = ((RHi) + (pHi));
+                            tmp1 = ((RHi)-v1);
+                            v2   = (tmp1 + (pHi));
+                            pHi  = v1;
+                            pl   = v2;
+                            ;
                             pLo += pl;
 
-                            v1 = ((TdH) + (pHi));
-                            tmp1 = ((TdH) - v1);
-                            v2 = (tmp1 + (pHi));
-                            pHi = v1;
-                            pl = v2;;
+                            v1   = ((TdH) + (pHi));
+                            tmp1 = ((TdH)-v1);
+                            v2   = (tmp1 + (pHi));
+                            pHi  = v1;
+                            pl   = v2;
+                            ;
                             pLo += pl;
                             p = (pHi + pLo);
 
-                            (((_iml_v2_dp_union_t *) & p)->dwords.hi_dword =
-                             (((_iml_v2_dp_union_t *) & p)->dwords.
-                              hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) ((((_iml_v2_dp_union_t *) & dbIn)->dwords.hi_dword >> 31)) << 31));
+                            (((_iml_v2_dp_union_t *)&p)->dwords.hi_dword =
+                                 (((_iml_v2_dp_union_t *)&p)->dwords.hi_dword &
+                                  0x7FFFFFFF) |
+                                 ((_iml_uint32_t)((
+                                      ((_iml_v2_dp_union_t *)&dbIn)->dwords.hi_dword >>
+                                      31))
+                                  << 31));
 
                             (*r) = p;
-
                         }
                         else
                         {
-
                             rsq = (absAi * absAi);
-                            p = (absAi *
+                            p =
+                                (absAi *
                                  (rsq *
-                                  (((__constant double *) __dsinh_la_CoutTab)[135] +
-                                   rsq * (((__constant double *) __dsinh_la_CoutTab)[136] +
-                                          rsq * (((__constant double *) __dsinh_la_CoutTab)[137] +
-                                                 rsq * ((__constant double *) __dsinh_la_CoutTab)[138])))));
+                                  (((__constant double *)__dsinh_la_CoutTab)[135] +
+                                   rsq * (((__constant double *)__dsinh_la_CoutTab)[136] +
+                                          rsq * (((__constant double *)
+                                                      __dsinh_la_CoutTab)[137] +
+                                                 rsq * ((__constant double *)
+                                                            __dsinh_la_CoutTab)[138])))));
 
                             p += absAi;
 
-                            (((_iml_v2_dp_union_t *) & p)->dwords.hi_dword =
-                             (((_iml_v2_dp_union_t *) & p)->dwords.
-                              hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) ((((_iml_v2_dp_union_t *) & dbIn)->dwords.hi_dword >> 31)) << 31));
+                            (((_iml_v2_dp_union_t *)&p)->dwords.hi_dword =
+                                 (((_iml_v2_dp_union_t *)&p)->dwords.hi_dword &
+                                  0x7FFFFFFF) |
+                                 ((_iml_uint32_t)((
+                                      ((_iml_v2_dp_union_t *)&dbIn)->dwords.hi_dword >>
+                                      31))
+                                  << 31));
 
                             (*r) = p;
                         }
                     }
                     else
                     {
+                        tmp1 = absAi * ((__constant double *)__dsinh_la_CoutTab)[139];
+                        Nj   = (tmp1 + ((__constant double *)__dsinh_la_CoutTab)[140]);
+                        M    = (Nj - ((__constant double *)__dsinh_la_CoutTab)[140]);
+                        R = (absAi - M * ((__constant double *)__dsinh_la_CoutTab)[143]);
+                        R -= (M * ((__constant double *)__dsinh_la_CoutTab)[144]);
 
-                        tmp1 = absAi * ((__constant double *) __dsinh_la_CoutTab)[139];
-                        Nj = (tmp1 + ((__constant double *) __dsinh_la_CoutTab)[140]);
-                        M = (Nj - ((__constant double *) __dsinh_la_CoutTab)[140]);
-                        R = (absAi - M * ((__constant double *) __dsinh_la_CoutTab)[143]);
-                        R -= (M * ((__constant double *) __dsinh_la_CoutTab)[144]);
-
-                        p = ((((((__constant double *) __dsinh_la_CoutTab)[134] * R + ((__constant double *) __dsinh_la_CoutTab)[133]) * R +
-                               ((__constant double *) __dsinh_la_CoutTab)[132]) * R + ((__constant double *) __dsinh_la_CoutTab)[131]) * R +
-                             ((__constant double *) __dsinh_la_CoutTab)[130]);
+                        p =
+                            ((((((__constant double *)__dsinh_la_CoutTab)[134] * R +
+                                ((__constant double *)__dsinh_la_CoutTab)[133]) *
+                                   R +
+                               ((__constant double *)__dsinh_la_CoutTab)[132]) *
+                                  R +
+                              ((__constant double *)__dsinh_la_CoutTab)[131]) *
+                                 R +
+                             ((__constant double *)__dsinh_la_CoutTab)[130]);
                         p = (p * R);
                         p = (p * R + R);
 
-                        N = (((_iml_v2_dp_union_t *) & Nj)->dwords.lo_dword);
+                        N = (((_iml_v2_dp_union_t *)&Nj)->dwords.lo_dword);
                         j = N & ((1 << 6) - 1);
                         N = N >> 6;
                         N += 0x3FF;
 
-                        p *= ((__constant double *) __dsinh_la_CoutTab)[2 * (j)];
-                        p += ((__constant double *) __dsinh_la_CoutTab)[2 * (j) + 1];
-                        p += ((__constant double *) __dsinh_la_CoutTab)[2 * (j)];
+                        p *= ((__constant double *)__dsinh_la_CoutTab)[2 * (j)];
+                        p += ((__constant double *)__dsinh_la_CoutTab)[2 * (j) + 1];
+                        p += ((__constant double *)__dsinh_la_CoutTab)[2 * (j)];
 
                         N = (N - 1) & 0x7FF;
 
                         if (N <= (0x7FF - 1))
                         {
-
-                            (((_iml_v2_dp_union_t *) & scale)->dwords.hi_dword =
-                             (((_iml_v2_dp_union_t *) & scale)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (N) & 0x7FF) << 20));
+                            (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword =
+                                 (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword &
+                                  0x800FFFFF) |
+                                 (((_iml_uint32_t)(N) & 0x7FF) << 20));
 
                             p = (p * scale);
                         }
                         else
                         {
-
-                            (((_iml_v2_dp_union_t *) & scale)->dwords.hi_dword =
-                             (((_iml_v2_dp_union_t *) & scale)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (N - 1) & 0x7FF) << 20));
+                            (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword =
+                                 (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword &
+                                  0x800FFFFF) |
+                                 (((_iml_uint32_t)(N - 1) & 0x7FF) << 20));
 
                             p = (p * scale);
-                            p = (p * ((__constant double *) __dsinh_la_CoutTab)[128]);
+                            p = (p * ((__constant double *)__dsinh_la_CoutTab)[128]);
                         }
 
-                        (((_iml_v2_dp_union_t *) & p)->dwords.hi_dword =
-                         (((_iml_v2_dp_union_t *) & p)->dwords.
-                          hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) ((((_iml_v2_dp_union_t *) & dbIn)->dwords.hi_dword >> 31)) << 31));
+                        (((_iml_v2_dp_union_t *)&p)->dwords.hi_dword =
+                             (((_iml_v2_dp_union_t *)&p)->dwords.hi_dword & 0x7FFFFFFF) |
+                             ((_iml_uint32_t)((
+                                  ((_iml_v2_dp_union_t *)&dbIn)->dwords.hi_dword >> 31))
+                              << 31));
                         (*r) = p;
                     }
                 }
                 else
                 {
-
-                    (*r) = ((__constant double *) __dsinh_la_CoutTab)[146] * dbIn;
+                    (*r) = ((__constant double *)__dsinh_la_CoutTab)[146] * dbIn;
 
                     nRet = 3;
                 }
             }
             else
             {
-
-                (*r) = (((__constant double *) __dsinh_la_CoutTab)[0] + ((__constant double *) __dsinh_la_CoutTab)[145]) * dbIn;
+                (*r) = (((__constant double *)__dsinh_la_CoutTab)[0] +
+                        ((__constant double *)__dsinh_la_CoutTab)[145]) *
+                       dbIn;
             }
         }
         else
         {
-
-            v1 = dbIn * ((__constant double *) __dsinh_la_CoutTab)[145];
+            v1   = dbIn * ((__constant double *)__dsinh_la_CoutTab)[145];
             (*r) = dbIn + v1;
         }
     }
     else
     {
-
         (*r) = dbIn + dbIn;
     }
 
     return nRet;
-
 }
 
-double __ocl_svml_sinh (double a)
+double __ocl_svml_sinh(double a)
 {
-
-    double va1;
-    double vr1;
+    double       va1;
+    double       vr1;
     unsigned int vm;
 
     double r;
 
-    va1 = a;;
+    va1 = a;
+    ;
 
     {
-
-        double dN;
-        double dM;
-        double dR;
-        double dR2;
-        double dSinh_r;
-        double dOut;
-        double dTdif;
-        double dTn;
-        double dG_1;
-        double dG_2;
-        double dG_3;
+        double        dN;
+        double        dM;
+        double        dR;
+        double        dR2;
+        double        dSinh_r;
+        double        dOut;
+        double        dTdif;
+        double        dTn;
+        double        dG_1;
+        double        dG_2;
+        double        dG_3;
         unsigned long lM;
-        double dXSign;
-        unsigned int iAbsX;
-        double dAbsX;
+        double        dXSign;
+        unsigned int  iAbsX;
+        double        dAbsX;
 
         unsigned long lIndex;
         unsigned long lX;
-        unsigned int iRangeMask;
+        unsigned int  iRangeMask;
 
-        double dbInvLn2;
-        double dbShifter;
-        double dbLn2[2];
-        double dPC[5];
+        double        dbInvLn2;
+        double        dbShifter;
+        double        dbLn2[2];
+        double        dPC[5];
         unsigned long lIndexMask;
-        unsigned int iDomainRange;
+        unsigned int  iDomainRange;
 
-        dbInvLn2 = as_double (__internal_dsinh_la_data._dbInvLn2);
-        dbShifter = as_double (__internal_dsinh_la_data._dbShifter);
+        dbInvLn2   = as_double(__internal_dsinh_la_data._dbInvLn2);
+        dbShifter  = as_double(__internal_dsinh_la_data._dbShifter);
         lIndexMask = (__internal_dsinh_la_data._lIndexMask);
 
-        dPC[1] = as_double (__internal_dsinh_la_data._dPC2);
-        dPC[2] = as_double (__internal_dsinh_la_data._dPC3);
-        dPC[3] = as_double (__internal_dsinh_la_data._dPC4);
-        dPC[4] = as_double (__internal_dsinh_la_data._dPC5);
-        dXSign = as_double (__internal_dsinh_la_data._dSign);
+        dPC[1]       = as_double(__internal_dsinh_la_data._dPC2);
+        dPC[2]       = as_double(__internal_dsinh_la_data._dPC3);
+        dPC[3]       = as_double(__internal_dsinh_la_data._dPC4);
+        dPC[4]       = as_double(__internal_dsinh_la_data._dPC5);
+        dXSign       = as_double(__internal_dsinh_la_data._dSign);
         iDomainRange = (__internal_dsinh_la_data._iDomainRange);
 
-        dXSign = as_double ((as_ulong (dXSign) & as_ulong (va1)));
-        dAbsX = as_double ((as_ulong (dXSign) ^ as_ulong (va1)));
+        dXSign = as_double((as_ulong(dXSign) & as_ulong(va1)));
+        dAbsX  = as_double((as_ulong(dXSign) ^ as_ulong(va1)));
 
-        dM = __spirv_ocl_fma(dAbsX,dbInvLn2,dbShifter);
+        dM = __spirv_ocl_fma(dAbsX, dbInvLn2, dbShifter);
 
-        lX = as_ulong (dAbsX);
-        iAbsX = ((unsigned int) ((unsigned long) lX >> 32));
-        iRangeMask = ((unsigned int) (-(signed int) ((signed int) iAbsX > (signed int) iDomainRange)));
+        lX    = as_ulong(dAbsX);
+        iAbsX = ((unsigned int)((unsigned long)lX >> 32));
+        iRangeMask =
+            ((unsigned int)(-(signed int)((signed int)iAbsX > (signed int)iDomainRange)));
         vm = 0;
         vm = iRangeMask;
 
-        lM = as_ulong (dM);
+        lM     = as_ulong(dM);
         lIndex = (lM & lIndexMask);
-        lM = (lM ^ lIndex);
+        lM     = (lM ^ lIndex);
 
-        dN = (dM - dbShifter);
-        dbLn2[0] = as_double (__internal_dsinh_la_data._dbLn2hi);
-        dR = __spirv_ocl_fma(-(dbLn2[0]),dN,dAbsX);
-        dbLn2[1] = as_double (__internal_dsinh_la_data._dbLn2lo);
-        dTn = as_double (((__constant unsigned long *) (__internal_dsinh_la_data._dbT))[(((0 + lIndex) * (2 * 8)) >> (3)) + 1]);
-        dTdif = as_double (((__constant unsigned long *) (__internal_dsinh_la_data._dbT))[(((0 + lIndex) * (2 * 8)) >> (3)) + 0]);
-        dR = __spirv_ocl_fma(-(dbLn2[1]),dN,dR);
-        dR2 = (dR * dR);
+        dN       = (dM - dbShifter);
+        dbLn2[0] = as_double(__internal_dsinh_la_data._dbLn2hi);
+        dR       = __spirv_ocl_fma(-(dbLn2[0]), dN, dAbsX);
+        dbLn2[1] = as_double(__internal_dsinh_la_data._dbLn2lo);
+        dTn      = as_double(((__constant unsigned long
+                              *)(__internal_dsinh_la_data
+                                     ._dbT))[(((0 + lIndex) * (2 * 8)) >> (3)) + 1]);
+        dTdif    = as_double(((__constant unsigned long
+                                *)(__internal_dsinh_la_data
+                                       ._dbT))[(((0 + lIndex) * (2 * 8)) >> (3)) + 0]);
+        dR       = __spirv_ocl_fma(-(dbLn2[1]), dN, dR);
+        dR2      = (dR * dR);
 
-        lM = ((unsigned long) (lM) << ((52 - 7)));
-        lX = as_ulong (dTdif);
-        lX = (lX + lM);
-        dG_1 = as_double (lX);
+        lM   = ((unsigned long)(lM) << ((52 - 7)));
+        lX   = as_ulong(dTdif);
+        lX   = (lX + lM);
+        dG_1 = as_double(lX);
 
-        lX = as_ulong (dTn);
-        lX = (lX + lM);
-        dG_2 = as_double (lX);
+        lX   = as_ulong(dTn);
+        lX   = (lX + lM);
+        dG_2 = as_double(lX);
 
-        lX = as_ulong (dTn);
+        lX = as_ulong(dTn);
         lX = (lX - lM);
-        dM = as_double (lX);
+        dM = as_double(lX);
 
         dG_3 = (dG_2 + dM);
         dG_2 = (dG_2 - dM);
 
-        dSinh_r = __spirv_ocl_fma(dPC[4],dR2,dPC[2]);
+        dSinh_r = __spirv_ocl_fma(dPC[4], dR2, dPC[2]);
         dSinh_r = (dSinh_r * dR2);
-        dSinh_r = __spirv_ocl_fma(dSinh_r,dR,dR);
+        dSinh_r = __spirv_ocl_fma(dSinh_r, dR, dR);
 
-        dOut = __spirv_ocl_fma(dPC[3],dR2,dPC[1]);
+        dOut = __spirv_ocl_fma(dPC[3], dR2, dPC[1]);
         dOut = (dOut * dR2);
         dG_2 = (dG_1 + dG_2);
         dOut = (dOut * dG_2);
         dG_1 = (dG_1 + dG_3);
-        dOut = __spirv_ocl_fma(dSinh_r,dG_1,dOut);
+        dOut = __spirv_ocl_fma(dSinh_r, dG_1, dOut);
         dOut = (dOut + dG_2);
 
-        vr1 = as_double ((as_ulong (dXSign) | as_ulong (dOut)));
+        vr1 = as_double((as_ulong(dXSign) | as_ulong(dOut)));
     }
 
     if ((vm) != 0)
     {
         double _vapi_arg1[1];
         double _vapi_res1[1];
-        ((double *) _vapi_arg1)[0] = va1;
-        ((double *) _vapi_res1)[0] = vr1;
-        __internal_dsinh_la_cout (_vapi_arg1, _vapi_res1);
-        vr1 = ((double *) _vapi_res1)[0];
+        ((double *)_vapi_arg1)[0] = va1;
+        ((double *)_vapi_res1)[0] = vr1;
+        __internal_dsinh_la_cout(_vapi_arg1, _vapi_res1);
+        vr1 = ((double *)_vapi_res1)[0];
     };
-    r = vr1;;
+    r = vr1;
+    ;
 
     return r;
-
 }

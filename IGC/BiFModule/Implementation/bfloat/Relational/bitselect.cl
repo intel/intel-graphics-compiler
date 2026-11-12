@@ -10,9 +10,9 @@ SPDX-License-Identifier: MIT
 #include "spirv_bfloat.h"
 
 INLINE
-bfloat __attribute__((overloadable)) __spirv_ocl_bitselect( bfloat a, bfloat b, bfloat c )
+bfloat __attribute__((overloadable)) __spirv_ocl_bitselect(bfloat a, bfloat b, bfloat c)
 {
-    return as_bfloat( __spirv_ocl_bitselect(as_short(a), as_short(b), as_short(c)) );
+    return as_bfloat(__spirv_ocl_bitselect(as_short(a), as_short(b), as_short(c)));
 }
 
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, bfloat, bfloat, )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS(bitselect, bfloat, bfloat, )

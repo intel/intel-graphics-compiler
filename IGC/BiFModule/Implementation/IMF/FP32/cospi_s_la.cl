@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -70,61 +70,59 @@ static __constant __internal_scospi_la_data_t __internal_scospi_la_data = {
 
     0x4B400000u,
 };
-static __constant int_float __scospi_la_c4 = { 0x3d9f0be5u };
-static __constant int_float __scospi_la_c3 = { 0xbf1929adu };
-static __constant int_float __scospi_la_c2 = { 0x40233479u };
-static __constant int_float __scospi_la_c1 = { 0xc0a55de2u };
-static __constant int_float __scospi_la_c0 = { 0x40490fdau };
-static __constant int_float __scospi_la_max_norm = { 0x7f7fffffu };
+static __constant int_float __scospi_la_c4       = {0x3d9f0be5u};
+static __constant int_float __scospi_la_c3       = {0xbf1929adu};
+static __constant int_float __scospi_la_c2       = {0x40233479u};
+static __constant int_float __scospi_la_c1       = {0xc0a55de2u};
+static __constant int_float __scospi_la_c0       = {0x40490fdau};
+static __constant int_float __scospi_la_max_norm = {0x7f7fffffu};
 
-__attribute__((always_inline))
-inline int __internal_scospi_la_cout (float *a, float *pres)
+__attribute__((always_inline)) inline int __internal_scospi_la_cout(float *a, float *pres)
 {
-    int nRet = 0;
-    float x = *a;
-    float fN, fNi, R, R2, poly;
-    int iN, sgn;
+    int       nRet = 0;
+    float     x    = *a;
+    float     fN, fNi, R, R2, poly;
+    int       iN, sgn;
     int_float res;
 
     fN = __spirv_ocl_rint(x);
 
     fNi = -__spirv_ocl_fabs(fN);
-    iN = (int) fNi;
+    iN  = (int)fNi;
 
     sgn = iN << 31;
 
-    R = x - fN;
-    R = 0.5f - __spirv_ocl_fabs(R);
+    R  = x - fN;
+    R  = 0.5f - __spirv_ocl_fabs(R);
     R2 = R * R;
 
-    poly = __spirv_ocl_fma(R2,__scospi_la_c4.f,__scospi_la_c3.f);
-    poly = __spirv_ocl_fma(poly,R2,__scospi_la_c2.f);
-    poly = __spirv_ocl_fma(poly,R2,__scospi_la_c1.f);
-    poly = __spirv_ocl_fma(poly,R2,__scospi_la_c0.f);
+    poly = __spirv_ocl_fma(R2, __scospi_la_c4.f, __scospi_la_c3.f);
+    poly = __spirv_ocl_fma(poly, R2, __scospi_la_c2.f);
+    poly = __spirv_ocl_fma(poly, R2, __scospi_la_c1.f);
+    poly = __spirv_ocl_fma(poly, R2, __scospi_la_c0.f);
 
     res.f = R * poly;
 
     res.w ^= sgn;
     *pres = res.f;
-    nRet = (__spirv_ocl_fabs(x) > __scospi_la_max_norm.f) ? 1 : 0;
+    nRet  = (__spirv_ocl_fabs(x) > __scospi_la_max_norm.f) ? 1 : 0;
     return nRet;
-
 }
 
-float __ocl_svml_cospif (float a)
+float __ocl_svml_cospif(float a)
 {
-
-    float va1;
-    float vr1;
+    float        va1;
+    float        vr1;
     unsigned int vm;
 
     float r;
 
-    va1 = a;;
+    va1 = a;
+    ;
 
-    __internal_scospi_la_cout (&va1, &vr1);
-    r = vr1;;
+    __internal_scospi_la_cout(&va1, &vr1);
+    r = vr1;
+    ;
 
     return r;
-
 }

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -66,39 +66,38 @@ static __constant __internal_ssinpi_la_data_t __internal_ssinpi_la_data = {
 
     0x4B400000u,
 };
-static __constant int_float __ssinpi_la_c4 = { 0x3d9f0be5u };
-static __constant int_float __ssinpi_la_c3 = { 0xbf1929adu };
-static __constant int_float __ssinpi_la_c2 = { 0x40233479u };
-static __constant int_float __ssinpi_la_c1 = { 0xc0a55de2u };
-static __constant int_float __ssinpi_la_c0 = { 0x40490fdau };
-static __constant int_float __ssinpi_la_max_norm = { 0x7f7fffffu };
+static __constant int_float __ssinpi_la_c4       = {0x3d9f0be5u};
+static __constant int_float __ssinpi_la_c3       = {0xbf1929adu};
+static __constant int_float __ssinpi_la_c2       = {0x40233479u};
+static __constant int_float __ssinpi_la_c1       = {0xc0a55de2u};
+static __constant int_float __ssinpi_la_c0       = {0x40490fdau};
+static __constant int_float __ssinpi_la_max_norm = {0x7f7fffffu};
 
-__attribute__((always_inline))
-inline int __internal_ssinpi_la_cout (float *a, float *pres)
+__attribute__((always_inline)) inline int __internal_ssinpi_la_cout(float *a, float *pres)
 {
-    int nRet = 0;
-    float x = *a;
+    int   nRet = 0;
+    float x    = *a;
     {
-        float fN, fNi, R, R2, poly;
-        int iN, sgn;
+        float     fN, fNi, R, R2, poly;
+        int       iN, sgn;
         int_float xin, res;
 
         fN = __spirv_ocl_rint(x);
 
         fNi = -__spirv_ocl_fabs(fN);
-        iN = (int) fNi;
+        iN  = (int)fNi;
 
         xin.f = x;
 
         sgn = iN << 31;
 
-        R = x - fN;
+        R  = x - fN;
         R2 = R * R;
 
-        poly = __spirv_ocl_fma(R2,__ssinpi_la_c4.f,__ssinpi_la_c3.f);
-        poly = __spirv_ocl_fma(poly,R2,__ssinpi_la_c2.f);
-        poly = __spirv_ocl_fma(poly,R2,__ssinpi_la_c1.f);
-        poly = __spirv_ocl_fma(poly,R2,__ssinpi_la_c0.f);
+        poly = __spirv_ocl_fma(R2, __ssinpi_la_c4.f, __ssinpi_la_c3.f);
+        poly = __spirv_ocl_fma(poly, R2, __ssinpi_la_c2.f);
+        poly = __spirv_ocl_fma(poly, R2, __ssinpi_la_c1.f);
+        poly = __spirv_ocl_fma(poly, R2, __ssinpi_la_c0.f);
 
         res.f = R * poly;
 
@@ -108,23 +107,22 @@ inline int __internal_ssinpi_la_cout (float *a, float *pres)
     }
     nRet = (__spirv_ocl_fabs(x) > __ssinpi_la_max_norm.f) ? 1 : 0;
     return nRet;
-
 }
 
-float __ocl_svml_sinpif (float a)
+float __ocl_svml_sinpif(float a)
 {
-
-    float va1;
-    float vr1;
+    float        va1;
+    float        vr1;
     unsigned int vm;
 
     float r;
 
-    va1 = a;;
+    va1 = a;
+    ;
 
-    __internal_ssinpi_la_cout (&va1, &vr1);
-    r = vr1;;
+    __internal_ssinpi_la_cout(&va1, &vr1);
+    r = vr1;
+    ;
 
     return r;
-
 }

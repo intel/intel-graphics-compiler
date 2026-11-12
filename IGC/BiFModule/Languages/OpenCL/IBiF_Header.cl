@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -34,7 +34,6 @@ SPDX-License-Identifier: MIT
 
 #define INLINE __attribute__((always_inline))
 #define OVERLOADABLE __attribute__((overloadable))
-
 
 
 #endif //_IBIF_HEADER_
