@@ -26,9 +26,11 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/Alignment.h"
 #include <llvmWrapper/IR/CmpPredicate.h>
 #include "llvmWrapper/IR/Constants.h"
+#include "llvmWrapper/Analysis/ValueTracking.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/InitializePasses.h"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
+#include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryToSLM.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Probe/Assertion.h"
 
@@ -2920,6 +2922,25 @@ inline bool Is32BitConstInt(llvm::Value *val) {
   return false;
 }
 
+// Returns true if the A32 offset is known to be non-negative. For SLM, HW
+// ignores VALID_LOCAL_HIGH_BITS, so the bit just below it works as the sign bit.
+static bool isNonNegativeA32Offset(llvm::Value *Offset, bool IsSLMOffset, const llvm::DataLayout *DL) {
+  KnownBits Known = IGCLLVM::computeKnownBits(Offset, *DL);
+  if (!Known.isNonNegative())
+    return false;
+  if (!IsSLMOffset)
+    return true;
+
+  const unsigned BitBelowTag = llvm::Log2_32(VALID_LOCAL_HIGH_BITS) - 1;
+  if (Known.getBitWidth() <= BitBelowTag)
+    return true;
+  return Known.Zero[BitBelowTag];
+}
+
+static bool isSLMPointer(llvm::Value *Ptr) {
+  return Ptr && Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL;
+}
+
 bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
   struct LSCImmOffsetPattern : public Pattern {
     explicit LSCImmOffsetPattern(Instruction *I, llvm::Value *varOffset, llvm::ConstantInt *immOffset)
@@ -3029,13 +3050,14 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
                        "Both operands are immediate - constants should be folded elsewhere.");
 
     llvm::Value *varOffset = isConstant0 ? addSubInst->getOperand(1) : addSubInst->getOperand(0);
+    bool isSLM = isSLMPointer(intToPtrInst);
 
     // HW does an early bounds check on varOffset for A32 messages. Thus, if varOffset
     // is negative, then the bounds check fails early even though the immediate offset
     // would bring the final calculation to a positive number.
     bool disableA32ImmediateGlobalBaseOffset =
-        !isA64AddressingModel && !UsedWithoutImmInMemInst(varOffset) && !valueIsPositive(varOffset, m_DL) &&
-        IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3;
+        !isA64AddressingModel && !UsedWithoutImmInMemInst(varOffset) &&
+        !isNonNegativeA32Offset(varOffset, isSLM, m_DL) && IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3;
 
     if (disableA32ImmediateGlobalBaseOffset)
       return false;
@@ -3242,6 +3264,8 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
     }
   }
 
+  // The SLM tag is in the byte offset, so keep it for the SLM check below.
+  Value *ByteOffset = Offset;
   // Check if the offset is scaled.
   if (match(Offset, ScalePattern)) {
     auto ScaleImm = 1ll << Scale->getSExtValue();
@@ -3284,8 +3308,10 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
   }
 
   if (ImmOffset) {
+    bool IsSLM = isSLMPointer(PointerOperand);
     bool disableA32ImmediateGlobalBaseOffset =
-        !isA64AddressingModel && !valueIsPositive(Offset, m_DL) && IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3;
+        !isA64AddressingModel && !isNonNegativeA32Offset(IsSLM ? ByteOffset : Offset, IsSLM, m_DL) &&
+        IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3;
 
     if (disableA32ImmediateGlobalBaseOffset)
       return false;
