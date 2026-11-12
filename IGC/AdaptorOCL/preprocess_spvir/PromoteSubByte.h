@@ -85,6 +85,8 @@ private:
   template <typename T> void setPromotedAttributes(T *callOrFunc, const llvm::AttributeList &attributeList);
 
   llvm::Value *getOrCreatePromotedValue(llvm::Value *value);
+  // Like getOrCreatePromotedValue, but the result always has the promoted type.
+  llvm::Value *promoteOperand(llvm::Value *value, llvm::IRBuilder<> &builder);
   llvm::Value *promoteGenericInstruction(llvm::Instruction *instruction);
   llvm::Function *promoteFunction(llvm::Function *function);
   llvm::GlobalVariable *promoteGlobalVariable(llvm::GlobalVariable *globalVariable);

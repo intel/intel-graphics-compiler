@@ -383,7 +383,15 @@ Type *PromoteSubByte::getOrCreatePromotedType(Type *type) {
     // Check if promotion is needed because otherwise new structures
     // will be created even if promotion is not needed. The other data
     // types do not have this problem.
-    if (typeNeedsPromotion(structType)) {
+    if (typeNeedsPromotion(structType) && structType->isLiteral()) {
+      // Literal structs (e.g. the {iN, i1} result of *.with.overflow intrinsics)
+      // cannot be named or recursive, so promote the elements directly.
+      SmallVector<Type *, 8> elements;
+      for (const auto &element : structType->elements()) {
+        elements.push_back(getOrCreatePromotedType(element));
+      }
+      newType = StructType::get(type->getContext(), elements, structType->isPacked());
+    } else if (typeNeedsPromotion(structType)) {
       // Create an opaque type to handle recursive types
       const auto &name = structType->hasName() ? structType->getName().str() : "";
       structType->setName(name + ".unpromoted");
@@ -512,6 +520,12 @@ Value *PromoteSubByte::getOrCreatePromotedValue(Value *value) {
     }
   }
   return newValue;
+}
+
+// Some values keep their sub-byte type SPIR-V builtins, BiF, intrinsics still return i1.
+// An operand of a promoted instruction must be converted to the promoted type explicitly.
+Value *PromoteSubByte::promoteOperand(Value *value, IRBuilder<> &builder) {
+  return castTo(getOrCreatePromotedValue(value), getOrCreatePromotedType(value->getType()), builder);
 }
 
 // Fallback for instructions without a dedicated promote* handler. It only
@@ -982,10 +996,12 @@ InsertValueInst *PromoteSubByte::promoteInsertValue(InsertValueInst *insertValue
     return insertValue;
   }
 
-  auto newAggregateOp =
-      typeNeedsPromotion(aggregateOp->getType()) ? getOrCreatePromotedValue(aggregateOp) : aggregateOp;
+  IRBuilder<> builder(insertValue);
+  builder.SetCurrentDebugLocation(insertValue->getDebugLoc());
+
+  auto newAggregateOp = typeNeedsPromotion(aggregateOp->getType()) ? promoteOperand(aggregateOp, builder) : aggregateOp;
   auto newInsertedValueOp =
-      typeNeedsPromotion(insertedValueOp->getType()) ? getOrCreatePromotedValue(insertedValueOp) : insertedValueOp;
+      typeNeedsPromotion(insertedValueOp->getType()) ? promoteOperand(insertedValueOp, builder) : insertedValueOp;
 
   auto newInsertValue =
       IGCLLVM::createInsertValueInst(newAggregateOp, newInsertedValueOp, insertValue->getIndices(), "", insertValue);
@@ -1061,8 +1077,8 @@ Value *PromoteSubByte::promoteSelect(SelectInst *select) {
     falseValue = promoteAndUnpackInt4Vector(select->getFalseValue(), builder);
     wasUnpacked = select->getType()->isIntOrIntVectorTy(4);
   } else {
-    trueValue = getOrCreatePromotedValue(select->getTrueValue());
-    falseValue = getOrCreatePromotedValue(select->getFalseValue());
+    trueValue = promoteOperand(select->getTrueValue(), builder);
+    falseValue = promoteOperand(select->getFalseValue(), builder);
   }
 
   Value *newSelect = builder.CreateSelect(condition, trueValue, falseValue);
@@ -1134,7 +1150,7 @@ Value *PromoteSubByte::promoteInsertElement(InsertElementInst *insertElement) {
   builder.SetCurrentDebugLocation(insertElement->getDebugLoc());
 
   Value *inputVector = promoteAndUnpackInt4Vector(insertElement->getOperand(0), builder);
-  Value *newElement = getOrCreatePromotedValue(insertElement->getOperand(1));
+  Value *newElement = promoteOperand(insertElement->getOperand(1), builder);
   Value *insertIndex = getOrCreatePromotedValue(insertElement->getOperand(2));
 
   Value *outputVector = builder.CreateInsertElement(inputVector, newElement, insertIndex);
@@ -1273,7 +1289,7 @@ Value *PromoteSubByte::promoteAndUnpackInt4Vector(Value *unpromoted, IRBuilder<>
   if (!typeNeedsPromotion(unpromoted->getType()))
     return unpromoted;
 
-  Value *promoted = getOrCreatePromotedValue(unpromoted);
+  Value *promoted = promoteOperand(unpromoted, builder);
 
   // Skip unpacking if it isn't i4 scalar or vector
   if (!unpromoted->getType()->isIntOrIntVectorTy(4))

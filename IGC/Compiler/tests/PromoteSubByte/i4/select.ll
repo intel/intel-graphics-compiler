@@ -123,6 +123,27 @@ define spir_func void @test_mixed2(i1 %cond, ptr %ptr) {
   ret void
 }
 
+; A builtin result keeps its unpromoted <N x i4> type, so it is cast to the
+; packed type before being selected against a promoted operand.
+
+declare spir_func <8 x i4> @_Z15__spirv_Int4Veci(i32)
+
+; CHECK-LABEL: define spir_func void @test_unpromoted_call(i8 %cond, i32 %n, ptr %ptr)
+; CHECK-NEXT: %1 = load <4 x i8>, ptr %ptr, align 4
+; CHECK-NEXT: %call = call spir_func <8 x i4> @_Z15__spirv_Int4Veci(i32 %n)
+; CHECK-NEXT: %2 = trunc i8 %cond to i1
+; CHECK-NEXT: %3 = bitcast <8 x i4> %call to <4 x i8>
+; CHECK-NEXT: %res = select i1 %2, <4 x i8> %3, <4 x i8> %1
+; CHECK-NEXT: store <4 x i8> %res, ptr %ptr, align 4
+; CHECK-NEXT: ret void
+define spir_func void @test_unpromoted_call(i1 %cond, i32 %n, ptr %ptr) {
+  %data = load <8 x i4>, ptr %ptr, align 4
+  %call = call spir_func <8 x i4> @_Z15__spirv_Int4Veci(i32 %n)
+  %res = select i1 %cond, <8 x i4> %call, <8 x i4> %data
+  store <8 x i4> %res, ptr %ptr, align 4
+  ret void
+}
+
 ; CHECK-LABEL: define spir_func void @test_undef2(i8 %cond, ptr %ptr)
 ; CHECK-NEXT: %1 = load <1 x i8>, ptr %ptr, align 1
 ; CHECK-NEXT: %2 = trunc i8 %cond to i1
