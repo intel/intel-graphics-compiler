@@ -688,6 +688,31 @@ bool SBNode::isClosestALUType(std::vector<unsigned> **latestInstID,
   return type == distAllDepRes.first;
 }
 
+static SB_INST_PIPE getDataTypePipeXe(const IR_Builder &builder, G4_Type type);
+
+// Check if the data types of all source operands, including immediate
+// operands, belong to the same pipeline. Different granularity of the same
+// pipeline, such as :d and :w, is allowed.
+static bool hasSameSrcOperandTypePipe(const IR_Builder &builder,
+                                      const G4_INST *inst) {
+  bool first = true;
+  SB_INST_PIPE srcPipe = PIPE_NONE;
+  for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
+    const G4_Operand *srcOpnd = inst->getSrc(i);
+    if (!srcOpnd) {
+      continue;
+    }
+    SB_INST_PIPE pipe = getDataTypePipeXe(builder, srcOpnd->getType());
+    if (first) {
+      srcPipe = pipe;
+      first = false;
+    } else if (pipe != srcPipe) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void SBNode::finalizeDistanceType1(IR_Builder &builder,
                                    std::vector<unsigned> **latestInstID) {
   if (instVec.front()->getDistanceTypeXe() !=
@@ -775,6 +800,12 @@ void SBNode::finalizeDistanceType1(IR_Builder &builder,
     }
 
     if (builder.hasLongOperandTypeDepIssue() && depLongPipe) {
+      sameOperandType = false;
+    }
+
+    // The pipe is indicated by the operand type only when the types of all
+    // source operands, including immediate operands, belong to one pipe.
+    if (!hasSameSrcOperandTypePipe(builder, GetInstruction())) {
       sameOperandType = false;
     }
 
@@ -927,6 +958,12 @@ void SBNode::finalizeDistanceType2(IR_Builder &builder,
     }
 
     if (builder.hasLongOperandTypeDepIssue() && depLongPipe) {
+      sameOperandType = false;
+    }
+
+    // The pipe is indicated by the operand type only when the types of all
+    // source operands, including immediate operands, belong to one pipe.
+    if (!hasSameSrcOperandTypePipe(builder, GetInstruction())) {
       sameOperandType = false;
     }
 
