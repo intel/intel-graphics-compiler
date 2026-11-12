@@ -362,6 +362,20 @@ BasicBlock *Layout::selectSucc(BasicBlock *CurrBlk, bool SelectNoInstBlk, const 
   return S0;
 }
 
+// Returns the successor of BB if BB is empty and only feeds constants into the
+// phis of its successor, otherwise null.
+static BasicBlock *getConstantPhiMoveSucc(BasicBlock &BB) {
+  BasicBlock *Succ = BB.getSingleSuccessor();
+  if (!Succ || IGCLLVM::sizeWithoutDebug(&BB) > 1 || !isa<PHINode>(Succ->begin()))
+    return nullptr;
+  // Symbols and undef may still be materialized from a register.
+  bool OnlyConstants = llvm::all_of(Succ->phis(), [&](PHINode &Phi) {
+    Value *V = Phi.getIncomingValueForBlock(&BB);
+    return isa<ConstantData>(V) && !isa<UndefValue>(V);
+  });
+  return OnlyConstants ? Succ : nullptr;
+}
+
 void Layout::LayoutBlocks(Function &func, LoopInfo &LI) {
   std::vector<llvm::BasicBlock *> visitVec;
   std::set<llvm::BasicBlock *> visitSet;
@@ -497,6 +511,34 @@ void Layout::LayoutBlocks(Function &func, LoopInfo &LI) {
       }
     }
   }
+
+  // Empty blocks are laid out right after their predecessor, so that the
+  // values copied by the phi moves DeSSA emits into them die early (see
+  // selectSucc()). When the moves only copy constants there is nothing to
+  // shorten, and the phi results then span everything up to the successor.
+  // If that includes a loop, vISA augmentation makes them interfere with all
+  // of it although they aren't live there. Place such a block right before
+  // its successor instead.
+  SmallVector<BasicBlock *, 32> Blocks;
+  DenseMap<BasicBlock *, unsigned> Order;
+  for (BasicBlock &BB : func) {
+    Order[&BB] = Blocks.size();
+    Blocks.push_back(&BB);
+  }
+  auto InLoop = [&](BasicBlock *BB) { return LI.getLoopFor(BB) != nullptr; };
+  SmallVector<std::pair<BasicBlock *, BasicBlock *>, 8> ToMove;
+  for (BasicBlock &BB : func) {
+    BasicBlock *Succ = getConstantPhiMoveSucc(BB);
+    if (!Succ || &BB == &func.getEntryBlock() || Order[Succ] <= Order[&BB] + 1)
+      continue;
+    // Keep loops, and break blocks next to their loop, as laid out above.
+    if (InLoop(&BB) || InLoop(Succ) || llvm::any_of(predecessors(&BB), InLoop))
+      continue;
+    if (llvm::any_of(llvm::make_range(Blocks.begin() + Order[&BB] + 1, Blocks.begin() + Order[Succ]), InLoop))
+      ToMove.emplace_back(&BB, Succ);
+  }
+  for (auto [BB, Succ] : ToMove)
+    BB->moveBefore(Succ);
 }
 
 void Layout::LayoutBlocks(Function &func) {
