@@ -7141,6 +7141,8 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
       m_encoder->SetSrcRegion(0, 1, 1, 0);
       m_encoder->SetSrcSubReg(0, dataIndex + nativeExecSize * i);
       m_encoder->SetDstSubReg(nativeExecSize * i);
+      if (i == 1)
+        m_encoder->SetMask(simdMode == SIMDMode::SIMD16 ? EMASK_H2 : EMASK_Q2);
       m_encoder->Copy(m_destination, pCombinedData);
       m_encoder->Push();
     }

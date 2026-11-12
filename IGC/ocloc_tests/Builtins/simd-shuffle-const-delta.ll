@@ -22,7 +22,7 @@
 ; CHECK:       mov (M1_NM, 16) [[TMP:(ShuffleTmp|V[0-9]+)]](0,0)<1> [[CUR]](0,0)
 ; CHECK-NEXT:  mov (M1_NM, 16) [[TMP]](2,0)<1> [[NEXT]](0,0)
 ; CHECK-NEXT:  mov (M1, 8) {{.*}} [[TMP]](2,0)<1;1,0>
-; CHECK-NEXT:  mov (M1, 8) {{.*}} [[TMP]](3,0)<1;1,0>
+; CHECK-NEXT:  mov (M3, 8) {{.*}} [[TMP]](3,0)<1;1,0>
 ; CHECK-NOT:   addr_add
 ; CHECK:       ret
 define spir_kernel void @shuffle_down_const_simd_size(ptr addrspace(1) %out, i32 %cur, i32 %next) !intel_reqd_sub_group_size !1 {
@@ -39,7 +39,7 @@ define spir_kernel void @shuffle_down_const_simd_size(ptr addrspace(1) %out, i32
 ; CHECK:       mov (M1_NM, 16) [[TMP:(ShuffleTmp|V[0-9]+)]](0,0)<1> [[NEXT]](0,0)
 ; CHECK-NEXT:  mov (M1_NM, 16) [[TMP]](2,0)<1> [[CUR]](0,0)
 ; CHECK-NEXT:  mov (M1, 8) {{.*}} [[TMP]](0,4)<1;1,0>
-; CHECK-NEXT:  mov (M1, 8) {{.*}} [[TMP]](1,4)<1;1,0>
+; CHECK-NEXT:  mov (M3, 8) {{.*}} [[TMP]](1,4)<1;1,0>
 ; CHECK-NOT:   addr_add
 ; CHECK:       ret
 define spir_kernel void @shuffle_down_const_past_simd_size(ptr addrspace(1) %out, i32 %cur, i32 %next) !intel_reqd_sub_group_size !1 {
@@ -56,7 +56,7 @@ define spir_kernel void @shuffle_down_const_past_simd_size(ptr addrspace(1) %out
 ; CHECK:       mov (M1_NM, 16) [[TMP:(ShuffleTmp|V[0-9]+)]](0,0)<1> [[CUR]](0,0)
 ; CHECK-NEXT:  mov (M1_NM, 16) [[TMP]](2,0)<1> [[PREV]](0,0)
 ; CHECK-NEXT:  mov (M1, 8) {{.*}} [[TMP]](1,4)<1;1,0>
-; CHECK-NEXT:  mov (M1, 8) {{.*}} [[TMP]](2,4)<1;1,0>
+; CHECK-NEXT:  mov (M3, 8) {{.*}} [[TMP]](2,4)<1;1,0>
 ; CHECK-NOT:   addr_add
 ; CHECK:       ret
 define spir_kernel void @shuffle_up_const_past_simd_size(ptr addrspace(1) %out, i32 %prev, i32 %cur) !intel_reqd_sub_group_size !1 {
