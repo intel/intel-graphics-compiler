@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: spirv-as, regkeys, llvm-16-plus
+; UNSUPPORTED: typed-pointers
+; REQUIRES: spirv-as, regkeys
 
 ; intel_ray_query_init and intel_ray_query_start_traversal marked the potential
 ; hit done and valid for the memory based traversal-done check. That check now

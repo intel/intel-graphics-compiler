@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: spirv-as, regkeys, llvm-16-plus
+; UNSUPPORTED: typed-pointers
+; REQUIRES: spirv-as, regkeys
 
 ; This test ensures successful compilation on three platforms: DG2, NVL-P-B0, and PTL-H.
 ; Each platform follows different code paths to select the SIMD size.

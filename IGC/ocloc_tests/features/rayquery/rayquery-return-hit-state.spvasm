@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: spirv-as, regkeys, nvl-p-b0-supported, llvm-16-plus
+; UNSUPPORTED: typed-pointers
+; REQUIRES: spirv-as, regkeys, nvl-p-b0-supported
 
 ; With the ray query return value:
 ; - intel_ray_query_init does not initialize the potential hit, so the
