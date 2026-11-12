@@ -570,6 +570,30 @@ template <typename T> static std::string ConvertDefault(const std::string &Type,
   return ValStr;
 }
 
+[[maybe_unused]] static std::string escapeXmlAttribute(std::string_view Text) {
+  std::string Escaped;
+  Escaped.reserve(Text.size());
+  for (char C : Text) {
+    switch (C) {
+    case '&':
+      Escaped += "&amp;";
+      break;
+    case '<':
+      Escaped += "&lt;";
+      break;
+    case '>':
+      Escaped += "&gt;";
+      break;
+    case '"':
+      Escaped += "&quot;";
+      break;
+    default:
+      Escaped += C;
+    }
+  }
+  return Escaped;
+}
+
 static void DumpIGCRegistryKeyDefinitions(const char *registryKeyPath, const char *xmlPath) {
 #ifdef _WIN32
   // Create the directory path
@@ -588,7 +612,8 @@ static void DumpIGCRegistryKeyDefinitions(const char *registryKeyPath, const cha
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, descriptionText, flagAvailability)                      \
   fprintf(fp, "    <Key name=\"%s\" type=\"%s\" location=\"%s\" default=\"%s\" description=\"%s\" />\n", #regkeyName,  \
           ConvertType(#dataType), registryKeyPath,                                                                     \
-          ConvertDefault(ConvertType(#dataType), defaultValue, #defaultValue).c_str(), descriptionText);
+          escapeXmlAttribute(ConvertDefault(ConvertType(#dataType), defaultValue, #defaultValue)).c_str(),             \
+          escapeXmlAttribute(descriptionText).c_str());
 #define DECLARE_IGC_REGKEY_ENUM(regkeyName, defaultValue, description, values, flagAvailability)                       \
   DECLARE_IGC_REGKEY(enum, regkeyName, defaultValue, description "[VALUES]" values, flagAvailability)
 #define DECLARE_IGC_REGKEY_BITMASK(regkeyName, defaultValue, description, values, flagAvailability)                    \
@@ -598,7 +623,7 @@ static void DumpIGCRegistryKeyDefinitions(const char *registryKeyPath, const cha
     fprintf(fp, "  </Group>\n");                                                                                       \
   }                                                                                                                    \
   firstGroup = false;                                                                                                  \
-  fprintf(fp, "  <Group name=\"%s\">\n", groupName);
+  fprintf(fp, "  <Group name=\"%s\">\n", escapeXmlAttribute(groupName).c_str());
 
   bool firstGroup = true;
   // Generate the XML

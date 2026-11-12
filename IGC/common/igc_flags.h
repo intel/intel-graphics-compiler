@@ -276,7 +276,7 @@ DECLARE_IGC_REGKEY(bool, EnableRemoveLoopDependency, false,
 DECLARE_IGC_GROUP("IGC Optimization")
 // Default ON for LLVM 16+ (which has full New Pass Manager support), OFF for LLVM 15
 // and older.
-#if LLVM_VERSION_MAJOR / 16
+#if LLVM_VERSION_MAJOR >= 16
 DECLARE_IGC_REGKEY(bool, EnableOCLNewPassManager, true, "Enable the LLVM New Pass Manager for compute IGC passes",
                    ALWAYS)
 #else
@@ -1527,8 +1527,7 @@ DECLARE_IGC_REGKEY(bool, ForceNoLSC, false, "Disables the new dataport encoding 
 DECLARE_IGC_REGKEY(bool, EnableMadLoopSlice, true, "Enables slicing of MAD chains in loops and acyclic blocks.", ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableGEPSimplification, true, "Enable GEP simplification", ALWAYS)
 // Opt-in below LLVM 22 to avoid performance regressions there.
-// Division tests LLVM 22+: the regkey check bans comparison operators in this file.
-#if LLVM_VERSION_MAJOR / 22
+#if LLVM_VERSION_MAJOR >= 22
 DECLARE_IGC_REGKEY(bool, EnableGEPSimplificationPoisonSafeBases, true,
                    "Rebase GEPs in GEP simplification only on bases that add no poison", ALWAYS)
 #else
