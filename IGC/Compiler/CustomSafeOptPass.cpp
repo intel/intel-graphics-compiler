@@ -526,10 +526,15 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst *I) {
     return;
 
   uint64_t xorValue = xorValueConstant->getZExtValue();
-  if (xorValue >= 16) {
-    // currently not supported in the emitter
+  if (xorValue >= 32)
     return;
-  }
+
+  // Where SIMD32 is emitted as two SIMD16 instances (see CShader::InitEncoder),
+  // simdShuffleXor is emitted per instance and can't move data between them.
+  const bool hasSingleInstanceSimd32 =
+      pContext->platform.isCoreChildOf(IGFX_XE_HPC_CORE) && pContext->platform.hasLSC();
+  if (xorValue >= 16 && !hasSingleInstanceSimd32)
+    return;
 
   auto simdLaneCandidate = getInstructionIgnoringAndZext(xorOperand, Instruction::Call);
 

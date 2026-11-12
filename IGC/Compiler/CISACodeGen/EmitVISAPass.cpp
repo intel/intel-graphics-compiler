@@ -7330,9 +7330,9 @@ void EmitPass::emitSimdShuffleXor(llvm::Instruction *inst) {
   // emit move sequence for 1 bit
   // case 0:  1 2 3 4 5 6 7 8     => 2 1 4 3 6 5 8 7
   // case 1:  1 2 3 4 5 6 7 8     => 3 4 1 2 7 8 5 6
-  // case 1:  1 2 3 4 5 6 7 8     => 3 4 1 2 7 8 5 6
   // case 2:  1 2 3 4 5 6 7 8     => 5 6 7 8 1 2 3 4
   // case 3:  1 2 .. 8 9 .. 15 16 => 9 10 .. 15 16 1 2 .. 7 8
+  // case 4:  1 .. 16 17 .. 32    => 17 .. 32 1 .. 16
   auto emitShuffleXor1Bit = [&](CVariable *pData, uint xorBit) -> CVariable * {
     VISA_Type type = pData->GetType();
     bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
@@ -7390,7 +7390,7 @@ void EmitPass::emitSimdShuffleXor(llvm::Instruction *inst) {
         m_encoder->Copy(pResult, pData);
         m_encoder->Push();
       }
-    } else if ((xorBit >= 1) && (xorBit <= 3)) {
+    } else if ((xorBit >= 1) && (xorBit <= 4)) {
       // Use subsequent accesses to copy all subsequent chunks
       // for xorBit == 2
       //     mov (M1_NM, 4) simdShuffleXorTmp(0,0)<1> V0043(0,4)<1;1,0>
@@ -7427,7 +7427,7 @@ void EmitPass::emitSimdShuffleXor(llvm::Instruction *inst) {
         m_encoder->Push();
       }
     } else {
-      IGC_ASSERT_MESSAGE(false, "simdShuffleXor is only implemented for 0 <= xor_value <= 15");
+      IGC_ASSERT_MESSAGE(false, "simdShuffleXor is only implemented for 0 <= xor_value <= 31");
     };
 
     return pResult;
@@ -7444,8 +7444,10 @@ void EmitPass::emitSimdShuffleXor(llvm::Instruction *inst) {
     return;
   }
 
-  // emit moves for every non-zero bit subsequently
-  const auto xorValue = pXorValue->GetImmediateValue();
+  // Lanes at or above the dispatch size wrap around, as in emitSimdShuffle.
+  const auto xorValue = pXorValue->GetImmediateValue() & (numLanes(m_currShader->m_State.m_dispatchSize) - 1);
+  IGC_ASSERT_MESSAGE(xorValue < 16 || m_currShader->m_numberInstance == 1,
+                     "simdShuffleXor can't move data between SIMD16 instances");
   CVariable *tempValue = pData;
   for (uint i = 0; i < 5; i++) {
     if (((xorValue >> i) & 0x1) == 0x1) {
