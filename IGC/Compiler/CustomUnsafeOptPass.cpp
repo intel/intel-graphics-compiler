@@ -1237,9 +1237,8 @@ bool CustomUnsafeOptPass::visitBinaryOperatorDivRsq(BinaryOperator &I) {
   if (GenIntrinsicInst *genIntr = dyn_cast<GenIntrinsicInst>(I.getOperand(1))) {
     if (genIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_rsq) {
       if (ConstantFP *fp0 = dyn_cast<ConstantFP>(I.getOperand(0))) {
-        llvm::IRBuilder<> builder(I.getContext());
         llvm::CallInst *sqrt_call = llvm::IntrinsicInst::Create(
-            IGCLLVM::getOrInsertDeclaration(m_ctx->getModule(), Intrinsic::sqrt, builder.getFloatTy()),
+            IGCLLVM::getOrInsertDeclaration(m_ctx->getModule(), Intrinsic::sqrt, genIntr->getType()),
             genIntr->getOperand(0), "", IGCLLVM::insertPosition(&I));
 
         if (fp0->isExactlyValue(1.0)) {
@@ -1858,6 +1857,9 @@ bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst &FC) {
     return false;
   }
 
+  // zero of the compared type (half, float or double)
+  Constant *zero = ConstantFP::get(FC.getOperand(0)->getType(), 0.0);
+
   for (int i = 0; i < 2; i++) {
     if (prevInst[i]->getOpcode() != Instruction::FSub || prevInst[1 - i]->getOpcode() != Instruction::FMul) {
       continue;
@@ -1884,7 +1886,7 @@ bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst &FC) {
         //   %cmp = fcmp one float %x, 0          -> cmp.ne (x^2), 0
         FC.setPredicate(FCmpInst::FCMP_ONE);
         FC.setOperand(0, prevInst[1 - i]->getOperand(0));
-        FC.setOperand(1, ConstantFP::get(Type::getFloatTy(FC.getContext()), 0));
+        FC.setOperand(1, zero);
         patternFound = true;
         break;
       }
@@ -1909,7 +1911,7 @@ bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst &FC) {
           //     %cmp = fcmp <cmpOp> float %sub, %mul
           //  into:
           //     %cmp = fcmp <cmpOp> float %x, 0  [since (constant<0)]
-          FC.setOperand(1, ConstantFP::get(Type::getFloatTy(FC.getContext()), 0));
+          FC.setOperand(1, zero);
           FC.setOperand(0, prevInst[1 - i]->getOperand(0));
           patternFound = true;
         } else {
@@ -1919,7 +1921,7 @@ bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst &FC) {
           //     %cmp = fcmp <cmpOp> float %mul, %sub
           //  into:
           //     %cmp = fcmp <cmpOp> float 0, %x  [since (constant<0)]
-          FC.setOperand(0, ConstantFP::get(Type::getFloatTy(FC.getContext()), 0));
+          FC.setOperand(0, zero);
           FC.setOperand(1, prevInst[1 - i]->getOperand(0));
           patternFound = true;
         }
@@ -1929,7 +1931,7 @@ bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst &FC) {
         //     %sub = fsub float 0.000000e+00, %mul   ->  -(x * constant)
         //     %cmp = fcmp <cmpOp> float %sub, %mul
         if (i == 0) {
-          FC.setOperand(0, ConstantFP::get(Type::getFloatTy(FC.getContext()), 0));
+          FC.setOperand(0, zero);
           FC.setOperand(1, prevInst[1 - i]->getOperand(0));
           patternFound = true;
         } else {
@@ -1939,7 +1941,7 @@ bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst &FC) {
           //     %cmp = fcmp <cmpOp> float %mul, %sub
 
           FC.setOperand(0, prevInst[1 - i]->getOperand(0));
-          FC.setOperand(1, ConstantFP::get(Type::getFloatTy(FC.getContext()), 0));
+          FC.setOperand(1, zero);
           patternFound = true;
         }
       }

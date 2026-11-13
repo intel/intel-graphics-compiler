@@ -97,6 +97,50 @@ entry:
 ; CHECK: fmul
 ; CHECK: %2 = fcmp ogt float %x, 0.000000e+00
 
+; The new zero constant must have the type of the compared values.
+
+define i1 @test7(double %x) #0 {
+entry:
+  %0 = fmul fast double %x, 5.000000e+00
+  %1 = fsub fast double 0.000000e+00, %0
+  %2 = fcmp ogt double %0, %1 ; same as test5, in double
+  ret i1 %2
+}
+
+; CHECK-LABEL: define i1 @test7
+; CHECK-NOT: fmul
+; CHECK-NOT: fsub
+; CHECK: %0 = fcmp ogt double %x, 0.000000e+00
+; CHECK: ret i1 %0
+
+define i1 @test8(double %x) #0 {
+entry:
+  %0 = fmul fast double %x, -5.000000e+00
+  %1 = fsub fast double 0.000000e+00, %0
+  %2 = fcmp ogt double %1, %0 ; same as test2, in double
+  ret i1 %2
+}
+
+; CHECK-LABEL: define i1 @test8
+; CHECK-NOT: fmul
+; CHECK-NOT: fsub
+; CHECK: %0 = fcmp ogt double %x, 0.000000e+00
+; CHECK: ret i1 %0
+
+define i1 @test9(half %x) #0 {
+entry:
+  %0 = fmul fast half %x, %x
+  %1 = fsub fast half 0xH0000, %0
+  %2 = fcmp ogt half %0, %1 ; same as test1, in half
+  ret i1 %2
+}
+
+; CHECK-LABEL: define i1 @test9
+; CHECK-NOT: fmul
+; CHECK-NOT: fsub
+; CHECK: %0 = fcmp one half %x, {{(0xH0000|0\.000000e\+00)}}
+; CHECK: ret i1 %0
+
 !IGCMetadata = !{!0}
 
 !0 = !{!"ModuleMD", !1}
