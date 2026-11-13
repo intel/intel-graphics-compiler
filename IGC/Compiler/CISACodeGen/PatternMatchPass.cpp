@@ -2306,7 +2306,9 @@ bool CodeGenPatternMatch::CanMatchMad(llvm::BinaryOperator &I) const {
     return false;
   }
 
-  if ((m_ctx->type == ShaderType::VERTEX_SHADER || m_ctx->type == ShaderType::MESH_SHADER) &&
+  // A float mad rounds once where mul + add round twice, and position has to round the same way in every shader that
+  // computes it, so unless allowed, a float mad that position depends on is not matched. An integer mad is exact.
+  if (isFpMad && (m_ctx->type == ShaderType::VERTEX_SHADER || m_ctx->type == ShaderType::MESH_SHADER) &&
       m_ctx->m_DriverInfo.PreventZFighting() &&
       !(m_ctx->getModuleMetaData()->allowMatchMadOptimizationforPosition ||
         IGC_IS_FLAG_ENABLED(WaAllowMatchMadOptimizationforVS))) {
@@ -2412,7 +2414,7 @@ bool CodeGenPatternMatch::IsMulCandidateForIMad(llvm::BinaryOperator *Mul, llvm:
   IGC_ASSERT(I->getOpcode() == Instruction::Add || I->getOpcode() == Instruction::Sub);
 
   // in case we know we won't be able to remove the mul we don't merge it
-  if (!m_PosDep->PositionDependsOnInst(Mul) && NeedInstruction(*Mul))
+  if (NeedInstruction(*Mul))
     return false;
 
   // This condition prevents creating mad instruction when mul instruction is 64-bit wide operation.
