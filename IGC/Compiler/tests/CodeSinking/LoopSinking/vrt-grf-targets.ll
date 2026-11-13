@@ -23,6 +23,10 @@
 ; RUN:   | FileCheck %s --check-prefixes=NVL-CEILING-512,SINK
 ; RUN: igc_opt --opaque-pointers -platformCri --regkey LoopSinkUseVRTTargets=0 --regkey DumpLoopSink=1 \
 ; RUN:   --regkey PrintToConsole=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
+; RUN:   | FileCheck %s --check-prefixes=BUDGET192,SINK
+; RUN: igc_opt --opaque-pointers -platformCri --regkey LoopSinkUseVRTTargets=0 --regkey ForceVRTGRFCeiling=128 \
+; RUN:   --regkey DumpLoopSink=1 --regkey PrintToConsole=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa \
+; RUN:   --igc-code-loop-sinking -S %s 2>&1 \
 ; RUN:   | FileCheck %s --check-prefixes=BUDGET128,SINK
 ; RUN: igc_opt --opaque-pointers -platformCri --regkey TotalGRFNum=256 --regkey DumpLoopSink=1 \
 ; RUN:   --regkey PrintToConsole=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
@@ -45,6 +49,8 @@
 ; automatic selection there stops at a 256-GRF ceiling; with a raised ceiling
 ; the loop fits the 512-GRF budget with 2 threads per EU. A forced GRF count,
 ; platforms without VRT, and the disabled regkey keep their fixed budgets. The
+; fixed budget under automatic selection is the largest GRF number with the
+; threads per EU of 128 GRFs: 192 on CRI, or 128 with a 128-GRF ceiling. The
 ; 512-GRF budget needs efficient 64-bit addressing.
 ;
 ; CRI: Checking loop with preheader ph:
@@ -71,6 +77,11 @@
 ; BUDGET256-NEXT: Threshold to sink = 286
 ; BUDGET256: >> Sinking in the loop with preheader ph
 ; BUDGET256-NEXT: Targeting new own regpressure in the loop = 246
+;
+; BUDGET192: Checking loop with preheader ph:
+; BUDGET192-NEXT: Threshold to sink = 222
+; BUDGET192: >> Sinking in the loop with preheader ph
+; BUDGET192-NEXT: Targeting new own regpressure in the loop = 182
 ;
 ; BUDGET128: Checking loop with preheader ph:
 ; BUDGET128-NEXT: Threshold to sink = 158

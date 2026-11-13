@@ -148,6 +148,9 @@ uint32_t OpenCLProgramContext::getNumGRFPerThread(bool ReturnDefault, const llvm
     return static_cast<uint32_t>(RequestedNumGRF);
 
   if (RequestedNumGRF < 0 && platform.supportsStaticRegSharing()) {
+    // CEncoder saves the explicit register file size last, so it wins over the GRF options.
+    if (uint32_t ExpGRFSize = getExpGRFSize())
+      return ExpGRFSize;
     if (m_InternalOptions.Intel128GRFPerThread || m_Options.Intel128GRFPerThread) {
       return 128;
     } else if (m_InternalOptions.Intel256GRFPerThread || m_Options.Intel256GRFPerThread ||
@@ -172,7 +175,20 @@ uint32_t OpenCLProgramContext::getNumGRFPerThread(bool ReturnDefault, const llvm
       return 512;
   }
 
-  return CodeGenContext::getNumGRFPerThread(ReturnDefault, F);
+  uint32_t NumGRF = CodeGenContext::getNumGRFPerThread(/*returnDefault=*/false, F);
+  if (NumGRF != 0 || !ReturnDefault)
+    return NumGRF;
+
+  // Automatic selection grows the default GRF number for free up to the largest
+  // mode with the same threads per EU, e.g. 192 GRF on CRI.
+  if (isAutoGRFSelectionEnabled(F)) {
+    auto Modes = getAutoGRFVRTTable();
+    auto DefaultMode = llvm::find_if(
+        Modes, [](const VRT::ModeEntry &Mode) { return static_cast<uint32_t>(Mode.first) >= DEFAULT_TOTAL_GRF_NUM; });
+    if (DefaultMode != Modes.end())
+      return static_cast<uint32_t>(DefaultMode->first);
+  }
+  return DEFAULT_TOTAL_GRF_NUM;
 }
 
 bool OpenCLProgramContext::kernelQualifiesFor512(bool hasDPAS, SIMDMode simd, const llvm::Function *F) const {

@@ -16,7 +16,7 @@
 ; RUN:   | FileCheck %s --check-prefixes=PTL,NOSINK
 ; RUN: igc_opt --opaque-pointers -platformCri --regkey LoopSinkUseVRTTargets=0 --regkey DumpLoopSink=1 \
 ; RUN:   --regkey PrintToConsole=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 \
-; RUN:   | FileCheck %s --check-prefixes=BUDGET128,NOSINK
+; RUN:   | FileCheck %s --check-prefixes=BUDGET192,NOSINK
 ;
 ; Loop sinking on a VRT platform with automatic GRF selection, for a loop that
 ; exceeds every VRT budget. The loop needs about 770 GRFs: 20 loop-carried
@@ -27,7 +27,7 @@
 ; so the sinking is kept: the kernel spills less.
 ;
 ; On PTL even the largest budget (256 GRFs) is out of reach, and so is the
-; default 128-GRF budget on CRI with the regkey disabled; nothing is sunk.
+; default 192-GRF budget on CRI with the regkey disabled; nothing is sunk.
 ; The CRI run enables efficient 64-bit addressing, which the 512-GRF budget
 ; needs.
 ;
@@ -51,9 +51,9 @@
 ; PTL: Trying VRT target 256 GRFs, 4 threads per EU
 ; PTL: >> No sinking.
 ;
-; BUDGET128: Checking loop with preheader ph:
-; BUDGET128-NEXT: Threshold to sink = 158
-; BUDGET128: >> No sinking.
+; BUDGET192: Checking loop with preheader ph:
+; BUDGET192-NEXT: Threshold to sink = 222
+; BUDGET192: >> No sinking.
 ;
 ; SINK-LABEL: define spir_kernel void @vrt_above_max(
 ; SINK-LABEL: {{^}}ph:

@@ -7,10 +7,10 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 // Verify that scratch_pointer is not removed if kernel uses private memory.
-// Disable loop unroll so that the private memory is not optimized out.
+// Disable loop unroll and private memory promotion so that the private memory is not optimized out.
 
 // REQUIRES: cri-supported
-// RUN: ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1, RemoveUnusedIdImplicitArguments=1, RemoveImplicitScratchPointer=1, DisableLoopUnroll=1'" -device cri | FileCheck %s --check-prefix=CHECK
+// RUN: ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1, RemoveUnusedIdImplicitArguments=1, RemoveImplicitScratchPointer=1, DisableLoopUnroll=1, TotalGRFNum=128'" -device cri | FileCheck %s --check-prefix=CHECK
 
 // CHECK:      payload_arguments:
 // CHECK-NEXT: - arg_type:        indirect_data_pointer
