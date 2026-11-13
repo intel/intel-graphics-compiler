@@ -7315,6 +7315,14 @@ void EmitPass::emitSubgroupBitcastShuffle(llvm::Instruction *inst) {
   // apply: we must WRITE the result's own register.
   CVariable *pSrc = GetSymbol(inst->getOperand(0));
   CVariable *pDst = GetSymbol(inst);
+  IGC_ASSERT_MESSAGE(!pDst->IsUniform(), "SubgroupBitcastShuffle result must not be uniform");
+
+  // The reinterpret is defined on the per-lane layout, where every lane holds its
+  // own copy of the operand. A uniform operand (a constant, an immediate or a
+  // uniform value; DeSSA never aliases these) holds a single copy, so broadcast
+  // it to all lanes first. Reinterpreting it directly would give every lane the
+  // plain bitcast of the operand.
+  pSrc = BroadcastIfUniform(pSrc, /*nomask*/ true);
 
   CVariable *pSrcAlias = m_currShader->GetNewAlias(pSrc, pDst->GetType(), 0, pDst->GetNumberElement());
   emitCopyAll(pDst, pSrcAlias, inst->getType());
