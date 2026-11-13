@@ -7,7 +7,9 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/CISACodeGen/SplitPHIsOfAllocaPointers.hpp"
+#include "Compiler/CISACodeGen/SoAAcrossFNUtil.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/DenseSet.h>
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/BasicBlock.h>
@@ -26,6 +28,9 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Analysis/ValueTracking.h"
 
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenPublic.h"
+#include "Compiler/CISACodeGen/GenCodeGenModule.h"
 
 #include "Probe/Assertion.h"
 
@@ -221,9 +226,11 @@ Value *cloneCastChainPHI(IRBuilder<> &B, Value *Root, ArrayRef<Instruction *> Ch
 // clamped to it. Stripping the pre-merge addrspacecasts is what keeps the
 // incoming value in private space and prevents a private→generic→global chain.
 // For a non-alloca incoming value it is returned unchanged with no clamp.
-Value *stripAllocaIncomingCasts(Value *Incoming, const DataLayout &DL, std::optional<unsigned> &AllocaAS) {
+Value *stripRootIncomingCasts(Value *Incoming, const DataLayout &DL, std::optional<unsigned> &AllocaAS,
+                              const DenseSet<const Value *> &ExtraRoots) {
   AllocaAS = std::nullopt;
-  if (!isa<AllocaInst>(IGCLLVM::getUnderlyingObject(Incoming, DL))) {
+  Value *Obj = IGCLLVM::getUnderlyingObject(Incoming, DL);
+  if (!isa<AllocaInst>(Obj) && !ExtraRoots.contains(Obj)) {
     return Incoming;
   }
   // Stripping bitcast/addrspacecast preserves the underlying object, so the
@@ -236,33 +243,19 @@ Value *stripAllocaIncomingCasts(Value *Incoming, const DataLayout &DL, std::opti
   return Cur;
 }
 
-// Only target large scalar array allocas that stand to benefit from SoA scratch promotion (PMR's domain).
-// This avoids the IR explosion that would result from splitting every pointer merge.
-bool isPHISplitWorthwhileForAlloca(AllocaInst *AI, const DataLayout &DL) {
-  IGC_ASSERT(AI != nullptr);
-  Type *AllocTy = AI->getAllocatedType();
-  // Only flat [N x T] of arithmetic T qualifies for the target pattern.
-  auto *ArrTy = dyn_cast<ArrayType>(AllocTy);
-  if (!ArrTy) {
-    return false;
-  }
-  Type *ETy = ArrTy->getElementType();
-  if (!ETy->isFloatingPointTy() && !ETy->isIntegerTy()) {
-    return false;
-  }
-  uint64_t Bytes = DL.getTypeAllocSize(AllocTy).getFixedValue();
-  uint64_t MinBytes = (uint64_t)IGC_GET_FLAG_VALUE(PHIOfAllocaPtrSplitMinSize);
-  return Bytes >= MinBytes;
-}
-
-bool runHoistPass(Function &F, bool VerifyAlloca, const DataLayout &DL, SmallVectorImpl<MergeHoistRecord> &OutRecords) {
+bool runHoistPass(Function &F, bool VerifyAlloca, const DataLayout &DL, SmallVectorImpl<MergeHoistRecord> &OutRecords,
+                  const DenseSet<const Value *> &ExtraRoots) {
   auto IsCandidate = [&](PHINode &Phi) {
     if (!Phi.getType()->isPointerTy()) {
       return false;
     }
     return llvm::any_of(Phi.incoming_values(), [&](Value *Inc) {
-      auto *Root = dyn_cast<AllocaInst>(IGCLLVM::getUnderlyingObject(Inc, DL));
-      return Root && (!VerifyAlloca || isPHISplitWorthwhileForAlloca(Root, DL));
+      Value *Obj = IGCLLVM::getUnderlyingObject(Inc, DL);
+      if (ExtraRoots.contains(Obj)) {
+        return true;
+      }
+      auto *Root = dyn_cast<AllocaInst>(Obj);
+      return Root && (!VerifyAlloca || IGC::SoAAcrossFNUtil::isWorthwhileForAlloca(Root, DL));
     });
   };
 
@@ -292,7 +285,7 @@ bool runHoistPass(Function &F, bool VerifyAlloca, const DataLayout &DL, SmallVec
 
     auto ReplayChain = [&](IRBuilder<> &B, Value *StartPtr, ArrayRef<Instruction *> Chain) -> Value * {
       std::optional<unsigned> AllocaAS;
-      Value *Base = stripAllocaIncomingCasts(StartPtr, DL, AllocaAS);
+      Value *Base = stripRootIncomingCasts(StartPtr, DL, AllocaAS, ExtraRoots);
       return cloneCastChainPHI(B, Base, Chain, AllocaAS);
     };
 
@@ -327,23 +320,30 @@ bool runHoistPass(Function &F, bool VerifyAlloca, const DataLayout &DL, SmallVec
 } // anonymous namespace
 
 namespace IGC {
-class SplitPHIsOfAllocaPointers : public FunctionPass {
+class SplitPHIsOfAllocaPointers : public ModulePass {
 public:
   static char ID;
 
-  SplitPHIsOfAllocaPointers(bool VerifyAlloca = false);
+  SplitPHIsOfAllocaPointers();
+  SplitPHIsOfAllocaPointers(bool VerifyAlloca, bool CheckCrossFnArgs);
 
   StringRef getPassName() const override { return "SplitPHIsOfAllocaPointers"; }
 
-  void getAnalysisUsage(AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
 
-  bool runOnFunction(Function &F) override;
+  bool runOnModule(Module &M) override;
 
 private:
   bool m_VerifyAlloca;
+  bool m_CheckCrossFnArgs;
 };
 
-FunctionPass *createSplitPHIsOfAllocaPointers(bool VerifyAlloca) { return new SplitPHIsOfAllocaPointers(VerifyAlloca); }
+ModulePass *createSplitPHIsOfAllocaPointers(bool VerifyAlloca, bool CheckCrossFnArgs) {
+  return new SplitPHIsOfAllocaPointers(VerifyAlloca, CheckCrossFnArgs);
+}
 } // namespace IGC
 
 using namespace IGC;
@@ -354,37 +354,53 @@ using namespace IGC;
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(SplitPHIsOfAllocaPointers, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(SplitPHIsOfAllocaPointers, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char IGC::SplitPHIsOfAllocaPointers::ID = 0;
 
-IGC::SplitPHIsOfAllocaPointers::SplitPHIsOfAllocaPointers(bool VerifyAlloca)
-    : FunctionPass(ID), m_VerifyAlloca(VerifyAlloca) {
+IGC::SplitPHIsOfAllocaPointers::SplitPHIsOfAllocaPointers()
+    : SplitPHIsOfAllocaPointers(/*VerifyAlloca*/ false, /*CheckCrossFnArgs*/ true) {}
+
+IGC::SplitPHIsOfAllocaPointers::SplitPHIsOfAllocaPointers(bool VerifyAlloca, bool CheckCrossFnArgs)
+    : ModulePass(ID), m_VerifyAlloca(VerifyAlloca), m_CheckCrossFnArgs(CheckCrossFnArgs) {
   initializeSplitPHIsOfAllocaPointersPass(*PassRegistry::getPassRegistry());
 }
 
-bool IGC::SplitPHIsOfAllocaPointers::runOnFunction(Function &F) {
+bool IGC::SplitPHIsOfAllocaPointers::runOnModule(Module &M) {
   if (!IGC_IS_FLAG_ENABLED(EnablePHIOfAllocaPtrSplit)) {
     return false;
   }
 
-  const DataLayout &DL = F.getParent()->getDataLayout();
+  IGCMD::MetaDataUtils *MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  DenseSet<const Value *> RootArgs;
+  if (m_CheckCrossFnArgs && IGC_IS_FLAG_ENABLED(EnableSOAAcrossCalls) && IGC_IS_FLAG_DISABLED(DisableSOAPromotion)) {
+    SoAAcrossFNUtil::collectRootArgs(M, getAnalysisIfAvailable<GenXFunctionGroupAnalysis>(), MdUtils, m_VerifyAlloca,
+                                     RootArgs);
+  }
+
+  const DataLayout &DL = M.getDataLayout();
 
   bool Changed = false;
-  // Loop: committing one pointer merge may expose a new inner candidate (e.g. a
-  // phi-of-phi whose outer incoming value only roots at the alloca once the
-  // inner merge is lowered). Re-scan until a pass finds nothing new.
-  SmallVector<MergeHoistRecord, 8> HoistRecords;
-  for (int HoistIter = 0; HoistIter < MAX_HOISTING_ITER; ++HoistIter) {
-    const size_t PrevCount = HoistRecords.size();
-    runHoistPass(F, m_VerifyAlloca, DL, HoistRecords);
-    if (HoistRecords.size() == PrevCount) {
-      break;
+  for (Function &F : M) {
+    if (F.isDeclaration() || MdUtils->findFunctionsInfoItem(&F) == MdUtils->end_FunctionsInfo()) {
+      continue;
     }
-    // Commit only the newly added records.
-    for (size_t J = PrevCount; J < HoistRecords.size(); ++J) {
-      commitHoistRecord(HoistRecords[J]);
-      Changed = true;
+    // Loop: committing one pointer merge may expose a new inner candidate (e.g. a
+    // phi-of-phi whose outer incoming value only roots at the alloca once the
+    // inner merge is lowered). Re-scan until a pass finds nothing new.
+    SmallVector<MergeHoistRecord, 8> HoistRecords;
+    for (int HoistIter = 0; HoistIter < MAX_HOISTING_ITER; ++HoistIter) {
+      const size_t PrevCount = HoistRecords.size();
+      runHoistPass(F, m_VerifyAlloca, DL, HoistRecords, RootArgs);
+      if (HoistRecords.size() == PrevCount) {
+        break;
+      }
+      // Commit only the newly added records.
+      for (size_t J = PrevCount; J < HoistRecords.size(); ++J) {
+        commitHoistRecord(HoistRecords[J]);
+        Changed = true;
+      }
     }
   }
   return Changed;

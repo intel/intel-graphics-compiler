@@ -399,7 +399,7 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     }
     // Resolving private memory allocas
     if (ctx.type == ShaderType::OPENCL_SHADER) {
-      mpm.add(createSplitPHIsOfAllocaPointers(true));
+      mpm.add(createSplitPHIsOfAllocaPointers(true, true));
       // Must stay immediately before PrivateMemoryResolution: the pass decides
       // between speculative and predicated loads from the scratch-space
       // decision, which no later-inserted private memory may change.
@@ -812,7 +812,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
       mpm.add(createReplaceUnsupportedIntrinsicsPass());
     }
     if (ctx.type == ShaderType::OPENCL_SHADER) {
-      mpm.add(createSplitPHIsOfAllocaPointers(true));
+      mpm.add(createSplitPHIsOfAllocaPointers(true, true));
       // Must stay immediately before PrivateMemoryResolution: the pass decides
       // between speculative and predicated loads from the scratch-space
       // decision, which no later-inserted private memory may change.

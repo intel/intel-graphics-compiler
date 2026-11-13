@@ -820,8 +820,8 @@ bool SOALayoutChecker::hasZeroOffset(const llvm::Value *V) const {
       V = GEP->getPointerOperand();
     } else if (auto *BC = llvm::dyn_cast<llvm::BitCastInst>(V)) {
       V = BC->getOperand(0);
-    } else if (auto *BC = llvm::dyn_cast<llvm::AddrSpaceCastInst>(V)) {
-      V = BC->getOperand(0);
+    } else if (auto *ASC = llvm::dyn_cast<llvm::AddrSpaceCastInst>(V)) {
+      V = ASC->getOperand(0);
     } else if (auto *PHI = llvm::dyn_cast<llvm::PHINode>(V); PHI && PHI->getNumIncomingValues() == 1) {
       V = PHI->getIncomingValue(0);
     } else {

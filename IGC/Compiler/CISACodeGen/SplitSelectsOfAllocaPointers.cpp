@@ -7,11 +7,14 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/CISACodeGen/SplitSelectsOfAllocaPointers.hpp"
+#include "Compiler/CISACodeGen/SoAAcrossFNUtil.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/DenseSet.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/Analysis/Loads.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
@@ -24,11 +27,11 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/ModuleAllocaAnalysis.hpp"
-#include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/igc_regkeys.hpp"
 #include "llvmWrapper/Analysis/ValueTracking.h"
-#include "llvmWrapper/IR/Instructions.h"
 
 #include "Probe/Assertion.h"
 
@@ -171,7 +174,32 @@ bool collectSelectLeafConsumers(SelectInst *SI, SmallVectorImpl<Instruction *> &
   return true;
 }
 
-bool splitSelectsOfAllocaPointers(Function &F, bool UsePredicatedLoads) {
+// Check if the duplicated loads need predication. Returns false if the load cannot be split (predication required but
+// unavailable).
+bool canSplitLoadOfSelectPtr(LoadInst *LI, SelectInst *SI, bool UseScratchSpacePrivateMemory,
+                             bool CanUsePredicatedLoads, bool &NeedPredicatedLoads) {
+  const DataLayout &DL = LI->getModule()->getDataLayout();
+  // The cast chain between SI and LI consists of bitcasts/addrspacecasts only,
+  // so the select operands address the same memory as the split loads would.
+  Value *PtrTrue = SI->getTrueValue();
+  Value *PtrFalse = SI->getFalseValue();
+  NeedPredicatedLoads =
+      !UseScratchSpacePrivateMemory ||
+      (!isa<AllocaInst>(IGCLLVM::getUnderlyingObject(PtrTrue, DL)) &&
+       !isSafeToLoadUnconditionally(PtrTrue, LI->getType(), LI->getAlign(), DL, /*ScanFrom=*/nullptr)) ||
+      (!isa<AllocaInst>(IGCLLVM::getUnderlyingObject(PtrFalse, DL)) &&
+       !isSafeToLoadUnconditionally(PtrFalse, LI->getType(), LI->getAlign(), DL, /*ScanFrom=*/nullptr));
+  if (NeedPredicatedLoads && IGC_IS_FLAG_ENABLED(DisablePredicatedLoadForAllocaPtrSelectSplit)) {
+    NeedPredicatedLoads = false;
+  }
+  if (NeedPredicatedLoads && !CanUsePredicatedLoads) {
+    return false;
+  }
+  return true;
+}
+
+bool splitSelectsOfRootedPointers(Function &F, bool UseScratchSpacePrivateMemory, bool CanUsePredicatedLoads,
+                                  const DenseSet<const Value *> &ExtraRoots) {
   SmallVector<SelectInst *, 16> WorkList;
   const DataLayout &DL = F.getParent()->getDataLayout();
   for (Instruction &I : instructions(F)) {
@@ -179,27 +207,47 @@ bool splitSelectsOfAllocaPointers(Function &F, bool UsePredicatedLoads) {
     if (!SI || !SI->getType()->isPointerTy()) {
       continue;
     }
-    if (isa<AllocaInst>(IGCLLVM::getUnderlyingObject(SI->getTrueValue(), DL)) ||
-        isa<AllocaInst>(IGCLLVM::getUnderlyingObject(SI->getFalseValue(), DL))) {
+    auto IsRoot = [&](Value *V) {
+      Value *Obj = IGCLLVM::getUnderlyingObject(V, DL);
+      return isa<AllocaInst>(Obj) || ExtraRoots.contains(Obj);
+    };
+    if (IsRoot(SI->getTrueValue()) || IsRoot(SI->getFalseValue())) {
       WorkList.push_back(SI);
     }
   }
   bool Changed = false;
   SmallVector<Instruction *, 8> Loads;
+  SmallVector<bool, 8> LoadNeedsPredication;
   SmallVector<Instruction *, 4> Stores;
   SmallVector<Instruction *, 8> CastsToErase;
   for (SelectInst *SI : WorkList) {
     Loads.clear();
     Stores.clear();
     CastsToErase.clear();
+    LoadNeedsPredication.clear();
     if (!collectSelectLeafConsumers(SI, Loads, Stores, CastsToErase)) {
       continue;
     }
     if (Loads.empty() && Stores.empty()) {
       continue;
     }
+
+    bool CanSplit = true;
     for (Instruction *LI : Loads) {
-      splitLoadOfSelectPtr(cast<LoadInst>(LI), SI, UsePredicatedLoads);
+      bool NeedPredicatedLoads = false;
+      if (!canSplitLoadOfSelectPtr(cast<LoadInst>(LI), SI, UseScratchSpacePrivateMemory, CanUsePredicatedLoads,
+                                   NeedPredicatedLoads)) {
+        CanSplit = false;
+        break;
+      }
+      LoadNeedsPredication.push_back(NeedPredicatedLoads);
+    }
+    if (!CanSplit) {
+      continue;
+    }
+
+    for (auto [LI, NeedPredicatedLoads] : llvm::zip(Loads, LoadNeedsPredication)) {
+      splitLoadOfSelectPtr(cast<LoadInst>(LI), SI, NeedPredicatedLoads);
     }
     for (Instruction *St : Stores) {
       splitStoreOfSelectPtr(cast<StoreInst>(St), SI);
@@ -229,6 +277,7 @@ public:
     // Splitting a store consumer inserts an if/then/else, so the CFG is not preserved.
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<ModuleAllocaAnalysis>();
+    AU.addRequired<MetaDataUtilsWrapper>();
   }
 
   bool runOnModule(Module &M) override;
@@ -247,6 +296,7 @@ using namespace IGC;
 IGC_INITIALIZE_PASS_BEGIN(SplitSelectsOfAllocaPointers, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(ModuleAllocaAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(SplitSelectsOfAllocaPointers, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char IGC::SplitSelectsOfAllocaPointers::ID = 0;
@@ -268,32 +318,30 @@ bool IGC::SplitSelectsOfAllocaPointers::runOnModule(Module &M) {
   // be predicated so the not-taken operand is never dereferenced -- unless
   // DisablePredicatedLoadForAllocaPtrSelectSplit forces regular loads (for
   // testing).
-  //
-  // The scratch-space decision is queried from ModuleAllocaAnalysis rather than
-  // read from ModuleMetaData::compOpt.UseScratchSpacePrivateMemory, because that
-  // field is only written by PrivateMemoryResolution, which runs after this
-  // pass; before that it still holds its default (true) and would silently
-  // select plain speculative loads for stateless-global private memory.
   const bool UseScratchSpacePrivateMemory = getAnalysis<ModuleAllocaAnalysis>().safeToUseScratchSpace();
   const bool CanUsePredicatedLoads = Ctx->platform.hasLSC() && Ctx->platform.LSCEnabled();
 
-  bool UsePredicatedLoads = false;
   if (!UseScratchSpacePrivateMemory) {
-    if (CanUsePredicatedLoads) {
-      UsePredicatedLoads = true;
-    } else if (!IGC_IS_FLAG_ENABLED(DisablePredicatedLoadForAllocaPtrSelectSplit)) {
+    if (!CanUsePredicatedLoads && IGC_IS_FLAG_DISABLED(DisablePredicatedLoadForAllocaPtrSelectSplit)) {
       // Private memory in stateless global requires predicated loads, which are
       // unavailable and not explicitly disabled -> do not split.
       return false;
     }
   }
 
+  IGCMD::MetaDataUtils *MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  DenseSet<const Value *> RootArgs;
+  if (IGC_IS_FLAG_ENABLED(EnableSOAAcrossCalls) && IGC_IS_FLAG_DISABLED(DisableSOAPromotion)) {
+    SoAAcrossFNUtil::collectRootArgs(M, getAnalysisIfAvailable<GenXFunctionGroupAnalysis>(), MdUtils,
+                                     /*VerifyAlloca=*/true, RootArgs);
+  }
+
   bool Changed = false;
   for (Function &F : M) {
-    if (F.isDeclaration()) {
+    if (F.isDeclaration() || MdUtils->findFunctionsInfoItem(&F) == MdUtils->end_FunctionsInfo()) {
       continue;
     }
-    Changed |= splitSelectsOfAllocaPointers(F, UsePredicatedLoads);
+    Changed |= splitSelectsOfRootedPointers(F, UseScratchSpacePrivateMemory, CanUsePredicatedLoads, RootArgs);
   }
   return Changed;
 }

@@ -23,14 +23,12 @@ namespace IGC {
 //     With scratch-backed private memory a plain speculative load is safe (OOB
 //     reads are hardware-masked and the discarded result is selected away);
 //     otherwise the duplicated loads are emitted as predicated loads gated on
-//     the (possibly negated) condition, so the not-taken operand is never
-//     dereferenced.
+//     the condition, so the not-taken operand is never dereferenced.
 //   - STORE consumers: split the block into if/then/else and emit one store per
 //     operand.
 // After this pass the alloca's user chain no longer contains SELECTs, so the
 // downstream SOALayoutChecker can promote it.
 //
-// Controlled by EnableSelectOfAllocaPtrSplit, default OFF.
 //
 // The pass must stay adjacent to PrivateMemoryResolution: whether plain
 // speculative loads are safe depends on private memory being scratch-backed,

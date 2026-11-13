@@ -61,3 +61,8 @@ merge:
   %value = load float, float addrspace(1)* %typed, align 4
   ret float %value
 }
+
+!igc.functions = !{!0}
+!0 = !{float (float addrspace(4)*, i1, i64)* @typed_addrspacecast, !1}
+!1 = !{!2}
+!2 = !{!"function_type", i32 0}

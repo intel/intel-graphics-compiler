@@ -23,9 +23,10 @@
 ;   %sel = select i1 %c, ptr %ext, ptr %stack
 ;   %v   = load float, ptr %sel
 ; becomes:
-;   %va  = load float, ptr %ext
-;   %vb  = load float, ptr %stack
+;   %va  = predicated_load float, ptr %ext,   pred %c
+;   %vb  = predicated_load float, ptr %stack, pred !%c
 ;   %v   = select i1 %c, %va, %vb
+; The %ext is an unknown pointer so the loads must be predicated.
 ;
 ; Expected transform for STORE-via-SELECT:
 ;   %sel = select i1 %c, ptr %ext, ptr %stack
@@ -35,15 +36,17 @@
 
 ; CHECK-LABEL: @test_load_select(
 ;;
-;; SELECT bypassed -- one load on the extern operand and one load on the
-;; SoA-transposed stack operand, with a value-level SELECT merging them.
+;; SELECT bypassed -- one predicated load on the extern operand and one
+;; predicated load on the SoA-transposed stack operand, with a value-level
+;; SELECT merging them.
 ;;
 ; CHECK:       call i32 @llvm.genx.GenISA.simdSize()
-; CHECK-TYPED:       load float, float addrspace(4)*
-; CHECK-OPAQUE:       load float, ptr addrspace(4)
-; CHECK-TYPED:       load float, float*
-; CHECK-OPAQUE:       load float, ptr %
-; CHECK:       select i1 %c, float
+; CHECK:       [[NOTC:%.*]] = xor i1 %c, true
+; CHECK-TYPED:       [[VA:%.*]] = call float @llvm.genx.GenISA.PredicatedLoad.f32.p4f32.f32(float addrspace(4)* %{{.*}}, i64 4, i1 %c, float poison)
+; CHECK-OPAQUE:       [[VA:%.*]] = call float @llvm.genx.GenISA.PredicatedLoad.f32.p4.f32(ptr addrspace(4) %ext, i64 4, i1 %c, float poison)
+; CHECK-TYPED:       [[VB:%.*]] = call float @llvm.genx.GenISA.PredicatedLoad.f32.p0f32.f32(float* %{{.*}}, i64 4, i1 [[NOTC]], float poison)
+; CHECK-OPAQUE:       [[VB:%.*]] = call float @llvm.genx.GenISA.PredicatedLoad.f32.p0.f32(ptr %{{.*}}, i64 4, i1 [[NOTC]], float poison)
+; CHECK:       select i1 %c, float [[VA]], float [[VB]]
 ;;
 ; CHECK-LABEL: @test_store_select(
 ;;

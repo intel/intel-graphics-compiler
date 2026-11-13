@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys
+; REQUIRES: regkeys, llvm-16-plus
 ;
 ; RUN: igc_opt --opaque-pointers --ocl --igc-private-mem-resolution --platformpvc \
 ; RUN:   --regkey EnablePrivMemNewSOATranspose=2 --regkey EnableSOAAcrossCalls=1 -S %s | FileCheck %s
