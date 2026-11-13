@@ -910,11 +910,11 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst &CI) {
     }
     case GenISAIntrinsic::GenISA_getLocalSize:
     case GenISAIntrinsic::GenISA_getEnqueuedLocalSize: {
-      // Local size and enqueued local size differ for the last work-group of a non-uniform dispatch
+      // Assume local size and enqueued local size are the same.
+      // Don't read enqueued_local_size: NEO older than 25.31 doesn't fill it, it reads past the implicit args there.
       auto ElemTypeD = Type::getInt32Ty(F->getParent()->getContext());
       auto VecTyD = IGCLLVM::FixedVectorType::get(ElemTypeD, 3);
-      unsigned int Offset = ID == GenISAIntrinsic::GenISA_getLocalSize ? offsetof(implicit_args, local_size_x)
-                                                                       : offsetof(implicit_args, enqueued_local_size_x);
+      unsigned int Offset = offsetof(implicit_args, local_size_x);
       auto LoadInst = BuildLoadInst(CI, Offset, VecTyD);
       V = LoadInst;
       break;
