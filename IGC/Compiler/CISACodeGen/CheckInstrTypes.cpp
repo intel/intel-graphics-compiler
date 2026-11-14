@@ -295,9 +295,7 @@ void CheckInstrTypes::visitCallInst(CallInst &C) {
       break;
     case GenISAIntrinsic::GenISA_WaveShuffleIndex:
     case GenISAIntrinsic::GenISA_WaveBroadcast:
-      // A constant lane is emitted as a direct region, not via a0.
-      if (!isa<ConstantInt>(CI->getArgOperand(1)))
-        g_InstrTypes.mayHaveIndirectOperands = true;
+      g_InstrTypes.mayHaveIndirectOperands = true;
       g_InstrTypes.numWaveIntrinsics++;
       break;
     case GenISAIntrinsic::GenISA_threadgroupbarrier:
