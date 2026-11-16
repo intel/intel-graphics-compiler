@@ -49,6 +49,16 @@ void PointsToAnalysis::resizePointsToSet(unsigned int newsize) {
   numAddrs = newsize;
 }
 
+void PointsToAnalysis::resizeNumBBs(unsigned int newNumBBs) {
+  if (newNumBBs <= numBBs)
+    return;
+  auto newUses = std::make_unique<REGVAR_VECTOR[]>(newNumBBs);
+  for (unsigned i = 0; i < numBBs; i++)
+    newUses[i] = std::move(indirectUses[i]);
+  indirectUses = std::move(newUses);
+  numBBs = newNumBBs;
+}
+
 void PointsToAnalysis::addIndirectUseToBB(unsigned int bbId, pointInfo pt) {
   vISA_ASSERT(bbId < numBBs, "invalid basic block id");
   REGVAR_VECTOR &vec = indirectUses[bbId];

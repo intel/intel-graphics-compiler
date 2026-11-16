@@ -6446,7 +6446,10 @@ void Augmentation::buildSummaryForCallees() {
 }
 
 void Augmentation::populateBBCache() {
-  bbCache.resize(kernel.fg.getBBList().back()->getId() + 1);
+  // BB ids are not guaranteed to follow layout order (e.g. preheaders created
+  // by split-on-spill get the next free id but are inserted mid-list), so
+  // size the cache by the number of BB ids rather than the last BB's id.
+  bbCache.resize(kernel.fg.getNumBB());
   for (auto *bb : kernel.fg) {
     bbCache[bb->getId()] =
         BBWrapper{bb, bb->isEndWithCall(), bb->getCalleeInfo()};
@@ -12296,6 +12299,9 @@ void GlobalRA::splitOnSpill(bool fastCompile, GraphColor &coloring,
     RA_TRACE(std::cout << "\t--var split around loop\n");
     LoopVarSplit loopSplit(kernel, &coloring, &liveAnalysis);
     kernel.fg.getLoops().computePreheaders();
+    // computePreheaders() may create new BBs. Make points-to analysis aware
+    // of them so per-BB queries with the new BB ids are valid.
+    pointsToAnalysis.resizeNumBBs(kernel.fg.getNumBB());
     loopSplit.run();
   }
 }

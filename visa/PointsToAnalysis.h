@@ -46,11 +46,11 @@ typedef std::map<const G4_RegVar *, unsigned> REGVAR_ID_MAP;
 class PointsToAnalysis {
 private:
   G4_Kernel *kernel = nullptr;
-  const unsigned int numBBs;
+  unsigned int numBBs;
   unsigned int numAddrs;
 
   // keeps track of the indirect variables used in each BB
-  const std::unique_ptr<REGVAR_VECTOR[]> indirectUses;
+  std::unique_ptr<REGVAR_VECTOR[]> indirectUses;
   // vector of points-to set for each address variable
   std::vector<REGVAR_VECTOR> pointsToSets;
   // vector of address expression for each address variable
@@ -92,6 +92,10 @@ public:
       std::unordered_map<G4_Declare *, std::vector<const G4_Declare *>> &);
 
   void doPointsToAnalysis(FlowGraph &fg);
+
+  // Grow per-BB storage when BBs are added after the analysis ran (e.g.
+  // loop preheaders created by split-on-spill). New BBs have no indirect uses.
+  void resizeNumBBs(unsigned int newNumBBs);
 
   const REGVAR_VECTOR &getIndrUseVectorForBB(unsigned int bbId) const {
     vISA_ASSERT(bbId < numBBs, "invalid basic block id");
