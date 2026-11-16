@@ -261,6 +261,7 @@ private:
   void rematWholeChain(llvm::Instruction *I, RematChain &Chain, IRTransaction *Tx);
   unsigned int measurePressure(Function &F);
   unsigned int pressureBudget(Function &F);
+  bool prefersSIMD16OnVRT(Function &F);
   void commitIfBudgetReached(Function &F, IRTransaction &Remat, unsigned int Budget);
   void estimateProfit(RematSet &ToProcess);
   void initializeLogFile(Function &F);
@@ -748,15 +749,30 @@ unsigned int CloneAddressArithmetic::measurePressure(Function &F) {
   return RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
 }
 
+// The XE3 VRT SIMD16 drop picks SIMD16 when SIMD16 pressure is low, even if SIMD32 would fit. A fixed SIMD32 width
+// is never dropped. Checked on the current IR, for a stage that estimates pressure at SIMD32.
+bool CloneAddressArithmetic::prefersSIMD16OnVRT(Function &F) {
+  if (SIMD != numLanes(SIMDMode::SIMD32) || !CGCtx->supportsVRT() || IGC_IS_FLAG_DISABLED(AllowSIMD16DropForXE2Plus) ||
+      !CGCtx->isAutoGRFSelectionEnabled(&F) || CGCtx->getNumGRFPerThread(false, &F) != 0 ||
+      IGC::hasFixedSIMDSize(CGCtx, &F, FGA))
+    return false;
+  unsigned int Simd16Pressure = RPE->getMaxRegCountForFunction(F, numLanes(SIMDMode::SIMD16), &WI->Runner);
+  unsigned int Simd32Pressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
+  PRINT_LOG_NL("SIMD16 pressure: " << Simd16Pressure << " SIMD32 pressure: " << Simd32Pressure);
+  return IGC::prefersSIMD16OnXE3VRT(CGCtx, &F, Simd16Pressure, Simd32Pressure);
+}
+
 // The static profit estimate assumes every cloned value is live at the pressure peak and is far too optimistic to
 // predict whether a budget is reached, so the pressure of the rematerialized function is measured instead.
-// Rematerialization that leaves it over the budget is undone: the clones would only add instructions. Otherwise the
-// transaction is committed.
+// Rematerialization that leaves it over the budget is undone: the clones would only add instructions. So is
+// rematerialization at SIMD32 that lowers the pressure enough for the XE3 VRT SIMD16 drop: the kernel would not keep
+// SIMD32, and the clones would only shrink the SIMD16 register allocation. Otherwise the transaction is committed.
 void CloneAddressArithmetic::commitIfBudgetReached(Function &F, IRTransaction &Remat, unsigned int Budget) {
   const unsigned int Pressure = measurePressure(F);
   PRINT_LOG_NL("Pressure budget: " << Budget << " MaxPressure: " << MaxPressure << " -> " << Pressure);
-  if (Budget && Pressure > Budget) {
-    PRINT_LOG_NL("Budget not reached, rolling back");
+  const bool OverBudget = Budget && Pressure > Budget;
+  if (OverBudget || prefersSIMD16OnVRT(F)) {
+    PRINT_LOG_NL((OverBudget ? "Budget not reached" : "SIMD16 drop after rematerialization") << ", rolling back");
     Remat.rollback();
     measurePressure(F);
     return;
@@ -824,16 +840,9 @@ bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
 
   RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
   SIMD = numLanes(m_getSIMDSize(CGCtx, &F, FGA));
-  // The XE3 VRT SIMD16 drop picks SIMD16 when SIMD16 pressure is low, even if SIMD32 would fit.
-  // Rematerializing at SIMD32 would only undo that choice. A fixed SIMD32 width is never dropped.
-  if (SIMD == numLanes(SIMDMode::SIMD32) && CGCtx->supportsVRT() && IGC_IS_FLAG_ENABLED(AllowSIMD16DropForXE2Plus) &&
-      CGCtx->isAutoGRFSelectionEnabled(&F) && CGCtx->getNumGRFPerThread(false, &F) == 0 &&
-      !IGC::hasFixedSIMDSize(CGCtx, &F, FGA)) {
-    unsigned int Simd16Pressure = RPE->getMaxRegCountForFunction(F, numLanes(SIMDMode::SIMD16), &WI->Runner);
-    unsigned int Simd32Pressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
-    if (IGC::prefersSIMD16OnXE3VRT(CGCtx, &F, Simd16Pressure, Simd32Pressure))
-      SIMD = numLanes(SIMDMode::SIMD16);
-  }
+  // Rematerializing at SIMD32 would only undo the XE3 VRT SIMD16 drop.
+  if (prefersSIMD16OnVRT(F))
+    SIMD = numLanes(SIMDMode::SIMD16);
   unsigned int GRFSize = CGCtx->getNumGRFPerThread(true, &F);
   unsigned int PressureLimit = 0.01f * (float)m_rpeLimitPercent * (float)GRFSize;
   MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
