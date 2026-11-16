@@ -187,8 +187,8 @@ function(igc_bif_build_bc)
 
     # OpenCL source compilation is triggered by CLANG change, change of source files, change of precompiled header, change of
     # forcibly included headers or change of additional dependencies.
+    file(MAKE_DIRECTORY "${_outBcFileDir}")
     execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
         COMMAND ${clang-tool} -cc1 ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG} -x cl -fblocks ${LLVM_VERSION_DEPENDENT_ARGS} -opencl-builtins "-triple=${_archTriple}" -w -emit-llvm-bc -discard-value-names -o "${_bcTempFilePath}" ${_pchFlags} ${_incFileFlags} ${_includeDirsFlags} ${_defineFlags} ${_options_DEFAULT} ${_options_CL} "${_srcFilePath}"
     COMMAND_ECHO STDOUT
       )
@@ -214,8 +214,8 @@ function(igc_bif_build_bc)
     math(EXPR _bcFileId "${_bcFileId} + 1")
 
     # LLVM assembly is triggered by host LLVM package change (where tools are), change of source files or change of additional dependencies.
+    file(MAKE_DIRECTORY "${_outBcFileDir}")
     execute_process(
-      COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
       COMMAND "${bif-llvm-as_exe}" ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT} -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_LL} "${_srcFilePath}"
       COMMAND_ECHO STDOUT
     )
@@ -242,8 +242,8 @@ function(igc_bif_build_bc)
 
     # LLVM linking is triggered by host LLVM package change (where tools are), change of intermediate .bc files or change of additional dependencies.
     # Makes sure that LLVM is unzipped before.
+    file(MAKE_DIRECTORY "${_outBcFileDir}")
     execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
         COMMAND "${bif-llvm-link_exe}" ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT} -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_BC} ${_bcFiles}
     COMMAND_ECHO STDOUT
       )
@@ -337,8 +337,8 @@ set(IGC_BUILD__BIF_OCL_FORCE_INC "${IGC_BUILD__BIF_DIR}/opencl_cth.h")
 
 message("[IGC\\BiFModule] - Generating opencl_cth.h")
 
+file(MAKE_DIRECTORY "${IGC_BUILD__BIF_DIR}")
 execute_process(
-    COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__BIF_DIR}"
     COMMAND ${PYTHON_EXECUTABLE} ${_concatScript} -new ${IGC_BUILD__BIF_OCL_FORCE_INC} ${IGC_BUILD__BIF_OCL_SHARED_INC} ${IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE}
   COMMAND_ECHO STDOUT
     )
