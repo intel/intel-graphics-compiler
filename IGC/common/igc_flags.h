@@ -2499,7 +2499,7 @@ DECLARE_IGC_REGKEY(bool, DisableInvalidateRTStackAfterLastRead, true,
                    ALWAYS)
 DECLARE_IGC_REGKEY(bool, DisableSWSubTriangleOpacityCullingEmulation, false,
                    "Software Sub-Triangle Opacity Culling emulation", ALWAYS)
-DECLARE_IGC_REGKEY(bool, DisableRayTracingExtendedCacheControl, false,
+DECLARE_IGC_REGKEY(bool, DisableRayTracingExtendedCacheControl, true,
                    "Disables the Extended Cache Control for Raytracing.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableRayTracingExtendedCacheControlTierI, false,
                    "Disables Extended Cache Control Tier I for Raytracing.", DEBUG_ONLY)
