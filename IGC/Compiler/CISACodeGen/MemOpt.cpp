@@ -3120,6 +3120,17 @@ AddressModel LdStInfo::getAddressModel(CodeGenContext *Ctx) const {
   return addrModel;
 }
 
+// Instruction::isFenceLike() is true for every call. A call that does not
+// access memory and has no other side effects (llvm.smax/smin, llvm.fma, ...)
+// cannot order loads and stores, so it is not a fence for this pass.
+static bool isLdStCombineFence(const Instruction *I) {
+  if (!I->isFenceLike() || isDebugInst(I))
+    return false;
+  if (isa<CallInst>(I) && !I->mayReadOrWriteMemory() && !I->mayHaveSideEffects())
+    return false;
+  return true;
+}
+
 bool LdStCombine::hasAlias(AliasSetTracker &AST, MemoryLocation &MemLoc) {
   for (auto &AS : AST) {
     if (AS.isForwardingAliasSet())
@@ -3336,8 +3347,8 @@ void LdStCombine::combineStores() {
   // If all Stores can move down across I, return true;
   // otherwise, return false.
   auto canCombineStoresAcross = [this](AliasSetTracker &aAST, Instruction *I) {
-    // Can't combine for non-debug fence like instructions
-    if (I->isFenceLike() && !isDebugInst(I))
+    // Can't combine across fence-like instructions
+    if (isLdStCombineFence(I))
       return false;
 
     if (ALoadInst::get(I).has_value() || AStoreInst::get(I).has_value() || I->mayReadOrWriteMemory()) {
@@ -3514,7 +3525,7 @@ void LdStCombine::combineLoads() {
           ++numInsts;
 
         // cannot merge beyond fence or window limit
-        if ((I->isFenceLike() && !isa<PredicatedLoadIntrinsic>(I) && !isa<PredicatedStoreIntrinsic>(I)) ||
+        if ((isLdStCombineFence(I) && !isa<PredicatedLoadIntrinsic>(I) && !isa<PredicatedStoreIntrinsic>(I)) ||
             numInsts > LDWINDOWSIZE) {
           LLVM_DEBUG(dbgs() << "- - Stop at fence or window limit\n");
           break;
