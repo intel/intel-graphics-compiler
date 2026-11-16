@@ -67,8 +67,6 @@ public:
   bool isFDiv(llvm::Value *I, llvm::Value *&numerator, llvm::Value *&denominator);
   bool possibleForFmadOpt(llvm::Instruction *inst);
   bool visitFCmpInstFCmpFAddOp(llvm::FCmpInst &FC);
-  bool visitFCmpInstFCmpSelOp(llvm::FCmpInst &FC);
-  bool visitFMulFCmpOp(llvm::FCmpInst &FC);
   bool visitExchangeCB(llvm::BinaryOperator &I);
   void matchMixOperation(llvm::BinaryOperator &I);
 
