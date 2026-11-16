@@ -326,6 +326,16 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   uint32_t registerPressureEst = (uint32_t)(IGC_GET_FLAG_VALUE(SetRegisterPressureThresholdForLoopUnroll) *
                                             (ctx->getNumGRFPerThread(true, L->getHeader()->getParent()) / 128.0));
   bool lowPressure = (this->ctx->m_tempCount < registerPressureEst) && (totalInstCountInShader < LoopUnrollThreshold);
+  // Threshold for shaders with high register pressure. It is also the lower bound of the per-loop threshold below.
+  unsigned HighRegPressureThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThresholdForHighRegPressure);
+  if (!IGC_IS_FLAG_SET(SetLoopUnrollThresholdForHighRegPressure) &&
+      ctx->getModuleMetaData()->compOpt.SetLoopUnrollThresholdForHighRegPressure > 0) {
+    HighRegPressureThreshold = ctx->getModuleMetaData()->compOpt.SetLoopUnrollThresholdForHighRegPressure;
+  }
+
+  unsigned MaxTripCount = SE.getSmallConstantMaxTripCount(L);
+  const unsigned MaxTripCountToUseUpperBound = 4;
+
   // For OCL shaders, do a two-step loop unrolling. The first
   // unrolling is simple and full, and the second runs after
   // LICM, which allows partial unrolling. Same for other APIs?
@@ -334,21 +344,32 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
     UP.Threshold = LoopUnrollThreshold;
     UP.PartialThreshold = LoopUnrollThreshold;
     UP.Partial = true;
+    // Small loops with a tiny constant trip count are not limited, as long as their full unroll fits in twice the
+    // shader threshold. Unrolling folds the induction variable, which keeps loop-variant math (e.g. exp2 of the
+    // counter) exact instead of evaluated by the hardware in every iteration. Evaluated lazily: getLoopSize is
+    // not free, and is only needed when the limit is enabled.
+    auto IsTinyTripCountLoop = [&]() {
+      return MaxTripCount && MaxTripCount <= MaxTripCountToUseUpperBound &&
+             getLoopSize(L, *this) * MaxTripCount <= 2 * LoopUnrollThreshold;
+    };
+    if (ctx->m_DriverInfo.LimitLoopUnrollToRemainingBudget() && totalInstCountInShader < LoopUnrollThreshold &&
+        !IsTinyTripCountLoop()) {
+      // The shader-size threshold bounds the whole shader, not each loop separately. Limit a loop's threshold to the
+      // budget still unused (but not below the high-pressure threshold), so one loop does not usually exhaust it and
+      // push all later loops to the high-pressure settings. The limit is soft: LLVM may still boost the threshold
+      // (UP.MaxPercentThresholdBoost) for a loop that simplifies when fully unrolled.
+      unsigned Remaining = std::max(LoopUnrollThreshold - totalInstCountInShader, HighRegPressureThreshold);
+      UP.Threshold = std::min(UP.Threshold, Remaining);
+      UP.PartialThreshold = std::min(UP.PartialThreshold, Remaining);
+    }
   } else // for high registry pressure shaders, limit the unrolling to small loops and only fully unroll
   {
-    unsigned HighRegPressureThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThresholdForHighRegPressure);
-    if (!IGC_IS_FLAG_SET(SetLoopUnrollThresholdForHighRegPressure) &&
-        ctx->getModuleMetaData()->compOpt.SetLoopUnrollThresholdForHighRegPressure > 0) {
-      HighRegPressureThreshold = ctx->getModuleMetaData()->compOpt.SetLoopUnrollThresholdForHighRegPressure;
-    }
     UP.Threshold = HighRegPressureThreshold;
     UP.PartialThreshold = HighRegPressureThreshold;
     // This is similiar to LLVM OptForSize scenario in LoopUnrollPass
     UP.MaxPercentThresholdBoost = IGC_GET_FLAG_VALUE(SetLoopUnrollMaxPercentThresholdBoostForHighRegPressure);
   }
 
-  unsigned MaxTripCount = SE.getSmallConstantMaxTripCount(L);
-  const unsigned MaxTripCountToUseUpperBound = 4;
   if (MaxTripCount && MaxTripCount <= MaxTripCountToUseUpperBound) {
     UP.UpperBound = true;
     UP.Force = true;
