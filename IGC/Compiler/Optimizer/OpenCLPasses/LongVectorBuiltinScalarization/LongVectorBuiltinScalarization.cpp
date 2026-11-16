@@ -470,8 +470,11 @@ template <bool IsShuffle2> bool lowerShuffle(CallInst &CI, const MangledFunction
     Value *Idx = B.CreateAnd(MaskElem, ConstantInt::get(IdxTy, IndexRange - 1));
     Value *SrcIdx = IndexRange == SrcElements ? Idx : B.CreateURem(Idx, Width);
     Value *R = B.CreateExtractElement(X, SrcIdx);
-    if (Y)
-      R = B.CreateSelect(B.CreateICmpULT(Idx, Width), R, B.CreateExtractElement(Y, SrcIdx));
+    if (Y) {
+      Value *YElem = B.CreateExtractElement(Y, SrcIdx);
+      Value *InX = B.CreateICmpULT(Idx, Width);
+      R = B.CreateSelect(InX, R, YElem);
+    }
     if (IndexRange != NumIndices)
       R = B.CreateSelect(B.CreateICmpULT(Idx, ConstantInt::get(IdxTy, NumIndices)), R,
                          Constant::getNullValue(SrcTy->getElementType()));
@@ -573,7 +576,9 @@ template <bool IsAligned> bool lowerVStoreHalfN(CallInst &CI, const MangledFunct
   auto Convert = [&](Value *Lane) { return createScalarCall(B, CI, Conv, {B.CreateExtractElement(Data, Lane)}); };
   if (E.isLoop()) {
     E.emit(nullptr, [&](Value *Lane) -> Value * {
-      B.CreateAlignedStore(Convert(Lane), B.CreateInBoundsGEP(HalfTy, Addr, Lane), Align(2));
+      Value *HalfPtr = B.CreateInBoundsGEP(HalfTy, Addr, Lane);
+      Value *Half = Convert(Lane);
+      B.CreateAlignedStore(Half, HalfPtr, Align(2));
       return nullptr;
     });
   } else {
@@ -703,7 +708,9 @@ template <bool IsSigned> bool lowerMulExtended(CallInst &CI, const MangledFuncti
       Value *XI = B.CreateExtractElement(X, Lane);
       return MulHi(XI, B.CreateExtractElement(Y, Lane));
     });
-    B.CreateStore(B.CreateMul(X, Y), B.CreateStructGEP(STy, Ptr, 0));
+    Value *LoPtr = B.CreateStructGEP(STy, Ptr, 0);
+    Value *Lo = B.CreateMul(X, Y);
+    B.CreateStore(Lo, LoPtr);
     B.CreateStore(Hi, B.CreateStructGEP(STy, Ptr, 1));
     CI.eraseFromParent();
     return true;
@@ -714,8 +721,12 @@ template <bool IsSigned> bool lowerMulExtended(CallInst &CI, const MangledFuncti
   E.emit(nullptr, [&](Value *Lane) -> Value * {
     Value *XI = B.CreateExtractElement(X, Lane);
     Value *YI = B.CreateExtractElement(Y, Lane);
-    B.CreateStore(B.CreateMul(XI, YI), B.CreateInBoundsGEP(ElemTy, LoBase, Lane));
-    B.CreateStore(MulHi(XI, YI), B.CreateInBoundsGEP(ElemTy, HiBase, Lane));
+    Value *LoPtr = B.CreateInBoundsGEP(ElemTy, LoBase, Lane);
+    Value *Lo = B.CreateMul(XI, YI);
+    B.CreateStore(Lo, LoPtr);
+    Value *HiPtr = B.CreateInBoundsGEP(ElemTy, HiBase, Lane);
+    Value *Hi = MulHi(XI, YI);
+    B.CreateStore(Hi, HiPtr);
     return nullptr;
   });
   CI.eraseFromParent();

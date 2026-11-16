@@ -445,9 +445,10 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
                                             ? !m_pCGCtx->platform.isRayQueryReturnOptimizationEnabled()
                                             : skipInitOverride == IGC::TriboolFlag::Disabled;
 
-      IRB.createTraceRayInlinePrologue(getStackPtr(IRB, rqObject), Vec, IRB.getRootNodePtr(I->getBVH()), flags,
-                                       I->getMask(), I->getComparisonValue(), I->getTMax(), false, true, nullptr,
-                                       nullptr, nullptr, initializeHitRecords);
+      auto *RootNodePtr = IRB.getRootNodePtr(I->getBVH());
+      auto *StackPtr = getStackPtr(IRB, rqObject);
+      IRB.createTraceRayInlinePrologue(StackPtr, Vec, RootNodePtr, flags, I->getMask(), I->getComparisonValue(),
+                                       I->getTMax(), false, true, nullptr, nullptr, nullptr, initializeHitRecords);
 
       auto *hasAcceptHitAndEndSearchFlag =
           IRB.CreateAnd(flags, static_cast<uint32_t>(RTStackFormat::RayFlags::ACCEPT_FIRST_HIT_AND_END_SEARCH));
