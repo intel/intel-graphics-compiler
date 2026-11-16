@@ -39,7 +39,6 @@ if(IGC_OPTION__SPIRV_TOOLS_MODE STREQUAL PREBUILDS_MODE_NAME)
 
 else() #By default use build from sources
  message(STATUS "[SPIRV-Tools] : IGC_OPTION__SPIRV_TOOLS_MODE set to Source")
- message(STATUS "[SPIRV-Tools] : IGC_OPTION__USE_PREINSTALLED_SPRIV_HEADERS set to OFF")
  message(STATUS "[SPIRV-Tools] : Building from source")
  message(STATUS "[SPIRV-Tools] : Current source dir: ${CMAKE_CURRENT_SOURCE_DIR}")
 

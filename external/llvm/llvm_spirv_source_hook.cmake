@@ -75,6 +75,11 @@ if(NOT EXISTS "${IGC_OPTION__SPIRV_TRANSLATOR_SOURCE_DIR}")
     "[SPIRV] Cannot find SPIRV translator sources, please provide sources path by IGC_OPTION__SPIRV_TRANSLATOR_SOURCE_DIR flag")
 endif()
 
+# Use the manifest SPIRV-Headers checkout so the translator does not FetchContent them from GitHub.
+set(_spirv_headers_dir "${CMAKE_CURRENT_LIST_DIR}/../../../SPIRV-Headers")
+if(NOT DEFINED LLVM_EXTERNAL_SPIRV_HEADERS_SOURCE_DIR AND EXISTS "${_spirv_headers_dir}")
+  set(LLVM_EXTERNAL_SPIRV_HEADERS_SOURCE_DIR "${_spirv_headers_dir}")
+endif()
 register_llvm_external_project(spirv ${IGC_OPTION__SPIRV_TRANSLATOR_SOURCE_DIR})
 
 endif()
