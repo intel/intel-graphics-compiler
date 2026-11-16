@@ -93,7 +93,7 @@ void igcDumpModuleIR(CodeGenContext *ctx, StringRef pmName, const Module &M, Str
                   .ShaderName(ctx->shaderName)
                   .Type(ctx->type)
                   .Hash(ctx->hash)
-                  .Pass(fullPassName, std::optional<uint32_t>(ctx->m_numPasses++))
+                  .Pass(fullPassName, std::optional<uint32_t>(ctx->GetPassCounter()++))
                   .StagedInfo(ctx)
                   .Extension("ll");
 

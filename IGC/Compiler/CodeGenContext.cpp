@@ -378,7 +378,7 @@ void CodeGenContext::print(llvm::raw_ostream &stream) const {
   PRINT_CTX_MEMBER(m_inputCount);
   PRINT_CTX_MEMBER(m_numGradientSinked);
   PRINT_CTX_MEMBER(m_NumGRFPerThread);
-  PRINT_CTX_MEMBER(m_numPasses);
+  stream << "\nm_numPasses: " << GetPassCounter();
   PRINT_CTX_MEMBER(m_sampler);
   PRINT_CTX_MEMBER(m_SIMDInfo.simd8);
   PRINT_CTX_MEMBER(m_SIMDInfo.simd16);

@@ -579,14 +579,14 @@ bool shouldSkipPassNewPM(CodeGenContext *ctx, llvm::StringRef passName, llvm::St
     checkedToggles = true;
     hasToggles = getPassToggles(toggles);
   }
-  if (hasToggles && ctx->m_numPasses < 1024 && toggles[ctx->m_numPasses]) {
+  if (hasToggles && ctx->GetPassCounter() < 1024 && toggles[ctx->GetPassCounter()]) {
     errs() << "Skipping pass: '" << passName << "\n";
-    ctx->m_numPasses++;
+    ctx->GetPassCounter()++;
     return true;
   }
 
   if (IGC_IS_FLAG_ENABLED(ShaderDisableOptPassesAfter) &&
-      ctx->m_numPasses > IGC_GET_FLAG_VALUE(ShaderDisableOptPassesAfter) && pmName == "OPT") {
+      ctx->GetPassCounter() > IGC_GET_FLAG_VALUE(ShaderDisableOptPassesAfter) && pmName == "OPT") {
     errs() << "Skipping optimization pass: '" << passName
            << "' (threshold: " << IGC_GET_FLAG_VALUE(ShaderDisableOptPassesAfter) << ").\n";
     return true;
@@ -605,7 +605,7 @@ bool shouldSkipPassNewPM(CodeGenContext *ctx, llvm::StringRef passName, llvm::St
     const SkipCommand *skippedByCommand = findApplicableSkipCommand(pdc, currentPassName);
     if (skippedByCommand) {
       displaySkippedPass(pdc, currentPassName, skippedByCommand);
-      ctx->m_numPasses++;
+      ctx->GetPassCounter()++;
       pdc.passCount++;
       return true;
     }
@@ -633,14 +633,14 @@ void IGCPassManager::add(Pass *P) {
     checkedToggles = true;
     hasToggles = getPassToggles(toggles);
   }
-  if (hasToggles && m_pContext->m_numPasses < 1024 && toggles[m_pContext->m_numPasses]) {
+  if (hasToggles && m_pContext->GetPassCounter() < 1024 && toggles[m_pContext->GetPassCounter()]) {
     errs() << "Skipping pass: '" << P->getPassName() << "\n";
-    m_pContext->m_numPasses++;
+    m_pContext->GetPassCounter()++;
     return;
   }
 
   if (IGC_IS_FLAG_ENABLED(ShaderDisableOptPassesAfter) &&
-      m_pContext->m_numPasses > IGC_GET_FLAG_VALUE(ShaderDisableOptPassesAfter) && m_name == "OPT") {
+      m_pContext->GetPassCounter() > IGC_GET_FLAG_VALUE(ShaderDisableOptPassesAfter) && m_name == "OPT") {
     errs() << "Skipping optimization pass: '" << P->getPassName()
            << "' (threshold: " << IGC_GET_FLAG_VALUE(ShaderDisableOptPassesAfter) << ").\n";
     return;
@@ -661,7 +661,7 @@ void IGCPassManager::add(Pass *P) {
     const SkipCommand *skippedByCommand = findApplicableSkipCommand(pdc, currentPassName);
     if (skippedByCommand) {
       displaySkippedPass(pdc, currentPassName, skippedByCommand);
-      m_pContext->m_numPasses++;
+      m_pContext->GetPassCounter()++;
       pdc.passCount++;
       return;
     }
@@ -775,7 +775,7 @@ void IGCPassManager::addPrintPass(Pass *P, bool isBefore) {
                   .ShaderName(m_pContext->shaderName)
                   .Type(m_pContext->type)
                   .Hash(m_pContext->hash)
-                  .Pass(fullPassName, std::optional<uint32_t>(m_pContext->m_numPasses++))
+                  .Pass(fullPassName, std::optional<uint32_t>(m_pContext->GetPassCounter()++))
                   .StagedInfo(m_pContext)
                   .Extension("ll");
 

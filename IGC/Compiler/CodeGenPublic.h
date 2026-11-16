@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "common/debug/Debug.hpp"
 #include "DebugInfo/DbgVariableTypes.hpp"
 #include "common/debug/Dump.hpp"
+#include <memory>
 #include <set>
 #include <string.h>
 #include <sstream>
@@ -973,7 +974,22 @@ public:
   CShader *m_prevShader = nullptr;
 
   // For IR dump after pass
-  unsigned m_numPasses = 0;
+  std::unique_ptr<uint32_t> m_ownedPassCounter;
+  uint32_t *m_pPassCounter = nullptr;
+  uint32_t &GetPassCounter() {
+    if (!m_pPassCounter) {
+      m_ownedPassCounter = std::make_unique<uint32_t>(0);
+      m_pPassCounter = m_ownedPassCounter.get();
+    }
+    return *m_pPassCounter;
+  }
+  const uint32_t &GetPassCounter() const { return const_cast<CodeGenContext *>(this)->GetPassCounter(); }
+  void SetSharedPassCounter(uint32_t *counter) {
+    IGC_ASSERT(counter);
+    IGC_ASSERT(!m_pPassCounter || m_pPassCounter == counter);
+    if (!m_pPassCounter)
+      m_pPassCounter = counter;
+  }
   bool m_threadCombiningOptDone = false;
 
   void *m_ConstantBufferReplaceShaderPatterns = nullptr;
