@@ -923,17 +923,46 @@ CVariable *CShader::GetHWTID() {
           encoder.Mad(m_HW_TID, m_HW_TID, ImmToVariable(10, ISA_TYPE_UD), tID);
           encoder.Push();
         } else {
-          uint32_t bitmask = BITMASK(18);
+       // Subslices per slice and threads per EU are not powers of 2, so a concatenation of the
+       // sr0 fields exceeds the thread count the UMD sizes the stateless scratch buffer for.
+       // HWTID = ((SliceID * SubSlicesPerSlice + SubSliceID) * EUsPerSubSlice + EUID) * ThreadsPerEU + TID
+          const GT_SYSTEM_INFO gtSystemInfo = m_Platform->GetGTSystemInfo();
+          IGC_ASSERT(gtSystemInfo.MaxSlicesSupported > 0 && gtSystemInfo.EUCount > 0);
+          const uint32_t subSlicesPerSlice =
+              gtSystemInfo.MaxSubSlicesSupported / std::max(gtSystemInfo.MaxSlicesSupported, 1u);
+          const uint32_t threadsPerEu = gtSystemInfo.ThreadCount / std::max(gtSystemInfo.EUCount, 1u);
+
           m_HW_TID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWTID");
+          CVariable *sliceID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "SR_14_17");
           encoder.SetNoMask();
           encoder.SetSrcSubReg(0, 0);
-          encoder.And(m_HW_TID, GetSR0(), ImmToVariable(bitmask, ISA_TYPE_UD));
+          encoder.Shr(sliceID, GetSR0(), ImmToVariable(14, ISA_TYPE_UD));
+          encoder.Push();
+          encoder.And(sliceID, sliceID, ImmToVariable(BITMASK(4), ISA_TYPE_UD));
           encoder.Push();
 
-          // Remove bit [13:12]
-          RemoveBitRange(m_HW_TID, 12, 2);
-          // Remove bit [7]
-          RemoveBitRange(m_HW_TID, 7, 1);
+          CVariable *ssID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "SR_8_11");
+          encoder.Shr(ssID, GetSR0(), ImmToVariable(8, ISA_TYPE_UD));
+          encoder.Push();
+          encoder.And(ssID, ssID, ImmToVariable(BITMASK(4), ISA_TYPE_UD));
+          encoder.Push();
+
+          CVariable *euID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "SR_4_6");
+          encoder.Shr(euID, GetSR0(), ImmToVariable(4, ISA_TYPE_UD));
+          encoder.Push();
+          encoder.And(euID, euID, ImmToVariable(BITMASK(3), ISA_TYPE_UD));
+          encoder.Push();
+
+          CVariable *tID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "SR_0_3");
+          encoder.And(tID, GetSR0(), ImmToVariable(BITMASK(4), ISA_TYPE_UD));
+          encoder.Push();
+
+          encoder.Mad(m_HW_TID, sliceID, ImmToVariable(subSlicesPerSlice, ISA_TYPE_UD), ssID);
+          encoder.Push();
+          encoder.Mad(m_HW_TID, m_HW_TID, ImmToVariable(gtSystemInfo.MaxEuPerSubSlice, ISA_TYPE_UD), euID);
+          encoder.Push();
+          encoder.Mad(m_HW_TID, m_HW_TID, ImmToVariable(threadsPerEu, ISA_TYPE_UD), tID);
+          encoder.Push();
         }
 
         return m_HW_TID;
