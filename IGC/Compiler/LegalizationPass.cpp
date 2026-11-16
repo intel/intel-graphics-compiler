@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Analysis/VectorUtils.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
@@ -722,6 +723,11 @@ static IGCLLVM::FixedVectorType *getBoolVectorByteType(Type *Ty) {
   return IGCLLVM::FixedVectorType::get(Type::getInt8Ty(Ty->getContext()), VTy->getNumElements() / 8);
 }
 
+static bool isSubByteBoolVector(Type *Ty) {
+  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+  return VTy && VTy->getElementType()->isIntegerTy(1) && VTy->getNumElements() < 8;
+}
+
 // An incoming legalized after its phi leaves
 //   bitcast (bitcast X to <N x i1>) to <M x i8>
 // The emitter cannot alias a bool vector, so bitcast X to bytes directly.
@@ -1023,18 +1029,58 @@ void Legalization::visitPHINode(PHINode &phi) {
     Type *newType = Type::getInt32Ty(context);
     PHINode *newPhi = PHINode::Create(newType, nbOperand, "", IGCLLVM::insertPosition(&phi));
     newPhi->setDebugLoc(phi.getDebugLoc());
+    // Entries for the same predecessor must carry the same value.
+    SmallDenseMap<BasicBlock *, Value *, 4> NewSourceByPred;
     for (unsigned int i = 0; i < nbOperand; i++) {
-      Value *source = phi.getOperand(i);
-      Instruction *terminator = phi.getIncomingBlock(i)->getTerminator();
-      m_builder->SetInsertPoint(terminator);
-      Value *newSource = m_builder->CreateSExt(source, newType);
-      newPhi->addIncoming(newSource, phi.getIncomingBlock(i));
+      BasicBlock *Pred = phi.getIncomingBlock(i);
+      Value *&NewSource = NewSourceByPred[Pred];
+      if (!NewSource) {
+        m_builder->SetInsertPoint(Pred->getTerminator());
+        NewSource = m_builder->CreateSExt(phi.getOperand(i), newType);
+      }
+      newPhi->addIncoming(NewSource, Pred);
     }
     Instruction *boolean = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, newPhi, ConstantInt::get(newType, 0),
                                            "", IGCLLVM::insertPosition(IGCLLVM::getFirstNonPHI(phi.getParent())));
     boolean->setDebugLoc(phi.getDebugLoc());
     phi.replaceAllUsesWith(boolean);
     phi.eraseFromParent();
+  } else if (isSubByteBoolVector(phi.getType())) {
+    auto *BoolVecTy = cast<IGCLLVM::FixedVectorType>(phi.getType());
+    SmallVector<PHINode *, 8> Lanes;
+    for (unsigned Lane = 0; Lane < BoolVecTy->getNumElements(); ++Lane) {
+      PHINode *LanePhi =
+          PHINode::Create(m_builder->getInt1Ty(), phi.getNumIncomingValues(), "", IGCLLVM::insertPosition(&phi));
+      LanePhi->setDebugLoc(phi.getDebugLoc());
+      for (unsigned i = 0; i < phi.getNumIncomingValues(); ++i) {
+        BasicBlock *Pred = phi.getIncomingBlock(i);
+        int IncomingIndex = LanePhi->getBasicBlockIndex(Pred);
+        Value *In = IncomingIndex >= 0 ? LanePhi->getIncomingValue(IncomingIndex)
+                                       : findScalarElement(phi.getIncomingValue(i), Lane);
+        if (!In) {
+          m_builder->SetInsertPoint(Pred->getTerminator());
+          In = m_builder->CreateExtractElement(phi.getIncomingValue(i), m_builder->getInt32(Lane));
+        }
+        LanePhi->addIncoming(In, Pred);
+      }
+      Lanes.push_back(LanePhi);
+    }
+    m_builder->SetInsertPoint(IGCLLVM::getFirstNonPHI(phi.getParent()));
+    Value *Bools = PoisonValue::get(BoolVecTy);
+    InsertElementInst *FirstInsert = nullptr;
+    for (unsigned Lane = 0; Lane < Lanes.size(); ++Lane) {
+      Bools = m_builder->CreateInsertElement(Bools, Lanes[Lane], m_builder->getInt32(Lane));
+      if (!FirstInsert)
+        FirstInsert = cast<InsertElementInst>(Bools);
+    }
+    phi.replaceAllUsesWith(Bools);
+    m_instructionsToRemove.insert(&phi);
+    bool IsLastPhi = !isa<PHINode>(phi.getNextNode());
+    for (PHINode *LanePhi : Lanes)
+      visitPHINode(*LanePhi);
+    // The visitor skips the rebuilt insert chain after a block's last phi.
+    if (IsLastPhi)
+      visitInsertElementInst(*FirstInsert);
   } else if (auto *ByteVecTy = getBoolVectorByteType(phi.getType())) {
     // Merge bytes, so visitExtractElementInst lowers the extracts from the bitcast.
     PHINode *NewPhi = PHINode::Create(ByteVecTy, phi.getNumIncomingValues(), "", IGCLLVM::insertPosition(&phi));
