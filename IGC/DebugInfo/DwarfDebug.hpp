@@ -720,6 +720,10 @@ private:
   FPStackCallFuncInfo FPFuncInfo;
   void computeFPFuncInfo();
 
+  /// \brief Return the first Gen IP after the instruction that sets FP, if known.
+  /// Instructions of the body can be scheduled before it.
+  std::optional<uint64_t> getFPValidStartIP() const;
+
   /// \brief Decide whether a variable's location can be inlined directly in
   /// the DIE.
   bool canInlineToDIE(const DbgVarInstEntry *dbgEntry, const VISAVariableLocation &Loc,

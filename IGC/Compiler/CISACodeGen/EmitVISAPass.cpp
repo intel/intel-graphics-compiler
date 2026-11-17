@@ -658,6 +658,7 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function
 
 bool EmitPass::runOnFunction(llvm::Function &F) {
   m_currFuncHasSubroutine = false;
+  m_FPInitVisaIdRange.reset();
 
   m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -1291,6 +1292,9 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
     // Debug emitter will decide whether it needs to use it.
     if (m_currShader->hasFP()) {
       static_cast<ScalarVisaModule *>(m_pDebugEmitter->getCurrentVISA())->setFramePtr(m_currShader->GetFP());
+    }
+    if (m_FPInitVisaIdRange) {
+      m_pDebugEmitter->getCurrentVISA()->setFPInitVisaIdRange(m_FPInitVisaIdRange->first, m_FPInitVisaIdRange->second);
     }
     DebugInfoData::extractAddressClass(F);
     m_currShader->GetDebugInfoData().addVISAModule(&F, m_pDebugEmitter->getCurrentVISA());
@@ -20977,8 +20981,14 @@ void EmitPass::emitPushFrameToStack(Function *ParentFunction, unsigned &pushSize
   CVariable *pSP = m_currShader->GetSP();
 
   // Set FP = SP
+  // The copy may be split into several vISA instructions (64-bit emulation),
+  // record all of them, so debug info knows where FP becomes valid.
+  unsigned FirstVisaId = m_encoder->GetVISAKernel()->getvIsaInstCount() + 1;
   m_encoder->Copy(pFP, pSP);
   m_encoder->Push();
+  unsigned LastVisaId = m_encoder->GetVISAKernel()->getvIsaInstCount();
+  if (!m_FPInitVisaIdRange && LastVisaId + 1 != FirstVisaId)
+    m_FPInitVisaIdRange = {FirstVisaId, LastVisaId};
 
   // Since we use unaligned oword writes, pushSize should be OW aligned address
   pushSize = int_cast<unsigned>(llvm::alignTo(pushSize, SIZE_OWORD));

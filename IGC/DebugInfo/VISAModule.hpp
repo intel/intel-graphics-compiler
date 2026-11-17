@@ -373,6 +373,7 @@ private:
 
   unsigned int m_currentVisaId = 0;
   unsigned int m_catchAllVisaId = 0;
+  std::optional<std::pair<unsigned, unsigned>> m_FPInitVisaIdRange;
 
   InstInfoMap m_instInfoMap;
   GenISARangeIndex m_genISARangeIndex;
@@ -552,6 +553,10 @@ public:
 
   unsigned int GetCurrentVISAId() { return m_currentVisaId; }
   void SetVISAId(unsigned ID) { m_currentVisaId = ID; }
+
+  // vISA ids [first, last] of the instructions that set FP in the function prologue.
+  void setFPInitVisaIdRange(unsigned First, unsigned Last) { m_FPInitVisaIdRange = {First, Last}; }
+  std::optional<std::pair<unsigned, unsigned>> getFPInitVisaIdRange() const { return m_FPInitVisaIdRange; }
 
   ObjectType GetType() const { return m_objectType; }
   void SetType(ObjectType t) { m_objectType = t; }

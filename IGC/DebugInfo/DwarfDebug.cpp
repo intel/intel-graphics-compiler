@@ -1789,6 +1789,28 @@ void DwarfDebug::computeFPFuncInfo() {
   }
 }
 
+std::optional<uint64_t> DwarfDebug::getFPValidStartIP() const {
+  auto FPInitVisaIdRange = m_pModule->getFPInitVisaIdRange();
+  if (!FPInitVisaIdRange)
+    return std::nullopt;
+
+  // FP is set by one or more vISA instructions, each of which can be split into
+  // several Gen instructions. FP is valid after the last one of them.
+  const auto &VisaToGen = VisaDbgInfo->getVisaToGenLUT();
+  std::optional<unsigned> LastGenIP;
+  for (unsigned VisaId = FPInitVisaIdRange->first; VisaId <= FPInitVisaIdRange->second; ++VisaId) {
+    auto It = VisaToGen.find(VisaId);
+    if (It == VisaToGen.end() || It->second.empty())
+      continue;
+    unsigned GenIP = *std::max_element(It->second.begin(), It->second.end());
+    LastGenIP = std::max(LastGenIP.value_or(GenIP), GenIP);
+  }
+  if (!LastGenIP)
+    return std::nullopt;
+
+  return *LastGenIP + VisaDbgInfo->getGenToSizeInBytesLUT().lookup(*LastGenIP);
+}
+
 void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vector<DbgVarRangeInfo> &Ranges,
                                              std::vector<VarLocation> &ResolvedLocations) {
   using IntervalTy = decltype(DbgDecoder::LiveIntervalGenISA::start);
@@ -1832,6 +1854,11 @@ void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vec
       if (FPFuncInfo.setFunctionIPRange) {
         fpStart = FPFuncInfo.PrologueEndIP;
         fpEnd = std::min(fpEnd, FPFuncInfo.EpilogueStartIP);
+      }
+      // FP-based location is valid only after FP is set.
+      if (m_pModule->getStorageIsStackBased(dbgEntry).value_or(false)) {
+        if (auto FPValidStartIP = getFPValidStartIP())
+          fpStart = std::max(fpStart, *FPValidStartIP);
       }
 
       if (fpStart >= fpEnd)
@@ -1933,9 +1960,22 @@ bool DwarfDebug::canInlineToDIE(const DbgVarInstEntry *dbgEntry, const VISAVaria
   // the base (private-base reg or BE_FP) is valid throughout the inlined scope.
   // Outermost-scope ones must go through .debug_loc so that the emitted range
   // is limited to the interval where the base is valid.
+  // FP-based ones can't be inlined if the scope starts before FP is set.
   bool IsOutermostScope = Scope == LScopes.getCurrentFunctionScope();
-  if (isMem(dbgEntry, Loc, m_pModule) && !IsOutermostScope)
+  if (isMem(dbgEntry, Loc, m_pModule) && !IsOutermostScope) {
+    if (!m_pModule->getStorageIsStackBased(dbgEntry).value_or(false))
+      return true;
+    auto FPValidStartIP = getFPValidStartIP();
+    if (!FPValidStartIP)
+      return true;
+    for (const auto &R : Scope->getRanges()) {
+      for (const auto &[StartIP, EndIP] : m_pModule->getGenISARange(*VisaDbgInfo, R)) {
+        if (StartIP < *FPValidStartIP)
+          return false;
+      }
+    }
     return true;
+  }
 
   return false;
 }

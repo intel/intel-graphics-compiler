@@ -981,6 +981,9 @@ private:
 
   bool m_currFuncHasSubroutine = false;
 
+  // vISA ids [first, last] of the instructions setting FP = SP in the current function.
+  std::optional<std::pair<unsigned, unsigned>> m_FPInitVisaIdRange;
+
   bool m_canGenericPointToPrivate = false;
   bool m_canGenericPointToLocal = false;
 
