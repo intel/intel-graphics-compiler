@@ -55,6 +55,13 @@
 
 ; CHECK-NEXT: [[ResCast: [^ ]+]] = bitcast <[[CT]]> [[Res]] to i64
 
+; COM: |>========= AND WIDE <32 x i64> ==========<|
+; COM: The doubled i32 width exceeds the max exec size, so the op is split.
+; CHECK: @test_and_wide
+; CHECK: and <32 x i32>
+; CHECK: and <32 x i32>
+; CHECK-NOT: and <64 x i32>
+
 define dllexport spir_kernel void @test_or(<8 x i64> %left, <8 x i64> %right, i32 %out) {
   %or64 = or <8 x i64> %left, %right
   tail call void @llvm.genx.oword.st.v8i64(i32 %out, i32 0, <8 x i64> %or64)
@@ -77,5 +84,12 @@ define dllexport spir_kernel void @test_and_i64(i64 %left, i64 %right, i32 %out)
   ret void
 }
 
+define dllexport spir_kernel void @test_and_wide(<32 x i64> %left, <32 x i64> %right, i32 %out) {
+  %and64 = and <32 x i64> %left, %right
+  tail call void @llvm.genx.oword.st.v32i64(i32 %out, i32 0, <32 x i64> %and64)
+  ret void
+}
+
 declare void @llvm.genx.oword.st.v8i64(i32, i32, <8 x i64>)
+declare void @llvm.genx.oword.st.v32i64(i32, i32, <32 x i64>)
 declare void @llvm.genx.oword.st.v1i64(i32, i32, <1 x i64>)

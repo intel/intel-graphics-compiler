@@ -524,6 +524,13 @@ Value *GenXEmulate::Emu64Expander::expandBitLogicOp(BinaryOperator &Op) {
   Type *NextBinOpTy = convertI64TypeToI32(PrevBinOpTy);
   IGC_ASSERT(NextBinOpTy);
 
+  // Legalization has already run, so the doubled width must still fit into
+  // the max exec size; split into two halves otherwise.
+  constexpr unsigned MaxI32ExecSize = 32;
+  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(NextBinOpTy);
+      VTy && VTy->getNumElements() > MaxI32ExecSize)
+    return expandBitwiseOp(Op);
+
   Value *Op0 = Op.getOperand(0);
   Value *Op1 = Op.getOperand(1);
 
