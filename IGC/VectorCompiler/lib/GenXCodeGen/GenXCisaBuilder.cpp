@@ -5131,8 +5131,7 @@ void GenXKernelBuilder::deduceRegion(Region *R, bool IsDest,
   }
 
   if (R->Width == R->NumElements) {
-    // Use VStride 0 on a 1D region. This is necessary for src0 in line or
-    // pln, so we may as well do it for everything.
+    // Use VStride 0 on a 1D region.
     R->VStride = 0;
   }
 

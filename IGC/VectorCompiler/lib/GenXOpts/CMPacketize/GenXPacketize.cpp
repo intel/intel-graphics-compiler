@@ -1206,11 +1206,6 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
       // some intrinsics are uniform therefore should not get here
       IGC_ASSERT(!isUniformIntrinsic(IID));
       switch (IID) {
-      case GenXIntrinsic::genx_line:
-      case GenXIntrinsic::genx_pln:
-      case GenXIntrinsic::genx_dp2:
-      case GenXIntrinsic::genx_dp3:
-      case GenXIntrinsic::genx_dp4:
       case GenXIntrinsic::genx_ssdp4a:
       case GenXIntrinsic::genx_sudp4a:
       case GenXIntrinsic::genx_usdp4a:

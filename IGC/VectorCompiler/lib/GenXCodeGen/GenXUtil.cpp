@@ -2102,9 +2102,9 @@ Type *genx::getCorrespondingVectorOrScalar(Type *Ty) {
  *
  * Return:  bit N set if execution size 1<<N is allowed
  *
- * Most instructions have a minimum width of 1. But some instructions,
- * such as dp4 and lrp, have a minimum width of 4, and legalization cannot
- * allow such an instruction to be split to a smaller width.
+ * Most instructions have a minimum width of 1. But some instructions
+ * have a minimum width of 4, and legalization cannot allow such an
+ * instruction to be split to a smaller width.
  */
 unsigned genx::getExecSizeAllowedBits(const Instruction *Inst,
                                       const GenXSubtarget *ST) {

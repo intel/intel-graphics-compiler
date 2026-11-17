@@ -1197,7 +1197,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
                                           unsigned StartIdx) {
   auto Head = B.getHeadIgnoreGStore();
   // Prepare to keep track of whether an instruction with a minimum width
-  // (e.g. dp4) would be split too small, and whether we need to unbale.
+  // would be split too small, and whether we need to unbale.
   unsigned ExecSizeAllowedBits = adjustTwiceWidthOrFixed4(B);
   if (!vc::canUseSIMD32(*(Head->Inst->getModule()), ST->hasFusedEU()))
     // Actually, we should legalize with these more strict requirements only FGs
