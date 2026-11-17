@@ -1832,6 +1832,19 @@ Type *TransposeHelper::getFirstNonScalarSourceElementType(const GetElementPtrIns
   return currTy;
 }
 
+/// True if the GEP steps over a vector that is not a whole number of promoted lanes,
+/// e.g. `<2 x i8>` on i32 lanes. getArrSizeAndEltType can't express such a step in lanes.
+static bool hasSubLaneVectorStride(const GetElementPtrInst &GEP, const DataLayout &DL, uint32_t LaneBytes) {
+  if (LaneBytes == 0)
+    return false;
+  for (auto GTI = gep_type_begin(GEP), GTE = gep_type_end(GEP); GTI != GTE; ++GTI) {
+    auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(GTI.getIndexedType());
+    if (VTy && DL.getTypeAllocSize(VTy) % LaneBytes != 0)
+      return true;
+  }
+  return false;
+}
+
 void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *idx) {
   // TODO: Add support for GEP attributes: nsw, nuw, inbounds. Currently, neigher the old nor the new algorithm handles
   // them.
@@ -1909,7 +1922,11 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *
   //   operand[2]=1 -> field 1 of complex (= float3), offset = 12B
   //   operand[3]=2 -> field 2 of float3  (= float),  offset = 8B
   //   total = 20B -> element 20/4 = 5 in <6 x float> ✓
-  if (pGEP->getSourceElementType()->isStructTy() && m_promotedLaneBytes > 0) {
+  //
+  // A GEP striding over a sub-lane vector takes this byte path too; SOALayoutChecker has
+  // already proven its offset lane-aligned.
+  if ((pGEP->getSourceElementType()->isStructTy() || hasSubLaneVectorStride(*pGEP, m_DL, m_promotedLaneBytes)) &&
+      m_promotedLaneBytes > 0) {
     if (!pGEP->use_empty()) {
       IRBuilder<> IRB(pGEP);
       IGC_ASSERT_MESSAGE(pGEP->getNumIndices() >= 1, "Struct GEP must have at least one index");
@@ -1963,7 +1980,7 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *
         }
       }
       IGC_ASSERT_MESSAGE(ByteOffset % (int64_t)m_promotedLaneBytes == 0,
-                         "Struct field byte offset not aligned to promoted lane size");
+                         "GEP byte offset not aligned to promoted lane size");
       Value *ElemIdx = IRB.CreateAdd(idx, IRB.getInt32((uint32_t)(ByteOffset / (int64_t)m_promotedLaneBytes)));
       if (DynLaneOffset) {
         ElemIdx = IRB.CreateAdd(ElemIdx, DynLaneOffset);
