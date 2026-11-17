@@ -7,9 +7,14 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SetVector.h"
+#include "llvm/ADT/SmallPtrSet.h"
+#include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/Support/KnownBits.h"
 #include "llvm/Support/MathExtras.h"
+#include "llvm/Transforms/Utils/ValueMapper.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "common/IGCIRBuilder.h"
@@ -45,6 +50,8 @@ private:
   bool resolvePhi(PHINode *Phi);
   bool resolveStore(Instruction *Store);
   bool resolveExtractElement(ExtractElementInst *Extract);
+  bool collectHoistable(Value *V, Instruction *Load, SmallSetVector<Instruction *, 8> &ToHoist);
+  bool resolveExtractElementToLoad(ExtractElementInst *Extract);
   bool resolveInsertElement(InsertElementInst *Insert);
 
 private:
@@ -55,7 +62,10 @@ private:
   SmallSetVector<InsertElementInst *, 4> InsertElements;
   SmallSetVector<Instruction *, 4> Stores;
   SmallSetVector<Instruction *, 4> ResolvedLoads;
-  std::map<Instruction *, AllocaInst *> InstructionToAlloca;
+  // Inserts erased by resolveStore, so that resolveInsertElement skips them.
+  SmallPtrSet<InsertElementInst *, 16> ErasedInserts;
+  // Private-memory copies of long vectors read by variable-index extracts.
+  DenseMap<Value *, AllocaInst *> VectorToAlloca;
 };
 
 IGC_INITIALIZE_PASS_BEGIN(LongVectorsOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
@@ -197,6 +207,26 @@ void LongVectorsOpt::gatherInstructions(Function &F) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// An out-of-range index makes extractelement produce poison, but the element load would read outside the vector.
+// Poison may be refined to any element, so the index is clamped into range.
+inline Value *getInRangeIndex(IGCLLVM::IRBuilder<> &Builder, Value *Idx, uint32_t NumElements) {
+  const DataLayout &DL = Builder.GetInsertBlock()->getModule()->getDataLayout();
+  KnownBits Known = computeKnownBits(Idx, DL);
+  if (Known.getMaxValue().ult(NumElements)) {
+    return Idx;
+  }
+
+  if (!llvm::isGuaranteedNotToBePoison(Idx)) {
+    Idx = Builder.CreateFreeze(Idx);
+  }
+  Constant *MaxIdx = ConstantInt::get(Idx->getType(), NumElements - 1);
+  if (isPowerOf2_32(NumElements)) {
+    return Builder.CreateAnd(Idx, MaxIdx);
+  }
+  return Builder.CreateSelect(Builder.CreateICmpULE(Idx, MaxIdx), Idx, MaxIdx);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 inline AllocaInst *createAllocaAtEntry(Function &F, Type *Ty, const Twine &Name) {
   IGCIRBuilder<> Builder(&F.getEntryBlock().front());
   auto *VecTy = cast<FixedVectorType>(Ty);
@@ -262,95 +292,149 @@ inline Instruction *createStore(IGCLLVM::IRBuilder<> &Builder, Instruction *Orig
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-inline Instruction *storeChunk(IGCLLVM::IRBuilder<> &Builder, Instruction *OrigStoreOrStoreRaw, uint32_t Idx,
-                               auto Chunk) {
-  IGC_ASSERT(!Chunk.empty());
-  Value *Val = Chunk[0];
-  if (Chunk.size() > 1) {
-    auto ChunkVecTy = IGCLLVM::FixedVectorType::get(Val->getType()->getScalarType(), Chunk.size());
-    Val = UndefValue::get(ChunkVecTy);
-    for (uint32_t I = 0; I < Chunk.size(); ++I) {
-      Val = Builder.CreateInsertElement(Val, Chunk[I], Builder.getInt32(I));
-    }
-  }
-  return createStore(Builder, OrigStoreOrStoreRaw, Builder.getInt32(Idx), Val);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Stores the elements as chunks of up to ChunkSize consecutive indices.
-inline Instruction *storeElementsInChunks(IGCLLVM::IRBuilder<> &Builder, Instruction *OrigStoreOrStoreRaw,
-                                          const std::map<uint32_t, Value *> &Elements) {
-  constexpr uint32_t ChunkSize = 4;
-  uint32_t FirstIdx = 0;
-  uint32_t PrevIdx = 0;
-  Instruction *LastStore = nullptr;
-  SmallVector<Value *, ChunkSize> Chunk;
-  for (auto IdxAndElt : Elements) {
-    auto [Idx, Elt] = IdxAndElt;
-    if (!Chunk.empty() && (Chunk.size() == ChunkSize || Idx != (PrevIdx + 1))) {
-      LastStore = storeChunk(Builder, OrigStoreOrStoreRaw, FirstIdx, Chunk);
-      Chunk.clear();
-    }
-    if (Chunk.empty()) {
-      FirstIdx = Idx;
-    }
-    Chunk.push_back(Elt);
-    PrevIdx = Idx;
-  }
-  if (!Chunk.empty()) {
-    LastStore = storeChunk(Builder, OrigStoreOrStoreRaw, FirstIdx, Chunk);
-  }
-  return LastStore;
-};
-
-///////////////////////////////////////////////////////////////////////////////
 bool LongVectorsOpt::resolveStore(Instruction *Store) {
   if (!isSimpleAccess(Store)) {
     return false;
   }
-  // Collect the insertelement chain feeding the store, starting from the last insert. An insert with other users
-  // must stay, so the chain ends there and that insert is stored as a whole vector.
-  SmallVector<InsertElementInst *, 16> Chain;
+  // Walk back the chain of insert-element instructions, looking for a non-constant
+  // index. The other users of an insert get the vector reloaded at the store, so the
+  // chain ends at an insert with a user the store doesn't dominate.
   Value *Val = getValueOperand(Store);
+  SmallVector<InsertElementInst *, 16> Chain;
+  InsertElementInst *ChainStart = nullptr;
+  User *ChainUser = Store;
   while (InsertElementInst *Insert = dyn_cast<InsertElementInst>(Val)) {
-    if (!Insert->hasOneUse()) {
+    if (any_of(Insert->uses(), [&](Use &U) { return U.getUser() != ChainUser && !DT->dominates(Store, U); })) {
       break;
     }
+    if (!isa<ConstantInt>(Insert->getOperand(2))) {
+      ChainStart = Insert;
+    }
     Chain.push_back(Insert);
+    ChainUser = Insert;
     Val = Insert->getOperand(0);
   }
-  if (Chain.empty()) {
+  if (ChainStart == nullptr) {
     return false;
+  }
+  while (Chain.back() != ChainStart) {
+    Chain.pop_back();
   }
 
   IGCLLVM::IRBuilder<> Builder(Store);
   // Store the base vector first, then the elements in the original insert order, so later inserts overwrite earlier
   // ones at the same index.
-  if (!isa<UndefValue>(Val)) {
-    createStore(Builder, Store, Builder.getInt32(0), Val);
+  if (!isa<UndefValue>(ChainStart->getOperand(0))) {
+    createStore(Builder, Store, Builder.getInt32(0), ChainStart->getOperand(0));
   }
   for (InsertElementInst *Insert : llvm::reverse(Chain)) {
     createStore(Builder, Store, Insert->getOperand(2), Insert->getOperand(1));
+    if (!Insert->hasOneUse()) {
+      Value *Tmp = createLoad(Builder, Store, Builder.getInt32(0), Insert->getType());
+      Insert->replaceAllUsesWith(Tmp);
+    }
   }
   Store->eraseFromParent();
   for (InsertElementInst *Insert : Chain) {
+    ErasedInserts.insert(Insert);
     Insert->eraseFromParent();
   }
   return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-bool LongVectorsOpt::resolveExtractElement(ExtractElementInst *Extract) {
-  // Let's assume that the loads-merging passes work ok and generate scalar loads.
+// Returns true if the load reads memory that can't be written, so it may be moved past stores.
+inline bool isReadOnlyLoad(Instruction *LoadInstr) {
+  if (!LoadInstr || !(isa<LoadInst>(LoadInstr) || isa<LdRawIntrinsic>(LoadInstr)) || !isSimpleAccess(LoadInstr)) {
+    return false;
+  }
+  Value *BufPtr = GetBufferOperand(LoadInstr);
+  uint32_t Addrspace = BufPtr->getType()->getPointerAddressSpace();
+  if (isStatefulAddrSpace(Addrspace)) {
+    auto BufType = GetBufferType(Addrspace);
+    BufferAccessType Access = getDefaultAccessType(BufType);
+    return (Access == BufferAccessType::ACCESS_READ);
+  }
+  return Addrspace == ADDRESS_SPACE_CONSTANT;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Collects the instructions computing V that are not available at the load, operands first, so that they can be
+// cloned before the load. Fails if one of them may access memory or trap, is a PHI, or depends on the load.
+bool LongVectorsOpt::collectHoistable(Value *V, Instruction *Load, SmallSetVector<Instruction *, 8> &ToHoist) {
+  auto NeedsHoisting = [&](Value *Val) {
+    Instruction *I = dyn_cast<Instruction>(Val);
+    return I && (I == Load || !DT->dominates(I, Load)) && !ToHoist.count(I);
+  };
+  auto CanHoist = [&](Instruction *I) {
+    return I != Load && !isa<PHINode>(I) && !isa<FreezeInst>(I) && !I->mayReadOrWriteMemory() &&
+           isSafeToSpeculativelyExecute(I);
+  };
+  if (!NeedsHoisting(V)) {
+    return true;
+  }
+  // Depth-first walk over the operands. Each stack entry holds an instruction and the index of its next operand to
+  // visit; the instruction is added to ToHoist once all its operands are done.
+  SmallVector<std::pair<Instruction *, unsigned>, 8> Stack;
+  Stack.push_back({cast<Instruction>(V), 0});
+  if (!CanHoist(Stack.back().first)) {
+    return false;
+  }
+  while (!Stack.empty()) {
+    Instruction *I = Stack.back().first;
+    unsigned &NextOperand = Stack.back().second;
+    if (NextOperand == I->getNumOperands()) {
+      ToHoist.insert(I);
+      Stack.pop_back();
+      continue;
+    }
+    Value *Op = I->getOperand(NextOperand++);
+    if (!NeedsHoisting(Op)) {
+      continue;
+    }
+    Instruction *OpInst = cast<Instruction>(Op);
+    if (!CanHoist(OpInst)) {
+      return false;
+    }
+    Stack.push_back({OpInst, 0});
+  }
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+bool LongVectorsOpt::resolveExtractElementToLoad(ExtractElementInst *Extract) {
   Instruction *LoadInstr = dyn_cast<Instruction>(Extract->getVectorOperand());
   if (!LoadInstr || !(isa<LoadInst>(LoadInstr) || isa<LdRawIntrinsic>(LoadInstr)) || !isSimpleAccess(LoadInstr)) {
     return false;
   }
-  // The element load is created at the original load, so the index must be available there.
+  IGCLLVM::IRBuilder<> Builder(LoadInstr);
+
+  bool IsReadOnly = isReadOnlyLoad(LoadInstr);
+  // The element load is created at the original load if the index must be available there.
+  // Otherwise, the index is hoisted to the load if it is cheap and safe to compute there.
+  // If the memory is readonly, the load may be moved to the extract.
   Value *Idx = Extract->getIndexOperand();
+  SmallSetVector<Instruction *, 8> ToHoist;
   if (Instruction *IdxInst = dyn_cast<Instruction>(Idx)) {
     if (!DT->dominates(IdxInst, LoadInstr)) {
-      return false;
+      if (IsReadOnly) {
+        // If the load is read-only, we can create the load at the ExtractElementInst
+        Builder.SetInsertPoint(Extract);
+      } else if (collectHoistable(IdxInst, LoadInstr, ToHoist)) {
+        // The index is cheap and safe to compute at the load, so compute it again there.
+        ValueToValueMapTy HoistedValues;
+        for (Instruction *I : ToHoist) {
+          Instruction *Clone = I->clone();
+          IGCLLVM::insertBefore(Clone, LoadInstr);
+          RemapInstruction(Clone, HoistedValues, RF_IgnoreMissingLocals | RF_NoModuleLevelChanges);
+          HoistedValues[I] = Clone;
+        }
+        Idx = HoistedValues[IdxInst];
+      } else {
+        // TODO: if there are no aliasing stores between the index instruction and the load instruction, we can
+        // create the load at the index instruction.
+        return false;
+      }
     }
   }
   // An out-of-range constant index yields poison; don't turn it into an out-of-bounds load.
@@ -359,40 +443,86 @@ bool LongVectorsOpt::resolveExtractElement(ExtractElementInst *Extract) {
       return false;
     }
   }
-  IGCLLVM::IRBuilder<> Builder(LoadInstr);
   Value *Elem = createLoad(Builder, LoadInstr, Idx, Extract->getType());
   Extract->replaceAllUsesWith(Elem);
   Extract->eraseFromParent();
+  // The original index computation is left unused when the extract was its only user.
+  for (Instruction *I : llvm::reverse(ToHoist)) {
+    if (I->use_empty() && !(isa<ExtractElementInst>(I) && ExtractElements.count(cast<ExtractElementInst>(I)))) {
+      I->eraseFromParent();
+    }
+  }
   ResolvedLoads.insert(LoadInstr);
   return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Moves a long vector built by an insertelement chain to private memory. The chain is split into element stores by
-// resolveStore and its extracts into element loads by resolveExtractElement.
-bool LongVectorsOpt::resolveInsertElement(InsertElementInst *Insert) {
-  // Only the last insert of a chain is processed, resolveStore walks the rest.
-  if (Insert->hasOneUse() && isa<InsertElementInst>(*Insert->user_begin())) {
+// Splits an extract from a long load into an element load. Otherwise, a variable-index extract reads its element from
+// a private-memory copy of the vector, stored once right after the vector is defined. A constant-index extract is
+// left alone: it reads the element directly from registers.
+bool LongVectorsOpt::resolveExtractElement(ExtractElementInst *Extract) {
+  if (resolveExtractElementToLoad(Extract)) {
+    return true;
+  }
+  Value *Idx = Extract->getIndexOperand();
+  if (isa<ConstantInt>(Idx)) {
     return false;
   }
-  // Inserts used only by stores are already handled by resolveStore.
-  if (all_of(Insert->users(), [&](User *U) { return Stores.count(cast<Instruction>(U)) > 0; })) {
+  Value *Vec = Extract->getVectorOperand();
+  auto *VecTy = cast<FixedVectorType>(Vec->getType());
+  AllocaInst *&Alloca = VectorToAlloca[Vec];
+  if (!Alloca) {
+    Alloca = createAllocaAtEntry(*Extract->getFunction(), VecTy, VALUE_NAME(Vec->getName()));
+    // Arguments and constants are available at the entry, right after the alloca.
+    Instruction *VecInst = dyn_cast<Instruction>(Vec);
+    IGCLLVM::IRBuilder<> Builder(VecInst ? VecInst->getNextNode() : Alloca->getNextNode());
+    Builder.CreateStore(Vec, Alloca);
+  }
+  IGCLLVM::IRBuilder<> Builder(Extract);
+  Idx = getInRangeIndex(Builder, Idx, VecTy->getNumElements());
+  Value *Ptr = Builder.CreateGEP(VecTy, Alloca, {Builder.getInt32(0), Idx});
+  Value *Elem = Builder.CreateLoad(Extract->getType(), Ptr);
+  Extract->replaceAllUsesWith(Elem);
+  Extract->eraseFromParent();
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Moves a long vector built by an insertelement chain with a variable index to private memory. The chain is split
+// into element stores by resolveStore and its extracts into element loads by resolveExtractElement. Chains with
+// constant indices only stay in registers.
+bool LongVectorsOpt::resolveInsertElement(InsertElementInst *Insert) {
+  // Inserts already split by resolveStore are gone. An insert used only by other inserts is reached by resolveStore
+  // from the end of the chain; one left with other users after that gets its own slot.
+  if (ErasedInserts.count(Insert) || all_of(Insert->users(), [](User *U) { return isa<InsertElementInst>(U); })) {
+    return false;
+  }
+  // Only insert chains with non-constant indices are processed.
+  bool HasNonConstantIndex = false;
+  InsertElementInst *CurrentInsert = Insert;
+  while (CurrentInsert) {
+    if (!isa<ConstantInt>(CurrentInsert->getOperand(2))) {
+      HasNonConstantIndex = true;
+      break;
+    }
+    Value *Vec = CurrentInsert->getOperand(0);
+    CurrentInsert = dyn_cast<InsertElementInst>(Vec);
+  }
+  if (!HasNonConstantIndex) {
     return false;
   }
   AllocaInst *Alloca = createAllocaAtEntry(*Insert->getFunction(), Insert->getType(), VALUE_NAME(Insert->getName()));
-  InstructionToAlloca[Insert] = Alloca;
   IGCLLVM::IRBuilder<> Builder(Insert->getNextNode());
   StoreInst *NewStore = Builder.CreateStore(Insert, Alloca);
   LoadInst *NewLoad = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
   Insert->replaceUsesWithIf(NewLoad, [&](Use &U) { return U.getUser() != NewStore; });
-  Stores.insert(NewStore);
+  resolveStore(NewStore);
   return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 bool LongVectorsOpt::resolvePhi(PHINode *Phi) {
   AllocaInst *Alloca = createAllocaAtEntry(*Phi->getFunction(), Phi->getType(), VALUE_NAME(Phi->getName()));
-  InstructionToAlloca[Phi] = Alloca;
   for (unsigned I = 0; I < Phi->getNumOperands(); ++I) {
     IGCLLVM::IRBuilder<> Builder(Phi->getIncomingBlock(I)->getTerminator());
     Value *Source = Phi->getOperand(I);
@@ -417,19 +547,21 @@ bool LongVectorsOpt::runOnFunction(Function &F) {
   InsertElements.clear();
   Stores.clear();
   ResolvedLoads.clear();
-  InstructionToAlloca.clear();
+  ErasedInserts.clear();
+  VectorToAlloca.clear();
 
   gatherInstructions(F);
   bool Modified = false;
   for (PHINode *Phi : Phis) {
     Modified |= resolvePhi(Phi);
   }
-  // Inserts must be processed before stores: they add new stores, and resolveStore erases the inserts it splits.
-  for (InsertElementInst *Insert : InsertElements) {
-    Modified |= resolveInsertElement(Insert);
-  }
+  // Resolve store instructions that write long vectors that are created with insertelement chains
+  // that have at least one non-constant index.
   for (Instruction *Store : Stores) {
     Modified |= resolveStore(Store);
+  }
+  for (InsertElementInst *Insert : llvm::reverse(InsertElements)) {
+    Modified |= resolveInsertElement(Insert);
   }
   for (ExtractElementInst *Extract : ExtractElements) {
     Modified |= resolveExtractElement(Extract);

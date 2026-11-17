@@ -62,10 +62,16 @@ define float @load_other_use(ptr addrspace(1) %p, ptr addrspace(1) %q, i32 %j) {
   ret float %e
 }
 
-; Volatile loads are not split.
+; Volatile loads are not split. The variable-index extract reads from a private-memory copy of the loaded vector.
 ; CHECK-LABEL: @volatile_load(
+; CHECK-NEXT:    [[V0:%.*]] = alloca <64 x float>, align 256
 ; CHECK-NEXT:    %v = load volatile <64 x float>, ptr addrspace(1) %p, align 4
-; CHECK-NEXT:    %e = extractelement <64 x float> %v, i32 %j
+; CHECK-NEXT:    store <64 x float> %v, ptr [[V0]], align 256
+; CHECK-NEXT:    [[JJ:%.*]] = freeze i32 %j
+; CHECK-NEXT:    [[V1:%.*]] = and i32 [[JJ]], 63
+; CHECK-NEXT:    [[V2:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 [[V1]]
+; CHECK-NEXT:    [[V3:%.*]] = load float, ptr [[V2]], align 4
+; CHECK-NEXT:    ret float [[V3]]
 define float @volatile_load(ptr addrspace(1) %p, i32 %j) {
   %v = load volatile <64 x float>, ptr addrspace(1) %p, align 4
   %e = extractelement <64 x float> %v, i32 %j
@@ -82,11 +88,13 @@ define float @out_of_range_index(ptr addrspace(1) %p) {
   ret float %e
 }
 
-; The index is not available at the load, so the extract is left alone.
+; The index is computed after the load. It is cheap and safe to compute at the load, so it is computed there again
+; and the load is split as usual.
 ; CHECK-LABEL: @index_after_load(
-; CHECK-NEXT:    %v = load <64 x float>, ptr addrspace(1) %p, align 4
-; CHECK-NEXT:    %j = add i32 %i, 1
-; CHECK-NEXT:    %e = extractelement <64 x float> %v, i32 %j
+; CHECK-NEXT:    [[V0:%.*]] = add i32 %i, 1
+; CHECK-NEXT:    [[V1:%.*]] = getelementptr <64 x float>, ptr addrspace(1) %p, i32 0, i32 [[V0]]
+; CHECK-NEXT:    [[V2:%.*]] = load float, ptr addrspace(1) [[V1]], align 4
+; CHECK-NEXT:    ret float [[V2]]
 define float @index_after_load(ptr addrspace(1) %p, i32 %i) {
   %v = load <64 x float>, ptr addrspace(1) %p, align 4
   %j = add i32 %i, 1

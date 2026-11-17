@@ -62,14 +62,19 @@ define void @insert_store(<64 x float> %v, float %a, i32 %i, ptr %out) {
   ret void
 }
 
-; The element load is created at the vector load, so an extract whose index is computed after the insert keeps
-; extracting from the whole vector loaded from the alloca.
+; The element load is created at the vector load, so the index computed after the insert is computed again at the
+; load of the insert slot, and the element is read from the slot.
 
 ; CHECK-LABEL: @late_index(
-; CHECK:         [[VEC:%.*]] = load <64 x float>, ptr [[SLOT:%.*]]
-; CHECK:         [[J:%.*]] = add i32 %i, 1
-; CHECK-NEXT:    [[E:%.*]] = extractelement <64 x float> [[VEC]], i32 [[J]]
-; CHECK-NEXT:    ret float [[E]]
+; CHECK-NEXT:    [[V0:%.*]] = alloca <64 x float>, align 256
+; CHECK-NEXT:    [[V1:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 0
+; CHECK-NEXT:    store <64 x float> %v, ptr [[V1]], align 4
+; CHECK-NEXT:    [[V2:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 %i
+; CHECK-NEXT:    store float %a, ptr [[V2]], align 4
+; CHECK-NEXT:    [[V3:%.*]] = add i32 %i, 1
+; CHECK-NEXT:    [[V4:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 [[V3]]
+; CHECK-NEXT:    [[V5:%.*]] = load float, ptr [[V4]], align 4
+; CHECK-NEXT:    ret float [[V5]]
 define float @late_index(<64 x float> %v, float %a, i32 %i) {
   %v1 = insertelement <64 x float> %v, float %a, i32 %i
   %j = add i32 %i, 1
@@ -89,26 +94,24 @@ define float @short_vector(<4 x float> %v, float %a, i32 %i, i32 %j) {
   ret float %e
 }
 
-; An insert in the middle of a chain with its own users gets its own slot, and the rest of the chain starts from a
-; copy of that slot.
+; An insert in the middle of a chain with its own users is split into the slot of the last insert. Its extract comes
+; after the slot store, so it reads the element back from the slot at that point.
 
 ; CHECK-LABEL: @chain_mid_use(
-; CHECK-DAG:     [[SLOT2:%.*]] = alloca <64 x float>
-; CHECK-DAG:     [[SLOT1:%.*]] = alloca <64 x float>
-; CHECK:         [[P0:%.*]] = getelementptr <64 x float>, ptr [[SLOT1]], i32 0, i32 0
-; CHECK-NEXT:    store <64 x float> %v, ptr [[P0]], align 4
-; CHECK-NEXT:    [[P1:%.*]] = getelementptr <64 x float>, ptr [[SLOT1]], i32 0, i32 %i
-; CHECK-NEXT:    store float %a, ptr [[P1]], align 4
-; CHECK-NEXT:    [[P2:%.*]] = getelementptr <64 x float>, ptr [[SLOT1]], i32 0, i32 %j
-; CHECK-NEXT:    [[E1:%.*]] = load float, ptr [[P2]], align 4
-; CHECK-NEXT:    [[COPY:%.*]] = load <64 x float>, ptr [[SLOT1]]
-; CHECK-NEXT:    [[P3:%.*]] = getelementptr <64 x float>, ptr [[SLOT2]], i32 0, i32 0
-; CHECK-NEXT:    store <64 x float> [[COPY]], ptr [[P3]], align 4
-; CHECK-NEXT:    [[P4:%.*]] = getelementptr <64 x float>, ptr [[SLOT2]], i32 0, i32 %j
-; CHECK-NEXT:    store float %b, ptr [[P4]], align 4
-; CHECK-NEXT:    [[P5:%.*]] = getelementptr <64 x float>, ptr [[SLOT2]], i32 0, i32 %i
-; CHECK-NEXT:    [[E2:%.*]] = load float, ptr [[P5]], align 4
-; CHECK-NEXT:    %s = fadd float [[E1]], [[E2]]
+; CHECK-NEXT:    [[V0:%.*]] = alloca <64 x float>, align 256
+; CHECK-NEXT:    [[V1:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 0
+; CHECK-NEXT:    store <64 x float> %v, ptr [[V1]], align 4
+; CHECK-NEXT:    [[V2:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 %i
+; CHECK-NEXT:    store float %a, ptr [[V2]], align 4
+; CHECK-NEXT:    [[V3:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 0
+; CHECK-NEXT:    [[V4:%.*]] = getelementptr <64 x float>, ptr [[V3]], i32 0, i32 %j
+; CHECK-NEXT:    [[V5:%.*]] = load float, ptr [[V4]], align 4
+; CHECK-NEXT:    [[V6:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 %j
+; CHECK-NEXT:    store float %b, ptr [[V6]], align 4
+; CHECK-NEXT:    [[V7:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 %i
+; CHECK-NEXT:    [[V8:%.*]] = load float, ptr [[V7]], align 4
+; CHECK-NEXT:    %s = fadd float [[V5]], [[V8]]
+; CHECK-NEXT:    ret float %s
 define float @chain_mid_use(<64 x float> %v, float %a, float %b, i32 %i, i32 %j) {
   %v1 = insertelement <64 x float> %v, float %a, i32 %i
   %v2 = insertelement <64 x float> %v1, float %b, i32 %j
@@ -118,11 +121,17 @@ define float @chain_mid_use(<64 x float> %v, float %a, float %b, i32 %i, i32 %j)
   ret float %s
 }
 
-; Extracts from values that are neither loads nor inserts are left alone.
+; A variable-index extract from a value that is neither a load nor an insert reads from a private-memory copy of the
+; vector, stored at the entry for an argument.
 
 ; CHECK-LABEL: @extract_arg(
-; CHECK-NEXT:    %e = extractelement <64 x float> %v, i32 %j
-; CHECK-NEXT:    ret float %e
+; CHECK-NEXT:    [[V0:%.*]] = alloca <64 x float>, align 256
+; CHECK-NEXT:    store <64 x float> %v, ptr [[V0]], align 256
+; CHECK-NEXT:    [[J:%.*]] = freeze i32 %j
+; CHECK-NEXT:    [[V1:%.*]] = and i32 [[J]], 63
+; CHECK-NEXT:    [[V2:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 [[V1]]
+; CHECK-NEXT:    [[V3:%.*]] = load float, ptr [[V2]], align 4
+; CHECK-NEXT:    ret float [[V3]]
 define float @extract_arg(<64 x float> %v, i32 %j) {
   %e = extractelement <64 x float> %v, i32 %j
   ret float %e

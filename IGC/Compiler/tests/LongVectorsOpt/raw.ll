@@ -36,10 +36,16 @@ define float @ldraw_extract_i64(ptr addrspace(2490368) %buf, i32 %off, i64 %j) {
   ret float %e
 }
 
-; Volatile ldraws are not split.
+; Volatile ldraws are not split. The variable-index extract reads from a private-memory copy of the loaded vector.
 ; CHECK-LABEL: @ldraw_volatile(
+; CHECK-NEXT:    [[V0:%.*]] = alloca <64 x float>, align 256
 ; CHECK-NEXT:    %v = call <64 x float> @llvm.genx.GenISA.ldrawvector.indexed.v64f32.p2490368(ptr addrspace(2490368) %buf, i32 %off, i32 16, i1 true)
-; CHECK-NEXT:    %e = extractelement <64 x float> %v, i32 %j
+; CHECK-NEXT:    store <64 x float> %v, ptr [[V0]], align 256
+; CHECK-NEXT:    [[J:%.*]] = freeze i32 %j
+; CHECK-NEXT:    [[V1:%.*]] = and i32 [[J]], 63
+; CHECK-NEXT:    [[V2:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 [[V1]]
+; CHECK-NEXT:    [[V3:%.*]] = load float, ptr [[V2]], align 4
+; CHECK-NEXT:    ret float [[V3]]
 define float @ldraw_volatile(ptr addrspace(2490368) %buf, i32 %off, i32 %j) {
   %v = call <64 x float> @llvm.genx.GenISA.ldrawvector.indexed.v64f32.p2490368(ptr addrspace(2490368) %buf, i32 %off, i32 16, i1 true)
   %e = extractelement <64 x float> %v, i32 %j
