@@ -115,6 +115,36 @@ AllocationLivenessAnalyzer::LivenessData AllocationLivenessAnalyzer::ProcessInst
     }
   }
 
+  // An address computation that LICM hoisted out of the loop holding every access to the memory (a preheader GEP)
+  // does not touch it, so it must not keep the memory alive over the whole loop.
+  auto isAddressOnly = [](Instruction *II) { return isa<GetElementPtrInst, BitCastInst, SelectInst>(II); };
+  const Loop *accessLoop = nullptr;
+  bool firstAccess = true;
+  for (auto *II : allUsers) {
+    if (isAddressOnly(II))
+      continue;
+    const Loop *L = LI.getLoopFor(II->getParent());
+    if (firstAccess) {
+      accessLoop = L;
+      firstAccess = false;
+    }
+    while (accessLoop && !(L && accessLoop->contains(L)))
+      accessLoop = accessLoop->getParentLoop();
+  }
+  if (accessLoop &&
+      allUsers.remove_if([&](Instruction *II) { return isAddressOnly(II) && !accessLoop->contains(II->getParent()); })) {
+    commonDominator = includeOrigin ? I->getParent() : nullptr;
+    auto addDominated = [&](BasicBlock *bb) {
+      commonDominator = commonDominator ? DT.findNearestCommonDominator(commonDominator, bb) : bb;
+    };
+    for (auto *II : allUsers) {
+      addDominated(II->getParent());
+      if (auto *PN = dyn_cast<PHINode>(II))
+        for (auto *bb : PN->blocks())
+          addDominated(bb);
+    }
+  }
+
   if (includeOrigin)
     allUsers.insert(I);
 
