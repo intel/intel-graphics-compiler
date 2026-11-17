@@ -635,6 +635,22 @@ bool GenXFunctionGroupAnalysis::verify() {
   return true;
 }
 
+// Returns 0 unless all kernels require the same sub-group size. Symbol table
+// dummy kernels are skipped, as their required size is derived from this one.
+static int getUniformKernelSIMDSize(CodeGenContext *ctx) {
+  int uniformSz = 0;
+  for (Function &F : *ctx->getModule()) {
+    if (!isEntryFunc(ctx->getMetaDataUtils(), &F) || isIntelSymbolTableVoidProgram(&F))
+      continue;
+
+    int sz = IGC::getSIMDSize(ctx->getModuleMetaData(), &F);
+    if ((sz != 8 && sz != 16 && sz != 32) || (uniformSz != 0 && sz != uniformSz))
+      return 0;
+    uniformSz = sz;
+  }
+  return uniformSz;
+}
+
 // Returns the default SIMD size to compile Indirect Functions to
 static inline int getDefaultSIMDSize(CodeGenContext *ctx) {
   if (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 0) {
@@ -661,13 +677,19 @@ static inline int getDefaultSIMDSize(CodeGenContext *ctx) {
   }
   int defaultSz = numLanes(simdMode);
 
+  // Library functions are called from separately compiled modules, so they
+  // keep the stack call ABI default unless a size is explicitly requested.
   if (ctx->getModuleMetaData()->compOpt.IsLibraryCompilation) {
     unsigned sz = ctx->getModuleMetaData()->compOpt.LibraryCompileSIMDSize;
     if (sz > 0) {
       IGC_ASSERT(sz == 8 || sz == 16 || sz == 32);
-      defaultSz = sz;
+      return sz;
     }
+    return defaultSz;
   }
+
+  if (int uniformSz = getUniformKernelSIMDSize(ctx))
+    return uniformSz;
   return defaultSz;
 }
 
@@ -675,7 +697,8 @@ FunctionGroup *GenXFunctionGroupAnalysis::getOrCreateIndirectCallGroup(Module *p
   CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   auto pMdUtil = ctx->getMetaDataUtils();
   auto pModMD = ctx->getModuleMetaData();
-  int defaultSimd = getDefaultSIMDSize(ctx);
+  IGC_ASSERT(DefaultIndirectSIMDSize != 0);
+  int defaultSimd = DefaultIndirectSIMDSize;
 
   if (SimdSize == 0) {
     SimdSize = defaultSimd;
@@ -807,6 +830,7 @@ void GenXFunctionGroupAnalysis::setGroupAttributes() {
 
 void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module *pModule) {
   auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  DefaultIndirectSIMDSize = getDefaultSIMDSize(getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
 
   // Find all indirectly called functions that require a symbol
   SmallVector<Function *, 16> indirectFunctions;
@@ -845,7 +869,7 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
   if (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 0)
     return;
 
-  int default_size = getDefaultSIMDSize(pCtx);
+  int default_size = DefaultIndirectSIMDSize;
 
   // All "referenced-indirectly" funcs should already be added to the default group
   FunctionGroup *ICG = getOrCreateIndirectCallGroup(pModule);
@@ -1043,6 +1067,7 @@ void GenXFunctionGroupAnalysis::clear() {
     delete *I;
   Groups.clear();
   IndirectCallGroup.clear();
+  DefaultIndirectSIMDSize = 0;
   M = nullptr;
 }
 

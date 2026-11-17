@@ -203,6 +203,9 @@ class GenXFunctionGroupAnalysis : public llvm::ImmutablePass {
   /// SIMD variants stored with SIMD8 in idx 0, SIMD16 in idx 1, SIMD32 in idx 2
   llvm::SmallVector<FunctionGroup *, 3> IndirectCallGroup{nullptr, nullptr, nullptr};
 
+  /// \brief SIMD size of the default indirect call group, set by addIndirectFuncsToKernelGroup
+  int DefaultIndirectSIMDSize = 0;
+
 public:
   static char ID;
   explicit GenXFunctionGroupAnalysis();
