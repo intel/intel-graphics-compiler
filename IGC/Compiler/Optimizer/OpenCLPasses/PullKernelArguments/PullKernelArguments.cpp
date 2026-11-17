@@ -7,14 +7,21 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/Optimizer/OpenCLPasses/PullKernelArguments/PullKernelArguments.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/AggregateArguments/AggregateArguments.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/helper.h"
+#include "GenISAIntrinsics/GenIntrinsics.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/ADT/SmallVector.h>
 #include "common/LLVMWarningsPop.hpp"
+
+#include <algorithm>
+#include <string>
 
 using namespace llvm;
 using namespace IGC;
@@ -37,7 +44,7 @@ PullKernelArgumentsLPM::PullKernelArgumentsLPM() : ModulePass(ID) {
 
 namespace {
 struct ArgDescriptor {
-  const Argument *Arg;
+  Argument *Arg;
   KernelArg::ArgType Type;
   uint64_t Size;
 };
@@ -54,6 +61,62 @@ static bool isPullableArgType(KernelArg::ArgType Type) {
     return false;
   }
 }
+
+// Emit a ptr to the argument slot in cross-thread memory
+static Value *createKernelArgPtr(IGCLLVM::IRBuilder<> &B, Argument &Arg) {
+  PointerType *PtrTy = IGCLLVM::PointerType::get(Arg.getType(), ADDRESS_SPACE_THREAD_ARG);
+  Function *GetArgPtr =
+      GenISAIntrinsic::getDeclaration(Arg.getParent()->getParent(), GenISAIntrinsic::GenISA_getKernelArgPtr, PtrTy);
+  return B.CreateCall(GetArgPtr, B.getInt32(Arg.getArgNo()), Arg.getName() + "_pulled");
+}
+
+// Alignment of the kernel arg: param align of byval arg if present, ABI of the type as a fallback
+static Align getArgAlign(const Argument &Arg, const DataLayout &DL) {
+  if (!Arg.hasByValAttr())
+    return DL.getABITypeAlign(Arg.getType());
+  if (MaybeAlign ParamAlign = Arg.getParamAlign())
+    return *ParamAlign;
+  return DL.getABITypeAlign(Arg.getParamByValType());
+}
+
+// Alignment of the arg slot in cross-thread memory
+static Align getPulledArgAlign(const Argument &Arg, const DataLayout &DL) {
+  return std::clamp(getArgAlign(Arg, DL), Align(4), Align(32));
+}
+
+// Replace all uses of arg with a load of its value from cross-thread memory
+static void pullArgument(Function &F, Argument &Arg, const DataLayout &DL) {
+  Type *ArgTy = Arg.getType();
+  BasicBlock &Entry = F.getEntryBlock();
+  IGCLLVM::IRBuilder<> B(&Entry, Entry.getFirstInsertionPt());
+  Value *ArgPtr = createKernelArgPtr(B, Arg);
+
+  Align ArgAlign = getPulledArgAlign(Arg, DL);
+  LoadInst *Val = B.CreateAlignedLoad(ArgTy, ArgPtr, ArgAlign, Arg.getName());
+  Val->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(F.getContext(), {}));
+  Arg.replaceAllUsesWith(Val);
+}
+
+// Replace byval struct arg with a private copy filled from cross-thread memory
+static void rewriteByValArg(Function &F, Argument &Arg, const DataLayout &DL) {
+  Type *StructTy = Arg.getParamByValType();
+  BasicBlock &Entry = F.getEntryBlock();
+  IGCLLVM::IRBuilder<> B(&Entry, Entry.getFirstInsertionPt());
+  Value *ArgPtr = createKernelArgPtr(B, Arg);
+
+  AllocaInst *Copy = B.CreateAlloca(StructTy, nullptr, Arg.getName() + "_copy");
+  Copy->setAlignment(getArgAlign(Arg, DL));
+  B.CreateMemCpy(Copy, Copy->getAlign(), ArgPtr, getPulledArgAlign(Arg, DL), getKernelArgAllocSize(Arg, DL));
+  Arg.replaceAllUsesWith(Copy);
+}
+
+// Replace extractvalue uses of struct value arg with loads of its members from cross-thread memory
+static void rewriteStructValueArg(Function &F, Argument &Arg, const DataLayout &DL) {
+  BasicBlock &Entry = F.getEntryBlock();
+  IGCLLVM::IRBuilder<> B(&Entry, Entry.getFirstInsertionPt());
+  Value *ArgPtr = createKernelArgPtr(B, Arg);
+  replaceStructValueUses(&Arg, ArgPtr, Arg.getType(), getPulledArgAlign(Arg, DL), B, /*InvariantLoads=*/true);
+}
 } // namespace
 
 bool PullKernelArguments::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, CodeGenContext *pCtx) {
@@ -64,6 +127,7 @@ bool PullKernelArguments::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, CodeGen
   const DataLayout &DL = M.getDataLayout();
   ModuleMetaData *ModMD = pCtx->getModuleMetaData();
   const uint64_t MaxParamSize = pCtx->platform.getMaxOCLParameteSize();
+  bool Changed = false;
 
   for (Function &F : M) {
     if (!isEntryFunc(pMdUtils, &F)) {
@@ -102,7 +166,13 @@ bool PullKernelArguments::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, CodeGen
       }
     }
 
-    IGC_ASSERT_MESSAGE(PushedSize <= MaxParamSize, "Non-pullable kernel arguments exceed the push budget");
+    if (PushedSize > MaxParamSize) {
+      std::string ErrorMsg =
+          "Total size of kernel arguments that cannot be pulled exceeds limit! Size: " + std::to_string(PushedSize) +
+          ", limit: " + std::to_string(MaxParamSize);
+      pCtx->EmitError(ErrorMsg.c_str(), &F);
+      continue;
+    }
 
     for (const ArgDescriptor &ArgDesc : AllArgs) {
       // Non-pullable arguments are already counted in PushedSize
@@ -121,10 +191,19 @@ bool PullKernelArguments::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, CodeGen
     IGC_ASSERT_MESSAGE(FuncMD.pulledArgs.empty(), "pulledArgs already selected for this kernel");
     for (const ArgDescriptor &ArgDesc : ArgsToPull) {
       FuncMD.pulledArgs.push_back(ArgDesc.Arg->getArgNo());
+
+      if (ArgDesc.Arg->hasByValAttr()) {
+        rewriteByValArg(F, *ArgDesc.Arg, DL);
+      } else if (ArgDesc.Arg->getType()->isStructTy()) {
+        rewriteStructValueArg(F, *ArgDesc.Arg, DL);
+      } else {
+        pullArgument(F, *ArgDesc.Arg, DL);
+      }
+      Changed = true;
     }
   }
 
-  return false;
+  return Changed;
 }
 
 #if LLVM_VERSION_MAJOR >= 16

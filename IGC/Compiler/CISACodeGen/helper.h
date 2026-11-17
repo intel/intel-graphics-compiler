@@ -698,6 +698,8 @@ bool AllowRemovingUnusedImplicitLocalIDs(const CodeGenContext *ctx);
 bool AllowPullingKernelArguments(const CodeGenContext *ctx);
 // In-memory size of a kernel argument
 uint64_t getKernelArgAllocSize(const llvm::Argument &Arg, const llvm::DataLayout &DL);
+// Returns true if the kernel arg is pulled
+bool isPulledKernelArg(const llvm::Argument &Arg, const ModuleMetaData &ModMD);
 
 int16_t GetVectorAliasControl(const CodeGenContext *ctx, bool HasCalls = false);
 

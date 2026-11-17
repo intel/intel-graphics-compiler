@@ -71,6 +71,12 @@ public:
 };
 #endif // LLVM_VERSION_MAJOR >= 16
 
+// Replaces uses of struct value val whose copy is in memory at basePtr of type baseTy: an extractvalue
+// of a scalar member becomes a load of that member, other uses get the whole value assembled from
+// member loads. Shared utility, also used by PullKernelArguments.
+void replaceStructValueUses(llvm::Value *val, llvm::Value *basePtr, llvm::Type *baseTy, llvm::Align baseAlign,
+                            IGCLLVM::IRBuilder<> &entryBuilder, bool invariantLoads = false);
+
 // Shared implementation. Holds the logic and is used by both the legacy and the
 // new-pass-manager wrappers below; it is not itself an llvm::Pass.
 class ResolveAggregateArguments {

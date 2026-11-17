@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/Optimizer/OpenCLPasses/AggregateArguments/AggregateArguments.hpp"
+#include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
@@ -96,6 +97,10 @@ bool AggregateArgumentsAnalysis::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, 
       }
 
       if (!isSupportedAggregateArgument(arg)) {
+        continue;
+      }
+      // Pulled struct is already rewritten by PullKernelArguments, so it is not split into implicit args
+      if (isPulledKernelArg(*arg, *pCtx->getModuleMetaData())) {
         continue;
       }
       m_argList.clear();
@@ -219,11 +224,30 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type *type, uint64_t baseAllocaO
   }
 }
 
+// Memory holding a copy of a struct value, its members are loaded from there
+struct StructBase {
+  Value *ptr;
+  Type *ty;
+  Align alignment;
+  bool invariantLoads;
+};
+
+static LoadInst *loadMember(IGCLLVM::IRBuilder<> &irBuilder, const StructBase &base, ArrayRef<Value *> gepIndices,
+                            Type *type) {
+  const DataLayout &DL = irBuilder.GetInsertBlock()->getModule()->getDataLayout();
+  Value *ptr = irBuilder.CreateInBoundsGEP(base.ty, base.ptr, gepIndices);
+  Align align = commonAlignment(base.alignment, DL.getIndexedOffsetInType(base.ty, gepIndices));
+  LoadInst *member = irBuilder.CreateAlignedLoad(type, ptr, align);
+  if (base.invariantLoads)
+    member->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(member->getContext(), {}));
+  return member;
+}
+
 // Codegen cannot handle aggregate loads, so the value is assembled from its
 // scalar members.
-static Value *loadByMembers(IGCLLVM::IRBuilder<> &irBuilder, AllocaInst *base, SmallVectorImpl<Value *> &gepIndices,
-                            Type *type, Value *agg, SmallVectorImpl<unsigned> &aggIndices) {
-  const DataLayout &DL = base->getModule()->getDataLayout();
+static Value *loadByMembers(IGCLLVM::IRBuilder<> &irBuilder, const StructBase &base,
+                            SmallVectorImpl<Value *> &gepIndices, Type *type, Value *agg,
+                            SmallVectorImpl<unsigned> &aggIndices) {
   if (type->isStructTy() || type->isArrayTy()) {
     unsigned numElements = type->isStructTy() ? type->getStructNumElements() : type->getArrayNumElements();
     for (unsigned i = 0; i < numElements; ++i) {
@@ -236,18 +260,14 @@ static Value *loadByMembers(IGCLLVM::IRBuilder<> &irBuilder, AllocaInst *base, S
     }
     return agg;
   }
-  Value *ptr = irBuilder.CreateInBoundsGEP(base->getAllocatedType(), base, gepIndices);
-  Align align = commonAlignment(base->getAlign(), DL.getIndexedOffsetInType(base->getAllocatedType(), gepIndices));
-  Value *member = irBuilder.CreateAlignedLoad(type, ptr, align);
+  Value *member = loadMember(irBuilder, base, gepIndices, type);
   return irBuilder.CreateInsertValue(agg, member, aggIndices);
 }
 
 // Each extractvalue of a scalar member becomes a load of that member. Other
 // uses get the whole value, assembled once in the entry block.
-static void replaceStructValueUses(Value *val, AllocaInst *base, SmallVectorImpl<Value *> &gepIndices,
-                                   IGCLLVM::IRBuilder<> &entryBuilder) {
-  const DataLayout &DL = base->getModule()->getDataLayout();
-  Type *baseType = base->getAllocatedType();
+static void replaceStructValueUsesImpl(Value *val, const StructBase &base, SmallVectorImpl<Value *> &gepIndices,
+                                       IGCLLVM::IRBuilder<> &entryBuilder) {
   Value *wholeVal = nullptr;
   for (Use &use : make_early_inc_range(val->uses())) {
     if (auto *EVI = dyn_cast<ExtractValueInst>(use.getUser())) {
@@ -256,12 +276,10 @@ static void replaceStructValueUses(Value *val, AllocaInst *base, SmallVectorImpl
         memberIndices.push_back(entryBuilder.getInt32(i));
 
       if (EVI->getType()->isAggregateType()) {
-        replaceStructValueUses(EVI, base, memberIndices, entryBuilder);
+        replaceStructValueUsesImpl(EVI, base, memberIndices, entryBuilder);
       } else {
         IGCLLVM::IRBuilder<> builder(EVI);
-        Value *ptr = builder.CreateInBoundsGEP(baseType, base, memberIndices);
-        Align align = commonAlignment(base->getAlign(), DL.getIndexedOffsetInType(baseType, memberIndices));
-        LoadInst *member = builder.CreateAlignedLoad(EVI->getType(), ptr, align);
+        LoadInst *member = loadMember(builder, base, memberIndices, EVI->getType());
         member->takeName(EVI);
         EVI->replaceAllUsesWith(member);
       }
@@ -276,6 +294,13 @@ static void replaceStructValueUses(Value *val, AllocaInst *base, SmallVectorImpl
     }
     use.set(wholeVal);
   }
+}
+
+void IGC::replaceStructValueUses(Value *val, Value *basePtr, Type *baseTy, Align baseAlign,
+                                 IGCLLVM::IRBuilder<> &entryBuilder, bool invariantLoads) {
+  StructBase base{.ptr = basePtr, .ty = baseTy, .alignment = baseAlign, .invariantLoads = invariantLoads};
+  SmallVector<Value *, 8> gepIndices{entryBuilder.getInt32(0)};
+  replaceStructValueUsesImpl(val, base, gepIndices, entryBuilder);
 }
 
 ResolveAggregateArgumentsLPM::ResolveAggregateArgumentsLPM() : FunctionPass(ID) {
@@ -302,6 +327,10 @@ bool ResolveAggregateArguments::runOnFunction(Function &F, IGCMD::MetaDataUtils 
     if (!isSupportedAggregateArgument(arg)) {
       continue;
     }
+    // Pulled struct has no implicit args, its uses were already replaced by PullKernelArguments
+    if (isPulledKernelArg(*arg, *pModMD)) {
+      continue;
+    }
 
     StructType *structType = getAggregateArgumentType(arg);
 
@@ -321,8 +350,7 @@ bool ResolveAggregateArguments::runOnFunction(Function &F, IGCMD::MetaDataUtils 
     if (arg->getType()->isPointerTy()) {
       arg->replaceAllUsesWith(base);
     } else {
-      SmallVector<Value *, 8> gepIndices{irBuilder.getInt32(0)};
-      replaceStructValueUses(arg, base, gepIndices, irBuilder);
+      replaceStructValueUses(arg, base, structType, base->getAlign(), irBuilder);
     }
     changed = true;
   }

@@ -3350,6 +3350,15 @@ uint64_t getKernelArgAllocSize(const llvm::Argument &Arg, const llvm::DataLayout
   return DL.getTypeAllocSize(ArgType);
 }
 
+// Returns true if the kernel arg is pulled
+bool isPulledKernelArg(const llvm::Argument &Arg, const ModuleMetaData &ModMD) {
+  auto It = ModMD.FuncMD.find(const_cast<llvm::Function *>(Arg.getParent()));
+  if (It == ModMD.FuncMD.end()) {
+    return false;
+  }
+  return llvm::is_contained(It->second.pulledArgs, Arg.getArgNo());
+}
+
 // Returns VectorAlias regkey value. If not set (-1), returns default for current context.
 // HasCalls: the function group being compiled has subroutines or stack calls
 // Callers that only check for zero/non-zero may leave it false; it only selects between

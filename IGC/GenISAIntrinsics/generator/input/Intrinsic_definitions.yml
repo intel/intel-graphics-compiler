@@ -12517,6 +12517,23 @@ intrinsics:
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
+        name: "GenISA_getKernelArgPtr"
+        comment: "Get pointer to an explicit kernel argument kept in cross-thread memory (pulled kernel argument)"
+        return_definition: !<ReturnDefinition>
+            type_definition: *p_any_
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: ArgNo
+                type_definition: *i32
+                comment: "explicit kernel argument number"
+        attributes:
+            - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
         name: "GenISA_getScratchPtr"
         comment: "Get scratch pointer implicit argument"
         return_definition: !<ReturnDefinition>
