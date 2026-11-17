@@ -40,7 +40,9 @@ class CodeSinking : public llvm::FunctionPass {
 public:
   static char ID; // Pass identification
 
+  /// Used by igc-opt registration; honors only the regkey. Pipelines should use createCodeSinkingPass().
   CodeSinking();
+  explicit CodeSinking(bool EnableSampleResultLatencySink);
 
   virtual bool runOnFunction(llvm::Function &F) override;
 
@@ -52,7 +54,7 @@ public:
     AU.addRequired<llvm::LoopInfoWrapperPass>();
     AU.addRequired<MetaDataUtilsWrapper>();
     AU.addRequired<CodeGenContextWrapper>();
-    if (IGC_IS_FLAG_ENABLED(EnableSampleResultLatencySink)) {
+    if (enableSampleResultLatencySink) {
       AU.addRequired<IGCLivenessAnalysis>();
       AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
     }
@@ -86,6 +88,8 @@ private:
   unsigned totalGradientMoved = 0;
   unsigned numGradientMovedOutBB = 0;
 
+  /// Enable checking for the latency-hiding sink
+  bool enableSampleResultLatencySink = false;
   /// State for the latency-hiding sink (EnableSampleResultLatencySink). Headroom is checked
   /// per sink-target block: the target absorbs the extended send-result live range.
   bool latencySinkEnabled = false;
@@ -101,6 +105,7 @@ private:
 };
 
 void initializeCodeSinkingPass(llvm::PassRegistry &);
+llvm::FunctionPass *createCodeSinkingPass(const CodeGenContext &Context);
 
 typedef enum { NoSink = 0, SinkWhileRegpressureIsHigh, FullSink } LoopSinkMode;
 typedef enum { Unknown = 0, MaybeSink, Sink, IntraLoopSink } LoopSinkWorthiness;

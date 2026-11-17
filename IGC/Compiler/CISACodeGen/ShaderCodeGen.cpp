@@ -311,7 +311,7 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
   // Also need to understand the performance benefit better.
   if (!isOptDisabled) {
     mpm.add(new HoistCongruentPHI());
-    mpm.add(new CodeSinking());
+    mpm.add(createCodeSinkingPass(ctx));
     if ((IGC_IS_FLAG_DISABLED(DisableLoopSink) || IGC_IS_FLAG_ENABLED(ForceLoopSink)) &&
         ctx.type == ShaderType::OPENCL_SHADER && ctx.m_instrTypes.numOfLoop > 0 &&
         ctx.m_instrTypes.numInsts >= IGC_GET_FLAG_VALUE(CodeLoopSinkingMinSize)) {
@@ -1509,7 +1509,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
     if (pContext->m_DriverInfo.CodeSinkingBeforeCFGSimplification()) {
       mpm.add(new HoistCongruentPHI());
-      mpm.add(new CodeSinking());
+      mpm.add(createCodeSinkingPass(*pContext));
     }
     mpm.add(llvm::createCFGSimplificationPass(SimplifyCFGOptions().hoistCommonInsts(true)));
 

@@ -579,6 +579,7 @@ enum class ShaderTypeMD
         bool DisableConvertingAtomicIAddToIncDec             = false;
         bool ZeroInitRegistersBeforeExecution                = false;
         bool EnableSamplerLoopSpeculation                    = false;
+        bool EnableSampleResultLatencySink                   = false;
         unsigned VISASpillAllowed                            = 0;
         unsigned ConstantCoalescingMaxBBDepthDelta           = 0;
         unsigned ConstantCoalescingDepthCheckMinBytes        = 0;

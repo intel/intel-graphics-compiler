@@ -276,7 +276,17 @@ IGC_INITIALIZE_PASS_DEPENDENCY(IGCFunctionExternalRegPressureAnalysis)
 IGC_INITIALIZE_PASS_END(CodeSinking, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char CodeSinking::ID = 0;
-CodeSinking::CodeSinking() : FunctionPass(ID) { initializeCodeSinkingPass(*PassRegistry::getPassRegistry()); }
+CodeSinking::CodeSinking() : CodeSinking(IGC_IS_FLAG_ENABLED(EnableSampleResultLatencySink)) {}
+
+CodeSinking::CodeSinking(bool EnableSampleResultLatencySink)
+    : FunctionPass(ID), enableSampleResultLatencySink(EnableSampleResultLatencySink) {
+  initializeCodeSinkingPass(*PassRegistry::getPassRegistry());
+}
+
+llvm::FunctionPass *createCodeSinkingPass(const CodeGenContext &Context) {
+  return new CodeSinking(IGC_IS_FLAG_ENABLED(EnableSampleResultLatencySink) ||
+                         Context.getModuleMetaData()->compOpt.EnableSampleResultLatencySink);
+}
 
 // Sink the code down the tree, but not in the loop
 bool CodeSinking::treeSink(Function &F) {
@@ -335,7 +345,7 @@ bool CodeSinking::runOnFunction(Function &F) {
   latencySinkBBPressure.clear();
   // Pixel shaders are skipped due to the regressions in both spill and GPU-cycle.
   // Retries are skipped too.
-  if (IGC_IS_FLAG_ENABLED(EnableSampleResultLatencySink) && CTX->platform.supportsSampleResultLatencySink() &&
+  if (enableSampleResultLatencySink && CTX->platform.supportsSampleResultLatencySink() &&
       CTX->type != ShaderType::PIXEL_SHADER && CTX->m_retryManager && CTX->m_retryManager->IsFirstTry()) {
     RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
     auto &FRPE = getAnalysis<IGCFunctionExternalRegPressureAnalysis>();
