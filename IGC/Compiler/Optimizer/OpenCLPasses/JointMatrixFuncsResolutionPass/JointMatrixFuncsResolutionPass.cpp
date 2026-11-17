@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Demangle/Demangle.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DIBuilder.h"
@@ -641,6 +642,27 @@ bool JointMatrixFuncsResolutionPass::ValidateLoadStore(bool isLoad, unsigned ope
     m_Ctx->EmitError(msg.c_str(), ctx);
   }
   return result == ALL_VALID;
+}
+
+bool JointMatrixFuncsResolutionPass::validateLayoutOperand(Value *LayoutVal, const char *OperationName,
+                                                           unsigned &Layout, Value *Ctx) {
+  ConstantInt *LayoutConst = dyn_cast<ConstantInt>(LayoutVal);
+  if (!LayoutConst) {
+    std::string Msg = "Matrix " + std::string(OperationName) + " memory layout must be a compile time constant.";
+    m_Ctx->EmitError(Msg.c_str(), Ctx);
+    return false;
+  }
+
+  uint64_t RawLayout = LayoutConst->getLimitedValue();
+  if (RawLayout >= LayoutMax) {
+    std::string Msg =
+        "Unsupported matrix " + std::string(OperationName) + " memory layout: " + std::to_string(RawLayout) + ".";
+    m_Ctx->EmitError(Msg.c_str(), Ctx);
+    return false;
+  }
+
+  Layout = (unsigned)RawLayout;
+  return true;
 }
 
 static void AppendSetToString(std::string &msg, const std::set<unsigned> &numbers) {
@@ -1375,7 +1397,9 @@ Instruction *JointMatrixFuncsResolutionPass::ResolvePrefetch(CallInst *CI) {
   Value *cacheLevelVal = CI->getArgOperand(3);
   Value *layoutVal = CI->getArgOperand(4);
   Value *strideVal = CI->getArgOperand(5);
-  unsigned loadLayout = (unsigned)constIntValue(layoutVal);
+  unsigned loadLayout = 0;
+  if (!validateLayoutOperand(layoutVal, "prefetch", loadLayout, CI))
+    return nullptr;
   unsigned cacheLevel = (unsigned)constIntValue(cacheLevelVal);
 
   JointMatrixTypeDescription desc;
@@ -1472,7 +1496,9 @@ template <bool IsJointMatrix, bool IsChecked> Instruction *JointMatrixFuncsResol
                                   CoopMatrix::Load::Op>;
   Value *ptrVal = CI->getArgOperand(OpVariant::Pointer);
   Value *strideVal = CI->getArgOperand(OpVariant::Stride);
-  unsigned loadLayout = (unsigned)constIntValue(CI->getArgOperand(OpVariant::Layout));
+  unsigned loadLayout = 0;
+  if (!validateLayoutOperand(CI->getArgOperand(OpVariant::Layout), "load", loadLayout, CI))
+    return nullptr;
 
   // Matrix builtins expect i64 stride
   Type *i64Ty = Type::getInt64Ty(CI->getContext());
@@ -1553,7 +1579,9 @@ template <bool IsJointMatrix, bool IsChecked> Instruction *JointMatrixFuncsResol
     strideVal = builder.CreateZExtOrBitCast(strideVal, i64Ty);
   }
 
-  unsigned storeLayout = (unsigned)constIntValue(CI->getArgOperand(OpVariant::Layout));
+  unsigned storeLayout = 0;
+  if (!validateLayoutOperand(CI->getArgOperand(OpVariant::Layout), "store", storeLayout, CI))
+    return nullptr;
 
   JointMatrixTypeDescription desc;
   Type *matTy = ResolveType(matrixVal->getType(), &desc);
@@ -2592,6 +2620,20 @@ Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
   } else if (funcName.contains(CooperativeMatrixTestDumpStorePrefx)) {
     InsertPlaceholder(CI);
     NewValue = ResolveTestDumpStore(CI);
+  } else if (auto ResolvedFunc = ResolvedFuncSignatures.find(func); ResolvedFunc != ResolvedFuncSignatures.end()) {
+    ResolveCallFuncWithMatrixArgs(ResolvedFunc->second, CI);
+    return ResolvedValues.lookup(CI);
+  } else if (!isOrContainsMatrixType(CI->getType()) && !isAnyOperand(*CI, isOrContainsMatrixType)) {
+    return nullptr;
+  } else {
+    std::string Msg = "Unsupported matrix function: '" + llvm::demangle(funcName.str()) + "'.";
+    m_Ctx->EmitError(Msg.c_str(), CI);
+  }
+
+  if (NewValue == nullptr) {
+    InstsToErase.insert(CI);
+    if (!CI->getType()->isVoidTy())
+      NewValue = PoisonValue::get(ResolveTypes(CI->getType()));
   }
 
   CacheResolvedValue(CI, NewValue);
@@ -2778,14 +2820,21 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v) {
   if (Instruction *I = dyn_cast<Instruction>(v))
     return ResolveGeneric(I);
 
-  if (isa<UndefValue>(v)) {
-    Value *resolved = UndefValue::get(ResolveType(v->getType(), nullptr));
-    LLVM_DEBUG(dbgs() << " - RESOLVED: " << *resolved << "\n");
-    return resolved;
+  // SPV_KHR_cooperative_matrix: a matrix is a composite, so OpConstantNull is valid.
+  if (auto *C = dyn_cast<Constant>(v); C && (isa<UndefValue>(C) || C->isNullValue())) {
+    Type *ResolvedTy = ResolveTypes(v->getType());
+    Value *Resolved = isa<UndefValue>(C) ? UndefValue::get(ResolvedTy) : Constant::getNullValue(ResolvedTy);
+    LLVM_DEBUG(dbgs() << " - RESOLVED: " << *Resolved << "\n");
+    return Resolved;
   }
 
-  IGC_ASSERT_MESSAGE(false, "Resolve failure.");
-  return nullptr;
+  std::string Msg;
+  raw_string_ostream MsgStream(Msg);
+  MsgStream << "Unsupported matrix value: ";
+  v->printAsOperand(MsgStream);
+  MsgStream.flush();
+  m_Ctx->EmitError(Msg.c_str(), v);
+  return PoisonValue::get(ResolveTypes(v->getType()));
 }
 
 Function *JointMatrixFuncsResolutionPass::CloneFunction(Function *pOriginalFunction) {
@@ -2859,27 +2908,17 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst &CI) {
     return;
 #endif
 
-  /* Resolve calls to JointMatrix BIs that haven't been resolved yet. In
-   * future when returning and passing matrices by argument is
-   * supported also basic block terminators should be used as
-   * transformation starting point */
-  if (IGCLLVM::starts_with(funcName, JointMatrixBIPrefix) || funcName.contains(JointMatrixBISuffix) ||
-      funcName.contains(CooperativeMatrixBISuffix)) {
-    ResolveSIMDSize(CI.getParent()->getParent());
-    ResolveCall(&CI);
-    return;
-  }
+  bool IsMatrixBuiltin = IGCLLVM::starts_with(funcName, JointMatrixBIPrefix) ||
+                         funcName.contains(JointMatrixBISuffix) || funcName.contains(CooperativeMatrixBISuffix) ||
+                         (IGCLLVM::starts_with(funcName, "_Z") &&
+                          (funcName.contains("__spirv_JointMatrix") || funcName.contains("__spirv_CooperativeMatrix") ||
+                           funcName.contains(JointMatrixFillPrefx)));
 
-  if (IGCLLVM::starts_with(funcName, "_Z") &&
-      (funcName.contains("__spirv_JointMatrix") || funcName.contains("__spirv_CooperativeMatrix") ||
-       funcName.contains(JointMatrixFillPrefx))) {
-    ResolveSIMDSize(CI.getParent()->getParent());
-    ResolveCall(&CI);
+  if (!IsMatrixBuiltin && !isAnyFunctionArgMatrixType(func))
     return;
-  }
 
-  if (isAnyFunctionArgMatrixType(func))
-    ResolveCallFuncWithMatrixArgs(ResolvedFuncSignatures[func], &CI);
+  ResolveSIMDSize(CI.getFunction());
+  ResolveCall(&CI);
 }
 
 bool JointMatrixFuncsResolutionPass::ResolveCallFuncWithMatrixArgs(Function *ResolvedFunction, CallInst *CI) {

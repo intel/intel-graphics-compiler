@@ -119,6 +119,7 @@ private:
   bool ValidateLoadStore(bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc,
                          llvm::Value *ctx);
   bool ValidateAccessType(llvm::Type *accessType, unsigned accessBitWidth, llvm::Value *ctx);
+  bool validateLayoutOperand(llvm::Value *LayoutVal, const char *OperationName, unsigned &Layout, llvm::Value *Ctx);
 
   void Validate2DBlockLoadStore(GetMatrixFuncNameOperation operation, unsigned operationLayout, unsigned address_space,
                                 const JointMatrixTypeDescription *desc, llvm::Value *ctx);
