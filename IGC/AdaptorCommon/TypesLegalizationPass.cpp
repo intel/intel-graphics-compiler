@@ -63,6 +63,15 @@ void TypesLegalizationPass::visitCallInst(CallInst &call) {
     m_Calls.push_back(&call);
 }
 
+// Other aggregate loads are split through their users, which may read an
+// element several times or not at all, and leaves the aggregate load to be
+// deleted as dead code. A volatile load must read each element exactly once
+// and cannot be deleted, so it is split at the load itself.
+void TypesLegalizationPass::visitLoadInst(LoadInst &Ld) {
+  if (Ld.isVolatile() && Ld.getType()->isAggregateType())
+    VolatileLoads.push_back(&Ld);
+}
+
 ///////////////////////////////////////////////////////////////////////
 /// @brief Creates an alloca instruction at the beginning of current
 /// function
@@ -183,6 +192,13 @@ bool TypesLegalizationPass::LegalizeTypes() {
     modified = true;
   }
 
+  // Handle volatile loads before extract value and store instructions, so
+  // that those are resolved through the elements loaded here.
+  for (LoadInst *Ld : VolatileLoads) {
+    TypesLegalizationPass::ResolveLoadByElements(Ld);
+    modified = true;
+  }
+
   for (ExtractValueInst *ev : m_ExtractValueInst) {
     TypesLegalizationPass::ResolveExtractValue(ev);
     modified = true;
@@ -202,7 +218,7 @@ bool TypesLegalizationPass::LegalizeTypes() {
     }
   }
   for (LoadInst *ld : callArgLoads) {
-    TypesLegalizationPass::ResolveCallArgLoad(ld);
+    TypesLegalizationPass::ResolveLoadByElements(ld);
     modified = true;
   }
   return modified;
@@ -228,8 +244,8 @@ Value *TypesLegalizationPass::LoadByElements(IGCLLVM::IRBuilder<> &builder, Load
 ///////////////////////////////////////////////////////////////////////
 /// @brief Replaces an aggregate load with loads of its scalar elements
 /// assembled with insertvalue.
-/// @param  ld aggregate load used as a call argument
-void TypesLegalizationPass::ResolveCallArgLoad(LoadInst *ld) {
+/// @param  ld aggregate load used as a call argument or volatile
+void TypesLegalizationPass::ResolveLoadByElements(LoadInst *ld) {
   IGCLLVM::IRBuilder<> builder(ld);
   SmallVector<unsigned, 8> indices;
   Value *val = LoadByElements(builder, ld, ld->getType(), PoisonValue::get(ld->getType()), indices);
@@ -291,7 +307,7 @@ Value *TypesLegalizationPass::ResolveValue(Instruction *ip, Value *val, SmallVec
     auto loadInstAlign = IGCLLVM::getAlignmentValue(ld);
     const DataLayout &DL = ld->getModule()->getDataLayout();
     Align useAlign = ComputeSafeScalarAlignment(ld->getType(), gepTy, loadInstAlign, DL);
-    return builder.CreateAlignedLoad(gepTy, gep, useAlign);
+    return builder.CreateAlignedLoad(gepTy, gep, useAlign, ld->isVolatile());
   } else if (Constant *c = dyn_cast<Constant>(val)) {
     IRBuilder<> builder(ip);
     // Create ExtractValue - it will be folded.
@@ -411,7 +427,7 @@ void TypesLegalizationPass::ResolveStoreInst(StoreInst *storeInst, Type *type, S
       const DataLayout &DL = storeInst->getModule()->getDataLayout();
       Align useAlign = ComputeSafeScalarAlignment(aggTy, scalarTy, storeInstAlign, DL);
       Value *pGEP = CreateGEP(builder, aggTy, storeInst->getOperand(1), indices);
-      builder.CreateAlignedStore(val, pGEP, useAlign);
+      builder.CreateAlignedStore(val, pGEP, useAlign, storeInst->isVolatile());
     }
   }
 }
@@ -436,6 +452,7 @@ bool TypesLegalizationPass::run(Function &function) {
   m_ExtractValueInst.clear();
   m_PhiNodes.clear();
   m_Calls.clear();
+  VolatileLoads.clear();
   if (function.hasOptNone()) {
     // type-legalization may create dead load, clean up those loads
     // when DCE would not. Otherwise IGC cannot handle aggregate loads

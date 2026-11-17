@@ -31,8 +31,9 @@ public:
   void visitExtractValueInst(llvm::ExtractValueInst &I);
   void visitPHINode(llvm::PHINode &I);
   void visitCallInst(llvm::CallInst &I);
+  void visitLoadInst(llvm::LoadInst &Ld);
   void ResolveStoreInst(llvm::StoreInst *st);
-  void ResolveCallArgLoad(llvm::LoadInst *ld);
+  void ResolveLoadByElements(llvm::LoadInst *ld);
   llvm::Value *LoadByElements(IGCLLVM::IRBuilder<> &builder, llvm::LoadInst *ld, llvm::Type *ty, llvm::Value *agg,
                               llvm::SmallVector<unsigned, 8> &indices);
   void ResolvePhiNode(llvm::PHINode *phi);
@@ -51,6 +52,7 @@ public:
   llvm::SmallVector<llvm::ExtractValueInst *, 10> m_ExtractValueInst;
   llvm::SmallVector<llvm::PHINode *, 10> m_PhiNodes;
   llvm::SmallVector<llvm::CallInst *, 4> m_Calls;
+  llvm::SmallVector<llvm::LoadInst *> VolatileLoads;
   llvm::SmallVector<unsigned, 8> Indicies;
 };
 
