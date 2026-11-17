@@ -1079,7 +1079,9 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
       V0->getType()->getScalarType()->isIntegerTy(1)) {
     auto *VTy = cast<IGCLLVM::FixedVectorType>(V0->getType());
     unsigned NumElts = VTy->getNumElements();
-    if (NumElts == 2 || NumElts == 4 || NumElts == 8 || NumElts == 16) {
+    // Also needed for non-power-of-2 widths: GenXLegalization cannot split a
+    // bitcast from such a predicate, but can split all/any.
+    if (NumElts >= 2 && NumElts <= 16) {
       IRBuilder<> Builder(&I);
       auto Cmp = cast<CmpInst>(V0);
       // Inverse the evaluation of flag.
