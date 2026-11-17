@@ -45,6 +45,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/GenIRLowering.h"
 #include "Compiler/CISACodeGen/GenSimplification.h"
 #include "Compiler/CISACodeGen/LoopDCE.h"
+#include "Compiler/CISACodeGen/SplitExitingLatchBackedge.h"
 #include "Compiler/CISACodeGen/LdShrink.h"
 #include "Compiler/CISACodeGen/MemOpt.h"
 #include "Compiler/CISACodeGen/MemOpt2.h"
@@ -200,7 +201,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
 #include "llvmWrapper/Transforms/Scalar/LICM.h"
 #include "llvmWrapper/Transforms/Scalar/IndVarSimplify.h"
-#include "llvmWrapper/Transforms/Scalar/LoopRotation.h"
 
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
@@ -1594,11 +1594,25 @@ void OptimizeIR(CodeGenContext *const pContext) {
       if (pContext->m_instrTypes.numOfLoop) {
         mpm.add(createLoopDeadCodeEliminationPass());
         mpm.add(createLoopCanonicalization());
+        // Delete dead loops before rotation. LoopDeletion needs a unique exit block, and the LoopSimplify that
+        // LoopDeletion's wrapper runs first merges the exiting edges of a multi-exit loop into one exit block.
+        // LoopRotate later gives every exiting edge its own exit block, so the LoopDeletion after rotation cannot
+        // delete such loops.
         mpm.add(IGCLLVM::createLegacyWrappedLoopDeletionPass());
-        mpm.add(llvm::createBreakCriticalEdgesPass());
+        // LoopRotate skips a loop whose latch already exits. For loops whose header also exits, split only the
+        // latch's back-edge so the latch becomes unconditional and the loop gets rotated.
+        if (IGC_IS_FLAG_ENABLED(EnableSplitExitingLatchBackedge)) {
+          mpm.add(createSplitExitingLatchBackedgePass());
+        } else {
+          mpm.add(llvm::createBreakCriticalEdgesPass());
+        }
         mpm.add(IGCLLVM::createLegacyWrappedLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
         mpm.add(llvm::createLCSSAPass());
         mpm.add(llvm::createLoopSimplifyPass());
+        // After rotation, as in LLVM's pipeline: LoopDeletion proves a run-once loop's backedge is never taken from
+        // SCEV's exit count of the latch, which needs the exit test in the latch. Before the InstCombine below, which
+        // can turn such a latch into an unsigned wrap test SCEV cannot evaluate.
+        mpm.add(IGCLLVM::createLegacyWrappedLoopDeletionPass());
       }
     }
 
