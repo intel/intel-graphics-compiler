@@ -122,7 +122,7 @@ std::pair<Value *, Instruction *> expand64BitLoad(IGCIRBuilder<T> &IRB, const Da
   if (auto *PLI = LI.getPredicatedLoadIntrinsic())
     MVal = IRB.CreateBitCast(PLI->getMergeValue(), NewTy);
 
-  Instruction *NewLI = LI.CreateAlignedLoad(IRB, NewTy, NewPtr, MVal);
+  Instruction *NewLI = LI.CreateAlignedLoad(IRB, NewTy, NewPtr, MVal, LI.isVolatile());
   NewLI->copyMetadata(*LI.inst());
   Value *NewVal = NewLI;
 
@@ -171,7 +171,7 @@ template <typename T> Instruction *expand64BitStore(IGCIRBuilder<T> &IRB, const 
   NewVal = IRB.CreateBitCast(NewVal, NewTy);
   auto *NewPtr = IRB.CreateBitCast(SI.getPointerOperand(),
                                    IGCLLVM::PointerType::get(NewVal->getType(), OldPtrTy->getPointerAddressSpace()));
-  auto *NewST = SI.CreateAlignedStore(IRB, NewVal, NewPtr);
+  auto *NewST = SI.CreateAlignedStore(IRB, NewVal, NewPtr, SI.isVolatile());
   NewST->copyMetadata(*SI.inst());
 
   return NewST;

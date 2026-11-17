@@ -44,6 +44,20 @@ define void @test_load_v2i64(<2 x i64> addrspace(1)* %a) {
   ret void
 }
 
+define void @test_load_i64_volatile(i64 addrspace(1)* %a) {
+; CHECK-LABEL: @test_load_i64_volatile(
+; CHECK-TYPED:    [[TMP1:%.*]] = bitcast i64 addrspace(1)* %a to <2 x i32> addrspace(1)*
+; CHECK-TYPED:    [[TMP2:%.*]] = load volatile <2 x i32>, <2 x i32> addrspace(1)* [[TMP1]]
+; CHECK-OPAQUE:    [[TMP2:%.*]] = load volatile <2 x i32>, ptr addrspace(1) %a
+; CHECK:    [[TMP3:%.*]] = bitcast <2 x i32> [[TMP2]] to i64
+; CHECK:    call void @use.i64(i64 [[TMP3]])
+; CHECK:    ret void
+;
+  %1 = load volatile i64, i64 addrspace(1)* %a
+  call void @use.i64(i64 %1)
+  ret void
+}
+
 declare void @use.i64(i64)
 declare void @use.v2i64(<2 x i64>)
 
@@ -69,6 +83,18 @@ define void @test_store_v2i64(<2 x i64> addrspace(1)* %a, <2 x i64> %b) {
 ; CHECK:    ret void
 ;
   store <2 x i64> %b, <2 x i64> addrspace(1)* %a
+  ret void
+}
+
+define void @test_store_i64_volatile(i64 addrspace(1)* %a, i64 %b) {
+; CHECK-LABEL: @test_store_i64_volatile(
+; CHECK:    [[TMP1:%.*]] = bitcast i64 %b to <2 x i32>
+; CHECK-TYPED:    [[TMP2:%.*]] = bitcast i64 addrspace(1)* %a to <2 x i32> addrspace(1)*
+; CHECK-TYPED:    store volatile <2 x i32> [[TMP1]], <2 x i32> addrspace(1)* [[TMP2]]
+; CHECK-OPAQUE:    store volatile <2 x i32> [[TMP1]], ptr addrspace(1) %a
+; CHECK:    ret void
+;
+  store volatile i64 %b, i64 addrspace(1)* %a
   ret void
 }
 

@@ -221,6 +221,10 @@ bool AdvMemOpt::runOnFunction(Function &F) {
           if (!WI->isUniform(SI->inst()))
             continue;
 
+          // MemOpt merges only simple stores.
+          if (!SI->isSimple())
+            continue;
+
           unsigned AS = SI->getPointerAddressSpace();
           if (AS != ADDRESS_SPACE_PRIVATE && AS != ADDRESS_SPACE_GLOBAL)
             continue;
