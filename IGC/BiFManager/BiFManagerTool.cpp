@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/FileSystem.h>
 
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/ADT/StringRef.h"
 #include "llvmWrapper/TargetParser/Triple.h"
 #include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
 #include "llvmWrapper/Transforms/IPO/StripSymbols.h"
@@ -304,9 +305,26 @@ void BiFManagerTool::markBuiltinFunc(llvm::Module *pM) {
   }
 }
 
+// User SPIR-V globals can have the same names as local BiF globals, e.g. the
+// `.str` string literals. BiF globals are made linkonce below, so at link time
+// the BiF one keeps the name and the user one gets a suffix that depends on the
+// module's renaming history. Kernels recompiled alone in a fresh module then
+// refer to a name missing from the program symbol table built in the first pass.
+// Reserved names can't come from user code and are kept as is.
+static void prefixLocalGlobals(llvm::Module &M) {
+  for (auto &G : M.globals())
+    if (G.hasLocalLinkage() && !IGCLLVM::starts_with(G.getName(), "__"))
+      G.setName("__bif" + G.getName());
+}
+
 void BiFManagerTool::MakeBiFPackage(llvm::Module *pBiFModuleMain, llvm::Module *pBiFModuleSize32,
                                     llvm::Module *pBiFModuleSize64) {
   sectionCounter = -1;
+
+  prefixLocalGlobals(*pBiFModuleMain);
+  prefixLocalGlobals(*pBiFModuleSize32);
+  prefixLocalGlobals(*pBiFModuleSize64);
+
 
   generateSplitedBiFModules(pBiFModuleMain);
   int BiFMainEndIdx = BiFSections.size() - 1;
