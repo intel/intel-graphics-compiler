@@ -18,7 +18,7 @@
 ; RUN:   --regkey EnableSOAAcrossCalls=0 -S %s | FileCheck %s --check-prefix=NOSPLIT
 
 ; CHECK-LABEL: define internal float @callee(
-; CHECK: [[SV:%.*]] = load float, ptr addrspace(4) %ge, align 4
+; CHECK: [[SV:%.*]] = load float, ptr %e, align 4
 ; CHECK: [[GV:%.*]] = load float, ptr addrspace(4) %gn, align 4
 ; CHECK: select i1 %c, float [[SV]], float [[GV]]
 ; CHECK-NOT: select i1 %c, ptr

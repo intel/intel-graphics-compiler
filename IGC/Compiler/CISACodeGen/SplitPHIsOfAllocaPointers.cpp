@@ -23,7 +23,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 #include "common/igc_regkeys.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Analysis/ValueTracking.h"
 
@@ -31,10 +30,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
-
-#include "Probe/Assertion.h"
-
-#include <optional>
 
 using namespace llvm;
 
@@ -63,24 +58,10 @@ using namespace llvm;
 namespace {
 constexpr int MAX_HOISTING_ITER = 16;
 
-using MergeHoistRecord = SmallVector<LoadInst *, 4>;
-
 struct LoadVia {
   LoadInst *LI;
   SmallVector<Instruction *, 4> Chain; // merge → Chain[0] → ... → LI (casts and const-GEPs)
 };
-
-void commitHoistRecord(MergeHoistRecord &Record) {
-  // Seeding the recursive deleter with the (now trivially dead) original loads
-  // cascades the cleanup through the post-merge cast chains, the pointer merge,
-  // and the dead pre-merge cast chains automatically.
-  SmallVector<WeakTrackingVH, 8> DeadInsts;
-  for (LoadInst *LI : Record) {
-    IGC_ASSERT(LI->use_empty());
-    DeadInsts.push_back(LI);
-  }
-  RecursivelyDeleteTriviallyDeadInstructionsPermissive(DeadInsts);
-}
 
 bool hasDuplicateIncomingBlocks(PHINode *Phi) {
   SmallPtrSet<BasicBlock *, 4> SeenBlocks;
@@ -92,48 +73,44 @@ bool hasDuplicateIncomingBlocks(PHINode *Phi) {
   return false;
 }
 
-bool collectLoadChains(SmallVectorImpl<LoadVia> &Loads, PHINode *Phi) {
-  struct Frame {
-    Instruction *Node;
-    SmallVector<Instruction *, 4> Chain;
-  };
-  SmallVector<Frame, 8> Stack;
-  Stack.push_back({Phi, {}});
+bool isReplayableAddressStep(const User *U, const Value *Base) {
+  if (isa<BitCastInst, AddrSpaceCastInst>(U)) {
+    return true;
+  }
+  if (const auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
+    return GEP->getPointerOperand() == Base && GEP->hasAllConstantIndices();
+  }
+  return false;
+}
 
-  auto pushNext = [&](Instruction *I, const SmallVector<Instruction *, 4> &Chain) {
-    Frame Next;
-    Next.Node = I;
-    Next.Chain = Chain;
-    Next.Chain.push_back(I);
-    Stack.push_back(std::move(Next));
-  };
-
-  while (!Stack.empty()) {
-    Frame F = Stack.pop_back_val();
-    for (User *U : F.Node->users()) {
-      if (auto *LI = dyn_cast<LoadInst>(U)) {
-        if (!LI->isSimple()) {
-          return false;
-        }
-        Loads.push_back({LI, F.Chain});
-      } else if (isa<BitCastInst, AddrSpaceCastInst>(U)) {
-        auto *CI = cast<Instruction>(U);
-        pushNext(CI, F.Chain);
-      } else if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
-        // Only follow GEPs rooted at the current node with all-constant
-        // indices: constants dominate every predecessor, so the GEP can be
-        // replayed per predecessor. Anything else (e.g. a dynamic index derived from
-        // the merge) is not safely reproducible and disqualifies the merge.
-        if (GEP->getPointerOperand() != F.Node || !GEP->hasAllConstantIndices()) {
-          return false;
-        }
-        pushNext(GEP, F.Chain);
-      } else {
+bool collectLoadChainsFrom(Instruction *Node, SmallVectorImpl<Instruction *> &Chain, SmallVectorImpl<LoadVia> &Loads) {
+  for (User *U : Node->users()) {
+    if (auto *LI = dyn_cast<LoadInst>(U)) {
+      if (!LI->isSimple()) {
         return false;
       }
+      Loads.push_back({LI, SmallVector<Instruction *, 4>(Chain.begin(), Chain.end())});
+      continue;
+    }
+    if (!isReplayableAddressStep(U, Node)) {
+      return false;
+    }
+    auto *Step = cast<Instruction>(U);
+    Chain.push_back(Step);
+    bool Ok = collectLoadChainsFrom(Step, Chain, Loads);
+    Chain.pop_back();
+    if (!Ok) {
+      return false;
     }
   }
   return true;
+}
+
+// Collects every load reachable from PHI through bitcasts, addrspacecasts and
+// constant-index GEPs. Fails if the merged pointer has any other kind of use.
+bool collectLoadChains(SmallVectorImpl<LoadVia> &Loads, PHINode *Phi) {
+  SmallVector<Instruction *, 4> Chain;
+  return collectLoadChainsFrom(Phi, Chain, Loads);
 }
 
 bool checkPHILoadSafety(PHINode *Phi, SmallVectorImpl<LoadVia> &Loads) {
@@ -172,79 +149,27 @@ bool checkPHILoadSafety(PHINode *Phi, SmallVectorImpl<LoadVia> &Loads) {
   return true;
 }
 
-// Replay a cast chain from startPtr, stripping alloca-derived pre-merge
-// casts and clamping addrspacecasts to the alloca's address space.
-Value *cloneCastChainPHI(IRBuilder<> &B, Value *Root, ArrayRef<Instruction *> Chain, std::optional<unsigned> AllocaAS) {
-  Value *Cur = Root;
-
-  for (Instruction *I : Chain) {
-    if (auto *GEP = dyn_cast<GetElementPtrInst>(I)) {
-      Type *SrcElemTy = GEP->getSourceElementType();
-      // The alloca incoming value had its pre-merge casts stripped, so under
-      // typed pointers Cur may no longer carry the pointee type the original
-      // GEP indexed. Restore it, staying in Cur's address space, before replaying.
-      auto *CurPtrTy = cast<PointerType>(Cur->getType());
-      if (!IGCLLVM::isOpaqueOrPointeeTypeMatches(CurPtrTy, SrcElemTy)) {
-        Cur = B.CreateBitCast(Cur, IGCLLVM::PointerType::get(SrcElemTy, CurPtrTy->getAddressSpace()));
-      }
-      SmallVector<Value *, 4> Idxs(GEP->idx_begin(), GEP->idx_end());
-      if (GEP->isInBounds()) {
-        Cur = B.CreateInBoundsGEP(SrcElemTy, Cur, Idxs);
-      } else {
-        Cur = B.CreateGEP(SrcElemTy, Cur, Idxs);
-      }
-      continue;
-    }
-    IGC_ASSERT(isa<BitCastInst>(I) || isa<AddrSpaceCastInst>(I));
-    auto *Cast = cast<CastInst>(I);
-    Type *DestTy = Cast->getType();
-    // Clamp addrspacecast destinations to AllocaAS to prevent
-    // private→generic→global casts that cause GPU hangs when SoA/GRF
-    // promotion is rejected and the surviving load reads from wrong memory
-    if (AllocaAS.has_value()) {
-      if (auto *PT = dyn_cast<PointerType>(DestTy)) {
-        if (PT->getAddressSpace() != AllocaAS.value()) {
-          DestTy = IGCLLVM::PointerType::get(PT, AllocaAS.value());
-        }
-      }
-    }
-    if (Cur->getType() == DestTy) {
-      continue;
-    }
-    // Recompute the opcode rather than reusing Cast's: stripping the alloca
-    // incoming value pre-merge casts and clamping DestTy to AllocaAS can
-    // leave source and destination in the same address space, where the
-    // original addrspacecast opcode is not a valid cast.
-    Cur = B.CreateCast(CastInst::getCastOpcode(Cur, false, DestTy, false), Cur, DestTy);
+// Replaces LV.LI, which loads through PHI via LV.Chain, with a value PHI of
+// per-predecessor loads. Each predecessor replays LV.Chain on its incoming
+// pointer and loads before its terminator.
+void splitLoadThroughPhi(PHINode *Phi, const LoadVia &LV, const DataLayout &DL,
+                         const DenseSet<const Value *> &ExtraRoots) {
+  LoadInst *LI = LV.LI;
+  PHINode *NewPhi = PHINode::Create(LI->getType(), Phi->getNumIncomingValues(), Phi->getName() + ".lowered",
+                                    IGCLLVM::insertPosition(Phi));
+  for (unsigned I = 0, E = Phi->getNumIncomingValues(); I < E; ++I) {
+    BasicBlock *BBIn = Phi->getIncomingBlock(I);
+    IRBuilder<> IRB(BBIn->getTerminator());
+    Value *Ptr = IGC::SoAAcrossFNUtil::replayAddressChain(IRB, Phi->getIncomingValue(I), LV.Chain, DL, ExtraRoots);
+    auto *NewLI = cast<LoadInst>(LI->clone());
+    NewLI->setOperand(LoadInst::getPointerOperandIndex(), Ptr);
+    IRB.Insert(NewLI);
+    NewPhi->addIncoming(NewLI, BBIn);
   }
-  return Cur;
+  LI->replaceAllUsesWith(NewPhi);
 }
 
-// If Incoming is derived from an alloca, strip its leading bitcast /
-// addrspacecast casts (but keep GEPs) back to the alloca-space base and report
-// that base's address space, so the replayed post-merge cast chain can be
-// clamped to it. Stripping the pre-merge addrspacecasts is what keeps the
-// incoming value in private space and prevents a private→generic→global chain.
-// For a non-alloca incoming value it is returned unchanged with no clamp.
-Value *stripRootIncomingCasts(Value *Incoming, const DataLayout &DL, std::optional<unsigned> &AllocaAS,
-                              const DenseSet<const Value *> &ExtraRoots) {
-  AllocaAS = std::nullopt;
-  Value *Obj = IGCLLVM::getUnderlyingObject(Incoming, DL);
-  if (!isa<AllocaInst>(Obj) && !ExtraRoots.contains(Obj)) {
-    return Incoming;
-  }
-  // Stripping bitcast/addrspacecast preserves the underlying object, so the
-  // base stays rooted at the same alloca throughout.
-  Value *Cur = Incoming;
-  while (isa<BitCastInst, AddrSpaceCastInst>(Cur)) {
-    Cur = cast<Instruction>(Cur)->getOperand(0);
-  }
-  AllocaAS = Cur->getType()->getPointerAddressSpace();
-  return Cur;
-}
-
-bool runHoistPass(Function &F, bool VerifyAlloca, const DataLayout &DL, SmallVectorImpl<MergeHoistRecord> &OutRecords,
-                  const DenseSet<const Value *> &ExtraRoots) {
+bool runHoistPass(Function &F, bool VerifyAlloca, const DataLayout &DL, const DenseSet<const Value *> &ExtraRoots) {
   auto IsCandidate = [&](PHINode &Phi) {
     if (!Phi.getType()->isPointerTy()) {
       return false;
@@ -268,7 +193,7 @@ bool runHoistPass(Function &F, bool VerifyAlloca, const DataLayout &DL, SmallVec
     }
   }
 
-  bool Changed = false;
+  SmallVector<WeakTrackingVH, 8> DeadLoads;
   for (PHINode *Phi : Candidates) {
     if (hasDuplicateIncomingBlocks(Phi)) {
       continue;
@@ -283,37 +208,16 @@ bool runHoistPass(Function &F, bool VerifyAlloca, const DataLayout &DL, SmallVec
       continue;
     }
 
-    auto ReplayChain = [&](IRBuilder<> &B, Value *StartPtr, ArrayRef<Instruction *> Chain) -> Value * {
-      std::optional<unsigned> AllocaAS;
-      Value *Base = stripRootIncomingCasts(StartPtr, DL, AllocaAS, ExtraRoots);
-      return cloneCastChainPHI(B, Base, Chain, AllocaAS);
-    };
-
-    MergeHoistRecord Rec;
+    llvm::sort(Loads, [](const LoadVia &A, const LoadVia &B) { return A.LI->comesBefore(B.LI); });
 
     for (const LoadVia &LV : Loads) {
-      LoadInst *LI = LV.LI;
-      PHINode *NewPhi = PHINode::Create(LI->getType(), Phi->getNumIncomingValues(), Phi->getName() + ".lowered",
-                                        IGCLLVM::insertPosition(Phi));
-
-      for (unsigned I = 0; I < Phi->getNumIncomingValues(); ++I) {
-        BasicBlock *BBIn = Phi->getIncomingBlock(I);
-        IRBuilder<> IRB(BBIn->getTerminator());
-        Value *Ptr = ReplayChain(IRB, Phi->getIncomingValue(I), LV.Chain);
-        LoadInst *NewLI = cast<LoadInst>(LI->clone());
-        NewLI->setOperand(0, Ptr);
-        IRB.Insert(NewLI);
-        NewPhi->addIncoming(NewLI, BBIn);
-      }
-      LI->replaceAllUsesWith(NewPhi);
-      Rec.push_back(LI);
-      IGC_ASSERT(LI->use_empty());
+      splitLoadThroughPhi(Phi, LV, DL, ExtraRoots);
+      DeadLoads.push_back(LV.LI);
     }
-
-    OutRecords.push_back(std::move(Rec));
-    Changed = true;
   }
 
+  bool Changed = !DeadLoads.empty();
+  RecursivelyDeleteTriviallyDeadInstructionsPermissive(DeadLoads);
   return Changed;
 }
 
@@ -386,21 +290,14 @@ bool IGC::SplitPHIsOfAllocaPointers::runOnModule(Module &M) {
     if (F.isDeclaration() || MdUtils->findFunctionsInfoItem(&F) == MdUtils->end_FunctionsInfo()) {
       continue;
     }
-    // Loop: committing one pointer merge may expose a new inner candidate (e.g. a
+    // Loop: lowering one pointer merge may expose a new inner candidate (e.g. a
     // phi-of-phi whose outer incoming value only roots at the alloca once the
     // inner merge is lowered). Re-scan until a pass finds nothing new.
-    SmallVector<MergeHoistRecord, 8> HoistRecords;
     for (int HoistIter = 0; HoistIter < MAX_HOISTING_ITER; ++HoistIter) {
-      const size_t PrevCount = HoistRecords.size();
-      runHoistPass(F, m_VerifyAlloca, DL, HoistRecords, RootArgs);
-      if (HoistRecords.size() == PrevCount) {
+      if (!runHoistPass(F, m_VerifyAlloca, DL, RootArgs)) {
         break;
       }
-      // Commit only the newly added records.
-      for (size_t J = PrevCount; J < HoistRecords.size(); ++J) {
-        commitHoistRecord(HoistRecords[J]);
-        Changed = true;
-      }
+      Changed = true;
     }
   }
   return Changed;

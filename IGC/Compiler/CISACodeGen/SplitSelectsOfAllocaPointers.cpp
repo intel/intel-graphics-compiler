@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/ADT/STLExtras.h>
-#include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Analysis/Loads.h>
 #include <llvm/IR/DataLayout.h>
@@ -23,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/CodeGenPublic.h"
@@ -54,19 +54,6 @@ void collectCastChain(SelectInst *SI, Instruction *LeafUser, SmallVectorImpl<Ins
   std::reverse(Chain.begin(), Chain.end());
 }
 
-// Clone the cast chain at the current builder insertion point, starting from Root.
-// Returns the final pointer value (head of chain, replicated).
-Value *cloneCastChain(IRBuilder<> &B, Value *Root, ArrayRef<Instruction *> Chain) {
-  Value *Cur = Root;
-  for (Instruction *I : Chain) {
-    if (auto *BC = dyn_cast<BitCastInst>(I))
-      Cur = B.CreateBitCast(Cur, BC->getDestTy());
-    else if (auto *ASC = dyn_cast<AddrSpaceCastInst>(I))
-      Cur = B.CreateAddrSpaceCast(Cur, ASC->getDestTy());
-  }
-  return Cur;
-}
-
 Instruction *createPredicatedLoad(IRBuilder<> &B, LoadInst *Model, Value *Ptr, Value *Pred) {
   Module *Mod = B.GetInsertBlock()->getModule();
   Type *MemType = Model->getType();
@@ -81,14 +68,15 @@ Instruction *createPredicatedLoad(IRBuilder<> &B, LoadInst *Model, Value *Ptr, V
 }
 
 // Transform: %v = load (chain(SI))  ==> %va = load chain(A); %vb = load chain(B); %v = select c, va, vb
-void splitLoadOfSelectPtr(LoadInst *LI, SelectInst *SI, bool UsePredicatedLoads) {
+void splitLoadOfSelectPtr(LoadInst *LI, SelectInst *SI, bool UsePredicatedLoads, const DataLayout &DL,
+                          const DenseSet<const Value *> &ExtraRoots) {
   SmallVector<Instruction *, 4> Chain;
   collectCastChain(SI, LI, Chain);
   IRBuilder<> B(LI);
   B.SetCurrentDebugLocation(LI->getDebugLoc());
   Value *Cond = SI->getCondition();
-  Value *PtrTrue = cloneCastChain(B, SI->getTrueValue(), Chain);
-  Value *PtrFalse = cloneCastChain(B, SI->getFalseValue(), Chain);
+  Value *PtrTrue = IGC::SoAAcrossFNUtil::replayAddressChain(B, SI->getTrueValue(), Chain, DL, ExtraRoots);
+  Value *PtrFalse = IGC::SoAAcrossFNUtil::replayAddressChain(B, SI->getFalseValue(), Chain, DL, ExtraRoots);
   Value *VTrue = nullptr;
   Value *VFalse = nullptr;
   if (UsePredicatedLoads) {
@@ -107,11 +95,14 @@ void splitLoadOfSelectPtr(LoadInst *LI, SelectInst *SI, bool UsePredicatedLoads)
   }
   Value *V = B.CreateSelect(Cond, VTrue, VFalse);
   LI->replaceAllUsesWith(V);
+  Value *Ptr = LI->getPointerOperand();
   LI->eraseFromParent();
+  RecursivelyDeleteTriviallyDeadInstructions(Ptr);
 }
 
 // Transform: store v, chain(SI)  ==> if (cond) store v, chain(A); else store v, chain(B);
-void splitStoreOfSelectPtr(StoreInst *StI, SelectInst *SI) {
+void splitStoreOfSelectPtr(StoreInst *StI, SelectInst *SI, const DataLayout &DL,
+                           const DenseSet<const Value *> &ExtraRoots) {
   SmallVector<Instruction *, 4> Chain;
   collectCastChain(SI, StI, Chain);
   Instruction *ThenTerm = nullptr;
@@ -120,7 +111,7 @@ void splitStoreOfSelectPtr(StoreInst *StI, SelectInst *SI) {
   {
     IRBuilder<> B(ThenTerm);
     B.SetCurrentDebugLocation(StI->getDebugLoc());
-    Value *PtrTrue = cloneCastChain(B, SI->getTrueValue(), Chain);
+    Value *PtrTrue = IGC::SoAAcrossFNUtil::replayAddressChain(B, SI->getTrueValue(), Chain, DL, ExtraRoots);
     auto *STrue = cast<StoreInst>(StI->clone());
     STrue->setOperand(StI->getPointerOperandIndex(), PtrTrue);
     B.Insert(STrue);
@@ -128,27 +119,25 @@ void splitStoreOfSelectPtr(StoreInst *StI, SelectInst *SI) {
   {
     IRBuilder<> B(ElseTerm);
     B.SetCurrentDebugLocation(StI->getDebugLoc());
-    Value *PtrFalse = cloneCastChain(B, SI->getFalseValue(), Chain);
+    Value *PtrFalse = IGC::SoAAcrossFNUtil::replayAddressChain(B, SI->getFalseValue(), Chain, DL, ExtraRoots);
     auto *SFalse = cast<StoreInst>(StI->clone());
     SFalse->setOperand(StI->getPointerOperandIndex(), PtrFalse);
     B.Insert(SFalse);
   }
+  Value *Ptr = StI->getPointerOperand();
   StI->eraseFromParent();
+  RecursivelyDeleteTriviallyDeadInstructions(Ptr);
 }
 
 // Walk from SI through bitcast/addrspacecast users, collecting the leaf
 // load/store consumers. Returns false if any non-supported user is encountered
 // (e.g. another SELECT, a GEP, a PHI), in which case the SI is not safe to split.
 bool collectSelectLeafConsumers(SelectInst *SI, SmallVectorImpl<Instruction *> &Loads,
-                                SmallVectorImpl<Instruction *> &Stores, SmallVectorImpl<Instruction *> &CastsToErase) {
+                                SmallVectorImpl<Instruction *> &Stores) {
   SmallVector<Instruction *, 8> Stack;
-  SmallPtrSet<Instruction *, 16> Visited;
   Stack.push_back(SI);
   while (!Stack.empty()) {
     Instruction *Cur = Stack.pop_back_val();
-    if (!Visited.insert(Cur).second) {
-      continue;
-    }
     for (User *U : Cur->users()) {
       if (auto *LI = dyn_cast<LoadInst>(U)) {
         if (!LI->isSimple()) {
@@ -164,7 +153,6 @@ bool collectSelectLeafConsumers(SelectInst *SI, SmallVectorImpl<Instruction *> &
         }
         Stores.push_back(St);
       } else if (isa<BitCastInst>(U) || isa<AddrSpaceCastInst>(U)) {
-        CastsToErase.push_back(cast<Instruction>(U));
         Stack.push_back(cast<Instruction>(U));
       } else {
         return false;
@@ -219,13 +207,11 @@ bool splitSelectsOfRootedPointers(Function &F, bool UseScratchSpacePrivateMemory
   SmallVector<Instruction *, 8> Loads;
   SmallVector<bool, 8> LoadNeedsPredication;
   SmallVector<Instruction *, 4> Stores;
-  SmallVector<Instruction *, 8> CastsToErase;
   for (SelectInst *SI : WorkList) {
     Loads.clear();
     Stores.clear();
-    CastsToErase.clear();
     LoadNeedsPredication.clear();
-    if (!collectSelectLeafConsumers(SI, Loads, Stores, CastsToErase)) {
+    if (!collectSelectLeafConsumers(SI, Loads, Stores)) {
       continue;
     }
     if (Loads.empty() && Stores.empty()) {
@@ -247,17 +233,11 @@ bool splitSelectsOfRootedPointers(Function &F, bool UseScratchSpacePrivateMemory
     }
 
     for (auto [LI, NeedPredicatedLoads] : llvm::zip(Loads, LoadNeedsPredication)) {
-      splitLoadOfSelectPtr(cast<LoadInst>(LI), SI, NeedPredicatedLoads);
+      splitLoadOfSelectPtr(cast<LoadInst>(LI), SI, NeedPredicatedLoads, DL, ExtraRoots);
     }
     for (Instruction *St : Stores) {
-      splitStoreOfSelectPtr(cast<StoreInst>(St), SI);
+      splitStoreOfSelectPtr(cast<StoreInst>(St), SI, DL, ExtraRoots);
     }
-    llvm::for_each(llvm::reverse(CastsToErase), [](Instruction *I) {
-      IGC_ASSERT(I->use_empty());
-      I->eraseFromParent();
-    });
-    IGC_ASSERT(SI->use_empty());
-    SI->eraseFromParent();
     Changed = true;
   }
   return Changed;

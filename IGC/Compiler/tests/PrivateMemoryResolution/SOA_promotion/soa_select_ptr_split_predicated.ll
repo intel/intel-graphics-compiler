@@ -13,9 +13,8 @@
 ; RUN: %if !llvm-17-plus %{ igc_opt --typed-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl \
 ; RUN:   --igc-split-selects-of-alloca-pointers --igc-private-mem-resolution -S %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED %}
 ;
-; When private memory is using stateless global, to avoid OOB reads,
-; loads lowered from select are changed to predicated loads.
-; This test checks that the predicated load is SoA-promoted
+; When private memory is using stateless global, to avoid OOB reads, loads lowered from select are changed to predicated loads.
+; This test checks that the predicated load is SoA-promoted.
 ;
 ; CHECK-LABEL: @test_load_select_no_scratch(
 ; CHECK:       [[SIMDSZ:%[A-Za-z0-9_.]+]] = call i32 @llvm.genx.GenISA.simdSize()
@@ -30,12 +29,15 @@
 ; CHECK-OPAQUE:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p0.f32(ptr {{.*}}, i64 4, i1 [[NC]], float poison)
 ; CHECK:       select i1 %c, float
 
+; The vector alloca is not SoA-promoted; its operand still loads from private
+; memory (p0, the addrspacecast to generic is stripped) at the stateless offset.
 ; CHECK-LABEL: @test_vec_load_select_no_scratch(
 ; CHECK:       xor i1 %c, true
-; CHECK:       call <2 x float> @llvm.genx.GenISA.PredicatedLoad.v2f32
-; CHECK:       call <2 x float> @llvm.genx.GenISA.PredicatedLoad.v2f32
+; CHECK-TYPED:       call <2 x float> @llvm.genx.GenISA.PredicatedLoad.v2f32.p4v2f32.v2f32(<2 x float> addrspace(4)* %ext,
+; CHECK-OPAQUE:       call <2 x float> @llvm.genx.GenISA.PredicatedLoad.v2f32.p4.v2f32(ptr addrspace(4) %ext,
+; CHECK-TYPED:       call <2 x float> @llvm.genx.GenISA.PredicatedLoad.v2f32.p0v2f32.v2f32(<2 x float>*
+; CHECK-OPAQUE:       call <2 x float> @llvm.genx.GenISA.PredicatedLoad.v2f32.p0.v2f32(ptr
 ; CHECK:       select i1 %c, <2 x float>
-; CHECK-NOT:   GenISA.PredicatedLoad.v2f32.p0
 ; CHECK-NOT:   SOAPrivMemGEP
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"

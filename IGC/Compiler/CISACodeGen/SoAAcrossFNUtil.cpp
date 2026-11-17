@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Module.h>
@@ -28,6 +29,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/igc_regkeys.hpp"
+#include "llvmWrapper/Analysis/ValueTracking.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include "Probe/Assertion.h"
 
@@ -192,5 +195,68 @@ void collectRootArgs(Module &M, GenXFunctionGroupAnalysis *FGA, IGCMD::MetaDataU
       }
     }
   }
+}
+
+namespace {
+// Returns Ty moved into address space AS if Ty is a pointer outside AS;
+// otherwise (or if AS is unset) returns Ty unchanged.
+Type *clampAddrSpace(Type *Ty, std::optional<unsigned> AS) {
+  auto *PT = dyn_cast<PointerType>(Ty);
+  if (!AS || !PT || PT->getAddressSpace() == *AS) {
+    return Ty;
+  }
+  return IGCLLVM::PointerType::get(PT, *AS);
+}
+
+// Casts V to DestTy, or returns V if it already has that type. The opcode is
+// derived from the types rather than copied from an original cast: after
+// stripping and clamping, source and destination may share an address space,
+// where an addrspacecast would be invalid.
+Value *castTo(IRBuilderBase &B, Value *V, Type *DestTy) {
+  if (V->getType() == DestTy) {
+    return V;
+  }
+  return B.CreateCast(CastInst::getCastOpcode(V, false, DestTy, false), V, DestTy);
+}
+
+// Re-creates GEP on top of Base, preserving `inbounds`. Under typed pointers
+// Base may no longer have the pointee type GEP indexes (its leading casts were
+// stripped), so restore it first with a bitcast in Base's own address space.
+Value *replayGEP(IRBuilderBase &B, Value *Base, GetElementPtrInst *GEP) {
+  Type *SrcElemTy = GEP->getSourceElementType();
+  auto *BasePtrTy = cast<PointerType>(Base->getType());
+  if (!IGCLLVM::isOpaqueOrPointeeTypeMatches(BasePtrTy, SrcElemTy)) {
+    Base = B.CreateBitCast(Base, IGCLLVM::PointerType::get(SrcElemTy, BasePtrTy->getAddressSpace()));
+  }
+  SmallVector<Value *, 4> Idxs(GEP->idx_begin(), GEP->idx_end());
+  return GEP->isInBounds() ? B.CreateInBoundsGEP(SrcElemTy, Base, Idxs) : B.CreateGEP(SrcElemTy, Base, Idxs);
+}
+} // anonymous namespace
+
+Value *replayAddressChain(IRBuilderBase &B, Value *Incoming, ArrayRef<Instruction *> Chain, const DataLayout &DL,
+                          const DenseSet<const Value *> &ExtraRoots) {
+  Value *Cur = Incoming;
+  std::optional<unsigned> ClampAS;
+  Value *Obj = IGCLLVM::getUnderlyingObject(Incoming, DL);
+  if (isa<AllocaInst>(Obj) || ExtraRoots.contains(Obj)) {
+    // Stripping bitcast/addrspacecast preserves the underlying object.
+    while (isa<BitCastInst, AddrSpaceCastInst>(Cur)) {
+      Cur = cast<Instruction>(Cur)->getOperand(0);
+    }
+    ClampAS = Cur->getType()->getPointerAddressSpace();
+  }
+
+  for (Instruction *I : Chain) {
+    if (auto *GEP = dyn_cast<GetElementPtrInst>(I)) {
+      Cur = replayGEP(B, Cur, GEP);
+    } else {
+      Cur = castTo(B, Cur, clampAddrSpace(cast<CastInst>(I)->getType(), ClampAS));
+    }
+  }
+  // Give the result the type the original chain produced (clamped). This only
+  // matters under typed pointers, when stripping changed the pointee type and
+  // the chain ends without a cast restoring it (e.g. an empty chain).
+  Type *OrigTy = Chain.empty() ? Incoming->getType() : Chain.back()->getType();
+  return castTo(B, Cur, clampAddrSpace(OrigTy, ClampAS));
 }
 } // namespace IGC::SoAAcrossFNUtil

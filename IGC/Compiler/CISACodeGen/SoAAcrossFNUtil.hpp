@@ -8,10 +8,11 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-// Cross-function SoA helpers shared by PrivateMemoryResolution, SplitPHIsOfAllocaPointers and
+// SoA helpers shared by PrivateMemoryResolution, SplitPHIsOfAllocaPointers and
 // SplitSelectsOfAllocaPointers.
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/ADT/SmallPtrSet.h>
@@ -26,6 +27,8 @@ class Argument;
 class CallGraph;
 class DataLayout;
 class Function;
+class Instruction;
+class IRBuilderBase;
 class Module;
 class Value;
 } // namespace llvm
@@ -54,5 +57,21 @@ bool isWorthwhileForAlloca(llvm::AllocaInst *AI, const llvm::DataLayout &DL);
 // VerifyAlloca restricts the allocas considered to those passing isWorthwhileForAlloca.
 void collectRootArgs(llvm::Module &M, GenXFunctionGroupAnalysis *FGA, IGCMD::MetaDataUtils *MdUtils, bool VerifyAlloca,
                      llvm::DenseSet<const llvm::Value *> &RootArgs);
+
+// Used when splitting a pointer merge (phi/select) into per-operand accesses.
+// Chain is the sequence of bitcasts, addrspacecasts and constant-index GEPs
+// between the merge and a load/store: Chain[0] uses the merge, each later
+// element uses the previous one, and the last one is the load/store pointer.
+// Re-creates that sequence at B's insertion point, starting from Incoming (one
+// operand of the merge) instead of the merge, and returns the final address.
+//
+// If Incoming is rooted at an alloca or an ExtraRoots argument, its outermost
+// casts are stripped and every replayed cast is clamped to the stripped base's
+// address space. The rebuilt address then stays in that space (e.g. private)
+// instead of going private→generic→global, which would make the final access
+// read the wrong memory.
+llvm::Value *replayAddressChain(llvm::IRBuilderBase &B, llvm::Value *Incoming,
+                                llvm::ArrayRef<llvm::Instruction *> Chain, const llvm::DataLayout &DL,
+                                const llvm::DenseSet<const llvm::Value *> &ExtraRoots);
 } // namespace SoAAcrossFNUtil
 } // namespace IGC

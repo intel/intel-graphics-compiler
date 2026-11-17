@@ -28,7 +28,7 @@
 ; be executed.
 ; CHECK-LABEL: define internal float @callee(
 ; LSC:           [[NOTC:%.*]] = xor i1 %c, true
-; LSC:           [[SV:%.*]] = call float @llvm.genx.GenISA.PredicatedLoad.f32.p4.f32(ptr addrspace(4) %ge, i64 4, i1 %c, float poison)
+; LSC:           [[SV:%.*]] = call float @llvm.genx.GenISA.PredicatedLoad.f32.p0.f32(ptr %stack, i64 4, i1 %c, float poison)
 ; LSC:           [[GV:%.*]] = call float @llvm.genx.GenISA.PredicatedLoad.f32.p4.f32(ptr addrspace(4) %gn, i64 4, i1 [[NOTC]], float poison)
 ; LSC:           select i1 %c, float [[SV]], float [[GV]]
 ; NOLSC:         %p = select i1 %c, ptr addrspace(4) %ge, ptr addrspace(4) %gn

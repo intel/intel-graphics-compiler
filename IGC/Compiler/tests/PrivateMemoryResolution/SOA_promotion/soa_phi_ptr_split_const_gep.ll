@@ -11,7 +11,7 @@
 ; splitPHIsOfAllocaPointers replays the whole pointer chain between the merge and
 ; the load on each predecessor, not just casts: collectLoadChains also follows
 ; constant-index GEPs (they dominate every predecessor, so they can be replayed),
-; and cloneCastChainPHI recreates them, preserving `inbounds`.
+; and replayAddressChain recreates them, preserving `inbounds`.
 ;
 ; Two loads reach the merged pointer through such a GEP -- one inbounds, one not --
 ; so each predecessor gets both GEPs replayed. With the pointer merge gone, the alloca is
