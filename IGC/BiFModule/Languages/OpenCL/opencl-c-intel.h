@@ -37,10 +37,6 @@ SPDX-License-Identifier: MIT
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 #endif
 
-#ifdef cl_khr_kernel_clock
-#pragma OPENCL EXTENSION cl_khr_kernel_clock : enable
-#endif // cl_khr_kernel_clock
-
 #ifdef FP_ILOGBNAN
 #undef FP_ILOGBNAN
 #endif
