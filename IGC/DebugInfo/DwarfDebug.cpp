@@ -119,6 +119,41 @@ bool DbgVariable::currentLocationIsVector() const {
   return true;
 }
 
+namespace {
+// A DWARF expression element and the form it is written with.
+struct DwarfExprElement {
+  uint64_t Value;
+  dwarf::Form Form;
+};
+
+// Form of operand ArgIdx of Op. LEB128 operands need a LEB128 form: a fixed-size integer of 128 or more is
+// decoded as a different number, and the bytes left over are decoded as operations.
+dwarf::Form getDwarfOperandForm(uint64_t Op, unsigned ArgIdx, uint64_t Value) {
+  switch (Op) {
+  case dwarf::DW_OP_constu:
+  case dwarf::DW_OP_plus_uconst:
+  case dwarf::DW_OP_regx:
+  case dwarf::DW_OP_bit_piece:
+    return dwarf::DW_FORM_udata;
+  case dwarf::DW_OP_consts:
+    return dwarf::DW_FORM_sdata;
+  case dwarf::DW_OP_bregx:
+    return ArgIdx == 0 ? dwarf::DW_FORM_udata : dwarf::DW_FORM_sdata;
+  case dwarf::DW_OP_deref_size:
+  case dwarf::DW_OP_const1u:
+    return dwarf::DW_FORM_data1;
+  case dwarf::DW_OP_const2u:
+    return dwarf::DW_FORM_data2;
+  case dwarf::DW_OP_const4u:
+    return dwarf::DW_FORM_data4;
+  case dwarf::DW_OP_const8u:
+    return dwarf::DW_FORM_data8;
+  default:
+    return DIEInteger::BestForm(false, Value);
+  }
+}
+} // namespace
+
 void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
   IGC_ASSERT(CU);
   IGC_ASSERT(Block);
@@ -128,18 +163,21 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
     return;
 
   const DIExpression *DIExpr = dbgEntry->getExpression();
-  llvm::SmallVector<uint64_t, 5> Elements;
+  llvm::SmallVector<DwarfExprElement, 5> Elements;
+  auto addOp = [&Elements](uint64_t Op, llvm::ArrayRef<uint64_t> Args = {}) {
+    Elements.push_back({Op, DIEInteger::BestForm(false, Op)});
+    for (unsigned ArgIdx = 0; ArgIdx < Args.size(); ++ArgIdx)
+      Elements.push_back({Args[ArgIdx], getDwarfOperandForm(Op, ArgIdx, Args[ArgIdx])});
+  };
   int BitPieceIndex = -1;
   for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end(); I != E; ++I) {
     switch (I->getOp()) {
     case dwarf::DW_OP_LLVM_fragment: {
       BitPieceIndex = Elements.size();
       uint64_t size = I->getArg(1);
-      Elements.push_back(dwarf::DW_OP_bit_piece);
-      Elements.push_back(size);
       // Offset 0: the location already describes this fragment directly;
       // we don't want additional shifting in GRF.
-      Elements.push_back(0);
+      addOp(dwarf::DW_OP_bit_piece, {size, 0});
       continue;
     }
 
@@ -150,16 +188,15 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
       if (I->getArg(1) == dwarf::DW_ATE_unsigned) {
         uint64_t bits = I->getArg(0);
         if (bits < 64) {
+          uint64_t constOp = dwarf::DW_OP_const8u;
           if (bits <= 8)
-            Elements.push_back(dwarf::DW_OP_const1u);
+            constOp = dwarf::DW_OP_const1u;
           else if (bits <= 16)
-            Elements.push_back(dwarf::DW_OP_const2u);
+            constOp = dwarf::DW_OP_const2u;
           else if (bits <= 32)
-            Elements.push_back(dwarf::DW_OP_const4u);
-          else
-            Elements.push_back(dwarf::DW_OP_const8u);
-          Elements.push_back(((uint64_t)1 << bits) - 1);
-          Elements.push_back(dwarf::DW_OP_and);
+            constOp = dwarf::DW_OP_const4u;
+          addOp(constOp, {((uint64_t)1 << bits) - 1});
+          addOp(dwarf::DW_OP_and);
         }
         continue;
       }
@@ -168,7 +205,10 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
     default:
       break;
     }
-    I->appendToVector(Elements);
+    llvm::SmallVector<uint64_t, 2> Args;
+    for (unsigned ArgIdx = 0; ArgIdx < I->getNumArgs(); ++ArgIdx)
+      Args.push_back(I->getArg(ArgIdx));
+    addOp(I->getOp(), Args);
   }
   const bool isSimpleIndirect = currentLocationIsSimpleIndirectValue();
   if (isSimpleIndirect) {
@@ -192,13 +232,15 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
     if (hasBitPiece) {
       InsertPos = Elements.begin() + BitPieceIndex;
     }
-    Elements.insert(InsertPos, dwarf::DW_OP_stack_value);
+    Elements.insert(InsertPos, DwarfExprElement{dwarf::DW_OP_stack_value, dwarf::DW_FORM_data1});
     CU->stackValueOffset = hasBitPiece ? 0 : 1;
   }
 
-  for (auto elem : Elements) {
-    auto BF = DIEInteger::BestForm(false, elem);
-    CU->addUInt(Block, BF, elem);
+  for (const auto &Elem : Elements) {
+    if (Elem.Form == dwarf::DW_FORM_sdata)
+      CU->addSInt(Block, Elem.Form, static_cast<int64_t>(Elem.Value));
+    else
+      CU->addUInt(Block, Elem.Form, Elem.Value);
   }
 }
 
