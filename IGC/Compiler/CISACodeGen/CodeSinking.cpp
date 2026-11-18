@@ -33,6 +33,7 @@ See LICENSE.TXT for details.
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/LSCFuncs/LSCFuncsResolution.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/Instructions.h"
@@ -91,6 +92,68 @@ static bool is2dBlockRead(Instruction *I) {
     }
   }
   return false;
+}
+
+static Value *getPointerFrom2dBlockBase(Value *Base) {
+  while (true) {
+    if (auto *PTI = dyn_cast<PtrToIntInst>(Base))
+      return PTI->getPointerOperand();
+
+    auto *BO = dyn_cast<BinaryOperator>(Base);
+    // Bailing out for non-constant operand 1 is conservative (may alias).
+    if (!BO || !isa<ConstantInt>(BO->getOperand(1)))
+      return nullptr;
+
+    switch (BO->getOpcode()) {
+    case Instruction::Add:
+    case Instruction::And:
+    case Instruction::Or:
+      Base = BO->getOperand(0);
+      break;
+    default:
+      return nullptr;
+    }
+  }
+}
+
+// Find the pointer the surface base address of a 2d block address payload was computed from.
+// The payload is created by GenISA_LSC2DBlockCreateAddrPayload, possibly copied by
+// GenISA_LSC2DBlockCopyAddrPayload. Returns nullptr if the pointer is not found or if
+// the base address may be changed after the payload is created.
+static Value *getPointerFrom2dBlockPayload(Value *Payload) {
+  SmallVector<Value *, 4> Payloads = {Payload};
+  auto *Intr = dyn_cast<GenIntrinsicInst>(Payload);
+  while (Intr && Intr->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload) {
+    Value *Src = Intr->getArgOperand(0);
+    Payloads.push_back(Src);
+    Intr = dyn_cast<GenIntrinsicInst>(Src);
+  }
+  if (!Intr || Intr->getIntrinsicID() != GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload)
+    return nullptr;
+
+  // Every use of the payloads must be known, and none of them may set the base address.
+  for (Value *P : Payloads) {
+    for (User *U : P->users()) {
+      auto *UserIntr = dyn_cast<GenIntrinsicInst>(U);
+      if (!UserIntr)
+        return nullptr;
+      switch (UserIntr->getIntrinsicID()) {
+      case GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload:
+      case GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload:
+      case GenISAIntrinsic::GenISA_LSC2DBlockPrefetchAddrPayload:
+      case GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload:
+        break;
+      case GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField:
+        if (cast<ConstantInt>(UserIntr->getArgOperand(1))->getZExtValue() == LSC2DBlockField::BASE)
+          return nullptr;
+        break;
+      default:
+        return nullptr;
+      }
+    }
+  }
+
+  return getPointerFrom2dBlockBase(Intr->getArgOperand(0));
 }
 
 // Check if the instruction is a load or an allowed intrinsic that reads memory
@@ -2350,10 +2413,18 @@ bool CodeLoopSinking::isSafeToLoopSinkLoad(Instruction *InstToSink, Loop *L) {
     }
     if (GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(I)) {
       switch (Intr->getIntrinsicID()) {
+      // The first argument is the surface base address (i64), not a pointer.
       case GenISAIntrinsic::GenISA_LSC2DBlockRead:
-      case GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload:
       case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
+        if (Value *Ptr = getPointerFrom2dBlockBase(Intr->getArgOperand(0)))
+          return MemoryLocation::getBeforeOrAfter(Ptr);
+        break;
+      // The first argument is the address payload, not the memory it addresses.
+      case GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload:
       case GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload:
+        if (Value *Ptr = getPointerFrom2dBlockPayload(Intr->getArgOperand(0)))
+          return MemoryLocation::getBeforeOrAfter(Ptr);
+        break;
       case GenISAIntrinsic::GenISA_intatomicraw:
       case GenISAIntrinsic::GenISA_floatatomicraw:
       case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
@@ -2459,11 +2530,7 @@ bool CodeLoopSinking::isSafeToLoopSinkLoad(Instruction *InstToSink, Loop *L) {
       }
 
       MemoryLocation B = getMemLoc(I);
-      // FIXME: Non-pointer locations (integer typed) aren't analyzed and are treated as can't alias.
-      // On LLVM 17, alias analysis assumes scalars can't alias.
-      // On LLVM 22, scalars can't be queried, so we keep the same behavior.
-      bool BothPointers = A.Ptr && B.Ptr && A.Ptr->getType()->isPointerTy() && B.Ptr->getType()->isPointerTy();
-      if (!A.Ptr || !B.Ptr || (BothPointers && AA->alias(A, B))) {
+      if (!A.Ptr || !B.Ptr || AA->alias(A, B)) {
         PrintDump(VerbosityLevel::High, "May alias\n");
         return false;
       }
