@@ -2237,6 +2237,42 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
       }
     }
   } break;
+  case Intrinsic::fabs: {
+    Type *InstrTy = I.getType();
+    if (!InstrTy->getScalarType()->isDoubleTy() ||
+        !(IGC_IS_FLAG_ENABLED(ForceDPEmulation) || m_ctx->platform.hasNoFP64Inst()))
+      break;
+
+    // Without FP64 instructions a double move is split into two :ud moves, where an
+    // (abs) source modifier doesn't clear the sign bit, so clear it in the high dword.
+    // This can't be done earlier: InstCombine turns the sign-bit masks of the FP64
+    // emulation functions into fabs after PreCompiledFuncImport has imported them.
+    static constexpr uint32_t Fp64HiDwordAbsMask = 0x7FFFFFFF;
+    unsigned Elems = 1;
+    if (InstrTy->isVectorTy())
+      Elems = (unsigned)cast<IGCLLVM::FixedVectorType>(InstrTy)->getNumElements();
+
+    Value *Src = I.getArgOperand(0);
+    Type *Vec2Ty = IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), 2);
+    Value *NewValue = InstrTy->isVectorTy() ? PoisonValue::get(InstrTy) : nullptr;
+    for (unsigned Idx = 0; Idx < Elems; Idx++) {
+      Value *ElVal = Src;
+      if (InstrTy->isVectorTy()) {
+        ElVal = Builder.CreateExtractElement(Src, Builder.getInt32(Idx));
+      }
+      Value *TwoI32 = Builder.CreateBitCast(ElVal, Vec2Ty);
+      Value *Hi = Builder.CreateExtractElement(TwoI32, Builder.getInt32(1));
+      Hi = Builder.CreateAnd(Hi, Builder.getInt32(Fp64HiDwordAbsMask));
+      TwoI32 = Builder.CreateInsertElement(TwoI32, Hi, Builder.getInt32(1));
+      Value *ElRes = Builder.CreateBitCast(TwoI32, InstrTy->getScalarType());
+      if (InstrTy->isVectorTy()) {
+        NewValue = Builder.CreateInsertElement(NewValue, ElRes, Builder.getInt32(Idx));
+      } else
+        NewValue = ElRes;
+    }
+    I.replaceAllUsesWith(NewValue);
+    I.eraseFromParent();
+  } break;
   case Intrinsic::copysign: {
     Value *const src0 = I.getArgOperand(0);
     Value *const src1 = I.getArgOperand(1);

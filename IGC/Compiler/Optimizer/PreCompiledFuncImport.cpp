@@ -2062,31 +2062,6 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
     m_changed = true;
     return;
   }
-
-  // llvm.fabs.f64
-  if (isDPEmu() && resTy->isDoubleTy() && II && II->getIntrinsicID() == Intrinsic::fabs) {
-    // bit 63 is sign bit, set it to zero. Don't use int64.
-    VectorType *vec2Ty = IGCLLVM::FixedVectorType::get(intTy, 2);
-    Instruction *twoI32 =
-        CastInst::Create(Instruction::BitCast, I.getOperand(0), vec2Ty, "", IGCLLVM::insertPosition(&I));
-    twoI32->setDebugLoc(I.getDebugLoc());
-    Instruction *topI32 =
-        ExtractElementInst::Create(twoI32, ConstantInt::get(intTy, 1), "", IGCLLVM::insertPosition(&I));
-    topI32->setDebugLoc(I.getDebugLoc());
-    Instruction *newTopI32 =
-        BinaryOperator::CreateAnd(topI32, ConstantInt::get(intTy, 0x7fffffff), "", IGCLLVM::insertPosition(&I));
-    newTopI32->setDebugLoc(I.getDebugLoc());
-    Instruction *val =
-        InsertElementInst::Create(twoI32, newTopI32, ConstantInt::get(intTy, 1), "", IGCLLVM::insertPosition(&I));
-    val->setDebugLoc(I.getDebugLoc());
-    Instruction *fabsVal = CastInst::Create(Instruction::BitCast, val, resTy, "DPEmuFabs", IGCLLVM::insertPosition(&I));
-    fabsVal->setDebugLoc(I.getDebugLoc());
-
-    I.replaceAllUsesWith(fabsVal);
-    I.eraseFromParent();
-    m_changed = true;
-    return;
-  }
   return;
 }
 
