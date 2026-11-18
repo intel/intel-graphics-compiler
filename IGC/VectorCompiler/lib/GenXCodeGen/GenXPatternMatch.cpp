@@ -1070,12 +1070,12 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
   if (!I.getType()->isIntegerTy(1))
     return;
 
-  // Transform the evaluation of flag == 0 into (~flag).all().
-  // TODO: Transform flag != 0 into flag.any().
+  // Transform the evaluation of flag == 0 into (~flag).all() and flag != 0
+  // into flag.any().
   if (match(&I, m_ICmp(Pred, m_OneUse(m_BitCast(m_OneUse(m_Value(V0)))),
                        m_Zero())) &&
-      Pred == CmpInst::ICMP_EQ && isa<CmpInst>(V0) &&
-      V0->getType()->isVectorTy() &&
+      (Pred == CmpInst::ICMP_EQ || Pred == CmpInst::ICMP_NE) &&
+      isa<CmpInst>(V0) && V0->getType()->isVectorTy() &&
       V0->getType()->getScalarType()->isIntegerTy(1)) {
     auto *VTy = cast<IGCLLVM::FixedVectorType>(V0->getType());
     unsigned NumElts = VTy->getNumElements();
@@ -1084,19 +1084,20 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
     if (NumElts >= 2 && NumElts <= 16) {
       IRBuilder<> Builder(&I);
       auto Cmp = cast<CmpInst>(V0);
-      // Inverse the evaluation of flag.
-      Cmp->setPredicate(Cmp->getInversePredicate());
-      if (auto NewCmp = reduceCmpWidth(Cmp)) {
-        // Once the cmp could be reduced into narrower one (with the assumption
-        // that the reduced part is always TRUE), reduce it into narrow one.
-        Cmp = NewCmp;
-        VTy = cast<IGCLLVM::FixedVectorType>(Cmp->getType());
+      bool IsAll = Pred == CmpInst::ICMP_EQ;
+      if (IsAll) {
+        // Inverse the evaluation of flag.
+        Cmp->setPredicate(Cmp->getInversePredicate());
+        // Valid for 'all' only: it assumes the dropped lanes are TRUE.
+        if (auto NewCmp = reduceCmpWidth(Cmp)) {
+          Cmp = NewCmp;
+          VTy = cast<IGCLLVM::FixedVectorType>(Cmp->getType());
+        }
       }
       simplifyCmp(Cmp);
-      // Call 'all'.
       auto M = I.getModule();
-      auto Fn =
-          GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_all, VTy);
+      auto Fn = GenXIntrinsic::getGenXDeclaration(
+          M, IsAll ? GenXIntrinsic::genx_all : GenXIntrinsic::genx_any, VTy);
       auto NewVal = Builder.CreateCall(Fn, Cmp);
       I.replaceAllUsesWith(NewVal);
       Changed = true;
