@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -22,10 +22,13 @@
 ; CHECK: [[T2:%.*]] = load i32, i32 addrspace(4)* [[T1]], align 4
 ; CHECK: br label %cond.end3465
 
-; CHECK-LABEL: cond.false3459
+; CHECK-LABEL: cond.false3459:
+; CHECK-NEXT:  br label %cond.between
+
+; CHECK-LABEL: cond.between:
 ; CHECK:  [[T3:%.*]] = bitcast i8 addrspace(3)* %arrayidx3464 to i32 addrspace(3)*
 ; CHECK:  [[T4:%.*]] = load i32, i32 addrspace(3)* [[T3]], align 4
-; CHECK:  br label %cond.between
+; CHECK:  br label %cond.end3465
 
 ; CHECK-LABEL: cond.end3465:
 ; CHECK: [[T5:%.*]] = phi i32 [ [[T2]], %cond.true3442 ], [ [[T4]], %cond.between ]

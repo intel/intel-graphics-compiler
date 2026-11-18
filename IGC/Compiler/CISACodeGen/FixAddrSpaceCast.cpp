@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -98,14 +98,33 @@ static bool hasPHIDifferentAddrSpacesOperands(PHINode *PHI) {
 }
 
 static bool isPhiUseLowerable(PHINode *PHI) {
+  for (auto &Incoming : PHI->incoming_values()) {
+    if (!PHI->getIncomingBlock(Incoming)->getSingleSuccessor()) {
+      return false;
+    }
+  }
+
   if (!PHI->hasOneUse()) {
     return false;
   }
-  if (isa<LoadInst>(*(PHI->user_begin()))) {
-    return true;
+  LoadInst *LI = dyn_cast<LoadInst>(*(PHI->user_begin()));
+  if (!LI && isa<BitCastInst>(*(PHI->user_begin())) && PHI->user_begin()->hasOneUse()) {
+    LI = dyn_cast<LoadInst>(*(PHI->user_begin()->user_begin()));
   }
-  return isa<BitCastInst>(*(PHI->user_begin())) && PHI->user_begin()->hasOneUse() &&
-         isa<LoadInst>(*(PHI->user_begin()->user_begin()));
+
+  if (!LI) {
+    return false;
+  }
+
+  if (PHI->getParent() != LI->getParent()) {
+    return false;
+  }
+  for (Instruction *I = PHI->getNextNode(); I != LI; I = I->getNextNode()) {
+    if (I->mayWriteToMemory()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static void lowerLoadsfromPHI(PHINode *PHI) {
@@ -125,25 +144,24 @@ static void lowerLoadsfromPHI(PHINode *PHI) {
   llvm::append_range(ToErase, llvm::reverse(InsertChain));
   ToErase.push_back(cast<Instruction>(PHI));
 
-  SmallMapVector<Instruction *, BasicBlock *, 8> NewLoads;
+  SmallVector<LoadInst *> NewLoads;
   for (auto &Incoming : PHI->incoming_values()) {
     auto *LoadSource = cast<Instruction>(Incoming);
     auto *AddrSpaceCast = dyn_cast<AddrSpaceCastInst>(Incoming);
+    IRBuilder<> Builder(PHI->getIncomingBlock(Incoming)->getTerminator());
 
     for (auto *I : InsertChain) {
-
       if (AddrSpaceCast) {
-        IRBuilder<> Builder(LoadSource);
         if (isa<BitCastInst>(I)) {
           auto *NewBitcast =
               Builder.CreateBitCast(AddrSpaceCast->getOperand(0),
                                     IGCLLVM::PointerType::get(PHILoad->getType(), AddrSpaceCast->getSrcAddressSpace()));
           LoadSource = cast<Instruction>(NewBitcast);
         } else if (isa<LoadInst>(I)) {
-          auto *NewLoad = Builder.CreateLoad(PHILoad->getType(), AddrSpaceCast->getOperand(0));
-          NewLoad->copyMetadata(*I);
-          LoadSource = NewLoad;
-          NewLoads.insert({NewLoad, PHI->getIncomingBlock(Incoming)});
+          auto *NewLoad = cast<LoadInst>(I->clone());
+          NewLoad->setOperand(NewLoad->getPointerOperandIndex(), AddrSpaceCast->getOperand(0));
+          LoadSource = Builder.Insert(NewLoad);
+          NewLoads.push_back(NewLoad);
         } else {
           IGC_ASSERT_MESSAGE(false, "Unexpected instruction in the use chain.");
         }
@@ -156,17 +174,18 @@ static void lowerLoadsfromPHI(PHINode *PHI) {
 
       Instruction *NewInst = I->clone();
       NewInst->setOperand(0, LoadSource);
-      NewInst->insertAfter(LoadSource);
-      LoadSource = NewInst;
+      LoadSource = Builder.Insert(NewInst);
       if (isa<LoadInst>(NewInst)) {
-        NewLoads.insert({NewInst, PHI->getIncomingBlock(Incoming)});
+        NewLoads.push_back(cast<LoadInst>(NewInst));
       }
     }
   }
   IRBuilder<> Builder(PHI);
   auto *NewPHI = Builder.CreatePHI(PHILoad->getType(), NewLoads.size());
 
-  llvm::for_each(NewLoads, [&](const auto &Pair) { NewPHI->addIncoming(Pair.first, Pair.second); });
+  for (auto *NewLoad : NewLoads) {
+    NewPHI->addIncoming(NewLoad, NewLoad->getParent());
+  }
   PHILoad->replaceAllUsesWith(NewPHI);
 
   for_each(ToErase, [](Instruction *I) { I->eraseFromParent(); });
