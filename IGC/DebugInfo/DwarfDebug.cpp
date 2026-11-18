@@ -1499,24 +1499,46 @@ static bool isMem(const DbgVarInstEntry *dbgEntry, const VISAVariableLocation &L
 }
 
 void DwarfDebug::encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset) {
-  auto op = llvm::dwarf::DW_OP_implicit_value;
-  const unsigned int lebSize = 8;
-
   dotLoc.start = vl.start;
   dotLoc.end = vl.end;
 
-  write(dotLoc.loc, (uint8_t)op);
-  write(dotLoc.loc, (const unsigned char *)&lebSize, 1);
-
   uint64_t constValue = 0;
+  const bool IsUnsigned = isUnsignedDIType(this, vl.dbgVar->getType());
   if (const auto *cfp = dyn_cast<ConstantFP>(vl.imm)) {
     constValue = cfp->getValueAPF().bitcastToAPInt().getZExtValue();
-  } else if (isUnsignedDIType(this, vl.dbgVar->getType())) {
-    constValue = cast<ConstantInt>(vl.imm)->getZExtValue();
-  } else {
-    constValue = cast<ConstantInt>(vl.imm)->getSExtValue();
+  } else if (const auto *ci = dyn_cast<ConstantInt>(vl.imm)) {
+    constValue = IsUnsigned ? ci->getZExtValue() : ci->getSExtValue();
   }
-  write(dotLoc.loc, (unsigned char *)&constValue, lebSize);
+
+  const DIExpression *Expr = vl.dbgEntry->getExpression();
+  const bool hasExprOps =
+      llvm::any_of(Expr->expr_ops(), [](const auto &DIOp) { return DIOp.getOp() != dwarf::DW_OP_stack_value; });
+
+  if (hasExprOps) {
+    // The constant is the input of the DIExpression, not the variable value:
+    // push it and apply the lowered expression to it.
+    IGC::DIEBlock *Block = FirstCU->getDIEBlock();
+    FirstCU->addUInt(Block, dwarf::DW_FORM_data1, (IsUnsigned ? dwarf::DW_OP_constu : dwarf::DW_OP_consts));
+    if (!IsUnsigned)
+      FirstCU->addSInt(Block, dwarf::DW_FORM_sdata, static_cast<int64_t>(constValue));
+    else
+      FirstCU->addUInt(Block, dwarf::DW_FORM_udata, constValue);
+
+    // A register location of a previous range may have left a SIMD32 half
+    // register type, which would suppress the trailing DW_OP_stack_value.
+    vl.dbgVar->setLocationRegisterType(DbgRegisterType::Regular);
+    vl.dbgVar->emitExpression(FirstCU, Block);
+
+    std::vector<unsigned char> buffer;
+    Block->EmitToRawBuffer(buffer);
+    Block->~DIEBlock();
+    write(dotLoc.loc, buffer.data(), buffer.size());
+  } else {
+    const unsigned int lebSize = 8;
+    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_implicit_value);
+    write(dotLoc.loc, (const unsigned char *)&lebSize, 1);
+    write(dotLoc.loc, (unsigned char *)&constValue, lebSize);
+  }
 
   TempDotDebugLocEntries.push_back(dotLoc);
   // For DWARF v4 offsets, account for start / end + u16 length + expr bytes
@@ -1832,7 +1854,7 @@ void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vec
       if (!isa<ConstantInt>(pConstVal) && !isa<ConstantFP>(pConstVal))
         continue;
 
-      if (prev.canExtendImm(endIp, pConstVal, FI)) {
+      if (prev.canExtendImm(endIp, pConstVal, dbgEntry->getExpression(), FI)) {
         prev.extendTo(endIp);
         continue;
       }

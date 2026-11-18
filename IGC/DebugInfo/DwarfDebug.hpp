@@ -658,9 +658,10 @@ private:
     // Immediate range can be extended, when current entry is an immediate and
     // new range extends beyond current end, for identical constant value
     // and same fragment.
-    bool canExtendImm(uint64_t newEnd, const llvm::Constant *val,
+    bool canExtendImm(uint64_t newEnd, const llvm::Constant *val, const llvm::DIExpression *expr,
                       std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) const {
-      return isImm() && end < newEnd && imm == val && FragmentInfo == fragInfo;
+      return isImm() && end < newEnd && imm == val && dbgEntry && dbgEntry->getExpression() == expr &&
+             FragmentInfo == fragInfo;
     }
 
     // Register location range can be extended if:
@@ -682,7 +683,8 @@ private:
   };
 
   /// \brief Encode an immediate (constant) value location into .debug_loc entry.
-  /// Writes the address range and DWARF expression (DW_OP_implicit_value)
+  /// Writes the address range and DWARF expression: DW_OP_implicit_value, or the
+  /// constant pushed on the stack followed by the lowered DIExpression if it has operations.
   void encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset);
 
   /// \brief Encode a register-based location into .debug_loc entry.
