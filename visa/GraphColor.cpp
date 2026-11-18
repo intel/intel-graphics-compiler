@@ -2362,9 +2362,9 @@ bool GlobalRA::heldConfigSpillNeedsStepUp(unsigned spillSize) const {
          kernel.grfMode.stepUpBeatsSIMDFallback(simdSize);
 }
 
-bool GlobalRA::canIncreaseGRF(unsigned spillSize, bool infCostSpilled,
-                              GraphColor &coloring, RPE &rpe,
-                              bool fastCompile) {
+bool GlobalRA::spillForcesGRFBump(unsigned spillSize, bool infCostSpilled,
+                                  GraphColor &coloring, const RPE &rpe,
+                                  bool fastCompile) {
   // If we estimate insufficient # GRFs early on, we may end up
   // spilling an infinite spill cost variable. As last ditch effort,
   // we bump up # GRFs and retry compilation. If we estimate GRF
@@ -2392,8 +2392,15 @@ bool GlobalRA::canIncreaseGRF(unsigned spillSize, bool infCostSpilled,
                      << " heldConfigSpills=" << heldConfigSpills
                      << " canUpdateMode=" << kernel.grfMode.canUpdateMode()
                      << "\n");
-  if ((infCostSpilled || kernel.grfMode.hasLargerGRFSameThreads() ||
-       spillTooExpensive || heldConfigSpills) &&
+  return infCostSpilled || kernel.grfMode.hasLargerGRFSameThreads() ||
+         spillTooExpensive || heldConfigSpills;
+}
+
+bool GlobalRA::canIncreaseGRF(unsigned spillSize, bool infCostSpilled,
+                              GraphColor &coloring, RPE &rpe,
+                              bool fastCompile) {
+  if (spillForcesGRFBump(spillSize, infCostSpilled, coloring, rpe,
+                         fastCompile) &&
       kernel.grfMode.canUpdateMode()) {
     if (kernel.updateKernelToLargerGRF()) {
       // GRF successfully increased
@@ -6937,10 +6944,11 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
   // would only perturb an allocation that was already succeeding.
   bool useNewSpillCost =
       (builder.getOption(vISA_NewSpillCostFunctionISPC) ||
-          builder.getOption(vISA_NewSpillCostFunction)) &&
-      rpe &&
+       builder.getOption(vISA_NewSpillCostFunction)) &&
+      rpe && !forceLegacySpillCost &&
       !(gra.getIterNo() == 0 &&
-          (float)rpe->getMaxRP() < (float)kernel.getNumRegTotal() * 0.90f);
+        (float)rpe->getMaxRP() < (float)kernel.getNumRegTotal() * 0.90f);
+  usedNewSpillCost = useNewSpillCost;
 
   RA_TRACE({
     if (useNewSpillCost)
@@ -8542,6 +8550,125 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
   // round-robin and if it fails then we retry using a first-fit heuristic.
   //
   if (liveAnalysis.livenessClass(G4_GRF)) {
+    if (colorGRFs(doBankConflictReduction, highInternalConflict,
+                  doBundleConflictReduction, rpe))
+      return true;
+    // The recolor only pays off while the GRF can still be bumped up. With
+    // freq-based spill selection, coloring order and spill choice use freq
+    // spill costs that the recolor does not recompute.
+    bool tryLegacyCost =
+        usedNewSpillCost && !isHybrid && kernel.useAutoGRFSelection() &&
+        kernel.grfMode.canUpdateMode() &&
+        !builder.getFreqInfoManager().isFreqBasedSpillSelectionEnabled();
+    return tryLegacyCost &&
+           recolorGRFsWithLegacyCost(
+               doBankConflictReduction, highInternalConflict,
+               doBundleConflictReduction, useSplitLLRHeuristic, rpe);
+  } else if (liveAnalysis.livenessClass(G4_FLAG)) {
+    if (kernel.getOption(vISA_RoundRobin)) {
+      if (assignColors(ROUND_ROBIN) == false) {
+        resetTemporaryRegisterAssignments();
+        assignColors(FIRST_FIT);
+      }
+    } else {
+      assignColors(FIRST_FIT);
+    }
+  } else {
+    // assign registers for ARFs using a first-fit heuristic
+    assignColors(FIRST_FIT, false, false);
+  }
+
+  return (requireSpillCode() == false);
+}
+
+// The new spill cost also sets the coloring order, and that order can fail
+// where the legacy one colors. It also ignores variable size, so its spill set
+// can bump up the GRF where the legacy set would not. Recolor with the legacy
+// cost and keep that result if it is spill-free, or if only the new-cost set
+// would bump up the GRF and the legacy set would not abort. Otherwise restore
+// the new-cost result. Only called while the GRF can still be bumped up.
+bool GraphColor::recolorGRFsWithLegacyCost(bool doBankConflictReduction,
+                                           bool highInternalConflict,
+                                           bool doBundleConflictReduction,
+                                           bool useSplitLLRHeuristic,
+                                           const RPE *rpe) {
+  struct LRState {
+    G4_VarBase *reg;
+    unsigned off;
+    bool spilled;
+    float cost;
+    unsigned degree;
+  };
+  std::vector<LRState> nscState(numVar);
+  for (unsigned i = 0; i < numVar; i++)
+    nscState[i] = {lrs[i]->getPhyReg(), lrs[i]->getPhyRegOff(),
+                   lrs[i]->isSpilled(), lrs[i]->getSpillCost(),
+                   lrs[i]->getDegree()};
+  LIVERANGE_LIST nscSpilled = spilledLRs;
+
+  resetTemporaryRegisterAssignments();
+  forceLegacySpillCost = true;
+  if (gra.use4GRFAlign)
+    computeDegreeForGRF<true>();
+  else
+    computeDegreeForGRF<false>();
+  computeSpillCosts(useSplitLLRHeuristic, rpe);
+  colorOrder.clear();
+  determineColorOrdering();
+  bool legacyOK = colorGRFs(doBankConflictReduction, highInternalConflict,
+                            doBundleConflictReduction, rpe);
+  forceLegacySpillCost = false;
+  RA_TRACE(std::cout << "\t--new spill cost coloring failed, legacy retry "
+                     << (legacyOK ? "succeeded" : "failed") << "\n");
+  if (legacyOK)
+    return true;
+
+  unsigned legacySize = gra.computeSpillSize(spilledLRs);
+  unsigned legacyRefs = 0;
+  bool legacyInfCost = false;
+  for (auto lr : spilledLRs) {
+    legacyRefs += lr->getRefCount();
+    legacyInfCost |= lr->getSpillCost() == MAXSPILLCOST;
+  }
+  bool legacyAborts =
+      builder.getOption(vISA_AbortOnSpill) &&
+      !gra.underAbortThreshold(gra.priorSpillFillCount + legacyRefs,
+                               gra.priorSpillSize + legacySize, spilledLRs);
+  bool legacyBumpsGRF = gra.spillForcesGRFBump(legacySize, legacyInfCost, *this,
+                                               *rpe, gra.fastCompileRA);
+
+  unsigned nscSize = gra.computeSpillSize(nscSpilled);
+  bool nscInfCost = false;
+  for (auto lr : nscSpilled)
+    nscInfCost |= nscState[lr->getVar()->getId()].cost == MAXSPILLCOST;
+  // The fill cost estimate reads the coloring's spill set.
+  std::swap(spilledLRs, nscSpilled);
+  bool nscBumpsGRF = gra.spillForcesGRFBump(nscSize, nscInfCost, *this, *rpe,
+                                            gra.fastCompileRA);
+  std::swap(spilledLRs, nscSpilled);
+
+  if (!legacyAborts && !legacyBumpsGRF && nscBumpsGRF) {
+    RA_TRACE(std::cout << "\t--keep legacy spill set (" << legacySize << " vs "
+                       << nscSize << " bytes)\n");
+    return false;
+  }
+
+  resetTemporaryRegisterAssignments();
+  for (unsigned i = 0; i < numVar; i++) {
+    if (nscState[i].reg)
+      lrs[i]->setPhyReg(nscState[i].reg, nscState[i].off);
+    lrs[i]->setSpilled(nscState[i].spilled);
+    lrs[i]->setSpillCost(nscState[i].cost);
+    lrs[i]->setDegree(nscState[i].degree);
+  }
+  spilledLRs = nscSpilled;
+  return false;
+}
+
+bool GraphColor::colorGRFs(bool doBankConflictReduction,
+                           bool highInternalConflict,
+                           bool doBundleConflictReduction, const RPE *rpe) {
+  {
     bool hasStackCall =
         kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
 
@@ -8591,21 +8718,8 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
         assignColors(FIRST_FIT);
       }
     }
-  } else if (liveAnalysis.livenessClass(G4_FLAG)) {
-    if (kernel.getOption(vISA_RoundRobin)) {
-      if (assignColors(ROUND_ROBIN) == false) {
-        resetTemporaryRegisterAssignments();
-        assignColors(FIRST_FIT);
-      }
-    } else {
-      assignColors(FIRST_FIT);
-    }
-  } else {
-    // assign registers for ARFs using a first-fit heuristic
-    assignColors(FIRST_FIT, false, false);
   }
-
-  return (requireSpillCode() == false);
+  return !requireSpillCode();
 }
 
 void GraphColor::confirmRegisterAssignments() {
@@ -12362,6 +12476,27 @@ bool GlobalRA::convertToFailSafe(bool reserveSpillReg, GraphColor &coloring,
   return reserveSpillReg;
 }
 
+// GRFSpillFillCount and spillSize are running totals that include spilledLRs.
+bool GlobalRA::underAbortThreshold(unsigned GRFSpillFillCount,
+                                   unsigned spillSize,
+                                   const LIVERANGE_LIST &spilledLRs) {
+  // When block-level spill is allowed, the GRF spill (if any) was
+  // intentionally allowed to keep a lower GRF count; decide abort purely on
+  // the spill budget and do not let the frequency-based analysis abort it.
+  if (builder.getOptions()->getOption(vISA_BlockLevelSpillAllowed))
+    return spillSize < kernel.grfMode.getSpillThreshold();
+
+  // vISA_AbortOnSpillThreshold is defined as [0..200]
+  // where 0 means abort on any spill and 200 means never abort
+  unsigned threshold = std::min(
+      builder.getOptions()->getuInt32Option(vISA_AbortOnSpillThreshold), 200u);
+  unsigned instNum = instCount();
+  bool isUnderThreshold = (GRFSpillFillCount * 200) < (threshold * instNum) ||
+                          spillSize < kernel.grfMode.getSpillThreshold();
+  return builder.getFreqInfoManager().underFreqSpillThreshold(
+      spilledLRs, instNum, GRFSpillFillCount, isUnderThreshold);
+}
+
 std::tuple<bool, unsigned int, unsigned int>
 GlobalRA::abortOnSpill(unsigned int GRFSpillFillCount, unsigned int spillSize,
                        GraphColor &coloring) {
@@ -12373,32 +12508,9 @@ GlobalRA::abortOnSpill(unsigned int GRFSpillFillCount, unsigned int spillSize,
 
   spillSize += computeSpillSize(coloring.getSpilledLiveRanges());
 
-  // vISA_AbortOnSpillThreshold is defined as [0..200]
-  // where 0 means abort on any spill and 200 means never abort
-  auto underSpillThreshold = [this](int numSpill, unsigned spillSize,
-                                    int asmCount, GraphColor &coloring) {
-    int threshold = std::min(
-        builder.getOptions()->getuInt32Option(vISA_AbortOnSpillThreshold),
-        200u);
-    return (numSpill * 200) < (threshold * asmCount) ||
-           spillSize < kernel.grfMode.getSpillThreshold();
-  };
-
   unsigned int instNum = instCount();
-  bool isUnderThreshold = false;
-
-  if (builder.getOptions()->getOption(vISA_BlockLevelSpillAllowed)) {
-    // When block-level spill is allowed, the GRF spill (if any) was
-    // intentionally allowed to keep a lower GRF count; decide abort purely on
-    // the spill budget and do not let the frequency-based analysis abort it.
-    isUnderThreshold = spillSize < kernel.grfMode.getSpillThreshold();
-  } else {
-    isUnderThreshold =
-        underSpillThreshold(GRFSpillFillCount, spillSize, instNum, coloring);
-    isUnderThreshold = builder.getFreqInfoManager().underFreqSpillThreshold(
-        coloring.getSpilledLiveRanges(), instNum, GRFSpillFillCount,
-        isUnderThreshold);
-  }
+  bool isUnderThreshold = underAbortThreshold(GRFSpillFillCount, spillSize,
+                                              coloring.getSpilledLiveRanges());
 
   if (isUnderThreshold) {
     if (auto jitInfo = builder.getJitInfo()) {
@@ -12458,7 +12570,7 @@ bool GlobalRA::useFillCostHeuristic(bool fastCompile) const {
 // Cost is vISA_VRTFillCostBudgetPercent of the loop weighted inst count,
 // scaled by the threads/EU the bump costs. Independent of the budget, more
 // than vISA_VRTMaxFills fills always forces the bump.
-bool GlobalRA::fillCostExceedsBudget(GraphColor &coloring, RPE &rpe) {
+bool GlobalRA::fillCostExceedsBudget(GraphColor &coloring, const RPE &rpe) {
   const unsigned reuseDist = builder.getuint32Option(vISA_VRTFillReuseDistance);
   const unsigned highRPPct =
       builder.getuint32Option(vISA_VRTHighPressurePercent);
@@ -13044,6 +13156,9 @@ int GlobalRA::coloringRegAlloc() {
       return VISA_SPILL;
     }
     generateForbiddenTemplates(totalSpillRegSize);
+    priorSpillFillCount = GRFSpillFillCount;
+    priorSpillSize = spillSize;
+    fastCompileRA = fastCompile;
     bool isColoringGood =
         coloring.regAlloc(doBankConflictReduction, highInternalConflict, &rpe);
     if (!isColoringGood) {

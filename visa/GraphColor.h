@@ -1117,6 +1117,16 @@ class GraphColor {
   unsigned reserveSpillGRFCount = 0;
 
   bool useRelaxedDegree = false;
+  // Set while recolorGRFsWithLegacyCost() runs.
+  bool forceLegacySpillCost = false;
+  // Last computeSpillCosts() used the new spill cost function.
+  bool usedNewSpillCost = false;
+  bool colorGRFs(bool doBankConflictReduction, bool highInternalConflict,
+                 bool doBundleConflictReduction, const RPE *rpe);
+  bool recolorGRFsWithLegacyCost(bool doBankConflictReduction,
+                                 bool highInternalConflict,
+                                 bool doBundleConflictReduction,
+                                 bool useSplitLLRHeuristic, const RPE *rpe);
 
   template <bool Support4GRFAlign, bool UseRelaxedDegree>
   unsigned edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2);
@@ -1457,6 +1467,12 @@ public:
   ForbiddenRegs fbdRegs;
 
   const bool use4GRFAlign = false;
+
+  // abortOnSpill() running totals and fastCompile of the RA iteration whose
+  // coloring is in progress.
+  unsigned priorSpillFillCount = 0;
+  unsigned priorSpillSize = 0;
+  bool fastCompileRA = false;
 
   // [-2^16...2^16) in bytes
   //   (frame pointer is biased 2^16 so that -2^16 references scratch[0x0])
@@ -2122,11 +2138,19 @@ public:
   static uint32_t getRefCount(int loopNestLevel);
   bool canIncreaseGRF(unsigned spillSize, bool infCostSpilled,
                       GraphColor &coloring, RPE &rpe, bool fastCompile);
+  // canIncreaseGRF()'s decision for the coloring's spill set, without bumping.
+  bool spillForcesGRFBump(unsigned spillSize, bool infCostSpilled,
+                          GraphColor &coloring, const RPE &rpe,
+                          bool fastCompile);
   bool heldConfigSpillNeedsStepUp(unsigned spillSize) const;
+  // abortOnSpill()'s threshold test. With freq-based spill selection, it also
+  // adds spilledLRs' frequency to the running spill frequency total.
+  bool underAbortThreshold(unsigned GRFSpillFillCount, unsigned spillSize,
+                           const LIVERANGE_LIST &spilledLRs);
   // True when -vrtFillCost drives the bump instead of the byte threshold.
   bool useFillCostHeuristic(bool fastCompile) const;
   // True when the spill set's loop-weighted fill cost is over budget.
-  bool fillCostExceedsBudget(GraphColor &coloring, RPE &rpe);
+  bool fillCostExceedsBudget(GraphColor &coloring, const RPE &rpe);
   void updateSubRegAlignment(G4_SubReg_Align subAlign);
   bool isChannelSliced();
   // Used by LRA/GRA/hybrid RA
