@@ -1220,7 +1220,6 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
       case GenXIntrinsic::genx_dpasw:
       case GenXIntrinsic::genx_dpas_nosrc0:
       case GenXIntrinsic::genx_dpasw_nosrc0:
-      case GenXIntrinsic::genx_dph:
       case GenXIntrinsic::genx_transpose_ld:
       case GenXIntrinsic::genx_oword_ld:
       case GenXIntrinsic::genx_oword_ld_unaligned:
@@ -1231,7 +1230,6 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
       case GenXIntrinsic::genx_load:
       case GenXIntrinsic::genx_3d_load:
       case GenXIntrinsic::genx_3d_sample:
-      case GenXIntrinsic::genx_avs:
       case GenXIntrinsic::genx_sample:
       case GenXIntrinsic::genx_sample_unorm:
       case GenXIntrinsic::genx_simdcf_any:
@@ -1243,30 +1241,6 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
       case GenXIntrinsic::genx_wrpredregion:
       case GenXIntrinsic::genx_wrpredpredregion:
       case GenXIntrinsic::genx_output:
-      case GenXIntrinsic::genx_va_1d_convolve_horizontal:
-      case GenXIntrinsic::genx_va_1d_convolve_vertical:
-      case GenXIntrinsic::genx_va_1pixel_convolve:
-      case GenXIntrinsic::genx_va_1pixel_convolve_1x1mode:
-      case GenXIntrinsic::genx_va_bool_centroid:
-      case GenXIntrinsic::genx_va_centroid:
-      case GenXIntrinsic::genx_va_convolve2d:
-      case GenXIntrinsic::genx_va_correlation_search:
-      case GenXIntrinsic::genx_va_dilate:
-      case GenXIntrinsic::genx_va_erode:
-      case GenXIntrinsic::genx_va_flood_fill:
-      case GenXIntrinsic::genx_va_hdc_1d_convolve_horizontal:
-      case GenXIntrinsic::genx_va_hdc_1d_convolve_vertical:
-      case GenXIntrinsic::genx_va_hdc_1pixel_convolve:
-      case GenXIntrinsic::genx_va_hdc_convolve2d:
-      case GenXIntrinsic::genx_va_hdc_dilate:
-      case GenXIntrinsic::genx_va_hdc_erode:
-      case GenXIntrinsic::genx_va_hdc_lbp_correlation:
-      case GenXIntrinsic::genx_va_hdc_lbp_creation:
-      case GenXIntrinsic::genx_va_hdc_minmax_filter:
-      case GenXIntrinsic::genx_va_lbp_correlation:
-      case GenXIntrinsic::genx_va_lbp_creation:
-      case GenXIntrinsic::genx_va_minmax:
-      case GenXIntrinsic::genx_va_minmax_filter:
       case GenXIntrinsic::genx_media_ld:
       case GenXIntrinsic::genx_media_st:
       case GenXIntrinsic::genx_raw_send:
