@@ -16889,6 +16889,89 @@ LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool Invalidat
   return op;
 }
 
+// L1 write-back and write-streaming stores leave dirty data in L1.
+static bool leavesDirtyL1(StoreCacheControl L1) {
+  return L1 == StoreCacheControl::WriteBack || L1 == StoreCacheControl::Streaming;
+}
+
+// Returns true if I is a store whose own cache control leaves dirty data in L1.
+static bool isStoreLeavingDirtyL1(const Instruction &I) {
+  auto CacheCtrlFromMD = [&I]() -> const Value * {
+    const MDNode *MD = I.getMetadata("lsc.cache.ctrl");
+    return MD ? cast<ConstantAsMetadata>(MD->getOperand(0))->getValue() : nullptr;
+  };
+
+  const Value *CacheCtrl = nullptr;
+  if (const auto *SI = dyn_cast<StoreInst>(&I)) {
+    // LSCCacheHints gives private stores L1 write-back, but other work-items don't read private memory.
+    if (SI->getPointerAddressSpace() == ADDRESS_SPACE_PRIVATE)
+      return false;
+    CacheCtrl = CacheCtrlFromMD();
+  } else if (const auto *GII = dyn_cast<GenIntrinsicInst>(&I)) {
+    switch (GII->getIntrinsicID()) {
+    case GenISAIntrinsic::GenISA_storeraw_indexed:
+    case GenISAIntrinsic::GenISA_storerawvector_indexed:
+    case GenISAIntrinsic::GenISA_PredicatedStore:
+    case GenISAIntrinsic::GenISA_simdBlockWrite:
+    case GenISAIntrinsic::GenISA_simdBlockWriteBindless:
+      CacheCtrl = CacheCtrlFromMD();
+      break;
+    case GenISAIntrinsic::GenISA_LSCStore:
+    case GenISAIntrinsic::GenISA_LSCStoreBlock:
+    case GenISAIntrinsic::GenISA_LSCStoreCmask:
+      CacheCtrl = GII->getOperand(5);
+      break;
+    case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
+      CacheCtrl = GII->getOperand(12);
+      break;
+    case GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload:
+      CacheCtrl = GII->getOperand(9);
+      break;
+    default:
+      return false;
+    }
+  }
+
+  // A store without its own cache control uses the default one, which emitMemoryFence checks.
+  const auto *CI = dyn_cast_or_null<ConstantInt>(CacheCtrl);
+  if (!CI)
+    return false;
+  auto L1 = getL1CacheControlFromDefault<StoreCacheControl>(int_cast<int>(CI->getSExtValue()));
+  return L1 && leavesDirtyL1(*L1);
+}
+
+// Returns true if a store that may run before a fence in F can leave dirty data in L1.
+bool EmitPass::mayHaveStoreLeavingDirtyL1(const Function &F) {
+  FunctionGroup *Group = m_FGA ? m_FGA->getGroup(&F) : nullptr;
+
+  // Callers or callees outside the group, e.g. in another module, may have such stores.
+  bool HasUnknownCalls =
+      Group && (Group->hasIndirectCall() || Group->hasPartialCallGraph() || m_FGA->isIndirectCallGroup(Group));
+  if (HasUnknownCalls)
+    return true;
+
+  // Scan each group once, a kernel may have many fences.
+  const Function *Key = Group ? Group->getHead() : &F;
+  auto Cached = m_hasStoreLeavingDirtyL1.find(Key);
+  if (Cached != m_hasStoreLeavingDirtyL1.end())
+    return Cached->second;
+
+  auto HasStoreIn = [](const Function &Fn) { return llvm::any_of(instructions(Fn), isStoreLeavingDirtyL1); };
+  bool HasStore = false;
+  if (Group) {
+    for (const Function *Fn : *Group) {
+      if (HasStoreIn(*Fn)) {
+        HasStore = true;
+        break;
+      }
+    }
+  } else {
+    HasStore = HasStoreIn(F);
+  }
+  m_hasStoreLeavingDirtyL1[Key] = HasStore;
+  return HasStore;
+}
+
 void EmitPass::emitMemoryFence(llvm::Instruction *inst) {
   static constexpr int ExpectedNumberOfBoolArguments = 8;
   static constexpr int ScopeArgumentNumber = 8;
@@ -16955,11 +17038,12 @@ void EmitPass::emitMemoryFence(llvm::Instruction *inst) {
     }
     // Skip L1 evict only when the default L1 store policy is known to leave no dirty data in L1,
     // i.e. it is neither write-back nor write-streaming. Keep it when the default does not set
-    // the L1 policy, e.g. leaves it to state.
+    // the L1 policy, e.g. leaves it to state, and for fences wider than the work-group (its
+    // work-items share one L1) when a store may have its own write-back or write-streaming policy.
     if (L1_Evict && m_pCtx->type == ShaderType::OPENCL_SHADER) {
       int StoreCacheDefault = m_pCtx->getModuleMetaData()->compOpt.StoreCacheDefault;
       if (auto L1 = getL1CacheControlFromDefault<StoreCacheControl>(StoreCacheDefault))
-        L1_Evict = *L1 == StoreCacheControl::WriteBack || *L1 == StoreCacheControl::Streaming;
+        L1_Evict = leavesDirtyL1(*L1) || (Scope > LSC_SCOPE_GROUP && mayHaveStoreLeavingDirtyL1(*inst->getFunction()));
     }
     // Change the scope from `GPU` or wider to `Tile` on single-tile platforms
     // to avoid L3 flush on DG2 and MTL and ARL.

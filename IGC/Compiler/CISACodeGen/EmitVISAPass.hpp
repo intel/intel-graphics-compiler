@@ -1104,6 +1104,9 @@ private:
                                   LSC_DOC_ADDR_SPACE AddrSpace, LSC_ADDR_SIZE AddrSize,
                                   llvm::Value *predicate = nullptr);
   LSC_FENCE_OP getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1, bool EvictL1) const;
+  bool mayHaveStoreLeavingDirtyL1(const llvm::Function &F);
+  // Function group head (or function without groups) -> whether it has a store leaving dirty L1.
+  llvm::DenseMap<const llvm::Function *, bool> m_hasStoreLeavingDirtyL1;
 
   CVariable *getStackSizePerThread(llvm::Function *parentFunc);
   uint32_t getReqBlkBitsForBlockStLd(llvm::CallInst *call);
