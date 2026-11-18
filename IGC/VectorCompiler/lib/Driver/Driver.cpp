@@ -962,6 +962,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.EmitVisaOnly = true;
   if (InternalOptions.hasArg(OPT_disable_sendwarwa_common))
     Opts.DisableSendWARWA = true;
+  if (InternalOptions.hasArg(OPT_vc_aot))
+    Opts.IsAheadOfTime = true;
 
   if (opt::Arg *A = InternalOptions.getLastArg(OPT_vc_interop_subgroup_size)) {
     StringRef Val = A->getValue();

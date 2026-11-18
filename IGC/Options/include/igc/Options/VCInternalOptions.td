@@ -60,6 +60,9 @@ def stats_file : PlainSeparate<"stats-file">,
 def : PlainJoined<"stats-file=">, Alias<stats_file>,
   HelpText<"Alias for -stats-file">;
 
+def vc_aot : PlainFlag<"vc-aot">,
+  HelpText<"Compilation is done ahead of time (by cmc), not by the driver (JIT)">;
+
 def fdisable_debuggable_kernels : PlainFlag<"vc-disable-debuggable-kernels">,
   HelpText<"Disable emission of debuggable kernels for legacy path">;
 

@@ -141,6 +141,8 @@ struct CompileOptions {
   bool EmitVisaOnly = false;
   // -ze-disable-sendwarwa
   bool DisableSendWARWA = false;
+  // -vc-aot
+  bool IsAheadOfTime = false;
 
   // from IGC_XXX env
   FunctionControl FCtrl = FunctionControl::Default;
