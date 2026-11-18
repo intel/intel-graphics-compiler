@@ -166,6 +166,21 @@ SPDX-License-Identifier: MIT
                                "At enabled locations, also merge blocks into their sole unconditional predecessor")
 #endif
 
+#ifdef ADD3_SKIP_FLAG
+#define ADD3_SKIP_MASK                                                                                                 \
+  ADD3_SKIP_FLAG(SkipMultiUseFold, 0x1,                                                                                \
+                 "do not fold a multi-use add into an add3 when that would force one of its own single-use add/sub "   \
+                 "or mad-foldable mul operands to be materialized (then try the other operand)")                       \
+  ADD3_SKIP_FLAG(IgnoreConstExprOperand, 0x2,                                                                          \
+                 "do not count a constant (simdSize) expression operand as absorbed (it is an immediate)")             \
+  ADD3_SKIP_FLAG(CountPeerFolds, 0x4,                                                                                  \
+                 "an unmatched add/sub user that would fold the multi-use add into its own add3 (same operand "        \
+                 "choice, no mad match) counts as folding it, not reading it")                                         \
+  ADD3_SKIP_FLAG(PreferRemovingFold, 0x8,                                                                              \
+                 "fold the other add/sub operand instead when folding the first one removes no instruction (it is "    \
+                 "read elsewhere) and folding the other one does")
+#endif // ADD3_SKIP_FLAG
+
 #ifdef SIMD1_OPT_FLAG
 #define SIMD1_OPT_MASK                                                                                                 \
   SIMD1_OPT_FLAG(SLM, 0x01, "SLM accesses")                                                                            \

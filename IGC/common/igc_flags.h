@@ -220,6 +220,18 @@ DECLARE_IGC_REGKEY(bool, EnableQWRotateInstructions, true, "Enable QW type suppo
 DECLARE_IGC_REGKEY(bool, DPASTokenReduction, false, "optimization to reduce the tokens used for DPAS instruction.",
                    ALWAYS)
 DECLARE_IGC_REGKEY(bool, EnableAdd3, true, "Enable Add3. XeHP+ only", ALWAYS)
+DECLARE_IGC_REGKEY_BITMASK(Add3SkipMask, 0x7,
+                           "Modes of skipping the greedy match of add3. IgnoreConstExprOperand, CountPeerFolds and "
+                           "PreferRemovingFold refine SkipMultiUseFold and need it set",
+                           ADD3_SKIP_MASK, ALWAYS)
+DECLARE_IGC_REGKEY(bool, EnableMixIntKnownBits, true,
+                   "Read a dword multiplicand of an integer mad/mul whose known bits fit in 16 bits as its lower word "
+                   "(where there is no dword * dword mad/mul)",
+                   ALWAYS)
+DECLARE_IGC_REGKEY(bool, EnableAdd3WordSources, true,
+                   "Let add3 read a 16-bit half of a dword (and/shift) or a zext/sext of an i16 value as a W/UW "
+                   "source, instead of materializing it",
+                   ALWAYS)
 DECLARE_IGC_REGKEY_UMD(bool, EnableBfn, true, "Enable Bfn. XeHP+ only", ALWAYS)
 DECLARE_IGC_REGKEY_UMD(bool, SeparateSpillPvtScratchSpace, false,
                        "Separate scratch spaces for spillfill and privatememory. "

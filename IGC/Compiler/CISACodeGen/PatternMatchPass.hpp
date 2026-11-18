@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/Support/KnownBits.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/InstVisitor.h"
@@ -184,7 +185,8 @@ public:
   bool MatchPredAdd(llvm::BinaryOperator &I);
   bool MatchSimpleAdd(llvm::BinaryOperator &I);
   bool MatchFMad(llvm::BinaryOperator &I);
-  bool MatchIMad(llvm::BinaryOperator &I);
+  // DryRun: only report whether a mad would be matched, without adding the pattern.
+  bool MatchIMad(llvm::BinaryOperator &I, bool DryRun = false);
   bool MatchLrp(llvm::BinaryOperator &I);
   bool MatchCmpSext(llvm::Instruction &I);
   bool MatchUnpack4i8(llvm::Instruction &I);
@@ -278,6 +280,8 @@ public:
   bool NeedInstruction(llvm::Instruction &I);
   bool SIMDConstExpr(llvm::Instruction *v);
   bool IsConstOrSimdConstExpr(llvm::Value *C);
+  // Whether the known bits of a 32-bit V fit in 16 bits; IsSigned tells W (sign-extends to V) from UW.
+  bool FitsInWord(llvm::Value *V, bool &IsSigned);
   bool FlushesDenormsOnOutput(llvm::Instruction &I);
   bool FlushesDenormsOnInput(llvm::Instruction &I);
   bool ContractionAllowed(llvm::Instruction &I) const;
@@ -304,6 +308,9 @@ public:
   SBasicBlock *m_blocks;
   uint m_numBlocks;
   llvm::DenseMap<llvm::Instruction *, bool> m_IsSIMDConstExpr;
+  // Known bits of the values FitsInWord was asked about, so that matching each instruction doesn't recompute those of
+  // the same operands.
+  llvm::DenseMap<llvm::Value *, llvm::KnownBits> KnownBitsCache;
 
   // Where we put the constant initialization.
   llvm::MapVector<llvm::Constant *, llvm::BasicBlock *> ConstantPlacement;

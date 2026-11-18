@@ -36,9 +36,8 @@ entry:
 ; CHECK: mov (M1_NM, 8) simdLaneId(0,0)<1> 0x76543210:v
 ; CHECK: add (M1_NM, 8) simdLaneId(0,8)<1> simdLaneId(0,0)<1;1,0> 0x8:w
 ; CHECK: add (M1_NM, 16) simdLaneId(0,16)<1> simdLaneId(0,0)<1;1,0> 0x10:w
-; CHECK: mov (M1, 32) simdLaneIdExt(0,0)<1> simdLaneId_0v(0,0)<1;1,0>
 ; CHECK: mul (M1_NM, 1) vlaSize(0,0)<1> array_size(0,0)<0;1,0> 0x4:w
-; CHECK: mul (M1, 32) vlaOffset(0,0)<1> vlaSize(0,0)<0;1,0> simdLaneIdExt(0,0)<1;1,0>
+; CHECK: mul (M1, 32) vlaOffset(0,0)<1> vlaSize(0,0)<0;1,0> simdLaneId_0v(0,0)<1;1,0>
 ; CHECK: add (M1, 32) vlaStackAlloca(0,0)<1> SP(0,0)<0;1,0> vlaOffset(0,0)<1;1,0>
 ; CHECK: mul (M1_NM, 1) vlaSize_0v(0,0)<1> vlaSize(0,0)<0;1,0> 0x20:uw
 ; CHECK: add (M1_NM, 1) SP(0,0)<1> SP(0,0)<0;1,0> vlaSize_0v(0,0)<0;1,0>
@@ -56,19 +55,18 @@ entry:
 
 
 ; CHECK-LABEL: .kernel "test_2x"
-; CHECK: add (M1_NM, 1) SP(0,0)<1> privateBase(0,0)<0;1,0> {{.*}}(0,0)<0;1,0>          /// $9
-; CHECK: mov (M1_NM, 1) FP(0,0)<1> SP(0,0)<0;1,0>                                     /// $10
-; CHECK: mov (M1_NM, 8) simdLaneId(0,0)<1> 0x76543210:v                               /// $11
-; CHECK: add (M1_NM, 8) simdLaneId(0,8)<1> simdLaneId(0,0)<1;1,0> 0x8:w               /// $12
-; CHECK: add (M1_NM, 16) simdLaneId(0,16)<1> simdLaneId(0,0)<1;1,0> 0x10:w            /// $13
-; CHECK: mov (M1, 32) simdLaneIdExt(0,0)<1> simdLaneId_0v(0,0)<1;1,0>                 /// $14
-; CHECK: mul (M1_NM, 1) vlaSize(0,0)<1> array_size(0,0)<0;1,0> 0x4:w                  /// $15
-; CHECK: mul (M1, 32) vlaOffset(0,0)<1> vlaSize(0,0)<0;1,0> simdLaneIdExt(0,0)<1;1,0> /// $16
-; CHECK: add (M1, 32) vlaStackAlloca(0,0)<1> SP(0,0)<0;1,0> vlaOffset(0,0)<1;1,0>     /// $17
-; CHECK: mul (M1_NM, 1) vlaSize_0v(0,0)<1> vlaSize(0,0)<0;1,0> 0x20:uw                /// $18
-; CHECK: add (M1_NM, 1) SP(0,0)<1> SP(0,0)<0;1,0> vlaSize_0v(0,0)<0;1,0>              /// $19
-; CHECK: add (M1, 32) vlaStackAlloca2(0,0)<1> SP(0,0)<0;1,0> 0x0:d                    /// $23
-; CHECK: add (M1_NM, 1) SP(0,0)<1> SP(0,0)<0;1,0> vlaSize(0,0)<0;1,0>                 /// $24
+; CHECK: add (M1_NM, 1) SP(0,0)<1> privateBase(0,0)<0;1,0> {{.*}}(0,0)<0;1,0>
+; CHECK: mov (M1_NM, 1) FP(0,0)<1> SP(0,0)<0;1,0>
+; CHECK: mov (M1_NM, 8) simdLaneId(0,0)<1> 0x76543210:v
+; CHECK: add (M1_NM, 8) simdLaneId(0,8)<1> simdLaneId(0,0)<1;1,0> 0x8:w
+; CHECK: add (M1_NM, 16) simdLaneId(0,16)<1> simdLaneId(0,0)<1;1,0> 0x10:w
+; CHECK: mul (M1_NM, 1) vlaSize(0,0)<1> array_size(0,0)<0;1,0> 0x4:w
+; CHECK: mul (M1, 32) vlaOffset(0,0)<1> vlaSize(0,0)<0;1,0> simdLaneId_0v(0,0)<1;1,0>
+; CHECK: add (M1, 32) vlaStackAlloca(0,0)<1> SP(0,0)<0;1,0> vlaOffset(0,0)<1;1,0>
+; CHECK: mul (M1_NM, 1) vlaSize_0v(0,0)<1> vlaSize(0,0)<0;1,0> 0x20:uw
+; CHECK: add (M1_NM, 1) SP(0,0)<1> SP(0,0)<0;1,0> vlaSize_0v(0,0)<0;1,0>
+; CHECK: add (M1, 32) vlaStackAlloca2(0,0)<1> SP(0,0)<0;1,0> 0x0:d
+; CHECK: add (M1_NM, 1) SP(0,0)<1> SP(0,0)<0;1,0> vlaSize(0,0)<0;1,0>
 
 define spir_kernel void @test_2x(i32 %array_size, <8 x i32> %r0, <8 x i32> %payloadHeader, ptr %privateBase, i32 %bufferOffset, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
 entry:
