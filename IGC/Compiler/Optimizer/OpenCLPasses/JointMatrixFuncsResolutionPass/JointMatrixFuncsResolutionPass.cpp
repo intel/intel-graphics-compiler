@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/PostOrderIterator.h>
+#include <llvm/ADT/SetVector.h>
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/Support/Debug.h"
@@ -202,14 +203,23 @@ bool JointMatrixFuncsResolutionPass::run(Module &M, CodeGenContext *pCtx, IGCMD:
       Changed |= resolveAccessChain(&F);
   }
 
+  // Create all resolved signatures before resolving any body, so that calls
+  // resolve regardless of the order in which callers and callees are defined.
+  SmallVector<std::pair<Function *, int32_t>, 8> FuncsWithMatrixArgs;
   for (auto &F : M) {
-    if (F.isDeclaration() || NewFuncWithResolvedSignatures.count(&F) > 0)
+    if (F.isDeclaration() || !isAnyFunctionArgMatrixType(&F))
       continue;
-    if (isAnyFunctionArgMatrixType(&F)) {
-      LLVM_DEBUG(dbgs() << "\nRESOLVE FUNC: " << F.getName() << "\n");
-      clearFunctionCache();
-      Changed |= ResolveFunction(&F);
-    }
+    clearFunctionCache();
+    createResolvedSignature(&F);
+    FuncsWithMatrixArgs.emplace_back(&F, m_SIMDSize);
+    Changed = true;
+  }
+
+  for (auto [F, SIMDSize] : FuncsWithMatrixArgs) {
+    LLVM_DEBUG(dbgs() << "\nRESOLVE FUNC: " << F->getName() << "\n");
+    clearFunctionCache();
+    m_SIMDSize = SIMDSize;
+    resolveFunctionBody(F, ResolvedFuncSignatures[F]);
   }
 
   for (auto &F : M) {
@@ -221,13 +231,25 @@ bool JointMatrixFuncsResolutionPass::run(Module &M, CodeGenContext *pCtx, IGCMD:
     Changed |= runOnFunction(F);
   }
 
-  for (const auto &ResolvedFunctionPair : ResolvedFuncSignatures) {
-    Function *OriginalFunction = ResolvedFunctionPair.first;
+  // Originals may call each other, so an original is erased only if all its
+  // users are in originals that are erased too.
+  SmallSetVector<Function *, 8> DeadOriginals;
+  for (const auto &ResolvedFunctionPair : ResolvedFuncSignatures)
+    DeadOriginals.insert(ResolvedFunctionPair.first);
 
-    if (OriginalFunction->use_empty()) {
-      OriginalFunction->eraseFromParent();
-    }
-  }
+  auto HasLiveUser = [&](Function *F) {
+    return any_of(F->users(), [&](User *U) {
+      auto *I = dyn_cast<Instruction>(U);
+      return !I || !DeadOriginals.count(I->getFunction());
+    });
+  };
+  while (DeadOriginals.remove_if(HasLiveUser))
+    ;
+
+  for (Function *F : DeadOriginals)
+    F->dropAllReferences();
+  for (Function *F : DeadOriginals)
+    F->eraseFromParent();
 
   return Changed;
 }
@@ -2837,33 +2859,39 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v) {
   return PoisonValue::get(ResolveTypes(v->getType()));
 }
 
-Function *JointMatrixFuncsResolutionPass::CloneFunction(Function *pOriginalFunction) {
-  if (!pOriginalFunction)
-    return nullptr;
+void JointMatrixFuncsResolutionPass::createResolvedSignature(Function *OriginalFunction) {
+  ResolveSIMDSize(OriginalFunction);
 
   std::vector<Type *> params;
-  for (auto &arg : pOriginalFunction->args()) {
+  for (auto &arg : OriginalFunction->args()) {
     auto type = isOrContainsMatrixType(arg.getType()) ? ResolveTypes(arg.getType()) : arg.getType();
     params.push_back(type);
   }
 
   auto newFunctionTy =
-      FunctionType::get(ResolveTypes(pOriginalFunction->getReturnType()), params, pOriginalFunction->isVarArg());
+      FunctionType::get(ResolveTypes(OriginalFunction->getReturnType()), params, OriginalFunction->isVarArg());
 
-  Function *pNewFunction =
-      Function::Create(newFunctionTy, pOriginalFunction->getLinkage(), pOriginalFunction->getAddressSpace(),
-                       pOriginalFunction->getName() + "_resolved", pOriginalFunction->getParent());
+  Function *NewFunction =
+      Function::Create(newFunctionTy, OriginalFunction->getLinkage(), OriginalFunction->getAddressSpace(),
+                       OriginalFunction->getName() + "_resolved", OriginalFunction->getParent());
 
-  pNewFunction->setCallingConv(pOriginalFunction->getCallingConv());
-  pNewFunction->setSubprogram(pOriginalFunction->getSubprogram());
-  pNewFunction->copyAttributesFrom(pOriginalFunction);
+  NewFunction->setCallingConv(OriginalFunction->getCallingConv());
+  NewFunction->setSubprogram(OriginalFunction->getSubprogram());
+  NewFunction->copyAttributesFrom(OriginalFunction);
 
+  m_simdResolver->propagateEntry(OriginalFunction, NewFunction);
+
+  ResolvedFuncSignatures[OriginalFunction] = NewFunction;
+  NewFuncWithResolvedSignatures.insert(NewFunction);
+}
+
+void JointMatrixFuncsResolutionPass::resolveFunctionBody(Function *OriginalFunction, Function *NewFunction) {
   ValueToValueMapTy VMap;
-  auto originalFunctionArgIt = pOriginalFunction->arg_begin();
-  auto newFunctionArgIt = pNewFunction->arg_begin();
+  auto originalFunctionArgIt = OriginalFunction->arg_begin();
+  auto newFunctionArgIt = NewFunction->arg_begin();
   std::unordered_set<Argument *> needsResolve;
 
-  while (originalFunctionArgIt != pOriginalFunction->arg_end()) {
+  while (originalFunctionArgIt != OriginalFunction->arg_end()) {
     newFunctionArgIt->setName(originalFunctionArgIt->getName());
     if (newFunctionArgIt->getType() != originalFunctionArgIt->getType())
       needsResolve.insert(&*newFunctionArgIt);
@@ -2871,7 +2899,7 @@ Function *JointMatrixFuncsResolutionPass::CloneFunction(Function *pOriginalFunct
   }
 
   SmallVector<ReturnInst *, 8> Returns;
-  IGCLLVM::CloneFunctionInto(pNewFunction, pOriginalFunction, VMap, IGCLLVM::CloneFunctionChangeType::LocalChangesOnly,
+  IGCLLVM::CloneFunctionInto(NewFunction, OriginalFunction, VMap, IGCLLVM::CloneFunctionChangeType::LocalChangesOnly,
                              Returns);
 
   for (auto *arg : needsResolve) {
@@ -2887,8 +2915,8 @@ Function *JointMatrixFuncsResolutionPass::CloneFunction(Function *pOriginalFunct
     }
   }
 
-  runOnFunction(*pNewFunction);
-  return pNewFunction;
+  runOnFunction(*NewFunction);
+  LLVM_DEBUG(dbgs() << " - RESOLVED FUNC:\n" << *NewFunction);
 }
 
 void JointMatrixFuncsResolutionPass::visitCallInst(CallInst &CI) {
@@ -2948,18 +2976,6 @@ bool JointMatrixFuncsResolutionPass::ResolveCallFuncWithMatrixArgs(Function *Res
 
   CacheResolvedValue(CI, newCall);
   InstsToErase.insert(CI);
-  return true;
-}
-
-bool JointMatrixFuncsResolutionPass::ResolveFunction(Function *OriginalFunction) {
-  ResolveSIMDSize(OriginalFunction);
-  Function *newFunction = CloneFunction(OriginalFunction);
-
-  m_simdResolver->propagateEntry(OriginalFunction, newFunction);
-
-  ResolvedFuncSignatures[OriginalFunction] = newFunction;
-  NewFuncWithResolvedSignatures.insert(newFunction);
-  LLVM_DEBUG(dbgs() << " - RESOLVED FUNC:\n" << *newFunction);
   return true;
 }
 

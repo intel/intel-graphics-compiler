@@ -46,7 +46,8 @@ public:
   void visitReturnInst(llvm::ReturnInst &I);
 
 private:
-  bool ResolveFunction(llvm::Function *OriginalFunction);
+  void createResolvedSignature(llvm::Function *OriginalFunction);
+  void resolveFunctionBody(llvm::Function *OriginalFunction, llvm::Function *NewFunction);
   bool ResolveCallFuncWithMatrixArgs(llvm::Function *ResolvedFunction, llvm::CallInst *CI);
   llvm::Instruction *ResolvePrefetch(llvm::CallInst *CI);
   template <bool IsJointMatrix, bool isChecked> llvm::Instruction *ResolveLoad(llvm::CallInst *CI);
@@ -102,7 +103,6 @@ private:
   // Inserts undef placeholder with the correct resolved type
   // to unblock recursive resolving of dependencies
   void InsertPlaceholder(llvm::Value *v);
-  llvm::Function *CloneFunction(llvm::Function *pOriginalFunction);
 
   enum GetMatrixFuncNameOperation {
     GetCoord,
