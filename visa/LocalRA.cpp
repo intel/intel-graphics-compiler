@@ -816,6 +816,19 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign,
             sizeInWords, assignAlign, subAlign, regNum, subregNum, 0,
             numRegLRA - 1, occupiedBundles, 0, false,
             dclLR ? dclLR->getForbidden() : emptyForbidden);
+        // With occupiedBundles set, findFreeRegs() can fail even though free
+        // registers that fit exist: findBundleConflictFreeRegister() drops
+        // the bundle restriction only when no conflict-free start register
+        // is left in range, not when all of them are busy. Avoiding bundle
+        // conflicts is only a preference, and a failure here discards all
+        // local RA assignments, so retry without the restriction, as
+        // PhyRegUsage::assignRegs() does for global RA.
+        if (!nrows && occupiedBundles) {
+          nrows = phyRegMgr.findFreeRegs(
+              sizeInWords, assignAlign, subAlign, regNum, subregNum, 0,
+              numRegLRA - 1, 0, 0, false,
+              dclLR ? dclLR->getForbidden() : emptyForbidden);
+        }
       } else {
         nrows = phyRegMgr.findFreeRegs(
             sizeInWords, assignAlign, subAlign, regNum, subregNum,
