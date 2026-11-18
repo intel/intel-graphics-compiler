@@ -518,7 +518,7 @@ public:
 
   bool supportsAutoGRFSelection() const {
     return isProductChildOf(IGFX_PVC) || m_platformInfo.eProductFamily == IGFX_XE_HP_SDV ||
-           (m_platformInfo.eProductFamily == IGFX_DG2 && IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection));
+           (m_platformInfo.eProductFamily == IGFX_DG2 && supportsStaticRegSharing());
   }
 
   bool hasLSC() const {
