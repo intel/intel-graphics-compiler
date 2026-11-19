@@ -1345,6 +1345,7 @@ DECLARE_IGC_REGKEY(bool, VectorizerAllowFADD, true, "Allow FADD instructions ins
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFSUB, true, "Allow FSUB instructions inside vectorizer", ALWAYS)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowEXP2, true, "Allow EXP2 instructions inside vectorizer", ALWAYS)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowMAXNUM, true, "Allow MAXNUM instructions inside vectorizer", ALWAYS)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowSPLAT, true, "Allow SPLAT intrinsic creation inside vectorizer", ALWAYS)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowWAVEALL, true, "Allow WAVEALL instructions inside vectorizer", ALWAYS)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowWAVEALLJoint, true, "Allow WAVEALL instructions inside vectorizer", ALWAYS)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowWAVEBROADCAST, true, "Allow WAVEBROADCAST instructions inside vectorizer",

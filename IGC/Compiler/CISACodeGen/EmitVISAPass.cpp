@@ -4984,13 +4984,16 @@ void EmitPass::FPTrunc(const SSource sources[2], const DstModifier &modifier) {
       // even col)<1> vector331(1,0)<1;1,0>
       unsigned col = (i % 2) * NumberOfFloatsThatFitInRegister;
       SetSourceModifiers(0, sources[0]);
-      if (src[0]->IsUniform()) {
-        m_encoder->SetSrcSubReg(0, i);
-      } else
-        m_encoder->SetSrcSubVar(0, i);
+      setVectorSrcElement(0, src[0], i);
       m_encoder->SetDstModifier(modifier);
-      m_encoder->SetDstSubVar(row);
-      m_encoder->SetDstSubReg(col);
+
+      if (src[0]->IsUniform() && m_destination->IsUniform())
+        m_encoder->SetDstSubReg(i);
+      else {
+        m_encoder->SetDstSubVar(row);
+        m_encoder->SetDstSubReg(col);
+      }
+
       m_encoder->Cast(m_destination, src[0]);
       m_encoder->Push();
     }
@@ -5046,8 +5049,8 @@ void EmitPass::Sub(const SSource sources[2], const DstModifier &modifier) {
           m_encoder->SetSrcRegion(1, 1, 1, 0);
           m_encoder->SetUniformSIMDSize(lanesToSIMDMode(execSize));
           m_encoder->SetDstSubReg(offset);
-          m_encoder->SetSrcSubReg(0, offset);
-          m_encoder->SetSrcSubReg(1, offset);
+          setVectorSrcElement(0, src[0], offset);
+          setVectorSrcElement(1, src[1], offset);
           m_encoder->Add(m_destination, src[0], src[1]);
           m_encoder->Push();
         }
@@ -5060,14 +5063,8 @@ void EmitPass::Sub(const SSource sources[2], const DstModifier &modifier) {
       SetSourceModifiers(1, sources[1]);
       m_encoder->SetSrcModifier(1, mod1);
 
-      if (src[0]->IsUniform())
-        m_encoder->SetSrcSubReg(0, i);
-      else
-        m_encoder->SetSrcSubVar(0, i);
-      if (src[1]->IsUniform())
-        m_encoder->SetSrcSubReg(1, i);
-      else
-        m_encoder->SetSrcSubVar(1, i);
+      setVectorSrcElement(0, src[0], i);
+      setVectorSrcElement(1, src[1], i);
 
       if (src[0]->IsUniform() && src[1]->IsUniform())
         m_encoder->SetDstSubReg(i);
@@ -5120,6 +5117,15 @@ bool EmitPass::isVectorEmissionPossible(const SSource sources[2], CVariable *src
   return DestSizeEquals;
 }
 
+// a uniform vector keeps its elements packed, element Elem is a subregister,
+// a non-uniform vector keeps every element in its own SIMD row
+void EmitPass::setVectorSrcElement(unsigned SrcNum, CVariable *Src, unsigned Elem) {
+  if (Src->IsUniform())
+    m_encoder->SetSrcSubReg(SrcNum, Elem);
+  else
+    m_encoder->SetSrcSubVar(SrcNum, Elem);
+}
+
 void EmitPass::Add(const SSource sources[2], const DstModifier &modifier) {
   CVariable *src[2];
   for (int i = 0; i < 2; ++i) {
@@ -5170,8 +5176,8 @@ void EmitPass::Add(const SSource sources[2], const DstModifier &modifier) {
           m_encoder->SetSrcRegion(1, 1, 1, 0);
           m_encoder->SetUniformSIMDSize(lanesToSIMDMode(execSize));
           m_encoder->SetDstSubReg(offset);
-          m_encoder->SetSrcSubReg(0, offset);
-          m_encoder->SetSrcSubReg(1, offset);
+          setVectorSrcElement(0, src[0], offset);
+          setVectorSrcElement(1, src[1], offset);
           m_encoder->Add(m_destination, src[0], src[1]);
           m_encoder->Push();
         }
@@ -5183,14 +5189,8 @@ void EmitPass::Add(const SSource sources[2], const DstModifier &modifier) {
       SetSourceModifiers(0, sources[0]);
       SetSourceModifiers(1, sources[1]);
 
-      if (src[0]->IsUniform())
-        m_encoder->SetSrcSubReg(0, i);
-      else
-        m_encoder->SetSrcSubVar(0, i);
-      if (src[1]->IsUniform())
-        m_encoder->SetSrcSubReg(1, i);
-      else
-        m_encoder->SetSrcSubVar(1, i);
+      setVectorSrcElement(0, src[0], i);
+      setVectorSrcElement(1, src[1], i);
 
       if (src[0]->IsUniform() && src[1]->IsUniform())
         m_encoder->SetDstSubReg(i);
@@ -5256,8 +5256,8 @@ void EmitPass::Mul(const SSource sources[2], const DstModifier &modifier) {
           m_encoder->SetSrcRegion(1, 1, 1, 0);
           m_encoder->SetUniformSIMDSize(lanesToSIMDMode(execSize));
           m_encoder->SetDstSubReg(offset);
-          m_encoder->SetSrcSubReg(0, offset);
-          m_encoder->SetSrcSubReg(1, offset);
+          setVectorSrcElement(0, src[0], offset);
+          setVectorSrcElement(1, src[1], offset);
           m_encoder->Mul(m_destination, src[0], src[1]);
           m_encoder->Push();
         }
@@ -5269,14 +5269,8 @@ void EmitPass::Mul(const SSource sources[2], const DstModifier &modifier) {
       SetSourceModifiers(0, sources[0]);
       SetSourceModifiers(1, sources[1]);
 
-      if (src[0]->IsUniform()) {
-        m_encoder->SetSrcSubReg(0, i);
-      } else
-        m_encoder->SetSrcSubVar(0, i);
-      if (src[1]->IsUniform()) {
-        m_encoder->SetSrcSubReg(1, i);
-      } else
-        m_encoder->SetSrcSubVar(1, i);
+      setVectorSrcElement(0, src[0], i);
+      setVectorSrcElement(1, src[1], i);
       if (src[0]->IsUniform() && src[1]->IsUniform())
         m_encoder->SetDstSubReg(i);
       else
@@ -5345,8 +5339,8 @@ void EmitPass::Shl(const SSource sources[2], const DstModifier &modifier) {
           m_encoder->SetSrcRegion(1, 1, 1, 0);
           m_encoder->SetUniformSIMDSize(lanesToSIMDMode(execSize));
           m_encoder->SetDstSubReg(offset);
-          m_encoder->SetSrcSubReg(0, offset);
-          m_encoder->SetSrcSubReg(1, offset);
+          setVectorSrcElement(0, src[0], offset);
+          setVectorSrcElement(1, src[1], offset);
           m_encoder->Shl(m_destination, src[0], src[1]);
           m_encoder->Push();
         }
@@ -5358,14 +5352,8 @@ void EmitPass::Shl(const SSource sources[2], const DstModifier &modifier) {
       SetSourceModifiers(0, sources[0]);
       SetSourceModifiers(1, sources[1]);
 
-      if (src[0]->IsUniform())
-        m_encoder->SetSrcSubReg(0, i);
-      else
-        m_encoder->SetSrcSubVar(0, i);
-      if (src[1]->IsUniform())
-        m_encoder->SetSrcSubReg(1, i);
-      else
-        m_encoder->SetSrcSubVar(1, i);
+      setVectorSrcElement(0, src[0], i);
+      setVectorSrcElement(1, src[1], i);
 
       if (src[0]->IsUniform() && src[1]->IsUniform())
         m_encoder->SetDstSubReg(i);
@@ -5421,14 +5409,8 @@ void EmitPass::Div(const SSource sources[2], const DstModifier &modifier) {
       SetSourceModifiers(0, sources[0]);
       SetSourceModifiers(1, sources[1]);
 
-      if (src[0]->IsUniform()) {
-        m_encoder->SetSrcSubReg(0, i);
-      } else
-        m_encoder->SetSrcSubVar(0, i);
-      if (src[1]->IsUniform()) {
-        m_encoder->SetSrcSubReg(1, i);
-      } else
-        m_encoder->SetSrcSubVar(1, i);
+      setVectorSrcElement(0, src[0], i);
+      setVectorSrcElement(1, src[1], i);
       if (src[0]->IsUniform() && src[1]->IsUniform())
         m_encoder->SetDstSubReg(i);
       else
@@ -5471,13 +5453,11 @@ void EmitPass::Inv(const SSource sources[2], const DstModifier &modifier) {
     for (unsigned i = 0; i < VectorSize; ++i) {
       SetSourceModifiers(0, sources[1]);
 
-      if (src[0]->IsUniform()) {
-        m_encoder->SetSrcSubReg(0, i);
+      setVectorSrcElement(0, src[0], i);
+      if (src[0]->IsUniform())
         m_encoder->SetDstSubReg(i);
-      } else {
-        m_encoder->SetSrcSubVar(0, i);
+      else
         m_encoder->SetDstSubVar(i);
-      }
       m_encoder->Inv(m_destination, src[0]);
       m_encoder->Push();
     }
@@ -5521,14 +5501,8 @@ void EmitPass::MaxNum(const SSource sources[2], const DstModifier &modifier) {
       SetSourceModifiers(0, sources[0]);
       SetSourceModifiers(1, sources[1]);
 
-      if (src[0]->IsUniform())
-        m_encoder->SetSrcSubReg(0, i);
-      else
-        m_encoder->SetSrcSubVar(0, i);
-      if (src[1]->IsUniform())
-        m_encoder->SetSrcSubReg(1, i);
-      else
-        m_encoder->SetSrcSubVar(1, i);
+      setVectorSrcElement(0, src[0], i);
+      setVectorSrcElement(1, src[1], i);
 
       if (src[0]->IsUniform() && src[1]->IsUniform())
         m_encoder->SetDstSubReg(i);
@@ -5571,13 +5545,11 @@ void EmitPass::Exp2(const SSource sources[2], const DstModifier &modifier) {
     for (unsigned i = 0; i < VectorSize; ++i) {
       SetSourceModifiers(0, sources[0]);
 
-      if (AllUniform) {
-        m_encoder->SetSrcSubReg(0, i);
+      setVectorSrcElement(0, src[0], i);
+      if (AllUniform)
         m_encoder->SetDstSubReg(i);
-      } else {
-        m_encoder->SetSrcSubVar(0, i);
+      else
         m_encoder->SetDstSubVar(i);
-      }
       m_encoder->Exp(m_destination, src[0]);
       m_encoder->Push();
     }
@@ -5622,18 +5594,9 @@ void EmitPass::VectorMad(const SSource sources[3], const DstModifier &modifier) 
     SetSourceModifiers(1, sources[1]);
     SetSourceModifiers(2, sources[2]);
 
-    if (src[0]->IsUniform())
-      m_encoder->SetSrcSubReg(0, i);
-    else
-      m_encoder->SetSrcSubVar(0, i);
-    if (src[1]->IsUniform())
-      m_encoder->SetSrcSubReg(1, i);
-    else
-      m_encoder->SetSrcSubVar(1, i);
-    if (src[2]->IsUniform())
-      m_encoder->SetSrcSubReg(2, i);
-    else
-      m_encoder->SetSrcSubVar(2, i);
+    setVectorSrcElement(0, src[0], i);
+    setVectorSrcElement(1, src[1], i);
+    setVectorSrcElement(2, src[2], i);
 
     if (AllUniform)
       m_encoder->SetDstSubReg(i);
@@ -5967,7 +5930,6 @@ void EmitPass::VectorSelect(const SSource sources[3], const DstModifier &modifie
 
     SetSourceModifiers(0, sources[1]);
     SetSourceModifiers(1, sources[2]);
-
     m_encoder->SetSrcRegion(0, 1, 1, 0);
     m_encoder->SetSrcRegion(1, 1, 1, 0);
     m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
@@ -5987,15 +5949,8 @@ void EmitPass::VectorSelect(const SSource sources[3], const DstModifier &modifie
 
     SetSourceModifiers(0, sources[1]);
     SetSourceModifiers(1, sources[2]);
-
-    if (src[1]->IsUniform())
-      m_encoder->SetSrcSubReg(0, i);
-    else
-      m_encoder->SetSrcSubVar(0, i);
-    if (src[2]->IsUniform())
-      m_encoder->SetSrcSubReg(1, i);
-    else
-      m_encoder->SetSrcSubVar(1, i);
+    setVectorSrcElement(0, src[1], i);
+    setVectorSrcElement(1, src[2], i);
 
     if (AllUniform)
       m_encoder->SetDstSubReg(i);
@@ -6542,6 +6497,41 @@ void EmitPass::emitJointWaveBroadcast(llvm::Instruction *inst) {
     m_encoder->SetSrcRegion(0, 1, 1, 0);
     m_encoder->SetSrcSubReg(0, LeftIndex + offset);
     m_encoder->SetDstSubReg(offset);
+    m_encoder->Copy(m_destination, Src);
+    m_encoder->Push();
+  }
+}
+
+// we make the proper SIMD-style splat
+void EmitPass::emitSplat(llvm::Instruction *Inst) {
+  CVariable *Src = GetSymbol(Inst->getOperand(0));
+
+  unsigned NumElem = cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements();
+
+  auto SIMD = m_currShader->m_State.m_dispatchSize;
+  const bool IsSimd16 = (SIMD == SIMDMode::SIMD16);
+  const bool IsTypeAllowed = isVectorTypeAllowed(Inst);
+
+  if (!IsSimd16)
+    IGC_ASSERT_EXIT_MESSAGE(0, "emit splat: only simd 16 supported");
+  if (!IsTypeAllowed)
+    IGC_ASSERT_EXIT_MESSAGE(0, "emit splat: only 32 bit types supported");
+
+  bool CanBroadcast =
+      m_destination->IsUniform() && isPowerOf2_32(NumElem) && NumElem <= numLanes(m_currShader->m_SIMDSize);
+  if (CanBroadcast) {
+    m_encoder->SetUniformSIMDSize(lanesToSIMDMode(NumElem));
+    m_encoder->SetSrcRegion(0, 0, 1, 0);
+    m_encoder->Copy(m_destination, Src);
+    m_encoder->Push();
+    return;
+  }
+
+  for (unsigned i = 0; i < NumElem; ++i) {
+    if (m_destination->IsUniform())
+      m_encoder->SetDstSubReg(i);
+    else
+      m_encoder->SetDstSubVar(i);
     m_encoder->Copy(m_destination, Src);
     m_encoder->Push();
   }
@@ -10244,6 +10234,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     break;
   case GenISAIntrinsic::GenISA_JointWaveBroadcast:
     emitJointWaveBroadcast(inst);
+    break;
+  case GenISAIntrinsic::GenISA_Splat:
+    emitSplat(inst);
     break;
   case GenISAIntrinsic::GenISA_WaveClusteredBroadcast:
     emitSimdClusteredBroadcast(inst);

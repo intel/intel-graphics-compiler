@@ -87,6 +87,7 @@ public:
   void CreateKernelShaderMap(CodeGenContext *ctx, IGC::IGCMD::MetaDataUtils *pMdUtils, llvm::Function &F);
 
   bool isVectorEmissionPossible(const SSource sources[2], CVariable *src[2]);
+  void setVectorSrcElement(unsigned SrcNum, CVariable *Src, unsigned Elem);
 
   void Frc(const SSource &source, const DstModifier &modifier);
   void Floor(const SSource &source, const DstModifier &modifier);
@@ -282,6 +283,7 @@ public:
   void emitSimdSize(llvm::Instruction *inst);
   void emitSimdShuffle(llvm::Instruction *inst);
   void emitJointWaveBroadcast(llvm::Instruction *inst);
+  void emitSplat(llvm::Instruction *Inst);
   void emitSimdClusteredBroadcast(llvm::Instruction *inst);
   void emitCrossInstanceMov(const SSource &source, const DstModifier &modifier);
   void emitSimdShuffleDown(llvm::Instruction *inst);

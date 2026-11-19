@@ -1848,7 +1848,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       GII_id == GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload ||
       GII_id == GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload || GII_id == GenISAIntrinsic::GenISA_PredicatedLoad ||
       GII_id == GenISAIntrinsic::GenISA_PredicatedStore || GII_id == GenISAIntrinsic::GenISA_bfn ||
-      GII_id == GenISAIntrinsic::GenISA_JointWaveBroadcast) {
+      GII_id == GenISAIntrinsic::GenISA_JointWaveBroadcast || GII_id == GenISAIntrinsic::GenISA_Splat) {
     switch (GII_id) {
     default:
       break;

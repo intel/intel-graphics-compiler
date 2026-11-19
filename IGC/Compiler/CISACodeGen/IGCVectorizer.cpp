@@ -596,6 +596,17 @@ InsertElementInst *IGCVectorizer::createVector(VecArr &Slice, Instruction *Inser
   return CreatedInsert;
 }
 
+Instruction *IGCVectorizerCommon::createSplat(Value *Scalar, unsigned Width, Instruction *InsertPoint) {
+  llvm::Type *VectorType = llvm::FixedVectorType::get(Scalar->getType(), Width);
+  llvm::Type *OverloadedType[] = {VectorType, Scalar->getType()};
+  auto *Decl = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_Splat, OverloadedType);
+  auto *CreatedInst = llvm::CallInst::Create(Decl, {Scalar});
+  CreatedInst->setName("vector_splat");
+  CreatedInst->setDebugLoc(InsertPoint->getDebugLoc());
+  IGCLLVM::insertBefore(CreatedInst, InsertPoint);
+  return CreatedInst;
+}
+
 void IGCVectorizer::replaceSliceInstructionsWithExtract(VecArr &Slice, Instruction *CreatedInst, bool Register,
                                                         ReplaceCondition RepCond) {
   PRINT_LOG_INST_NL("Extracted from: ", CreatedInst);
@@ -1375,6 +1386,20 @@ bool IGCVectorizer::checkPHI(Instruction *Compare, VecArr &Slice) {
   return true;
 }
 
+bool IGCVectorizer::isSplat(VecArr &Slice) {
+  if (!IGC_GET_FLAG_VALUE(VectorizerAllowSPLAT))
+    return false;
+
+  if (!WI->isUniform(Slice.front()))
+    return false;
+
+  for (auto &El : Slice)
+    if (El != Slice.front())
+      return false;
+  bool IsAllowedType = isAllowedType(Slice.front());
+  return IsAllowedType;
+}
+
 Value *IGCVectorizer::vectorizeSlice(VecArr &Slice, unsigned int OperNum) {
 
   VecArr NotVectorizedInstruction;
@@ -1405,6 +1430,20 @@ Value *IGCVectorizer::vectorizeSlice(VecArr &Slice, unsigned int OperNum) {
   }
 
   if (NotVectorizedInstruction.size() == Slice.size()) {
+
+    if (isSplat(NotVectorizedInstruction)) {
+      Instruction *InsertPoint = getInsertPointForVector(NotVectorizedInstruction, Slice);
+      if (!InsertPoint) {
+        PRINT_LOG_NL("Couldn't find insert point");
+        return nullptr;
+      }
+      NewVector = createSplat(NotVectorizedInstruction.front(), Slice.size(), InsertPoint);
+      CreatedVectorInstructions.push_back(cast<Instruction>(NewVector));
+      PRINT_LOG("Splat created: ");
+      PRINT_INST_NL(NewVector);
+      return NewVector;
+    }
+
     Instruction *InsertPoint = getInsertPointForVector(NotVectorizedInstruction, Slice);
     if (!InsertPoint) {
       PRINT_LOG_NL("Couldn't find insert point");
@@ -2216,13 +2255,37 @@ void IGCVectorCoalescer::ShuffleIn(VecArr &Slice, unsigned StartIndex, unsigned 
       OperandsToCoalesce.push_back(El->getOperand(OperNum));
     }
 
+    auto *Splat = llvm::dyn_cast<GenIntrinsicInst>(OperandsToCoalesce[0]);
+    auto *OtherSplat = llvm::dyn_cast<GenIntrinsicInst>(OperandsToCoalesce[1]);
+    bool SameSplat = Splat && OtherSplat && Splat->isGenIntrinsic(GenISAIntrinsic::GenISA_Splat) &&
+                     OtherSplat->isGenIntrinsic(GenISAIntrinsic::GenISA_Splat) &&
+                     Splat->getOperand(0) == OtherSplat->getOperand(0);
+    if (SameSplat) {
+      unsigned Width = getVectorSize(Splat) + getVectorSize(OtherSplat);
+      auto *WideSplat = createSplat(Splat->getOperand(0), Width, getMinPoint(Slice));
+      PRINT_INST_NL(WideSplat);
+      Operands.push_back(WideSplat);
+      continue;
+    }
+
     Value *Seed = OperandsToCoalesce[0];
     for (unsigned index = 1; index < OperandsToCoalesce.size(); ++index) {
 
       llvm::SmallVector<int, 16> Mask;
-      unsigned int VectorSize = getVectorSize(Seed) + getVectorSize(OperandsToCoalesce[index]);
+      unsigned int SeedSize = getVectorSize(Seed);
+      unsigned int VectorSize = SeedSize + getVectorSize(OperandsToCoalesce[index]);
+
+      // in case of splat the right mask is <0,0,,, 0>
+      bool IsSeedSplat =
+          isa<GenIntrinsicInst>(Seed) && cast<GenIntrinsicInst>(Seed)->isGenIntrinsic(GenISAIntrinsic::GenISA_Splat);
+      bool IsOtherSplat =
+          isa<GenIntrinsicInst>(OperandsToCoalesce[index]) &&
+          cast<GenIntrinsicInst>(OperandsToCoalesce[index])->isGenIntrinsic(GenISAIntrinsic::GenISA_Splat);
       for (unsigned i = 0; i < VectorSize; ++i) {
-        Mask.push_back(i);
+        if (i < SeedSize)
+          Mask.push_back(IsSeedSplat ? 0 : i);
+        else
+          Mask.push_back(IsOtherSplat ? SeedSize : i);
       }
 
       auto ShuffleVector = new llvm::ShuffleVectorInst(Seed, OperandsToCoalesce[index], Mask, "coalesced_input");

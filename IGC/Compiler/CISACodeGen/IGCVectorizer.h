@@ -50,6 +50,7 @@ public:
 
   Instruction *getMaxPoint(VecArr &Slice);
   Instruction *getMinPoint(VecArr &Slice);
+  Instruction *createSplat(Value *Scalar, unsigned Width, Instruction *InsertPoint);
   unsigned getPositionInsideBB(llvm::Instruction *Inst);
   void collectPositionInsideBB(llvm::Instruction *Inst);
 
@@ -90,6 +91,7 @@ private:
   bool isSafeToVectorize(llvm::Instruction *I);
   bool isSafeToVectorizeSIMD16(llvm::Instruction *I);
   bool isSafeToVectorizeSIMD32(llvm::Instruction *I);
+  bool isSplat(VecArr &Slice);
 
   bool checkSlice(VecArr &Slice, InsertElementInst *Final);
 

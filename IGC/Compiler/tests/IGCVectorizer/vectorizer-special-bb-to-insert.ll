@@ -10,15 +10,10 @@
 
 ; CHECK-LABEL: bb3:
 ; CHECK-NEXT: [[PHI:%.*]] = phi float
-; CHECK-NEXT: [[VECTOR_0:%.*]] = insertelement <8 x float> undef, float [[PHI]], i32 0
-; CHECK-NEXT: [[VECTOR_1:%.*]] = insertelement <8 x float> [[VECTOR_0]], float [[PHI]], i32 1
-; CHECK-NEXT: [[VECTOR_2:%.*]] = insertelement <8 x float> [[VECTOR_1]], float [[PHI]], i32 2
-; CHECK-NEXT: [[VECTOR_3:%.*]] = insertelement <8 x float> [[VECTOR_2]], float [[PHI]], i32 3
-; CHECK-NEXT: [[VECTOR_4:%.*]] = insertelement <8 x float> [[VECTOR_3]], float [[PHI]], i32 4
-; CHECK-NEXT: [[VECTOR_5:%.*]] = insertelement <8 x float> [[VECTOR_4]], float [[PHI]], i32 5
-; CHECK-NEXT: [[VECTOR_6:%.*]] = insertelement <8 x float> [[VECTOR_5]], float [[PHI]], i32 6
-; CHECK-NEXT: [[VECTOR_7:%.*]] = insertelement <8 x float> [[VECTOR_6]], float [[PHI]], i32 7
+; CHECK-NEXT: [[SPLAT:%.*]] = call <8 x float> @llvm.genx.GenISA.Splat.v8f32.f32(float [[PHI]])
 ; CHECK-NEXT: br i1 {{%.*}}, label {{%.*}}, label {{%.*}}
+; CHECK-LABEL: bb6:
+; CHECK-NEXT: {{%.*}} = fmul reassoc nsz arcp contract <8 x float> zeroinitializer, [[SPLAT]]
 
 
 define spir_kernel void @barney() {

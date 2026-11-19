@@ -2847,6 +2847,23 @@ intrinsics:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
+        name: "GenISA_Splat"
+        comment: "Splats a scalar value into a vector."
+        return_definition: !<ReturnDefinition>
+            type_definition: *any
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *any
+                comment: "scalar value"
+        attributes:
+            - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
         name: "GenISA_WaveClusteredBroadcast"
         comment: "Broadcasts from specific lane to all lanes in cluster.\
             \ Works in non-uniform threads, but result is undefined if\
