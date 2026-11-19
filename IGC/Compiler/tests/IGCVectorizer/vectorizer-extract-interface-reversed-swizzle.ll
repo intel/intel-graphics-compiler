@@ -5,7 +5,9 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt --igc-vectorizer -S -dce --platformbmg < %s 2>&1 | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt --igc-vectorizer -S -dce --regkey=VectorizerAllowNonNaiveSwizzle=1 --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --igc-vectorizer -S -dce --regkey=VectorizerAllowNonNaiveSwizzle=0 --platformbmg < %s 2>&1 | FileCheck %s --check-prefix=CHECK-OFF
 
 ; A fully reversed extract swizzle is not naive, so handleExtractElement cannot
 ; substitute the source vector.  It must instead build an "extract interface" --
@@ -22,6 +24,14 @@
 ; CHECK-NEXT:    [[I0:%[a-zA-Z0-9_]+]] = insertelement <8 x float> undef, float [[E0]], i32 0
 ; CHECK-NEXT:    [[I1:%[a-zA-Z0-9_]+]] = insertelement <8 x float> [[I0]], float [[E1]], i32 1
 ; CHECK:         [[IFACE]] = insertelement <8 x float> {{%[a-zA-Z0-9_]+}}, float [[E7]], i32 7
+
+; With VectorizerAllowNonNaiveSwizzle=0 the reversed slice is rejected and the
+; phis stay scalar.
+
+; CHECK-OFF-LABEL: @quux(
+; CHECK-OFF-NOT:     vectorized_phi
+; CHECK-OFF:         %p0 = phi float
+; CHECK-OFF-NOT:     vectorized_phi
 target triple = "spir64-unknown-unknown"
 
 define spir_kernel void @quux() {

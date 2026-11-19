@@ -5,7 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt --igc-vectorizer -S -dce --platformbmg < %s 2>&1 | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt --igc-vectorizer -S -dce --regkey=VectorizerAllowNonNaiveSwizzle=1 --platformbmg < %s 2>&1 | FileCheck %s
 
 ; A non-constant extract index has no constant lane, so it can never be a naive
 ; swizzle.  handleExtractElement reads the base index with getConstantValueAsInt

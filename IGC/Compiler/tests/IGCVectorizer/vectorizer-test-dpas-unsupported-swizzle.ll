@@ -5,7 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt --igc-vectorizer -S -dce --platformbmg < %s 2>&1 | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt --igc-vectorizer -S -dce --regkey=VectorizerAllowNonNaiveSwizzle=1 --platformbmg < %s 2>&1 | FileCheck %s
 
 define spir_kernel void @quux() {
 ; CHECK-LABEL: @quux(

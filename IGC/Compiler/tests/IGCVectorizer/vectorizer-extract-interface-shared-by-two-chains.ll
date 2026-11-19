@@ -5,7 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt --igc-vectorizer -S -dce --platformbmg < %s 2>&1 | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt --igc-vectorizer -S -dce --regkey=VectorizerAllowNonNaiveSwizzle=1 --platformbmg < %s 2>&1 | FileCheck %s
 
 ; Two independent vectorization chains (%p... and %q...) are fed by the *same*
 ; non-naive extract group %e0..%e7.  handleExtractElement does not RAUW the

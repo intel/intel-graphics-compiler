@@ -1145,6 +1145,9 @@ bool IGCVectorizer::handleExtractElement(VecArr &Slice) {
   if (!checkExtractElement(Slice))
     return false;
 
+  if (!IGC_GET_FLAG_VALUE(VectorizerAllowNonNaiveSwizzle) && !checkNaiveSwizzle(Slice))
+    return false;
+
   Value *PrevVectorization = nullptr;
   if (checkPrevVectorization(Slice, PrevVectorization) && checkNaiveSwizzle(Slice))
     return true;

@@ -1,5 +1,5 @@
-; REQUIRES: llvm-16-plus
-; RUN: igc_opt -S --igc-vectorizer -dce --platformbmg < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-16-plus, regkeys
+; RUN: igc_opt -S --igc-vectorizer -dce --regkey=VectorizerAllowNonNaiveSwizzle=1 --platformbmg < %s 2>&1 | FileCheck %s
 
 ; An already vectorized value can be reused as an operand of the next slice only
 ; if lane i of the operand slice is lane i of that vector. Otherwise the operand

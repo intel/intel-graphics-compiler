@@ -1341,6 +1341,8 @@ DECLARE_IGC_REGKEY(bool, VectorizerAllowWAVEALL, true, "Allow WAVEALL instructio
 DECLARE_IGC_REGKEY(bool, VectorizerAllowWAVEALLJoint, true, "Allow WAVEALL instructions inside vectorizer", ALWAYS)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowWAVEBROADCAST, true, "Allow WAVEBROADCAST instructions inside vectorizer",
                    ALWAYS)
+DECLARE_IGC_REGKEY(bool, VectorizerAllowNonNaiveSwizzle, false,
+                   "Allow extract element slices with non-naive swizzles inside vectorizer", ALWAYS)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowCMP, true, "Allow CMP instructions inside vectorizer", ALWAYS)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowUniformCMP, true, "Allow CMP instructions inside vectorizer", ALWAYS)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowSelect, true, "Allow Select instructions inside vectorizer", ALWAYS)

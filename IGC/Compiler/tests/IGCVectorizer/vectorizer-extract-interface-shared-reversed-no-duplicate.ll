@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; RUN: igc_opt -S --opaque-pointers --igc-vectorizer -dce --platformbmg < %s 2>&1 | not FileCheck %s --check-prefix=DUP
+; RUN: igc_opt -S --opaque-pointers --igc-vectorizer -dce --regkey=VectorizerAllowNonNaiveSwizzle=1 --platformbmg < %s 2>&1 | not FileCheck %s --check-prefix=DUP
 
 ; Two insertelement chains read the same reversed extract slice
 ; (%e0..%e7 = %src[7..0]).  A reversed swizzle cannot be substituted by %src, so
