@@ -72,6 +72,17 @@ bool LICMLegacyPassWrapper::runOnFunction(Function &F) {
 
   registerLPMAAChain(FAM, PB, ExternalAA);
 
+  // Give LICM IGC's TTI from the legacy pass manager; PassBuilder without a TargetMachine would register a generic
+  // one. getTTI() recomputes the wrapper's TTI on every call, so moving it out and calling it again leaves the legacy
+  // wrapper valid. Registered before registerFunctionAnalyses so this TargetIRAnalysis wins the registration.
+  auto &TTIWP = getAnalysis<TargetTransformInfoWrapperPass>();
+  auto LpmTTIWPCallback = [&TTIWP](const Function &Fn) {
+    TargetTransformInfo TTI = std::move(TTIWP.getTTI(Fn));
+    TTIWP.getTTI(Fn);
+    return TTI;
+  };
+  FAM.registerPass([&LpmTTIWPCallback] { return TargetIRAnalysis(LpmTTIWPCallback); });
+
   PB.registerModuleAnalyses(MAM);
   PB.registerCGSCCAnalyses(CGAM);
   PB.registerFunctionAnalyses(FAM);
@@ -92,18 +103,13 @@ bool LICMLegacyPassWrapper::runOnFunction(Function &F) {
 #endif // LLVM_VERSION_MAJOR >= 16
 
 void LICMLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
-  AU.addPreserved<DominatorTreeWrapperPass>();
-  AU.addPreserved<LoopInfoWrapperPass>();
+  // LICM runs on the private FunctionAnalysisManager in runOnFunction, which computes its own analyses (and its
+  // adaptor runs LoopSimplify and LCSSA first), so only the legacy analyses runOnFunction reads are required. LICM
+  // updates only the private manager's analyses and may change the CFG, e.g. by splitting loop exits, so no legacy
+  // analysis is preserved. The legacy LICM pass could declare them preserved because it updated them in place.
   AU.addRequired<TargetLibraryInfoWrapperPass>();
-  AU.addUsedIfAvailable<ExternalAAWrapperPass>();
-  AU.addRequired<MemorySSAWrapperPass>();
-  AU.addPreserved<MemorySSAWrapperPass>();
   AU.addRequired<TargetTransformInfoWrapperPass>();
-  AU.addRequired<AssumptionCacheTracker>();
-  getLoopAnalysisUsage(AU);
-  LazyBlockFrequencyInfoPass::getLazyBFIAnalysisUsage(AU);
-  AU.addPreserved<LazyBlockFrequencyInfoPass>();
-  AU.addPreserved<LazyBranchProbabilityInfoPass>();
+  AU.addUsedIfAvailable<ExternalAAWrapperPass>();
 }
 
 char LICMLegacyPassWrapper::ID = 0;
@@ -130,9 +136,6 @@ using namespace IGCLLVM;
 #define PASS_ANALYSIS false
 
 IGC_INITIALIZE_PASS_BEGIN(LICMLegacyPassWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_DEPENDENCY(LoopPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
-IGC_INITIALIZE_PASS_DEPENDENCY(MemorySSAWrapperPass)
-IGC_INITIALIZE_PASS_DEPENDENCY(LazyBFIPass)
 IGC_INITIALIZE_PASS_END(LICMLegacyPassWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
