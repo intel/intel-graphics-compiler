@@ -1453,6 +1453,7 @@ void GetKeysSetExplicitly(std::string *KeyValuePairs, std::string *OptionKeys) {
     if (strcmp("ShaderDumpEnableAll", key) == 0 || strcmp("ShaderDumpEnable", key) == 0 ||
         strcmp("ShaderDumpRegexFilter", key) == 0 || strcmp("DumpToCurrentDir", key) == 0 ||
         strcmp("EnableCosDump", key) == 0 || strcmp("DumpToCustomDir", key) == 0 ||
+        strcmp("ShaderDumpCollisionMode", key) == 0 ||
         strcmp("EnableDxbcDump", key) == 0 || strcmp("EnableDxAsmDump", key) == 0) {
       continue;
     }
