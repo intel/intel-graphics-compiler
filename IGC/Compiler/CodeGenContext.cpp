@@ -949,7 +949,7 @@ SIMDMode CodeGenContext::GetSIMDMode() const {
     IGC_ASSERT_MESSAGE(0, "Incorrect shader type");
   }
 
-  IGC_ASSERT_MESSAGE(!hasSyncRTCalls() || (simdMode <= platform.getPreferredRayQuerySIMDSize(type)),
+  IGC_ASSERT_MESSAGE(!hasSyncRTCalls() || (simdMode <= platform.getMaxRayQuerySIMDSize(type)),
                      "Unsupported SIMD mode for RayQuery");
 
   return simdMode;
