@@ -9,31 +9,22 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-INLINE float OVERLOADABLE sqrt( float x )
-{
-    return __spirv_ocl_sqrt( x );
-}
+INLINE float OVERLOADABLE sqrt(float x) { return __spirv_ocl_sqrt(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( sqrt, float, float )
+GENERATE_VECTOR_FUNCTIONS_1ARG(sqrt, float, float)
 
 #ifdef cl_fp64_basic_ops
 
-INLINE double OVERLOADABLE sqrt( double x )
-{
-    return __spirv_ocl_sqrt( x );
-}
+INLINE double OVERLOADABLE sqrt(double x) { return __spirv_ocl_sqrt(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( sqrt, double, double )
+GENERATE_VECTOR_FUNCTIONS_1ARG(sqrt, double, double)
 
 #endif // cl_fp64_basic_ops
 
 #ifdef cl_khr_fp16
 
-INLINE half OVERLOADABLE sqrt( half x )
-{
-    return __spirv_ocl_sqrt( x );
-}
+INLINE half OVERLOADABLE sqrt(half x) { return __spirv_ocl_sqrt(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( sqrt, half, half )
+GENERATE_VECTOR_FUNCTIONS_1ARG(sqrt, half, half)
 
 #endif // cl_khr_fp16

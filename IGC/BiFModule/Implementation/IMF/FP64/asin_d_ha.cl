@@ -474,8 +474,7 @@ static __constant union {
   float f;
   int i;
 } __dasin_ha_small_float = {0x01800000u};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dasin_ha(double *pxin, double *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dasin_ha(double *pxin, double *pres) {
   int nRet = 0;
   double xin = *pxin;
   union {
@@ -520,21 +519,18 @@ __ocl_svml_internal_dasin_ha(double *pxin, double *pres) {
     // Sh+Sh*E accurate to ~46 bits
     Sh = __spirv_ocl_fma(Sh, E, Sh);
     // pi/2_high - 2*Sh
-    High.f = __spirv_ocl_fma((-Sh), __dasin_ha_two.f,
-                                                    __dasin_ha_pi2h.f);
+    High.f = __spirv_ocl_fma((-Sh), __dasin_ha_two.f, __dasin_ha_pi2h.f);
     //  Shh2 = (-2*Sh)_high
     Shh2.f = High.f - __dasin_ha_pi2h.f;
     Shh = 0.5 * Shh2.f;
     // y.f - Sh*Sh
     E = __spirv_ocl_fma((-Shh), Shh, y.f);
     // Low = (pi/2)_low - low part of 2*sqrt((1-|x|)/2)
-    Low.f =
-        __spirv_ocl_fma((-E), RS.f, __dasin_ha_pi2l.f);
+    Low.f = __spirv_ocl_fma((-E), RS.f, __dasin_ha_pi2l.f);
     // Shh2 = Shh2 - E*RS.f ~ -2*sqrt((1-|x|)/2)
     Shh2.f = __spirv_ocl_fma((-E), RS.f, Shh2.f);
     // polynomial
-    poly = __spirv_ocl_fma(__dasin_ha_c12.f, R,
-                                                  __dasin_ha_c11.f);
+    poly = __spirv_ocl_fma(__dasin_ha_c12.f, R, __dasin_ha_c11.f);
     poly = __spirv_ocl_fma(poly, R, __dasin_ha_c10.f);
     poly = __spirv_ocl_fma(poly, R, __dasin_ha_c9.f);
     poly = __spirv_ocl_fma(poly, R, __dasin_ha_c8.f);

@@ -9,31 +9,22 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-INLINE float OVERLOADABLE nan( uint nancode )
-{
-    return __spirv_ocl_nan( nancode );
-}
+INLINE float OVERLOADABLE nan(uint nancode) { return __spirv_ocl_nan(nancode); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( nan, float, uint )
+GENERATE_VECTOR_FUNCTIONS_1ARG(nan, float, uint)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE nan( ulong nancode )
-{
-    return __spirv_ocl_nan( nancode );
-}
+INLINE double OVERLOADABLE nan(ulong nancode) { return __spirv_ocl_nan(nancode); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( nan, double, ulong )
+GENERATE_VECTOR_FUNCTIONS_1ARG(nan, double, ulong)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE nan( ushort nancode )
-{
-    return __spirv_ocl_nan( nancode );
-}
+INLINE half OVERLOADABLE nan(ushort nancode) { return __spirv_ocl_nan(nancode); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( nan, half, ushort )
+GENERATE_VECTOR_FUNCTIONS_1ARG(nan, half, ushort)
 
 #endif // defined(cl_khr_fp16)

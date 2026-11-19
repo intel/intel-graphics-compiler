@@ -9,26 +9,14 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE float __attribute__((overloadable)) __spirv_ocl_half_log(float x ){
-    return __spirv_ocl_native_log(x);
-}
+INLINE float __attribute__((overloadable)) __spirv_ocl_half_log(float x) { return __spirv_ocl_native_log(x); }
 
-INLINE float2 __attribute__((overloadable)) __spirv_ocl_half_log(float2 x ){
-    return __spirv_ocl_native_log(x);
-}
+INLINE float2 __attribute__((overloadable)) __spirv_ocl_half_log(float2 x) { return __spirv_ocl_native_log(x); }
 
-INLINE float3 __attribute__((overloadable)) __spirv_ocl_half_log(float3 x ){
-    return __spirv_ocl_native_log(x);
-}
+INLINE float3 __attribute__((overloadable)) __spirv_ocl_half_log(float3 x) { return __spirv_ocl_native_log(x); }
 
-INLINE float4 __attribute__((overloadable)) __spirv_ocl_half_log(float4 x ){
-    return __spirv_ocl_native_log(x);
-}
+INLINE float4 __attribute__((overloadable)) __spirv_ocl_half_log(float4 x) { return __spirv_ocl_native_log(x); }
 
-INLINE float8 __attribute__((overloadable)) __spirv_ocl_half_log(float8 x ){
-    return __spirv_ocl_native_log(x);
-}
+INLINE float8 __attribute__((overloadable)) __spirv_ocl_half_log(float8 x) { return __spirv_ocl_native_log(x); }
 
-INLINE float16 __attribute__((overloadable)) __spirv_ocl_half_log(float16 x ){
-    return __spirv_ocl_native_log(x);
-}
+INLINE float16 __attribute__((overloadable)) __spirv_ocl_half_log(float16 x) { return __spirv_ocl_native_log(x); }

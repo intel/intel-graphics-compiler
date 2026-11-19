@@ -60,8 +60,7 @@ static __constant union {
   float f;
   int i;
 } __sasinh_ep_small2_x = {0x3c800000u};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_sasinh_ep(float *a, float *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_sasinh_ep(float *a, float *r) {
   int nRet = 0;
   float x = *a;
   float z2h, Sh, RS, E;
@@ -94,22 +93,17 @@ __ocl_svml_internal_sasinh_ep(float *a, float *r) {
   // add exponent correction
   expon += iexpon_corr;
   // polynomial
-  poly = __spirv_ocl_fma(__sasinh_ep_c4.f, R,
-                                                __sasinh_ep_c3.f);
+  poly = __spirv_ocl_fma(__sasinh_ep_c4.f, R, __sasinh_ep_c3.f);
   poly = __spirv_ocl_fma(poly, R, __sasinh_ep_c2.f);
   poly = __spirv_ocl_fma(poly, R, __sasinh_ep_c1.f);
   xin.f = x;
   sgn.w = xin.w ^ xa.w;
   poly *= R;
   poly = __spirv_ocl_fma(poly, R, R);
-  res.f = __spirv_ocl_fma(((float)expon),
-                                                 __sasinh_ep_ln2.f, poly);
+  res.f = __spirv_ocl_fma(((float)expon), __sasinh_ep_ln2.f, poly);
   res.w ^= sgn.w;
   // fixup for small or Inf/NaN
-  res.f =
-      ((xa.f < __sasinh_ep_small2_x.f) | (xa.w > __sasinh_ep_largest_norm.w))
-          ? (x + sgn.f)
-          : res.f;
+  res.f = ((xa.f < __sasinh_ep_small2_x.f) | (xa.w > __sasinh_ep_largest_norm.w)) ? (x + sgn.f) : res.f;
   *r = res.f;
   return nRet;
 }

@@ -71,11 +71,9 @@ static __constant union {
   float f;
   int i;
 } __ssin_ha___c0l = {0xb3bbe1b6u};
-static __constant unsigned int __ssin_ha_invpi_tbl[] = {
-    0,          0x28BE60DB, 0x9391054A, 0x7F09D5F4,
-    0x7D4D3770, 0x36D8A566, 0x4F10E410, 0x7F9458EA};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_ssin_ha(float *a, float *pres) {
+static __constant unsigned int __ssin_ha_invpi_tbl[] = {0,          0x28BE60DB, 0x9391054A, 0x7F09D5F4,
+                                                        0x7D4D3770, 0x36D8A566, 0x4F10E410, 0x7F9458EA};
+__attribute__((always_inline)) inline int __ocl_svml_internal_ssin_ha(float *a, float *pres) {
   int nRet = 0;
   float xin = *a;
   unsigned long IP, IP2;
@@ -109,15 +107,11 @@ __ocl_svml_internal_ssin_ha(float *a, float *pres) {
     j = ex & 0x1f;
     // x/Pi, scaled by 2^(63-j)
     ip_low = (((unsigned int)__ssin_ha_invpi_tbl[index]) * ((unsigned int)mx));
-    IP = (((unsigned long)((unsigned int)(__ssin_ha_invpi_tbl[index + 1]))) *
-          ((unsigned int)(mx))) +
+    IP = (((unsigned long)((unsigned int)(__ssin_ha_invpi_tbl[index + 1]))) * ((unsigned int)(mx))) +
          (((unsigned long)ip_low) << 32);
     // scaled by 2^(95-j)
-    IP2 = (((unsigned long)((unsigned int)(__ssin_ha_invpi_tbl[index + 2]))) *
-           ((unsigned int)(mx))) +
-          ((((unsigned long)((unsigned int)(__ssin_ha_invpi_tbl[index + 3]))) *
-            ((unsigned int)(mx))) >>
-           32);
+    IP2 = (((unsigned long)((unsigned int)(__ssin_ha_invpi_tbl[index + 2]))) * ((unsigned int)(mx))) +
+          ((((unsigned long)((unsigned int)(__ssin_ha_invpi_tbl[index + 3]))) * ((unsigned int)(mx))) >> 32);
     IP = IP + (IP2 >> 32);
     // scale 2^63
     IP <<= j;
@@ -173,12 +167,9 @@ __ocl_svml_internal_ssin_ha(float *a, float *pres) {
     R2l = __spirv_ocl_fma(Rh.f, Rl.f, R2l);
   };
   poly_h = __ssin_ha___c5.f;
-  poly_h =
-      __spirv_ocl_fma(poly_h, R2h, __ssin_ha___c4.f);
-  poly_h =
-      __spirv_ocl_fma(poly_h, R2h, __ssin_ha___c3.f);
-  poly_h =
-      __spirv_ocl_fma(poly_h, R2h, __ssin_ha___c2.f);
+  poly_h = __spirv_ocl_fma(poly_h, R2h, __ssin_ha___c4.f);
+  poly_h = __spirv_ocl_fma(poly_h, R2h, __ssin_ha___c3.f);
+  poly_h = __spirv_ocl_fma(poly_h, R2h, __ssin_ha___c2.f);
   poly_l = 0;
   {
     float __ph, __phl;
@@ -189,10 +180,8 @@ __ocl_svml_internal_ssin_ha(float *a, float *pres) {
   };
   {
     float __ph, __ahl, __ahh;
-    __ph =
-        __spirv_ocl_fma(poly_h, 1.0f, __ssin_ha___c1.f);
-    __ahh =
-        __spirv_ocl_fma(__ph, 1.0f, -__ssin_ha___c1.f);
+    __ph = __spirv_ocl_fma(poly_h, 1.0f, __ssin_ha___c1.f);
+    __ahh = __spirv_ocl_fma(__ph, 1.0f, -__ssin_ha___c1.f);
     __ahl = __spirv_ocl_fma(poly_h, 1.0f, -__ahh);
     poly_l = (poly_l + __ssin_ha___c1l.f) + __ahl;
     poly_h = __ph;
@@ -207,10 +196,8 @@ __ocl_svml_internal_ssin_ha(float *a, float *pres) {
   };
   {
     float __ph, __ahl, __ahh;
-    __ph =
-        __spirv_ocl_fma(poly_h, 1.0f, __ssin_ha___c0.f);
-    __ahh =
-        __spirv_ocl_fma(__ph, 1.0f, -__ssin_ha___c0.f);
+    __ph = __spirv_ocl_fma(poly_h, 1.0f, __ssin_ha___c0.f);
+    __ahh = __spirv_ocl_fma(__ph, 1.0f, -__ssin_ha___c0.f);
     __ahl = __spirv_ocl_fma(poly_h, 1.0f, -__ahh);
     poly_l = (poly_l + __ssin_ha___c0l.f) + __ahl;
     poly_h = __ph;

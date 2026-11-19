@@ -291,8 +291,7 @@ static __constant _iml_v2_sp_union_t __sln_ha_CoutTab[210] = {
     0x3E124E01, /* A5 =  .142875688385215 */
     0xBE0005A0, /* A6 = -.125021460296036 */
 };
-__attribute__((always_inline)) inline int __ocl_svml_internal_sln_ha(float *a,
-                                                                     float *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_sln_ha(float *a, float *r) {
   float fap1, *ap1 = &fap1;
   float x, y, u;
   float fP;
@@ -330,8 +329,7 @@ __attribute__((always_inline)) inline int __ocl_svml_internal_sln_ha(float *a,
       u = x - 1.0f;
       fAbsU = u;
       (((_iml_v2_sp_union_t *)&fAbsU)->hex[0] =
-           (((_iml_v2_sp_union_t *)&fAbsU)->hex[0] & 0x7FFFFFFF) |
-           ((_iml_uint32_t)(0) << 31));
+           (((_iml_v2_sp_union_t *)&fAbsU)->hex[0] & 0x7FFFFFFF) | ((_iml_uint32_t)(0) << 31));
       /* Check if a[0] falls into "Near 1" range */
       if (fAbsU > ((__constant float *)__sln_ha_CoutTab)[199]) {
         /* 6) "Main" path */
@@ -344,8 +342,7 @@ __attribute__((always_inline)) inline int __ocl_svml_internal_sln_ha(float *a,
         //                    is error-free for any N
         */
         if (isDenorm == 1) {
-          fNLn2Hi = (fN * (((__constant float *)__sln_ha_CoutTab)[195] +
-                           ((__constant float *)__sln_ha_CoutTab)[196]));
+          fNLn2Hi = (fN * (((__constant float *)__sln_ha_CoutTab)[195] + ((__constant float *)__sln_ha_CoutTab)[196]));
           fNLn2Lo = 0.0f;
         } else {
           fNLn2Hi = (fN * ((__constant float *)__sln_ha_CoutTab)[195]);
@@ -354,12 +351,10 @@ __attribute__((always_inline)) inline int __ocl_svml_internal_sln_ha(float *a,
         /* Get y */
         y = x;
         (((_iml_v2_sp_union_t *)&y)->hex[0] =
-             (((_iml_v2_sp_union_t *)&y)->hex[0] & 0x807FFFFF) |
-             (((_iml_uint32_t)(0x7F) & 0xFF) << 23));
+             (((_iml_v2_sp_union_t *)&y)->hex[0] & 0x807FFFFF) | (((_iml_uint32_t)(0x7F) & 0xFF) << 23));
         /* Obtain j */
         fTmp = (y + ((__constant float *)__sln_ha_CoutTab)[197]);
-        j = (((_iml_v2_sp_union_t *)&fTmp)->hex[0] & 0x007FFFFF) &
-            ((1 << (6 + 1)) - 1);
+        j = (((_iml_v2_sp_union_t *)&fTmp)->hex[0] & 0x007FFFFF) & ((1 << (6 + 1)) - 1);
         /* Get table values of RcprY, LnRcprYHi, LnRcprYLo */
         fRcprY = ((__constant float *)__sln_ha_CoutTab)[3 * (j)];
         fLnRcprYHi = ((__constant float *)__sln_ha_CoutTab)[3 * (j) + 1];
@@ -377,9 +372,7 @@ __attribute__((always_inline)) inline int __ocl_svml_internal_sln_ha(float *a,
         u = (fUHi + fuLo);
         // printf("u = %g\n", u);
         /* b) Approximation */
-        fP = ((((((((__constant float *)__sln_ha_CoutTab)[209] * u +
-                   ((__constant float *)__sln_ha_CoutTab)[208]) *
-                      u +
+        fP = ((((((((__constant float *)__sln_ha_CoutTab)[209] * u + ((__constant float *)__sln_ha_CoutTab)[208]) * u +
                   ((__constant float *)__sln_ha_CoutTab)[207]) *
                      u +
                  ((__constant float *)__sln_ha_CoutTab)[206]) *
@@ -396,9 +389,7 @@ __attribute__((always_inline)) inline int __ocl_svml_internal_sln_ha(float *a,
         r[0] = (fResHi + fResLo);
       } else {
         /* 5) "Near 1" path (|u|<=NEAR0_BOUND) */
-        fP = ((((((((__constant float *)__sln_ha_CoutTab)[209] * u +
-                   ((__constant float *)__sln_ha_CoutTab)[208]) *
-                      u +
+        fP = ((((((((__constant float *)__sln_ha_CoutTab)[209] * u + ((__constant float *)__sln_ha_CoutTab)[208]) * u +
                   ((__constant float *)__sln_ha_CoutTab)[207]) *
                      u +
                  ((__constant float *)__sln_ha_CoutTab)[206]) *
@@ -416,13 +407,11 @@ __attribute__((always_inline)) inline int __ocl_svml_internal_sln_ha(float *a,
       /* Path 3) or 4). Here if argument is negative number or +/-0 */
       if (x == ((__constant float *)__sln_ha_CoutTab)[201]) {
         /* Path 3). Here if argument is +/-0 */
-        r[0] = -((__constant float *)__sln_ha_CoutTab)[202] /
-               ((__constant float *)__sln_ha_CoutTab)[201];
+        r[0] = -((__constant float *)__sln_ha_CoutTab)[202] / ((__constant float *)__sln_ha_CoutTab)[201];
         nRet = 2;
       } else {
         /* Path 4). Here if argument is negative number */
-        r[0] = ((__constant float *)__sln_ha_CoutTab)[201] /
-               ((__constant float *)__sln_ha_CoutTab)[201];
+        r[0] = ((__constant float *)__sln_ha_CoutTab)[201] / ((__constant float *)__sln_ha_CoutTab)[201];
         nRet = 1;
       }
     }
@@ -431,8 +420,7 @@ __attribute__((always_inline)) inline int __ocl_svml_internal_sln_ha(float *a,
     if (((((_iml_v2_sp_union_t *)&a[0])->hex[0] >> 31) == 1) &&
         ((((_iml_v2_sp_union_t *)&a[0])->hex[0] & 0x007FFFFF) == 0)) {
       /* Path 2). Here if argument is -Infinity */
-      r[0] = ((__constant float *)__sln_ha_CoutTab)[201] /
-             ((__constant float *)__sln_ha_CoutTab)[201];
+      r[0] = ((__constant float *)__sln_ha_CoutTab)[201] / ((__constant float *)__sln_ha_CoutTab)[201];
       nRet = 1;
     } else {
       /* Path 1). Here if argument is NaN or +Infinity */
@@ -470,8 +458,7 @@ float __ocl_svml_logf_ha(float x) {
     /* check for working range, */
     /* set special argument mask (denormals/zero/Inf/NaN) */
     iXTest = (iX + iHiDelta);
-    iRangeMask = ((unsigned int)(-(signed int)((signed int)iXTest <
-                                               (signed int)iLoRange)));
+    iRangeMask = ((unsigned int)(-(signed int)((signed int)iXTest < (signed int)iLoRange)));
     iBrkValue = (__ocl_svml_internal_sln_ha_data.iBrkValue);
     iOffExpoMask = (__ocl_svml_internal_sln_ha_data.iOffExpoMask);
     /* reduction: compute r,n */

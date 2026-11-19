@@ -9,23 +9,21 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_log2, float, float, f32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS(native_log2, float, float, f32)
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_native_log2( double x )
-{
-    float f = (float)x;
-    return __spirv_ocl_native_log2(f);
+INLINE double __attribute__((overloadable)) __spirv_ocl_native_log2(double x) {
+  float f = (float)x;
+  return __spirv_ocl_native_log2(f);
 }
 
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_log2, double, double, f64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS(native_log2, double, double, f64)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_log2, half, half, f16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS(native_log2, half, half, f16)
 
 #endif // defined(cl_khr_fp16)
-

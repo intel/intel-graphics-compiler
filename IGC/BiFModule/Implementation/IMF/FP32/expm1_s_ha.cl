@@ -68,8 +68,7 @@ static __constant union {
   float f;
   int i;
 } __sexpm1_ha_NL2L = {0x3102E308u};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_sexpm1_ha(float *a, float *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_sexpm1_ha(float *a, float *pres) {
   int nRet = 0;
   float xin = *a;
   // float expm1f(float xin)
@@ -87,8 +86,7 @@ __ocl_svml_internal_sexpm1_ha(float *a, float *pres) {
   float H, poly, Rhh, Rhl, ThRh, ThRh_l;
   float H1, H2, Rhh2, Rhl2, poly0;
   xf.f = xin;
-  xL2E.f =
-      __spirv_ocl_fma(xf.f, __sexpm1_ha_fL2E.f, 0.0f);
+  xL2E.f = __spirv_ocl_fma(xf.f, __sexpm1_ha_fL2E.f, 0.0f);
   fN.f = __spirv_ocl_trunc(xL2E.f);
   fS.f = __sexpm1_ha_fShifter.f + fN.f;
   // reduced argument
@@ -98,8 +96,7 @@ __ocl_svml_internal_sexpm1_ha(float *a, float *pres) {
   // 2^N
   T.w = fS.w << 23;
   // e^R - 1
-  poly = __spirv_ocl_fma(__sexpm1_ha_c7.f, R,
-                                                __sexpm1_ha_c6.f);
+  poly = __spirv_ocl_fma(__sexpm1_ha_c7.f, R, __sexpm1_ha_c6.f);
   poly = __spirv_ocl_fma(poly, R, __sexpm1_ha_c5.f);
   poly = __spirv_ocl_fma(poly, R, __sexpm1_ha_c4.f);
   poly = __spirv_ocl_fma(poly, R, __sexpm1_ha_c3.f);

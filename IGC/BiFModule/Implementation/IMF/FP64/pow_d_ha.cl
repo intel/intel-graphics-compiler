@@ -883,19 +883,15 @@ static __constant _iml_v2_dp_union_t __dpow_ha_CoutTab[860] = {
     0x00000000, 0x4C700000, /* DENO_SCALE   = 2^(+200) */
     0x00000000, 0x33700000, /* DENO_UNSCALE = 2^(-200) */
 };
-__attribute__((always_inline)) inline int
-__dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
+__attribute__((always_inline)) inline int __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
   int nRet = 0;
   double dbVTmp1, dbVTmp2, dbVPHH, dbVPHL;
-  double dX, dY, dR, dbAX, dbSignRes, dbX1, dbRcp1, dbL1Hi, dbL1Lo, dbX2,
-      dbRcp2, dbL2Hi, dbL2Lo, dbX3, dbRcp3C, dbL3Hi, dbL3Lo, dbK, dbT, dbD,
-      dbR1, dbCQ, dbRcpC, dbX1Hi, dbX1Lo, dbRcpCHi, dbRcpCLo, dbTmp1, dbE,
-      dbT_CQHi, dbCQLo, dbR, dbLogPart3, dbLog2Poly, dbHH, dbHL, dbHLL, dbYHi,
-      dbYLo, dbTmp2, dbTmp3, dbPH, dbPL, dbPLL, dbZ, dbExp2Poly, dbExp2PolyT,
-      dbResLo, dbResHi, dbRes, dbTwoPowN, dbAY;
-  int i, iEXB, iEYB, iSignX, iSignY, iYHi, iYLo, iYIsFinite, iEY, iYIsInt,
-      iXIsFinite, iDenoExpAdd, iXHi, k, i1, i2, i3, iELogAX, iN, j, iERes,
-      iSign, iIsSigZeroX, iIsSigZeroY;
+  double dX, dY, dR, dbAX, dbSignRes, dbX1, dbRcp1, dbL1Hi, dbL1Lo, dbX2, dbRcp2, dbL2Hi, dbL2Lo, dbX3, dbRcp3C, dbL3Hi,
+      dbL3Lo, dbK, dbT, dbD, dbR1, dbCQ, dbRcpC, dbX1Hi, dbX1Lo, dbRcpCHi, dbRcpCLo, dbTmp1, dbE, dbT_CQHi, dbCQLo, dbR,
+      dbLogPart3, dbLog2Poly, dbHH, dbHL, dbHLL, dbYHi, dbYLo, dbTmp2, dbTmp3, dbPH, dbPL, dbPLL, dbZ, dbExp2Poly,
+      dbExp2PolyT, dbResLo, dbResHi, dbRes, dbTwoPowN, dbAY;
+  int i, iEXB, iEYB, iSignX, iSignY, iYHi, iYLo, iYIsFinite, iEY, iYIsInt, iXIsFinite, iDenoExpAdd, iXHi, k, i1, i2, i3,
+      iELogAX, iN, j, iERes, iSign, iIsSigZeroX, iIsSigZeroY;
   dX = ((*a) * ((__constant double *)__dpow_ha_CoutTab)[853 + (0)]);
   dY = ((*b) * ((__constant double *)__dpow_ha_CoutTab)[853 + (0)]);
   /* Get biased exponent of x */
@@ -907,20 +903,16 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
   /* Get sign of y */
   iSignY = (((_iml_v2_dp_union_t *)&dY)->dwords.hi_dword >> 31);
   /* Check whether significands of x,y are zero */
-  iIsSigZeroX =
-      (((((_iml_v2_dp_union_t *)&dX)->dwords.hi_dword & 0x000FFFFF) == 0) &&
-       ((((_iml_v2_dp_union_t *)&dX)->dwords.lo_dword) == 0));
-  iIsSigZeroY =
-      (((((_iml_v2_dp_union_t *)&dY)->dwords.hi_dword & 0x000FFFFF) == 0) &&
-       ((((_iml_v2_dp_union_t *)&dY)->dwords.lo_dword) == 0));
+  iIsSigZeroX = (((((_iml_v2_dp_union_t *)&dX)->dwords.hi_dword & 0x000FFFFF) == 0) &&
+                 ((((_iml_v2_dp_union_t *)&dX)->dwords.lo_dword) == 0));
+  iIsSigZeroY = (((((_iml_v2_dp_union_t *)&dY)->dwords.hi_dword & 0x000FFFFF) == 0) &&
+                 ((((_iml_v2_dp_union_t *)&dY)->dwords.lo_dword) == 0));
   /* Get high 32 bits of |y| */
-  iYHi =
-      (iEYB << 20) | (((_iml_v2_dp_union_t *)&dY)->dwords.hi_dword & 0x000FFFFF);
+  iYHi = (iEYB << 20) | (((_iml_v2_dp_union_t *)&dY)->dwords.hi_dword & 0x000FFFFF);
   /* Get low 32 bits of |y| */
   iYLo = (((_iml_v2_dp_union_t *)&dY)->dwords.lo_dword);
   /* Check if y is finite number */
-  iYIsFinite =
-      (((((_iml_v2_dp_union_t *)&dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF);
+  iYIsFinite = (((((_iml_v2_dp_union_t *)&dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF);
   /* Start of checking whether y is integer */
   if (iYHi | iYLo) {
     /* Here if y<>0 */
@@ -973,33 +965,28 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
     iYIsInt = 2;
   } /* End of checking whether y is integer. */
   /* Filter out cases where x=1 or y=0 */
-  if (!((iSignX == 0) && (iEXB == 0x3FF) && iIsSigZeroX) &&
-      !((iEYB == 0) && iIsSigZeroY)) {
+  if (!((iSignX == 0) && (iEXB == 0x3FF) && iIsSigZeroX) && !((iEYB == 0) && iIsSigZeroY)) {
     /* Here if x<>1, y<>0 (x or y can be NaN) */
     /* Check if x is finite number */
-    iXIsFinite =
-        (((((_iml_v2_dp_union_t *)&dX)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF);
+    iXIsFinite = (((((_iml_v2_dp_union_t *)&dX)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF);
     /* Filter out NaNs */
     if ((iXIsFinite || iIsSigZeroX) && (iYIsFinite || iIsSigZeroY)) {
       /* Here if x<>NaN, y<>NaN, x<>1, y<>0 */
       if (dX != ((__constant double *)__dpow_ha_CoutTab)[852]) {
         /* Here if x<>NaN, y<>NaN, x<>0, y<>0, x<>1 */
-        if (!((dX == ((__constant double *)__dpow_ha_CoutTab)[854]) &&
-              (iYIsInt || !iYIsFinite))) {
+        if (!((dX == ((__constant double *)__dpow_ha_CoutTab)[854]) && (iYIsInt || !iYIsFinite))) {
           /* Here if x<>NaN, y<>NaN, x<>0, y<>0, x<>1, and */
           /* if x=-1 then y can only be finite non-integer */
           if (iXIsFinite && iYIsFinite) {
             /* Here if x,y are finite nonzero numbers, x<>1, */
             /* and                                           */
             /* if x=-1 then y can only be finite non-integer */
-            if ((dX > ((__constant double *)__dpow_ha_CoutTab)[852]) ||
-                iYIsInt) {
+            if ((dX > ((__constant double *)__dpow_ha_CoutTab)[852]) || iYIsInt) {
               /* Path 7). "Main" path: x,y are finite     */
               /*          nonzero numbers, |x|<>1,        */
               /*          and if x<0 then y is integer    */
               /* 7.a) Get sign of the result into dbSignRes */
-              dbSignRes = ((__constant double *)
-                               __dpow_ha_CoutTab)[853 + (iSignX & iYIsInt)];
+              dbSignRes = ((__constant double *)__dpow_ha_CoutTab)[853 + (iSignX & iYIsInt)];
               /* 7.b) Calculating r = log2|x| */
               /* 7.b.1) Getting X1 */
               /* At first, represent |x| in the form  */
@@ -1008,8 +995,7 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
               iDenoExpAdd = 0;
               dbAX = dX;
               (((_iml_v2_dp_union_t *)&dbAX)->dwords.hi_dword =
-                   (((_iml_v2_dp_union_t *)&dbAX)->dwords.hi_dword & 0x7FFFFFFF) |
-                   ((_iml_uint32_t)(0) << 31));
+                   (((_iml_v2_dp_union_t *)&dbAX)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(0) << 31));
               if (iEXB == 0) {
                 /* Here if x is denormal */
                 dbAX = dbAX * ((__constant double *)__dpow_ha_CoutTab)[858];
@@ -1023,11 +1009,9 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                    (((_iml_uint32_t)(0x3FF) & 0x7FF) << 20));
               /* 7.b.2) Getting k */
               /* Get high 32 bits of AX into XHi */
-              iXHi =
-                  ((((_iml_v2_dp_union_t *)&dbAX)->dwords.hi_dword >> 20) & 0x7FF);
+              iXHi = ((((_iml_v2_dp_union_t *)&dbAX)->dwords.hi_dword >> 20) & 0x7FF);
               iXHi = iXHi << 20;
-              iXHi = iXHi |
-                     (((_iml_v2_dp_union_t *)&dbAX)->dwords.hi_dword & 0x000FFFFF);
+              iXHi = iXHi | (((_iml_v2_dp_union_t *)&dbAX)->dwords.hi_dword & 0x000FFFFF);
               /* Get k using XHi */
               k = iXHi - 0x3FE7C000;
               k = k >> 20;
@@ -1042,10 +1026,8 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
               /* Get Rcp1 */
               dbRcp1 = ((__constant double *)__dpow_ha_CoutTab)[0 + i1];
               /* Get log2(1/Rcp1) */
-              dbL1Hi =
-                  ((__constant double *)__dpow_ha_CoutTab)[33 + 2 * (i1) + 0];
-              dbL1Lo =
-                  ((__constant double *)__dpow_ha_CoutTab)[33 + 2 * (i1) + 1];
+              dbL1Hi = ((__constant double *)__dpow_ha_CoutTab)[33 + 2 * (i1) + 0];
+              dbL1Lo = ((__constant double *)__dpow_ha_CoutTab)[33 + 2 * (i1) + 1];
               /* 7.b.4) Get Rcp2, log2(1/Rcp2) from tables */
               /* Get X2 */
               dbX2 = dbX1 * dbRcp1;
@@ -1058,10 +1040,8 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
               /* Get Rcp2 */
               dbRcp2 = ((__constant double *)__dpow_ha_CoutTab)[99 + i2];
               /* Get log2(1/Rcp2) */
-              dbL2Hi =
-                  ((__constant double *)__dpow_ha_CoutTab)[132 + 2 * (i2) + 0];
-              dbL2Lo =
-                  ((__constant double *)__dpow_ha_CoutTab)[132 + 2 * (i2) + 1];
+              dbL2Hi = ((__constant double *)__dpow_ha_CoutTab)[132 + 2 * (i2) + 0];
+              dbL2Lo = ((__constant double *)__dpow_ha_CoutTab)[132 + 2 * (i2) + 1];
               /* 7.b.5) get Rcp3C, log2(C/Rcp3C)  */
               /*        from tables               */
               /* Get X3 */
@@ -1075,10 +1055,8 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
               /* Get Rcp3C */
               dbRcp3C = ((__constant double *)__dpow_ha_CoutTab)[198 + i3];
               /* Get log2(C/Rcp3C) */
-              dbL3Hi =
-                  ((__constant double *)__dpow_ha_CoutTab)[327 + 2 * (i3) + 0];
-              dbL3Lo =
-                  ((__constant double *)__dpow_ha_CoutTab)[327 + 2 * (i3) + 1];
+              dbL3Hi = ((__constant double *)__dpow_ha_CoutTab)[327 + 2 * (i3) + 0];
+              dbL3Lo = ((__constant double *)__dpow_ha_CoutTab)[327 + 2 * (i3) + 1];
               /* 7.b.6) Recombine                          */
               /* k+log2(1/Rcp1)+log2(1/Rcp2)+log2(C/Rcp3C) */
               /* T := k + L1Hi + L2Hi + L3Hi */
@@ -1097,16 +1075,14 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
               dbRcpC = (dbRcp1 * dbRcp2);
               dbRcpC = (dbRcpC * dbRcp3C);
               /* Split X1 into sum X1Hi+X1Lo */
-              dbVTmp1 =
-                  ((dbX1) * (((__constant double *)__dpow_ha_CoutTab)[857]));
+              dbVTmp1 = ((dbX1) * (((__constant double *)__dpow_ha_CoutTab)[857]));
               dbVTmp2 = (dbVTmp1 - (dbX1));
               dbVTmp1 = (dbVTmp1 - dbVTmp2);
               dbVTmp2 = ((dbX1)-dbVTmp1);
               dbX1Hi = dbVTmp1;
               dbX1Lo = dbVTmp2;
               /* Split RcpC into sum RcpCHi+RcpCLo */
-              dbVTmp1 =
-                  ((dbRcpC) * (((__constant double *)__dpow_ha_CoutTab)[857]));
+              dbVTmp1 = ((dbRcpC) * (((__constant double *)__dpow_ha_CoutTab)[857]));
               dbVTmp2 = (dbVTmp1 - (dbRcpC));
               dbVTmp1 = (dbVTmp1 - dbVTmp2);
               dbVTmp2 = ((dbRcpC)-dbVTmp1);
@@ -1130,9 +1106,7 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
               dbT_CQHi = dbVTmp1;
               dbCQLo = dbVTmp2;
               /* Get exponent of T_CQHi */
-              iELogAX =
-                  ((((_iml_v2_dp_union_t *)&dbT_CQHi)->dwords.hi_dword >> 20) &
-                   0x7FF);
+              iELogAX = ((((_iml_v2_dp_union_t *)&dbT_CQHi)->dwords.hi_dword >> 20) & 0x7FF);
               /* 7.d) Estimate |y*log2|x|| */
               if (iELogAX + iEYB < 11 + 2 * 0x3FF) {
                 /* Here if ex(log2|x|) + ex(y) < 11 */
@@ -1145,14 +1119,13 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                   /* 7.3.a) R := CQ + E */
                   dbR = (dbCQ + dbE);
                   /* 7.3.b) Polynomial */
-                  dbLog2Poly =
-                      ((((((__constant double *)__dpow_ha_CoutTab)[844]) * dbR +
-                         ((__constant double *)__dpow_ha_CoutTab)[843]) *
-                            dbR +
-                        ((__constant double *)__dpow_ha_CoutTab)[842]) *
-                           dbR +
-                       ((__constant double *)__dpow_ha_CoutTab)[841]) *
-                      dbR;
+                  dbLog2Poly = ((((((__constant double *)__dpow_ha_CoutTab)[844]) * dbR +
+                                  ((__constant double *)__dpow_ha_CoutTab)[843]) *
+                                     dbR +
+                                 ((__constant double *)__dpow_ha_CoutTab)[842]) *
+                                    dbR +
+                                ((__constant double *)__dpow_ha_CoutTab)[841]) *
+                               dbR;
                   /* 7.3.c) Get 3 parts of log2|x| */
                   /* LogPart3 := CQLo + E + D */
                   dbLogPart3 = (dbCQLo + dbE);
@@ -1174,8 +1147,7 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                   /* HLL := HLL + HL */
                   dbHLL = (dbHLL + dbHL);
                   /* Split HH into HH + HL */
-                  dbVTmp1 = ((dbHH) *
-                             (((__constant double *)__dpow_ha_CoutTab)[857]));
+                  dbVTmp1 = ((dbHH) * (((__constant double *)__dpow_ha_CoutTab)[857]));
                   dbVTmp2 = (dbVTmp1 - (dbHH));
                   dbVTmp1 = (dbVTmp1 - dbVTmp2);
                   dbVTmp2 = ((dbHH)-dbVTmp1);
@@ -1183,8 +1155,7 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                   dbHL = dbVTmp2;
                   /* 7.3.d) Calculation of y*(HH+HL+HLL)*/
                   /* Split y into YHi+YLo */
-                  dbVTmp1 =
-                      ((dY) * (((__constant double *)__dpow_ha_CoutTab)[857]));
+                  dbVTmp1 = ((dY) * (((__constant double *)__dpow_ha_CoutTab)[857]));
                   dbVTmp2 = (dbVTmp1 - (dY));
                   dbVTmp1 = (dbVTmp1 - dbVTmp2);
                   dbVTmp2 = ((dY)-dbVTmp1);
@@ -1203,45 +1174,33 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                   /* 7.3.e) Calculation of 2^(PH+PL+PLL)*/
                   /* Break PH into PHH + PHL, */
                   /* where PHH = N + j/2^expK */
-                  dbVTmp1 =
-                      (dbPH + ((__constant double *)__dpow_ha_CoutTab)[855]);
+                  dbVTmp1 = (dbPH + ((__constant double *)__dpow_ha_CoutTab)[855]);
                   iN = (((_iml_v2_dp_union_t *)&dbVTmp1)->dwords.lo_dword);
                   j = iN & 0x7F;
                   iN = iN >> 7;
-                  dbVPHH =
-                      (dbVTmp1 - ((__constant double *)__dpow_ha_CoutTab)[855]);
+                  dbVPHH = (dbVTmp1 - ((__constant double *)__dpow_ha_CoutTab)[855]);
                   dbVPHL = (dbPH - dbVPHH);
                   /* Z = PHL + PL + PLL */
                   dbZ = (dbPLL + dbPL);
                   dbZ = (dbZ + dbVPHL);
                   /* Exponential polynomial */
-                  dbExp2Poly =
-                      (((((((__constant double *)__dpow_ha_CoutTab)[849]) *
-                              dbZ +
-                          ((__constant double *)__dpow_ha_CoutTab)[848]) *
-                             dbZ +
-                         ((__constant double *)__dpow_ha_CoutTab)[847]) *
-                            dbZ +
-                        ((__constant double *)__dpow_ha_CoutTab)[846]) *
-                           dbZ +
-                       ((__constant double *)__dpow_ha_CoutTab)[845]) *
-                      dbZ;
+                  dbExp2Poly = (((((((__constant double *)__dpow_ha_CoutTab)[849]) * dbZ +
+                                   ((__constant double *)__dpow_ha_CoutTab)[848]) *
+                                      dbZ +
+                                  ((__constant double *)__dpow_ha_CoutTab)[847]) *
+                                     dbZ +
+                                 ((__constant double *)__dpow_ha_CoutTab)[846]) *
+                                    dbZ +
+                                ((__constant double *)__dpow_ha_CoutTab)[845]) *
+                               dbZ;
                   /* Get significand of 2^(PH+PL+PLL) */
                   /* in the form ResHi+ResLo          */
-                  dbExp2PolyT =
-                      (dbExp2Poly * ((__constant double *)
-                                         __dpow_ha_CoutTab)[585 + 2 * (j) + 0]);
-                  dbResLo = (dbExp2PolyT +
-                             ((__constant double *)
-                                  __dpow_ha_CoutTab)[585 + 2 * (j) + 1]);
-                  dbResHi = ((
-                      __constant double *)__dpow_ha_CoutTab)[585 + 2 * (j) + 0];
+                  dbExp2PolyT = (dbExp2Poly * ((__constant double *)__dpow_ha_CoutTab)[585 + 2 * (j) + 0]);
+                  dbResLo = (dbExp2PolyT + ((__constant double *)__dpow_ha_CoutTab)[585 + 2 * (j) + 1]);
+                  dbResHi = ((__constant double *)__dpow_ha_CoutTab)[585 + 2 * (j) + 0];
                   /* Get exponent ERes of the result */
                   dbRes = (dbResHi + dbResLo);
-                  iERes =
-                      ((((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword >> 20) &
-                       0x7FF) -
-                      0x3FF;
+                  iERes = ((((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword >> 20) & 0x7FF) - 0x3FF;
                   iERes = (iERes + iN);
                   if (iERes < 1024) {
                     if (iERes >= -1022) {
@@ -1250,8 +1209,7 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                       /* Result is normalized */
                       /* Res  := 2^N * Res */
                       (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword =
-                           (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword &
-                            0x800FFFFF) |
+                           (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword & 0x800FFFFF) |
                            (((_iml_uint32_t)(iERes + 0x3FF) & 0x7FF) << 20));
                       /* dR := Res * SignRes */
                       dbRes = dbRes * dbSignRes;
@@ -1272,9 +1230,7 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                         dbVTmp2 = (dbTmp1 + (dbResLo));
                         dbResHi = dbVTmp1;
                         dbResLo = dbVTmp2;
-                        dbVTmp1 =
-                            ((dbResHi) *
-                             (((__constant double *)__dpow_ha_CoutTab)[857]));
+                        dbVTmp1 = ((dbResHi) * (((__constant double *)__dpow_ha_CoutTab)[857]));
                         dbVTmp2 = (dbVTmp1 - (dbResHi));
                         dbVTmp1 = (dbVTmp1 - dbVTmp2);
                         dbVTmp2 = ((dbResHi)-dbVTmp1);
@@ -1282,15 +1238,12 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                         dbTmp2 = dbVTmp2;
                         dbResLo = (dbResLo + dbTmp2);
                         /* Unscale result */
-                        dbSignRes *=
-                            ((__constant double *)__dpow_ha_CoutTab)[859];
+                        dbSignRes *= ((__constant double *)__dpow_ha_CoutTab)[859];
                         iN = (iN + 200);
                         /* TwoPowN := 2^N */
-                        dbTwoPowN =
-                            ((__constant double *)__dpow_ha_CoutTab)[853];
+                        dbTwoPowN = ((__constant double *)__dpow_ha_CoutTab)[853];
                         (((_iml_v2_dp_union_t *)&dbTwoPowN)->dwords.hi_dword =
-                             (((_iml_v2_dp_union_t *)&dbTwoPowN)->dwords.hi_dword &
-                              0x800FFFFF) |
+                             (((_iml_v2_dp_union_t *)&dbTwoPowN)->dwords.hi_dword & 0x800FFFFF) |
                              (((_iml_uint32_t)(iN + 0x3FF) & 0x7FF) << 20));
                         /* ResHi :=              */
                         /* ResHi*TwoPowN*SignRes  - was */
@@ -1320,22 +1273,17 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                           /*         < -1022-10 */
                           /* Here if result is  */
                           /* small denormal     */
-                          dbSignRes *=
-                              ((__constant double *)__dpow_ha_CoutTab)[859];
+                          dbSignRes *= ((__constant double *)__dpow_ha_CoutTab)[859];
                           iN = iN + 200;
                           /* TwoPowN := 2^N */
-                          dbTwoPowN =
-                              ((__constant double *)__dpow_ha_CoutTab)[853];
+                          dbTwoPowN = ((__constant double *)__dpow_ha_CoutTab)[853];
                           (((_iml_v2_dp_union_t *)&dbTwoPowN)->dwords.hi_dword =
-                               (((_iml_v2_dp_union_t *)&dbTwoPowN)
-                                    ->dwords.hi_dword &
-                                0x800FFFFF) |
+                               (((_iml_v2_dp_union_t *)&dbTwoPowN)->dwords.hi_dword & 0x800FFFFF) |
                                (((_iml_uint32_t)(iN + 0x3FF) & 0x7FF) << 20));
                           /* dR:= */
                           dbRes = (dbRes * dbTwoPowN);
                           dbRes = (dbRes * dbSignRes);
-                          dbVTmp1 =
-                              ((__constant double *)__dpow_ha_CoutTab)[851];
+                          dbVTmp1 = ((__constant double *)__dpow_ha_CoutTab)[851];
                           dbVTmp1 *= dbVTmp1;
                           dbRes = (dbRes - dbVTmp1);
                           dR = dbRes;
@@ -1343,8 +1291,7 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                           /* Path 7.3.e.2) Here */
                           /* if ERes < -1074-10 */
                           /* Underflow */
-                          dbVTmp1 =
-                              ((__constant double *)__dpow_ha_CoutTab)[851];
+                          dbVTmp1 = ((__constant double *)__dpow_ha_CoutTab)[851];
                           dbVTmp1 *= dbVTmp1;
                           dbRes = (dbVTmp1 * dbSignRes);
                           dR = dbRes;
@@ -1366,8 +1313,7 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                   /* Here we have                       */
                   /* 0 < |y*log2|x|| <= 4*2^(-62)       */
                   dbVTmp1 = ((__constant double *)__dpow_ha_CoutTab)[853];
-                  dbVTmp1 =
-                      (dbVTmp1 + ((__constant double *)__dpow_ha_CoutTab)[851]);
+                  dbVTmp1 = (dbVTmp1 + ((__constant double *)__dpow_ha_CoutTab)[851]);
                   dR = (dbVTmp1 * dbSignRes);
                 }
               } else {
@@ -1375,21 +1321,17 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                 /* Here if ex(y) + ex(log2|x|) >= 11      */
                 /* Here we have 2^11 <= |y*log2|x|| < Inf */
                 /* Get sign of y*log|x| */
-                iSign = iSignY ^
-                        (((_iml_v2_dp_union_t *)&dbT_CQHi)->dwords.hi_dword >> 31);
+                iSign = iSignY ^ (((_iml_v2_dp_union_t *)&dbT_CQHi)->dwords.hi_dword >> 31);
                 /* If y*log|x|>0 then Tmp1=BIG_VALUE   */
                 /*               else Tmp1=SMALL_VALUE */
-                dbTmp1 =
-                    ((__constant double *)__dpow_ha_CoutTab)[850 + (iSign)];
+                dbTmp1 = ((__constant double *)__dpow_ha_CoutTab)[850 + (iSign)];
                 /* Tmp1 := Tmp1 * Tmp1 */
                 dbTmp1 = (dbTmp1 * dbTmp1);
                 /* dR := Tmp1 * SignRes */
                 dbTmp1 = (dbTmp1 * dbSignRes);
                 dR = dbTmp1;
-                if ((!(((((_iml_v2_dp_union_t *)&dR)->dwords.hi_dword >> 20) &
-                        0x7FF) != 0x7FF) &&
-                     (((((_iml_v2_dp_union_t *)&dR)->dwords.hi_dword &
-                        0x000FFFFF) == 0) &&
+                if ((!(((((_iml_v2_dp_union_t *)&dR)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF) &&
+                     (((((_iml_v2_dp_union_t *)&dR)->dwords.hi_dword & 0x000FFFFF) == 0) &&
                       ((((_iml_v2_dp_union_t *)&dR)->dwords.lo_dword) == 0)))) {
                   nRet = 3;
                 }
@@ -1427,8 +1369,7 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                 /* then dR := -0 */
                 /* else dR := +0 */
                 dR = ((__constant double *)__dpow_ha_CoutTab)[852] *
-                     ((__constant double *)
-                          __dpow_ha_CoutTab)[853 + (iYIsInt & iSignX)];
+                     ((__constant double *)__dpow_ha_CoutTab)[853 + (iYIsInt & iSignX)];
               } else {
                 /* Path 5.4). Here if |x|>1, y>0 */
                 /* If x<0, y is positive odd integer */
@@ -1436,8 +1377,7 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
                 /* else dR := +Inf */
                 dbTmp1 = dX * dX;
                 dbTmp1 = dbTmp1 * dY;
-                dR = dbTmp1 * ((__constant double *)
-                                   __dpow_ha_CoutTab)[853 + (iYIsInt & iSignX)];
+                dR = dbTmp1 * ((__constant double *)__dpow_ha_CoutTab)[853 + (iYIsInt & iSignX)];
               }
             }
           }
@@ -1458,18 +1398,14 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
           /* then dR := -Inf                    */
           /* else dR := +Inf                    */
           /* Raise DIVZ                           */
-          dR = ((__constant double *)
-                    __dpow_ha_CoutTab)[853 + (iYIsInt & iSignX)] /
-               dbTmp1;
+          dR = ((__constant double *)__dpow_ha_CoutTab)[853 + (iYIsInt & iSignX)] / dbTmp1;
           nRet = 1;
         } else {
           /* Path 3.2). Here if y>0, x=0, y<>NaN  */
           /* If x=-0, y is positive odd integer   */
           /* then dR := -0                      */
           /* else dR := +0                      */
-          dR = ((__constant double *)
-                    __dpow_ha_CoutTab)[853 + (iYIsInt & iSignX)] *
-               dbTmp1;
+          dR = ((__constant double *)__dpow_ha_CoutTab)[853 + (iYIsInt & iSignX)] * dbTmp1;
         }
       }
     } else {
@@ -1485,8 +1421,7 @@ __dpow_ha_pow_lut_cout(double *a, double *b, double *r) {
     iSign = (((_iml_v2_dp_union_t *)&dbVTmp1)->dwords.hi_dword >> 31);
     dbVTmp2 = ((__constant double *)__dpow_ha_CoutTab)[853];
     (((_iml_v2_dp_union_t *)&dbVTmp2)->dwords.hi_dword =
-         (((_iml_v2_dp_union_t *)&dbVTmp2)->dwords.hi_dword & 0x7FFFFFFF) |
-         ((_iml_uint32_t)(iSign) << 31));
+         (((_iml_v2_dp_union_t *)&dbVTmp2)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(iSign) << 31));
     /* dR := 1 */
     dR = dbVTmp2 * dbVTmp2;
   }
@@ -1730,8 +1665,7 @@ static __constant union {
   int s32[2];
   double f;
 } __dpow_ha_two_64 = {0x43f0000000000000uL};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dpow_ha(double *pxin, double *pyin, double *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dpow_ha(double *pxin, double *pyin, double *pres) {
   union {
     unsigned long w;
     unsigned int w32[2];
@@ -1793,8 +1727,7 @@ LOG_MAIN_CONT:
   Tl.w = (index < 2) ? lTl01.w : __dpow_ha_lTl2;
   Th.w = (index > 2) ? lTh34.w : Th.w;
   Tl.w = (index > 2) ? lTl34.w : Tl.w;
-  lpoly = __spirv_ocl_fma(__dpow_ha_lc18.f, R,
-                                                 __dpow_ha_lc17.f);
+  lpoly = __spirv_ocl_fma(__dpow_ha_lc18.f, R, __dpow_ha_lc17.f);
   lpoly = __spirv_ocl_fma(lpoly, R, __dpow_ha_lc16.f);
   lpoly = __spirv_ocl_fma(lpoly, R, __dpow_ha_lc15.f);
   lpoly = __spirv_ocl_fma(lpoly, R, __dpow_ha_lc14.f);
@@ -1822,8 +1755,7 @@ LOG_MAIN_CONT:
   lpoly = __spirv_ocl_fma(lpoly, R, c3Rl);
   // Tl + poly_low + expon*LN2L
   Tl.f = __spirv_ocl_fma((-R2l), lpoly, Tl.f);
-  Tl.f =
-      __spirv_ocl_fma(expon_x, __dpow_ha_LN2L.f, Tl.f);
+  Tl.f = __spirv_ocl_fma(expon_x, __dpow_ha_LN2L.f, Tl.f);
   // R + 0.5*R^2 + c3*R^3, high-low
   RS2 = __spirv_ocl_fma(c3Rh, R2h, RS);
   c3R3h = RS2 - RS;
@@ -1831,8 +1763,7 @@ LOG_MAIN_CONT:
   c3R3l = __spirv_ocl_fma((-c3Rh), R2l, c3R3l);
   R2l = R2l + c3R3l;
   // Th + expon*LN2H + R + 0.5*R^2 + c3*R^3, high-low
-  Th.f =
-      __spirv_ocl_fma(expon_x, __dpow_ha_LN2H.f, Th.f);
+  Th.f = __spirv_ocl_fma(expon_x, __dpow_ha_LN2H.f, Th.f);
   H0 = Th.f + RS2;
   RS2_h = H0 - Th.f;
   RS2_l = RS2 - RS2_h;
@@ -1856,8 +1787,7 @@ LOG_MAIN_CONT:
     //  goto POW_SPECIAL;
     return __dpow_ha_pow_lut_cout(pxin, pyin, pres);
   // x*log2(e) + Shifter
-  idx.f = __spirv_ocl_fma(ylx_h.f, __dpow_ha_p_L2E.f,
-                                                 __dpow_ha_p_Shifter.f);
+  idx.f = __spirv_ocl_fma(ylx_h.f, __dpow_ha_p_L2E.f, __dpow_ha_p_Shifter.f);
   // x*log2(e), rounded to 1 fractional bit
   N = idx.f - __dpow_ha_p_Shifter.f;
   // bit mask to select "table" value
@@ -1872,8 +1802,7 @@ LOG_MAIN_CONT:
   ylx_lh.f = R - R0;
   ylx_l.f = ylx_l.f - ylx_lh.f;
   // start polynomial computation
-  poly = __spirv_ocl_fma(__dpow_ha_p_c8.f, R,
-                                                __dpow_ha_p_c7.f);
+  poly = __spirv_ocl_fma(__dpow_ha_p_c8.f, R, __dpow_ha_p_c7.f);
   poly = __spirv_ocl_fma(poly, R, __dpow_ha_p_c6.f);
   poly = __spirv_ocl_fma(poly, R, __dpow_ha_p_c5.f);
   // bit mask to select "table" value
@@ -1894,8 +1823,7 @@ LOG_MAIN_CONT:
   Tlr.w32[0] = 0;
   // polynomial
   poly = __spirv_ocl_fma(poly, R, __dpow_ha_p_c0.f);
-  poly = __spirv_ocl_fma(
-      poly, R, __spirv_ocl_fma(poly, ylx_l.f, 0.0));
+  poly = __spirv_ocl_fma(poly, R, __spirv_ocl_fma(poly, ylx_l.f, 0.0));
   Tlr.f = Tlr.f + ylx_l.f;
   Tlr.f = __spirv_ocl_fma(poly, ylx_l.f, Tlr.f);
   poly = __spirv_ocl_fma(poly, R, Tlr.f);
@@ -1917,15 +1845,13 @@ POW_SPECIAL:
     return nRet;
   }
   // x is NaN or y is NaN?
-  if (((x.w << 1) > 0xffe0000000000000uL) ||
-      ((y.w << 1) > 0xffe0000000000000uL))
+  if (((x.w << 1) > 0xffe0000000000000uL) || ((y.w << 1) > 0xffe0000000000000uL))
     return x.f + y.f;
   // y == -Inf?
   if (y.w == 0xfff0000000000000uL) {
     if (x.f == -1.0)
       return 1.0;
-    res.w =
-        (__spirv_ocl_fabs(x.f) < 1.0) ? 0x7ff0000000000000uL : 0;
+    res.w = (__spirv_ocl_fabs(x.f) < 1.0) ? 0x7ff0000000000000uL : 0;
     // **** if(x.f == 0)  raise Div-by_Zero
     *pres = res.f;
     return nRet;
@@ -1934,8 +1860,7 @@ POW_SPECIAL:
   if (y.w == 0x7ff0000000000000uL) {
     if (x.f == -1.0)
       return 1.0;
-    res.w =
-        (__spirv_ocl_fabs(x.f) < 1.0) ? 0 : 0x7ff0000000000000uL;
+    res.w = (__spirv_ocl_fabs(x.f) < 1.0) ? 0 : 0x7ff0000000000000uL;
     *pres = res.f;
     return nRet;
   }
@@ -2038,8 +1963,7 @@ POW_SPECIAL:
     res_scale.w = 0x5ff0000000000000uL;
   }
   // x*log2(e) + Shifter
-  idx.f = __spirv_ocl_fma(ylx_h.f, __dpow_ha_p_L2E.f,
-                                                 __dpow_ha_p_Shifter.f);
+  idx.f = __spirv_ocl_fma(ylx_h.f, __dpow_ha_p_L2E.f, __dpow_ha_p_Shifter.f);
   // x*log2(e), rounded to 1 fractional bit
   N = idx.f - __dpow_ha_p_Shifter.f;
   // bit mask to select "table" value
@@ -2055,8 +1979,7 @@ POW_SPECIAL:
   ylx_lh.f = R - R0;
   ylx_l.f = ylx_l.f - ylx_lh.f;
   // start polynomial computation
-  poly = __spirv_ocl_fma(__dpow_ha_p_c8.f, R,
-                                                __dpow_ha_p_c7.f);
+  poly = __spirv_ocl_fma(__dpow_ha_p_c8.f, R, __dpow_ha_p_c7.f);
   poly = __spirv_ocl_fma(poly, R, __dpow_ha_p_c6.f);
   poly = __spirv_ocl_fma(poly, R, __dpow_ha_p_c5.f);
   // bit mask to select "table" value
@@ -2077,8 +2000,7 @@ POW_SPECIAL:
   Tlr.w32[0] = 0;
   // polynomial
   poly = __spirv_ocl_fma(poly, R, __dpow_ha_p_c0.f);
-  poly = __spirv_ocl_fma(
-      poly, R, __spirv_ocl_fma(poly, ylx_l.f, 0.0));
+  poly = __spirv_ocl_fma(poly, R, __spirv_ocl_fma(poly, ylx_l.f, 0.0));
   Tlr.f = Tlr.f + ylx_l.f;
   Tlr.f = __spirv_ocl_fma(poly, ylx_l.f, Tlr.f);
   poly = __spirv_ocl_fma(poly, R, Tlr.f);

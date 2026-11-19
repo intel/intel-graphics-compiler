@@ -10,23 +10,23 @@ SPDX-License-Identifier: MIT
 
 extern __constant int __SVML;
 
-OVERLOADABLE int __intel_relaxed_isnan(float x );
-OVERLOADABLE int __intel_relaxed_isinf(float x );
-OVERLOADABLE int __intel_relaxed_isfinite(float x );
-OVERLOADABLE int __intel_relaxed_isnormal(float x );
+OVERLOADABLE int __intel_relaxed_isnan(float x);
+OVERLOADABLE int __intel_relaxed_isinf(float x);
+OVERLOADABLE int __intel_relaxed_isfinite(float x);
+OVERLOADABLE int __intel_relaxed_isnormal(float x);
 
 #if defined(cl_khr_fp64)
-OVERLOADABLE int __intel_relaxed_isnan(double x );
-OVERLOADABLE int __intel_relaxed_isinf(double x );
-OVERLOADABLE int __intel_relaxed_isfinite(double x );
-OVERLOADABLE int __intel_relaxed_isnormal(double x );
+OVERLOADABLE int __intel_relaxed_isnan(double x);
+OVERLOADABLE int __intel_relaxed_isinf(double x);
+OVERLOADABLE int __intel_relaxed_isfinite(double x);
+OVERLOADABLE int __intel_relaxed_isnormal(double x);
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
-OVERLOADABLE int __intel_relaxed_isinf(half x );
-OVERLOADABLE int __intel_relaxed_isnan(half x );
-OVERLOADABLE int __intel_relaxed_isfinite(half x );
-OVERLOADABLE int __intel_relaxed_isnormal(half x );
+OVERLOADABLE int __intel_relaxed_isinf(half x);
+OVERLOADABLE int __intel_relaxed_isnan(half x);
+OVERLOADABLE int __intel_relaxed_isfinite(half x);
+OVERLOADABLE int __intel_relaxed_isnormal(half x);
 #endif // defined(cl_khr_fp16)
 
 // Common file for intrinsics implementation used in Math library

@@ -510,7 +510,7 @@ static __ocl_svml_internal_spow_ep_data_t __ocl_svml_internal_spow_ep_data = {
     0x80800000u, /* NMINNORM */
     0xfeffffffu, /* NMAXVAL */
     0x7f800000u, /* INF */
-};               /*sPow_Table*/
+}; /*sPow_Table*/
 /*
 //
 // ++
@@ -941,20 +941,16 @@ static int __spow_ep_TestIntFunc(float a) {
   }
   return 2;
 }
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
   int nRet = 0;
   float flVTmp1, flVTmp2, flVPHH, flVPHL;
-  float flAX, flSignRes, flX1, flRcp1, flL1Hi, flL1Lo, flX2, flRcp2, flL2Hi,
-      flL2Lo, flX3, flRcp3C, flL3Hi, flL3Lo, flK, flT, flD, flR1, flCQ, flRcpC,
-      flX1Hi, flX1Lo, flRcpCHi, flRcpCLo, flTmp1, flE, flT_CQHi, flCQLo, flR,
-      flLogPart3, flLog2Poly, flHH, flHL, flHLL, flYHi, flYLo, flTmp2, flTmp3,
-      flPH, flPL, flPLL, flZ, flExp2Poly, flExp2PolyT, flResLo, flResHi, flRes,
-      flTwoPowN, flAY, flAi, flBi;
+  float flAX, flSignRes, flX1, flRcp1, flL1Hi, flL1Lo, flX2, flRcp2, flL2Hi, flL2Lo, flX3, flRcp3C, flL3Hi, flL3Lo, flK,
+      flT, flD, flR1, flCQ, flRcpC, flX1Hi, flX1Lo, flRcpCHi, flRcpCLo, flTmp1, flE, flT_CQHi, flCQLo, flR, flLogPart3,
+      flLog2Poly, flHH, flHL, flHLL, flYHi, flYLo, flTmp2, flTmp3, flPH, flPL, flPLL, flZ, flExp2Poly, flExp2PolyT,
+      flResLo, flResHi, flRes, flTwoPowN, flAY, flAi, flBi;
   float flT_lo_1, flT_lo_2, flT_lo_3;
-  int i, iEXB, iEYB, iSignX, iSignY, iYHi, iYLo, iYIsFinite, iEY, iYIsInt,
-      iXIsFinite, iDenoExpAdd, iXHi, k, i1, i2, i3, iELogAX, iN, j, iERes,
-      iSign, iIsSigZeroX, iIsSigZeroY, iYMantissa, iEX;
+  int i, iEXB, iEYB, iSignX, iSignY, iYHi, iYLo, iYIsFinite, iEY, iYIsInt, iXIsFinite, iDenoExpAdd, iXHi, k, i1, i2, i3,
+      iELogAX, iN, j, iERes, iSign, iIsSigZeroX, iIsSigZeroY, iYMantissa, iEX;
   flAi = *a;
   flBi = *b;
   /* Set up denormals to signed zero when FTZ\DAZ is on*/
@@ -981,8 +977,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
   /* Test whether Y is integer */
   iYIsInt = __spow_ep_TestIntFunc(flBi);
   /* Here if x<>1, y<>0 (x or y can be NaN) */
-  if (!((iSignX == 0) && (iEXB == 0x7F) && iIsSigZeroX) &&
-      !((iEYB == 0) && iIsSigZeroY)) {
+  if (!((iSignX == 0) && (iEXB == 0x7F) && iIsSigZeroX) && !((iEYB == 0) && iIsSigZeroY)) {
     ;
     /* Check if x is finite number */
     iXIsFinite = (((((_iml_v2_sp_union_t *)&flAi)->hex[0] >> 23) & 0xFF) != 0xFF);
@@ -993,8 +988,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
       if (flAi != ((__constant float *)__spow_ep_CoutTab)[370]) {
         ;
         /* Here if x<>NaN, y<>NaN, x<>0, y<>0, x<>1 */
-        if (!((flAi == ((__constant float *)__spow_ep_CoutTab)[372]) &&
-              (iYIsInt || !iYIsFinite))) {
+        if (!((flAi == ((__constant float *)__spow_ep_CoutTab)[372]) && (iYIsInt || !iYIsFinite))) {
           ;
           /* Here if x<>NaN, y<>NaN, x<>0, y<>0, x<>1, and */
           /* if x=-1 then y can only be finite non-integer */
@@ -1003,15 +997,13 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
             /* Here if x,y are finite nonzero numbers, x<>1, */
             /* and                                           */
             /* if x=-1 then y can only be finite non-integer */
-            if ((flAi > ((__constant float *)__spow_ep_CoutTab)[370]) ||
-                iYIsInt) {
+            if ((flAi > ((__constant float *)__spow_ep_CoutTab)[370]) || iYIsInt) {
               ;
               /* Path 7). "Main" path: x,y are finite     */
               /*          nonzero numbers, |x|<>1,        */
               /*          and if x<0 then y is integer    */
               /* 7.a) Get sign of the result into dbSignRes */
-              flSignRes = ((__constant float *)
-                               __spow_ep_CoutTab)[371 + (iSignX & iYIsInt)];
+              flSignRes = ((__constant float *)__spow_ep_CoutTab)[371 + (iSignX & iYIsInt)];
               /* 7.b) Calculating r = log2|x| */
               /* 7.b.1) Getting X1 */
               /* At first, represent |x| in the form  */
@@ -1020,8 +1012,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
               iDenoExpAdd = 0;
               flAX = flAi;
               (((_iml_v2_sp_union_t *)&flAX)->hex[0] =
-                   (((_iml_v2_sp_union_t *)&flAX)->hex[0] & 0x7FFFFFFF) |
-                   ((_iml_uint32_t)(0) << 31));
+                   (((_iml_v2_sp_union_t *)&flAX)->hex[0] & 0x7FFFFFFF) | ((_iml_uint32_t)(0) << 31));
               if (iEXB == 0) {
                 /* Here if x is denormal */
                 flAX = flAX * ((__constant float *)__spow_ep_CoutTab)[376];
@@ -1031,8 +1022,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
               /* setting exponent field of X1 to biased 0 */
               flX1 = flAX;
               (((_iml_v2_sp_union_t *)&flX1)->hex[0] =
-                   (((_iml_v2_sp_union_t *)&flX1)->hex[0] & 0x807FFFFF) |
-                   (((_iml_uint32_t)(0x7F) & 0xFF) << 23));
+                   (((_iml_v2_sp_union_t *)&flX1)->hex[0] & 0x807FFFFF) | (((_iml_uint32_t)(0x7F) & 0xFF) << 23));
               /* 7.b.2) Getting k */
               /* Get high 32 bits of AX into XHi */
               iXHi = ((((_iml_v2_sp_union_t *)&flAX)->hex[0] >> 23) & 0xFF);
@@ -1052,10 +1042,8 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
               /* Get Rcp1 */
               flRcp1 = ((__constant float *)__spow_ep_CoutTab)[0 + i1];
               /* Get log2(1/Rcp1) */
-              flL1Hi =
-                  ((__constant float *)__spow_ep_CoutTab)[9 + 2 * (i1) + 0];
-              flL1Lo =
-                  ((__constant float *)__spow_ep_CoutTab)[9 + 2 * (i1) + 1];
+              flL1Hi = ((__constant float *)__spow_ep_CoutTab)[9 + 2 * (i1) + 0];
+              flL1Lo = ((__constant float *)__spow_ep_CoutTab)[9 + 2 * (i1) + 1];
               /* 7.b.4) Get Rcp2, log2(1/Rcp2) from tables */
               /* Get X2 */
               flX2 = flX1 * flRcp1;
@@ -1068,10 +1056,8 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
               /* Get Rcp2 */
               flRcp2 = ((__constant float *)__spow_ep_CoutTab)[27 + i2];
               /* Get log2(1/Rcp2) */
-              flL2Hi =
-                  ((__constant float *)__spow_ep_CoutTab)[36 + 2 * (i2) + 0];
-              flL2Lo =
-                  ((__constant float *)__spow_ep_CoutTab)[36 + 2 * (i2) + 1];
+              flL2Hi = ((__constant float *)__spow_ep_CoutTab)[36 + 2 * (i2) + 0];
+              flL2Lo = ((__constant float *)__spow_ep_CoutTab)[36 + 2 * (i2) + 1];
               /* 7.b.5) get Rcp3C, log2(C/Rcp3C)  */
               /*        from tables               */
               /* Get X3 */
@@ -1085,10 +1071,8 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
               /* Get Rcp3C */
               flRcp3C = ((__constant float *)__spow_ep_CoutTab)[54 + i3];
               /* Get log2(C/Rcp3C) */
-              flL3Hi =
-                  ((__constant float *)__spow_ep_CoutTab)[71 + 2 * (i3) + 0];
-              flL3Lo =
-                  ((__constant float *)__spow_ep_CoutTab)[71 + 2 * (i3) + 1];
+              flL3Hi = ((__constant float *)__spow_ep_CoutTab)[71 + 2 * (i3) + 0];
+              flL3Lo = ((__constant float *)__spow_ep_CoutTab)[71 + 2 * (i3) + 1];
               /* 7.b.6) Recombine                          */
               /* k+log2(1/Rcp1)+log2(1/Rcp2)+log2(C/Rcp3C) */
               /* T := k + L1Hi + L2Hi + L3Hi */
@@ -1121,16 +1105,14 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
               flRcpC = (flRcp1 * flRcp2);
               flRcpC = (flRcpC * flRcp3C);
               /* Split X1 into sum X1Hi+X1Lo */
-              flVTmp1 =
-                  ((flX1) * (((__constant float *)__spow_ep_CoutTab)[375]));
+              flVTmp1 = ((flX1) * (((__constant float *)__spow_ep_CoutTab)[375]));
               flVTmp2 = (flVTmp1 - (flX1));
               flVTmp1 = (flVTmp1 - flVTmp2);
               flVTmp2 = ((flX1)-flVTmp1);
               flX1Hi = flVTmp1;
               flX1Lo = flVTmp2;
               /* Split RcpC into sum RcpCHi+RcpCLo */
-              flVTmp1 =
-                  ((flRcpC) * (((__constant float *)__spow_ep_CoutTab)[375]));
+              flVTmp1 = ((flRcpC) * (((__constant float *)__spow_ep_CoutTab)[375]));
               flVTmp2 = (flVTmp1 - (flRcpC));
               flVTmp1 = (flVTmp1 - flVTmp2);
               flVTmp2 = ((flRcpC)-flVTmp1);
@@ -1169,14 +1151,13 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                   /* 7.3.a) R := CQ + E */
                   flR = (flCQ + flE);
                   /* 7.3.b) Polynomial */
-                  flLog2Poly =
-                      ((((((__constant float *)__spow_ep_CoutTab)[364]) * flR +
-                         ((__constant float *)__spow_ep_CoutTab)[363]) *
-                            flR +
-                        ((__constant float *)__spow_ep_CoutTab)[362]) *
-                           flR +
-                       ((__constant float *)__spow_ep_CoutTab)[361]) *
-                      flR;
+                  flLog2Poly = ((((((__constant float *)__spow_ep_CoutTab)[364]) * flR +
+                                  ((__constant float *)__spow_ep_CoutTab)[363]) *
+                                     flR +
+                                 ((__constant float *)__spow_ep_CoutTab)[362]) *
+                                    flR +
+                                ((__constant float *)__spow_ep_CoutTab)[361]) *
+                               flR;
                   /* 7.3.c) Get 3 parts of log2|x| */
                   /* LogPart3 := CQLo + E + D */
                   flLogPart3 = (flCQLo + flE);
@@ -1198,8 +1179,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                   /* HLL := HLL + HL */
                   flHLL = (flHLL + flHL);
                   /* Split HH into HH + HL */
-                  flVTmp1 =
-                      ((flHH) * (((__constant float *)__spow_ep_CoutTab)[375]));
+                  flVTmp1 = ((flHH) * (((__constant float *)__spow_ep_CoutTab)[375]));
                   flVTmp2 = (flVTmp1 - (flHH));
                   flVTmp1 = (flVTmp1 - flVTmp2);
                   flVTmp2 = ((flHH)-flVTmp1);
@@ -1207,8 +1187,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                   flHL = flVTmp2;
                   /* 7.3.d) Calculation of y*(HH+HL+HLL)*/
                   /* Split y into YHi+YLo */
-                  flVTmp1 =
-                      ((flBi) * (((__constant float *)__spow_ep_CoutTab)[375]));
+                  flVTmp1 = ((flBi) * (((__constant float *)__spow_ep_CoutTab)[375]));
                   flVTmp2 = (flVTmp1 - (flBi));
                   flVTmp1 = (flVTmp1 - flVTmp2);
                   flVTmp2 = ((flBi)-flVTmp1);
@@ -1226,10 +1205,8 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                   /* 7.3.e) Calculation of 2^(PH+PL+PLL)*/
                   /* Break PH into PHH + PHL, */
                   /* where PHH = N + j/2^expK */
-                  flVTmp1 =
-                      (flPH + ((__constant float *)__spow_ep_CoutTab)[373]);
-                  flVPHH =
-                      (flVTmp1 - ((__constant float *)__spow_ep_CoutTab)[373]);
+                  flVTmp1 = (flPH + ((__constant float *)__spow_ep_CoutTab)[373]);
+                  flVPHH = (flVTmp1 - ((__constant float *)__spow_ep_CoutTab)[373]);
                   iN = (((_iml_v2_sp_union_t *)&flVTmp1)->hex[0] & 0x007FFFFF);
                   j = iN & 0x7F;
                   iN = iN << 10;
@@ -1239,22 +1216,16 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                   flZ = (flPLL + flPL);
                   flZ = (flZ + flVPHL);
                   /* Exponential polynomial */
-                  flExp2Poly =
-                      (((((__constant float *)__spow_ep_CoutTab)[367]) * flZ +
-                        ((__constant float *)__spow_ep_CoutTab)[366]) *
-                           flZ +
-                       ((__constant float *)__spow_ep_CoutTab)[365]) *
-                      flZ;
+                  flExp2Poly = (((((__constant float *)__spow_ep_CoutTab)[367]) * flZ +
+                                 ((__constant float *)__spow_ep_CoutTab)[366]) *
+                                    flZ +
+                                ((__constant float *)__spow_ep_CoutTab)[365]) *
+                               flZ;
                   /* Get significand of 2^(PH+PL+PLL) */
                   /* in the form ResHi+ResLo          */
-                  flExp2PolyT =
-                      (flExp2Poly * ((__constant float *)
-                                         __spow_ep_CoutTab)[105 + 2 * (j) + 0]);
-                  flResLo = (flExp2PolyT +
-                             ((__constant float *)
-                                  __spow_ep_CoutTab)[105 + 2 * (j) + 1]);
-                  flResHi = ((
-                      __constant float *)__spow_ep_CoutTab)[105 + 2 * (j) + 0];
+                  flExp2PolyT = (flExp2Poly * ((__constant float *)__spow_ep_CoutTab)[105 + 2 * (j) + 0]);
+                  flResLo = (flExp2PolyT + ((__constant float *)__spow_ep_CoutTab)[105 + 2 * (j) + 1]);
+                  flResHi = ((__constant float *)__spow_ep_CoutTab)[105 + 2 * (j) + 0];
                   /* Get exponent ERes of the result */
                   flRes = (flResHi + flResLo);
                   iERes = ((((_iml_v2_sp_union_t *)&flRes)->hex[0] >> 23) & 0xFF);
@@ -1269,9 +1240,8 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                       /* -1022 <= ERes <= 1023 */
                       /* Result is normalized */
                       /* Res  := 2^N * Res */
-                      (((_iml_v2_sp_union_t *)&flRes)->hex[0] =
-                           (((_iml_v2_sp_union_t *)&flRes)->hex[0] & 0x807FFFFF) |
-                           (((_iml_uint32_t)(iERes + 0x7F) & 0xFF) << 23));
+                      (((_iml_v2_sp_union_t *)&flRes)->hex[0] = (((_iml_v2_sp_union_t *)&flRes)->hex[0] & 0x807FFFFF) |
+                                                                (((_iml_uint32_t)(iERes + 0x7F) & 0xFF) << 23));
                       /* r := Res * SignRes */
                       flRes = (flRes * flSignRes);
                       *r = flRes;
@@ -1292,9 +1262,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                         flVTmp2 = (flTmp1 + (flResLo));
                         flResHi = flVTmp1;
                         flResLo = flVTmp2;
-                        flVTmp1 =
-                            ((flResHi) *
-                             (((__constant float *)__spow_ep_CoutTab)[375]));
+                        flVTmp1 = ((flResHi) * (((__constant float *)__spow_ep_CoutTab)[375]));
                         flVTmp2 = (flVTmp1 - (flResHi));
                         flVTmp1 = (flVTmp1 - flVTmp2);
                         flVTmp2 = ((flResHi)-flVTmp1);
@@ -1304,11 +1272,9 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                         /* Unscale result */
                         iN = (iN + 64);
                         /* TwoPowN := 2^N */
-                        flTwoPowN =
-                            ((__constant float *)__spow_ep_CoutTab)[371];
+                        flTwoPowN = ((__constant float *)__spow_ep_CoutTab)[371];
                         (((_iml_v2_sp_union_t *)&flTwoPowN)->hex[0] =
-                             (((_iml_v2_sp_union_t *)&flTwoPowN)->hex[0] &
-                              0x807FFFFF) |
+                             (((_iml_v2_sp_union_t *)&flTwoPowN)->hex[0] & 0x807FFFFF) |
                              (((_iml_uint32_t)(iN + 0x7F) & 0xFF) << 23));
                         /* ResHi :=              */
                         /* ResHi*TwoPowN*SignRes  - was */
@@ -1321,8 +1287,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                         /* Res := ResHi + ResLo - was */
                         /* Res := (ResHi + ResLo)*SignRes - fixed FTZ/DAZ */
                         flRes = (flResHi + flResLo);
-                        flRes = (flRes *
-                                 ((__constant float *)__spow_ep_CoutTab)[377]);
+                        flRes = (flRes * ((__constant float *)__spow_ep_CoutTab)[377]);
                         /* r := Res            */
                         /*       + SMALL_VALUE    */
                         /*       * SMALL_VALUE    */
@@ -1339,21 +1304,17 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                           /* -149-10 <=        */
                           /*      <= ERes <     */
                           /*         < -126-10 */
-                          flSignRes *=
-                              ((__constant float *)__spow_ep_CoutTab)[377];
+                          flSignRes *= ((__constant float *)__spow_ep_CoutTab)[377];
                           iN = iN + 64;
                           /* TwoPowN := 2^N */
-                          flTwoPowN =
-                              ((__constant float *)__spow_ep_CoutTab)[371];
+                          flTwoPowN = ((__constant float *)__spow_ep_CoutTab)[371];
                           (((_iml_v2_sp_union_t *)&flTwoPowN)->hex[0] =
-                               (((_iml_v2_sp_union_t *)&flTwoPowN)->hex[0] &
-                                0x807FFFFF) |
+                               (((_iml_v2_sp_union_t *)&flTwoPowN)->hex[0] & 0x807FFFFF) |
                                (((_iml_uint32_t)(iN + 0x7F) & 0xFF) << 23));
                           /* r:= */
                           flRes = (flRes * flTwoPowN);
                           flRes = (flRes * flSignRes);
-                          flVTmp1 =
-                              ((__constant float *)__spow_ep_CoutTab)[369];
+                          flVTmp1 = ((__constant float *)__spow_ep_CoutTab)[369];
                           flVTmp1 *= flVTmp1;
                           flRes = (flRes - flVTmp1);
                           *r = flRes;
@@ -1363,8 +1324,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                           ;
                           /* Path 7.3.e.2) Here */
                           /* if ERes < -149-10 */
-                          flVTmp1 =
-                              ((__constant float *)__spow_ep_CoutTab)[369];
+                          flVTmp1 = ((__constant float *)__spow_ep_CoutTab)[369];
                           flVTmp1 *= flVTmp1;
                           flRes = (flVTmp1 * flSignRes);
                           *r = flRes;
@@ -1391,8 +1351,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                   /* Here we have                       */
                   /* 0 < |y*log2|x|| <= 4*2^(-62)       */
                   flVTmp1 = ((__constant float *)__spow_ep_CoutTab)[371];
-                  flVTmp1 =
-                      (flVTmp1 + ((__constant float *)__spow_ep_CoutTab)[369]);
+                  flVTmp1 = (flVTmp1 + ((__constant float *)__spow_ep_CoutTab)[369]);
                   *r = (flVTmp1 * flSignRes);
                 }
               } else {
@@ -1410,10 +1369,8 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                 /* r := Tmp1 * SignRes */
                 flTmp1 = (flTmp1 * flSignRes);
                 *r = flTmp1;
-                if ((!(((((_iml_v2_sp_union_t *)&flTmp1)->hex[0] >> 23) & 0xFF) !=
-                       0xFF) &&
-                     ((((_iml_v2_sp_union_t *)&flTmp1)->hex[0] & 0x007FFFFF) ==
-                      0))) {
+                if ((!(((((_iml_v2_sp_union_t *)&flTmp1)->hex[0] >> 23) & 0xFF) != 0xFF) &&
+                     ((((_iml_v2_sp_union_t *)&flTmp1)->hex[0] & 0x007FFFFF) == 0))) {
                   nRet = 3;
                 }
               }
@@ -1456,8 +1413,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                 /* If x<0, y is negative odd integer */
                 /* then r := -0 */
                 /* else r := +0 */
-                flRes = ((__constant float *)
-                             __spow_ep_CoutTab)[378 + (iYIsInt & iSignX)];
+                flRes = ((__constant float *)__spow_ep_CoutTab)[378 + (iYIsInt & iSignX)];
                 *r = flRes;
               } else {
                 ;
@@ -1467,8 +1423,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
                 /* else r := +Inf */
                 flTmp1 = (flAi * flAi);
                 flTmp1 = (flTmp1 * flBi);
-                *r = flTmp1 * ((__constant float *)
-                                   __spow_ep_CoutTab)[371 + (iYIsInt & iSignX)];
+                *r = flTmp1 * ((__constant float *)__spow_ep_CoutTab)[371 + (iYIsInt & iSignX)];
               }
             }
           }
@@ -1492,9 +1447,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
           /* then r := -Inf                    */
           /* else r := +Inf                    */
           /* Raise DIVZ                           */
-          *r = ((__constant float *)
-                    __spow_ep_CoutTab)[371 + (iYIsInt & iSignX)] /
-               flTmp1;
+          *r = ((__constant float *)__spow_ep_CoutTab)[371 + (iYIsInt & iSignX)] / flTmp1;
           nRet = 1;
         } else {
           ;
@@ -1502,9 +1455,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
           /* If x=-0, y is positive odd integer   */
           /* then r := -0                      */
           /* else r := +0                      */
-          *r = ((__constant float *)
-                    __spow_ep_CoutTab)[371 + (iYIsInt & iSignX)] *
-               flTmp1;
+          *r = ((__constant float *)__spow_ep_CoutTab)[371 + (iYIsInt & iSignX)] * flTmp1;
         }
       }
     } else {
@@ -1524,8 +1475,7 @@ __ocl_svml_internal_spow_ep(float *a, float *b, float *r) {
     iSign = (((_iml_v2_sp_union_t *)&flVTmp1)->hex[0] >> 31);
     flVTmp2 = ((__constant float *)__spow_ep_CoutTab)[371];
     (((_iml_v2_sp_union_t *)&flVTmp2)->hex[0] =
-         (((_iml_v2_sp_union_t *)&flVTmp2)->hex[0] & 0x7FFFFFFF) |
-         ((_iml_uint32_t)(iSign) << 31));
+         (((_iml_v2_sp_union_t *)&flVTmp2)->hex[0] & 0x7FFFFFFF) | ((_iml_uint32_t)(iSign) << 31));
     /* r := 1 */
     *r = flVTmp2 * flVTmp2;
   }
@@ -1586,11 +1536,9 @@ float __ocl_svml_powf_ep(float x, float y) {
     _INF = (__ocl_svml_internal_spow_ep_data.INF);
     iAbsMask = (__ocl_svml_internal_spow_ep_data._iAbsMask);
     iSpecX = (iX - _NMINNORM);
-    iSpecX = ((unsigned int)(-(signed int)((signed int)iSpecX >=
-                                           (signed int)_NMAXVAL)));
+    iSpecX = ((unsigned int)(-(signed int)((signed int)iSpecX >= (signed int)_NMAXVAL)));
     iSpecY = (iY & iAbsMask);
-    iSpecY =
-        ((unsigned int)(-(signed int)((signed int)iSpecY >= (signed int)_INF)));
+    iSpecY = ((unsigned int)(-(signed int)((signed int)iSpecY >= (signed int)_INF)));
     iRangeMask = (iSpecX | iSpecY);
     iBrkValue = (__ocl_svml_internal_spow_ep_data.iBrkValue);
     iOffExpoMask = (__ocl_svml_internal_spow_ep_data.iOffExpoMask);
@@ -1628,8 +1576,7 @@ float __ocl_svml_powf_ep(float x, float y) {
     iAbsZ = as_uint(sLnResHi);
     iAbsZ = (iAbsZ & iAbsMask);
     iDomainRange = (__ocl_svml_internal_spow_ep_data._iDomainRange);
-    iAbsZ = ((unsigned int)(-(signed int)((signed int)iAbsZ >
-                                          (signed int)iDomainRange)));
+    iAbsZ = ((unsigned int)(-(signed int)((signed int)iAbsZ > (signed int)iDomainRange)));
     iRangeMask = (iRangeMask | iAbsZ);
     vm = 0;
     vm = iRangeMask;

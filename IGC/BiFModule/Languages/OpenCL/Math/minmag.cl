@@ -9,31 +9,22 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-INLINE float OVERLOADABLE minmag( float x, float y )
-{
-    return __spirv_ocl_minmag( x, y );
-}
+INLINE float OVERLOADABLE minmag(float x, float y) { return __spirv_ocl_minmag(x, y); }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS( minmag, float, float )
+GENERATE_VECTOR_FUNCTIONS_2ARGS(minmag, float, float)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE minmag( double x, double y )
-{
-    return __spirv_ocl_minmag( x, y );
-}
+INLINE double OVERLOADABLE minmag(double x, double y) { return __spirv_ocl_minmag(x, y); }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS( minmag, double, double )
+GENERATE_VECTOR_FUNCTIONS_2ARGS(minmag, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE minmag( half x, half y )
-{
-    return __spirv_ocl_minmag( x, y );
-}
+INLINE half OVERLOADABLE minmag(half x, half y) { return __spirv_ocl_minmag(x, y); }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS( minmag, half, half )
+GENERATE_VECTOR_FUNCTIONS_2ARGS(minmag, half, half)
 
 #endif // defined(cl_khr_fp16)

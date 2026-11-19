@@ -8,22 +8,21 @@ SPDX-License-Identifier: MIT
 
 #include "../imf.h"
 #pragma OPENCL FP_CONTRACT OFF
-typedef struct
-{
-    unsigned long TC_tbl[16];
-    unsigned long Sgn_tbl[16];
-    unsigned long _dAbsMask;
-    unsigned long _dRShifter;
-    unsigned long _lZero;
-    unsigned long _dC1;
-    unsigned long _dC2;
-    unsigned long _dC3;
-    unsigned long _dC4;
-    unsigned long _dC5;
-    unsigned long _dC6;
-    unsigned long _dOne;
-    unsigned long _dInf;
-    unsigned long _dHShifter;
+typedef struct {
+  unsigned long TC_tbl[16];
+  unsigned long Sgn_tbl[16];
+  unsigned long _dAbsMask;
+  unsigned long _dRShifter;
+  unsigned long _lZero;
+  unsigned long _dC1;
+  unsigned long _dC2;
+  unsigned long _dC3;
+  unsigned long _dC4;
+  unsigned long _dC5;
+  unsigned long _dC6;
+  unsigned long _dOne;
+  unsigned long _dInf;
+  unsigned long _dHShifter;
 } __internal_dtanpi_la_data_avx512_t;
 static __constant __internal_dtanpi_la_data_avx512_t __internal_dtanpi_la_data_avx512 = {
     {
@@ -78,32 +77,31 @@ static __constant __internal_dtanpi_la_data_avx512_t __internal_dtanpi_la_data_a
     0x4330000000000000uL,
 };
 
-typedef struct
-{
-    unsigned long _dCoeffs[256][13];
-    unsigned long _dAbsMask;
-    unsigned long _dReductionRangeVal;
-    unsigned long _dRangeVal;
-    unsigned long _dPIu;
-    unsigned long _dRShifter;
-    unsigned long _lIndexMask;
-    unsigned long _dPIoHi;
-    unsigned long _dPIoLo;
-    unsigned long _dPIoTail;
+typedef struct {
+  unsigned long _dCoeffs[256][13];
+  unsigned long _dAbsMask;
+  unsigned long _dReductionRangeVal;
+  unsigned long _dRangeVal;
+  unsigned long _dPIu;
+  unsigned long _dRShifter;
+  unsigned long _lIndexMask;
+  unsigned long _dPIoHi;
+  unsigned long _dPIoLo;
+  unsigned long _dPIoTail;
 
-    unsigned long _dRShift_new;
-    unsigned long _dReductionRangeVal_new;
-    unsigned long _dPI1;
+  unsigned long _dRShift_new;
+  unsigned long _dReductionRangeVal_new;
+  unsigned long _dPI1;
 
-    unsigned long _dP3;
-    unsigned long _dP2;
-    unsigned long _dP1;
+  unsigned long _dP3;
+  unsigned long _dP2;
+  unsigned long _dP1;
 
-    unsigned long _dQ4;
-    unsigned long _dQ3;
-    unsigned long _dQ2;
-    unsigned long _dQ1;
-    unsigned long _dQ0;
+  unsigned long _dQ4;
+  unsigned long _dQ3;
+  unsigned long _dQ2;
+  unsigned long _dQ1;
+  unsigned long _dQ0;
 } __internal_dtanpi_la_data_t;
 static __constant __internal_dtanpi_la_data_t __internal_dtanpi_la_data = {
     {
@@ -4238,330 +4236,288 @@ static __constant _iml_v2_dp_union_t __dtanpi_la_CoutTab[13] = {
     0x43300000, 0x00000000, 0x43400000, 0x00000000, 0x80000000,
 };
 
-__attribute__((always_inline)) inline int __internal_dtanpi_la_cout(double *a, double *r)
-{
-    double absx, dbVTmp1, dbVTmp2, dbRes, dbResHi, dbResMid, dbResLo, dbTmp1, dbTmp2;
-    int    nRet = 0;
-    int    iSign, iParity;
+__attribute__((always_inline)) inline int __internal_dtanpi_la_cout(double *a, double *r) {
+  double absx, dbVTmp1, dbVTmp2, dbRes, dbResHi, dbResMid, dbResLo, dbTmp1, dbTmp2;
+  int nRet = 0;
+  int iSign, iParity;
 
-    absx = (*a);
-    (((_iml_v2_dp_union_t *)&absx)->dwords.hi_dword =
-         (((_iml_v2_dp_union_t *)&absx)->dwords.hi_dword & 0x7FFFFFFF) |
-         ((_iml_uint32_t)(0) << 31));
-    if ((((((_iml_v2_dp_union_t *)&(*a))->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))
-    {
-        iSign = (((_iml_v2_dp_union_t *)&(*a))->dwords.hi_dword >> 31);
+  absx = (*a);
+  (((_iml_v2_dp_union_t *)&absx)->dwords.hi_dword =
+       (((_iml_v2_dp_union_t *)&absx)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(0) << 31));
+  if ((((((_iml_v2_dp_union_t *)&(*a))->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) {
+    iSign = (((_iml_v2_dp_union_t *)&(*a))->dwords.hi_dword >> 31);
 
-        if (absx < ((__constant double *)__dtanpi_la_CoutTab)[3])
-        {
-            dbVTmp1 = ((__constant double *)__dtanpi_la_CoutTab)[0] + absx;
+    if (absx < ((__constant double *)__dtanpi_la_CoutTab)[3]) {
+      dbVTmp1 = ((__constant double *)__dtanpi_la_CoutTab)[0] + absx;
 
-            dbRes = dbVTmp1 * absx;
-            dbRes *= ((__constant double *)__dtanpi_la_CoutTab)[7];
-            dbVTmp1 = ((dbRes) * (((__constant double *)__dtanpi_la_CoutTab)[4]));
-            dbVTmp2 = (dbVTmp1 - (dbRes));
-            dbVTmp1 = (dbVTmp1 - dbVTmp2);
-            dbVTmp2 = ((dbRes)-dbVTmp1);
-            dbResHi = dbVTmp1;
-            dbResLo = dbVTmp2;
-            ;
-            dbTmp1 = ((dbResHi) * (((__constant double *)__dtanpi_la_CoutTab)[5]));
-            dbTmp2 = ((dbResLo) * (((__constant double *)__dtanpi_la_CoutTab)[6]));
-            dbTmp2 =
-                (dbTmp2 + (dbResHi) * (((__constant double *)__dtanpi_la_CoutTab)[6]));
-            dbVTmp1 =
-                (dbTmp2 + (dbResLo) * (((__constant double *)__dtanpi_la_CoutTab)[5]));
-            dbResHi = dbTmp1;
-            dbResLo = dbVTmp1;
-            ;
+      dbRes = dbVTmp1 * absx;
+      dbRes *= ((__constant double *)__dtanpi_la_CoutTab)[7];
+      dbVTmp1 = ((dbRes) * (((__constant double *)__dtanpi_la_CoutTab)[4]));
+      dbVTmp2 = (dbVTmp1 - (dbRes));
+      dbVTmp1 = (dbVTmp1 - dbVTmp2);
+      dbVTmp2 = ((dbRes)-dbVTmp1);
+      dbResHi = dbVTmp1;
+      dbResLo = dbVTmp2;
+      ;
+      dbTmp1 = ((dbResHi) * (((__constant double *)__dtanpi_la_CoutTab)[5]));
+      dbTmp2 = ((dbResLo) * (((__constant double *)__dtanpi_la_CoutTab)[6]));
+      dbTmp2 = (dbTmp2 + (dbResHi) * (((__constant double *)__dtanpi_la_CoutTab)[6]));
+      dbVTmp1 = (dbTmp2 + (dbResLo) * (((__constant double *)__dtanpi_la_CoutTab)[5]));
+      dbResHi = dbTmp1;
+      dbResLo = dbVTmp1;
+      ;
 
-            dbRes = dbResHi + dbResLo;
-            if (dbRes < ((__constant double *)__dtanpi_la_CoutTab)[9])
-            {
-                dbVTmp1  = ((dbResHi) * (((__constant double *)__dtanpi_la_CoutTab)[4]));
-                dbVTmp2  = (dbVTmp1 - (dbResHi));
-                dbVTmp1  = (dbVTmp1 - dbVTmp2);
-                dbVTmp2  = ((dbResHi)-dbVTmp1);
-                dbResHi  = dbVTmp1;
-                dbResMid = dbVTmp2;
-                ;
-                dbResLo += dbResMid;
+      dbRes = dbResHi + dbResLo;
+      if (dbRes < ((__constant double *)__dtanpi_la_CoutTab)[9]) {
+        dbVTmp1 = ((dbResHi) * (((__constant double *)__dtanpi_la_CoutTab)[4]));
+        dbVTmp2 = (dbVTmp1 - (dbResHi));
+        dbVTmp1 = (dbVTmp1 - dbVTmp2);
+        dbVTmp2 = ((dbResHi)-dbVTmp1);
+        dbResHi = dbVTmp1;
+        dbResMid = dbVTmp2;
+        ;
+        dbResLo += dbResMid;
 
-                dbVTmp1 = (dbResHi * ((__constant double *)__dtanpi_la_CoutTab)[8]);
-                dbVTmp2 = (dbResLo * ((__constant double *)__dtanpi_la_CoutTab)[8]);
-                dbRes   = dbVTmp1 + (dbVTmp2);
-            }
-            else
-            {
-                dbRes *= ((__constant double *)__dtanpi_la_CoutTab)[8];
-            }
+        dbVTmp1 = (dbResHi * ((__constant double *)__dtanpi_la_CoutTab)[8]);
+        dbVTmp2 = (dbResLo * ((__constant double *)__dtanpi_la_CoutTab)[8]);
+        dbRes = dbVTmp1 + (dbVTmp2);
+      } else {
+        dbRes *= ((__constant double *)__dtanpi_la_CoutTab)[8];
+      }
 
-            (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword =
-                 (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword & 0x7FFFFFFF) |
-                 ((_iml_uint32_t)(iSign) << 31));
-            (*r) = dbRes;
-        }
-        else if (absx > ((__constant double *)__dtanpi_la_CoutTab)[10])
-        {
-            if (absx > ((__constant double *)__dtanpi_la_CoutTab)[11])
-            {
-                iParity = 0;
-            }
-            else
-            {
-                iParity = ((_iml_v2_dp_union_t *)&(absx))->hex[0] & 1;
-            }
-            if (iParity ^ iSign)
-            {
-                dbRes = ((__constant double *)__dtanpi_la_CoutTab)[12];
-            }
-            else
-            {
-                dbRes = ((__constant double *)__dtanpi_la_CoutTab)[1];
-            }
-            (*r) = dbRes;
-        }
-        return nRet;
+      (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword =
+           (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(iSign) << 31));
+      (*r) = dbRes;
+    } else if (absx > ((__constant double *)__dtanpi_la_CoutTab)[10]) {
+      if (absx > ((__constant double *)__dtanpi_la_CoutTab)[11]) {
+        iParity = 0;
+      } else {
+        iParity = ((_iml_v2_dp_union_t *)&(absx))->hex[0] & 1;
+      }
+      if (iParity ^ iSign) {
+        dbRes = ((__constant double *)__dtanpi_la_CoutTab)[12];
+      } else {
+        dbRes = ((__constant double *)__dtanpi_la_CoutTab)[1];
+      }
+      (*r) = dbRes;
     }
-    else
-    {
-        if ((((_iml_v2_dp_union_t *)&(absx))->hex[0] ==
-             ((__constant _iml_v2_dp_union_t *)&(
-                  ((__constant double *)__dtanpi_la_CoutTab)[2]))
-                 ->hex[0]) &&
-            (((_iml_v2_dp_union_t *)&(absx))->hex[1] ==
-             ((__constant _iml_v2_dp_union_t *)&(
-                  ((__constant double *)__dtanpi_la_CoutTab)[2]))
-                 ->hex[1]))
-        {
-            (*r) = (*a) * ((__constant double *)__dtanpi_la_CoutTab)[1];
-
-            nRet = 1;
-            return nRet;
-        }
-        else
-        {
-            (*r) = (*a) * (*a);
-            return nRet;
-        }
-    }
-
     return nRet;
+  } else {
+    if ((((_iml_v2_dp_union_t *)&(absx))->hex[0] ==
+         ((__constant _iml_v2_dp_union_t *)&(((__constant double *)__dtanpi_la_CoutTab)[2]))->hex[0]) &&
+        (((_iml_v2_dp_union_t *)&(absx))->hex[1] ==
+         ((__constant _iml_v2_dp_union_t *)&(((__constant double *)__dtanpi_la_CoutTab)[2]))->hex[1])) {
+      (*r) = (*a) * ((__constant double *)__dtanpi_la_CoutTab)[1];
+
+      nRet = 1;
+      return nRet;
+    } else {
+      (*r) = (*a) * (*a);
+      return nRet;
+    }
+  }
+
+  return nRet;
 }
 
-double __ocl_svml_tanpi(double a)
-{
-    double       va1;
-    double       vr1;
-    unsigned int vm;
+double __ocl_svml_tanpi(double a) {
+  double va1;
+  double vr1;
+  unsigned int vm;
 
-    double r;
+  double r;
 
-    va1 = a;
-    ;
+  va1 = a;
+  ;
 
-    {
-        double        dAbsMask;
-        double        dAbsX;
-        double        dReductionRangeVal;
-        unsigned long lReductionRangeMask;
-        double        dReductionRangeMask;
-        unsigned int  mReductionRangeMask;
+  {
+    double dAbsMask;
+    double dAbsX;
+    double dReductionRangeVal;
+    unsigned long lReductionRangeMask;
+    double dReductionRangeMask;
+    unsigned int mReductionRangeMask;
 
-        double        dX;
-        double        dZ;
-        double        dRangeVal;
-        double        dRangeMask;
-        unsigned long lRangeMask;
-        unsigned int  iRound;
-        unsigned long lRound;
-        unsigned int  iSign;
-        unsigned long lSign;
-        double        dExp;
+    double dX;
+    double dZ;
+    double dRangeVal;
+    double dRangeMask;
+    unsigned long lRangeMask;
+    unsigned int iRound;
+    unsigned long lRound;
+    unsigned int iSign;
+    unsigned long lSign;
+    double dExp;
 
-        double dInvPI;
-        double dRShifter;
-        double dY;
-        double dYLarge;
-        double dN;
-        double dPI1;
-        double dPI2;
-        double dPI3;
-        double dR;
-        double dRLarge;
-        double dRh;
-        double dRm;
-        double dRl;
-        double dRlLarge;
-        double dRl3;
-        double dNP2;
-        double dNP3;
+    double dInvPI;
+    double dRShifter;
+    double dY;
+    double dYLarge;
+    double dN;
+    double dPI1;
+    double dPI2;
+    double dPI3;
+    double dR;
+    double dRLarge;
+    double dRh;
+    double dRm;
+    double dRl;
+    double dRlLarge;
+    double dRl3;
+    double dNP2;
+    double dNP3;
 
-        unsigned int  iIndex;
-        unsigned long lIndex;
-        double        dTLh;
-        double        dTLl;
-        double        dTh;
-        double        dTl;
-        double        dPC[5];
-        double        dR2;
-        double        dPoly;
-        double        dP;
-        double        dPlow;
-        double        dOne;
-        double        dNumerator;
-        double        dNlow;
-        double        dDenominator;
-        double        dDlow;
-        double        dRcp;
-        double        dE;
-        double        dQuotient;
-        double        dQlow;
-        double        dAE;
+    unsigned int iIndex;
+    unsigned long lIndex;
+    double dTLh;
+    double dTLl;
+    double dTh;
+    double dTl;
+    double dPC[5];
+    double dR2;
+    double dPoly;
+    double dP;
+    double dPlow;
+    double dOne;
+    double dNumerator;
+    double dNlow;
+    double dDenominator;
+    double dDlow;
+    double dRcp;
+    double dE;
+    double dQuotient;
+    double dQlow;
+    double dAE;
 
+    double dShifter;
+    double dShiftedN;
+    double dSignX;
+    double dSpecMask;
+    double dModifier;
+    double dZero;
+    double dSignBit;
+    double dInvBit;
+    double dInvMask;
+
+    double dP3;
+    double dP2;
+    double dP1;
+    double dP0;
+    double dQ;
+    double dQ4;
+    double dQ3;
+    double dQ2;
+    double dQ1;
+    double dQ0;
+    double dNum;
+    double dDen;
+    double dRes;
+
+    double dSpecRes;
+
+    vm = 0;
+    dAbsMask = as_double(__internal_dtanpi_la_data._dAbsMask);
+    dAbsX = as_double((as_ulong(va1) & as_ulong(dAbsMask)));
+    dSignX = as_double((as_ulong(dAbsX) ^ as_ulong(va1)));
+
+    dReductionRangeVal = as_double(__internal_dtanpi_la_data._dReductionRangeVal_new);
+    dReductionRangeMask = as_double((unsigned long)(((!(dAbsX <= dReductionRangeVal)) ? 0xffffffffffffffff : 0x0)));
+    lReductionRangeMask = as_ulong(dReductionRangeMask);
+
+    mReductionRangeMask = 0;
+    mReductionRangeMask = lReductionRangeMask;
+    if ((mReductionRangeMask) != 0) {
+      dRangeVal = as_double(__internal_dtanpi_la_data._dRangeVal);
+      dExp = as_double((as_ulong(dRangeVal) & as_ulong(dAbsX)));
+      dRangeMask = as_double((unsigned long)((dExp == dRangeVal) ? 0xffffffffffffffff : 0x0));
+      lRangeMask = as_ulong(dRangeMask);
+      vm = 0;
+      vm = lRangeMask;
+
+      {
+        double dX;
+        double dShifterMod;
+        double dShifterThreshold;
+        double dShifterMask;
+        double dShifterPos;
         double dShifter;
+        double dDirect;
+        double dInverse;
         double dShiftedN;
-        double dSignX;
-        double dSpecMask;
-        double dModifier;
+        double dN;
         double dZero;
-        double dSignBit;
-        double dInvBit;
-        double dInvMask;
+        dX = dAbsX;
+        dShifterThreshold = as_double(0x43A0000000000000uL);
+        dShifterMask = as_double((unsigned long)((dX < dShifterThreshold) ? 0xffffffffffffffff : 0x0));
 
-        double dP3;
-        double dP2;
-        double dP1;
-        double dP0;
-        double dQ;
-        double dQ4;
-        double dQ3;
-        double dQ2;
-        double dQ1;
-        double dQ0;
-        double dNum;
-        double dDen;
-        double dRes;
+        dShifterPos = as_double(0x43B8000000000000uL);
+        dZero = as_double(0x0000000000000000uL);
+        dShifter = as_double(
+            (((~as_ulong(dShifterMask)) & as_ulong(dZero)) | (as_ulong(dShifterMask) & as_ulong(dShifterPos))));
 
-        double dSpecRes;
+        dShiftedN = (dShifter + dAbsX);
+        dN = (dShiftedN - dShifter);
+        dZ = (dAbsX - dN);
+      }
 
-        vm       = 0;
-        dAbsMask = as_double(__internal_dtanpi_la_data._dAbsMask);
-        dAbsX    = as_double((as_ulong(va1) & as_ulong(dAbsMask)));
-        dSignX   = as_double((as_ulong(dAbsX) ^ as_ulong(va1)));
-
-        dReductionRangeVal = as_double(__internal_dtanpi_la_data._dReductionRangeVal_new);
-        dReductionRangeMask = as_double((unsigned long)((
-            (!(dAbsX <= dReductionRangeVal)) ? 0xffffffffffffffff : 0x0)));
-        lReductionRangeMask = as_ulong(dReductionRangeMask);
-
-        mReductionRangeMask = 0;
-        mReductionRangeMask = lReductionRangeMask;
-        if ((mReductionRangeMask) != 0)
-        {
-            dRangeVal  = as_double(__internal_dtanpi_la_data._dRangeVal);
-            dExp       = as_double((as_ulong(dRangeVal) & as_ulong(dAbsX)));
-            dRangeMask = as_double(
-                (unsigned long)((dExp == dRangeVal) ? 0xffffffffffffffff : 0x0));
-            lRangeMask = as_ulong(dRangeMask);
-            vm         = 0;
-            vm         = lRangeMask;
-
-            {
-                double dX;
-                double dShifterMod;
-                double dShifterThreshold;
-                double dShifterMask;
-                double dShifterPos;
-                double dShifter;
-                double dDirect;
-                double dInverse;
-                double dShiftedN;
-                double dN;
-                double dZero;
-                dX                = dAbsX;
-                dShifterThreshold = as_double(0x43A0000000000000uL);
-                dShifterMask      = as_double(
-                    (unsigned long)((dX < dShifterThreshold) ? 0xffffffffffffffff : 0x0));
-
-                dShifterPos = as_double(0x43B8000000000000uL);
-                dZero       = as_double(0x0000000000000000uL);
-                dShifter    = as_double(
-                    (((~as_ulong(dShifterMask)) & as_ulong(dZero)) |
-                     (as_ulong(dShifterMask) & as_ulong(dShifterPos))));
-
-                dShiftedN = (dShifter + dAbsX);
-                dN        = (dShiftedN - dShifter);
-                dZ        = (dAbsX - dN);
-            }
-
-            dAbsX = as_double(
-                (((~as_ulong(dReductionRangeMask)) & as_ulong(dAbsX)) |
-                 (as_ulong(dReductionRangeMask) & as_ulong(dZ))));
-        }
-
-        dShifter = as_double(__internal_dtanpi_la_data._dRShift_new);
-        dN       = (dShifter + dAbsX);
-        dY       = (dN - dShifter);
-
-        dR = (dAbsX - dY);
-
-        dR2 = (dR * dR);
-
-        dSignBit = as_double(((unsigned long)as_ulong(dN) << (63)));
-
-        dInvBit  = as_double(((unsigned long)as_ulong(dN) << (62)));
-        dZero    = as_double(0L);
-        dInvMask = as_double(
-            (unsigned long)(((!(dInvBit == dZero)) ? 0xffffffffffffffff : 0x0)));
-
-        dP3  = as_double(__internal_dtanpi_la_data._dP3);
-        dP2  = as_double(__internal_dtanpi_la_data._dP2);
-        dP1  = as_double(__internal_dtanpi_la_data._dP1);
-        dPI1 = as_double(__internal_dtanpi_la_data._dPI1);
-
-        dP   = __spirv_ocl_fma(dP3, dR2, dP2);
-        dP   = __spirv_ocl_fma(dP, dR2, dP1);
-        dP   = __spirv_ocl_fma(dP, dR2, dPI1);
-        dQ4  = as_double(__internal_dtanpi_la_data._dQ4);
-        dQ3  = as_double(__internal_dtanpi_la_data._dQ3);
-        dQ2  = as_double(__internal_dtanpi_la_data._dQ2);
-        dQ1  = as_double(__internal_dtanpi_la_data._dQ1);
-        dQ   = __spirv_ocl_fma(dQ4, dR2, dQ3);
-        dQ   = __spirv_ocl_fma(dQ, dR2, dQ2);
-        dQ   = __spirv_ocl_fma(dQ, dR2, dQ1);
-        dP   = (dP * dR);
-        dQ0  = as_double(__internal_dtanpi_la_data._dQ0);
-        dQ   = __spirv_ocl_fma(dQ, dR2, dQ0);
-        dNum = as_double(
-            (((~as_ulong(dInvMask)) & as_ulong(dP)) |
-             (as_ulong(dInvMask) & as_ulong(dQ))));
-        dDen = as_double(
-            (((~as_ulong(dInvMask)) & as_ulong(dQ)) |
-             (as_ulong(dInvMask) & as_ulong(dP))));
-
-        dRes = (dNum / dDen);
-
-        dSpecRes  = as_double((as_ulong(dRes) | as_ulong(dInvBit)));
-        dSpecMask = as_double((unsigned long)((dR == dZero) ? 0xffffffffffffffff : 0x0));
-        vr1       = as_double((as_ulong(dRes) ^ as_ulong(dSignBit)));
-        vr1       = as_double(
-            (((~as_ulong(dSpecMask)) & as_ulong(vr1)) |
-             (as_ulong(dSpecMask) & as_ulong(dSpecRes))));
-        vr1 = as_double((as_ulong(vr1) ^ as_ulong(dSignX)));
+      dAbsX = as_double(
+          (((~as_ulong(dReductionRangeMask)) & as_ulong(dAbsX)) | (as_ulong(dReductionRangeMask) & as_ulong(dZ))));
     }
 
-    if ((vm) != 0)
-    {
-        double _vapi_arg1[1];
-        double _vapi_res1[1];
-        ((double *)_vapi_arg1)[0] = va1;
-        ((double *)_vapi_res1)[0] = vr1;
-        __internal_dtanpi_la_cout(_vapi_arg1, _vapi_res1);
-        vr1 = ((double *)_vapi_res1)[0];
-    };
-    r = vr1;
-    ;
+    dShifter = as_double(__internal_dtanpi_la_data._dRShift_new);
+    dN = (dShifter + dAbsX);
+    dY = (dN - dShifter);
 
-    return r;
+    dR = (dAbsX - dY);
+
+    dR2 = (dR * dR);
+
+    dSignBit = as_double(((unsigned long)as_ulong(dN) << (63)));
+
+    dInvBit = as_double(((unsigned long)as_ulong(dN) << (62)));
+    dZero = as_double(0L);
+    dInvMask = as_double((unsigned long)(((!(dInvBit == dZero)) ? 0xffffffffffffffff : 0x0)));
+
+    dP3 = as_double(__internal_dtanpi_la_data._dP3);
+    dP2 = as_double(__internal_dtanpi_la_data._dP2);
+    dP1 = as_double(__internal_dtanpi_la_data._dP1);
+    dPI1 = as_double(__internal_dtanpi_la_data._dPI1);
+
+    dP = __spirv_ocl_fma(dP3, dR2, dP2);
+    dP = __spirv_ocl_fma(dP, dR2, dP1);
+    dP = __spirv_ocl_fma(dP, dR2, dPI1);
+    dQ4 = as_double(__internal_dtanpi_la_data._dQ4);
+    dQ3 = as_double(__internal_dtanpi_la_data._dQ3);
+    dQ2 = as_double(__internal_dtanpi_la_data._dQ2);
+    dQ1 = as_double(__internal_dtanpi_la_data._dQ1);
+    dQ = __spirv_ocl_fma(dQ4, dR2, dQ3);
+    dQ = __spirv_ocl_fma(dQ, dR2, dQ2);
+    dQ = __spirv_ocl_fma(dQ, dR2, dQ1);
+    dP = (dP * dR);
+    dQ0 = as_double(__internal_dtanpi_la_data._dQ0);
+    dQ = __spirv_ocl_fma(dQ, dR2, dQ0);
+    dNum = as_double((((~as_ulong(dInvMask)) & as_ulong(dP)) | (as_ulong(dInvMask) & as_ulong(dQ))));
+    dDen = as_double((((~as_ulong(dInvMask)) & as_ulong(dQ)) | (as_ulong(dInvMask) & as_ulong(dP))));
+
+    dRes = (dNum / dDen);
+
+    dSpecRes = as_double((as_ulong(dRes) | as_ulong(dInvBit)));
+    dSpecMask = as_double((unsigned long)((dR == dZero) ? 0xffffffffffffffff : 0x0));
+    vr1 = as_double((as_ulong(dRes) ^ as_ulong(dSignBit)));
+    vr1 = as_double((((~as_ulong(dSpecMask)) & as_ulong(vr1)) | (as_ulong(dSpecMask) & as_ulong(dSpecRes))));
+    vr1 = as_double((as_ulong(vr1) ^ as_ulong(dSignX)));
+  }
+
+  if ((vm) != 0) {
+    double _vapi_arg1[1];
+    double _vapi_res1[1];
+    ((double *)_vapi_arg1)[0] = va1;
+    ((double *)_vapi_res1)[0] = vr1;
+    __internal_dtanpi_la_cout(_vapi_arg1, _vapi_res1);
+    vr1 = ((double *)_vapi_res1)[0];
+  };
+  r = vr1;
+  ;
+
+  return r;
 }

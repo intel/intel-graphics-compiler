@@ -52,44 +52,42 @@ typedef struct {
   unsigned long MinArg;
   unsigned long MaxArg;
 } __ocl_svml_internal_dlog1p_ha_data_gpu_t;
-static __ocl_svml_internal_dlog1p_ha_data_gpu_t
-    __ocl_svml_internal_dlog1p_ha_data_gpu = {
-        // OneEighth = 0.125
-        0x3fc0000000000000uL,
-        // ExpMask
-        0x7ff0000000000000uL,
-        // ExpInv
-        0x7fe0000000000000uL,
-        // OneHalf = 0.5
-        0x3fe0000000000000uL,
-        // Eight = 8.0
-        0x4020000000000000uL,
-        // ConvExp
-        0x4138000000000000uL,
-        // ConvConst
-        0x4138040200000000uL,
-        // One = 1.0
-        0x3ff0000000000000uL,
-        // Shifter = 2^49 + 2^48
-        0x4308000000000000uL,
-        // ThreeQuarters = 0.75
-        0x3fe8000000000000uL,
-        // Coefficients for polynomial d
-        0x3fd2d69f78622232uL, 0x3fc2896ff3f66bbduL, 0x3fc8c588ce05a097uL,
-        0x3fd013265a806008uL, 0x3fd55613246dd7cfuL, 0x3fdfffdc599639e8uL,
-        // Coefficients for polynomial p
-        0xbfbabc3280883f85uL, 0x3fb7569b705ccf22uL, 0xbfb98321c986c73fuL,
-        0x3fbc725277fd96beuL, 0xbfc00011b12ec07fuL, 0x3fc2492404508eb2uL,
-        0xbfc5555548c81da2uL, 0x3fc9999999f242c7uL, 0xbfd000000001dd61uL,
-        0x3fd5555555554d65uL, 0xbfdfffffffffffd9uL,
-        // Log2hi ~= log(2) (high part)
-        0x3fe62e42fefa4000uL,
-        // Log2lo ~= log(2) (low part)
-        0xbd48432a1b0e2000uL,
-        // MinArg
-        0xbfefffffffffffffuL,
-        // MaxArg
-        0x7fefffffffffffffuL};
+static __ocl_svml_internal_dlog1p_ha_data_gpu_t __ocl_svml_internal_dlog1p_ha_data_gpu = {
+    // OneEighth = 0.125
+    0x3fc0000000000000uL,
+    // ExpMask
+    0x7ff0000000000000uL,
+    // ExpInv
+    0x7fe0000000000000uL,
+    // OneHalf = 0.5
+    0x3fe0000000000000uL,
+    // Eight = 8.0
+    0x4020000000000000uL,
+    // ConvExp
+    0x4138000000000000uL,
+    // ConvConst
+    0x4138040200000000uL,
+    // One = 1.0
+    0x3ff0000000000000uL,
+    // Shifter = 2^49 + 2^48
+    0x4308000000000000uL,
+    // ThreeQuarters = 0.75
+    0x3fe8000000000000uL,
+    // Coefficients for polynomial d
+    0x3fd2d69f78622232uL, 0x3fc2896ff3f66bbduL, 0x3fc8c588ce05a097uL, 0x3fd013265a806008uL, 0x3fd55613246dd7cfuL,
+    0x3fdfffdc599639e8uL,
+    // Coefficients for polynomial p
+    0xbfbabc3280883f85uL, 0x3fb7569b705ccf22uL, 0xbfb98321c986c73fuL, 0x3fbc725277fd96beuL, 0xbfc00011b12ec07fuL,
+    0x3fc2492404508eb2uL, 0xbfc5555548c81da2uL, 0x3fc9999999f242c7uL, 0xbfd000000001dd61uL, 0x3fd5555555554d65uL,
+    0xbfdfffffffffffd9uL,
+    // Log2hi ~= log(2) (high part)
+    0x3fe62e42fefa4000uL,
+    // Log2lo ~= log(2) (low part)
+    0xbd48432a1b0e2000uL,
+    // MinArg
+    0xbfefffffffffffffuL,
+    // MaxArg
+    0x7fefffffffffffffuL};
 /* Macros to access other precomputed constants */
 /* Table look-up: all DP constants are presented in hexadecimal form */
 static __constant _iml_v2_dp_union_t __dlog1p_ha_CoutTab[210] = {
@@ -320,8 +318,7 @@ static __constant _iml_v2_dp_union_t __dlog1p_ha_CoutTab[210] = {
 //   natural logarithm function starts here.
 //
 */
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dlog1p_ha(double *a0, double *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dlog1p_ha(double *a0, double *r) {
   double x, y, u, da, *a = (&da);
   double dbP;
   double dbAbsU;
@@ -334,8 +331,7 @@ __ocl_svml_internal_dlog1p_ha(double *a0, double *r) {
   int nRet = 0;
   (*a) = (*a0) + 1.0;
   /* Filter out Infs and NaNs */
-  if ((((((_iml_v2_dp_union_t *)&a[0])->dwords.hi_dword >> 20) & 0x7FF) !=
-       0x7FF)) {
+  if ((((((_iml_v2_dp_union_t *)&a[0])->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) {
     /* Here if argument is finite double precision number */
     /*
     //              Copy argument into temporary variable x,
@@ -357,15 +353,13 @@ __ocl_svml_internal_dlog1p_ha(double *a0, double *r) {
       u = (x - 1.0);
       dbAbsU = u;
       (((_iml_v2_dp_union_t *)&dbAbsU)->dwords.hi_dword =
-           (((_iml_v2_dp_union_t *)&dbAbsU)->dwords.hi_dword & 0x7FFFFFFF) |
-           ((_iml_uint32_t)(0) << 31));
+           (((_iml_v2_dp_union_t *)&dbAbsU)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(0) << 31));
       /* Check if a[0] falls into "Near 1" range */
       if (dbAbsU > ((__constant double *)__dlog1p_ha_CoutTab)[199]) {
         /* 6) "Main" path */
         /* a) Range reduction */
         /* Get N taking into account denormalized arguments */
-        iN +=
-            ((((_iml_v2_dp_union_t *)&x)->dwords.hi_dword >> 20) & 0x7FF) - 0x3FF;
+        iN += ((((_iml_v2_dp_union_t *)&x)->dwords.hi_dword >> 20) & 0x7FF) - 0x3FF;
         dbN = (double)iN;
         /*
         //                      Compute N*Ln2Hi and N*Ln2Lo. Notice that N*Ln2Hi
@@ -376,12 +370,10 @@ __ocl_svml_internal_dlog1p_ha(double *a0, double *r) {
         /* Get y */
         y = x;
         (((_iml_v2_dp_union_t *)&y)->dwords.hi_dword =
-             (((_iml_v2_dp_union_t *)&y)->dwords.hi_dword & 0x800FFFFF) |
-             (((_iml_uint32_t)(0x3FF) & 0x7FF) << 20));
+             (((_iml_v2_dp_union_t *)&y)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t)(0x3FF) & 0x7FF) << 20));
         /* Obtain j */
         dbTmp = (y + ((__constant double *)__dlog1p_ha_CoutTab)[197]);
-        j = (((_iml_v2_dp_union_t *)&dbTmp)->dwords.lo_dword) &
-            ((1 << (6 + 1)) - 1);
+        j = (((_iml_v2_dp_union_t *)&dbTmp)->dwords.lo_dword) & ((1 << (6 + 1)) - 1);
         /* Get table values of RcprY, LnRcprYHi, LnRcprYLo */
         dbRcprY = ((__constant double *)__dlog1p_ha_CoutTab)[3 * (j)];
         dbLnRcprYHi = ((__constant double *)__dlog1p_ha_CoutTab)[3 * (j) + 1];
@@ -437,13 +429,11 @@ __ocl_svml_internal_dlog1p_ha(double *a0, double *r) {
       /* Path 3) or 4). Here if argument is negative number or +/-0 */
       if (x == ((__constant double *)__dlog1p_ha_CoutTab)[201]) {
         /* Path 3). Here if argument is +/-0 */
-        r[0] = -((__constant double *)__dlog1p_ha_CoutTab)[202] /
-               ((__constant double *)__dlog1p_ha_CoutTab)[201];
+        r[0] = -((__constant double *)__dlog1p_ha_CoutTab)[202] / ((__constant double *)__dlog1p_ha_CoutTab)[201];
         nRet = 2;
       } else {
         /* Path 4). Here if argument is negative number */
-        r[0] = ((__constant double *)__dlog1p_ha_CoutTab)[201] /
-               ((__constant double *)__dlog1p_ha_CoutTab)[201];
+        r[0] = ((__constant double *)__dlog1p_ha_CoutTab)[201] / ((__constant double *)__dlog1p_ha_CoutTab)[201];
         nRet = 1;
       }
     }
@@ -453,8 +443,7 @@ __ocl_svml_internal_dlog1p_ha(double *a0, double *r) {
         (((((_iml_v2_dp_union_t *)&a[0])->dwords.hi_dword & 0x000FFFFF) == 0) &&
          ((((_iml_v2_dp_union_t *)&a[0])->dwords.lo_dword) == 0))) {
       /* Path 2). Here if argument is -Infinity */
-      r[0] = ((__constant double *)__dlog1p_ha_CoutTab)[201] /
-             ((__constant double *)__dlog1p_ha_CoutTab)[201];
+      r[0] = ((__constant double *)__dlog1p_ha_CoutTab)[201] / ((__constant double *)__dlog1p_ha_CoutTab)[201];
       nRet = 1;
     } else {
       /* Path 1). Here if argument is NaN or +Infinity */
@@ -616,8 +605,7 @@ double __ocl_svml_log1p_ha(double x) {
     // m is "close" to 3/4 * nearestint(8.0 * r) * 0.125
     //
     Shifter = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.Shifter);
-    ThreeQuarters =
-        as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.ThreeQuarters);
+    ThreeQuarters = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.ThreeQuarters);
     sm = (Shifter + r);
     mm = (sm - Shifter);
     m = (mm * ThreeQuarters);
@@ -728,10 +716,8 @@ double __ocl_svml_log1p_ha(double x) {
     // Compute rangemask for main-path arguments: -1.0 < x < 2^1024
     MinArg = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.MinArg);
     MaxArg = as_double(__ocl_svml_internal_dlog1p_ha_data_gpu.MaxArg);
-    MaskMin =
-        as_double((unsigned long)((va1 < MinArg) ? 0xffffffffffffffff : 0x0));
-    MaskMax = as_double(
-        (unsigned long)(((!(va1 <= MaxArg)) ? 0xffffffffffffffff : 0x0)));
+    MaskMin = as_double((unsigned long)((va1 < MinArg) ? 0xffffffffffffffff : 0x0));
+    MaskMax = as_double((unsigned long)(((!(va1 <= MaxArg)) ? 0xffffffffffffffff : 0x0)));
     MaskArg = as_double((as_ulong(MaskMin) | as_ulong(MaskMax)));
     MaskArgTmp = as_ulong(MaskArg);
     vm = 0;

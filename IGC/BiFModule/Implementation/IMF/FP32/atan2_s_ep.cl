@@ -49,8 +49,7 @@ static __constant union {
   float f;
   int i;
 } __satan2_ep_zero = {0x00000000u};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_satan2_ep(float *pa, float *pb, float *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_satan2_ep(float *pa, float *pb, float *pres) {
   int nRet = 0;
   float xin = *pb, yin = *pa;
   // float atan2f_la(float yin, float xin)
@@ -92,8 +91,7 @@ __ocl_svml_internal_satan2_ep(float *pa, float *pb, float *pres) {
     sgn_r = sgn_c ^ (sgn_x ^ sgn_y);
     // redirect special inputs:  NaN/Inf/zero, |x|>2^126
     // testing done on ordered inputs
-    if (((unsigned)(fx.w - 0x00800000) > 0x7e000000) ||
-        (fy.f == __satan2_ep_zero.f))
+    if (((unsigned)(fx.w - 0x00800000) > 0x7e000000) || (fy.f == __satan2_ep_zero.f))
       goto SPECIAL_ATAN2F;
   ATAN2F_MAIN:
     // reciprocal: rcp_x ~ 1/x
@@ -102,8 +100,7 @@ __ocl_svml_internal_satan2_ep(float *pa, float *pb, float *pres) {
     Q00.f = fy.f * frcp_x;
     // reduced argument
     R = Q00.f;
-    poly = __spirv_ocl_fma(__satan2_ep_c5.f, R,
-                                                  __satan2_ep_c4.f);
+    poly = __spirv_ocl_fma(__satan2_ep_c5.f, R, __satan2_ep_c4.f);
     poly = __spirv_ocl_fma(poly, R, __satan2_ep_c3.f);
     poly = __spirv_ocl_fma(poly, R, __satan2_ep_c2.f);
     poly = __spirv_ocl_fma(poly, R, __satan2_ep_c1.f);

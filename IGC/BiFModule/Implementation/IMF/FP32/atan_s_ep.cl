@@ -32,8 +32,7 @@ static __constant union {
   float f;
   int i;
 } __satan_ep_c0 = {0x3f7ff759u};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_satan_ep(float *pxin, float *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_satan_ep(float *pxin, float *pres) {
   int nRet = 0;
   float xin = *pxin;
   // float atanf_ep(float xin)
@@ -59,8 +58,7 @@ __ocl_svml_internal_satan_ep(float *pxin, float *pres) {
     // reduced argument
     R0.w = xa.w + (diff & smask);
     R = R0.f;
-    poly = __spirv_ocl_fma(__satan_ep_c4.f, R,
-                                                  __satan_ep_c3.f);
+    poly = __spirv_ocl_fma(__satan_ep_c4.f, R, __satan_ep_c3.f);
     poly = __spirv_ocl_fma(poly, R, __satan_ep_c2.f);
     poly = __spirv_ocl_fma(poly, R, __satan_ep_c1.f);
     poly = __spirv_ocl_fma(poly, R, __satan_ep_c0.f);

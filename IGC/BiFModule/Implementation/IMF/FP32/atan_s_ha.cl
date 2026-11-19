@@ -72,8 +72,7 @@ static __constant union {
   float f;
   int i;
 } __satan_ha_c0 = {0xbd94e63fu};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_satan_ha(float *pxin, float *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_satan_ha(float *pxin, float *pres) {
   int nRet = 0;
   float xin = *pxin;
   // float atanf_ha(float xin)
@@ -111,8 +110,7 @@ __ocl_svml_internal_satan_ha(float *pxin, float *pres) {
     R1.f = R0.f - 0.5f;
     // add correction
     R = R1.f + Rcorr.f;
-    poly = __spirv_ocl_fma(__satan_ha_c11.f, R,
-                                                  __satan_ha_c10.f);
+    poly = __spirv_ocl_fma(__satan_ha_c11.f, R, __satan_ha_c10.f);
     poly = __spirv_ocl_fma(poly, R, __satan_ha_c9.f);
     poly = __spirv_ocl_fma(poly, R, __satan_ha_c8.f);
     poly = __spirv_ocl_fma(poly, R, __satan_ha_c7.f);

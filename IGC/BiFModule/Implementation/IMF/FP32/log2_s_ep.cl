@@ -39,58 +39,39 @@ typedef struct {
 } __ocl_svml_internal_slog2_ep_data_t;
 static __ocl_svml_internal_slog2_ep_data_t __ocl_svml_internal_slog2_ep_data = {
     /* Log_HA_table */
-    {0xc2fc0000u, 0x00000000u, 0xc2fc0400u, 0xb6eb07d9u, 0xc2fc0800u,
-     0x37ec18d1u, 0xc2fc0bf0u, 0xb78f3a71u, 0xc2fc0fe0u, 0xb7b076feu,
-     0xc2fc13d0u, 0x3784b71fu, 0xc2fc17b0u, 0xb7f34d44u, 0xc2fc1b98u,
-     0x37e3ed42u, 0xc2fc1f70u, 0x355ccb60u, 0xc2fc2348u, 0x37645758u,
-     0xc2fc2718u, 0x3689621au, 0xc2fc2ae0u, 0xb7ebea5du, 0xc2fc2ea8u,
-     0xb7bbe728u, 0xc2fc3270u, 0x37af24dbu, 0xc2fc3628u, 0xb7adf709u,
-     0xc2fc39e0u, 0xb7d65f2fu, 0xc2fc3d98u, 0x36cb5092u, 0xc2fc4148u,
-     0x37552d13u, 0xc2fc44f0u, 0xb6c86327u, 0xc2fc4898u, 0x3733a188u,
-     0xc2fc4c38u, 0x35b68f67u, 0xc2fc4fd8u, 0x37dfd085u, 0xc2fc5370u,
-     0x37d432e1u, 0xc2fc5700u, 0xb651cfdfu, 0xc2fc5a90u, 0x360e51d6u,
-     0xc2fc5e18u, 0xb7aa760fu, 0xc2fc61a0u, 0xb7234cffu, 0xc2fc6520u,
-     0xb7e668fdu, 0xc2fc68a0u, 0xb756abbeu, 0xc2fc6c18u, 0xb7e2fc1eu,
-     0xc2fc6f90u, 0xb71fc2f6u, 0xc2fc7300u, 0xb7b482b2u, 0xc2fc7670u,
-     0xb61a9d07u, 0xc2fc79d8u, 0xb75d7ee2u, 0xc2fc7d40u, 0x36db5cf5u,
-     0xc2fc80a0u, 0xb693a750u, 0xc2fc8400u, 0x377756b2u, 0xc2fc8758u,
-     0x363266b2u, 0xc2fc8ab0u, 0x37a8b8a6u, 0xc2fc8e00u, 0x36c2d256u,
-     0xc2fc9150u, 0x37ac0e19u, 0xc2fc9498u, 0x3644d145u, 0xc2fc97e0u,
-     0x37686a41u, 0xc2fc9b20u, 0xb7067ac7u, 0xc2fc9e60u, 0xb5fd2a77u,
-     0xc2fca198u, 0xb7f398eeu, 0xc2fca4d0u, 0xb7f0979au, 0xc2fca808u,
-     0xb58cf4b1u, 0xc2fcab38u, 0xb6f8e7f0u, 0xc2fcae68u, 0x375a69c0u,
-     0xc2fcb190u, 0xb586fc11u, 0xc2fcb4b8u, 0x373de2cfu, 0xc2fcb7d8u,
-     0xb73d105bu, 0xc2fcbaf8u, 0xb7056dddu, 0xc2fcbe18u, 0x37b090b4u,
-     0xc2fcc130u, 0x3773005eu, 0xc2fcc440u, 0xb7e9b13fu, 0xc2fcc758u,
-     0x3785395cu, 0xc2fcca68u, 0x37c4828du, 0xc2fccd70u, 0xb6b63673u,
-     0xc2fcd078u, 0xb725534eu, 0xc2fcd380u, 0x3727027cu, 0xc2fcd680u,
-     0xb6f2d37cu, 0xc2fcd980u, 0xb51dd8f4u, 0xc2fcdc80u, 0x37f935cfu,
-     0xc2fcdf78u, 0x37bc202fu, 0xc2fce268u, 0xb7bdc376u, 0xc2fce560u,
-     0x3789fbebu, 0xc2fce850u, 0x3791d41du, 0xc2fceb38u, 0xb7a7c066u,
-     0xc2fcee28u, 0x37dbbd7au, 0xc2fcf108u, 0xb7e52ea4u, 0xc2fcf3f0u,
-     0x36201ac7u, 0xc2fcf9b0u, 0x36bbdfa8u, 0xc2fcff60u, 0xb7decd5fu,
-     0xc2fd0510u, 0x37df8e14u, 0xc2fd0aa8u, 0xb7a0da0bu, 0xc2fd1040u,
-     0x37955516u, 0xc2fd15c8u, 0x376f670fu, 0xc2fd1b48u, 0x37fc14c5u,
-     0xc2fd20b8u, 0x36442fa3u, 0xc2fd2620u, 0xb6f2cf29u, 0xc2fd2b80u,
-     0xb5d1cfdfu, 0xc2fd30d8u, 0x379dfa99u, 0xc2fd3620u, 0xb7091303u,
-     0xc2fd3b60u, 0xb7bd93fcu, 0xc2fd4098u, 0xb7d5df20u, 0xc2fd45c8u,
-     0xb795f62bu, 0xc2fd4af0u, 0xb546d45du, 0xc2fd5010u, 0x37d12e6au,
-     0xc2fd5520u, 0xb63e66b1u, 0xc2fd5a28u, 0xb7c90426u, 0xc2fd5f30u,
-     0x37b5d5a4u, 0xc2fd6428u, 0x373a6affu, 0xc2fd6918u, 0x3696dc9au,
-     0xc2fd6e00u, 0x3581c0a8u, 0xc2fd72e0u, 0xb4ad6a5fu, 0xc2fd77b8u,
-     0xb45a03bbu, 0xc2fd7c88u, 0x3509b65au, 0xc2fd8150u, 0x3589e351u,
-     0xc2fd8610u, 0x3515a79cu, 0xc2fd8ac8u, 0xb5df5425u, 0xc2fd8f78u,
-     0xb6d667c3u, 0xc2fd9420u, 0xb770e5bau, 0xc2fd98c0u, 0xb7dc9441u,
-     0xc2fd9d60u, 0x37980ac0u, 0xc2fda1f0u, 0xb681c27bu, 0xc2fda680u,
-     0x37f43a8au, 0xc2fdab00u, 0xb6be5f85u, 0xc2fdaf80u, 0x375d1cb6u,
-     0xc2fdb3f8u, 0x37c93d2du, 0xc2fdb868u, 0x37db1d98u, 0xc2fdbcd0u,
-     0x379ef11bu, 0xc2fdc130u, 0x35f911cau, 0xc2fdc588u, 0xb7d811a6u,
-     0xc2fdc9e0u, 0xb6677d2bu, 0xc2fdce30u, 0x36f053a0u, 0xc2fdd278u,
-     0x36b8be27u, 0xc2fdd6b8u, 0xb716adf4u, 0xc2fddaf8u, 0x37cadee4u,
-     0xc2fddf28u, 0xb793bd0du, 0xc2fde358u, 0xb7574a57u, 0xc2fde780u,
-     0xb7c14076u, 0xc2fdeba8u, 0x374e3a0eu, 0xc2fdefc0u, 0xb7f6ce3du,
-     0xc2fdf3d8u, 0xb7df31afu, 0xc2fdf7f0u, 0x37a9d4fbu, 0xc2fdfbf8u,
-     0xb73f8d4au, 0xc2fe0000u, 0x80000000u}
+    {0xc2fc0000u, 0x00000000u, 0xc2fc0400u, 0xb6eb07d9u, 0xc2fc0800u, 0x37ec18d1u, 0xc2fc0bf0u, 0xb78f3a71u,
+     0xc2fc0fe0u, 0xb7b076feu, 0xc2fc13d0u, 0x3784b71fu, 0xc2fc17b0u, 0xb7f34d44u, 0xc2fc1b98u, 0x37e3ed42u,
+     0xc2fc1f70u, 0x355ccb60u, 0xc2fc2348u, 0x37645758u, 0xc2fc2718u, 0x3689621au, 0xc2fc2ae0u, 0xb7ebea5du,
+     0xc2fc2ea8u, 0xb7bbe728u, 0xc2fc3270u, 0x37af24dbu, 0xc2fc3628u, 0xb7adf709u, 0xc2fc39e0u, 0xb7d65f2fu,
+     0xc2fc3d98u, 0x36cb5092u, 0xc2fc4148u, 0x37552d13u, 0xc2fc44f0u, 0xb6c86327u, 0xc2fc4898u, 0x3733a188u,
+     0xc2fc4c38u, 0x35b68f67u, 0xc2fc4fd8u, 0x37dfd085u, 0xc2fc5370u, 0x37d432e1u, 0xc2fc5700u, 0xb651cfdfu,
+     0xc2fc5a90u, 0x360e51d6u, 0xc2fc5e18u, 0xb7aa760fu, 0xc2fc61a0u, 0xb7234cffu, 0xc2fc6520u, 0xb7e668fdu,
+     0xc2fc68a0u, 0xb756abbeu, 0xc2fc6c18u, 0xb7e2fc1eu, 0xc2fc6f90u, 0xb71fc2f6u, 0xc2fc7300u, 0xb7b482b2u,
+     0xc2fc7670u, 0xb61a9d07u, 0xc2fc79d8u, 0xb75d7ee2u, 0xc2fc7d40u, 0x36db5cf5u, 0xc2fc80a0u, 0xb693a750u,
+     0xc2fc8400u, 0x377756b2u, 0xc2fc8758u, 0x363266b2u, 0xc2fc8ab0u, 0x37a8b8a6u, 0xc2fc8e00u, 0x36c2d256u,
+     0xc2fc9150u, 0x37ac0e19u, 0xc2fc9498u, 0x3644d145u, 0xc2fc97e0u, 0x37686a41u, 0xc2fc9b20u, 0xb7067ac7u,
+     0xc2fc9e60u, 0xb5fd2a77u, 0xc2fca198u, 0xb7f398eeu, 0xc2fca4d0u, 0xb7f0979au, 0xc2fca808u, 0xb58cf4b1u,
+     0xc2fcab38u, 0xb6f8e7f0u, 0xc2fcae68u, 0x375a69c0u, 0xc2fcb190u, 0xb586fc11u, 0xc2fcb4b8u, 0x373de2cfu,
+     0xc2fcb7d8u, 0xb73d105bu, 0xc2fcbaf8u, 0xb7056dddu, 0xc2fcbe18u, 0x37b090b4u, 0xc2fcc130u, 0x3773005eu,
+     0xc2fcc440u, 0xb7e9b13fu, 0xc2fcc758u, 0x3785395cu, 0xc2fcca68u, 0x37c4828du, 0xc2fccd70u, 0xb6b63673u,
+     0xc2fcd078u, 0xb725534eu, 0xc2fcd380u, 0x3727027cu, 0xc2fcd680u, 0xb6f2d37cu, 0xc2fcd980u, 0xb51dd8f4u,
+     0xc2fcdc80u, 0x37f935cfu, 0xc2fcdf78u, 0x37bc202fu, 0xc2fce268u, 0xb7bdc376u, 0xc2fce560u, 0x3789fbebu,
+     0xc2fce850u, 0x3791d41du, 0xc2fceb38u, 0xb7a7c066u, 0xc2fcee28u, 0x37dbbd7au, 0xc2fcf108u, 0xb7e52ea4u,
+     0xc2fcf3f0u, 0x36201ac7u, 0xc2fcf9b0u, 0x36bbdfa8u, 0xc2fcff60u, 0xb7decd5fu, 0xc2fd0510u, 0x37df8e14u,
+     0xc2fd0aa8u, 0xb7a0da0bu, 0xc2fd1040u, 0x37955516u, 0xc2fd15c8u, 0x376f670fu, 0xc2fd1b48u, 0x37fc14c5u,
+     0xc2fd20b8u, 0x36442fa3u, 0xc2fd2620u, 0xb6f2cf29u, 0xc2fd2b80u, 0xb5d1cfdfu, 0xc2fd30d8u, 0x379dfa99u,
+     0xc2fd3620u, 0xb7091303u, 0xc2fd3b60u, 0xb7bd93fcu, 0xc2fd4098u, 0xb7d5df20u, 0xc2fd45c8u, 0xb795f62bu,
+     0xc2fd4af0u, 0xb546d45du, 0xc2fd5010u, 0x37d12e6au, 0xc2fd5520u, 0xb63e66b1u, 0xc2fd5a28u, 0xb7c90426u,
+     0xc2fd5f30u, 0x37b5d5a4u, 0xc2fd6428u, 0x373a6affu, 0xc2fd6918u, 0x3696dc9au, 0xc2fd6e00u, 0x3581c0a8u,
+     0xc2fd72e0u, 0xb4ad6a5fu, 0xc2fd77b8u, 0xb45a03bbu, 0xc2fd7c88u, 0x3509b65au, 0xc2fd8150u, 0x3589e351u,
+     0xc2fd8610u, 0x3515a79cu, 0xc2fd8ac8u, 0xb5df5425u, 0xc2fd8f78u, 0xb6d667c3u, 0xc2fd9420u, 0xb770e5bau,
+     0xc2fd98c0u, 0xb7dc9441u, 0xc2fd9d60u, 0x37980ac0u, 0xc2fda1f0u, 0xb681c27bu, 0xc2fda680u, 0x37f43a8au,
+     0xc2fdab00u, 0xb6be5f85u, 0xc2fdaf80u, 0x375d1cb6u, 0xc2fdb3f8u, 0x37c93d2du, 0xc2fdb868u, 0x37db1d98u,
+     0xc2fdbcd0u, 0x379ef11bu, 0xc2fdc130u, 0x35f911cau, 0xc2fdc588u, 0xb7d811a6u, 0xc2fdc9e0u, 0xb6677d2bu,
+     0xc2fdce30u, 0x36f053a0u, 0xc2fdd278u, 0x36b8be27u, 0xc2fdd6b8u, 0xb716adf4u, 0xc2fddaf8u, 0x37cadee4u,
+     0xc2fddf28u, 0xb793bd0du, 0xc2fde358u, 0xb7574a57u, 0xc2fde780u, 0xb7c14076u, 0xc2fdeba8u, 0x374e3a0eu,
+     0xc2fdefc0u, 0xb7f6ce3du, 0xc2fdf3d8u, 0xb7df31afu, 0xc2fdf7f0u, 0x37a9d4fbu, 0xc2fdfbf8u, 0xb73f8d4au,
+     0xc2fe0000u, 0x80000000u}
     /*== ha_poly_coeff[3] ==*/
     ,
     {
@@ -392,8 +373,7 @@ static __constant _iml_v2_sp_union_t __slog2_ep_CoutTab[212] = {
     0x2081CD9D, /* A6 = 2.1989512445e-19 */
     0x9C1D865E, /* A7 = -5.2120609317e-22 */
 };
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_slog2_ep(float *a, float *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_slog2_ep(float *a, float *r) {
   float x, y, u, q;
   float fP;
   float fAbsU;
@@ -429,8 +409,7 @@ __ocl_svml_internal_slog2_ep(float *a, float *r) {
       u = (x - 1.0f);
       fAbsU = u;
       (((_iml_v2_sp_union_t *)&fAbsU)->hex[0] =
-           (((_iml_v2_sp_union_t *)&fAbsU)->hex[0] & 0x7FFFFFFF) |
-           ((_iml_uint32_t)(0) << 31));
+           (((_iml_v2_sp_union_t *)&fAbsU)->hex[0] & 0x7FFFFFFF) | ((_iml_uint32_t)(0) << 31));
       /* Check if (*a) falls into "Near 1" range */
       if (fAbsU > ((__constant float *)__slog2_ep_CoutTab)[199]) {
         /* 6) "Main" path */
@@ -445,12 +424,10 @@ __ocl_svml_internal_slog2_ep(float *a, float *r) {
         fNLg2Hi = (fN * ((__constant float *)__slog2_ep_CoutTab)[195]);
         y = x;
         (((_iml_v2_sp_union_t *)&y)->hex[0] =
-             (((_iml_v2_sp_union_t *)&y)->hex[0] & 0x807FFFFF) |
-             (((_iml_uint32_t)(0x7F) & 0xFF) << 23));
+             (((_iml_v2_sp_union_t *)&y)->hex[0] & 0x807FFFFF) | (((_iml_uint32_t)(0x7F) & 0xFF) << 23));
         /* Obtain j */
         fTmp = (y + ((__constant float *)__slog2_ep_CoutTab)[197]);
-        j = (((_iml_v2_sp_union_t *)&fTmp)->hex[0] & 0x007FFFFF) &
-            ((1 << (6 + 1)) - 1);
+        j = (((_iml_v2_sp_union_t *)&fTmp)->hex[0] & 0x007FFFFF) & ((1 << (6 + 1)) - 1);
         /* Get table values of B, LgRcprYHi, LgRcprYLo */
         fB = ((__constant float *)__slog2_ep_CoutTab)[3 * (j)];
         fLgRcprYHi = ((__constant float *)__slog2_ep_CoutTab)[3 * (j) + 1];
@@ -479,8 +456,7 @@ __ocl_svml_internal_slog2_ep(float *a, float *r) {
         }
         q = (fQHi + fQLo);
         /* b) Approximation */
-        fP = (((((((((__constant float *)__slog2_ep_CoutTab)[211] * q +
-                    ((__constant float *)__slog2_ep_CoutTab)[210]) *
+        fP = (((((((((__constant float *)__slog2_ep_CoutTab)[211] * q + ((__constant float *)__slog2_ep_CoutTab)[210]) *
                        q +
                    ((__constant float *)__slog2_ep_CoutTab)[209]) *
                       q +
@@ -503,8 +479,7 @@ __ocl_svml_internal_slog2_ep(float *a, float *r) {
         /* 5) "Near 1" path (|u|<=NEAR0_BOUND) */
         /* Calculate q */
         q = (u * ((__constant float *)__slog2_ep_CoutTab)[203]);
-        fP = (((((((((__constant float *)__slog2_ep_CoutTab)[211] * q +
-                    ((__constant float *)__slog2_ep_CoutTab)[210]) *
+        fP = (((((((((__constant float *)__slog2_ep_CoutTab)[211] * q + ((__constant float *)__slog2_ep_CoutTab)[210]) *
                        q +
                    ((__constant float *)__slog2_ep_CoutTab)[209]) *
                       q +
@@ -525,13 +500,11 @@ __ocl_svml_internal_slog2_ep(float *a, float *r) {
       /* Path 3) or 4). Here if argument is negative number or +/-0 */
       if (x == ((__constant float *)__slog2_ep_CoutTab)[201]) {
         /* Path 3). Here if argument is +/-0 */
-        (*r) = (float)(-((__constant float *)__slog2_ep_CoutTab)[202] /
-                       ((__constant float *)__slog2_ep_CoutTab)[201]);
+        (*r) = (float)(-((__constant float *)__slog2_ep_CoutTab)[202] / ((__constant float *)__slog2_ep_CoutTab)[201]);
         nRet = 2;
       } else {
         /* Path 4). Here if argument is negative number */
-        (*r) = (float)(((__constant float *)__slog2_ep_CoutTab)[201] /
-                       ((__constant float *)__slog2_ep_CoutTab)[201]);
+        (*r) = (float)(((__constant float *)__slog2_ep_CoutTab)[201] / ((__constant float *)__slog2_ep_CoutTab)[201]);
         nRet = 1;
       }
     }
@@ -540,8 +513,7 @@ __ocl_svml_internal_slog2_ep(float *a, float *r) {
     if (((((_iml_v2_sp_union_t *)&(*a))->hex[0] >> 31) == 1) &&
         ((((_iml_v2_sp_union_t *)&(*a))->hex[0] & 0x007FFFFF) == 0)) {
       /* Path 2). Here if argument is -Infinity */
-      (*r) = (float)(((__constant float *)__slog2_ep_CoutTab)[201] /
-                     ((__constant float *)__slog2_ep_CoutTab)[201]);
+      (*r) = (float)(((__constant float *)__slog2_ep_CoutTab)[201] / ((__constant float *)__slog2_ep_CoutTab)[201]);
       nRet = 1;
     } else {
       /* Path 1). Here if argument is NaN or +Infinity */

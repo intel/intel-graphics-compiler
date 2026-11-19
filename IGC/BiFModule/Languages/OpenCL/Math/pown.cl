@@ -9,31 +9,22 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-INLINE float OVERLOADABLE pown( float x, int y )
-{
-    return __spirv_ocl_pown( x, y );
-}
+INLINE float OVERLOADABLE pown(float x, int y) { return __spirv_ocl_pown(x, y); }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pown, float, float, int )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP(pown, float, float, int)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE pown( double x, int y )
-{
-    return __spirv_ocl_pown( x, y );
-}
+INLINE double OVERLOADABLE pown(double x, int y) { return __spirv_ocl_pown(x, y); }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pown, double, double, int )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP(pown, double, double, int)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE pown( half x, int y )
-{
-    return __spirv_ocl_pown( x, y );
-}
+INLINE half OVERLOADABLE pown(half x, int y) { return __spirv_ocl_pown(x, y); }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pown, half, half, int )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP(pown, half, half, int)
 
 #endif // defined(cl_khr_fp16)

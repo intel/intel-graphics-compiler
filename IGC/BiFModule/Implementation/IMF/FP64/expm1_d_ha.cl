@@ -13,17 +13,14 @@ static __constant union {
   int s32[2];
   double f;
 } __dexpm1_ha_Tbl_exp[] = {
-    {0x0000000000000000uL}, {0x0000000000000000uL}, {0x0001b5586cf9890fuL},
-    {0x3c979aa65d837b6duL}, {0x000372b83c7d517buL}, {0xbc801b15eaa59348uL},
-    {0x0001387a6e756238uL}, {0x3c968efde3a8a894uL}, {0x000706fe0a31b715uL},
-    {0x3c834d754db0abb6uL}, {0x0006dea64c123422uL}, {0x3c859f48a72a4c6duL},
-    {0x0002bfdad5362a27uL}, {0x3c7690cebb7aafb0uL}, {0x0002ab07dd485429uL},
-    {0x3c9063e1e21c5409uL}, {0x000ea09e667f3bcduL}, {0xbc93b3efbf5e2229uL},
-    {0x000ea11473eb0187uL}, {0xbc7b32dcb94da51duL}, {0x0002ace5422aa0dbuL},
-    {0x3c8db72fc1f0eab5uL}, {0x0002c49182a3f090uL}, {0x3c71affc2b91ce27uL},
-    {0x0006e89f995ad3aduL}, {0x3c8c1a7792cb3386uL}, {0x0001199bdd85529cuL},
-    {0x3c736eae30af0cb3uL}, {0x00035818dcfba487uL}, {0x3c74a385a63d07a8uL},
-    {0x0001a4afa2a490dauL}, {0xbc8ff7128fd391f0uL},
+    {0x0000000000000000uL}, {0x0000000000000000uL}, {0x0001b5586cf9890fuL}, {0x3c979aa65d837b6duL},
+    {0x000372b83c7d517buL}, {0xbc801b15eaa59348uL}, {0x0001387a6e756238uL}, {0x3c968efde3a8a894uL},
+    {0x000706fe0a31b715uL}, {0x3c834d754db0abb6uL}, {0x0006dea64c123422uL}, {0x3c859f48a72a4c6duL},
+    {0x0002bfdad5362a27uL}, {0x3c7690cebb7aafb0uL}, {0x0002ab07dd485429uL}, {0x3c9063e1e21c5409uL},
+    {0x000ea09e667f3bcduL}, {0xbc93b3efbf5e2229uL}, {0x000ea11473eb0187uL}, {0xbc7b32dcb94da51duL},
+    {0x0002ace5422aa0dbuL}, {0x3c8db72fc1f0eab5uL}, {0x0002c49182a3f090uL}, {0x3c71affc2b91ce27uL},
+    {0x0006e89f995ad3aduL}, {0x3c8c1a7792cb3386uL}, {0x0001199bdd85529cuL}, {0x3c736eae30af0cb3uL},
+    {0x00035818dcfba487uL}, {0x3c74a385a63d07a8uL}, {0x0001a4afa2a490dauL}, {0xbc8ff7128fd391f0uL},
 };
 static __constant union {
   unsigned long w;
@@ -104,8 +101,7 @@ static __constant union {
   int s32[2];
   double f;
 } __dexpm1_ha_p_NL2L = {0x3c5950d871319ff0uL};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dexpm1_ha(double *pxin, double *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dexpm1_ha(double *pxin, double *pres) {
   int nRet = 0;
   double xin = *pxin;
   // double expm1(double xin)
@@ -125,8 +121,7 @@ __ocl_svml_internal_dexpm1_ha(double *pxin, double *pres) {
   } xf, fN, xL2E, fS;
   x.f = xin;
   xf.f = (float)xin;
-  xL2E.f =
-      __spirv_ocl_fma(xf.f, __dexpm1_ha_fL2E.f, 0.0f);
+  xL2E.f = __spirv_ocl_fma(xf.f, __dexpm1_ha_fL2E.f, 0.0f);
   fN.f = __spirv_ocl_trunc(xL2E.f);
   fS.f = __dexpm1_ha_fShifter.f + fN.f;
   dN = (double)fN.f;
@@ -143,8 +138,7 @@ __ocl_svml_internal_dexpm1_ha(double *pxin, double *pres) {
   // Tlr.f = _VSTATIC(Tbl_exp)[index + 1].f + Rl;
   Tlr.f += Rl;
   // e^R - 1
-  poly = __spirv_ocl_fma(__dexpm1_ha_dc7.f, R,
-                                                __dexpm1_ha_dc6.f);
+  poly = __spirv_ocl_fma(__dexpm1_ha_dc7.f, R, __dexpm1_ha_dc6.f);
   poly = __spirv_ocl_fma(poly, R, __dexpm1_ha_dc5.f);
   poly = __spirv_ocl_fma(poly, R, __dexpm1_ha_dc4.f);
   poly = __spirv_ocl_fma(poly, R, __dexpm1_ha_dc3.f);
@@ -198,8 +192,7 @@ __ocl_svml_internal_dexpm1_ha(double *pxin, double *pres) {
   }
   // at or near overflow
   // 2^(N-512), N=(int)dN
-  T.w32[1] =
-      ((fS.w - 512 * 16) << (20 - 4)) ^ __dexpm1_ha_Tbl_exp[index].w32[1];
+  T.w32[1] = ((fS.w - 512 * 16) << (20 - 4)) ^ __dexpm1_ha_Tbl_exp[index].w32[1];
   T.w32[0] = __dexpm1_ha_Tbl_exp[index].w32[0];
   // T.w = ((S.w - 512 * 16) << (52 - 4)) ^ _VSTATIC(Tbl_exp)[index].w;
   poly += Rh;

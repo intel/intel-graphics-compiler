@@ -314,25 +314,24 @@ static __constant union {
 } __dtan_ep_dc0 = {0x3ff0000000000000uL};
 //////////////
 // 2^1152/(2*Pi)
-static __constant unsigned int __dtan_ep_InvPi_tbl[] = {
-    0,           0,           0x28BE60DBu, 0x9391054Au,
-    0x7F09D5F4u, 0x7D4D3770u, 0x36D8A566u, 0x4F10E410u,
-    0x7F9458EAu, 0xF7AEF158u, 0x6DC91B8Eu, 0x909374B8u,
-    0x01924BBAu, 0x82746487u, 0x3F877AC7u, 0x2C4A69CFu,
-    0xBA208D7Du, 0x4BAED121u, 0x3A671C09u, 0xAD17DF90u,
-    0x4E64758Eu, 0x60D4CE7Du, 0x272117E2u, 0xEF7E4A0Eu,
-    0xC7FE25FFu, 0xF7816603u, 0xFBCBC462u, 0xD6829B47u,
-    0xDB4D9FB3u, 0xC9F2C26Du, 0xD3D18FD9u, 0xA797FA8Bu,
-    0x5D49EEB1u, 0xFAF97C5Eu, 0xCF41CE7Du, 0xE294A4BAu,
-    0x9AFED7ECu, 0x47E35742u, 0x1580CC11u, 0xBF1EDAEAu,
-    0,           0,           0,           0};
+static __constant unsigned int __dtan_ep_InvPi_tbl[] = {0,           0,           0x28BE60DBu, 0x9391054Au,
+                                                        0x7F09D5F4u, 0x7D4D3770u, 0x36D8A566u, 0x4F10E410u,
+                                                        0x7F9458EAu, 0xF7AEF158u, 0x6DC91B8Eu, 0x909374B8u,
+                                                        0x01924BBAu, 0x82746487u, 0x3F877AC7u, 0x2C4A69CFu,
+                                                        0xBA208D7Du, 0x4BAED121u, 0x3A671C09u, 0xAD17DF90u,
+                                                        0x4E64758Eu, 0x60D4CE7Du, 0x272117E2u, 0xEF7E4A0Eu,
+                                                        0xC7FE25FFu, 0xF7816603u, 0xFBCBC462u, 0xD6829B47u,
+                                                        0xDB4D9FB3u, 0xC9F2C26Du, 0xD3D18FD9u, 0xA797FA8Bu,
+                                                        0x5D49EEB1u, 0xFAF97C5Eu, 0xCF41CE7Du, 0xE294A4BAu,
+                                                        0x9AFED7ECu, 0x47E35742u, 0x1580CC11u, 0xBF1EDAEAu,
+                                                        0,           0,           0,           0};
 // unsigned 32-bit shift
 // signed 32-bit shift
 // unsigned 64-bit shift
 // signed 64-bit shift
 // reduce argument to (-2*pi/(2^kbits), 2*pi/(2^kbits)) range
-static __attribute__((always_inline)) inline double
-__dtan_ep_trig_reduction(double x, int kbits, double *py_low, int *pinterv) {
+static __attribute__((always_inline)) inline double __dtan_ep_trig_reduction(double x, int kbits, double *py_low,
+                                                                             int *pinterv) {
   unsigned long ix, sgn_x, abs_x, mx, R;
   unsigned long S[2], P2, P3, P4, P5, L, L2, Lh, P23, P23_l, Msk;
   long e_yl, e_yh;
@@ -399,9 +398,8 @@ __dtan_ep_trig_reduction(double x, int kbits, double *py_low, int *pinterv) {
   if (L < L2)
     S[0] += 0x100000000uL;
   P2 = (((unsigned long)((unsigned int)(T[2]))) * ((unsigned int)(mant[0])));
-  S[1] =
-      (((unsigned long)((unsigned int)(T[1]))) * ((unsigned int)(mant[0]))) +
-      (((unsigned long)(((unsigned int)T[0]) * ((unsigned int)mant[0]))) << 32);
+  S[1] = (((unsigned long)((unsigned int)(T[1]))) * ((unsigned int)(mant[0]))) +
+         (((unsigned long)(((unsigned int)T[0]) * ((unsigned int)mant[0]))) << 32);
   S[0] += P4;
   if (S[0] < P4)
     S[1]++;
@@ -411,10 +409,8 @@ __dtan_ep_trig_reduction(double x, int kbits, double *py_low, int *pinterv) {
   if (S[0] < Lh)
     S[1]++;
   P3 = (((unsigned long)((unsigned int)(T[3]))) * ((unsigned int)(mant[1])));
-  S[1] =
-      S[1] +
-      (((unsigned long)((unsigned int)(T[2]))) * ((unsigned int)(mant[1]))) +
-      (((unsigned long)(((unsigned int)T[1]) * ((unsigned int)mant[1]))) << 32);
+  S[1] = S[1] + (((unsigned long)((unsigned int)(T[2]))) * ((unsigned int)(mant[1]))) +
+         (((unsigned long)(((unsigned int)T[1]) * ((unsigned int)mant[1]))) << 32);
   // accumulate terms
   P23 = P2 + P3;
   // add carry
@@ -428,10 +424,8 @@ __dtan_ep_trig_reduction(double x, int kbits, double *py_low, int *pinterv) {
   if (kbits) {
     shift2 = 32 - kbits;
     interv = (((unsigned long)((((unsigned long)(S[1])) >> (32)))) >> (shift2));
-    S[1] = (S[1] << kbits) |
-           (((unsigned long)((((unsigned long)(S[0])) >> (32)))) >> (shift2));
-    S[0] = (S[0] << kbits) |
-           (((unsigned long)((((unsigned long)(L)) >> (32)))) >> (shift2));
+    S[1] = (S[1] << kbits) | (((unsigned long)((((unsigned long)(S[0])) >> (32)))) >> (shift2));
+    S[0] = (S[0] << kbits) | (((unsigned long)((((unsigned long)(L)) >> (32)))) >> (shift2));
     L <<= kbits;
   }
   // round intev to nearest
@@ -492,8 +486,7 @@ __dtan_ep_trig_reduction(double x, int kbits, double *py_low, int *pinterv) {
   *(unsigned long *)&res = sgn_x ^ R;
   return res;
 }
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dtan_ep(double *pxin, double *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dtan_ep(double *pxin, double *pres) {
   int nRet = 0;
   double xin = *pxin;
   // double tan(double xin)
@@ -517,8 +510,7 @@ __ocl_svml_internal_dtan_ep(double *pxin, double *pres) {
   if (((unsigned)(leading_xh) >= (0x41300000 - 0)))
     goto TAN_SPECIAL;
   // _VSTATIC(SHIFTER) + x*(1/pi)
-  dS.f = __spirv_ocl_fma(x.f, (__dtan_ep_INV_PI64).f,
-                                                (__dtan_ep_SHIFTER).f);
+  dS.f = __spirv_ocl_fma(x.f, (__dtan_ep_INV_PI64).f, (__dtan_ep_SHIFTER).f);
   // N ~ x*(1/pi)
   dN = dS.f - (__dtan_ep_SHIFTER).f;
   R_sgn = (dS).w << 63;
@@ -529,14 +521,10 @@ __ocl_svml_internal_dtan_ep(double *pxin, double *pres) {
   // R^2
   dR2 = dR.f * dR.f;
 TAN_MAIN_PATH:
-  poly.f = __spirv_ocl_fma(dR2, (__dtan_ep_c4).f,
-                                                  (__dtan_ep_c3).f);
-  poly.f =
-      __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_c2).f);
-  poly.f =
-      __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_c1).f);
-  poly.f =
-      __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_c0).f);
+  poly.f = __spirv_ocl_fma(dR2, (__dtan_ep_c4).f, (__dtan_ep_c3).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_c2).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_c1).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_c0).f);
   dA.w = R_sgn ? poly.w : dR.w;
   dB.w = R_sgn ? dR.w : poly.w;
   fB = (float)dB.f;
@@ -569,26 +557,16 @@ TAN_SPECIAL:
   lindex = (unsigned long)index;
   lindex <<= 63;
   R_sgn = (lindex);
-  poly.f = __spirv_ocl_fma(dR2, (__dtan_ep_dc10).f,
-                                                  (__dtan_ep_dc9).f);
-  poly.f =
-      __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc8).f);
-  poly.f =
-      __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc7).f);
-  poly.f =
-      __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc6).f);
-  poly.f =
-      __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc5).f);
-  poly.f =
-      __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc4).f);
-  poly.f =
-      __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc3).f);
-  poly.f =
-      __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc2).f);
-  poly.f =
-      __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc1).f);
-  poly.f =
-      __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc0).f);
+  poly.f = __spirv_ocl_fma(dR2, (__dtan_ep_dc10).f, (__dtan_ep_dc9).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc8).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc7).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc6).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc5).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc4).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc3).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc2).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc1).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_ep_dc0).f);
   dA.f = R_sgn ? poly.f : R;
   dB.f = R_sgn ? R : poly.f;
   res.f = dA.f / dB.f;

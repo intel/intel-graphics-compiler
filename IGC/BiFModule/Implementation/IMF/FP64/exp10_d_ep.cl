@@ -45,23 +45,22 @@ typedef struct {
   unsigned int _iAbsMask;
   unsigned int _iDomainRange;
 } __ocl_svml_internal_dexp10_ep_data_t;
-static __ocl_svml_internal_dexp10_ep_data_t __ocl_svml_internal_dexp10_ep_data =
-    {
-        0x400a934f0979a371uL, /* _dLg2_10 */
-        0x4338800000000000uL, /* _dbShifter */
-        // poly=2^x ,[-0.5,0.5];//its slightly wider because of rounding of
-        // {x*log2(10)} fix leading coefficient to be 1.0
-        0x3ff0000000000000uL, /* _dPC0 */
-        0x3fe62e4302eeb44duL, /* _dPC1 */
-        0x3fcebfbdec29c82auL, /* _dPC2 */
-        0x3fac6af6e92be375uL, /* _dPC3 */
-        0x3f83b2b9fbd8970fuL, /* _dPC4 */
-        0x3f55f07b4611e454uL, /* _dPC5 */
-        0x3f24308fabc18decuL, /* _dPC6 */
-        // common
-        0x7fffffffu, /* _iAbsMask */
-        0x40733a70u  /* _iDomainRange */
-};                   /*dExp10_Table*/
+static __ocl_svml_internal_dexp10_ep_data_t __ocl_svml_internal_dexp10_ep_data = {
+    0x400a934f0979a371uL, /* _dLg2_10 */
+    0x4338800000000000uL, /* _dbShifter */
+    // poly=2^x ,[-0.5,0.5];//its slightly wider because of rounding of
+    // {x*log2(10)} fix leading coefficient to be 1.0
+    0x3ff0000000000000uL, /* _dPC0 */
+    0x3fe62e4302eeb44duL, /* _dPC1 */
+    0x3fcebfbdec29c82auL, /* _dPC2 */
+    0x3fac6af6e92be375uL, /* _dPC3 */
+    0x3f83b2b9fbd8970fuL, /* _dPC4 */
+    0x3f55f07b4611e454uL, /* _dPC5 */
+    0x3f24308fabc18decuL, /* _dPC6 */
+    // common
+    0x7fffffffu, /* _iAbsMask */
+    0x40733a70u  /* _iDomainRange */
+}; /*dExp10_Table*/
 static __constant _iml_v2_dp_union_t __dexp10_ep__imldExp10Tab[147] = {
     0x00000000, 0x3FF00000, /* T[0] = 1                       */
     0x00000000, 0x00000000, /* D[0] = 0                       */
@@ -216,8 +215,7 @@ static __constant _iml_v2_dp_union_t __dexp10_ep__imldExp10Tab[147] = {
     0x00000000, 0x3C300000, /* 2^(-60) */
     /* TWO_32H = 2^32 + 2^31 */
     0x00000000, 0x41F80000};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dexp10_ep(double *a, double *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dexp10_ep(double *a, double *r) {
   int nRet = 0;
   double w, Nj;
   double udfResHi, udfResLo;
@@ -225,7 +223,7 @@ __ocl_svml_internal_dexp10_ep(double *a, double *r) {
   double R, RHi, RLo, p, scale, tmp3, dbIn;
   _iml_uint32_t N, j;
   //_IML_DCOREFN_PROLOG2_IN_C(0, _IML_MODEX87_NEAR53_IN_C, _MODE_UNCHANGED, uf,
-  //pA, pRes)
+  // pA, pRes)
   /* Set all bits of scale to 0.                                           */
   /* Only bits of exponent field will be updated then before each use of   */
   /* scale. Notice, that all other bits (i.e. sign and significand) should */
@@ -234,12 +232,10 @@ __ocl_svml_internal_dexp10_ep(double *a, double *r) {
   scale = ((__constant double *)__dexp10_ep__imldExp10Tab)[142];
   dbIn = (*a);
   /* Filter out INFs and NaNs */
-  if ((((((_iml_v2_dp_union_t *)&dbIn)->dwords.hi_dword >> 20) & 0x7FF) !=
-       0x7FF)) {
+  if ((((((_iml_v2_dp_union_t *)&dbIn)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) {
     /* Here if argument is finite double precision number */
     /* Check if dbIn falls into "Near 0" range */
-    if (((((_iml_v2_dp_union_t *)&dbIn)->dwords.hi_dword >> 20) & 0x7FF) >
-        (0x3FF - 53)) {
+    if (((((_iml_v2_dp_union_t *)&dbIn)->dwords.hi_dword >> 20) & 0x7FF) > (0x3FF - 53)) {
       /* Here if argument is finite double precision number */
       /* and doesn't fall into "Near 0" range               */
       if (dbIn <= ((__constant double *)__dexp10_ep__imldExp10Tab)[135]) {
@@ -275,8 +271,7 @@ __ocl_svml_internal_dexp10_ep(double *a, double *r) {
           N = N >> 6;
           N = N + 0x3FF;
           /* T[j] * ( D[j] + p) */
-          p = (p +
-               ((__constant double *)__dexp10_ep__imldExp10Tab)[2 * j + 1]) *
+          p = (p + ((__constant double *)__dexp10_ep__imldExp10Tab)[2 * j + 1]) *
               ((__constant double *)__dexp10_ep__imldExp10Tab)[2 * j];
           if (dbIn >= ((__constant double *)__dexp10_ep__imldExp10Tab)[136]) {
             /* Here if exp(dbIn) is always finite and */
@@ -290,7 +285,7 @@ __ocl_svml_internal_dexp10_ep(double *a, double *r) {
               /* scale = 2^N */
               (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword =
                    (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword & 0x800FFFFF) |
-                   (((_iml_uint32_t)(N)&0x7FF) << 20));
+                   (((_iml_uint32_t)(N) & 0x7FF) << 20));
               /* scale * (T[j] + T[j] * ( D[j] + p)) */
               (*r) = (scale * p);
             } else {
@@ -301,8 +296,7 @@ __ocl_svml_internal_dexp10_ep(double *a, double *r) {
                    (((_iml_uint32_t)(N - 1) & 0x7FF) << 20));
               /* 2.0*(scale * (T[j] + T[j] * ( D[j] + p))) */
               p = (p * scale);
-              (*r) =
-                  (((__constant double *)__dexp10_ep__imldExp10Tab)[144] * p);
+              (*r) = (((__constant double *)__dexp10_ep__imldExp10Tab)[144] * p);
             }
           } else //(dbIn < UDF1)
           {
@@ -311,20 +305,17 @@ __ocl_svml_internal_dexp10_ep(double *a, double *r) {
             N = N & 0x7FF;
             /* scale = 2^(N + UNSCALE_SHIFT_EXP) */
             (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword =
-                 (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword & 0x800FFFFF) |
-                 (((_iml_uint32_t)(N)&0x7FF) << 20));
+                 (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t)(N) & 0x7FF) << 20));
             /* 2^(N + UNSCALE_SHIFT_EXP) * (T[j]*(D[j] + p) */
             p *= scale;
             /* (2^(N + UNSCALE_SHIFT_EXP) * T[j]) */
-            tmp3 = (scale *
-                    ((__constant double *)__dexp10_ep__imldExp10Tab)[2 * j]);
+            tmp3 = (scale * ((__constant double *)__dexp10_ep__imldExp10Tab)[2 * j]);
             /* Check if path 6.1.1 or 6.1.2 should follow */
             if (N <= (60 - 10)) {
               /* Here if "small" denormalized result */
               /* path 6.1.1 */
               p = (p + tmp3);
-              (*r) =
-                  (p * ((__constant double *)__dexp10_ep__imldExp10Tab)[145]);
+              (*r) = (p * ((__constant double *)__dexp10_ep__imldExp10Tab)[145]);
             } else {
               /* Here if "large" denormalized result */
               /* path 6.1.2 */
@@ -334,8 +325,7 @@ __ocl_svml_internal_dexp10_ep(double *a, double *r) {
               udfScaledResLo += p;
               /* udfResHi is udfScaledResHi rounded to */
               /* 32 most significant bits of mantissa  */
-              tmp1 = (((__constant double *)__dexp10_ep__imldExp10Tab)[146] *
-                      udfScaledResHi);
+              tmp1 = (((__constant double *)__dexp10_ep__imldExp10Tab)[146] * udfScaledResHi);
               tmp2 = (udfScaledResHi + tmp1);
               udfResHi = (tmp2 - tmp1);
               /* udfResLo = (udfScaledResHi - udfResHi) + */
@@ -344,12 +334,8 @@ __ocl_svml_internal_dexp10_ep(double *a, double *r) {
               udfResLo += udfScaledResLo;
               /* Return (*r) = (UNSCALE * udfResHi) +  */
               /*               + (UNSCALE * udfResLo)  */
-              udfResHi =
-                  (udfResHi *
-                   ((__constant double *)__dexp10_ep__imldExp10Tab)[145]);
-              udfResLo =
-                  (udfResLo *
-                   ((__constant double *)__dexp10_ep__imldExp10Tab)[145]);
+              udfResHi = (udfResHi * ((__constant double *)__dexp10_ep__imldExp10Tab)[145]);
+              udfResLo = (udfResLo * ((__constant double *)__dexp10_ep__imldExp10Tab)[145]);
               (*r) = (udfResHi + udfResLo);
             }
             nRet = 4;
@@ -422,32 +408,28 @@ double __ocl_svml_exp10_ep(double x) {
     dN = (dM - dbShifter);
     dR = __spirv_ocl_fma(va1, dLg2_10, -(dN));
     /* ...............Check for overflow\underflow ............. */
-    lX = as_ulong(va1); // lX = *(longlong*)&_VARG1
-    iAbsX = ((unsigned int)((unsigned long)lX >>
-                            32)); // iAbsX = (int)(lX>>32); //hi bits
-    iAbsX = (iAbsX & iAbsMask);   // iAbsX = iAbsX&iAbsMask;
-    iRangeMask = ((unsigned int)(-(
-        signed int)((signed int)iAbsX >
-                    (signed int)
-                        iDomainRange))); // iRangeMask = (iAbsX>iDomainRange)
+    lX = as_ulong(va1);                                // lX = *(longlong*)&_VARG1
+    iAbsX = ((unsigned int)((unsigned long)lX >> 32)); // iAbsX = (int)(lX>>32); //hi bits
+    iAbsX = (iAbsX & iAbsMask);                        // iAbsX = iAbsX&iAbsMask;
+    iRangeMask = ((unsigned int)(-(signed int)((signed int)iAbsX >
+                                               (signed int)iDomainRange))); // iRangeMask = (iAbsX>iDomainRange)
     vm = 0;
     vm = iRangeMask; // M = iRangeMask?1:0
     /* ............... 2^N ..................................... */
     lM = as_ulong(dM);                  // lM = *(longlong*)&dM
     lM = ((unsigned long)(lM) << (52)); // lM = lM<<(52-K)
     /* ................... Polynomial .......................... */
-    dN = __spirv_ocl_fma(
-        dPC[6], dR, dPC[5]); // dN = dPC[5]+dR*dPC[6]
+    dN = __spirv_ocl_fma(dPC[6], dR, dPC[5]); // dN = dPC[5]+dR*dPC[6]
     dN = __spirv_ocl_fma(dN, dR,
-                                                dPC[4]); // dN = dPC[4]+dR*(...)
+                         dPC[4]); // dN = dPC[4]+dR*(...)
     dN = __spirv_ocl_fma(dN, dR,
-                                                dPC[3]); // dN = dPC[3]+dR*(...)
+                         dPC[3]); // dN = dPC[3]+dR*(...)
     dN = __spirv_ocl_fma(dN, dR,
-                                                dPC[2]); // dN = dPC[2]+dR*(...)
+                         dPC[2]); // dN = dPC[2]+dR*(...)
     dN = __spirv_ocl_fma(dN, dR,
-                                                dPC[1]); // dN = dPC[1]+dR*(...)
+                         dPC[1]); // dN = dPC[1]+dR*(...)
     dN = __spirv_ocl_fma(dN, dR,
-                                                dPC[0]); // dN = dPC[0]+dR*(...)
+                         dPC[0]); // dN = dPC[0]+dR*(...)
     /* ..................quick 2^N............................... */
     lX = as_ulong(dN);
     lX = (lX + lM);

@@ -91,8 +91,7 @@ static __constant union {
   int s32[2];
   double f;
 } __dexpm1_ep_p_NL2L = {0xbc7abc9e3b39803fuL};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dexpm1_ep(double *pxin, double *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dexpm1_ep(double *pxin, double *pres) {
   int nRet = 0;
   double xin = *pxin;
   // double expm1(double xin)
@@ -110,8 +109,7 @@ __ocl_svml_internal_dexpm1_ep(double *pxin, double *pres) {
   } x0f, fS, fN;
   x0f.f = (float)xin;
   // 2^52*1.5 + x*log2(e)
-  fS.f = __spirv_ocl_fma(x0f.f, __dexpm1_ep_fL2E.f,
-                                                __dexpm1_ep_fShifter.f);
+  fS.f = __spirv_ocl_fma(x0f.f, __dexpm1_ep_fL2E.f, __dexpm1_ep_fShifter.f);
   // dN = rint(x*log2(e))
   fN.f = fS.f - __dexpm1_ep_fShifter.f;
   // reduced argument
@@ -123,8 +121,7 @@ __ocl_svml_internal_dexpm1_ep(double *pxin, double *pres) {
   T.w32[1] = fS.w << 20;
   T.w32[0] = 0;
   // e^R - 1
-  poly = __spirv_ocl_fma(__dexpm1_ep_dc7.f, R,
-                                                __dexpm1_ep_dc6.f);
+  poly = __spirv_ocl_fma(__dexpm1_ep_dc7.f, R, __dexpm1_ep_dc6.f);
   poly = __spirv_ocl_fma(poly, R, __dexpm1_ep_dc5.f);
   poly = __spirv_ocl_fma(poly, R, __dexpm1_ep_dc4.f);
   poly = __spirv_ocl_fma(poly, R, __dexpm1_ep_dc3.f);

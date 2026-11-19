@@ -26,129 +26,112 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../imf.h"
 #pragma OPENCL FP_CONTRACT OFF
 
-static __constant union
-{
+static __constant union {
+  unsigned int w;
+  float f;
+} __serf_ep_nolut___b5 = {0x3605524cu};
+
+static __constant union {
+  unsigned int w;
+  float f;
+} __serf_ep_nolut___b4 = {0x39953450u};
+
+static __constant union {
+  unsigned int w;
+  float f;
+} __serf_ep_nolut___b3 = {0x3b7e8d75u};
+
+static __constant union {
+  unsigned int w;
+  float f;
+} __serf_ep_nolut___b2 = {0x3d5983e4u};
+
+static __constant union {
+  unsigned int w;
+  float f;
+} __serf_ep_nolut___b1 = {0x3e4635acu};
+
+static __constant union {
+  unsigned int w;
+  float f;
+} __serf_ep_nolut___b0 = {0x3f906ebau};
+
+static __constant union {
+  unsigned int w;
+  float f;
+} __serf_ep_nolut___a5 = {0x381cf31fu};
+
+static __constant union {
+  unsigned int w;
+  float f;
+} __serf_ep_nolut___a4 = {0x3a9b6bd9u};
+
+static __constant union {
+  unsigned int w;
+  float f;
+} __serf_ep_nolut___a3 = {0x3c792ec0u};
+
+static __constant union {
+  unsigned int w;
+  float f;
+} __serf_ep_nolut___a2 = {0x3dec40c3u};
+
+static __constant union {
+  unsigned int w;
+  float f;
+} __serf_ep_nolut___a1 = {0x3f013f71u};
+
+static __constant union {
+  unsigned int w;
+  float f;
+} __serf_ep_nolut___a0 = {0x3f800000u};
+
+__attribute__((always_inline)) inline int __internal_serf_ep_nolut_cout(float *a, float *pres) {
+  int nRet = 0;
+  float xin = *a;
+  union {
     unsigned int w;
     float f;
-} __serf_ep_nolut___b5 = { 0x3605524cu };
-
-static __constant union
-{
+  } x, xa, res;
+  int iexpon;
+  unsigned int sgn_x;
+  float dR, dR2;
+  union {
     unsigned int w;
     float f;
-} __serf_ep_nolut___b4 = { 0x39953450u };
-
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __serf_ep_nolut___b3 = { 0x3b7e8d75u };
-
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __serf_ep_nolut___b2 = { 0x3d5983e4u };
-
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __serf_ep_nolut___b1 = { 0x3e4635acu };
-
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __serf_ep_nolut___b0 = { 0x3f906ebau };
-
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __serf_ep_nolut___a5 = { 0x381cf31fu };
-
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __serf_ep_nolut___a4 = { 0x3a9b6bd9u };
-
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __serf_ep_nolut___a3 = { 0x3c792ec0u };
-
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __serf_ep_nolut___a2 = { 0x3dec40c3u };
-
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __serf_ep_nolut___a1 = { 0x3f013f71u };
-
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __serf_ep_nolut___a0 = { 0x3f800000u };
-
-__attribute__((always_inline))
-inline int __internal_serf_ep_nolut_cout (float *a, float *pres)
-{
-    int nRet = 0;
-    float xin = *a;
-    union
-    {
-        unsigned int w;
-        float f;
-    } x, xa, res;
-    int iexpon;
-    unsigned int sgn_x;
-    float dR, dR2;
-    union
-    {
-        unsigned int w;
-        float f;
-    } apoly, bpoly, Y;
-    xa.f = xin;
-    sgn_x = xa.w & 0x80000000;
-    xa.w ^= sgn_x;
-    dR = (xa.f > 4.0f) ? 4.0f : xa.f;
-    dR2 = __spirv_ocl_fma(dR,dR,0.0f);
-    dR = (xa.w > 0x7f800000UL) ? xa.f : dR;
-    bpoly.f = __spirv_ocl_fma(__serf_ep_nolut___b5.f,dR2,__serf_ep_nolut___b4.f);
-    apoly.f = __spirv_ocl_fma(__serf_ep_nolut___a5.f,dR2,__serf_ep_nolut___a4.f);
-    bpoly.f = __spirv_ocl_fma(bpoly.f,dR2,__serf_ep_nolut___b3.f);
-    apoly.f = __spirv_ocl_fma(apoly.f,dR2,__serf_ep_nolut___a3.f);
-    bpoly.f = __spirv_ocl_fma(bpoly.f,dR2,__serf_ep_nolut___b2.f);
-    apoly.f = __spirv_ocl_fma(apoly.f,dR2,__serf_ep_nolut___a2.f);
-    bpoly.f = __spirv_ocl_fma(bpoly.f,dR2,__serf_ep_nolut___b1.f);
-    apoly.f = __spirv_ocl_fma(apoly.f,dR2,__serf_ep_nolut___a1.f);
-    bpoly.f = __spirv_ocl_fma(bpoly.f,dR2,__serf_ep_nolut___b0.f);
-    apoly.f = __spirv_ocl_fma(apoly.f,dR2,__serf_ep_nolut___a0.f);
-    Y.f = 1.0f / apoly.f;
-    bpoly.f = __spirv_ocl_fma(bpoly.f,dR,0.0f);
-    res.f = __spirv_ocl_fma(bpoly.f,Y.f,0.0f);
-    res.f = (res.f > 1.0f) ? 1.0f : res.f;
-    res.f = (xa.w <= 0x7f800000) ? res.f : (xa.f + xa.f);
-    res.w ^= sgn_x;
-    *pres = res.f;
-    return nRet;
+  } apoly, bpoly, Y;
+  xa.f = xin;
+  sgn_x = xa.w & 0x80000000;
+  xa.w ^= sgn_x;
+  dR = (xa.f > 4.0f) ? 4.0f : xa.f;
+  dR2 = __spirv_ocl_fma(dR, dR, 0.0f);
+  dR = (xa.w > 0x7f800000UL) ? xa.f : dR;
+  bpoly.f = __spirv_ocl_fma(__serf_ep_nolut___b5.f, dR2, __serf_ep_nolut___b4.f);
+  apoly.f = __spirv_ocl_fma(__serf_ep_nolut___a5.f, dR2, __serf_ep_nolut___a4.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __serf_ep_nolut___b3.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __serf_ep_nolut___a3.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __serf_ep_nolut___b2.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __serf_ep_nolut___a2.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __serf_ep_nolut___b1.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __serf_ep_nolut___a1.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __serf_ep_nolut___b0.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __serf_ep_nolut___a0.f);
+  Y.f = 1.0f / apoly.f;
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR, 0.0f);
+  res.f = __spirv_ocl_fma(bpoly.f, Y.f, 0.0f);
+  res.f = (res.f > 1.0f) ? 1.0f : res.f;
+  res.f = (xa.w <= 0x7f800000) ? res.f : (xa.f + xa.f);
+  res.w ^= sgn_x;
+  *pres = res.f;
+  return nRet;
 }
 
-float __ocl_svml_erff_ep_noLUT (float a)
-{
-    float va1;
-    float vr1;
-    float r;
-    va1 = a;
-    __internal_serf_ep_nolut_cout (&va1, &vr1);
-    r = vr1;
-    return r;
+float __ocl_svml_erff_ep_noLUT(float a) {
+  float va1;
+  float vr1;
+  float r;
+  va1 = a;
+  __internal_serf_ep_nolut_cout(&va1, &vr1);
+  r = vr1;
+  return r;
 }

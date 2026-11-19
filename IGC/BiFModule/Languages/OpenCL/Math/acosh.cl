@@ -9,31 +9,22 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-float OVERLOADABLE acosh( float x )
-{
-    return __spirv_ocl_acosh( x );
-}
+float OVERLOADABLE acosh(float x) { return __spirv_ocl_acosh(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( acosh, float, float )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(acosh, float, float)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE acosh( double x )
-{
-    return __spirv_ocl_acosh( x );
-}
+INLINE double OVERLOADABLE acosh(double x) { return __spirv_ocl_acosh(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( acosh, double, double )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(acosh, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE acosh( half x )
-{
-    return __spirv_ocl_acosh( x );
-}
+INLINE half OVERLOADABLE acosh(half x) { return __spirv_ocl_acosh(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( acosh, half, half )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(acosh, half, half)
 
 #endif // defined(cl_khr_fp16)

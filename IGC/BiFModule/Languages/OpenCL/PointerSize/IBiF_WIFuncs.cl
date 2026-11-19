@@ -74,30 +74,29 @@ INLINE size_t OVERLOADABLE get_global_offset(uint dim) {
   return __builtin_IB_get_global_offset(dim);
 }
 
-INLINE size_t OVERLOADABLE get_global_linear_id( void ) {
+INLINE size_t OVERLOADABLE get_global_linear_id(void) {
   uint dim = get_work_dim();
   size_t result = 0;
 
   switch (dim) {
-    default:
-    case 1:
-      result = get_global_id(0) - get_global_offset(0);
-      break;
-    case 2:
-      result = (get_global_id(1) - get_global_offset(1))*
-                get_global_size (0) + (get_global_id(0) - get_global_offset(0));
-      break;
-    case 3:
-      result = ((get_global_id(2) - get_global_offset(2)) * get_global_size(1) * get_global_size(0)) +
-               ((get_global_id(1) - get_global_offset(1)) * get_global_size (0)) +
-               (get_global_id(0) - get_global_offset(0));
-      break;
+  default:
+  case 1:
+    result = get_global_id(0) - get_global_offset(0);
+    break;
+  case 2:
+    result = (get_global_id(1) - get_global_offset(1)) * get_global_size(0) + (get_global_id(0) - get_global_offset(0));
+    break;
+  case 3:
+    result = ((get_global_id(2) - get_global_offset(2)) * get_global_size(1) * get_global_size(0)) +
+             ((get_global_id(1) - get_global_offset(1)) * get_global_size(0)) +
+             (get_global_id(0) - get_global_offset(0));
+    break;
   }
 
   return result;
 }
 
-INLINE size_t OVERLOADABLE get_local_linear_id( void ) {
+INLINE size_t OVERLOADABLE get_local_linear_id(void) {
 #if 0
     // This doesn't work right now due to a bug in the runtime.
     // If/when they fix their bug we can experiment if spending the
@@ -105,50 +104,34 @@ INLINE size_t OVERLOADABLE get_local_linear_id( void ) {
     // the math to compute the linear local ID.
     return __builtin_IB_get_local_linear_id();
 #else
-    uint    llid;
+  uint llid;
 
-    llid  = (uint)get_local_id(2);
-    llid *= (uint)get_local_size(1);
-    llid += (uint)get_local_id(1);
-    llid *= (uint)get_local_size(0);
-    llid += (uint)get_local_id(0);
+  llid = (uint)get_local_id(2);
+  llid *= (uint)get_local_size(1);
+  llid += (uint)get_local_id(1);
+  llid *= (uint)get_local_size(0);
+  llid += (uint)get_local_id(0);
 
-    return llid;
+  return llid;
 #endif
 }
 
-uint __intel_get_local_size( void )
-{
-    uint    totalWorkGroupSize =
-                (uint)get_local_size(0) *
-                (uint)get_local_size(1) *
-                (uint)get_local_size(2);
-    return totalWorkGroupSize;
+uint __intel_get_local_size(void) {
+  uint totalWorkGroupSize = (uint)get_local_size(0) * (uint)get_local_size(1) * (uint)get_local_size(2);
+  return totalWorkGroupSize;
 }
 
-uint __intel_get_enqueued_local_size( void )
-{
-    uint    totalWorkGroupSize =
-                (uint)get_enqueued_local_size(0) *
-                (uint)get_enqueued_local_size(1) *
-                (uint)get_enqueued_local_size(2);
-    return totalWorkGroupSize;
+uint __intel_get_enqueued_local_size(void) {
+  uint totalWorkGroupSize =
+      (uint)get_enqueued_local_size(0) * (uint)get_enqueued_local_size(1) * (uint)get_enqueued_local_size(2);
+  return totalWorkGroupSize;
 }
 
-uint __intel_get_local_linear_id( void )
-{
-    return get_local_linear_id();
-}
+uint __intel_get_local_linear_id(void) { return get_local_linear_id(); }
 
-uint __intel_get_global_linear_id( void )
-{
-    return get_global_linear_id();
-}
+uint __intel_get_global_linear_id(void) { return get_global_linear_id(); }
 
-bool __intel_is_first_work_group_item( void )
-{
-    return get_local_id(0) == 0 &
-           get_local_id(1) == 0 &
-           get_local_id(2) == 0;
+bool __intel_is_first_work_group_item(void) {
+  return get_local_id(0) == 0 & get_local_id(1) == 0 & get_local_id(2) == 0;
 }
 

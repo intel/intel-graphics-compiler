@@ -14,33 +14,24 @@ SPDX-License-Identifier: MIT
 // since M_PI_F is rounded (and therefore slightly larger than FLOAT_PI).
 // We'll need to re-collect some GITS streams if we want to use M_PI_F
 // instead.
-#define FLOAT_PI                (as_float(0x40490FDA)) // 3.1415926535897930f
+#define FLOAT_PI (as_float(0x40490FDA)) // 3.1415926535897930f
 
-float OVERLOADABLE atan2( float y, float x )
-{
-    return __spirv_ocl_atan2( y, x );
-}
+float OVERLOADABLE atan2(float y, float x) { return __spirv_ocl_atan2(y, x); }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, float, float, float )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP(atan2, float, float, float)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE atan2( double y, double x )
-{
-    return __spirv_ocl_atan2( y, x );
-}
+INLINE double OVERLOADABLE atan2(double y, double x) { return __spirv_ocl_atan2(y, x); }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, double, double, double )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP(atan2, double, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE atan2( half y, half x )
-{
-    return __spirv_ocl_atan2( y, x );
-}
+INLINE half OVERLOADABLE atan2(half y, half x) { return __spirv_ocl_atan2(y, x); }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, half, half, half )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP(atan2, half, half, half)
 
 #endif // defined(cl_khr_fp16)

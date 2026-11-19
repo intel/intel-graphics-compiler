@@ -19,55 +19,29 @@ SPDX-License-Identifier: MIT
 
 // atom_*() functions need non-volatile overloads for backwards compatibility.
 
-#define DEF_ATOM_1SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
-INLINE OCL_TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE OCL_TYPE *p) { \
-    return __spirv_Atomic##OPCODE( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                \
-            Device,                                                                     \
-            Relaxed);                                                                   \
-} \
-INLINE OCL_TYPE OVERLOADABLE atom_##KEY(__##ADDRSPACE OCL_TYPE *p) { \
-    return __spirv_Atomic##OPCODE( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                \
-            Device,                                                                     \
-            Relaxed);                                                                   \
-}
+#define DEF_ATOM_1SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE)                       \
+  INLINE OCL_TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE OCL_TYPE *p) {                                        \
+    return __spirv_Atomic##OPCODE((__##ADDRSPACE IGC_TYPE *)p, Device, Relaxed);                                       \
+  }                                                                                                                    \
+  INLINE OCL_TYPE OVERLOADABLE atom_##KEY(__##ADDRSPACE OCL_TYPE *p) {                                                 \
+    return __spirv_Atomic##OPCODE((__##ADDRSPACE IGC_TYPE *)p, Device, Relaxed);                                       \
+  }
 
-#define DEF_ATOM_2SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
-INLINE OCL_TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_TYPE val) { \
-    return __spirv_Atomic##OPCODE( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                 \
-            Device,                                                                      \
-            Relaxed,                                                                     \
-            val);                                                                        \
-} \
-INLINE OCL_TYPE OVERLOADABLE atom_##KEY(__##ADDRSPACE OCL_TYPE *p, OCL_TYPE val) { \
-    return __spirv_Atomic##OPCODE( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                 \
-            Device,                                                                      \
-            Relaxed,                                                                     \
-            val);                                                                        \
-}
+#define DEF_ATOM_2SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE)                       \
+  INLINE OCL_TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_TYPE val) {                          \
+    return __spirv_Atomic##OPCODE((__##ADDRSPACE IGC_TYPE *)p, Device, Relaxed, val);                                  \
+  }                                                                                                                    \
+  INLINE OCL_TYPE OVERLOADABLE atom_##KEY(__##ADDRSPACE OCL_TYPE *p, OCL_TYPE val) {                                   \
+    return __spirv_Atomic##OPCODE((__##ADDRSPACE IGC_TYPE *)p, Device, Relaxed, val);                                  \
+  }
 
-#define DEF_ATOM_3SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
-INLINE OCL_TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_TYPE cmp, OCL_TYPE val) { \
-    return __spirv_Atomic##OPCODE( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                 \
-            Device,                                                                      \
-            Relaxed,                                                                     \
-            Relaxed,                                                                     \
-            val,                                                                         \
-            cmp);                                                                        \
-} \
-INLINE OCL_TYPE OVERLOADABLE atom_##KEY(__##ADDRSPACE OCL_TYPE *p, OCL_TYPE cmp, OCL_TYPE val) { \
-    return __spirv_Atomic##OPCODE( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                 \
-            Device,                                                                      \
-            Relaxed,                                                                     \
-            Relaxed,                                                                     \
-            val,                                                                         \
-            cmp);                                                                        \
-}
+#define DEF_ATOM_3SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE)                       \
+  INLINE OCL_TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_TYPE cmp, OCL_TYPE val) {            \
+    return __spirv_Atomic##OPCODE((__##ADDRSPACE IGC_TYPE *)p, Device, Relaxed, Relaxed, val, cmp);                    \
+  }                                                                                                                    \
+  INLINE OCL_TYPE OVERLOADABLE atom_##KEY(__##ADDRSPACE OCL_TYPE *p, OCL_TYPE cmp, OCL_TYPE val) {                     \
+    return __spirv_Atomic##OPCODE((__##ADDRSPACE IGC_TYPE *)p, Device, Relaxed, Relaxed, val, cmp);                    \
+  }
 
 // atomic_inc
 DEF_ATOM_1SRC(inc, global, int, IIncrement, p1, i32, int)
@@ -209,33 +183,20 @@ DEF_ATOM_3SRC(cmpxchg, local, ulong, CompareExchange, p3, i64, long)
 // OpenCL 1.1  Atomics
 //-----------------------------------------------------------------------------
 
-#define DEF_ATOMIC_1SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
-INLINE OCL_TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE OCL_TYPE *p) { \
-    return __spirv_Atomic##OPCODE( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                \
-            Device,                                                                     \
-            Relaxed);                                                                   \
-}
+#define DEF_ATOMIC_1SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE)                     \
+  INLINE OCL_TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE OCL_TYPE *p) {                                      \
+    return __spirv_Atomic##OPCODE((__##ADDRSPACE IGC_TYPE *)p, Device, Relaxed);                                       \
+  }
 
-#define DEF_ATOMIC_2SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
-INLINE OCL_TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_TYPE val) { \
-    return __spirv_Atomic##OPCODE( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                        \
-            Device,                                                                      \
-            Relaxed,                                                                     \
-            val);                                                                        \
-}
+#define DEF_ATOMIC_2SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE)                     \
+  INLINE OCL_TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_TYPE val) {                        \
+    return __spirv_Atomic##OPCODE((__##ADDRSPACE IGC_TYPE *)p, Device, Relaxed, val);                                  \
+  }
 
-#define DEF_ATOMIC_3SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
-INLINE OCL_TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_TYPE cmp, OCL_TYPE val) { \
-    return __spirv_Atomic##OPCODE( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                 \
-            Device,                                                                      \
-            Relaxed,                                                                     \
-            Relaxed,                                                                     \
-            val,                                                                         \
-            cmp);                                                                        \
-}
+#define DEF_ATOMIC_3SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE)                     \
+  INLINE OCL_TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_TYPE cmp, OCL_TYPE val) {          \
+    return __spirv_Atomic##OPCODE((__##ADDRSPACE IGC_TYPE *)p, Device, Relaxed, Relaxed, val, cmp);                    \
+  }
 
 // atomic_inc
 DEF_ATOMIC_1SRC(inc, global, int, IIncrement, p1, i32, int)
@@ -317,12 +278,11 @@ DEF_ATOMIC_3SRC(cmpxchg, local, uint, CompareExchange, p3, i32, int)
 // void atomic_init(volatile A *obj, C value)
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-#define ATOMIC_INIT_FUNCTION(TYPE) \
-INLINE void OVERLOADABLE atomic_init(volatile generic atomic_##TYPE *object, TYPE value) \
-{ \
-  volatile generic TYPE *nonatomic = (volatile generic TYPE*)object; \
-  *nonatomic = value; \
-}
+#define ATOMIC_INIT_FUNCTION(TYPE)                                                                                     \
+  INLINE void OVERLOADABLE atomic_init(volatile generic atomic_##TYPE *object, TYPE value) {                           \
+    volatile generic TYPE *nonatomic = (volatile generic TYPE *)object;                                                \
+    *nonatomic = value;                                                                                                \
+  }
 
 ATOMIC_INIT_FUNCTION(int)
 ATOMIC_INIT_FUNCTION(uint)
@@ -342,38 +302,34 @@ ATOMIC_INIT_FUNCTION(double)
 //   M operand,
 //   memory_order order,
 //   memory_scope scope)
-#define ATOMIC_FETCH_FUNCTION_ADDRSPACE(KEY, OCL_TYPE, OPCODE, IGC_TYPE_ABBR, IGC_TYPE, ADDRSPACE, ABBR_ADDRSPACE) \
-INLINE OCL_TYPE OVERLOADABLE atomic_fetch_##KEY(volatile ADDRSPACE atomic_##OCL_TYPE *object, OCL_TYPE operand) \
-{ \
-  return atomic_fetch_##KEY##_explicit(object, operand, memory_order_seq_cst); \
-} \
-INLINE OCL_TYPE OVERLOADABLE atomic_fetch_##KEY##_explicit(volatile ADDRSPACE atomic_##OCL_TYPE *object, OCL_TYPE operand, memory_order order) \
-{ \
-  return atomic_fetch_##KEY##_explicit(object, operand, order, memory_scope_device); \
-} \
-INLINE OCL_TYPE OVERLOADABLE atomic_fetch_##KEY##_explicit(volatile ADDRSPACE atomic_##OCL_TYPE *object, OCL_TYPE operand, memory_order order, memory_scope scope) \
-{ \
-  return __spirv_Atomic##OPCODE( \
-            (ADDRSPACE IGC_TYPE *)object,                                                \
-            get_spirv_mem_scope(scope),                                                  \
-            get_spirv_mem_order(order) |                                                 \
-                get_spirv_mem_fence(get_fence((const ADDRSPACE void *)object)),          \
-            operand);                                                                    \
-}
+#define ATOMIC_FETCH_FUNCTION_ADDRSPACE(KEY, OCL_TYPE, OPCODE, IGC_TYPE_ABBR, IGC_TYPE, ADDRSPACE, ABBR_ADDRSPACE)     \
+  INLINE OCL_TYPE OVERLOADABLE atomic_fetch_##KEY(volatile ADDRSPACE atomic_##OCL_TYPE *object, OCL_TYPE operand) {    \
+    return atomic_fetch_##KEY##_explicit(object, operand, memory_order_seq_cst);                                       \
+  }                                                                                                                    \
+  INLINE OCL_TYPE OVERLOADABLE atomic_fetch_##KEY##_explicit(volatile ADDRSPACE atomic_##OCL_TYPE *object,             \
+                                                             OCL_TYPE operand, memory_order order) {                   \
+    return atomic_fetch_##KEY##_explicit(object, operand, order, memory_scope_device);                                 \
+  }                                                                                                                    \
+  INLINE OCL_TYPE OVERLOADABLE atomic_fetch_##KEY##_explicit(                                                          \
+      volatile ADDRSPACE atomic_##OCL_TYPE *object, OCL_TYPE operand, memory_order order, memory_scope scope) {        \
+    return __spirv_Atomic##OPCODE(                                                                                     \
+        (ADDRSPACE IGC_TYPE *)object, get_spirv_mem_scope(scope),                                                      \
+        get_spirv_mem_order(order) | get_spirv_mem_fence(get_fence((const ADDRSPACE void *)object)), operand);         \
+  }
 
-#define ATOMIC_FETCH_FUNCTION(KEY, OCL_TYPE, OPCODE, IGC_TYPE_ABBR, IGC_TYPE) \
-ATOMIC_FETCH_FUNCTION_ADDRSPACE(KEY, OCL_TYPE, OPCODE, IGC_TYPE_ABBR, IGC_TYPE, generic, p4)
+#define ATOMIC_FETCH_FUNCTION(KEY, OCL_TYPE, OPCODE, IGC_TYPE_ABBR, IGC_TYPE)                                          \
+  ATOMIC_FETCH_FUNCTION_ADDRSPACE(KEY, OCL_TYPE, OPCODE, IGC_TYPE_ABBR, IGC_TYPE, generic, p4)
 
 #if defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
-#define ATOMIC_FETCH_SUPPORTED_TYPES(KEY, OPCODE) \
-ATOMIC_FETCH_FUNCTION(KEY, int, OPCODE, i32, int) \
-ATOMIC_FETCH_FUNCTION(KEY, uint, OPCODE, i32, int) \
-ATOMIC_FETCH_FUNCTION(KEY, long, OPCODE, i64, long) \
-ATOMIC_FETCH_FUNCTION(KEY, ulong, OPCODE, i64, long)
+#define ATOMIC_FETCH_SUPPORTED_TYPES(KEY, OPCODE)                                                                      \
+  ATOMIC_FETCH_FUNCTION(KEY, int, OPCODE, i32, int)                                                                    \
+  ATOMIC_FETCH_FUNCTION(KEY, uint, OPCODE, i32, int)                                                                   \
+  ATOMIC_FETCH_FUNCTION(KEY, long, OPCODE, i64, long)                                                                  \
+  ATOMIC_FETCH_FUNCTION(KEY, ulong, OPCODE, i64, long)
 #else
-#define ATOMIC_FETCH_SUPPORTED_TYPES(KEY, OPCODE) \
-ATOMIC_FETCH_FUNCTION(KEY, int, OPCODE, i32, int) \
-ATOMIC_FETCH_FUNCTION(KEY, uint, OPCODE, i32, int)
+#define ATOMIC_FETCH_SUPPORTED_TYPES(KEY, OPCODE)                                                                      \
+  ATOMIC_FETCH_FUNCTION(KEY, int, OPCODE, i32, int)                                                                    \
+  ATOMIC_FETCH_FUNCTION(KEY, uint, OPCODE, i32, int)
 #endif // defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
 
 ATOMIC_FETCH_SUPPORTED_TYPES(add, IAdd)
@@ -404,24 +360,20 @@ ATOMIC_FETCH_FUNCTION_ADDRSPACE(sub, float, FSub, f32, float, global, p1)
 //                            memory_order order,
 //                            memory_scope scope)
 
-#define ATOMIC_STORE_FUNCTION(OCL_TYPE, IGC_TYPE_ABBR, IGC_TYPE) \
-INLINE void OVERLOADABLE atomic_store(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE operand) \
-{ \
-  atomic_store_explicit(object, operand, memory_order_seq_cst); \
-} \
-INLINE void OVERLOADABLE atomic_store_explicit(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE operand, memory_order order) \
-{ \
-  atomic_store_explicit(object, operand, order, memory_scope_device); \
-} \
-INLINE void OVERLOADABLE atomic_store_explicit(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE operand, memory_order order, memory_scope scope) \
-{ \
-   __spirv_AtomicStore( \
-            (generic IGC_TYPE *)object,                                                          \
-            get_spirv_mem_scope(scope),                                                          \
-            get_spirv_mem_order(order) |                                                         \
-                get_spirv_mem_fence(get_fence((const generic void *)object)),                    \
-            operand);                                                                            \
-}
+#define ATOMIC_STORE_FUNCTION(OCL_TYPE, IGC_TYPE_ABBR, IGC_TYPE)                                                       \
+  INLINE void OVERLOADABLE atomic_store(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE operand) {                \
+    atomic_store_explicit(object, operand, memory_order_seq_cst);                                                      \
+  }                                                                                                                    \
+  INLINE void OVERLOADABLE atomic_store_explicit(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE operand,         \
+                                                 memory_order order) {                                                 \
+    atomic_store_explicit(object, operand, order, memory_scope_device);                                                \
+  }                                                                                                                    \
+  INLINE void OVERLOADABLE atomic_store_explicit(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE operand,         \
+                                                 memory_order order, memory_scope scope) {                             \
+    __spirv_AtomicStore((generic IGC_TYPE *)object, get_spirv_mem_scope(scope),                                        \
+                        get_spirv_mem_order(order) | get_spirv_mem_fence(get_fence((const generic void *)object)),     \
+                        operand);                                                                                      \
+  }
 
 ATOMIC_STORE_FUNCTION(int, i32, int)
 ATOMIC_STORE_FUNCTION(uint, i32, int)
@@ -443,23 +395,19 @@ ATOMIC_STORE_FUNCTION(ushort, i16, short)
 //                        memory_order order,
 //                        memory_scope scope)
 
-#define ATOMIC_LOAD_FUNCTION(OCL_TYPE, IGC_TYPE_ABBR, IGC_TYPE) \
-INLINE OCL_TYPE OVERLOADABLE atomic_load(volatile generic atomic_##OCL_TYPE *object) \
-{ \
-  return atomic_load_explicit(object, memory_order_seq_cst);    \
-    } \
-INLINE OCL_TYPE OVERLOADABLE atomic_load_explicit(volatile generic atomic_##OCL_TYPE *object, memory_order order) \
-{ \
-  return atomic_load_explicit(object, order, memory_scope_device); \
-} \
-INLINE OCL_TYPE OVERLOADABLE atomic_load_explicit(volatile generic atomic_##OCL_TYPE *object, memory_order order, memory_scope scope) \
-{ \
-  return __spirv_AtomicLoad( \
-            (generic IGC_TYPE *)object,                                                          \
-            get_spirv_mem_scope(scope),                                                          \
-            get_spirv_mem_order(order) |                                                         \
-                get_spirv_mem_fence(get_fence((const generic void *)object)));                   \
-}
+#define ATOMIC_LOAD_FUNCTION(OCL_TYPE, IGC_TYPE_ABBR, IGC_TYPE)                                                        \
+  INLINE OCL_TYPE OVERLOADABLE atomic_load(volatile generic atomic_##OCL_TYPE *object) {                               \
+    return atomic_load_explicit(object, memory_order_seq_cst);                                                         \
+  }                                                                                                                    \
+  INLINE OCL_TYPE OVERLOADABLE atomic_load_explicit(volatile generic atomic_##OCL_TYPE *object, memory_order order) {  \
+    return atomic_load_explicit(object, order, memory_scope_device);                                                   \
+  }                                                                                                                    \
+  INLINE OCL_TYPE OVERLOADABLE atomic_load_explicit(volatile generic atomic_##OCL_TYPE *object, memory_order order,    \
+                                                    memory_scope scope) {                                              \
+    return __spirv_AtomicLoad((generic IGC_TYPE *)object, get_spirv_mem_scope(scope),                                  \
+                              get_spirv_mem_order(order) |                                                             \
+                                  get_spirv_mem_fence(get_fence((const generic void *)object)));                       \
+  }
 
 ATOMIC_LOAD_FUNCTION(int, i32, int)
 ATOMIC_LOAD_FUNCTION(uint, i32, int)
@@ -483,24 +431,20 @@ ATOMIC_LOAD_FUNCTION(ushort, i16, short)
 //                            memory_order order,
 //                            memory_scope scope)
 
-#define ATOMIC_EXCHANGE_FUNCTION(OCL_TYPE, IGC_TYPE_ABBR, IGC_TYPE) \
-INLINE OCL_TYPE OVERLOADABLE atomic_exchange(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE desired) \
-{ \
-  return atomic_exchange_explicit(object, desired, memory_order_seq_cst, memory_scope_device); \
-} \
-INLINE OCL_TYPE OVERLOADABLE atomic_exchange_explicit(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE desired, memory_order order) \
-{ \
-  return atomic_exchange_explicit(object, desired, order, memory_scope_device); \
-} \
-INLINE OCL_TYPE OVERLOADABLE atomic_exchange_explicit(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE desired, memory_order order, memory_scope scope) \
-{ \
-  return __spirv_AtomicExchange( \
-            (generic IGC_TYPE *)object,                                                \
-            get_spirv_mem_scope(scope),                                                \
-            get_spirv_mem_order(order) |                                               \
-                get_spirv_mem_fence(get_fence((const generic void *)object)),          \
-            desired);                                                                  \
-}
+#define ATOMIC_EXCHANGE_FUNCTION(OCL_TYPE, IGC_TYPE_ABBR, IGC_TYPE)                                                    \
+  INLINE OCL_TYPE OVERLOADABLE atomic_exchange(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE desired) {         \
+    return atomic_exchange_explicit(object, desired, memory_order_seq_cst, memory_scope_device);                       \
+  }                                                                                                                    \
+  INLINE OCL_TYPE OVERLOADABLE atomic_exchange_explicit(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE desired,  \
+                                                        memory_order order) {                                          \
+    return atomic_exchange_explicit(object, desired, order, memory_scope_device);                                      \
+  }                                                                                                                    \
+  INLINE OCL_TYPE OVERLOADABLE atomic_exchange_explicit(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE desired,  \
+                                                        memory_order order, memory_scope scope) {                      \
+    return __spirv_AtomicExchange(                                                                                     \
+        (generic IGC_TYPE *)object, get_spirv_mem_scope(scope),                                                        \
+        get_spirv_mem_order(order) | get_spirv_mem_fence(get_fence((const generic void *)object)), desired);           \
+  }
 
 ATOMIC_EXCHANGE_FUNCTION(int, i32, int)
 ATOMIC_EXCHANGE_FUNCTION(uint, i32, int)
@@ -544,43 +488,36 @@ ATOMIC_EXCHANGE_FUNCTION(double, f64, double)
 //   memory_order success,
 //   memory_order failure,
 
-#define ATOMIC_COMPARE_EXCHANGE_FUNCTION(OCL_TYPE, STRENGTH, OPCODE, IGC_TYPE_ABBR, IGC_TYPE) \
-INLINE bool OVERLOADABLE atomic_compare_exchange_##STRENGTH(volatile generic atomic_##OCL_TYPE *object, generic OCL_TYPE *expected, OCL_TYPE desired) \
-{ \
-  return atomic_compare_exchange_##STRENGTH##_explicit(object, expected, desired, memory_order_seq_cst, memory_order_seq_cst, memory_scope_device); \
-} \
-INLINE bool OVERLOADABLE atomic_compare_exchange_##STRENGTH##_explicit(volatile generic atomic_##OCL_TYPE *object, generic OCL_TYPE *expected, \
-                                                                       OCL_TYPE desired, memory_order success, memory_order failure) \
-{ \
-  return atomic_compare_exchange_##STRENGTH##_explicit(object, expected, desired, success, failure, memory_scope_device); \
-} \
-INLINE bool OVERLOADABLE atomic_compare_exchange_##STRENGTH##_explicit(volatile generic atomic_##OCL_TYPE *object, generic OCL_TYPE *expected, \
-                                                                       OCL_TYPE desired, memory_order success, memory_order failure, memory_scope scope) \
-{ \
-  OCL_TYPE expected_start = (*expected);\
-  IGC_TYPE before =                                                                 \
-            __spirv_Atomic##OPCODE( \
-                (volatile generic IGC_TYPE *)object,                                  \
-                get_spirv_mem_scope(scope),                                           \
-                success,                                                              \
-                failure,                                                              \
-                as_##IGC_TYPE(desired),                                               \
-                as_##IGC_TYPE(expected_start)); \
-  bool ret = false; \
-  if (before == as_##IGC_TYPE(expected_start))                                        \
-        { \
-    ret = true; \
-  } \
-  else { \
-    *expected = as_##OCL_TYPE(before); \
-    ret = false; \
-  } \
-  if( success != memory_order_release ) \
-  { \
-    atomic_work_item_fence( CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE, success, scope); \
-  } \
-  return ret; \
-}
+#define ATOMIC_COMPARE_EXCHANGE_FUNCTION(OCL_TYPE, STRENGTH, OPCODE, IGC_TYPE_ABBR, IGC_TYPE)                          \
+  INLINE bool OVERLOADABLE atomic_compare_exchange_##STRENGTH(volatile generic atomic_##OCL_TYPE *object,              \
+                                                              generic OCL_TYPE *expected, OCL_TYPE desired) {          \
+    return atomic_compare_exchange_##STRENGTH##_explicit(object, expected, desired, memory_order_seq_cst,              \
+                                                         memory_order_seq_cst, memory_scope_device);                   \
+  }                                                                                                                    \
+  INLINE bool OVERLOADABLE atomic_compare_exchange_##STRENGTH##_explicit(volatile generic atomic_##OCL_TYPE *object,   \
+                                                                         generic OCL_TYPE *expected, OCL_TYPE desired, \
+                                                                         memory_order success, memory_order failure) { \
+    return atomic_compare_exchange_##STRENGTH##_explicit(object, expected, desired, success, failure,                  \
+                                                         memory_scope_device);                                         \
+  }                                                                                                                    \
+  INLINE bool OVERLOADABLE atomic_compare_exchange_##STRENGTH##_explicit(                                              \
+      volatile generic atomic_##OCL_TYPE *object, generic OCL_TYPE *expected, OCL_TYPE desired, memory_order success,  \
+      memory_order failure, memory_scope scope) {                                                                      \
+    OCL_TYPE expected_start = (*expected);                                                                             \
+    IGC_TYPE before = __spirv_Atomic##OPCODE((volatile generic IGC_TYPE *)object, get_spirv_mem_scope(scope), success, \
+                                             failure, as_##IGC_TYPE(desired), as_##IGC_TYPE(expected_start));          \
+    bool ret = false;                                                                                                  \
+    if (before == as_##IGC_TYPE(expected_start)) {                                                                     \
+      ret = true;                                                                                                      \
+    } else {                                                                                                           \
+      *expected = as_##OCL_TYPE(before);                                                                               \
+      ret = false;                                                                                                     \
+    }                                                                                                                  \
+    if (success != memory_order_release) {                                                                             \
+      atomic_work_item_fence(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE, success, scope);                              \
+    }                                                                                                                  \
+    return ret;                                                                                                        \
+  }
 
 ATOMIC_COMPARE_EXCHANGE_FUNCTION(int, strong, CompareExchange, i32, int)
 ATOMIC_COMPARE_EXCHANGE_FUNCTION(uint, strong, CompareExchange, i32, int)
@@ -606,21 +543,18 @@ ATOMIC_COMPARE_EXCHANGE_FUNCTION(ulong, weak, CompareExchangeWeak, i64, long)
 //   memory_order order,
 //   memory_scope scope)
 
-bool __attribute__((overloadable)) atomic_flag_test_and_set(volatile generic atomic_flag *object)
-{
+bool __attribute__((overloadable)) atomic_flag_test_and_set(volatile generic atomic_flag *object) {
   return atomic_flag_test_and_set_explicit(object, memory_order_seq_cst);
 }
-bool __attribute__((overloadable)) atomic_flag_test_and_set_explicit(volatile generic atomic_flag *object, memory_order order)
-{
+bool __attribute__((overloadable)) atomic_flag_test_and_set_explicit(volatile generic atomic_flag *object,
+                                                                     memory_order order) {
   return atomic_flag_test_and_set_explicit(object, order, memory_scope_device);
 }
-bool __attribute__((overloadable)) atomic_flag_test_and_set_explicit(volatile generic atomic_flag *object, memory_order order, memory_scope scope)
-{
-    return __spirv_AtomicFlagTestAndSet(
-        (volatile generic uint *)object,
-        get_spirv_mem_scope(scope),
-        get_spirv_mem_order(order) |
-            get_spirv_mem_fence(get_fence((const generic void *)object)));
+bool __attribute__((overloadable)) atomic_flag_test_and_set_explicit(volatile generic atomic_flag *object,
+                                                                     memory_order order, memory_scope scope) {
+  return __spirv_AtomicFlagTestAndSet((volatile generic uint *)object, get_spirv_mem_scope(scope),
+                                      get_spirv_mem_order(order) |
+                                          get_spirv_mem_fence(get_fence((const generic void *)object)));
 }
 
 // The atomic_flag_clear Functions
@@ -633,21 +567,17 @@ bool __attribute__((overloadable)) atomic_flag_test_and_set_explicit(volatile ge
 //   memory_order order,
 //   memory_scope scope)
 
-void __attribute__((overloadable)) atomic_flag_clear(volatile generic atomic_flag *object)
-{
+void __attribute__((overloadable)) atomic_flag_clear(volatile generic atomic_flag *object) {
   atomic_flag_clear_explicit(object, memory_order_seq_cst);
 }
-void __attribute__((overloadable)) atomic_flag_clear_explicit(volatile generic atomic_flag *object, memory_order order)
-{
+void __attribute__((overloadable)) atomic_flag_clear_explicit(volatile generic atomic_flag *object,
+                                                              memory_order order) {
   atomic_flag_clear_explicit(object, order, memory_scope_device);
 }
-void __attribute__((overloadable)) atomic_flag_clear_explicit(volatile generic atomic_flag *object, memory_order order, memory_scope scope)
-{
-    __spirv_AtomicFlagClear(
-        (volatile generic uint *)object,
-        get_spirv_mem_scope(scope),
-        get_spirv_mem_order(order) |
-            get_spirv_mem_fence(get_fence((const generic void *)object)));
+void __attribute__((overloadable)) atomic_flag_clear_explicit(volatile generic atomic_flag *object, memory_order order,
+                                                              memory_scope scope) {
+  __spirv_AtomicFlagClear((volatile generic uint *)object, get_spirv_mem_scope(scope),
+                          get_spirv_mem_order(order) | get_spirv_mem_fence(get_fence((const generic void *)object)));
 }
 
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0

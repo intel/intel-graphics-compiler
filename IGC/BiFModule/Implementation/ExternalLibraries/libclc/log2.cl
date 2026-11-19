@@ -90,65 +90,63 @@ THE SOFTWARE.
 
 */
 
-INLINE float libclc_log2_f32(float x)
-{
-    const float LOG2E = 0x1.715476p+0f;      // 1.4426950408889634
-    const float LOG2E_HEAD = 0x1.700000p+0f; // 1.4375
-    const float LOG2E_TAIL = 0x1.547652p-8f; // 0.00519504072
+INLINE float libclc_log2_f32(float x) {
+  const float LOG2E = 0x1.715476p+0f;      // 1.4426950408889634
+  const float LOG2E_HEAD = 0x1.700000p+0f; // 1.4375
+  const float LOG2E_TAIL = 0x1.547652p-8f; // 0.00519504072
 
-    uint xi = as_uint(x);
-    uint ax = xi & EXSIGNBIT_SP32;
+  uint xi = as_uint(x);
+  uint ax = xi & EXSIGNBIT_SP32;
 
-    // Calculations for |x-1| < 2^-4
-    float r = x - 1.0f;
-    int near1 = fabs(r) < 0x1.0p-4f;
-    float u2 = MATH_DIVIDE(r, 2.0f + r);
-    float corr = u2 * r;
-    float u = u2 + u2;
-    float v = u * u;
-    float znear1, z1, z2;
+  // Calculations for |x-1| < 2^-4
+  float r = x - 1.0f;
+  int near1 = fabs(r) < 0x1.0p-4f;
+  float u2 = MATH_DIVIDE(r, 2.0f + r);
+  float corr = u2 * r;
+  float u = u2 + u2;
+  float v = u * u;
+  float znear1, z1, z2;
 
-    // 2/(5 * 2^5), 2/(3 * 2^3)
-    z2 = mad(u, mad(v, 0x1.99999ap-7f, 0x1.555556p-4f)*v, -corr);
+  // 2/(5 * 2^5), 2/(3 * 2^3)
+  z2 = mad(u, mad(v, 0x1.99999ap-7f, 0x1.555556p-4f) * v, -corr);
 
-    z1 = as_float(as_int(r) & 0xffff0000);
-    z2 = z2 + (r - z1);
-    znear1 = mad(z1, LOG2E_HEAD, mad(z2, LOG2E_HEAD, mad(z1, LOG2E_TAIL, z2*LOG2E_TAIL)));
+  z1 = as_float(as_int(r) & 0xffff0000);
+  z2 = z2 + (r - z1);
+  znear1 = mad(z1, LOG2E_HEAD, mad(z2, LOG2E_HEAD, mad(z1, LOG2E_TAIL, z2 * LOG2E_TAIL)));
 
-    // Calculations for x not near 1
-    int m = (int)(xi >> EXPSHIFTBITS_SP32) - EXPBIAS_SP32;
+  // Calculations for x not near 1
+  int m = (int)(xi >> EXPSHIFTBITS_SP32) - EXPBIAS_SP32;
 
-    // Normalize subnormal
-    uint xis = as_uint(as_float(xi | 0x3f800000) - 1.0f);
-    int ms = (int)(xis >> EXPSHIFTBITS_SP32) - 253;
-    int c = m == -127;
-    m = c ? ms : m;
-    uint xin = c ? xis : xi;
+  // Normalize subnormal
+  uint xis = as_uint(as_float(xi | 0x3f800000) - 1.0f);
+  int ms = (int)(xis >> EXPSHIFTBITS_SP32) - 253;
+  int c = m == -127;
+  m = c ? ms : m;
+  uint xin = c ? xis : xi;
 
-    float mf = (float)m;
-    uint indx = (xin & 0x007f0000) + ((xin & 0x00008000) << 1);
+  float mf = (float)m;
+  uint indx = (xin & 0x007f0000) + ((xin & 0x00008000) << 1);
 
-    // F - Y
-    float f = as_float(0x3f000000 | indx) - as_float(0x3f000000 | (xin & MANTBITS_SP32));
+  // F - Y
+  float f = as_float(0x3f000000 | indx) - as_float(0x3f000000 | (xin & MANTBITS_SP32));
 
-    indx = indx >> 16;
-    r = f * USE_TABLE(log_inv_tbl, indx);
+  indx = indx >> 16;
+  r = f * USE_TABLE(log_inv_tbl, indx);
 
-    // 1/3,  1/2
-    float poly = mad(mad(r, 0x1.555556p-2f, 0.5f), r*r, r);
+  // 1/3,  1/2
+  float poly = mad(mad(r, 0x1.555556p-2f, 0.5f), r * r, r);
 
-    float2 tv = USE_TABLE(log2_tbl, indx);
-    z1 = tv.s0 + mf;
-    z2 = mad(poly, -LOG2E, tv.s1);
+  float2 tv = USE_TABLE(log2_tbl, indx);
+  z1 = tv.s0 + mf;
+  z2 = mad(poly, -LOG2E, tv.s1);
 
-    float z = z1 + z2;
-    z = near1 ? znear1 : z;
+  float z = z1 + z2;
+  z = near1 ? znear1 : z;
 
-    // Corner cases
-    z = ax >= PINFBITPATT_SP32 ? x : z;
-    z = xi != ax ? as_float(QNANBITPATT_SP32) : z;
-    z = ax == 0 ? as_float(NINFBITPATT_SP32) : z;
+  // Corner cases
+  z = ax >= PINFBITPATT_SP32 ? x : z;
+  z = xi != ax ? as_float(QNANBITPATT_SP32) : z;
+  z = ax == 0 ? as_float(NINFBITPATT_SP32) : z;
 
-    return z;
+  return z;
 }
-

@@ -27,61 +27,60 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../imf.h"
 #pragma OPENCL FP_CONTRACT OFF
 
-typedef struct
-{
-    unsigned long _dSIGN_MASK;
-    unsigned long _dABS_MASK;
-    unsigned long _dONE;
-    unsigned long _dPIO2;
-    unsigned long _dRangeVal;
-    unsigned long _dPC19;
-    unsigned long _dPC18;
-    unsigned long _dPC17;
-    unsigned long _dPC16;
-    unsigned long _dPC15;
-    unsigned long _dPC14;
-    unsigned long _dPC13;
-    unsigned long _dPC12;
-    unsigned long _dPC11;
-    unsigned long _dPC10;
-    unsigned long _dPC9;
-    unsigned long _dPC8;
-    unsigned long _dPC7;
-    unsigned long _dPC6;
-    unsigned long _dPC5;
-    unsigned long _dPC4;
-    unsigned long _dPC3;
-    unsigned long _dPC2;
-    unsigned long _dPC1;
-    unsigned long _dPC0;
+typedef struct {
+  unsigned long _dSIGN_MASK;
+  unsigned long _dABS_MASK;
+  unsigned long _dONE;
+  unsigned long _dPIO2;
+  unsigned long _dRangeVal;
+  unsigned long _dPC19;
+  unsigned long _dPC18;
+  unsigned long _dPC17;
+  unsigned long _dPC16;
+  unsigned long _dPC15;
+  unsigned long _dPC14;
+  unsigned long _dPC13;
+  unsigned long _dPC12;
+  unsigned long _dPC11;
+  unsigned long _dPC10;
+  unsigned long _dPC9;
+  unsigned long _dPC8;
+  unsigned long _dPC7;
+  unsigned long _dPC6;
+  unsigned long _dPC5;
+  unsigned long _dPC4;
+  unsigned long _dPC3;
+  unsigned long _dPC2;
+  unsigned long _dPC1;
+  unsigned long _dPC0;
 } __ocl_svml_internal_datan_data_t;
 static __ocl_svml_internal_datan_data_t __ocl_svml_internal_datan_data = {
-    0x8000000000000000uL,   //dSIGN_MASK
-    0x7FFFFFFFFFFFFFFFuL,   //dABS_MASK
-    0x3FF0000000000000uL,   //dONE
-    0x3FF921FB54442D18uL,   //dPIO2
-    0x7FF0000000000000uL,   //dRangeVal
-    0xBEF4FDB537ABC7A3uL,   // dA19
-    0x3F2CED0A36665209uL,   // dA18
-    0xBF52E67C93954C23uL,   // dA17
-    0x3F6F5A1DAE82AFB3uL,   // dA16
-    0xBF82B2EC618E4BADuL,   // dA15
-    0x3F914F4C661116A5uL,   // dA14
-    0xBF9A5E83B081F69CuL,   // dA13
-    0x3FA169980CB6AD4FuL,   // dA12
-    0xBFA4EFA2E563C1BCuL,   // dA11
-    0x3FA7EC0FBC50683BuL,   // dA10
-    0xBFAAD261EAA09954uL,   // dA09
-    0x3FAE1749BD612DCFuL,   // dA08
-    0xBFB11084009435E0uL,   // dA07
-    0x3FB3B12A49295651uL,   // dA06
-    0xBFB745D009BADA94uL,   // dA05
-    0x3FBC71C707F7D5B5uL,   // dA04
-    0xBFC2492491EE55C7uL,   // dA03
-    0x3FC999999997EE34uL,   // dA02
-    0xBFD55555555553C5uL,   // dA01
-    0x3FF0000000000000uL,   // dA00
-};  /*dAtan_Table */
+    0x8000000000000000uL, // dSIGN_MASK
+    0x7FFFFFFFFFFFFFFFuL, // dABS_MASK
+    0x3FF0000000000000uL, // dONE
+    0x3FF921FB54442D18uL, // dPIO2
+    0x7FF0000000000000uL, // dRangeVal
+    0xBEF4FDB537ABC7A3uL, // dA19
+    0x3F2CED0A36665209uL, // dA18
+    0xBF52E67C93954C23uL, // dA17
+    0x3F6F5A1DAE82AFB3uL, // dA16
+    0xBF82B2EC618E4BADuL, // dA15
+    0x3F914F4C661116A5uL, // dA14
+    0xBF9A5E83B081F69CuL, // dA13
+    0x3FA169980CB6AD4FuL, // dA12
+    0xBFA4EFA2E563C1BCuL, // dA11
+    0x3FA7EC0FBC50683BuL, // dA10
+    0xBFAAD261EAA09954uL, // dA09
+    0x3FAE1749BD612DCFuL, // dA08
+    0xBFB11084009435E0uL, // dA07
+    0x3FB3B12A49295651uL, // dA06
+    0xBFB745D009BADA94uL, // dA05
+    0x3FBC71C707F7D5B5uL, // dA04
+    0xBFC2492491EE55C7uL, // dA03
+    0x3FC999999997EE34uL, // dA02
+    0xBFD55555555553C5uL, // dA01
+    0x3FF0000000000000uL, // dA00
+}; /*dAtan_Table */
 
 static __constant _iml_v2_dp_union_t __datan_la_nolut_CoutTab[242] = {
     0xE8000000, 0x3FC3D6EE, /* atan(B[  0])hi = +1.549967415631e-01 */
@@ -331,337 +330,333 @@ static __constant _iml_v2_dp_union_t __datan_la_nolut_CoutTab[242] = {
     0x02000000, 0x41A00000, /* T27 = 2^27+1 */
 };
 
-__attribute__((always_inline))
-inline int __ocl_svml_internal_datan_noLUT (double *a, double *r)
-{
-    int nRet = 0;
-    double dbX, dbB, dbU, dbTmp1, dbTmp2, dbUHi, dbuLo, dbXHi, dbXLo, dbXB1Hi, dbXB1Lo,
-        dbXBHi, dbXBLo, dbV1Hi, dbV2Lo, dbV1Lo, dbVHi, dbV3Lo, dbVLo, dbQHi,
-        dbQLo, dbT1Hi, dbT1Lo, dbTHi, dbTLo, dbS, dbAtanPoly, dbAHi, dbALo, dbResHi, dbResLo, dbRes;
-    double dbVTmp1, dbVTmp2, dbVTmp3;
-    int i, iSign, iJ;
-    /* Filter out INFs and NaNs */
-    if ((((((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))
-    {
-        /* Here if argument is finite double precision number */
-        /* Get sign of argument */
-        iSign = (((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword >> 31);
-        /* x = |(*a)| */
-        dbX = (*a);
-        (((_iml_v2_dp_union_t *) & dbX)->dwords.hi_dword = (((_iml_v2_dp_union_t *) & dbX)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
-        if (dbX >= ((__constant double *) __datan_la_nolut_CoutTab)[236])
-        {
-            /* Here if BOUND1 <= x < Inf */
-            if (dbX < ((__constant double *) __datan_la_nolut_CoutTab)[237])
-            {
-                /* 5) "Main" path: Here if BOUND1 <= x < BOUND2 */
-                /* 5.a) atan() argument reduction */
-                /* 5.a.1) Getting index j */
-                iJ = ((((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword >> 20) & 0x7FF) << 20;
-                iJ = iJ | (((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword & 0x000FFFFF);
-                iJ = iJ - 0x3FC00000;
-                iJ = iJ >> 19;
-                /* 5.a.2) Getting base point b */
-                dbB = dbX;
-                (((_iml_v2_dp_union_t *) & dbB)->dwords.lo_dword = (0));
-                (((_iml_v2_dp_union_t *) & dbB)->dwords.hi_dword =
-                 (((_iml_v2_dp_union_t *) & dbB)->dwords.
-                  hi_dword & 0xFFF00000) | ((((((_iml_v2_dp_union_t *) & dbB)->dwords.hi_dword & 0x000FFFFF) & 0x80000) | 0x40000) & 0x000FFFFF));
-                /* 5.a.3) Getting t in multiprecision */
-                /* 5.a.3.1) Obtain u = x - b as sum UHi+uLo */
-                dbU = dbX - dbB;
-                dbVTmp1 = ((dbU) * (((__constant double *) __datan_la_nolut_CoutTab)[241]));
-                dbVTmp2 = (dbVTmp1 - (dbU));
-                dbVTmp1 = (dbVTmp1 - dbVTmp2);
-                dbVTmp2 = ((dbU) - dbVTmp1);
-                dbUHi = dbVTmp1;
-                dbuLo = dbVTmp2;
-                /* 5.a.3.2) Obtain v = 1 + x*b as sum VHi+VLo */
-                /* Obtain x*b as sum XB1Hi+XB1Lo */
-                dbVTmp1 = ((dbX) * (((__constant double *) __datan_la_nolut_CoutTab)[241]));
-                dbVTmp2 = (dbVTmp1 - (dbX));
-                dbVTmp1 = (dbVTmp1 - dbVTmp2);
-                dbVTmp2 = ((dbX) - dbVTmp1);
-                dbXHi = dbVTmp1;
-                dbXLo = dbVTmp2;
-                dbXB1Hi = dbXHi * dbB;
-                dbXB1Lo = dbXLo * dbB;
-                /* Rebreak XB1Hi+XB1Lo into XBHi+XBLo */
-                dbVTmp1 = ((dbXB1Hi) + (dbXB1Lo));
-                dbTmp1 = ((dbXB1Hi) - dbVTmp1);
-                dbVTmp2 = (dbTmp1 + (dbXB1Lo));
-                dbXBHi = dbVTmp1;
-                dbXBLo = dbVTmp2;
-                /* Obtain v as sum V1Hi+V1Lo */
-                dbVTmp1 = ((((__constant double *) __datan_la_nolut_CoutTab)[238]) + (dbXBHi));
-                dbVTmp2 = ((((__constant double *) __datan_la_nolut_CoutTab)[238]) - dbVTmp1);
-                dbVTmp3 = (dbVTmp1 + dbVTmp2);
-                dbVTmp2 = ((dbXBHi) + dbVTmp2);
-                dbVTmp3 = ((((__constant double *) __datan_la_nolut_CoutTab)[238]) - dbVTmp3);
-                dbVTmp3 = (dbVTmp2 + dbVTmp3);
-                dbV1Hi = dbVTmp1;
-                dbV2Lo = dbVTmp3;
-                dbV1Lo = dbV2Lo + dbXBLo;
-                /* Rebreak V1Hi+V1Lo into VHi+VLo */
-                dbVTmp1 = ((dbV1Hi) * (((__constant double *) __datan_la_nolut_CoutTab)[241]));
-                dbVTmp2 = (dbVTmp1 - (dbV1Hi));
-                dbVTmp1 = (dbVTmp1 - dbVTmp2);
-                dbVTmp2 = ((dbV1Hi) - dbVTmp1);
-                dbVHi = dbVTmp1;
-                dbV3Lo = dbVTmp2;
-                dbVLo = dbV3Lo + dbV1Lo;
-                /* 5.a.3.3) Obtain q = 1 / v as sum QHi+QLo */
-                dbTmp1 = (((__constant double *) __datan_la_nolut_CoutTab)[238] / dbVHi);
-                dbVTmp2 = (dbTmp1 * ((__constant double *) __datan_la_nolut_CoutTab)[241]);
-                dbVTmp3 = (dbVTmp2 - dbTmp1);
-                dbVTmp3 = (dbVTmp2 - dbVTmp3);
-                dbTmp1 = (dbVHi * dbVTmp3);
-                dbTmp1 = (((__constant double *) __datan_la_nolut_CoutTab)[238] - dbTmp1);
-                dbVTmp2 = (dbVLo * dbVTmp3);
-                dbVTmp2 = (dbTmp1 - dbVTmp2);
-                dbTmp1 = (((__constant double *) __datan_la_nolut_CoutTab)[238] + dbVTmp2);
-                dbQHi = dbVTmp3;
-                dbTmp1 = (dbTmp1 * dbVTmp2);
-                dbQLo = (dbTmp1 * dbVTmp3);
-                /* 5.a.3.4) Obtain t = u * q as sum THi+TLo */
-                /* Represent t as sum T1Hi+T1Lo */
-                dbTmp1 = ((dbQHi) * (dbUHi));
-                dbTmp2 = ((dbQLo) * (dbuLo));
-                dbTmp2 = (dbTmp2 + (dbQHi) * (dbuLo));
-                dbVTmp1 = (dbTmp2 + (dbQLo) * (dbUHi));
-                dbT1Hi = dbTmp1;
-                dbT1Lo = dbVTmp1;
-                /* Rebreak T1Hi+T1Lo into THi+TLo */
-                dbVTmp1 = ((dbT1Hi) + (dbT1Lo));
-                dbTmp1 = ((dbT1Hi) - dbVTmp1);
-                dbVTmp2 = (dbTmp1 + (dbT1Lo));
-                dbTHi = dbVTmp1;
-                dbTLo = dbVTmp2;
-                /* 5.b) atan() approximation */
-                dbS = dbTHi * dbTHi;
-                dbAtanPoly =
-                    ((((((((__constant double *) __datan_la_nolut_CoutTab)[234]) * dbS + ((__constant double *) __datan_la_nolut_CoutTab)[233]) * dbS +
-                        ((__constant double *) __datan_la_nolut_CoutTab)[232]) * dbS + ((__constant double *) __datan_la_nolut_CoutTab)[231]) * dbS +
-                      ((__constant double *) __datan_la_nolut_CoutTab)[230]) * dbS + ((__constant double *) __datan_la_nolut_CoutTab)[229]) * dbS +
-                    ((__constant double *) __datan_la_nolut_CoutTab)[228];
-                /* 5.c) atan() reconstruction */
-                /* Rebreak ATAN_B_HI[j]+THi into AHi+ALo */
-                dbVTmp1 = ((((__constant double *) __datan_la_nolut_CoutTab)[0 + 2 * (iJ) + 0]) + (dbTHi));
-                dbTmp1 = ((((__constant double *) __datan_la_nolut_CoutTab)[0 + 2 * (iJ) + 0]) - dbVTmp1);
-                dbVTmp2 = (dbTmp1 + (dbTHi));
-                dbAHi = dbVTmp1;
-                dbALo = dbVTmp2;
-                /* ResHi := AHi */
-                dbResHi = dbAHi;
-                /* ResLo := ((TLo + THi*S*AtanPoly) + ATAN_B_LO[j]) + ALo */
-                dbTmp1 = dbAtanPoly * dbS;
-                dbTmp1 = dbTmp1 * dbTHi;
-                dbTmp1 = dbTmp1 + dbTLo;
-                dbTmp1 = dbTmp1 + ((__constant double *) __datan_la_nolut_CoutTab)[0 + 2 * (iJ) + 1];
-                dbResLo = dbTmp1 + dbALo;
-                /* (*r) := Sign * (ResHi + ResLo) */
-                dbRes = dbResHi + dbResLo;
-                (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
-                 (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
-                (*r) = dbRes;
-            }
-            else
-            {
-                /* 4) "Large arguments" path */
-                /* Here if BOUND2 <= x < Inf */
-                /* Res := Pi/2 */
-                dbRes = ((__constant double *) __datan_la_nolut_CoutTab)[239] + ((__constant double *) __datan_la_nolut_CoutTab)[240];
-                /* (*r) := Sign * Res */
-                (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
-                 (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
-                (*r) = dbRes;
-            }
+__attribute__((always_inline)) inline int __ocl_svml_internal_datan_noLUT(double *a, double *r) {
+  int nRet = 0;
+  double dbX, dbB, dbU, dbTmp1, dbTmp2, dbUHi, dbuLo, dbXHi, dbXLo, dbXB1Hi, dbXB1Lo, dbXBHi, dbXBLo, dbV1Hi, dbV2Lo,
+      dbV1Lo, dbVHi, dbV3Lo, dbVLo, dbQHi, dbQLo, dbT1Hi, dbT1Lo, dbTHi, dbTLo, dbS, dbAtanPoly, dbAHi, dbALo, dbResHi,
+      dbResLo, dbRes;
+  double dbVTmp1, dbVTmp2, dbVTmp3;
+  int i, iSign, iJ;
+  /* Filter out INFs and NaNs */
+  if ((((((_iml_v2_dp_union_t *)&(*a))->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) {
+    /* Here if argument is finite double precision number */
+    /* Get sign of argument */
+    iSign = (((_iml_v2_dp_union_t *)&(*a))->dwords.hi_dword >> 31);
+    /* x = |(*a)| */
+    dbX = (*a);
+    (((_iml_v2_dp_union_t *)&dbX)->dwords.hi_dword =
+         (((_iml_v2_dp_union_t *)&dbX)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(0) << 31));
+    if (dbX >= ((__constant double *)__datan_la_nolut_CoutTab)[236]) {
+      /* Here if BOUND1 <= x < Inf */
+      if (dbX < ((__constant double *)__datan_la_nolut_CoutTab)[237]) {
+        /* 5) "Main" path: Here if BOUND1 <= x < BOUND2 */
+        /* 5.a) atan() argument reduction */
+        /* 5.a.1) Getting index j */
+        iJ = ((((_iml_v2_dp_union_t *)&(*a))->dwords.hi_dword >> 20) & 0x7FF) << 20;
+        iJ = iJ | (((_iml_v2_dp_union_t *)&(*a))->dwords.hi_dword & 0x000FFFFF);
+        iJ = iJ - 0x3FC00000;
+        iJ = iJ >> 19;
+        /* 5.a.2) Getting base point b */
+        dbB = dbX;
+        (((_iml_v2_dp_union_t *)&dbB)->dwords.lo_dword = (0));
+        (((_iml_v2_dp_union_t *)&dbB)->dwords.hi_dword =
+             (((_iml_v2_dp_union_t *)&dbB)->dwords.hi_dword & 0xFFF00000) |
+             ((((((_iml_v2_dp_union_t *)&dbB)->dwords.hi_dword & 0x000FFFFF) & 0x80000) | 0x40000) & 0x000FFFFF));
+        /* 5.a.3) Getting t in multiprecision */
+        /* 5.a.3.1) Obtain u = x - b as sum UHi+uLo */
+        dbU = dbX - dbB;
+        dbVTmp1 = ((dbU) * (((__constant double *)__datan_la_nolut_CoutTab)[241]));
+        dbVTmp2 = (dbVTmp1 - (dbU));
+        dbVTmp1 = (dbVTmp1 - dbVTmp2);
+        dbVTmp2 = ((dbU)-dbVTmp1);
+        dbUHi = dbVTmp1;
+        dbuLo = dbVTmp2;
+        /* 5.a.3.2) Obtain v = 1 + x*b as sum VHi+VLo */
+        /* Obtain x*b as sum XB1Hi+XB1Lo */
+        dbVTmp1 = ((dbX) * (((__constant double *)__datan_la_nolut_CoutTab)[241]));
+        dbVTmp2 = (dbVTmp1 - (dbX));
+        dbVTmp1 = (dbVTmp1 - dbVTmp2);
+        dbVTmp2 = ((dbX)-dbVTmp1);
+        dbXHi = dbVTmp1;
+        dbXLo = dbVTmp2;
+        dbXB1Hi = dbXHi * dbB;
+        dbXB1Lo = dbXLo * dbB;
+        /* Rebreak XB1Hi+XB1Lo into XBHi+XBLo */
+        dbVTmp1 = ((dbXB1Hi) + (dbXB1Lo));
+        dbTmp1 = ((dbXB1Hi)-dbVTmp1);
+        dbVTmp2 = (dbTmp1 + (dbXB1Lo));
+        dbXBHi = dbVTmp1;
+        dbXBLo = dbVTmp2;
+        /* Obtain v as sum V1Hi+V1Lo */
+        dbVTmp1 = ((((__constant double *)__datan_la_nolut_CoutTab)[238]) + (dbXBHi));
+        dbVTmp2 = ((((__constant double *)__datan_la_nolut_CoutTab)[238]) - dbVTmp1);
+        dbVTmp3 = (dbVTmp1 + dbVTmp2);
+        dbVTmp2 = ((dbXBHi) + dbVTmp2);
+        dbVTmp3 = ((((__constant double *)__datan_la_nolut_CoutTab)[238]) - dbVTmp3);
+        dbVTmp3 = (dbVTmp2 + dbVTmp3);
+        dbV1Hi = dbVTmp1;
+        dbV2Lo = dbVTmp3;
+        dbV1Lo = dbV2Lo + dbXBLo;
+        /* Rebreak V1Hi+V1Lo into VHi+VLo */
+        dbVTmp1 = ((dbV1Hi) * (((__constant double *)__datan_la_nolut_CoutTab)[241]));
+        dbVTmp2 = (dbVTmp1 - (dbV1Hi));
+        dbVTmp1 = (dbVTmp1 - dbVTmp2);
+        dbVTmp2 = ((dbV1Hi)-dbVTmp1);
+        dbVHi = dbVTmp1;
+        dbV3Lo = dbVTmp2;
+        dbVLo = dbV3Lo + dbV1Lo;
+        /* 5.a.3.3) Obtain q = 1 / v as sum QHi+QLo */
+        dbTmp1 = (((__constant double *)__datan_la_nolut_CoutTab)[238] / dbVHi);
+        dbVTmp2 = (dbTmp1 * ((__constant double *)__datan_la_nolut_CoutTab)[241]);
+        dbVTmp3 = (dbVTmp2 - dbTmp1);
+        dbVTmp3 = (dbVTmp2 - dbVTmp3);
+        dbTmp1 = (dbVHi * dbVTmp3);
+        dbTmp1 = (((__constant double *)__datan_la_nolut_CoutTab)[238] - dbTmp1);
+        dbVTmp2 = (dbVLo * dbVTmp3);
+        dbVTmp2 = (dbTmp1 - dbVTmp2);
+        dbTmp1 = (((__constant double *)__datan_la_nolut_CoutTab)[238] + dbVTmp2);
+        dbQHi = dbVTmp3;
+        dbTmp1 = (dbTmp1 * dbVTmp2);
+        dbQLo = (dbTmp1 * dbVTmp3);
+        /* 5.a.3.4) Obtain t = u * q as sum THi+TLo */
+        /* Represent t as sum T1Hi+T1Lo */
+        dbTmp1 = ((dbQHi) * (dbUHi));
+        dbTmp2 = ((dbQLo) * (dbuLo));
+        dbTmp2 = (dbTmp2 + (dbQHi) * (dbuLo));
+        dbVTmp1 = (dbTmp2 + (dbQLo) * (dbUHi));
+        dbT1Hi = dbTmp1;
+        dbT1Lo = dbVTmp1;
+        /* Rebreak T1Hi+T1Lo into THi+TLo */
+        dbVTmp1 = ((dbT1Hi) + (dbT1Lo));
+        dbTmp1 = ((dbT1Hi)-dbVTmp1);
+        dbVTmp2 = (dbTmp1 + (dbT1Lo));
+        dbTHi = dbVTmp1;
+        dbTLo = dbVTmp2;
+        /* 5.b) atan() approximation */
+        dbS = dbTHi * dbTHi;
+        dbAtanPoly = ((((((((__constant double *)__datan_la_nolut_CoutTab)[234]) * dbS +
+                          ((__constant double *)__datan_la_nolut_CoutTab)[233]) *
+                             dbS +
+                         ((__constant double *)__datan_la_nolut_CoutTab)[232]) *
+                            dbS +
+                        ((__constant double *)__datan_la_nolut_CoutTab)[231]) *
+                           dbS +
+                       ((__constant double *)__datan_la_nolut_CoutTab)[230]) *
+                          dbS +
+                      ((__constant double *)__datan_la_nolut_CoutTab)[229]) *
+                         dbS +
+                     ((__constant double *)__datan_la_nolut_CoutTab)[228];
+        /* 5.c) atan() reconstruction */
+        /* Rebreak ATAN_B_HI[j]+THi into AHi+ALo */
+        dbVTmp1 = ((((__constant double *)__datan_la_nolut_CoutTab)[0 + 2 * (iJ) + 0]) + (dbTHi));
+        dbTmp1 = ((((__constant double *)__datan_la_nolut_CoutTab)[0 + 2 * (iJ) + 0]) - dbVTmp1);
+        dbVTmp2 = (dbTmp1 + (dbTHi));
+        dbAHi = dbVTmp1;
+        dbALo = dbVTmp2;
+        /* ResHi := AHi */
+        dbResHi = dbAHi;
+        /* ResLo := ((TLo + THi*S*AtanPoly) + ATAN_B_LO[j]) + ALo */
+        dbTmp1 = dbAtanPoly * dbS;
+        dbTmp1 = dbTmp1 * dbTHi;
+        dbTmp1 = dbTmp1 + dbTLo;
+        dbTmp1 = dbTmp1 + ((__constant double *)__datan_la_nolut_CoutTab)[0 + 2 * (iJ) + 1];
+        dbResLo = dbTmp1 + dbALo;
+        /* (*r) := Sign * (ResHi + ResLo) */
+        dbRes = dbResHi + dbResLo;
+        (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword =
+             (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(iSign) << 31));
+        (*r) = dbRes;
+      } else {
+        /* 4) "Large arguments" path */
+        /* Here if BOUND2 <= x < Inf */
+        /* Res := Pi/2 */
+        dbRes =
+            ((__constant double *)__datan_la_nolut_CoutTab)[239] + ((__constant double *)__datan_la_nolut_CoutTab)[240];
+        /* (*r) := Sign * Res */
+        (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword =
+             (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(iSign) << 31));
+        (*r) = dbRes;
+      }
+    } else {
+      /* 3) "Near 0" path. Here if 0 <= x < BOUND1 */
+      if (dbX >= ((__constant double *)__datan_la_nolut_CoutTab)[235]) {
+        /* Path 3.3) Here if BOUND0 <= x < BOUND1 */
+        /* atan() approximation */
+        dbS = dbX * dbX;
+        dbAtanPoly = ((((((((__constant double *)__datan_la_nolut_CoutTab)[234]) * dbS +
+                          ((__constant double *)__datan_la_nolut_CoutTab)[233]) *
+                             dbS +
+                         ((__constant double *)__datan_la_nolut_CoutTab)[232]) *
+                            dbS +
+                        ((__constant double *)__datan_la_nolut_CoutTab)[231]) *
+                           dbS +
+                       ((__constant double *)__datan_la_nolut_CoutTab)[230]) *
+                          dbS +
+                      ((__constant double *)__datan_la_nolut_CoutTab)[229]) *
+                         dbS +
+                     ((__constant double *)__datan_la_nolut_CoutTab)[228];
+        /* atan() reconstruction */
+        dbRes = dbAtanPoly * dbS;
+        dbRes = dbRes * dbX;
+        dbRes = dbRes + dbX;
+        /* (*r) := Sign * Res */
+        (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword =
+             (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(iSign) << 31));
+        (*r) = dbRes;
+      } else {
+        /* Here if 0 <= x < BOUND0 */
+        if (((((_iml_v2_dp_union_t *)&dbX)->dwords.hi_dword >> 20) & 0x7FF) != 0) {
+          /* Path 3.2) Here if MIN_NORMAL <= x < BOUND0 */
+          /* Tmp := 1 + x */
+          dbVTmp1 = ((__constant double *)__datan_la_nolut_CoutTab)[238] + dbX;
+          /* Res := Tmp * x */
+          dbRes = dbVTmp1 * dbX;
+          /* (*r) := Sign * Res */
+          (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword =
+               (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(iSign) << 31));
+          (*r) = dbRes;
+        } else {
+          /* Path 3.2) Here if x is zero or denormalized */
+          /* number in target precision                  */
+          /* Res := x + x * x */
+          dbVTmp1 = dbX * dbX;
+          dbRes = dbX + dbVTmp1;
+          /* (*r) := Sign * Res */
+          (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword =
+               (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(iSign) << 31));
+          (*r) = dbRes;
         }
-        else
-        {
-            /* 3) "Near 0" path. Here if 0 <= x < BOUND1 */
-            if (dbX >= ((__constant double *) __datan_la_nolut_CoutTab)[235])
-            {
-                /* Path 3.3) Here if BOUND0 <= x < BOUND1 */
-                /* atan() approximation */
-                dbS = dbX * dbX;
-                dbAtanPoly =
-                    ((((((((__constant double *) __datan_la_nolut_CoutTab)[234]) * dbS + ((__constant double *) __datan_la_nolut_CoutTab)[233]) * dbS +
-                        ((__constant double *) __datan_la_nolut_CoutTab)[232]) * dbS + ((__constant double *) __datan_la_nolut_CoutTab)[231]) * dbS +
-                      ((__constant double *) __datan_la_nolut_CoutTab)[230]) * dbS + ((__constant double *) __datan_la_nolut_CoutTab)[229]) * dbS +
-                    ((__constant double *) __datan_la_nolut_CoutTab)[228];
-                /* atan() reconstruction */
-                dbRes = dbAtanPoly * dbS;
-                dbRes = dbRes * dbX;
-                dbRes = dbRes + dbX;
-                /* (*r) := Sign * Res */
-                (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
-                 (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
-                (*r) = dbRes;
-            }
-            else
-            {
-                /* Here if 0 <= x < BOUND0 */
-                if (((((_iml_v2_dp_union_t *) & dbX)->dwords.hi_dword >> 20) & 0x7FF) != 0)
-                {
-                    /* Path 3.2) Here if MIN_NORMAL <= x < BOUND0 */
-                    /* Tmp := 1 + x */
-                    dbVTmp1 = ((__constant double *) __datan_la_nolut_CoutTab)[238] + dbX;
-                    /* Res := Tmp * x */
-                    dbRes = dbVTmp1 * dbX;
-                    /* (*r) := Sign * Res */
-                    (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
-                     (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
-                    (*r) = dbRes;
-                }
-                else
-                {
-                    /* Path 3.2) Here if x is zero or denormalized */
-                    /* number in target precision                  */
-                    /* Res := x + x * x */
-                    dbVTmp1 = dbX * dbX;
-                    dbRes = dbX + dbVTmp1;
-                    /* (*r) := Sign * Res */
-                    (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
-                     (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
-                    (*r) = dbRes;
-                }
-            }
-        }
+      }
     }
-    else
-    {
-        if ((((((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword & 0x000FFFFF) == 0) && ((((_iml_v2_dp_union_t *) & (*a))->dwords.lo_dword) == 0)))
-        {
-            /* Path 2). Here if argument is Infinity */
-            /* (*r) := Sign * Pi/2 */
-            dbRes = ((__constant double *) __datan_la_nolut_CoutTab)[239] + ((__constant double *) __datan_la_nolut_CoutTab)[240];
-            iSign = (((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword >> 31);
-            (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
-             (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
-            (*r) = dbRes;
-        }
-        else
-        {
-            /* Path 1). Here if argument is NaN */
-            (*r) = (*a) + (*a);
-        }
+  } else {
+    if ((((((_iml_v2_dp_union_t *)&(*a))->dwords.hi_dword & 0x000FFFFF) == 0) &&
+         ((((_iml_v2_dp_union_t *)&(*a))->dwords.lo_dword) == 0))) {
+      /* Path 2). Here if argument is Infinity */
+      /* (*r) := Sign * Pi/2 */
+      dbRes =
+          ((__constant double *)__datan_la_nolut_CoutTab)[239] + ((__constant double *)__datan_la_nolut_CoutTab)[240];
+      iSign = (((_iml_v2_dp_union_t *)&(*a))->dwords.hi_dword >> 31);
+      (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword =
+           (((_iml_v2_dp_union_t *)&dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(iSign) << 31));
+      (*r) = dbRes;
+    } else {
+      /* Path 1). Here if argument is NaN */
+      (*r) = (*a) + (*a);
     }
-    return nRet;
+  }
+  return nRet;
 }
 
-double __ocl_svml_atan_noLUT (double a)
-{
-    unsigned int vm;
-    double va1;
-    double vr1;
-    double r;
-    va1 = a;
-    {
-        double dAY;
-        double dSY;
-        double dM;
-        double dA;
-        double dB;
-        double dA1;
-        double dY;
-        double dR;
-        double dR2;
-        double dR4;
-        double dR8;
-        double dPC[22];
-        double dP;
-        double dP1;
-        double dP2;
-        double dP3;
-        double dP4;
-        double dPH;
-        double dPL;
-        double dRcp;
-        double dE;
-        double dRangeMask;
-        unsigned long lRangeMask;
-        double dONE;
-        double dPIO2;
-        double dSIGN_MASK;
-        double dABS_MASK;
-        double dRangeVal;
-        dABS_MASK = as_double (__ocl_svml_internal_datan_data._dABS_MASK);
-        // AY = |Y|
-        dAY = as_double ((as_ulong (va1) & as_ulong (dABS_MASK)));
-        dSIGN_MASK = as_double (__ocl_svml_internal_datan_data._dSIGN_MASK);
-        // SY = sign of Y
-        dSY = as_double ((as_ulong (va1) & as_ulong (dSIGN_MASK)));
-        // 1) If x>1,      then r=-1/x, PIO2=Pi/2
-        // 2) If -1<=x<=1, then r=x,    PIO2=0
-        // 3) If x<-1,     then r=-1/x, PIO2=-Pi/2
-        dONE = as_double (__ocl_svml_internal_datan_data._dONE);
-        dM = as_double ((unsigned long) ((dAY <= dONE) ? 0xffffffffffffffff : 0x0));
-        dPIO2 = as_double (__ocl_svml_internal_datan_data._dPIO2);
-        dPIO2 = as_double ((~(as_ulong (dM)) & as_ulong (dPIO2)));
-        dPIO2 = as_double ((as_ulong (dPIO2) ^ as_ulong (dSY)));
-        // Division A/B
-        vm = 0;
-        dRcp = (dONE / va1);
-        dRcp = as_double ((as_ulong (dSIGN_MASK) ^ as_ulong (dRcp)));
-        dR = as_double ((((~as_ulong (dM)) & as_ulong (dRcp)) | (as_ulong (dM) & as_ulong (va1))));
-        // Polynomial:
-        dPC[19] = as_double (__ocl_svml_internal_datan_data._dPC19);
-        dPC[18] = as_double (__ocl_svml_internal_datan_data._dPC18);
-        dPC[17] = as_double (__ocl_svml_internal_datan_data._dPC17);
-        dPC[16] = as_double (__ocl_svml_internal_datan_data._dPC16);
-        dPC[15] = as_double (__ocl_svml_internal_datan_data._dPC15);
-        dPC[14] = as_double (__ocl_svml_internal_datan_data._dPC14);
-        dPC[13] = as_double (__ocl_svml_internal_datan_data._dPC13);
-        dPC[12] = as_double (__ocl_svml_internal_datan_data._dPC12);
-        dPC[11] = as_double (__ocl_svml_internal_datan_data._dPC11);
-        dPC[10] = as_double (__ocl_svml_internal_datan_data._dPC10);
-        dPC[9] = as_double (__ocl_svml_internal_datan_data._dPC9);
-        dPC[8] = as_double (__ocl_svml_internal_datan_data._dPC8);
-        dPC[7] = as_double (__ocl_svml_internal_datan_data._dPC7);
-        dPC[6] = as_double (__ocl_svml_internal_datan_data._dPC6);
-        dPC[5] = as_double (__ocl_svml_internal_datan_data._dPC5);
-        dPC[4] = as_double (__ocl_svml_internal_datan_data._dPC4);
-        dPC[3] = as_double (__ocl_svml_internal_datan_data._dPC3);
-        dPC[2] = as_double (__ocl_svml_internal_datan_data._dPC2);
-        dPC[1] = as_double (__ocl_svml_internal_datan_data._dPC1);
-        dPC[0] = as_double (__ocl_svml_internal_datan_data._dPC0);
-        // R2 = R*R
-        dR2 = (dR * dR);
-        // R4 = R2*R2
-        dR4 = (dR2 * dR2);
-        dP = __spirv_ocl_fma(dPC[19],dR2,dPC[18]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[17]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[16]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[15]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[14]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[13]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[12]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[11]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[10]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[9]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[8]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[7]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[6]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[5]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[4]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[3]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[2]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[1]);
-        dP = __spirv_ocl_fma(dP,dR2,dPC[0]);
-        // Reconstruction:
-        // Result = P*R + PIO2 (corrected)
-        vr1 = __spirv_ocl_fma(dP,dR,dPIO2);
-    }
-    if (__builtin_expect ((vm) != 0, 0))
-    {
-        double _vapi_arg1[1];
-        double _vapi_res1[1];
-        ((double *) _vapi_arg1)[0] = va1;
-        ((double *) _vapi_res1)[0] = vr1;
-        __ocl_svml_internal_datan_noLUT (_vapi_arg1, _vapi_res1);
-        vr1 = ((double *) _vapi_res1)[0];
-    };
-    r = vr1;
-    return r;
+double __ocl_svml_atan_noLUT(double a) {
+  unsigned int vm;
+  double va1;
+  double vr1;
+  double r;
+  va1 = a;
+  {
+    double dAY;
+    double dSY;
+    double dM;
+    double dA;
+    double dB;
+    double dA1;
+    double dY;
+    double dR;
+    double dR2;
+    double dR4;
+    double dR8;
+    double dPC[22];
+    double dP;
+    double dP1;
+    double dP2;
+    double dP3;
+    double dP4;
+    double dPH;
+    double dPL;
+    double dRcp;
+    double dE;
+    double dRangeMask;
+    unsigned long lRangeMask;
+    double dONE;
+    double dPIO2;
+    double dSIGN_MASK;
+    double dABS_MASK;
+    double dRangeVal;
+    dABS_MASK = as_double(__ocl_svml_internal_datan_data._dABS_MASK);
+    // AY = |Y|
+    dAY = as_double((as_ulong(va1) & as_ulong(dABS_MASK)));
+    dSIGN_MASK = as_double(__ocl_svml_internal_datan_data._dSIGN_MASK);
+    // SY = sign of Y
+    dSY = as_double((as_ulong(va1) & as_ulong(dSIGN_MASK)));
+    // 1) If x>1,      then r=-1/x, PIO2=Pi/2
+    // 2) If -1<=x<=1, then r=x,    PIO2=0
+    // 3) If x<-1,     then r=-1/x, PIO2=-Pi/2
+    dONE = as_double(__ocl_svml_internal_datan_data._dONE);
+    dM = as_double((unsigned long)((dAY <= dONE) ? 0xffffffffffffffff : 0x0));
+    dPIO2 = as_double(__ocl_svml_internal_datan_data._dPIO2);
+    dPIO2 = as_double((~(as_ulong(dM))&as_ulong(dPIO2)));
+    dPIO2 = as_double((as_ulong(dPIO2) ^ as_ulong(dSY)));
+    // Division A/B
+    vm = 0;
+    dRcp = (dONE / va1);
+    dRcp = as_double((as_ulong(dSIGN_MASK) ^ as_ulong(dRcp)));
+    dR = as_double((((~as_ulong(dM)) & as_ulong(dRcp)) | (as_ulong(dM) & as_ulong(va1))));
+    // Polynomial:
+    dPC[19] = as_double(__ocl_svml_internal_datan_data._dPC19);
+    dPC[18] = as_double(__ocl_svml_internal_datan_data._dPC18);
+    dPC[17] = as_double(__ocl_svml_internal_datan_data._dPC17);
+    dPC[16] = as_double(__ocl_svml_internal_datan_data._dPC16);
+    dPC[15] = as_double(__ocl_svml_internal_datan_data._dPC15);
+    dPC[14] = as_double(__ocl_svml_internal_datan_data._dPC14);
+    dPC[13] = as_double(__ocl_svml_internal_datan_data._dPC13);
+    dPC[12] = as_double(__ocl_svml_internal_datan_data._dPC12);
+    dPC[11] = as_double(__ocl_svml_internal_datan_data._dPC11);
+    dPC[10] = as_double(__ocl_svml_internal_datan_data._dPC10);
+    dPC[9] = as_double(__ocl_svml_internal_datan_data._dPC9);
+    dPC[8] = as_double(__ocl_svml_internal_datan_data._dPC8);
+    dPC[7] = as_double(__ocl_svml_internal_datan_data._dPC7);
+    dPC[6] = as_double(__ocl_svml_internal_datan_data._dPC6);
+    dPC[5] = as_double(__ocl_svml_internal_datan_data._dPC5);
+    dPC[4] = as_double(__ocl_svml_internal_datan_data._dPC4);
+    dPC[3] = as_double(__ocl_svml_internal_datan_data._dPC3);
+    dPC[2] = as_double(__ocl_svml_internal_datan_data._dPC2);
+    dPC[1] = as_double(__ocl_svml_internal_datan_data._dPC1);
+    dPC[0] = as_double(__ocl_svml_internal_datan_data._dPC0);
+    // R2 = R*R
+    dR2 = (dR * dR);
+    // R4 = R2*R2
+    dR4 = (dR2 * dR2);
+    dP = __spirv_ocl_fma(dPC[19], dR2, dPC[18]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[17]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[16]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[15]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[14]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[13]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[12]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[11]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[10]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[9]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[8]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[7]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[6]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[5]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[4]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[3]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[2]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[1]);
+    dP = __spirv_ocl_fma(dP, dR2, dPC[0]);
+    // Reconstruction:
+    // Result = P*R + PIO2 (corrected)
+    vr1 = __spirv_ocl_fma(dP, dR, dPIO2);
+  }
+  if (__builtin_expect((vm) != 0, 0)) {
+    double _vapi_arg1[1];
+    double _vapi_res1[1];
+    ((double *)_vapi_arg1)[0] = va1;
+    ((double *)_vapi_res1)[0] = vr1;
+    __ocl_svml_internal_datan_noLUT(_vapi_arg1, _vapi_res1);
+    vr1 = ((double *)_vapi_res1)[0];
+  };
+  r = vr1;
+  return r;
 }

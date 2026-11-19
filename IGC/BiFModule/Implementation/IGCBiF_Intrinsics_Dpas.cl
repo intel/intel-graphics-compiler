@@ -47,15 +47,11 @@ SPDX-License-Identifier: MIT
 //   bbits  : the number of bits of argument b's precision
 //   rcount : repeat count
 //
-#define DPAS_DEPTH_8(prefix, retty, aty, bty, abits, bbits, rcount)          \
-    retty prefix##_s##abits##_s##bbits##_8_##rcount(retty acc, aty a, bty b) \
-        __attribute__((const));                                              \
-    retty prefix##_s##abits##_u##bbits##_8_##rcount(retty acc, aty a, bty b) \
-        __attribute__((const));                                              \
-    retty prefix##_u##abits##_s##bbits##_8_##rcount(retty acc, aty a, bty b) \
-        __attribute__((const));                                              \
-    retty prefix##_u##abits##_u##bbits##_8_##rcount(retty acc, aty a, bty b) \
-        __attribute__((const));
+#define DPAS_DEPTH_8(prefix, retty, aty, bty, abits, bbits, rcount)                                                    \
+  retty prefix##_s##abits##_s##bbits##_8_##rcount(retty acc, aty a, bty b) __attribute__((const));                     \
+  retty prefix##_s##abits##_u##bbits##_8_##rcount(retty acc, aty a, bty b) __attribute__((const));                     \
+  retty prefix##_u##abits##_s##bbits##_8_##rcount(retty acc, aty a, bty b) __attribute__((const));                     \
+  retty prefix##_u##abits##_u##bbits##_8_##rcount(retty acc, aty a, bty b) __attribute__((const));
 
 //
 // WI version of dpas (suffix: <pa-bits>_<pb-bits>_<depth>_<rcount>)
@@ -132,34 +128,22 @@ DPAS_DEPTH_8(__builtin_IB_sub_group_idpas, int8, int8, int4, 4, 2, 8)
 DPAS_DEPTH_8(__builtin_IB_sub_group_idpas, int8, short8, int4, 2, 2, 8)
 
 // bfloat16 (deprecated)
-float __builtin_IB_sub_group_fdpas_8_1(float acc, int a, int8 b)
-    __attribute__((const)); // deprecated
-float2 __builtin_IB_sub_group_fdpas_8_2(float2 acc, int2 a, int8 b)
-    __attribute__((const)); // deprecated
-float4 __builtin_IB_sub_group_fdpas_8_4(float4 acc, int4 a, int8 b)
-    __attribute__((const)); // deprecated
-float8 __builtin_IB_sub_group_fdpas_8_8(float8 acc, int8 a, int8 b)
-    __attribute__((const)); // deprecated
+float __builtin_IB_sub_group_fdpas_8_1(float acc, int a, int8 b) __attribute__((const));    // deprecated
+float2 __builtin_IB_sub_group_fdpas_8_2(float2 acc, int2 a, int8 b) __attribute__((const)); // deprecated
+float4 __builtin_IB_sub_group_fdpas_8_4(float4 acc, int4 a, int8 b) __attribute__((const)); // deprecated
+float8 __builtin_IB_sub_group_fdpas_8_8(float8 acc, int8 a, int8 b) __attribute__((const)); // deprecated
 
 // bfloat16
-float __builtin_IB_sub_group_fdpas_bf_bf_8_1(float acc, int a, int8 b)
-    __attribute__((const));
-float2 __builtin_IB_sub_group_fdpas_bf_bf_8_2(float2 acc, int2 a, int8 b)
-    __attribute__((const));
-float4 __builtin_IB_sub_group_fdpas_bf_bf_8_4(float4 acc, int4 a, int8 b)
-    __attribute__((const));
-float8 __builtin_IB_sub_group_fdpas_bf_bf_8_8(float8 acc, int8 a, int8 b)
-    __attribute__((const));
+float __builtin_IB_sub_group_fdpas_bf_bf_8_1(float acc, int a, int8 b) __attribute__((const));
+float2 __builtin_IB_sub_group_fdpas_bf_bf_8_2(float2 acc, int2 a, int8 b) __attribute__((const));
+float4 __builtin_IB_sub_group_fdpas_bf_bf_8_4(float4 acc, int4 a, int8 b) __attribute__((const));
+float8 __builtin_IB_sub_group_fdpas_bf_bf_8_8(float8 acc, int8 a, int8 b) __attribute__((const));
 
 // half
-float __builtin_IB_sub_group_fdpas_hf_hf_8_1(float acc, int a, int8 b)
-    __attribute__((const));
-float2 __builtin_IB_sub_group_fdpas_hf_hf_8_2(float2 acc, int2 a, int8 b)
-    __attribute__((const));
-float4 __builtin_IB_sub_group_fdpas_hf_hf_8_4(float4 acc, int4 a, int8 b)
-    __attribute__((const));
-float8 __builtin_IB_sub_group_fdpas_hf_hf_8_8(float8 acc, int8 a, int8 b)
-    __attribute__((const));
+float __builtin_IB_sub_group_fdpas_hf_hf_8_1(float acc, int a, int8 b) __attribute__((const));
+float2 __builtin_IB_sub_group_fdpas_hf_hf_8_2(float2 acc, int2 a, int8 b) __attribute__((const));
+float4 __builtin_IB_sub_group_fdpas_hf_hf_8_4(float4 acc, int4 a, int8 b) __attribute__((const));
+float8 __builtin_IB_sub_group_fdpas_hf_hf_8_8(float8 acc, int8 a, int8 b) __attribute__((const));
 
 //
 // dpasw: 'a' size is the half of the dpas version.
@@ -204,20 +188,14 @@ DPAS_DEPTH_8(__builtin_IB_sub_group_idpasw, int8, int4, int4, 4, 2, 8)
 DPAS_DEPTH_8(__builtin_IB_sub_group_idpasw, int8, short4, int4, 2, 2, 8)
 
 // bfloat16
-float2 __builtin_IB_sub_group_fdpasw_bf_bf_8_2(float2 acc, int a, int8 b)
-    __attribute__((const));
-float4 __builtin_IB_sub_group_fdpasw_bf_bf_8_4(float4 acc, int2 a, int8 b)
-    __attribute__((const));
-float8 __builtin_IB_sub_group_fdpasw_bf_bf_8_8(float8 acc, int4 a, int8 b)
-    __attribute__((const));
+float2 __builtin_IB_sub_group_fdpasw_bf_bf_8_2(float2 acc, int a, int8 b) __attribute__((const));
+float4 __builtin_IB_sub_group_fdpasw_bf_bf_8_4(float4 acc, int2 a, int8 b) __attribute__((const));
+float8 __builtin_IB_sub_group_fdpasw_bf_bf_8_8(float8 acc, int4 a, int8 b) __attribute__((const));
 
 // half
-float2 __builtin_IB_sub_group_fdpasw_hf_hf_8_2(float2 acc, int a, int8 b)
-    __attribute__((const));
-float4 __builtin_IB_sub_group_fdpasw_hf_hf_8_4(float4 acc, int2 a, int8 b)
-    __attribute__((const));
-float8 __builtin_IB_sub_group_fdpasw_hf_hf_8_8(float8 acc, int4 a, int8 b)
-    __attribute__((const));
+float2 __builtin_IB_sub_group_fdpasw_hf_hf_8_2(float2 acc, int a, int8 b) __attribute__((const));
+float4 __builtin_IB_sub_group_fdpasw_hf_hf_8_4(float4 acc, int2 a, int8 b) __attribute__((const));
+float8 __builtin_IB_sub_group_fdpasw_hf_hf_8_8(float8 acc, int4 a, int8 b) __attribute__((const));
 
 // Names of SIMD16 dpas builtin functions are in the form:
 //    __builtin_IB_sub_group16_idpas_<a's precision>_<b's precision>_<depth>_<repeatCount>
@@ -310,328 +288,234 @@ DPAS_DEPTH_8(__builtin_IB_sub_group16_idpas, int8, char8, int4, 2, 2, 8)
 //
 
 // bfloat16, rcount = 1, simd16
-float __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_1(float acc, short a, int8 b)
-    __attribute__((const));
-short __builtin_IB_sub_group16_fdpas_bf_f_bf_bf_8_1(float acc, short a, int8 b)
-    __attribute__((const));
-float __builtin_IB_sub_group16_fdpas_f_bf_bf_bf_8_1(short acc, short a, int8 b)
-    __attribute__((const));
-short __builtin_IB_sub_group16_fdpas_bf_bf_bf_bf_8_1(short acc, short a, int8 b)
-    __attribute__((const));
+float __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_1(float acc, short a, int8 b) __attribute__((const));
+short __builtin_IB_sub_group16_fdpas_bf_f_bf_bf_8_1(float acc, short a, int8 b) __attribute__((const));
+float __builtin_IB_sub_group16_fdpas_f_bf_bf_bf_8_1(short acc, short a, int8 b) __attribute__((const));
+short __builtin_IB_sub_group16_fdpas_bf_bf_bf_bf_8_1(short acc, short a, int8 b) __attribute__((const));
 
 // bfloat16, rcount = 2, simd16
-float2 __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_2(float2 acc, short2 a, int8 b)
-    __attribute__((const));
-short2 __builtin_IB_sub_group16_fdpas_bf_f_bf_bf_8_2(float2 acc, short2 a, int8 b)
-    __attribute__((const));
-float2 __builtin_IB_sub_group16_fdpas_f_bf_bf_bf_8_2(short2 acc, short2 a, int8 b)
-    __attribute__((const));
-short2 __builtin_IB_sub_group16_fdpas_bf_bf_bf_bf_8_2(short2 acc, short2 a, int8 b)
-    __attribute__((const));
+float2 __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_2(float2 acc, short2 a, int8 b) __attribute__((const));
+short2 __builtin_IB_sub_group16_fdpas_bf_f_bf_bf_8_2(float2 acc, short2 a, int8 b) __attribute__((const));
+float2 __builtin_IB_sub_group16_fdpas_f_bf_bf_bf_8_2(short2 acc, short2 a, int8 b) __attribute__((const));
+short2 __builtin_IB_sub_group16_fdpas_bf_bf_bf_bf_8_2(short2 acc, short2 a, int8 b) __attribute__((const));
 
 // bfloat16, rcount = 4, simd16
-float4 __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_4(float4 acc, short4 a, int8 b)
-    __attribute__((const));
-short4 __builtin_IB_sub_group16_fdpas_bf_f_bf_bf_8_4(float4 acc, short4 a, int8 b)
-    __attribute__((const));
-float4 __builtin_IB_sub_group16_fdpas_f_bf_bf_bf_8_4(short4 acc, short4 a, int8 b)
-    __attribute__((const));
-short4 __builtin_IB_sub_group16_fdpas_bf_bf_bf_bf_8_4(short4 acc, short4 a, int8 b)
-    __attribute__((const));
+float4 __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_4(float4 acc, short4 a, int8 b) __attribute__((const));
+short4 __builtin_IB_sub_group16_fdpas_bf_f_bf_bf_8_4(float4 acc, short4 a, int8 b) __attribute__((const));
+float4 __builtin_IB_sub_group16_fdpas_f_bf_bf_bf_8_4(short4 acc, short4 a, int8 b) __attribute__((const));
+short4 __builtin_IB_sub_group16_fdpas_bf_bf_bf_bf_8_4(short4 acc, short4 a, int8 b) __attribute__((const));
 
 // bfloat16, rcount = 8, simd16
-float8 __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_8(float8 acc, short8 a, int8 b)
-    __attribute__((const));
-short8 __builtin_IB_sub_group16_fdpas_bf_f_bf_bf_8_8(float8 acc, short8 a, int8 b)
-    __attribute__((const));
-float8 __builtin_IB_sub_group16_fdpas_f_bf_bf_bf_8_8(short8 acc, short8 a, int8 b)
-    __attribute__((const));
-short8 __builtin_IB_sub_group16_fdpas_bf_bf_bf_bf_8_8(short8 acc, short8 a, int8 b)
-    __attribute__((const));
+float8 __builtin_IB_sub_group16_fdpas_f_f_bf_bf_8_8(float8 acc, short8 a, int8 b) __attribute__((const));
+short8 __builtin_IB_sub_group16_fdpas_bf_f_bf_bf_8_8(float8 acc, short8 a, int8 b) __attribute__((const));
+float8 __builtin_IB_sub_group16_fdpas_f_bf_bf_bf_8_8(short8 acc, short8 a, int8 b) __attribute__((const));
+short8 __builtin_IB_sub_group16_fdpas_bf_bf_bf_bf_8_8(short8 acc, short8 a, int8 b) __attribute__((const));
 
 // half, rcount = 1, simd16
-float __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_1(float acc, short a, int8 b)
-    __attribute__((const));
-half __builtin_IB_sub_group16_fdpas_hf_f_hf_hf_8_1(float acc, short a, int8 b)
-    __attribute__((const));
-float __builtin_IB_sub_group16_fdpas_f_hf_hf_hf_8_1(half acc, short a, int8 b)
-    __attribute__((const));
-half __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_1(half acc, short a, int8 b)
-    __attribute__((const));
+float __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_1(float acc, short a, int8 b) __attribute__((const));
+half __builtin_IB_sub_group16_fdpas_hf_f_hf_hf_8_1(float acc, short a, int8 b) __attribute__((const));
+float __builtin_IB_sub_group16_fdpas_f_hf_hf_hf_8_1(half acc, short a, int8 b) __attribute__((const));
+half __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_1(half acc, short a, int8 b) __attribute__((const));
 
 // half, rcount = 2, simd16
-float2 __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_2(float2 acc, short2 a, int8 b)
-    __attribute__((const));
-half2 __builtin_IB_sub_group16_fdpas_hf_f_hf_hf_8_2(float2 acc, short2 a, int8 b)
-    __attribute__((const));
-float2 __builtin_IB_sub_group16_fdpas_f_hf_hf_hf_8_2(half2 acc, short2 a, int8 b)
-    __attribute__((const));
-half2 __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_2(half2 acc, short2 a, int8 b)
-    __attribute__((const));
+float2 __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_2(float2 acc, short2 a, int8 b) __attribute__((const));
+half2 __builtin_IB_sub_group16_fdpas_hf_f_hf_hf_8_2(float2 acc, short2 a, int8 b) __attribute__((const));
+float2 __builtin_IB_sub_group16_fdpas_f_hf_hf_hf_8_2(half2 acc, short2 a, int8 b) __attribute__((const));
+half2 __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_2(half2 acc, short2 a, int8 b) __attribute__((const));
 
 // half, rcount = 4, simd16
-float4 __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_4(float4 acc, short4 a, int8 b)
-    __attribute__((const));
-half4 __builtin_IB_sub_group16_fdpas_hf_f_hf_hf_8_4(float4 acc, short4 a, int8 b)
-    __attribute__((const));
-float4 __builtin_IB_sub_group16_fdpas_f_hf_hf_hf_8_4(half4 acc, short4 a, int8 b)
-    __attribute__((const));
-half4 __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_4(half4 acc, short4 a, int8 b)
-    __attribute__((const));
+float4 __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_4(float4 acc, short4 a, int8 b) __attribute__((const));
+half4 __builtin_IB_sub_group16_fdpas_hf_f_hf_hf_8_4(float4 acc, short4 a, int8 b) __attribute__((const));
+float4 __builtin_IB_sub_group16_fdpas_f_hf_hf_hf_8_4(half4 acc, short4 a, int8 b) __attribute__((const));
+half4 __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_4(half4 acc, short4 a, int8 b) __attribute__((const));
 
 // half, rcount = 8, simd16
-float8 __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_8(float8 acc, short8 a, int8 b)
-    __attribute__((const));
-half8 __builtin_IB_sub_group16_fdpas_hf_f_hf_hf_8_8(float8 acc, short8 a, int8 b)
-    __attribute__((const));
-float8 __builtin_IB_sub_group16_fdpas_f_hf_hf_hf_8_8(half8 acc, short8 a, int8 b)
-    __attribute__((const));
-half8 __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_8(half8 acc, short8 a, int8 b)
-    __attribute__((const));
+float8 __builtin_IB_sub_group16_fdpas_f_f_hf_hf_8_8(float8 acc, short8 a, int8 b) __attribute__((const));
+half8 __builtin_IB_sub_group16_fdpas_hf_f_hf_hf_8_8(float8 acc, short8 a, int8 b) __attribute__((const));
+float8 __builtin_IB_sub_group16_fdpas_f_hf_hf_hf_8_8(half8 acc, short8 a, int8 b) __attribute__((const));
+half8 __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_8(half8 acc, short8 a, int8 b) __attribute__((const));
 
 // dst type is float, acc type is float, a & b are bf8
-float __builtin_IB_sub_group16_fdpas_f_f_bf8_bf8_8_1(float acc, short a, int8 b)
-    __attribute__((const));
-float2 __builtin_IB_sub_group16_fdpas_f_f_bf8_bf8_8_2(float2 acc, short2 a, int8 b)
-    __attribute__((const));
-float4 __builtin_IB_sub_group16_fdpas_f_f_bf8_bf8_8_4(float4 acc, short4 a, int8 b)
-    __attribute__((const));
-float8 __builtin_IB_sub_group16_fdpas_f_f_bf8_bf8_8_8(float8 acc, short8 a, int8 b)
-    __attribute__((const));
+float __builtin_IB_sub_group16_fdpas_f_f_bf8_bf8_8_1(float acc, short a, int8 b) __attribute__((const));
+float2 __builtin_IB_sub_group16_fdpas_f_f_bf8_bf8_8_2(float2 acc, short2 a, int8 b) __attribute__((const));
+float4 __builtin_IB_sub_group16_fdpas_f_f_bf8_bf8_8_4(float4 acc, short4 a, int8 b) __attribute__((const));
+float8 __builtin_IB_sub_group16_fdpas_f_f_bf8_bf8_8_8(float8 acc, short8 a, int8 b) __attribute__((const));
 // dst type is float, acc type is float, a & b are hf8
-float __builtin_IB_sub_group16_fdpas_f_f_hf8_hf8_8_1(float acc, short a, int8 b)
-    __attribute__((const));
-float2 __builtin_IB_sub_group16_fdpas_f_f_hf8_hf8_8_2(float2 acc, short2 a, int8 b)
-    __attribute__((const));
-float4 __builtin_IB_sub_group16_fdpas_f_f_hf8_hf8_8_4(float4 acc, short4 a, int8 b)
-    __attribute__((const));
-float8 __builtin_IB_sub_group16_fdpas_f_f_hf8_hf8_8_8(float8 acc, short8 a, int8 b)
-    __attribute__((const));
+float __builtin_IB_sub_group16_fdpas_f_f_hf8_hf8_8_1(float acc, short a, int8 b) __attribute__((const));
+float2 __builtin_IB_sub_group16_fdpas_f_f_hf8_hf8_8_2(float2 acc, short2 a, int8 b) __attribute__((const));
+float4 __builtin_IB_sub_group16_fdpas_f_f_hf8_hf8_8_4(float4 acc, short4 a, int8 b) __attribute__((const));
+float8 __builtin_IB_sub_group16_fdpas_f_f_hf8_hf8_8_8(float8 acc, short8 a, int8 b) __attribute__((const));
 // dst type is float, acc type is float, a is bf8, b is hf8
-float __builtin_IB_sub_group16_fdpas_f_f_bf8_hf8_8_1(float acc, short a, int8 b)
-    __attribute__((const));
-float2 __builtin_IB_sub_group16_fdpas_f_f_bf8_hf8_8_2(float2 acc, short2 a, int8 b)
-    __attribute__((const));
-float4 __builtin_IB_sub_group16_fdpas_f_f_bf8_hf8_8_4(float4 acc, short4 a, int8 b)
-    __attribute__((const));
-float8 __builtin_IB_sub_group16_fdpas_f_f_bf8_hf8_8_8(float8 acc, short8 a, int8 b)
-    __attribute__((const));
+float __builtin_IB_sub_group16_fdpas_f_f_bf8_hf8_8_1(float acc, short a, int8 b) __attribute__((const));
+float2 __builtin_IB_sub_group16_fdpas_f_f_bf8_hf8_8_2(float2 acc, short2 a, int8 b) __attribute__((const));
+float4 __builtin_IB_sub_group16_fdpas_f_f_bf8_hf8_8_4(float4 acc, short4 a, int8 b) __attribute__((const));
+float8 __builtin_IB_sub_group16_fdpas_f_f_bf8_hf8_8_8(float8 acc, short8 a, int8 b) __attribute__((const));
 // dst type is float, acc type is float, a is hf8, b is bf8
-float __builtin_IB_sub_group16_fdpas_f_f_hf8_bf8_8_1(float acc, short a, int8 b)
-    __attribute__((const));
-float2 __builtin_IB_sub_group16_fdpas_f_f_hf8_bf8_8_2(float2 acc, short2 a, int8 b)
-    __attribute__((const));
-float4 __builtin_IB_sub_group16_fdpas_f_f_hf8_bf8_8_4(float4 acc, short4 a, int8 b)
-    __attribute__((const));
-float8 __builtin_IB_sub_group16_fdpas_f_f_hf8_bf8_8_8(float8 acc, short8 a, int8 b)
-    __attribute__((const));
+float __builtin_IB_sub_group16_fdpas_f_f_hf8_bf8_8_1(float acc, short a, int8 b) __attribute__((const));
+float2 __builtin_IB_sub_group16_fdpas_f_f_hf8_bf8_8_2(float2 acc, short2 a, int8 b) __attribute__((const));
+float4 __builtin_IB_sub_group16_fdpas_f_f_hf8_bf8_8_4(float4 acc, short4 a, int8 b) __attribute__((const));
+float8 __builtin_IB_sub_group16_fdpas_f_f_hf8_bf8_8_8(float8 acc, short8 a, int8 b) __attribute__((const));
 // dst type is bf8, acc type is bf8, a & b are bf8
-short __builtin_IB_sub_group16_fdpas_bf_bf_bf8_bf8_8_1(short acc, short a, int8 b)
-    __attribute__((const));
-short2 __builtin_IB_sub_group16_fdpas_bf_bf_bf8_bf8_8_2(short2 acc, short2 a, int8 b)
-    __attribute__((const));
-short4 __builtin_IB_sub_group16_fdpas_bf_bf_bf8_bf8_8_4(short4 acc, short4 a, int8 b)
-    __attribute__((const));
-short8 __builtin_IB_sub_group16_fdpas_bf_bf_bf8_bf8_8_8(short8 acc, short8 a, int8 b)
-    __attribute__((const));
+short __builtin_IB_sub_group16_fdpas_bf_bf_bf8_bf8_8_1(short acc, short a, int8 b) __attribute__((const));
+short2 __builtin_IB_sub_group16_fdpas_bf_bf_bf8_bf8_8_2(short2 acc, short2 a, int8 b) __attribute__((const));
+short4 __builtin_IB_sub_group16_fdpas_bf_bf_bf8_bf8_8_4(short4 acc, short4 a, int8 b) __attribute__((const));
+short8 __builtin_IB_sub_group16_fdpas_bf_bf_bf8_bf8_8_8(short8 acc, short8 a, int8 b) __attribute__((const));
 // dst type is bf8, acc type is bf8, a & b are hf8
-short __builtin_IB_sub_group16_fdpas_bf_bf_hf8_hf8_8_1(short acc, short a, int8 b)
-    __attribute__((const));
-short2 __builtin_IB_sub_group16_fdpas_bf_bf_hf8_hf8_8_2(short2 acc, short2 a, int8 b)
-    __attribute__((const));
-short4 __builtin_IB_sub_group16_fdpas_bf_bf_hf8_hf8_8_4(short4 acc, short4 a, int8 b)
-    __attribute__((const));
-short8 __builtin_IB_sub_group16_fdpas_bf_bf_hf8_hf8_8_8(short8 acc, short8 a, int8 b)
-    __attribute__((const));
+short __builtin_IB_sub_group16_fdpas_bf_bf_hf8_hf8_8_1(short acc, short a, int8 b) __attribute__((const));
+short2 __builtin_IB_sub_group16_fdpas_bf_bf_hf8_hf8_8_2(short2 acc, short2 a, int8 b) __attribute__((const));
+short4 __builtin_IB_sub_group16_fdpas_bf_bf_hf8_hf8_8_4(short4 acc, short4 a, int8 b) __attribute__((const));
+short8 __builtin_IB_sub_group16_fdpas_bf_bf_hf8_hf8_8_8(short8 acc, short8 a, int8 b) __attribute__((const));
 // dst type is bf8, acc type is bf8, a is bf8, b is hf8
-short __builtin_IB_sub_group16_fdpas_bf_bf_bf8_hf8_8_1(short acc, short a, int8 b)
-    __attribute__((const));
-short2 __builtin_IB_sub_group16_fdpas_bf_bf_bf8_hf8_8_2(short2 acc, short2 a, int8 b)
-    __attribute__((const));
-short4 __builtin_IB_sub_group16_fdpas_bf_bf_bf8_hf8_8_4(short4 acc, short4 a, int8 b)
-    __attribute__((const));
-short8 __builtin_IB_sub_group16_fdpas_bf_bf_bf8_hf8_8_8(short8 acc, short8 a, int8 b)
-    __attribute__((const));
+short __builtin_IB_sub_group16_fdpas_bf_bf_bf8_hf8_8_1(short acc, short a, int8 b) __attribute__((const));
+short2 __builtin_IB_sub_group16_fdpas_bf_bf_bf8_hf8_8_2(short2 acc, short2 a, int8 b) __attribute__((const));
+short4 __builtin_IB_sub_group16_fdpas_bf_bf_bf8_hf8_8_4(short4 acc, short4 a, int8 b) __attribute__((const));
+short8 __builtin_IB_sub_group16_fdpas_bf_bf_bf8_hf8_8_8(short8 acc, short8 a, int8 b) __attribute__((const));
 // dst type is bf8, acc type is bf8, a is hf8, b is bf8
-short __builtin_IB_sub_group16_fdpas_bf_bf_hf8_bf8_8_1(short acc, short a, int8 b)
-    __attribute__((const));
-short2 __builtin_IB_sub_group16_fdpas_bf_bf_hf8_bf8_8_2(short2 acc, short2 a, int8 b)
-    __attribute__((const));
-short4 __builtin_IB_sub_group16_fdpas_bf_bf_hf8_bf8_8_4(short4 acc, short4 a, int8 b)
-    __attribute__((const));
-short8 __builtin_IB_sub_group16_fdpas_bf_bf_hf8_bf8_8_8(short8 acc, short8 a, int8 b)
-    __attribute__((const));
+short __builtin_IB_sub_group16_fdpas_bf_bf_hf8_bf8_8_1(short acc, short a, int8 b) __attribute__((const));
+short2 __builtin_IB_sub_group16_fdpas_bf_bf_hf8_bf8_8_2(short2 acc, short2 a, int8 b) __attribute__((const));
+short4 __builtin_IB_sub_group16_fdpas_bf_bf_hf8_bf8_8_4(short4 acc, short4 a, int8 b) __attribute__((const));
+short8 __builtin_IB_sub_group16_fdpas_bf_bf_hf8_bf8_8_8(short8 acc, short8 a, int8 b) __attribute__((const));
 
 // 8
-float8 __builtin_IB_sub_group16_fdpas_f_f_e2m1_e2m1_8_8(float8 acc, short8 a, int8 b)
-    __attribute__((const));
-short8 __builtin_IB_sub_group16_fdpas_bf_bf_e2m1_e2m1_8_8(short8 acc, short8 a, int8 b)
-    __attribute__((const));
-float8 __builtin_IB_sub_group16_fdpas_f_bf_e2m1_e2m1_8_8(short8 acc, short8 a, int8 b)
-    __attribute__((const));
-short8 __builtin_IB_sub_group16_fdpas_bf_f_e2m1_e2m1_8_8(float8 acc, short8 a, int8 b)
-    __attribute__((const));
+float8 __builtin_IB_sub_group16_fdpas_f_f_e2m1_e2m1_8_8(float8 acc, short8 a, int8 b) __attribute__((const));
+short8 __builtin_IB_sub_group16_fdpas_bf_bf_e2m1_e2m1_8_8(short8 acc, short8 a, int8 b) __attribute__((const));
+float8 __builtin_IB_sub_group16_fdpas_f_bf_e2m1_e2m1_8_8(short8 acc, short8 a, int8 b) __attribute__((const));
+short8 __builtin_IB_sub_group16_fdpas_bf_f_e2m1_e2m1_8_8(float8 acc, short8 a, int8 b) __attribute__((const));
 // 4
-float4 __builtin_IB_sub_group16_fdpas_f_f_e2m1_e2m1_8_4(float4 acc, short4 a, int8 b)
-    __attribute__((const));
-short4 __builtin_IB_sub_group16_fdpas_bf_bf_e2m1_e2m1_8_4(short4 acc, short4 a, int8 b)
-    __attribute__((const));
-float4 __builtin_IB_sub_group16_fdpas_f_bf_e2m1_e2m1_8_4(short4 acc, short4 a, int8 b)
-    __attribute__((const));
-short4 __builtin_IB_sub_group16_fdpas_bf_f_e2m1_e2m1_8_4(float4 acc, short4 a, int8 b)
-    __attribute__((const));
+float4 __builtin_IB_sub_group16_fdpas_f_f_e2m1_e2m1_8_4(float4 acc, short4 a, int8 b) __attribute__((const));
+short4 __builtin_IB_sub_group16_fdpas_bf_bf_e2m1_e2m1_8_4(short4 acc, short4 a, int8 b) __attribute__((const));
+float4 __builtin_IB_sub_group16_fdpas_f_bf_e2m1_e2m1_8_4(short4 acc, short4 a, int8 b) __attribute__((const));
+short4 __builtin_IB_sub_group16_fdpas_bf_f_e2m1_e2m1_8_4(float4 acc, short4 a, int8 b) __attribute__((const));
 // 2
-float2 __builtin_IB_sub_group16_fdpas_f_f_e2m1_e2m1_8_2(float2 acc, short2 a, int8 b)
-    __attribute__((const));
-short2 __builtin_IB_sub_group16_fdpas_bf_bf_e2m1_e2m1_8_2(short2 acc, short2 a, int8 b)
-    __attribute__((const));
-float2 __builtin_IB_sub_group16_fdpas_f_bf_e2m1_e2m1_8_2(short2 acc, short2 a, int8 b)
-    __attribute__((const));
-short2 __builtin_IB_sub_group16_fdpas_bf_f_e2m1_e2m1_8_2(float2 acc, short2 a, int8 b)
-    __attribute__((const));
+float2 __builtin_IB_sub_group16_fdpas_f_f_e2m1_e2m1_8_2(float2 acc, short2 a, int8 b) __attribute__((const));
+short2 __builtin_IB_sub_group16_fdpas_bf_bf_e2m1_e2m1_8_2(short2 acc, short2 a, int8 b) __attribute__((const));
+float2 __builtin_IB_sub_group16_fdpas_f_bf_e2m1_e2m1_8_2(short2 acc, short2 a, int8 b) __attribute__((const));
+short2 __builtin_IB_sub_group16_fdpas_bf_f_e2m1_e2m1_8_2(float2 acc, short2 a, int8 b) __attribute__((const));
 // 1
-float __builtin_IB_sub_group16_fdpas_f_f_e2m1_e2m1_8_1(float acc, short a, int8 b)
-    __attribute__((const));
-short __builtin_IB_sub_group16_fdpas_bf_bf_e2m1_e2m1_8_1(short acc, short a, int8 b)
-    __attribute__((const));
-float __builtin_IB_sub_group16_fdpas_f_bf_e2m1_e2m1_8_1(short acc, short a, int8 b)
-    __attribute__((const));
-short __builtin_IB_sub_group16_fdpas_bf_f_e2m1_e2m1_8_1(float acc, short a, int8 b)
-    __attribute__((const));
+float __builtin_IB_sub_group16_fdpas_f_f_e2m1_e2m1_8_1(float acc, short a, int8 b) __attribute__((const));
+short __builtin_IB_sub_group16_fdpas_bf_bf_e2m1_e2m1_8_1(short acc, short a, int8 b) __attribute__((const));
+float __builtin_IB_sub_group16_fdpas_f_bf_e2m1_e2m1_8_1(short acc, short a, int8 b) __attribute__((const));
+short __builtin_IB_sub_group16_fdpas_bf_f_e2m1_e2m1_8_1(float acc, short a, int8 b) __attribute__((const));
 
 // clang-format on
 
 // tf32, rcount = 1, simd16
-float __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_1(float acc, float a, float8 b)
-    __attribute__((const));
+float __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_1(float acc, float a, float8 b) __attribute__((const));
 
 // tf32, rcount = 2, simd16
-float2 __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_2(float2 acc, float a, float8 b)
-    __attribute__((const));
+float2 __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_2(float2 acc, float a, float8 b) __attribute__((const));
 
 // tf32, rcount = 4, simd16
-float4 __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_4(float4 acc, float2 a, float8 b)
-    __attribute__((const));
+float4 __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_4(float4 acc, float2 a, float8 b) __attribute__((const));
 
 // tf32, rcount = 8, simd16
-float8 __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_8(float8 acc, float4 a, float8 b)
-    __attribute__((const));
+float8 __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_8(float8 acc, float4 a, float8 b) __attribute__((const));
 
 
 //
 // Pure bloat16/half float DPAS (acc and return type are also bloat16/half)
-short __builtin_IB_bfdpas_bf_bf_8_1(short acc, int8 a, int8 b)
-    __attribute__((const)); // deprecated
-half __builtin_IB_hfdpas_hf_hf_8_1(half acc, int8 a, int8 b)
-    __attribute__((const)); // deprecated
+short __builtin_IB_bfdpas_bf_bf_8_1(short acc, int8 a, int8 b) __attribute__((const)); // deprecated
+half __builtin_IB_hfdpas_hf_hf_8_1(half acc, int8 a, int8 b) __attribute__((const));   // deprecated
 // pure sub group version of fdpas. (suffix: <pa-bits>_<pb-bits>_<depth>_<rcount>)
 // pure bfloat16  -- deprecated
-short __builtin_IB_sub_group_bfdpas_bf_bf_8_1(short acc, int a, int8 b)
-    __attribute__((const));
-short2 __builtin_IB_sub_group_bfdpas_bf_bf_8_2(short2 acc, int2 a, int8 b)
-    __attribute__((const));
-short4 __builtin_IB_sub_group_bfdpas_bf_bf_8_4(short4 acc, int4 a, int8 b)
-    __attribute__((const));
-short8 __builtin_IB_sub_group_bfdpas_bf_bf_8_8(short8 acc, int8 a, int8 b)
-    __attribute__((const));
+short __builtin_IB_sub_group_bfdpas_bf_bf_8_1(short acc, int a, int8 b) __attribute__((const));
+short2 __builtin_IB_sub_group_bfdpas_bf_bf_8_2(short2 acc, int2 a, int8 b) __attribute__((const));
+short4 __builtin_IB_sub_group_bfdpas_bf_bf_8_4(short4 acc, int4 a, int8 b) __attribute__((const));
+short8 __builtin_IB_sub_group_bfdpas_bf_bf_8_8(short8 acc, int8 a, int8 b) __attribute__((const));
 // pure half -- deprecated
-half __builtin_IB_sub_group_hfdpas_hf_hf_8_1(half acc, int a, int8 b)
-    __attribute__((const));
-half2 __builtin_IB_sub_group_hfdpas_hf_hf_8_2(half2 acc, int2 a, int8 b)
-    __attribute__((const));
-half4 __builtin_IB_sub_group_hfdpas_hf_hf_8_4(half4 acc, int4 a, int8 b)
-    __attribute__((const));
-half8 __builtin_IB_sub_group_hfdpas_hf_hf_8_8(half8 acc, int8 a, int8 b)
-    __attribute__((const));
+half __builtin_IB_sub_group_hfdpas_hf_hf_8_1(half acc, int a, int8 b) __attribute__((const));
+half2 __builtin_IB_sub_group_hfdpas_hf_hf_8_2(half2 acc, int2 a, int8 b) __attribute__((const));
+half4 __builtin_IB_sub_group_hfdpas_hf_hf_8_4(half4 acc, int4 a, int8 b) __attribute__((const));
+half8 __builtin_IB_sub_group_hfdpas_hf_hf_8_8(half8 acc, int8 a, int8 b) __attribute__((const));
 
 // bf16 precision, f32/bf16 acc
-float8 __builtin_IB_sub_group16_bdpas_f_f_bf_bf_8_8(
-    float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-short8 __builtin_IB_sub_group16_bdpas_bf_bf_bf_bf_8_8(
-    short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-float8 __builtin_IB_sub_group16_bdpas_f_bf_bf_bf_8_8(
-    short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-short8 __builtin_IB_sub_group16_bdpas_bf_f_bf_bf_8_8(
-    float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_f_bf_bf_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+short8 __builtin_IB_sub_group16_bdpas_bf_bf_bf_bf_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_bf_bf_bf_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+short8 __builtin_IB_sub_group16_bdpas_bf_f_bf_bf_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
 
 // f16 precision, f32/f16 acc
-float8 __builtin_IB_sub_group16_bdpas_f_f_hf_hf_8_8(
-    float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-half8 __builtin_IB_sub_group16_bdpas_hf_hf_hf_hf_8_8(
-    half8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-float8 __builtin_IB_sub_group16_bdpas_f_hf_hf_hf_8_8(
-    half8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-half8 __builtin_IB_sub_group16_bdpas_hf_f_hf_hf_8_8(
-    float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_f_hf_hf_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+half8 __builtin_IB_sub_group16_bdpas_hf_hf_hf_hf_8_8(half8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_hf_hf_hf_8_8(half8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+half8 __builtin_IB_sub_group16_bdpas_hf_f_hf_hf_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
 
 // bf8/hf8 precision, f32/bf16 acc
-float8 __builtin_IB_sub_group16_bdpas_f_f_hf8_hf8_8_8(
-    float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-short8 __builtin_IB_sub_group16_bdpas_bf_bf_hf8_hf8_8_8(
-    short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-float8 __builtin_IB_sub_group16_bdpas_f_bf_hf8_hf8_8_8(
-    short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-short8 __builtin_IB_sub_group16_bdpas_bf_f_hf8_hf8_8_8(
-    float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-float8 __builtin_IB_sub_group16_bdpas_f_f_bf8_hf8_8_8(
-    float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-short8 __builtin_IB_sub_group16_bdpas_bf_bf_bf8_hf8_8_8(
-    short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-float8 __builtin_IB_sub_group16_bdpas_f_bf_bf8_hf8_8_8(
-    short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-short8 __builtin_IB_sub_group16_bdpas_bf_f_bf8_hf8_8_8(
-    float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-float8 __builtin_IB_sub_group16_bdpas_f_f_hf8_bf8_8_8(
-    float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-short8 __builtin_IB_sub_group16_bdpas_bf_bf_hf8_bf8_8_8(
-    short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-float8 __builtin_IB_sub_group16_bdpas_f_bf_hf8_bf8_8_8(
-    short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-short8 __builtin_IB_sub_group16_bdpas_bf_f_hf8_bf8_8_8(
-    float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-float8 __builtin_IB_sub_group16_bdpas_f_f_bf8_bf8_8_8(
-    float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-short8 __builtin_IB_sub_group16_bdpas_bf_bf_bf8_bf8_8_8(
-    short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-float8 __builtin_IB_sub_group16_bdpas_f_bf_bf8_bf8_8_8(
-    short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
-short8 __builtin_IB_sub_group16_bdpas_bf_f_bf8_bf8_8_8(
-    float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b) __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_f_hf8_hf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+short8 __builtin_IB_sub_group16_bdpas_bf_bf_hf8_hf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_bf_hf8_hf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+short8 __builtin_IB_sub_group16_bdpas_bf_f_hf8_hf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_f_bf8_hf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+short8 __builtin_IB_sub_group16_bdpas_bf_bf_bf8_hf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_bf_bf8_hf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+short8 __builtin_IB_sub_group16_bdpas_bf_f_bf8_hf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_f_hf8_bf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+short8 __builtin_IB_sub_group16_bdpas_bf_bf_hf8_bf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_bf_hf8_bf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+short8 __builtin_IB_sub_group16_bdpas_bf_f_hf8_bf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_f_bf8_bf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+short8 __builtin_IB_sub_group16_bdpas_bf_bf_bf8_bf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_bf_bf8_bf8_8_8(short8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
+short8 __builtin_IB_sub_group16_bdpas_bf_f_bf8_bf8_8_8(float8 acc, short8 a, int8 b, uchar scale_a, uchar scale_b)
+    __attribute__((const));
 // fp4 precision, f32/bf16 acc
-float8 __builtin_IB_sub_group16_bdpas_f_f_e2m1_e2m1_8_8(
-    float8 acc, short8 a, int8 b, uchar2 scale_a, uchar2 scale_b) __attribute__((const));
-short8 __builtin_IB_sub_group16_bdpas_bf_bf_e2m1_e2m1_8_8(
-    short8 acc, short8 a, int8 b, uchar2 scale_a, uchar2 scale_b) __attribute__((const));
-float8 __builtin_IB_sub_group16_bdpas_f_bf_e2m1_e2m1_8_8(
-    short8 acc, short8 a, int8 b, uchar2 scale_a, uchar2 scale_b) __attribute__((const));
-short8 __builtin_IB_sub_group16_bdpas_bf_f_e2m1_e2m1_8_8(
-    float8 acc, short8 a, int8 b, uchar2 scale_a, uchar2 scale_b) __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_f_e2m1_e2m1_8_8(float8 acc, short8 a, int8 b, uchar2 scale_a, uchar2 scale_b)
+    __attribute__((const));
+short8 __builtin_IB_sub_group16_bdpas_bf_bf_e2m1_e2m1_8_8(short8 acc, short8 a, int8 b, uchar2 scale_a, uchar2 scale_b)
+    __attribute__((const));
+float8 __builtin_IB_sub_group16_bdpas_f_bf_e2m1_e2m1_8_8(short8 acc, short8 a, int8 b, uchar2 scale_a, uchar2 scale_b)
+    __attribute__((const));
+short8 __builtin_IB_sub_group16_bdpas_bf_f_e2m1_e2m1_8_8(float8 acc, short8 a, int8 b, uchar2 scale_a, uchar2 scale_b)
+    __attribute__((const));
 
 // bf <--> float conversion
 //    bf : no igc type for bf yet. Use short as *opaque* type for it.
 //
 // float -> bf conversion builtins (rte rounding mode)
-short   __builtin_IB_ftobf_1(float a) __attribute__((const));
-short2  __builtin_IB_ftobf_2(float2 a) __attribute__((const));
-short3  __builtin_IB_ftobf_3(float3 a) __attribute__((const));
-short4  __builtin_IB_ftobf_4(float4 a) __attribute__((const));
-short8  __builtin_IB_ftobf_8(float8 a) __attribute__((const));
+short __builtin_IB_ftobf_1(float a) __attribute__((const));
+short2 __builtin_IB_ftobf_2(float2 a) __attribute__((const));
+short3 __builtin_IB_ftobf_3(float3 a) __attribute__((const));
+short4 __builtin_IB_ftobf_4(float4 a) __attribute__((const));
+short8 __builtin_IB_ftobf_8(float8 a) __attribute__((const));
 short16 __builtin_IB_ftobf_16(float16 a) __attribute__((const));
 
 // bf -> float conversion builtins (precise conversion)
-float   __builtin_IB_bftof_1(short a) __attribute__((const));
-float2  __builtin_IB_bftof_2(short2 a) __attribute__((const));
-float3  __builtin_IB_bftof_3(short3 a) __attribute__((const));
-float4  __builtin_IB_bftof_4(short4 a) __attribute__((const));
-float8  __builtin_IB_bftof_8(short8 a) __attribute__((const));
+float __builtin_IB_bftof_1(short a) __attribute__((const));
+float2 __builtin_IB_bftof_2(short2 a) __attribute__((const));
+float3 __builtin_IB_bftof_3(short3 a) __attribute__((const));
+float4 __builtin_IB_bftof_4(short4 a) __attribute__((const));
+float8 __builtin_IB_bftof_8(short8 a) __attribute__((const));
 float16 __builtin_IB_bftof_16(short16 a) __attribute__((const));
 
 // 2 floats --> packed 2 bf (rte rounding mode)
-int   __builtin_IB_2fto2bf_1(float a, float b) __attribute__((const));
-int2  __builtin_IB_2fto2bf_2(float2 a, float2 b) __attribute__((const));
-int3  __builtin_IB_2fto2bf_3(float3 a, float3 b) __attribute__((const));
-int4  __builtin_IB_2fto2bf_4(float4 a, float4 b) __attribute__((const));
-int8  __builtin_IB_2fto2bf_8(float8 a, float8 b) __attribute__((const));
+int __builtin_IB_2fto2bf_1(float a, float b) __attribute__((const));
+int2 __builtin_IB_2fto2bf_2(float2 a, float2 b) __attribute__((const));
+int3 __builtin_IB_2fto2bf_3(float3 a, float3 b) __attribute__((const));
+int4 __builtin_IB_2fto2bf_4(float4 a, float4 b) __attribute__((const));
+int8 __builtin_IB_2fto2bf_8(float8 a, float8 b) __attribute__((const));
 int16 __builtin_IB_2fto2bf_16(float16 a, float16 b) __attribute__((const));
 
 // bf8 <--> half float conversion
@@ -639,51 +523,51 @@ int16 __builtin_IB_2fto2bf_16(float16 a, float16 b) __attribute__((const));
 //    Rounding: RTNE
 //
 // hf -> bf8 conversion builtins (rte rounding mode)
-char   __builtin_IB_hftobf8_1(half a) __attribute__((const));
-char2  __builtin_IB_hftobf8_2(half2 a) __attribute__((const));
-char3  __builtin_IB_hftobf8_3(half3 a) __attribute__((const));
-char4  __builtin_IB_hftobf8_4(half4 a) __attribute__((const));
-char8  __builtin_IB_hftobf8_8(half8 a) __attribute__((const));
+char __builtin_IB_hftobf8_1(half a) __attribute__((const));
+char2 __builtin_IB_hftobf8_2(half2 a) __attribute__((const));
+char3 __builtin_IB_hftobf8_3(half3 a) __attribute__((const));
+char4 __builtin_IB_hftobf8_4(half4 a) __attribute__((const));
+char8 __builtin_IB_hftobf8_8(half8 a) __attribute__((const));
 char16 __builtin_IB_hftobf8_16(half16 a) __attribute__((const));
 
 // bf8 -> hf conversion builtins (precise conversion)
-half   __builtin_IB_bf8tohf_1(char a) __attribute__((const));
-half2  __builtin_IB_bf8tohf_2(char2 a) __attribute__((const));
-half3  __builtin_IB_bf8tohf_3(char3 a) __attribute__((const));
-half4  __builtin_IB_bf8tohf_4(char4 a) __attribute__((const));
-half8  __builtin_IB_bf8tohf_8(char8 a) __attribute__((const));
+half __builtin_IB_bf8tohf_1(char a) __attribute__((const));
+half2 __builtin_IB_bf8tohf_2(char2 a) __attribute__((const));
+half3 __builtin_IB_bf8tohf_3(char3 a) __attribute__((const));
+half4 __builtin_IB_bf8tohf_4(char4 a) __attribute__((const));
+half8 __builtin_IB_bf8tohf_8(char8 a) __attribute__((const));
 half16 __builtin_IB_bf8tohf_16(char16 a) __attribute__((const));
 
 // hf -> bf8 conversion with saturation.
-char   __builtin_IB_hftobf8_1_sat(half a) __attribute__((const));
-char2  __builtin_IB_hftobf8_2_sat(half2 a) __attribute__((const));
-char3  __builtin_IB_hftobf8_3_sat(half3 a) __attribute__((const));
-char4  __builtin_IB_hftobf8_4_sat(half4 a) __attribute__((const));
-char8  __builtin_IB_hftobf8_8_sat(half8 a) __attribute__((const));
+char __builtin_IB_hftobf8_1_sat(half a) __attribute__((const));
+char2 __builtin_IB_hftobf8_2_sat(half2 a) __attribute__((const));
+char3 __builtin_IB_hftobf8_3_sat(half3 a) __attribute__((const));
+char4 __builtin_IB_hftobf8_4_sat(half4 a) __attribute__((const));
+char8 __builtin_IB_hftobf8_8_sat(half8 a) __attribute__((const));
 char16 __builtin_IB_hftobf8_16_sat(half16 a) __attribute__((const));
 
 // hf -> e4m3 (HF8) conversion builtins (rte rounding mode)
-char   __builtin_IB_hftoe4m3_1(half a) __attribute__((const));
-char2  __builtin_IB_hftoe4m3_2(half2 a) __attribute__((const));
-char3  __builtin_IB_hftoe4m3_3(half3 a) __attribute__((const));
-char4  __builtin_IB_hftoe4m3_4(half4 a) __attribute__((const));
-char8  __builtin_IB_hftoe4m3_8(half8 a) __attribute__((const));
+char __builtin_IB_hftoe4m3_1(half a) __attribute__((const));
+char2 __builtin_IB_hftoe4m3_2(half2 a) __attribute__((const));
+char3 __builtin_IB_hftoe4m3_3(half3 a) __attribute__((const));
+char4 __builtin_IB_hftoe4m3_4(half4 a) __attribute__((const));
+char8 __builtin_IB_hftoe4m3_8(half8 a) __attribute__((const));
 char16 __builtin_IB_hftoe4m3_16(half16 a) __attribute__((const));
 
 // hf -> e4m3 (HF8) conversion with saturation
-char   __builtin_IB_hftoe4m3_1_sat(half a) __attribute__((const));
-char2  __builtin_IB_hftoe4m3_2_sat(half2 a) __attribute__((const));
-char3  __builtin_IB_hftoe4m3_3_sat(half3 a) __attribute__((const));
-char4  __builtin_IB_hftoe4m3_4_sat(half4 a) __attribute__((const));
-char8  __builtin_IB_hftoe4m3_8_sat(half8 a) __attribute__((const));
+char __builtin_IB_hftoe4m3_1_sat(half a) __attribute__((const));
+char2 __builtin_IB_hftoe4m3_2_sat(half2 a) __attribute__((const));
+char3 __builtin_IB_hftoe4m3_3_sat(half3 a) __attribute__((const));
+char4 __builtin_IB_hftoe4m3_4_sat(half4 a) __attribute__((const));
+char8 __builtin_IB_hftoe4m3_8_sat(half8 a) __attribute__((const));
 char16 __builtin_IB_hftoe4m3_16_sat(half16 a) __attribute__((const));
 
 // e4m3 (HF8) -> hf conversion builtins (precise conversion)
-half   __builtin_IB_e4m3tohf_1(char a) __attribute__((const));
-half2  __builtin_IB_e4m3tohf_2(char2 a) __attribute__((const));
-half3  __builtin_IB_e4m3tohf_3(char3 a) __attribute__((const));
-half4  __builtin_IB_e4m3tohf_4(char4 a) __attribute__((const));
-half8  __builtin_IB_e4m3tohf_8(char8 a) __attribute__((const));
+half __builtin_IB_e4m3tohf_1(char a) __attribute__((const));
+half2 __builtin_IB_e4m3tohf_2(char2 a) __attribute__((const));
+half3 __builtin_IB_e4m3tohf_3(char3 a) __attribute__((const));
+half4 __builtin_IB_e4m3tohf_4(char4 a) __attribute__((const));
+half8 __builtin_IB_e4m3tohf_8(char8 a) __attribute__((const));
 half16 __builtin_IB_e4m3tohf_16(char16 a) __attribute__((const));
 
 // tf32 <--> float conversion
@@ -691,11 +575,11 @@ half16 __builtin_IB_e4m3tohf_16(char16 a) __attribute__((const));
 //           (tf32: 19 bits, taking 32bit storage)
 //
 // f -> tf32 conversion builtins (rte rounding mode)
-float   __builtin_IB_ftotf32_1(float a) __attribute__((const));
-float2  __builtin_IB_ftotf32_2(float2 a) __attribute__((const));
-float3  __builtin_IB_ftotf32_3(float3 a) __attribute__((const));
-float4  __builtin_IB_ftotf32_4(float4 a) __attribute__((const));
-float8  __builtin_IB_ftotf32_8(float8 a) __attribute__((const));
+float __builtin_IB_ftotf32_1(float a) __attribute__((const));
+float2 __builtin_IB_ftotf32_2(float2 a) __attribute__((const));
+float3 __builtin_IB_ftotf32_3(float3 a) __attribute__((const));
+float4 __builtin_IB_ftotf32_4(float4 a) __attribute__((const));
+float8 __builtin_IB_ftotf32_8(float8 a) __attribute__((const));
 float16 __builtin_IB_ftotf32_16(float16 a) __attribute__((const));
 
 // tf32 -> f conversion is not needed, since every tf32 is already a float
@@ -705,102 +589,95 @@ float16 __builtin_IB_ftotf32_16(float16 a) __attribute__((const));
 //      a: hf | f
 //      r: random number, has the same type as a's
 //  HF -> BF8
-char   __builtin_IB_srnd_hftobf8_1(half a, char r) __attribute__((const));
-char2  __builtin_IB_srnd_hftobf8_2(half2 a, char2 r) __attribute__((const));
-char3  __builtin_IB_srnd_hftobf8_3(half3 a, char3 r) __attribute__((const));
-char4  __builtin_IB_srnd_hftobf8_4(half4 a, char4 r) __attribute__((const));
-char8  __builtin_IB_srnd_hftobf8_8(half8 a, char8 r) __attribute__((const));
+char __builtin_IB_srnd_hftobf8_1(half a, char r) __attribute__((const));
+char2 __builtin_IB_srnd_hftobf8_2(half2 a, char2 r) __attribute__((const));
+char3 __builtin_IB_srnd_hftobf8_3(half3 a, char3 r) __attribute__((const));
+char4 __builtin_IB_srnd_hftobf8_4(half4 a, char4 r) __attribute__((const));
+char8 __builtin_IB_srnd_hftobf8_8(half8 a, char8 r) __attribute__((const));
 char16 __builtin_IB_srnd_hftobf8_16(half16 a, char16 r) __attribute__((const));
 
-char   __builtin_IB_srnd_hftobf8_1_sat(half a, char r) __attribute__((const));
-char2  __builtin_IB_srnd_hftobf8_2_sat(half2 a, char2 r) __attribute__((const));
-char3  __builtin_IB_srnd_hftobf8_3_sat(half3 a, char3 r) __attribute__((const));
-char4  __builtin_IB_srnd_hftobf8_4_sat(half4 a, char4 r) __attribute__((const));
-char8  __builtin_IB_srnd_hftobf8_8_sat(half8 a, char8 r) __attribute__((const));
+char __builtin_IB_srnd_hftobf8_1_sat(half a, char r) __attribute__((const));
+char2 __builtin_IB_srnd_hftobf8_2_sat(half2 a, char2 r) __attribute__((const));
+char3 __builtin_IB_srnd_hftobf8_3_sat(half3 a, char3 r) __attribute__((const));
+char4 __builtin_IB_srnd_hftobf8_4_sat(half4 a, char4 r) __attribute__((const));
+char8 __builtin_IB_srnd_hftobf8_8_sat(half8 a, char8 r) __attribute__((const));
 char16 __builtin_IB_srnd_hftobf8_16_sat(half16 a, char16 r) __attribute__((const));
 
 // F -> HF
-half   __builtin_IB_srnd_ftohf_1(float a, short r) __attribute__((const));
-half2  __builtin_IB_srnd_ftohf_2(float2 a, short2 r) __attribute__((const));
-half3  __builtin_IB_srnd_ftohf_3(float3 a, short3 r) __attribute__((const));
-half4  __builtin_IB_srnd_ftohf_4(float4 a, short4 r) __attribute__((const));
-half8  __builtin_IB_srnd_ftohf_8(float8 a, short8 r) __attribute__((const));
+half __builtin_IB_srnd_ftohf_1(float a, short r) __attribute__((const));
+half2 __builtin_IB_srnd_ftohf_2(float2 a, short2 r) __attribute__((const));
+half3 __builtin_IB_srnd_ftohf_3(float3 a, short3 r) __attribute__((const));
+half4 __builtin_IB_srnd_ftohf_4(float4 a, short4 r) __attribute__((const));
+half8 __builtin_IB_srnd_ftohf_8(float8 a, short8 r) __attribute__((const));
 half16 __builtin_IB_srnd_ftohf_16(float16 a, short16 r) __attribute__((const));
 
-uint __builtin_IB_lfsr_b32(uint seed, uint polynomial) __attribute__((const)); // as 1 int
-uint __builtin_IB_lfsr_b16v2(uint seed, uint polynomial)
-    __attribute__((const)); // as 2 shorts
-uint __builtin_IB_lfsr_b8v4(uint seed, uint polynomial)
-    __attribute__((const)); // as 4 chars
+uint __builtin_IB_lfsr_b32(uint seed, uint polynomial) __attribute__((const));   // as 1 int
+uint __builtin_IB_lfsr_b16v2(uint seed, uint polynomial) __attribute__((const)); // as 2 shorts
+uint __builtin_IB_lfsr_b8v4(uint seed, uint polynomial) __attribute__((const));  // as 4 chars
 
 // Vector forms: each element is one packed 32-bit word; the width-suffix is
 // ignored by DpasFuncsResolution (it only matches the b32/b16v2/b8v4 mode).
-uint2  __builtin_IB_lfsr_b32_v2(uint2 seed, uint2 polynomial) __attribute__((const));
-uint4  __builtin_IB_lfsr_b32_v4(uint4 seed, uint4 polynomial) __attribute__((const));
-uint8  __builtin_IB_lfsr_b32_v8(uint8 seed, uint8 polynomial) __attribute__((const));
+uint2 __builtin_IB_lfsr_b32_v2(uint2 seed, uint2 polynomial) __attribute__((const));
+uint4 __builtin_IB_lfsr_b32_v4(uint4 seed, uint4 polynomial) __attribute__((const));
+uint8 __builtin_IB_lfsr_b32_v8(uint8 seed, uint8 polynomial) __attribute__((const));
 uint16 __builtin_IB_lfsr_b32_v16(uint16 seed, uint16 polynomial) __attribute__((const));
-uint2  __builtin_IB_lfsr_b16v2_v2(uint2 seed, uint2 polynomial) __attribute__((const));
-uint4  __builtin_IB_lfsr_b16v2_v4(uint4 seed, uint4 polynomial) __attribute__((const));
-uint8  __builtin_IB_lfsr_b16v2_v8(uint8 seed, uint8 polynomial) __attribute__((const));
-uint2  __builtin_IB_lfsr_b8v4_v2(uint2 seed, uint2 polynomial) __attribute__((const));
-uint4  __builtin_IB_lfsr_b8v4_v4(uint4 seed, uint4 polynomial) __attribute__((const));
+uint2 __builtin_IB_lfsr_b16v2_v2(uint2 seed, uint2 polynomial) __attribute__((const));
+uint4 __builtin_IB_lfsr_b16v2_v4(uint4 seed, uint4 polynomial) __attribute__((const));
+uint8 __builtin_IB_lfsr_b16v2_v8(uint8 seed, uint8 polynomial) __attribute__((const));
+uint2 __builtin_IB_lfsr_b8v4_v2(uint2 seed, uint2 polynomial) __attribute__((const));
+uint4 __builtin_IB_lfsr_b8v4_v4(uint4 seed, uint4 polynomial) __attribute__((const));
 
-enum DNSCL_CONVERT_TO_TYPE
-{
-    DNSCL_CONVERT_TO_E2M1 = 1, // conversion to E2M1
-    DNSCL_CONVERT_TO_INT4 = 2, // conversion to INT4
+enum DNSCL_CONVERT_TO_TYPE {
+  DNSCL_CONVERT_TO_E2M1 = 1, // conversion to E2M1
+  DNSCL_CONVERT_TO_INT4 = 2, // conversion to INT4
 };
-uint __builtin_IB_dnscl_bf16(
-    uint, uint, enum DNSCL_CONVERT_TO_TYPE convert_to, uint mode);
-uint __builtin_IB_dnscl_hf16(
-    uint, uint, enum DNSCL_CONVERT_TO_TYPE convert_to, uint mode);
-uint __builtin_IB_dnscl_bf16_srnd(
-    uint, uint, uint, enum DNSCL_CONVERT_TO_TYPE convert_to, uint mode);
-uint __builtin_IB_dnscl_hf16_srnd(
-    uint, uint, uint, enum DNSCL_CONVERT_TO_TYPE convert_to, uint mode);
+uint __builtin_IB_dnscl_bf16(uint, uint, enum DNSCL_CONVERT_TO_TYPE convert_to, uint mode);
+uint __builtin_IB_dnscl_hf16(uint, uint, enum DNSCL_CONVERT_TO_TYPE convert_to, uint mode);
+uint __builtin_IB_dnscl_bf16_srnd(uint, uint, uint, enum DNSCL_CONVERT_TO_TYPE convert_to, uint mode);
+uint __builtin_IB_dnscl_hf16_srnd(uint, uint, uint, enum DNSCL_CONVERT_TO_TYPE convert_to, uint mode);
 
 // HF -> HF8 - stochastic rounding (a: to be rounded; r: random number used for rounding)
-char   __builtin_IB_srnd_hftohf8_1(half a, char r) __attribute__((const));
-char2  __builtin_IB_srnd_hftohf8_2(half2 a, char2 r) __attribute__((const));
-char3  __builtin_IB_srnd_hftohf8_3(half3 a, char3 r) __attribute__((const));
-char4  __builtin_IB_srnd_hftohf8_4(half4 a, char4 r) __attribute__((const));
-char8  __builtin_IB_srnd_hftohf8_8(half8 a, char8 r) __attribute__((const));
+char __builtin_IB_srnd_hftohf8_1(half a, char r) __attribute__((const));
+char2 __builtin_IB_srnd_hftohf8_2(half2 a, char2 r) __attribute__((const));
+char3 __builtin_IB_srnd_hftohf8_3(half3 a, char3 r) __attribute__((const));
+char4 __builtin_IB_srnd_hftohf8_4(half4 a, char4 r) __attribute__((const));
+char8 __builtin_IB_srnd_hftohf8_8(half8 a, char8 r) __attribute__((const));
 char16 __builtin_IB_srnd_hftohf8_16(half16 a, char16 r) __attribute__((const));
 // HF -> HF8 - saturated stochastic rounding (a: to be rounded; r: random number used for rounding)
-char   __builtin_IB_srnd_hftohf8_1_sat(half a, char r) __attribute__((const));
-char2  __builtin_IB_srnd_hftohf8_2_sat(half2 a, char2 r) __attribute__((const));
-char3  __builtin_IB_srnd_hftohf8_3_sat(half3 a, char3 r) __attribute__((const));
-char4  __builtin_IB_srnd_hftohf8_4_sat(half4 a, char4 r) __attribute__((const));
-char8  __builtin_IB_srnd_hftohf8_8_sat(half8 a, char8 r) __attribute__((const));
+char __builtin_IB_srnd_hftohf8_1_sat(half a, char r) __attribute__((const));
+char2 __builtin_IB_srnd_hftohf8_2_sat(half2 a, char2 r) __attribute__((const));
+char3 __builtin_IB_srnd_hftohf8_3_sat(half3 a, char3 r) __attribute__((const));
+char4 __builtin_IB_srnd_hftohf8_4_sat(half4 a, char4 r) __attribute__((const));
+char8 __builtin_IB_srnd_hftohf8_8_sat(half8 a, char8 r) __attribute__((const));
 char16 __builtin_IB_srnd_hftohf8_16_sat(half16 a, char16 r) __attribute__((const));
 
 // BF -> BF8 - stochastic rounding (a: to be rounded; r: random number used for rounding)
-char   __builtin_IB_srnd_bftobf8_1(short a, char r) __attribute__((const));
-char2  __builtin_IB_srnd_bftobf8_2(short2 a, char2 r) __attribute__((const));
-char3  __builtin_IB_srnd_bftobf8_3(short3 a, char3 r) __attribute__((const));
-char4  __builtin_IB_srnd_bftobf8_4(short4 a, char4 r) __attribute__((const));
-char8  __builtin_IB_srnd_bftobf8_8(short8 a, char8 r) __attribute__((const));
+char __builtin_IB_srnd_bftobf8_1(short a, char r) __attribute__((const));
+char2 __builtin_IB_srnd_bftobf8_2(short2 a, char2 r) __attribute__((const));
+char3 __builtin_IB_srnd_bftobf8_3(short3 a, char3 r) __attribute__((const));
+char4 __builtin_IB_srnd_bftobf8_4(short4 a, char4 r) __attribute__((const));
+char8 __builtin_IB_srnd_bftobf8_8(short8 a, char8 r) __attribute__((const));
 char16 __builtin_IB_srnd_bftobf8_16(short16 a, char16 r) __attribute__((const));
 // BF -> BF8 - saturated stochastic rounding (a: to be rounded; r: random number used for rounding)
-char   __builtin_IB_srnd_bftobf8_1_sat(short a, char r) __attribute__((const));
-char2  __builtin_IB_srnd_bftobf8_2_sat(short2 a, char2 r) __attribute__((const));
-char3  __builtin_IB_srnd_bftobf8_3_sat(short3 a, char3 r) __attribute__((const));
-char4  __builtin_IB_srnd_bftobf8_4_sat(short4 a, char4 r) __attribute__((const));
-char8  __builtin_IB_srnd_bftobf8_8_sat(short8 a, char8 r) __attribute__((const));
+char __builtin_IB_srnd_bftobf8_1_sat(short a, char r) __attribute__((const));
+char2 __builtin_IB_srnd_bftobf8_2_sat(short2 a, char2 r) __attribute__((const));
+char3 __builtin_IB_srnd_bftobf8_3_sat(short3 a, char3 r) __attribute__((const));
+char4 __builtin_IB_srnd_bftobf8_4_sat(short4 a, char4 r) __attribute__((const));
+char8 __builtin_IB_srnd_bftobf8_8_sat(short8 a, char8 r) __attribute__((const));
 char16 __builtin_IB_srnd_bftobf8_16_sat(short16 a, char16 r) __attribute__((const));
 
 // BF -> HF8 - stochastic rounding (a: to be rounded; r: random number used for rounding)
-char   __builtin_IB_srnd_bftohf8_1(short a, char r) __attribute__((const));
-char2  __builtin_IB_srnd_bftohf8_2(short2 a, char2 r) __attribute__((const));
-char3  __builtin_IB_srnd_bftohf8_3(short3 a, char3 r) __attribute__((const));
-char4  __builtin_IB_srnd_bftohf8_4(short4 a, char4 r) __attribute__((const));
-char8  __builtin_IB_srnd_bftohf8_8(short8 a, char8 r) __attribute__((const));
+char __builtin_IB_srnd_bftohf8_1(short a, char r) __attribute__((const));
+char2 __builtin_IB_srnd_bftohf8_2(short2 a, char2 r) __attribute__((const));
+char3 __builtin_IB_srnd_bftohf8_3(short3 a, char3 r) __attribute__((const));
+char4 __builtin_IB_srnd_bftohf8_4(short4 a, char4 r) __attribute__((const));
+char8 __builtin_IB_srnd_bftohf8_8(short8 a, char8 r) __attribute__((const));
 char16 __builtin_IB_srnd_bftohf8_16(short16 a, char16 r) __attribute__((const));
 // BF -> HF8 - saturated stochastic rounding (a: to be rounded; r: random number used for rounding)
-char   __builtin_IB_srnd_bftohf8_1_sat(short a, char r) __attribute__((const));
-char2  __builtin_IB_srnd_bftohf8_2_sat(short2 a, char2 r) __attribute__((const));
-char3  __builtin_IB_srnd_bftohf8_3_sat(short3 a, char3 r) __attribute__((const));
-char4  __builtin_IB_srnd_bftohf8_4_sat(short4 a, char4 r) __attribute__((const));
-char8  __builtin_IB_srnd_bftohf8_8_sat(short8 a, char8 r) __attribute__((const));
+char __builtin_IB_srnd_bftohf8_1_sat(short a, char r) __attribute__((const));
+char2 __builtin_IB_srnd_bftohf8_2_sat(short2 a, char2 r) __attribute__((const));
+char3 __builtin_IB_srnd_bftohf8_3_sat(short3 a, char3 r) __attribute__((const));
+char4 __builtin_IB_srnd_bftohf8_4_sat(short4 a, char4 r) __attribute__((const));
+char8 __builtin_IB_srnd_bftohf8_8_sat(short8 a, char8 r) __attribute__((const));
 char16 __builtin_IB_srnd_bftohf8_16_sat(short16 a, char16 r) __attribute__((const));
 #endif // IGCBIF_INTRINSICS_DPAS_CL

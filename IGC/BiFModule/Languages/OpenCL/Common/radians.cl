@@ -9,31 +9,22 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-INLINE float OVERLOADABLE radians( float d )
-{
-    return __spirv_ocl_radians( d );
-}
+INLINE float OVERLOADABLE radians(float d) { return __spirv_ocl_radians(d); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( radians, float, float )
+GENERATE_VECTOR_FUNCTIONS_1ARG(radians, float, float)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE radians( double d )
-{
-    return __spirv_ocl_radians( d );
-}
+INLINE double OVERLOADABLE radians(double d) { return __spirv_ocl_radians(d); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( radians, double, double )
+GENERATE_VECTOR_FUNCTIONS_1ARG(radians, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE radians( half d )
-{
-    return __spirv_ocl_radians( d );
-}
+INLINE half OVERLOADABLE radians(half d) { return __spirv_ocl_radians(d); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( radians, half, half )
+GENERATE_VECTOR_FUNCTIONS_1ARG(radians, half, half)
 
 #endif // defined(cl_khr_fp16)

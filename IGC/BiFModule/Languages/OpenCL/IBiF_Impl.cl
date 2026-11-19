@@ -49,7 +49,7 @@ SPDX-License-Identifier: MIT
 // 64bit Math Emulation
 //*****************************************************************************/
 #ifdef __IGC_BUILD__
-//#include "IGCBiF_Math_64bitDiv.cl"
+// #include "IGCBiF_Math_64bitDiv.cl"
 #endif
 
 //*****************************************************************************/
@@ -80,9 +80,7 @@ SPDX-License-Identifier: MIT
 // All other work-item functions have size_t in their signature so they have
 // to be compiled in the size_t .bc files.  This is here so its code is not
 // in both the 32-bit and 64-bit .bcs.
-INLINE uint OVERLOADABLE get_work_dim() {
-  return __builtin_IB_get_work_dim();
-}
+INLINE uint OVERLOADABLE get_work_dim() { return __builtin_IB_get_work_dim(); }
 
 //*****************************************************************************/
 // generic address space function overloads
@@ -90,35 +88,27 @@ INLINE uint OVERLOADABLE get_work_dim() {
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-INLINE local void* __to_local(generic void* ptr)
-{
-    return __spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((ptr), __generic char*), StorageWorkgroup);
+INLINE local void *__to_local(generic void *ptr) {
+  return __spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((ptr), __generic char *), StorageWorkgroup);
 }
 
-INLINE private void* __to_private(generic void* ptr)
-{
-    return __spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((ptr), __generic char*), StorageFunction);
+INLINE private void *__to_private(generic void *ptr) {
+  return __spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((ptr), __generic char *), StorageFunction);
 }
 
-INLINE global void* __to_global(generic void* ptr)
-{
-    return __spirv_GenericCastToPtrExplicit_ToGlobal(__builtin_astype((ptr), __generic char*), StorageCrossWorkgroup);
+INLINE global void *__to_global(generic void *ptr) {
+  return __spirv_GenericCastToPtrExplicit_ToGlobal(__builtin_astype((ptr), __generic char *), StorageCrossWorkgroup);
 }
 
-INLINE cl_mem_fence_flags OVERLOADABLE get_fence(generic void* ptr)
-{
+INLINE cl_mem_fence_flags OVERLOADABLE get_fence(generic void *ptr) {
 
-    if(__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((ptr), __generic char*), StorageWorkgroup) != NULL)
-    {
-        return CLK_LOCAL_MEM_FENCE;
-    }
-    return CLK_GLOBAL_MEM_FENCE;
+  if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((ptr), __generic char *), StorageWorkgroup) != NULL) {
+    return CLK_LOCAL_MEM_FENCE;
+  }
+  return CLK_GLOBAL_MEM_FENCE;
 }
 
-INLINE cl_mem_fence_flags OVERLOADABLE get_fence(generic const void* ptr)
-{
-    return get_fence((generic void*)ptr);
-}
+INLINE cl_mem_fence_flags OVERLOADABLE get_fence(generic const void *ptr) { return get_fence((generic void *)ptr); }
 
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
@@ -126,50 +116,46 @@ INLINE cl_mem_fence_flags OVERLOADABLE get_fence(generic const void* ptr)
 // Synchronization functions
 //*****************************************************************************/
 
-INLINE void OVERLOADABLE work_group_barrier(cl_mem_fence_flags flags)
-{
-    __spirv_ControlBarrier(Workgroup, Device, AcquireRelease | get_spirv_mem_fence(flags));
+INLINE void OVERLOADABLE work_group_barrier(cl_mem_fence_flags flags) {
+  __spirv_ControlBarrier(Workgroup, Device, AcquireRelease | get_spirv_mem_fence(flags));
 }
 
 INLINE void OVERLOADABLE barrier(cl_mem_fence_flags flags)
 {
-    // 2.0 barrier is able to accept CLK_IMAGE_MEM_FENCE
-    work_group_barrier( flags );
+  // 2.0 barrier is able to accept CLK_IMAGE_MEM_FENCE
+  work_group_barrier(flags);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-INLINE void OVERLOADABLE work_group_barrier(cl_mem_fence_flags flags, memory_scope scope)
-{
-    __spirv_ControlBarrier(get_spirv_mem_scope(scope), Device, AcquireRelease | get_spirv_mem_fence(flags));
+INLINE void OVERLOADABLE work_group_barrier(cl_mem_fence_flags flags, memory_scope scope) {
+  __spirv_ControlBarrier(get_spirv_mem_scope(scope), Device, AcquireRelease | get_spirv_mem_fence(flags));
 }
 
-INLINE void OVERLOADABLE read_mem_fence(cl_mem_fence_flags flags)
-{
-  atomic_work_item_fence(flags & ( CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE ), memory_order_acq_rel, memory_scope_work_group);
+INLINE void OVERLOADABLE read_mem_fence(cl_mem_fence_flags flags) {
+  atomic_work_item_fence(flags & (CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE), memory_order_acq_rel,
+                         memory_scope_work_group);
 }
 
-INLINE void OVERLOADABLE write_mem_fence(cl_mem_fence_flags flags)
-{
-  atomic_work_item_fence(flags & ( CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE ), memory_order_acq_rel, memory_scope_work_group);
+INLINE void OVERLOADABLE write_mem_fence(cl_mem_fence_flags flags) {
+  atomic_work_item_fence(flags & (CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE), memory_order_acq_rel,
+                         memory_scope_work_group);
 }
 
-INLINE void OVERLOADABLE mem_fence(cl_mem_fence_flags flags)
-{
+INLINE void OVERLOADABLE mem_fence(cl_mem_fence_flags flags) {
   // Notice that per 2.0 CLK_IMAGE_MEM_FENCE is not supported as a flag argument for a mem_fence
-  atomic_work_item_fence(flags & ( CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE ), memory_order_acq_rel, memory_scope_work_group);
+  atomic_work_item_fence(flags & (CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE), memory_order_acq_rel,
+                         memory_scope_work_group);
 }
 
 // atomic_work_item_fence()
 // Caller to this function should understand that for an acq or rel memory
 // models you would have to perform additional checks inside a calle,
-// ie. look at the INLINE TYPE OVERLOADABLE atomic_fetch_##KEY##_explicit(volatile ADDRSPACE atomic_##TYPE *object, OPTYPE operand, memory_order order, memory_scope scope)
-// implementation.
-// We need only single fence around an operation for acq/rel as opposed to 2
-// for acq+rel/seq_cst. This function does not distinguish between acq/rel.
+// ie. look at the INLINE TYPE OVERLOADABLE atomic_fetch_##KEY##_explicit(volatile ADDRSPACE atomic_##TYPE *object,
+// OPTYPE operand, memory_order order, memory_scope scope) implementation. We need only single fence around an operation
+// for acq/rel as opposed to 2 for acq+rel/seq_cst. This function does not distinguish between acq/rel.
 
-INLINE void OVERLOADABLE atomic_work_item_fence( cl_mem_fence_flags flags, memory_order order, memory_scope scope )
-{
-    __spirv_MemoryBarrier( get_spirv_mem_scope( scope ), get_spirv_mem_order( order ) | get_spirv_mem_fence( flags ) );
+INLINE void OVERLOADABLE atomic_work_item_fence(cl_mem_fence_flags flags, memory_order order, memory_scope scope) {
+  __spirv_MemoryBarrier(get_spirv_mem_scope(scope), get_spirv_mem_order(order) | get_spirv_mem_fence(flags));
 }
 
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
@@ -177,43 +163,38 @@ INLINE void OVERLOADABLE atomic_work_item_fence( cl_mem_fence_flags flags, memor
 //*****************************************************************************/
 // wait_group_events()
 //*****************************************************************************/
-INLINE void OVERLOADABLE wait_group_events( int num_events, __private event_t *event_list )
-{
-    barrier( CLK_GLOBAL_MEM_FENCE );
-    barrier( CLK_LOCAL_MEM_FENCE );
-
+INLINE void OVERLOADABLE wait_group_events(int num_events, __private event_t *event_list) {
+  barrier(CLK_GLOBAL_MEM_FENCE);
+  barrier(CLK_LOCAL_MEM_FENCE);
 }
 
 // here for backwards compatibility with clang/llvm 3.0
 // wait_group_events().
-INLINE void OVERLOADABLE wait_group_events( int num_events, __private uint *event_list )
-{
-    barrier( CLK_GLOBAL_MEM_FENCE );
-    barrier( CLK_LOCAL_MEM_FENCE );
+INLINE void OVERLOADABLE wait_group_events(int num_events, __private uint *event_list) {
+  barrier(CLK_GLOBAL_MEM_FENCE);
+  barrier(CLK_LOCAL_MEM_FENCE);
 }
 
 //*****************************************************************************/
 // Workgroup functions
 //*****************************************************************************/
 
-INLINE int OVERLOADABLE work_group_any(int predicate)
-{
-    GET_MEMPOOL_PTR(tmp, int, false, 1)
-    *tmp = 0;
-        barrier(CLK_LOCAL_MEM_FENCE); // Wait for tmp to be initialized
-        atomic_or(tmp, predicate != 0); // Set to true if predicate is non-zero
-        barrier(CLK_LOCAL_MEM_FENCE);
-        return *tmp; // Return true if any of them passed the test
+INLINE int OVERLOADABLE work_group_any(int predicate) {
+  GET_MEMPOOL_PTR(tmp, int, false, 1)
+  *tmp = 0;
+  barrier(CLK_LOCAL_MEM_FENCE);   // Wait for tmp to be initialized
+  atomic_or(tmp, predicate != 0); // Set to true if predicate is non-zero
+  barrier(CLK_LOCAL_MEM_FENCE);
+  return *tmp; // Return true if any of them passed the test
 }
 
-INLINE int OVERLOADABLE work_group_all(int predicate)
-{
-    GET_MEMPOOL_PTR(tmp, int, false, 1)
-    *tmp = 0;
-        barrier(CLK_LOCAL_MEM_FENCE); // Wait for tmp to be initialized
-        atomic_or(tmp, predicate == 0); // Set to true if predicate is zero
-        barrier(CLK_LOCAL_MEM_FENCE); // Wait for threads
-        return (*tmp == 0); // Return true if none of them failed the test
+INLINE int OVERLOADABLE work_group_all(int predicate) {
+  GET_MEMPOOL_PTR(tmp, int, false, 1)
+  *tmp = 0;
+  barrier(CLK_LOCAL_MEM_FENCE);   // Wait for tmp to be initialized
+  atomic_or(tmp, predicate == 0); // Set to true if predicate is zero
+  barrier(CLK_LOCAL_MEM_FENCE);   // Wait for threads
+  return (*tmp == 0);             // Return true if none of them failed the test
 }
 
 //*****************************************************************************/
@@ -225,53 +206,52 @@ INLINE int OVERLOADABLE work_group_all(int predicate)
 /////////////////////////////////////////////////////////////////////
 // Basic Reads and Writes
 
-int __read_pipe_2( read_only pipe int pipe_, __generic void* data, uint bytes, uint alignment )
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    return __spirv_ReadPipe(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), data, bytes);
+int __read_pipe_2(read_only pipe int pipe_, __generic void *data, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  return __spirv_ReadPipe(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void *)id), data, bytes);
 }
 
-int __write_pipe_2( write_only pipe int pipe_, __generic const void* data, uint bytes, uint alignment)
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    return __spirv_WritePipe(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), data, bytes);
+int __write_pipe_2(write_only pipe int pipe_, __generic const void *data, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  return __spirv_WritePipe(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void *)id), data, bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
 // Reservation Query
 
-bool OVERLOADABLE is_valid_reserve_id(
-  reserve_id_t reserve_id )
-{
-    return __spirv_IsValidReserveId(__builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)));
+bool OVERLOADABLE is_valid_reserve_id(reserve_id_t reserve_id) {
+  return __spirv_IsValidReserveId(
+      __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)));
 }
 
 /////////////////////////////////////////////////////////////////////
 // Work Item Reservations
 
 // NOTE: The pipe's packet type doesn't affect mangling.
-reserve_id_t __reserve_read_pipe( read_only pipe int pipe_, uint num_packets, uint bytes, uint alignment )
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_ReserveReadPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), num_packets, bytes));
+reserve_id_t __reserve_read_pipe(read_only pipe int pipe_, uint num_packets, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_ReserveReadPipePackets(
+      __builtin_IB_convert_object_type_to_spirv_pipe_ro((void *)id), num_packets, bytes));
 }
 
-reserve_id_t __reserve_write_pipe( write_only pipe int pipe_, uint num_packets, uint bytes, uint alignment )
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_ReserveWritePipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), num_packets, bytes));
+reserve_id_t __reserve_write_pipe(write_only pipe int pipe_, uint num_packets, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_ReserveWritePipePackets(
+      __builtin_IB_convert_object_type_to_spirv_pipe_wo((void *)id), num_packets, bytes));
 }
 
-void __commit_read_pipe( read_only pipe int pipe_, reserve_id_t reserve_id, uint bytes, uint alignment )
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    __spirv_CommitReadPipe(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
+void __commit_read_pipe(read_only pipe int pipe_, reserve_id_t reserve_id, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  __spirv_CommitReadPipe(
+      __builtin_IB_convert_object_type_to_spirv_pipe_ro((void *)id),
+      __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
 }
 
-void __commit_write_pipe( write_only pipe int pipe_, reserve_id_t reserve_id, uint bytes, uint alignment)
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    __spirv_CommitWritePipe(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
+void __commit_write_pipe(write_only pipe int pipe_, reserve_id_t reserve_id, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  __spirv_CommitWritePipe(
+      __builtin_IB_convert_object_type_to_spirv_pipe_wo((void *)id),
+      __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -279,112 +259,116 @@ void __commit_write_pipe( write_only pipe int pipe_, reserve_id_t reserve_id, ui
 // The reservation functions lock the _pipe, so we don't need to
 // re-lock here.
 
-int __read_pipe_4( read_only pipe int pipe_, reserve_id_t reserve_id, uint index, __generic void* data, uint bytes, uint alignment)
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    return __spirv_ReservedReadPipe(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), index, data, bytes);
+int __read_pipe_4(read_only pipe int pipe_, reserve_id_t reserve_id, uint index, __generic void *data, uint bytes,
+                  uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  return __spirv_ReservedReadPipe(
+      __builtin_IB_convert_object_type_to_spirv_pipe_ro((void *)id),
+      __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), index,
+      data, bytes);
 }
 
 // write_pipe with 4 explicit arguments
-int __write_pipe_4( write_only pipe int pipe_, reserve_id_t reserve_id, uint index, __generic const void* data, uint bytes, uint alignment)
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    return __spirv_ReservedWritePipe(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), index, data, bytes);
+int __write_pipe_4(write_only pipe int pipe_, reserve_id_t reserve_id, uint index, __generic const void *data,
+                   uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  return __spirv_ReservedWritePipe(
+      __builtin_IB_convert_object_type_to_spirv_pipe_wo((void *)id),
+      __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), index,
+      data, bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
 // Work Group Reservations
 //
-bool __intel_is_first_work_group_item( void );
+bool __intel_is_first_work_group_item(void);
 
-reserve_id_t __work_group_reserve_read_pipe( read_only pipe int p, uint num_packets, uint bytes, uint alignment )
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
-    return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_GroupReserveReadPipePackets(Workgroup, __builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), num_packets, bytes));
+reserve_id_t __work_group_reserve_read_pipe(read_only pipe int p, uint num_packets, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+  return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_GroupReserveReadPipePackets(
+      Workgroup, __builtin_IB_convert_object_type_to_spirv_pipe_ro((void *)id), num_packets, bytes));
 }
 
-reserve_id_t __work_group_reserve_write_pipe( write_only pipe int p, uint num_packets, uint bytes, uint alignment )
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
-    return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_GroupReserveWritePipePackets(Workgroup, __builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), num_packets, bytes));
+reserve_id_t __work_group_reserve_write_pipe(write_only pipe int p, uint num_packets, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+  return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_GroupReserveWritePipePackets(
+      Workgroup, __builtin_IB_convert_object_type_to_spirv_pipe_wo((void *)id), num_packets, bytes));
 }
 
-void __work_group_commit_read_pipe( read_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment )
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
-    __spirv_GroupCommitReadPipe(Workgroup, __builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
+void __work_group_commit_read_pipe(read_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+  __spirv_GroupCommitReadPipe(
+      Workgroup, __builtin_IB_convert_object_type_to_spirv_pipe_ro((void *)id),
+      __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
 }
 
-void __work_group_commit_write_pipe( write_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment )
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
-    __spirv_GroupCommitWritePipe(Workgroup, __builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
+void __work_group_commit_write_pipe(write_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+  __spirv_GroupCommitWritePipe(
+      Workgroup, __builtin_IB_convert_object_type_to_spirv_pipe_wo((void *)id),
+      __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
 // Sub-Group Reservations
 // Note: Not supporting this for intel sub groups (yet?).
-reserve_id_t __sub_group_reserve_read_pipe( read_only pipe int p, uint num_packets, uint bytes, uint alignment )
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
-    return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_GroupReserveReadPipePackets(Subgroup, __builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), num_packets, bytes));
+reserve_id_t __sub_group_reserve_read_pipe(read_only pipe int p, uint num_packets, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+  return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_GroupReserveReadPipePackets(
+      Subgroup, __builtin_IB_convert_object_type_to_spirv_pipe_ro((void *)id), num_packets, bytes));
 }
 
-reserve_id_t __sub_group_reserve_write_pipe( write_only pipe int p, uint num_packets, uint bytes, uint alignment )
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
-    return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_GroupReserveWritePipePackets(Subgroup, __builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), num_packets, bytes));
+reserve_id_t __sub_group_reserve_write_pipe(write_only pipe int p, uint num_packets, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+  return __builtin_IB_convert_object_type_to_ocl_reserveid(__spirv_GroupReserveWritePipePackets(
+      Subgroup, __builtin_IB_convert_object_type_to_spirv_pipe_wo((void *)id), num_packets, bytes));
 }
 
-void __sub_group_commit_read_pipe( read_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment )
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
-    __spirv_GroupCommitReadPipe(Subgroup, __builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
+void __sub_group_commit_read_pipe(read_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+  __spirv_GroupCommitReadPipe(
+      Subgroup, __builtin_IB_convert_object_type_to_spirv_pipe_ro((void *)id),
+      __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
 }
 
-void __sub_group_commit_write_pipe( write_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment )
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
-    __spirv_GroupCommitWritePipe(Subgroup, __builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
+void __sub_group_commit_write_pipe(write_only pipe int p, reserve_id_t reserve_id, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(p);
+  __spirv_GroupCommitWritePipe(
+      Subgroup, __builtin_IB_convert_object_type_to_spirv_pipe_wo((void *)id),
+      __builtin_IB_convert_object_type_to_spirv_reserveid(__builtin_IB_cast_object_to_generic_ptr(reserve_id)), bytes);
 }
 
 /////////////////////////////////////////////////////////////////////
 // Pipe Queries
 //
-uint __get_pipe_num_packets(pipe int pipe_, uint bytes, uint alignment)
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    return __spirv_GetNumPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), bytes);
+uint __get_pipe_num_packets(pipe int pipe_, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  return __spirv_GetNumPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void *)id), bytes);
 }
 
-uint __get_pipe_num_packets_ro(pipe int pipe_, uint bytes, uint alignment)
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    return __spirv_GetNumPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), bytes);
+uint __get_pipe_num_packets_ro(pipe int pipe_, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  return __spirv_GetNumPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void *)id), bytes);
 }
 
-uint __get_pipe_num_packets_wo(write_only pipe int pipe_, uint bytes, uint alignment)
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    return __spirv_GetNumPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), bytes);
+uint __get_pipe_num_packets_wo(write_only pipe int pipe_, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  return __spirv_GetNumPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void *)id), bytes);
 }
 
-uint __get_pipe_max_packets(pipe int pipe_, uint bytes, uint alignment)
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    return __spirv_GetMaxPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), bytes);
+uint __get_pipe_max_packets(pipe int pipe_, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  return __spirv_GetMaxPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void *)id), bytes);
 }
 
-uint __get_pipe_max_packets_ro(pipe int pipe_, uint bytes, uint alignment)
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    return __spirv_GetMaxPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), bytes);
+uint __get_pipe_max_packets_ro(pipe int pipe_, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  return __spirv_GetMaxPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void *)id), bytes);
 }
 
-uint __get_pipe_max_packets_wo(write_only pipe int pipe_, uint bytes, uint alignment)
-{
-    long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    return __spirv_GetMaxPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), bytes);
+uint __get_pipe_max_packets_wo(write_only pipe int pipe_, uint bytes, uint alignment) {
+  long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
+  return __spirv_GetMaxPipePackets(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void *)id), bytes);
 }
 
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
@@ -393,51 +377,38 @@ uint __get_pipe_max_packets_wo(write_only pipe int pipe_, uint bytes, uint align
 // Clock functions
 //*****************************************************************************
 
-
 #ifdef cl_khr_kernel_clock
 
 // Device scope
 #ifdef __opencl_c_kernel_clock_scope_device
-__attribute__((always_inline))
-ulong OVERLOADABLE clock_read_device(void)
-{
-    return __spirv_ReadClockKHR_Rulong(Device);
+__attribute__((always_inline)) ulong OVERLOADABLE clock_read_device(void) {
+  return __spirv_ReadClockKHR_Rulong(Device);
 }
 
-__attribute__((always_inline))
-uint2 OVERLOADABLE clock_read_hilo_device(void)
-{
-    return __spirv_ReadClockKHR_Ruint2(Device);
+__attribute__((always_inline)) uint2 OVERLOADABLE clock_read_hilo_device(void) {
+  return __spirv_ReadClockKHR_Ruint2(Device);
 }
 #endif // __opencl_c_kernel_clock_scope_device
 
 // Workgroup scope
 #ifdef __opencl_c_kernel_clock_scope_work_group
-__attribute__((always_inline))
-ulong OVERLOADABLE clock_read_work_group(void)
-{
-    return __spirv_ReadClockKHR_Rulong(Workgroup);
+__attribute__((always_inline)) ulong OVERLOADABLE clock_read_work_group(void) {
+  return __spirv_ReadClockKHR_Rulong(Workgroup);
 }
 
-__attribute__((always_inline))
-uint2 OVERLOADABLE clock_read_hilo_work_group(void)
-{
-    return __spirv_ReadClockKHR_Ruint2(Workgroup);
+__attribute__((always_inline)) uint2 OVERLOADABLE clock_read_hilo_work_group(void) {
+  return __spirv_ReadClockKHR_Ruint2(Workgroup);
 }
 #endif // __opencl_c_kernel_clock_scope_work_group
 
 // Subgroup scope
 #ifdef __opencl_c_kernel_clock_scope_sub_group
-__attribute__((always_inline))
-ulong OVERLOADABLE clock_read_sub_group(void)
-{
-    return __spirv_ReadClockKHR_Rulong(Subgroup);
+__attribute__((always_inline)) ulong OVERLOADABLE clock_read_sub_group(void) {
+  return __spirv_ReadClockKHR_Rulong(Subgroup);
 }
 
-__attribute__((always_inline))
-uint2 OVERLOADABLE clock_read_hilo_sub_group(void)
-{
-    return __spirv_ReadClockKHR_Ruint2(Subgroup);
+__attribute__((always_inline)) uint2 OVERLOADABLE clock_read_hilo_sub_group(void) {
+  return __spirv_ReadClockKHR_Ruint2(Subgroup);
 }
 #endif // __opencl_c_kernel_clock_scope_sub_group
 
@@ -445,132 +416,68 @@ uint2 OVERLOADABLE clock_read_hilo_sub_group(void)
 
 // Internal Debug Built-Ins (TODO: implement for IGC?)
 
-__attribute__((always_inline))
-ulong OVERLOADABLE intel_get_cycle_counter(void)
-{
-    return __spirv_ReadClockKHR_Rulong(0);
+__attribute__((always_inline)) ulong OVERLOADABLE intel_get_cycle_counter(void) {
+  return __spirv_ReadClockKHR_Rulong(0);
 }
 
-__attribute__((always_inline))
-uint OVERLOADABLE intel_get_active_channel_mask( void )
-{
-    return __builtin_IB_WaveBallot(true);
+__attribute__((always_inline)) uint OVERLOADABLE intel_get_active_channel_mask(void) {
+  return __builtin_IB_WaveBallot(true);
 }
 
-__attribute__((always_inline))
-void OVERLOADABLE intel_source_value( uchar value )
-{
-    __builtin_IB_source_value( value );
-}
+__attribute__((always_inline)) void OVERLOADABLE intel_source_value(uchar value) { __builtin_IB_source_value(value); }
 
-__attribute__((always_inline))
-void OVERLOADABLE intel_source_value( ushort value )
-{
-    __builtin_IB_source_value( value );
-}
+__attribute__((always_inline)) void OVERLOADABLE intel_source_value(ushort value) { __builtin_IB_source_value(value); }
 
-__attribute__((always_inline))
-void OVERLOADABLE intel_source_value( uint value )
-{
-    __builtin_IB_source_value( value );
-}
+__attribute__((always_inline)) void OVERLOADABLE intel_source_value(uint value) { __builtin_IB_source_value(value); }
 
-__attribute__((always_inline))
-void OVERLOADABLE intel_source_value( ulong value )
-{
-    __builtin_IB_source_value( value );
-}
+__attribute__((always_inline)) void OVERLOADABLE intel_source_value(ulong value) { __builtin_IB_source_value(value); }
 
 // dbg0_0 will be written to dbg0.0
 // the return result will be dbg0.1 (start IP of the thread)
-__attribute__((always_inline))
-uint OVERLOADABLE intel_set_dbg_register(uint dbg0_0)
-{
-    return __builtin_IB_set_dbg_register(dbg0_0);
+__attribute__((always_inline)) uint OVERLOADABLE intel_set_dbg_register(uint dbg0_0) {
+  return __builtin_IB_set_dbg_register(dbg0_0);
 }
 
-__attribute__((always_inline))
-uint OVERLOADABLE intel_get_grf_register( uint value )
-{
-    return __builtin_IB_movreg( value );
+__attribute__((always_inline)) uint OVERLOADABLE intel_get_grf_register(uint value) {
+  return __builtin_IB_movreg(value);
 }
 
-__attribute__((always_inline))
-uint OVERLOADABLE intel_get_flag_register( uint flag )
-{
-    return __builtin_IB_movflag( flag );
+__attribute__((always_inline)) uint OVERLOADABLE intel_get_flag_register(uint flag) {
+  return __builtin_IB_movflag(flag);
 }
 
-__attribute__((always_inline))
-uint OVERLOADABLE intel_get_control_register( uint value )
-{
-    return __builtin_IB_movcr( value );
+__attribute__((always_inline)) uint OVERLOADABLE intel_get_control_register(uint value) {
+  return __builtin_IB_movcr(value);
 }
 
-__attribute__((always_inline))
-uint OVERLOADABLE intel_get_hw_thread_id( void )
-{
-    return __builtin_IB_hw_thread_id();
+__attribute__((always_inline)) uint OVERLOADABLE intel_get_hw_thread_id(void) { return __builtin_IB_hw_thread_id(); }
+
+__attribute__((always_inline)) uint OVERLOADABLE intel_get_slice_id(void) { return __builtin_IB_slice_id(); }
+
+__attribute__((always_inline)) uint OVERLOADABLE intel_get_subslice_id(void) { return __builtin_IB_subslice_id(); }
+
+__attribute__((always_inline)) uint OVERLOADABLE intel_get_dual_subslice_id(void) {
+  return __builtin_IB_dual_subslice_id();
 }
 
-__attribute__((always_inline))
-uint OVERLOADABLE intel_get_slice_id( void )
-{
-    return __builtin_IB_slice_id();
+__attribute__((always_inline)) uint OVERLOADABLE intel_get_eu_id(void) { return __builtin_IB_eu_id(); }
+
+__attribute__((always_inline)) void OVERLOADABLE intel_profile_snapshot(int point_type, int point_index) {
+  __builtin_IB_profile_snapshot(point_type, point_index);
 }
 
-__attribute__((always_inline))
-uint OVERLOADABLE intel_get_subslice_id( void )
-{
-    return __builtin_IB_subslice_id();
+__attribute__((always_inline)) void OVERLOADABLE intel_profile_aggregated(int point_type, int point_index) {
+  __builtin_IB_profile_aggregated(point_type, point_index);
 }
 
-__attribute__((always_inline))
-uint OVERLOADABLE intel_get_dual_subslice_id(void)
-{
-    return __builtin_IB_dual_subslice_id();
+__attribute__((always_inline)) uint OVERLOADABLE intel_get_eu_thread_id(void) { return __builtin_IB_eu_thread_id(); }
+
+__attribute__((always_inline)) void OVERLOADABLE intel_eu_thread_pause(uint value) {
+  __builtin_IB_eu_thread_pause(value);
 }
 
-__attribute__((always_inline))
-uint OVERLOADABLE intel_get_eu_id( void )
-{
-    return __builtin_IB_eu_id();
-}
-
-__attribute__((always_inline))
-void OVERLOADABLE intel_profile_snapshot( int point_type, int point_index )
-{
-    __builtin_IB_profile_snapshot( point_type, point_index );
-}
-
-__attribute__((always_inline))
-void OVERLOADABLE intel_profile_aggregated( int point_type, int point_index )
-{
-    __builtin_IB_profile_aggregated( point_type, point_index );
-}
-
-__attribute__((always_inline))
-uint OVERLOADABLE intel_get_eu_thread_id( void )
-{
-    return __builtin_IB_eu_thread_id();
-}
-
-__attribute__((always_inline))
-void OVERLOADABLE intel_eu_thread_pause( uint value )
-{
-    __builtin_IB_eu_thread_pause(value);
-}
-
-__attribute__((always_inline))
-uint OVERLOADABLE intel_get_tile_id( void )
-{
-    return __spirv_BuiltInSubDeviceIDINTEL();
-}
+__attribute__((always_inline)) uint OVERLOADABLE intel_get_tile_id(void) { return __spirv_BuiltInSubDeviceIDINTEL(); }
 
 // Temporary workaround on a test that uses __builtin_spirv_BuiltInSubDeviceIDINTEL
 // instead of intel_get_tile_id.
-__attribute__((always_inline))
-uint __builtin_spirv_BuiltInSubDeviceIDINTEL( void )
-{
-    return intel_get_tile_id();
-}
+__attribute__((always_inline)) uint __builtin_spirv_BuiltInSubDeviceIDINTEL(void) { return intel_get_tile_id(); }

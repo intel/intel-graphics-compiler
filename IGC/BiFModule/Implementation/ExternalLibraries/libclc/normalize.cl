@@ -33,88 +33,51 @@ THE SOFTWARE.
 #include "../../include/BiF_Definitions.cl"
 #include "../../../Headers/spirv.h"
 
-static int2 INLINE OVERLOADABLE __convert_int2(__bool2 b)
-{
-    return -(int2)(b.x, b.y);
-}
+static int2 INLINE OVERLOADABLE __convert_int2(__bool2 b) { return -(int2)(b.x, b.y); }
 
-static int3 INLINE OVERLOADABLE __convert_int3(__bool3 b)
-{
-    return -(int3)(b.x, b.y, b.z);
-}
+static int3 INLINE OVERLOADABLE __convert_int3(__bool3 b) { return -(int3)(b.x, b.y, b.z); }
 
-static int4 INLINE OVERLOADABLE __convert_int4(__bool4 b)
-{
-    return -(int4)(b.x, b.y, b.z, b.w);
-}
+static int4 INLINE OVERLOADABLE __convert_int4(__bool4 b) { return -(int4)(b.x, b.y, b.z, b.w); }
 
-static int8 INLINE OVERLOADABLE __convert_int8(__bool8 b)
-{
-    return (int8)(__convert_int4(b.lo), __convert_int4(b.hi));
-}
+static int8 INLINE OVERLOADABLE __convert_int8(__bool8 b) { return (int8)(__convert_int4(b.lo), __convert_int4(b.hi)); }
 
-static int16 INLINE OVERLOADABLE __convert_int16(__bool16 b)
-{
-    return (int16)(__convert_int8(b.lo), __convert_int8(b.hi));
+static int16 INLINE OVERLOADABLE __convert_int16(__bool16 b) {
+  return (int16)(__convert_int8(b.lo), __convert_int8(b.hi));
 }
 
 #if defined(cl_khr_fp64)
 
-static long2 INLINE OVERLOADABLE __convert_long2(__bool2 b)
-{
-    return -(long2)(b.x, b.y);
+static long2 INLINE OVERLOADABLE __convert_long2(__bool2 b) { return -(long2)(b.x, b.y); }
+
+static long3 INLINE OVERLOADABLE __convert_long3(__bool3 b) { return -(long3)(b.x, b.y, b.z); }
+
+static long4 INLINE OVERLOADABLE __convert_long4(__bool4 b) { return -(long4)(b.x, b.y, b.z, b.w); }
+
+static long8 INLINE OVERLOADABLE __convert_long8(__bool8 b) {
+  return (long8)(__convert_long4(b.lo), __convert_long4(b.hi));
 }
 
-static long3 INLINE OVERLOADABLE __convert_long3(__bool3 b)
-{
-    return -(long3)(b.x, b.y, b.z);
-}
-
-static long4 INLINE OVERLOADABLE __convert_long4(__bool4 b)
-{
-    return -(long4)(b.x, b.y, b.z, b.w);
-}
-
-static long8 INLINE OVERLOADABLE __convert_long8(__bool8 b)
-{
-    return (long8)(__convert_long4(b.lo), __convert_long4(b.hi));
-}
-
-static long16 INLINE OVERLOADABLE __convert_long16(__bool16 b)
-{
-    return (long16)(__convert_long8(b.lo), __convert_long8(b.hi));
+static long16 INLINE OVERLOADABLE __convert_long16(__bool16 b) {
+  return (long16)(__convert_long8(b.lo), __convert_long8(b.hi));
 }
 
 #endif
 
-static short2 INLINE OVERLOADABLE __convert_short2(__bool2 b)
-{
-    return -(short2)(b.x, b.y);
+static short2 INLINE OVERLOADABLE __convert_short2(__bool2 b) { return -(short2)(b.x, b.y); }
+
+static short3 INLINE OVERLOADABLE __convert_short3(__bool3 b) { return -(short3)(b.x, b.y, b.z); }
+
+static short4 INLINE OVERLOADABLE __convert_short4(__bool4 b) { return -(short4)(b.x, b.y, b.z, b.w); }
+
+static short8 INLINE OVERLOADABLE __convert_short8(__bool8 b) {
+  return (short8)(__convert_short4(b.lo), __convert_short4(b.hi));
 }
 
-static short3 INLINE OVERLOADABLE __convert_short3(__bool3 b)
-{
-    return -(short3)(b.x, b.y, b.z);
+static short16 INLINE OVERLOADABLE __convert_short16(__bool16 b) {
+  return (short16)(__convert_short8(b.lo), __convert_short8(b.hi));
 }
 
-static short4 INLINE OVERLOADABLE __convert_short4(__bool4 b)
-{
-    return -(short4)(b.x, b.y, b.z, b.w);
-}
-
-static short8 INLINE OVERLOADABLE __convert_short8(__bool8 b)
-{
-    return (short8)(__convert_short4(b.lo), __convert_short4(b.hi));
-}
-
-static short16 INLINE OVERLOADABLE __convert_short16(__bool16 b)
-{
-    return (short16)(__convert_short8(b.lo), __convert_short8(b.hi));
-}
-
-float __attribute__((overloadable)) __spirv_ocl_normalize(float p) {
-  return __spirv_ocl_sign(p);
-}
+float __attribute__((overloadable)) __spirv_ocl_normalize(float p) { return __spirv_ocl_sign(p); }
 
 float2 __attribute__((overloadable)) __spirv_ocl_normalize(float2 p) {
   if (all(p == (float2)0.0F))
@@ -182,9 +145,7 @@ float4 __attribute__((overloadable)) __spirv_ocl_normalize(float4 p) {
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
-double __attribute__((overloadable)) __spirv_ocl_normalize(double p) {
-  return __spirv_ocl_sign(p);
-}
+double __attribute__((overloadable)) __spirv_ocl_normalize(double p) { return __spirv_ocl_sign(p); }
 
 double2 __attribute__((overloadable)) __spirv_ocl_normalize(double2 p) {
   if (all(p == (double2)0.0))
@@ -250,12 +211,10 @@ double4 __attribute__((overloadable)) __spirv_ocl_normalize(double4 p) {
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_normalize(half p ){
-    return __spirv_ocl_sign(p);
-}
+INLINE half __attribute__((overloadable)) __spirv_ocl_normalize(half p) { return __spirv_ocl_sign(p); }
 
-half2 __attribute__((overloadable)) __spirv_ocl_normalize(half2 p ){
-    if (all(p == (half2)0.0F))
+half2 __attribute__((overloadable)) __spirv_ocl_normalize(half2 p) {
+  if (all(p == (half2)0.0F))
     return p;
 
   half l2 = __spirv_Dot(p, p);
@@ -274,8 +233,8 @@ half2 __attribute__((overloadable)) __spirv_ocl_normalize(half2 p ){
   return p * __spirv_ocl_rsqrt(l2);
 }
 
-half3 __attribute__((overloadable)) __spirv_ocl_normalize(half3 p ){
-    if (all(p == (half3)0.0F))
+half3 __attribute__((overloadable)) __spirv_ocl_normalize(half3 p) {
+  if (all(p == (half3)0.0F))
     return p;
 
   half l2 = __spirv_Dot(p, p);
@@ -294,8 +253,8 @@ half3 __attribute__((overloadable)) __spirv_ocl_normalize(half3 p ){
   return p * __spirv_ocl_rsqrt(l2);
 }
 
-half4 __attribute__((overloadable)) __spirv_ocl_normalize(half4 p ){
-    if (all(p == (half4)0.0F))
+half4 __attribute__((overloadable)) __spirv_ocl_normalize(half4 p) {
+  if (all(p == (half4)0.0F))
     return p;
 
   half l2 = __spirv_Dot(p, p);
@@ -315,4 +274,3 @@ half4 __attribute__((overloadable)) __spirv_ocl_normalize(half4 p ){
 }
 
 #endif // defined(cl_khr_fp16)
-

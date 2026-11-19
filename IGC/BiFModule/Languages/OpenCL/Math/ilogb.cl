@@ -9,31 +9,22 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-int OVERLOADABLE ilogb( float x )
-{
-    return __spirv_ocl_ilogb( x );
-}
+int OVERLOADABLE ilogb(float x) { return __spirv_ocl_ilogb(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( ilogb, int, float )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(ilogb, int, float)
 
 #if defined(cl_khr_fp64)
 
-int OVERLOADABLE ilogb( double x )
-{
-    return __spirv_ocl_ilogb( x );
-}
+int OVERLOADABLE ilogb(double x) { return __spirv_ocl_ilogb(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( ilogb, int, double )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(ilogb, int, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE int OVERLOADABLE ilogb( half x )
-{
-    return __spirv_ocl_ilogb( x );
-}
+INLINE int OVERLOADABLE ilogb(half x) { return __spirv_ocl_ilogb(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( ilogb, int, half )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(ilogb, int, half)
 
 #endif // defined(cl_khr_fp16)

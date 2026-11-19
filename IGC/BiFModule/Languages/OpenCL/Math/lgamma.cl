@@ -9,31 +9,22 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-INLINE float OVERLOADABLE lgamma( float x )
-{
-    return __spirv_ocl_lgamma( x );
-}
+INLINE float OVERLOADABLE lgamma(float x) { return __spirv_ocl_lgamma(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( lgamma, float, float )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(lgamma, float, float)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE lgamma( double x )
-{
-    return __spirv_ocl_lgamma( x );
-}
+INLINE double OVERLOADABLE lgamma(double x) { return __spirv_ocl_lgamma(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( lgamma, double, double )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(lgamma, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE lgamma( half x )
-{
-    return __spirv_ocl_lgamma( x );
-}
+INLINE half OVERLOADABLE lgamma(half x) { return __spirv_ocl_lgamma(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( lgamma, half, half )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(lgamma, half, half)
 
 #endif // defined(cl_khr_fp16)

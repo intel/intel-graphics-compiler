@@ -11,4 +11,3 @@ SPDX-License-Identifier: MIT
 // This file defines extension functions for PVC to use LSC memory operation functions.
 //
 //===----------------------------------------------------------------------===//
-

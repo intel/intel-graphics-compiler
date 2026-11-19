@@ -15,20 +15,14 @@ SPDX-License-Identifier: MIT
 // OpExtInst %float fmax_common  -->  _Z3maxff
 // It doesn't affect functionallity, it's just naming matter.
 
-INLINE float OVERLOADABLE fmax_common(float x, float y)
-{
-    return __spirv_ocl_fmax_common(x, y);
-}
+INLINE float OVERLOADABLE fmax_common(float x, float y) { return __spirv_ocl_fmax_common(x, y); }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS(fmax_common, float, float)
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(fmax_common, float, float, float)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE fmax_common(double x, double y)
-{
-    return __spirv_ocl_fmax_common(x, y);
-}
+INLINE double OVERLOADABLE fmax_common(double x, double y) { return __spirv_ocl_fmax_common(x, y); }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS(fmax_common, double, double)
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(fmax_common, double, double, double)
@@ -37,10 +31,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(fmax_common, double, double, double)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE fmax_common(half x, half y)
-{
-    return __spirv_ocl_fmax_common(x, y);
-}
+INLINE half OVERLOADABLE fmax_common(half x, half y) { return __spirv_ocl_fmax_common(x, y); }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS(fmax_common, half, half)
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(fmax_common, half, half, half)

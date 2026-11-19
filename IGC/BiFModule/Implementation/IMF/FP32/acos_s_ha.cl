@@ -421,8 +421,7 @@ static __constant union {
   float f;
   int i;
 } __sacos_ha_pil = {0xB3BBBD2Eu};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_sacos_ha(float *pxin, float *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_sacos_ha(float *pxin, float *pres) {
   int nRet = 0;
   float xin = *pxin;
   union {
@@ -461,7 +460,7 @@ __ocl_svml_internal_sacos_ha(float *pxin, float *pres) {
     // rsqrt((1-|x|)/2)
     // fixup for |x|<=0.5 (set RS=0)
     fcorr.w = (xa.f <= 0.5f) ? 0x7f800000 : 0; // 0x3f800000;
-    yf = y.f + fcorr.f; // SP_FMA(fcorr.f, _VSTATIC(small_float).f, yf);
+    yf = y.f + fcorr.f;                        // SP_FMA(fcorr.f, _VSTATIC(small_float).f, yf);
     // fixup for y.f==0
     yf += __sacos_ha_small_float.f;
     RS.f = 1.0f / __spirv_ocl_sqrt(yf);
@@ -476,8 +475,7 @@ __ocl_svml_internal_sacos_ha(float *pxin, float *pres) {
     // Low = (pi/2)_low + low part of 2*sqrt((1-|x|)/2)
     Low.f = __spirv_ocl_fma(E, RS.f, Low.f);
     // polynomial
-    poly = __spirv_ocl_fma(__sacos_ha_c5.f, R,
-                                                  __sacos_ha_c4.f);
+    poly = __spirv_ocl_fma(__sacos_ha_c5.f, R, __sacos_ha_c4.f);
     poly = __spirv_ocl_fma(poly, R, __sacos_ha_c3.f);
     poly = __spirv_ocl_fma(poly, R, __sacos_ha_c2.f);
     poly = __spirv_ocl_fma(poly, R, __sacos_ha_c1.f);

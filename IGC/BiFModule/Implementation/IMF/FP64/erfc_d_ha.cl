@@ -7405,7 +7405,7 @@ static __ocl_svml_internal_derfc_ha_data_t __ocl_svml_internal_derfc_ha_data = {
     0xfffff80000000000uL, /* SplitMask */
     0x47f0000000000000uL, /* 2^128 */
     0x00000000ffffffffuL, /* _Mask32 */
-};                        /*dErf_Table*/
+}; /*dErf_Table*/
 /*
 //
 // ++
@@ -8097,8 +8097,7 @@ static __constant _iml_v2_dp_union_t __derfc_ha__imldErfcTab[608] = {
     0xFC6E4892, 0x403A8B12,
     /* SATURATION_THRESHOLD = -5.863584748755168 */
     0x8F74E94A, 0xC017744F};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_derfc_ha(double *a, double *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_derfc_ha(double *a, double *r) {
   int nRet = 0;
   double absAi;
   double rHi, rLo;
@@ -8115,8 +8114,7 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
   int iSign, expnt;
   _iml_uint32_t N = 0, j, index;
   /* Filter out INFs and NaNs */
-  if ((((((_iml_v2_dp_union_t *)&a[0])->dwords.hi_dword >> 20) & 0x7FF) !=
-       0x7FF)) {
+  if ((((((_iml_v2_dp_union_t *)&a[0])->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) {
     /* Here if argument is finite */
     /* Get the biased exponent of a[0] */
     expnt = ((((_iml_v2_dp_union_t *)&a[0])->dwords.hi_dword >> 20) & 0x7FF);
@@ -8131,51 +8129,35 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
           /* Path 5) No underflow. Main path */
           absAi = a[0];
           (((_iml_v2_dp_union_t *)&absAi)->dwords.hi_dword =
-               (((_iml_v2_dp_union_t *)&absAi)->dwords.hi_dword & 0x7FFFFFFF) |
-               ((_iml_uint32_t)(0) << 31));
+               (((_iml_v2_dp_union_t *)&absAi)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(0) << 31));
           /* Obtain index */
-          y4 =
-              absAi + ((__constant double *)__derfc_ha__imldErfcTab)[601 + (0)];
+          y4 = absAi + ((__constant double *)__derfc_ha__imldErfcTab)[601 + (0)];
           y4 = y4 * y4;
           y4 = y4 * y4;
-          index = ((((_iml_v2_dp_union_t *)&y4)->dwords.hi_dword >> 20) & 0x7FF) -
-                  0x3FF;
+          index = ((((_iml_v2_dp_union_t *)&y4)->dwords.hi_dword >> 20) & 0x7FF) - 0x3FF;
           /* y + yMid = |a[0]| + B */
-          v1 = ((absAi) + (((__constant double *)
-                                __derfc_ha__imldErfcTab)[index * 23 + 0]));
+          v1 = ((absAi) + (((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 0]));
           v2 = ((absAi)-v1);
           v3 = (v1 + v2);
-          v2 = ((((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 0]) +
-                v2);
+          v2 = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 0]) + v2);
           v3 = ((absAi)-v3);
           v3 = (v2 + v3);
           y = v1;
           yMid = v3;
           ;
           /* Compute the high order part of the polynomial */
-          res = ((((__constant double *)
-                       __derfc_ha__imldErfcTab)[index * 23 + 22] *
-                      y +
-                  ((__constant double *)
-                       __derfc_ha__imldErfcTab)[index * 23 + 21]) *
+          res = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 22] * y +
+                  ((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 21]) *
                      y +
-                 ((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 20]) *
+                 ((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 20]) *
                     y +
                 ((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 19];
-          res = ((res * y + ((__constant double *)
-                                 __derfc_ha__imldErfcTab)[index * 23 + 18]) *
-                     y +
-                 ((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 17]) *
+          res = ((res * y + ((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 18]) * y +
+                 ((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 17]) *
                     y +
                 ((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 16];
-          res = ((res * y + ((__constant double *)
-                                 __derfc_ha__imldErfcTab)[index * 23 + 15]) *
-                     y +
-                 ((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 14]) *
+          res = ((res * y + ((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 15]) * y +
+                 ((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 14]) *
                     y +
                 ((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 13];
           res = res * y;
@@ -8191,18 +8173,13 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
           ;
           yLo += yMid;
           /* sHi + sLo ~=  PH5 + PL5 + res */
-          v1 = ((((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 11]) +
-                (res));
-          t1 = ((((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 11]) -
-                v1);
+          v1 = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 11]) + (res));
+          t1 = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 11]) - v1);
           v2 = (t1 + (res));
           sHi = v1;
           sLo = v2;
           ;
-          sLo +=
-              ((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 12];
+          sLo += ((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 12];
           /* Split sHi into rHi + rLo */
           v1 = ((sHi) * (((__constant double *)__derfc_ha__imldErfcTab)[598]));
           v2 = (v1 - (sHi));
@@ -8221,19 +8198,14 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
           rLo = v1;
           ;
           /* sHi + sLo ~=  PH4 + PL4 + rHi + rLo */
-          v1 = ((((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 9]) +
-                (rHi));
-          t1 = ((((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 9]) -
-                v1);
+          v1 = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 9]) + (rHi));
+          t1 = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 9]) - v1);
           v2 = (t1 + (rHi));
           sHi = v1;
           sLo = v2;
           ;
           sLo += rLo;
-          sLo +=
-              ((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 10];
+          sLo += ((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 10];
           /* Split sHi into rHi + rLo */
           v1 = ((sHi) * (((__constant double *)__derfc_ha__imldErfcTab)[598]));
           v2 = (v1 - (sHi));
@@ -8252,12 +8224,8 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
           rLo = v1;
           ;
           /* sHi + sLo ~=  PH3 + PL3 + rHi + rLo */
-          v1 = ((((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 7]) +
-                (rHi));
-          t1 = ((((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 7]) -
-                v1);
+          v1 = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 7]) + (rHi));
+          t1 = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 7]) - v1);
           v2 = (t1 + (rHi));
           sHi = v1;
           sLo = v2;
@@ -8282,12 +8250,8 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
           rLo = v1;
           ;
           /* sHi + sLo ~=  PH2 + PL2 + rHi + rLo */
-          v1 = ((((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 5]) +
-                (rHi));
-          t1 = ((((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 5]) -
-                v1);
+          v1 = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 5]) + (rHi));
+          t1 = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 5]) - v1);
           v2 = (t1 + (rHi));
           sHi = v1;
           sLo = v2;
@@ -8312,12 +8276,8 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
           rLo = v1;
           ;
           /* sHi + sLo ~=  PH1 + PL1 + rHi + rLo */
-          v1 = ((((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 3]) +
-                (rHi));
-          t1 = ((((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 3]) -
-                v1);
+          v1 = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 3]) + (rHi));
+          t1 = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 3]) - v1);
           v2 = (t1 + (rHi));
           sHi = v1;
           sLo = v2;
@@ -8342,12 +8302,8 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
           rLo = v1;
           ;
           /* sHi + sLo ~=  PH0 + PL0 + rHi + rLo */
-          v1 = ((((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 1]) +
-                (rHi));
-          t1 = ((((__constant double *)
-                      __derfc_ha__imldErfcTab)[index * 23 + 1]) -
-                v1);
+          v1 = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 1]) + (rHi));
+          t1 = ((((__constant double *)__derfc_ha__imldErfcTab)[index * 23 + 1]) - v1);
           v2 = (t1 + (rHi));
           sHi = v1;
           sLo = v2;
@@ -8372,8 +8328,7 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
           } else {
             /* Path 5.2) */
             /* Split resHi into resHi + resMid */
-            v1 = ((resHi) *
-                  (((__constant double *)__derfc_ha__imldErfcTab)[598]));
+            v1 = ((resHi) * (((__constant double *)__derfc_ha__imldErfcTab)[598]));
             v2 = (v1 - (resHi));
             v1 = (v1 - v2);
             v2 = ((resHi)-v1);
@@ -8384,8 +8339,7 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
             resLo += resMid;
             /*----------------- Exp Section -------------*/
             /* Split a[0] into aHi + aLo */
-            v1 = ((a[0]) *
-                  (((__constant double *)__derfc_ha__imldErfcTab)[598]));
+            v1 = ((a[0]) * (((__constant double *)__derfc_ha__imldErfcTab)[598]));
             v2 = (v1 - (a[0]));
             v1 = (v1 - v2);
             v2 = ((a[0]) - v1);
@@ -8454,8 +8408,7 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
             pLo = v3;
             ;
             /* Split pHi into pHi + pLo */
-            v1 =
-                ((pHi) * (((__constant double *)__derfc_ha__imldErfcTab)[598]));
+            v1 = ((pHi) * (((__constant double *)__derfc_ha__imldErfcTab)[598]));
             v2 = (v1 - (pHi));
             v1 = (v1 - v2);
             v2 = ((pHi)-v1);
@@ -8466,44 +8419,28 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
             pLo += RLo;
             /* expHi + expLo ~=                         */
             /*              (T(j) + D(j)) * (pHi + pLo) */
-            t1 =
-                ((((__constant double *)__derfc_ha__imldErfcTab)[465 + 2 * j]) *
-                 (pHi));
-            t2 =
-                ((((__constant double *)__derfc_ha__imldErfcTab)[466 + 2 * j]) *
-                 (pLo));
-            t2 =
-                (t2 +
-                 (((__constant double *)__derfc_ha__imldErfcTab)[465 + 2 * j]) *
-                     (pLo));
-            v1 =
-                (t2 +
-                 (((__constant double *)__derfc_ha__imldErfcTab)[466 + 2 * j]) *
-                     (pHi));
+            t1 = ((((__constant double *)__derfc_ha__imldErfcTab)[465 + 2 * j]) * (pHi));
+            t2 = ((((__constant double *)__derfc_ha__imldErfcTab)[466 + 2 * j]) * (pLo));
+            t2 = (t2 + (((__constant double *)__derfc_ha__imldErfcTab)[465 + 2 * j]) * (pLo));
+            v1 = (t2 + (((__constant double *)__derfc_ha__imldErfcTab)[466 + 2 * j]) * (pHi));
             expHi = t1;
             expLo = v1;
             ;
             /* expHi + expMid ~= expHi + T(j) + D(j)    */
-            v1 =
-                ((expHi) +
-                 (((__constant double *)__derfc_ha__imldErfcTab)[465 + 2 * j]));
+            v1 = ((expHi) + (((__constant double *)__derfc_ha__imldErfcTab)[465 + 2 * j]));
             v2 = ((expHi)-v1);
             v3 = (v1 + v2);
-            v2 =
-                ((((__constant double *)__derfc_ha__imldErfcTab)[465 + 2 * j]) +
-                 v2);
+            v2 = ((((__constant double *)__derfc_ha__imldErfcTab)[465 + 2 * j]) + v2);
             v3 = ((expHi)-v3);
             v3 = (v2 + v3);
             expHi = v1;
             expMid = v3;
             ;
-            expMid +=
-                ((__constant double *)__derfc_ha__imldErfcTab)[466 + 2 * j];
+            expMid += ((__constant double *)__derfc_ha__imldErfcTab)[466 + 2 * j];
             /* Accumulate expLo + expMid in expLo       */
             expLo += expMid;
             /* Re-split expHi into expHi + expMid       */
-            v1 = ((expHi) *
-                  (((__constant double *)__derfc_ha__imldErfcTab)[598]));
+            v1 = ((expHi) * (((__constant double *)__derfc_ha__imldErfcTab)[598]));
             v2 = (v1 - (expHi));
             v1 = (v1 - v2);
             v2 = ((expHi)-v1);
@@ -8530,8 +8467,7 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
             scale = ((__constant double *)__derfc_ha__imldErfcTab)[599];
             N = N & 0x7FF;
             (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword =
-                 (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword & 0x800FFFFF) |
-                 (((_iml_uint32_t)(N)&0x7FF) << 20));
+                 (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t)(N) & 0x7FF) << 20));
           }
           /* Check if a[0] is positive */
           if (((((_iml_v2_dp_union_t *)&a[0])->dwords.hi_dword >> 31) == 1) == 0) {
@@ -8551,7 +8487,7 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
               N = (N + 200) & 0x7FF;
               (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword =
                    (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword & 0x800FFFFF) |
-                   (((_iml_uint32_t)(N)&0x7FF) << 20));
+                   (((_iml_uint32_t)(N) & 0x7FF) << 20));
               /* Scale up */
               resHi *= scale;
               resLo *= scale;
@@ -8561,8 +8497,7 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
                 /* Path 5.4.1) */
                 /* Here if "small" denormalized result */
                 /* Scaling back the result             */
-                res = (resHi + resLo) *
-                      ((__constant double *)__derfc_ha__imldErfcTab)[596];
+                res = (resHi + resLo) * ((__constant double *)__derfc_ha__imldErfcTab)[596];
                 /* Raising Underflow and Inexact flags */
                 /* NOTE: res*res rounds to 0.0 if in   */
                 /*       round-to-nearest mode         */
@@ -8582,8 +8517,7 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
                 resLo = v2;
                 ;
                 /* Split resHi into resHi + resMid     */
-                v1 = ((resHi) *
-                      (((__constant double *)__derfc_ha__imldErfcTab)[598]));
+                v1 = ((resHi) * (((__constant double *)__derfc_ha__imldErfcTab)[598]));
                 v2 = (v1 - (resHi));
                 v1 = (v1 - v2);
                 v2 = ((resHi)-v1);
@@ -8593,10 +8527,8 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
                 /* Accumulate resLo + resMid in resLo  */
                 resLo += resMid;
                 /* Scale back the two result parts     */
-                v1 =
-                    resHi * ((__constant double *)__derfc_ha__imldErfcTab)[596];
-                v2 =
-                    resLo * ((__constant double *)__derfc_ha__imldErfcTab)[596];
+                v1 = resHi * ((__constant double *)__derfc_ha__imldErfcTab)[596];
+                v2 = resLo * ((__constant double *)__derfc_ha__imldErfcTab)[596];
                 /* Obtain the final result             */
                 res = v1 + v2;
               }
@@ -8608,8 +8540,7 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
             resHi *= -scale;
             resLo *= -scale;
             /* sHi + sMid = 2.0 + resHi             */
-            v1 = ((((__constant double *)__derfc_ha__imldErfcTab)[603]) +
-                  (resHi));
+            v1 = ((((__constant double *)__derfc_ha__imldErfcTab)[603]) + (resHi));
             t1 = ((((__constant double *)__derfc_ha__imldErfcTab)[603]) - v1);
             v2 = (t1 + (resHi));
             sHi = v1;
@@ -8642,8 +8573,8 @@ __ocl_svml_internal_derfc_ha(double *a, double *r) {
         /* Path 3) Saturation                                */
         /* Here if -Infinity < a[0] <= SATURATION_THRESHOLD  */
         /* erfc(a[0]) rounds to 2.0 in round-to-nearest mode */
-        r[0] = ((__constant double *)__derfc_ha__imldErfcTab)[603] -
-               (((__constant double *)__derfc_ha__imldErfcTab)[600]);
+        r[0] =
+            ((__constant double *)__derfc_ha__imldErfcTab)[603] - (((__constant double *)__derfc_ha__imldErfcTab)[600]);
       }
     } else {
       /* Path 2). Here if argument is "near zero" */
@@ -8796,12 +8727,9 @@ double __ocl_svml_erfc_ha(double x) {
     _Mask32 = (__ocl_svml_internal_derfc_ha_data._Mask32);
     Index = (Index & _Mask32);
     // vector gather: erfc_h(x0), (erfc_l(x0), 2/sqrt(pi)*exp(-x0^2))
-    THL[0] = as_double(
-        ((unsigned long *)((double *)(&__ocl_svml_internal_derfc_ha_data
-                                           ._erfc_tbl[0])))[Index >> 3]);
-    THL[1] = as_double(
-        ((unsigned long *)((double *)(&__ocl_svml_internal_derfc_ha_data
-                                           ._erfc_tbl[0])))[(Index >> 3) + 1]);
+    THL[0] = as_double(((unsigned long *)((double *)(&__ocl_svml_internal_derfc_ha_data._erfc_tbl[0])))[Index >> 3]);
+    THL[1] =
+        as_double(((unsigned long *)((double *)(&__ocl_svml_internal_derfc_ha_data._erfc_tbl[0])))[(Index >> 3) + 1]);
     _poly1_4 = as_double(__ocl_svml_internal_derfc_ha_data._poly1_4);
     P1 = __spirv_ocl_fma(P1, T, _poly1_4);
     _poly3_4 = as_double(__ocl_svml_internal_derfc_ha_data._poly3_4);
@@ -8825,8 +8753,7 @@ double __ocl_svml_erfc_ha(double x) {
     P5 = __spirv_ocl_fma(D2, P07, P5);
     // form EXP_X0H = 2/sqrt(pi)*exp(-x0^2);
     _ExpMask = as_double(__ocl_svml_internal_derfc_ha_data._ExpMask);
-    Erfc_E0H = as_double(
-        (as_ulong(THL[0]) & as_ulong(_ExpMask))); // exponent of erfc_h
+    Erfc_E0H = as_double((as_ulong(THL[0]) & as_ulong(_ExpMask))); // exponent of erfc_h
     lExp_X0H = as_ulong(Exp_X0H);
     lErfc_E0H = as_ulong(Erfc_E0H);
     lExp_X0H = (lExp_X0H + lErfc_E0H);
@@ -8865,8 +8792,7 @@ double __ocl_svml_erfc_ha(double x) {
     ;
     // Special arguments (for flags only)
     _UF_Threshold = as_double(__ocl_svml_internal_derfc_ha_data._UF_Threshold);
-    RangeMask = as_double(
-        (unsigned long)((va1 < _UF_Threshold) ? 0xffffffffffffffff : 0x0));
+    RangeMask = as_double((unsigned long)((va1 < _UF_Threshold) ? 0xffffffffffffffff : 0x0));
     HighRes = (HighRes - LowRes);
     // combine and get argument value range mask
     iRangeMask = as_ulong(RangeMask);

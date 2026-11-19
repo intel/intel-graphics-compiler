@@ -9,54 +9,53 @@ SPDX-License-Identifier: MIT
 #include "../imf.h"
 #pragma OPENCL FP_CONTRACT OFF
 
-typedef struct
-{
-    unsigned long _dInvPI_uisa;
-    unsigned long _dPI1_uisa;
-    unsigned long _dPI2_uisa;
-    unsigned long _dPI3_uisa;
-    unsigned long _dPI2_ha_uisa;
-    unsigned long _dPI3_ha_uisa;
-    unsigned long Th_tbl_uisa[16];
-    unsigned long Tl_tbl_uisa[16];
-    unsigned long _dPC3_uisa;
-    unsigned long _dPC5_uisa;
-    unsigned long _dPC7_uisa;
-    unsigned long _dPC9_uisa;
-    unsigned long _dPC11_uisa;
-    unsigned long _dOne_uisa;
+typedef struct {
+  unsigned long _dInvPI_uisa;
+  unsigned long _dPI1_uisa;
+  unsigned long _dPI2_uisa;
+  unsigned long _dPI3_uisa;
+  unsigned long _dPI2_ha_uisa;
+  unsigned long _dPI3_ha_uisa;
+  unsigned long Th_tbl_uisa[16];
+  unsigned long Tl_tbl_uisa[16];
+  unsigned long _dPC3_uisa;
+  unsigned long _dPC5_uisa;
+  unsigned long _dPC7_uisa;
+  unsigned long _dPC9_uisa;
+  unsigned long _dPC11_uisa;
+  unsigned long _dOne_uisa;
 
-    unsigned long _dAbsMask;
-    unsigned long _dRangeVal;
-    unsigned long _dRShift;
-    unsigned long _dPIoHi;
-    unsigned long _dPIoLo;
-    unsigned long _dPIoTail;
-    unsigned long _lIndexMask;
-    unsigned long _dPIu;
+  unsigned long _dAbsMask;
+  unsigned long _dRangeVal;
+  unsigned long _dRShift;
+  unsigned long _dPIoHi;
+  unsigned long _dPIoLo;
+  unsigned long _dPIoTail;
+  unsigned long _lIndexMask;
+  unsigned long _dPIu;
 
-    unsigned long _dCoeffs[256][13];
+  unsigned long _dCoeffs[256][13];
 
-    unsigned long _dReductionRangeVal;
+  unsigned long _dReductionRangeVal;
 
-    unsigned long _dSignMask;
-    unsigned long _dInvPi;
+  unsigned long _dSignMask;
+  unsigned long _dInvPi;
 
-    unsigned long _dPI1;
-    unsigned long _dPI2;
-    unsigned long _dPI3;
-    unsigned long _dPI1_FMA;
-    unsigned long _dPI2_FMA;
-    unsigned long _dPI3_FMA;
+  unsigned long _dPI1;
+  unsigned long _dPI2;
+  unsigned long _dPI3;
+  unsigned long _dPI1_FMA;
+  unsigned long _dPI2_FMA;
+  unsigned long _dPI3_FMA;
 
-    unsigned long _dP0;
-    unsigned long _dP1;
-    unsigned long _dP2;
-    unsigned long _dP3;
-    unsigned long _dQ0;
-    unsigned long _dQ1;
-    unsigned long _dQ2;
-    unsigned long _dQ3;
+  unsigned long _dP0;
+  unsigned long _dP1;
+  unsigned long _dP2;
+  unsigned long _dP3;
+  unsigned long _dQ0;
+  unsigned long _dQ1;
+  unsigned long _dQ2;
+  unsigned long _dQ3;
 } __internal_dtan_la_data_t;
 static __constant __internal_dtan_la_data_t __internal_dtan_la_data = {
 
@@ -4259,316 +4258,308 @@ static __constant int_double __dtan_la_NPI2_BITS = {0xbc91a62633000000UL};
 
 static __constant int_double __dtan_la_NPI3_BITS = {0xba945c06e0e68948UL};
 
-static __constant int_double __dtan_la_two  = {0x4000000000000000UL};
+static __constant int_double __dtan_la_two = {0x4000000000000000UL};
 static __constant int_double __dtan_la_half = {0x3fe0000000000000UL};
 
 static __constant unsigned long __dtan_la_AbsMask = 0x7fffffffffffffffUL;
 
 static __constant int_double __dtan_la_dc10 = {0xbdf64c1ef7b9f88fUL};
-static __constant int_double __dtan_la_dc9  = {0xbe2209d9df00def0UL};
-static __constant int_double __dtan_la_dc8  = {0xbe57fdc92b36f96fUL};
-static __constant int_double __dtan_la_dc7  = {0xbe8d6b5f16d11bceUL};
-static __constant int_double __dtan_la_dc6  = {0xbec228124e270b4cUL};
-static __constant int_double __dtan_la_dc5  = {0xbef66a8ed675ceb9UL};
-static __constant int_double __dtan_la_dc4  = {0xbf2bbd7794a1b07dUL};
-static __constant int_double __dtan_la_dc3  = {0xbf61566abbff502aUL};
-static __constant int_double __dtan_la_dc2  = {0xbf96c16c16c16e58UL};
-static __constant int_double __dtan_la_dc1  = {0xbfd5555555555555UL};
-static __constant int_double __dtan_la_dc0  = {0x3ff0000000000000UL};
+static __constant int_double __dtan_la_dc9 = {0xbe2209d9df00def0UL};
+static __constant int_double __dtan_la_dc8 = {0xbe57fdc92b36f96fUL};
+static __constant int_double __dtan_la_dc7 = {0xbe8d6b5f16d11bceUL};
+static __constant int_double __dtan_la_dc6 = {0xbec228124e270b4cUL};
+static __constant int_double __dtan_la_dc5 = {0xbef66a8ed675ceb9UL};
+static __constant int_double __dtan_la_dc4 = {0xbf2bbd7794a1b07dUL};
+static __constant int_double __dtan_la_dc3 = {0xbf61566abbff502aUL};
+static __constant int_double __dtan_la_dc2 = {0xbf96c16c16c16e58UL};
+static __constant int_double __dtan_la_dc1 = {0xbfd5555555555555UL};
+static __constant int_double __dtan_la_dc0 = {0x3ff0000000000000UL};
 
-static __constant unsigned int InvPi_tbl[] = {
-    0,           0,           0x28BE60DBu, 0x9391054Au,
-    0x7F09D5F4u, 0x7D4D3770u, 0x36D8A566u, 0x4F10E410u,
-    0x7F9458EAu, 0xF7AEF158u, 0x6DC91B8Eu, 0x909374B8u,
-    0x01924BBAu, 0x82746487u, 0x3F877AC7u, 0x2C4A69CFu,
-    0xBA208D7Du, 0x4BAED121u, 0x3A671C09u, 0xAD17DF90u,
-    0x4E64758Eu, 0x60D4CE7Du, 0x272117E2u, 0xEF7E4A0Eu,
-    0xC7FE25FFu, 0xF7816603u, 0xFBCBC462u, 0xD6829B47u,
-    0xDB4D9FB3u, 0xC9F2C26Du, 0xD3D18FD9u, 0xA797FA8Bu,
-    0x5D49EEB1u, 0xFAF97C5Eu, 0xCF41CE7Du, 0xE294A4BAu,
-    0x9AFED7ECu, 0x47E35742u, 0x1580CC11u, 0xBF1EDAEAu,
-    0,           0,           0,           0};
+static __constant unsigned int InvPi_tbl[] = {0,           0,           0x28BE60DBu, 0x9391054Au,
+                                              0x7F09D5F4u, 0x7D4D3770u, 0x36D8A566u, 0x4F10E410u,
+                                              0x7F9458EAu, 0xF7AEF158u, 0x6DC91B8Eu, 0x909374B8u,
+                                              0x01924BBAu, 0x82746487u, 0x3F877AC7u, 0x2C4A69CFu,
+                                              0xBA208D7Du, 0x4BAED121u, 0x3A671C09u, 0xAD17DF90u,
+                                              0x4E64758Eu, 0x60D4CE7Du, 0x272117E2u, 0xEF7E4A0Eu,
+                                              0xC7FE25FFu, 0xF7816603u, 0xFBCBC462u, 0xD6829B47u,
+                                              0xDB4D9FB3u, 0xC9F2C26Du, 0xD3D18FD9u, 0xA797FA8Bu,
+                                              0x5D49EEB1u, 0xFAF97C5Eu, 0xCF41CE7Du, 0xE294A4BAu,
+                                              0x9AFED7ECu, 0x47E35742u, 0x1580CC11u, 0xBF1EDAEAu,
+                                              0,           0,           0,           0};
 
 static __constant unsigned int two_pi[2] = {0x2168C235u, 0xC90FDAA2u};
 
-__attribute__((always_inline)) static inline double
-trig_reduction(double x, int kbits, double *py_low, int *pinterv)
-{
-    unsigned long ix, sgn_x, abs_x, mx, R;
-    unsigned long S[2], P2, P3, P4, P5, L, L2, Lh, P23, P23_l, Msk;
-    long          e_yl, e_yh;
-    unsigned int  mant[2], T[7], Sh, Sl;
-    int           Syl;
-    int           expon_x, j, shift, shift2, scale, interv = 0;
-    long int      cond;
-    double        yl, res;
-    int_double    ixd;
+__attribute__((always_inline)) static inline double trig_reduction(double x, int kbits, double *py_low, int *pinterv) {
+  unsigned long ix, sgn_x, abs_x, mx, R;
+  unsigned long S[2], P2, P3, P4, P5, L, L2, Lh, P23, P23_l, Msk;
+  long e_yl, e_yh;
+  unsigned int mant[2], T[7], Sh, Sl;
+  int Syl;
+  int expon_x, j, shift, shift2, scale, interv = 0;
+  long int cond;
+  double yl, res;
+  int_double ixd;
 
-    ixd.f = x;
-    ix    = ixd.w;
-    abs_x = ix & 0x7fffffffffffffffUL;
-    sgn_x = ix ^ abs_x;
+  ixd.f = x;
+  ix = ixd.w;
+  abs_x = ix & 0x7fffffffffffffffUL;
+  sgn_x = ix ^ abs_x;
 
-    expon_x = (((unsigned int)((unsigned int)(abs_x >> 32))) >> (20));
+  expon_x = (((unsigned int)((unsigned int)(abs_x >> 32))) >> (20));
 
-    mant[0] = (unsigned int)abs_x;
-    mant[1] = (((unsigned int)(abs_x >> 32)) & 0xfffffu) | 0x100000u;
+  mant[0] = (unsigned int)abs_x;
+  mant[1] = (((unsigned int)(abs_x >> 32)) & 0xfffffu) | 0x100000u;
 
-    cond = ((unsigned)(expon_x - 0x400) >= (0x7ff - 0x400));
-    if (cond)
-    {
-        *py_low  = 0;
-        *pinterv = 0;
-        return x;
-    }
+  cond = ((unsigned)(expon_x - 0x400) >= (0x7ff - 0x400));
+  if (cond) {
+    *py_low = 0;
+    *pinterv = 0;
+    return x;
+  }
 
-    expon_x = expon_x + 12 - 0x3ff;
-    j       = (((unsigned int)(expon_x)) >> (5));
+  expon_x = expon_x + 12 - 0x3ff;
+  j = (((unsigned int)(expon_x)) >> (5));
 
-    T[0] = InvPi_tbl[j];
-    T[1] = InvPi_tbl[j + 1];
-    T[2] = InvPi_tbl[j + 2];
-    T[3] = InvPi_tbl[j + 3];
-    T[4] = InvPi_tbl[j + 4];
-    T[5] = InvPi_tbl[j + 5];
-    T[6] = InvPi_tbl[j + 6];
+  T[0] = InvPi_tbl[j];
+  T[1] = InvPi_tbl[j + 1];
+  T[2] = InvPi_tbl[j + 2];
+  T[3] = InvPi_tbl[j + 3];
+  T[4] = InvPi_tbl[j + 4];
+  T[5] = InvPi_tbl[j + 5];
+  T[6] = InvPi_tbl[j + 6];
 
-    shift = expon_x - (j << 5);
+  shift = expon_x - (j << 5);
 
-    if (shift)
-    {
-        shift2 = 32 - shift;
-        T[0]   = (T[0] << shift) | (((unsigned int)(T[1])) >> (shift2));
-        T[1]   = (T[1] << shift) | (((unsigned int)(T[2])) >> (shift2));
-        T[2]   = (T[2] << shift) | (((unsigned int)(T[3])) >> (shift2));
-        T[3]   = (T[3] << shift) | (((unsigned int)(T[4])) >> (shift2));
-        T[4]   = (T[4] << shift) | (((unsigned int)(T[5])) >> (shift2));
-        T[5]   = (T[5] << shift) | (((unsigned int)(T[6])) >> (shift2));
-    }
+  if (shift) {
+    shift2 = 32 - shift;
+    T[0] = (T[0] << shift) | (((unsigned int)(T[1])) >> (shift2));
+    T[1] = (T[1] << shift) | (((unsigned int)(T[2])) >> (shift2));
+    T[2] = (T[2] << shift) | (((unsigned int)(T[3])) >> (shift2));
+    T[3] = (T[3] << shift) | (((unsigned int)(T[4])) >> (shift2));
+    T[4] = (T[4] << shift) | (((unsigned int)(T[5])) >> (shift2));
+    T[5] = (T[5] << shift) | (((unsigned int)(T[6])) >> (shift2));
+  }
 
-    S[0] = (((unsigned long)((unsigned int)(T[3]))) * ((unsigned int)(mant[0])));
-    P4   = (((unsigned long)((unsigned int)(T[4]))) * ((unsigned int)(mant[1])));
-    L    = (((unsigned long)((unsigned int)(T[4]))) * ((unsigned int)(mant[0])));
-    L2   = (((unsigned long)((unsigned int)(T[5]))) * ((unsigned int)(mant[1])));
-    L += L2;
-    if (L < L2) S[0] += 0x100000000UL;
-    P2   = (((unsigned long)((unsigned int)(T[2]))) * ((unsigned int)(mant[0])));
-    S[1] = (((unsigned long)((unsigned int)(T[1]))) * ((unsigned int)(mant[0]))) +
-           (((unsigned long)(((unsigned int)T[0]) * ((unsigned int)mant[0]))) << 32);
-    S[0] += P4;
-    if (S[0] < P4) S[1]++;
-    Lh = (((unsigned long)(L)) >> (32));
-    L <<= 32;
-    S[0] += Lh;
-    if (S[0] < Lh) S[1]++;
-    P3   = (((unsigned long)((unsigned int)(T[3]))) * ((unsigned int)(mant[1])));
-    S[1] = S[1] + (((unsigned long)((unsigned int)(T[2]))) * ((unsigned int)(mant[1]))) +
-           (((unsigned long)(((unsigned int)T[1]) * ((unsigned int)mant[1]))) << 32);
+  S[0] = (((unsigned long)((unsigned int)(T[3]))) * ((unsigned int)(mant[0])));
+  P4 = (((unsigned long)((unsigned int)(T[4]))) * ((unsigned int)(mant[1])));
+  L = (((unsigned long)((unsigned int)(T[4]))) * ((unsigned int)(mant[0])));
+  L2 = (((unsigned long)((unsigned int)(T[5]))) * ((unsigned int)(mant[1])));
+  L += L2;
+  if (L < L2)
+    S[0] += 0x100000000UL;
+  P2 = (((unsigned long)((unsigned int)(T[2]))) * ((unsigned int)(mant[0])));
+  S[1] = (((unsigned long)((unsigned int)(T[1]))) * ((unsigned int)(mant[0]))) +
+         (((unsigned long)(((unsigned int)T[0]) * ((unsigned int)mant[0]))) << 32);
+  S[0] += P4;
+  if (S[0] < P4)
+    S[1]++;
+  Lh = (((unsigned long)(L)) >> (32));
+  L <<= 32;
+  S[0] += Lh;
+  if (S[0] < Lh)
+    S[1]++;
+  P3 = (((unsigned long)((unsigned int)(T[3]))) * ((unsigned int)(mant[1])));
+  S[1] = S[1] + (((unsigned long)((unsigned int)(T[2]))) * ((unsigned int)(mant[1]))) +
+         (((unsigned long)(((unsigned int)T[1]) * ((unsigned int)mant[1]))) << 32);
 
-    P23 = P2 + P3;
+  P23 = P2 + P3;
 
-    if (P23 < P3) S[1] += 0x100000000UL;
+  if (P23 < P3)
+    S[1] += 0x100000000UL;
 
-    S[1] += (((unsigned long)(P23)) >> (32));
-    P23_l = P23 << 32;
-    S[0] += P23_l;
-    if (S[0] < P23_l) S[1]++;
+  S[1] += (((unsigned long)(P23)) >> (32));
+  P23_l = P23 << 32;
+  S[0] += P23_l;
+  if (S[0] < P23_l)
+    S[1]++;
 
-    if (kbits)
-    {
-        shift2 = 32 - kbits;
-        interv = (((unsigned long)((((unsigned long)(S[1])) >> (32)))) >> (shift2));
-        S[1]   = (S[1] << kbits) |
-               (((unsigned long)((((unsigned long)(S[0])) >> (32)))) >> (shift2));
-        S[0] = (S[0] << kbits) |
-               (((unsigned long)((((unsigned long)(L)) >> (32)))) >> (shift2));
-        L <<= kbits;
-    }
+  if (kbits) {
+    shift2 = 32 - kbits;
+    interv = (((unsigned long)((((unsigned long)(S[1])) >> (32)))) >> (shift2));
+    S[1] = (S[1] << kbits) | (((unsigned long)((((unsigned long)(S[0])) >> (32)))) >> (shift2));
+    S[0] = (S[0] << kbits) | (((unsigned long)((((unsigned long)(L)) >> (32)))) >> (shift2));
+    L <<= kbits;
+  }
 
-    Msk    = (((long)(S[1])) >> (63));
-    interv = interv - (int)Msk;
-    S[1] ^= Msk;
-    S[0] ^= Msk;
-    L ^= Msk;
+  Msk = (((long)(S[1])) >> (63));
+  interv = interv - (int)Msk;
+  S[1] ^= Msk;
+  S[0] ^= Msk;
+  L ^= Msk;
 
-    sgn_x    = (((long)(sgn_x)) >> (63));
-    *pinterv = (interv ^ (int)sgn_x) - (int)sgn_x;
-    sgn_x    = (sgn_x ^ Msk) & 0x8000000000000000UL;
+  sgn_x = (((long)(sgn_x)) >> (63));
+  *pinterv = (interv ^ (int)sgn_x) - (int)sgn_x;
+  sgn_x = (sgn_x ^ Msk) & 0x8000000000000000UL;
 
-    scale = -64 - kbits;
+  scale = -64 - kbits;
 
-    while (((long)S[1]) > 0)
-    {
-        scale--;
-        S[1] = (S[1] << 1) | (((unsigned long)(S[0])) >> (63));
-        S[0] = (S[0] << 1) | (((unsigned long)(L)) >> (63));
-        L <<= 1;
-    }
+  while (((long)S[1]) > 0) {
+    scale--;
+    S[1] = (S[1] << 1) | (((unsigned long)(S[0])) >> (63));
+    S[0] = (S[0] << 1) | (((unsigned long)(L)) >> (63));
+    L <<= 1;
+  }
 
-    Sh = (unsigned int)(((unsigned long)(S[1])) >> (32));
-    Sl = (unsigned int)S[1];
+  Sh = (unsigned int)(((unsigned long)(S[1])) >> (32));
+  Sl = (unsigned int)S[1];
 
-    R  = (((unsigned long)((unsigned int)(Sh))) * ((unsigned int)(two_pi[1])));
-    P2 = (((unsigned long)((unsigned int)(Sh))) * ((unsigned int)(two_pi[0])));
-    P3 = (((unsigned long)((unsigned int)(Sl))) * ((unsigned int)(two_pi[1])));
+  R = (((unsigned long)((unsigned int)(Sh))) * ((unsigned int)(two_pi[1])));
+  P2 = (((unsigned long)((unsigned int)(Sh))) * ((unsigned int)(two_pi[0])));
+  P3 = (((unsigned long)((unsigned int)(Sl))) * ((unsigned int)(two_pi[1])));
 
-    P23 = P2 + P3;
+  P23 = P2 + P3;
 
-    if (P23 < P3) R++;
+  if (P23 < P3)
+    R++;
 
-    R += (((unsigned long)(P23)) >> (32));
-    scale += 3;
+  R += (((unsigned long)(P23)) >> (32));
+  scale += 3;
 
-    if (((long)R) < 0)
-    {
-        R = (((unsigned long)(R)) >> (1));
-        scale++;
-    }
+  if (((long)R) < 0) {
+    R = (((unsigned long)(R)) >> (1));
+    scale++;
+  }
 
-    Syl = (unsigned int)R;
-    R += (unsigned long)(1 << 9);
+  Syl = (unsigned int)R;
+  R += (unsigned long)(1 << 9);
 
-    Syl <<= (32 - 10);
-    Syl = (((int)(Syl)) >> (32 - 10));
+  Syl <<= (32 - 10);
+  Syl = (((int)(Syl)) >> (32 - 10));
 
-    yl = (double)Syl;
+  yl = (double)Syl;
 
-    e_yl = (long)scale;
-    e_yl = ((e_yl + 0x3ff) << 52) | sgn_x;
+  e_yl = (long)scale;
+  e_yl = ((e_yl + 0x3ff) << 52) | sgn_x;
 
-    *py_low = yl * (*(double *)&e_yl);
+  *py_low = yl * (*(double *)&e_yl);
 
-    e_yh = (unsigned long)(scale + 62 - 1 + 0x3ff);
-    e_yh = (e_yh << 52);
+  e_yh = (unsigned long)(scale + 62 - 1 + 0x3ff);
+  e_yh = (e_yh << 52);
 
-    R                      = e_yh + (((unsigned long)(R)) >> (10));
-    *(unsigned long *)&res = sgn_x ^ R;
+  R = e_yh + (((unsigned long)(R)) >> (10));
+  *(unsigned long *)&res = sgn_x ^ R;
 
-    return res;
+  return res;
 }
 
-__attribute__((always_inline)) inline int
-__internal_dtan_la_cout(double *pxin, double *pres)
-{
-    int    nRet = 0;
-    double xin  = *pxin;
+__attribute__((always_inline)) inline int __internal_dtan_la_cout(double *pxin, double *pres) {
+  int nRet = 0;
+  double xin = *pxin;
 
-    unsigned      leading_xh;
-    int           index;
-    double        dN, R, Rl, dNP2_h, dR2, dNP3_h;
-    int_double    x, x0, dS, poly, res, dA, dB, dR;
-    double        dRcp, eps;
-    unsigned long sgn_x, R_sgn, lindex;
-    float         fB, fRcp;
+  unsigned leading_xh;
+  int index;
+  double dN, R, Rl, dNP2_h, dR2, dNP3_h;
+  int_double x, x0, dS, poly, res, dA, dB, dR;
+  double dRcp, eps;
+  unsigned long sgn_x, R_sgn, lindex;
+  float fB, fRcp;
 
-    x0.f  = xin;
-    x.w   = x0.w & (__dtan_la_AbsMask);
-    sgn_x = (x0).w ^ (x).w;
+  x0.f = xin;
+  x.w = x0.w & (__dtan_la_AbsMask);
+  sgn_x = (x0).w ^ (x).w;
 
-    leading_xh = ((unsigned)x.w32[1]);
-    if (((unsigned)(leading_xh) >= (0x41300000 - 0))) goto TAN_SPECIAL;
+  leading_xh = ((unsigned)x.w32[1]);
+  if (((unsigned)(leading_xh) >= (0x41300000 - 0)))
+    goto TAN_SPECIAL;
 
-    dS.f = __spirv_ocl_fma(x.f, (__dtan_la_INV_PI64).f, (__dtan_la_SHIFTER).f);
+  dS.f = __spirv_ocl_fma(x.f, (__dtan_la_INV_PI64).f, (__dtan_la_SHIFTER).f);
 
-    dN = dS.f - (__dtan_la_SHIFTER).f;
+  dN = dS.f - (__dtan_la_SHIFTER).f;
 
-    R_sgn = (dS).w << 63;
+  R_sgn = (dS).w << 63;
 
-    R = __spirv_ocl_fma(dN, (__dtan_la_NPI1_BITS).f, x.f);
+  R = __spirv_ocl_fma(dN, (__dtan_la_NPI1_BITS).f, x.f);
 
-    dR.f = __spirv_ocl_fma(dN, (__dtan_la_NPI2_BITS).f, R);
+  dR.f = __spirv_ocl_fma(dN, (__dtan_la_NPI2_BITS).f, R);
 
-    dR.f = __spirv_ocl_fma(dN, (__dtan_la_NPI3_BITS).f, dR.f);
+  dR.f = __spirv_ocl_fma(dN, (__dtan_la_NPI3_BITS).f, dR.f);
 
-    dR2 = dR.f * dR.f;
+  dR2 = dR.f * dR.f;
 
 TAN_MAIN_PATH:
 
-    poly.f = __spirv_ocl_fma(dR2, (__dtan_la_c9).f, (__dtan_la_c8).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c7).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c6).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c5).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c4).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c3).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c2).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c1).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c0).f);
+  poly.f = __spirv_ocl_fma(dR2, (__dtan_la_c9).f, (__dtan_la_c8).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c7).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c6).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c5).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c4).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c3).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c2).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c1).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_c0).f);
 
-    dA.w = R_sgn ? poly.w : dR.w;
-    dB.w = R_sgn ? dR.w : poly.w;
+  dA.w = R_sgn ? poly.w : dR.w;
+  dB.w = R_sgn ? dR.w : poly.w;
 
-    fB   = (float)dB.f;
-    fRcp = 1.0f / fB;
-    dRcp = (double)fRcp;
+  fB = (float)dB.f;
+  fRcp = 1.0f / fB;
+  dRcp = (double)fRcp;
 
-    eps   = __spirv_ocl_fma(dRcp, -dB.f, 1.0);
-    dRcp  = __spirv_ocl_fma(dRcp, eps, dRcp);
-    eps   = __spirv_ocl_fma(dRcp, -dB.f, 1.0);
-    dRcp  = __spirv_ocl_fma(dRcp, eps, dRcp);
-    res.f = __spirv_ocl_fma(dA.f, dRcp, 0.0);
+  eps = __spirv_ocl_fma(dRcp, -dB.f, 1.0);
+  dRcp = __spirv_ocl_fma(dRcp, eps, dRcp);
+  eps = __spirv_ocl_fma(dRcp, -dB.f, 1.0);
+  dRcp = __spirv_ocl_fma(dRcp, eps, dRcp);
+  res.f = __spirv_ocl_fma(dA.f, dRcp, 0.0);
 
-    res.w ^= (R_sgn ^ sgn_x);
+  res.w ^= (R_sgn ^ sgn_x);
 
-    *pres = res.f;
-    return nRet;
+  *pres = res.f;
+  return nRet;
 
 TAN_SPECIAL:
 
-    if (leading_xh >= 0x7ff00000)
-    {
-        if ((x0.w & (__dtan_la_AbsMask)) > 0x7ff0000000000000UL)
-        {
-            *pres = x.f * x.f;
-            return nRet;
-        }
-        res.w = 0xfff8000000000000UL;
-        *pres = res.f;
-        nRet  = 1;
-        return nRet;
+  if (leading_xh >= 0x7ff00000) {
+    if ((x0.w & (__dtan_la_AbsMask)) > 0x7ff0000000000000UL) {
+      *pres = x.f * x.f;
+      return nRet;
     }
-
-    R = trig_reduction(x.f, 2, &Rl, &index);
-
-    dR2    = R * R;
-    lindex = (unsigned long)index;
-    lindex <<= 63;
-    R_sgn  = (lindex);
-    poly.f = __spirv_ocl_fma(dR2, (__dtan_la_dc10).f, (__dtan_la_dc9).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc8).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc7).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc6).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc5).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc4).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc3).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc2).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc1).f);
-    poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc0).f);
-
-    dA.f = R_sgn ? poly.f : R;
-    dB.f = R_sgn ? R : poly.f;
-
-    res.f = dA.f / dB.f;
-
-    res.w ^= (R_sgn ^ sgn_x);
-
+    res.w = 0xfff8000000000000UL;
     *pres = res.f;
+    nRet = 1;
     return nRet;
+  }
+
+  R = trig_reduction(x.f, 2, &Rl, &index);
+
+  dR2 = R * R;
+  lindex = (unsigned long)index;
+  lindex <<= 63;
+  R_sgn = (lindex);
+  poly.f = __spirv_ocl_fma(dR2, (__dtan_la_dc10).f, (__dtan_la_dc9).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc8).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc7).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc6).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc5).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc4).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc3).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc2).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc1).f);
+  poly.f = __spirv_ocl_fma(dR2, poly.f, (__dtan_la_dc0).f);
+
+  dA.f = R_sgn ? poly.f : R;
+  dB.f = R_sgn ? R : poly.f;
+
+  res.f = dA.f / dB.f;
+
+  res.w ^= (R_sgn ^ sgn_x);
+
+  *pres = res.f;
+  return nRet;
 }
 
-double __ocl_svml_tan(double a)
-{
-    double       va1;
-    double       vr1;
-    unsigned int vm;
+double __ocl_svml_tan(double a) {
+  double va1;
+  double vr1;
+  unsigned int vm;
 
-    double r;
+  double r;
 
-    va1 = a;
-    ;
+  va1 = a;
+  ;
 
-    __internal_dtan_la_cout(&va1, &vr1);
-    r = vr1;
-    ;
+  __internal_dtan_la_cout(&va1, &vr1);
+  r = vr1;
+  ;
 
-    return r;
+  return r;
 }

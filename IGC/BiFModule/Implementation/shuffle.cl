@@ -1106,7 +1106,6 @@ INLINE char16 __attribute__((overloadable)) __spirv_ocl_shuffle(char16 v, uchar1
   return ret;
 }
 
-
 INLINE short2 __attribute__((overloadable)) __spirv_ocl_shuffle(short2 v, ushort2 m) {
   short2 ret = 0;
   ret.s0 = ((m.s0 & 0x1) == 0x0) ? v.s0 : ret.s0;

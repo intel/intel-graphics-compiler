@@ -9,16 +9,16 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( native_rsqrt, float, float )
+GENERATE_VECTOR_FUNCTIONS_1ARG(native_rsqrt, float, float)
 
 #if defined(cl_khr_fp64)
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( native_rsqrt, double, double )
+GENERATE_VECTOR_FUNCTIONS_1ARG(native_rsqrt, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( native_rsqrt, half, half )
+GENERATE_VECTOR_FUNCTIONS_1ARG(native_rsqrt, half, half)
 
 #endif // defined(cl_khr_fp16)

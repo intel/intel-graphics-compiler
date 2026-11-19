@@ -68,25 +68,24 @@ typedef struct {
   unsigned long _lExpBound;
   unsigned long _dHalf;
 } __ocl_svml_internal_dhypot_la_data_t;
-static __ocl_svml_internal_dhypot_la_data_t __ocl_svml_internal_dhypot_la_data =
-    {
-        /* legacy algorithm */
-        0xffffc00000000000uL, /* _dHiLoMask     */
-        0x7fffffffffffffffuL, /* _dAbsMask      */
-        0x3FF0000000000000uL, /* _dOne          */
-        0xBFCF800000000000uL, /* _POLY_C5            */
-        0x3FD1800000000000uL, /* _POLY_C4            */
-        0xBFD4000000000000uL, /* _POLY_C3            */
-        0x3FD8000000000000uL, /* _POLY_C2            */
-        0xBFE0000000000000uL, /* _POLY_C1            */
-        0x00600000u,          /* _LargeDiffMask */
-        0x3BC00000u,          /* _LowBoundary   */
-        0x44100000u,          /* _HighBoundary  */
-        /* fma based algorithm*/
-        0x407ff00000000000uL, /* _lExpBound_uisa */
-        0x404f800000000000uL, /* _lExpBound      */
-        0x3FE0000000000000uL, /* _dHalf          */
-};                            /* _VAPI_DATA_TYPE */
+static __ocl_svml_internal_dhypot_la_data_t __ocl_svml_internal_dhypot_la_data = {
+    /* legacy algorithm */
+    0xffffc00000000000uL, /* _dHiLoMask     */
+    0x7fffffffffffffffuL, /* _dAbsMask      */
+    0x3FF0000000000000uL, /* _dOne          */
+    0xBFCF800000000000uL, /* _POLY_C5            */
+    0x3FD1800000000000uL, /* _POLY_C4            */
+    0xBFD4000000000000uL, /* _POLY_C3            */
+    0x3FD8000000000000uL, /* _POLY_C2            */
+    0xBFE0000000000000uL, /* _POLY_C1            */
+    0x00600000u,          /* _LargeDiffMask */
+    0x3BC00000u,          /* _LowBoundary   */
+    0x44100000u,          /* _HighBoundary  */
+    /* fma based algorithm*/
+    0x407ff00000000000uL, /* _lExpBound_uisa */
+    0x404f800000000000uL, /* _lExpBound      */
+    0x3FE0000000000000uL, /* _dHalf          */
+}; /* _VAPI_DATA_TYPE */
 static __constant _iml_v2_dp_union_t __dhypot_la__vmldHypotHATab[517] = {
     0x00000000, 0x3FF00000, /* RSQRT[  0] = +1.0000000000000000e+00 */
     0x00000000, 0x3FEFF000, /* RSQRT[  1] = +9.9804687500000000e-01 */
@@ -607,8 +606,7 @@ static __constant _iml_v2_dp_union_t __dhypot_la__vmldHypotHATab[517] = {
     0x00000000, 0x40000000, /* ONETWO(1) = 2.0 */
     0x02000000, 0x41A00000, /* RS_MuL = 2^27+1 */
 };
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
   double v1, v2;
   double mantissa, y;
   double TwoPowN;
@@ -626,10 +624,8 @@ __ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
   i = 0;
   {
     /* Filter out INFs and NaNs */
-    if ((((((_iml_v2_dp_union_t *)&(a[0]))->dwords.hi_dword >> 20) & 0x7FF) !=
-         0x7FF) &&
-        (((((_iml_v2_dp_union_t *)&(b[0]))->dwords.hi_dword >> 20) & 0x7FF) !=
-         0x7FF)) {
+    if ((((((_iml_v2_dp_union_t *)&(a[0]))->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF) &&
+        (((((_iml_v2_dp_union_t *)&(b[0]))->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) {
       /* Here if a[i] is finite */
       /* Check if zero argument */
       if ((a[0]) != ((__constant double *)__dhypot_la__vmldHypotHATab)[512] ||
@@ -639,18 +635,15 @@ __ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
         a1 = (a[0]);
         a2 = (b[0]);
         (((_iml_v2_dp_union_t *)&a1)->dwords.hi_dword =
-             (((_iml_v2_dp_union_t *)&a1)->dwords.hi_dword & 0x7FFFFFFF) |
-             ((_iml_uint32_t)(0) << 31));
+             (((_iml_v2_dp_union_t *)&a1)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(0) << 31));
         (((_iml_v2_dp_union_t *)&a2)->dwords.hi_dword =
-             (((_iml_v2_dp_union_t *)&a2)->dwords.hi_dword & 0x7FFFFFFF) |
-             ((_iml_uint32_t)(0) << 31));
+             (((_iml_v2_dp_union_t *)&a2)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(0) << 31));
         if (a1 < a2) {
           z = a1;
           a1 = a2;
           a2 = z;
         }
-        unscale =
-            1025 - ((((_iml_v2_dp_union_t *)&a1)->dwords.hi_dword >> 20) & 0x7FF);
+        unscale = 1025 - ((((_iml_v2_dp_union_t *)&a1)->dwords.hi_dword >> 20) & 0x7FF);
         /* denormal fix without branch */
         unscale -= (unscale > 1000) * 23;
         dbl_scale = ((__constant double *)__dhypot_la__vmldHypotHATab)[512];
@@ -659,9 +652,7 @@ __ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
              (((_iml_uint32_t)((unscale + 1023)) & 0x7FF) << 20));
         a1 *= dbl_scale;
         a2 *= dbl_scale;
-        v1 = __spirv_ocl_fma(
-            (a1), (((__constant double *)__dhypot_la__vmldHypotHATab)[516]),
-            0.0);
+        v1 = __spirv_ocl_fma((a1), (((__constant double *)__dhypot_la__vmldHypotHATab)[516]), 0.0);
         v2 = __spirv_ocl_fma((v1), 1.0, -(a1));
         v1 = __spirv_ocl_fma((v1), 1.0, -(v2));
         v2 = __spirv_ocl_fma((a1), 1.0, -(v1));
@@ -674,9 +665,7 @@ __ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
           a2Hi = ((__constant double *)__dhypot_la__vmldHypotHATab)[512];
           a2Lo = a2;
         } else {
-          v1 = __spirv_ocl_fma(
-              (a2), (((__constant double *)__dhypot_la__vmldHypotHATab)[516]),
-              0.0);
+          v1 = __spirv_ocl_fma((a2), (((__constant double *)__dhypot_la__vmldHypotHATab)[516]), 0.0);
           v2 = __spirv_ocl_fma((v1), 1.0, -(a2));
           v1 = __spirv_ocl_fma((v1), 1.0, -(v2));
           v2 = __spirv_ocl_fma((a2), 1.0, -(v1));
@@ -691,8 +680,7 @@ __ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
         /* Reducing x to y */
         /* Represent x as x = 2^M * mantissa */
         /* Store the order of x */
-        M = ((((_iml_v2_dp_union_t *)&d_sum)->dwords.hi_dword >> 20) & 0x7FF) -
-            0x3FF;
+        M = ((((_iml_v2_dp_union_t *)&d_sum)->dwords.hi_dword >> 20) & 0x7FF) - 0x3FF;
         /* Keep only significand of x, zero the exponent */
         mantissa = d_sum;
         (((_iml_v2_dp_union_t *)&mantissa)->dwords.hi_dword =
@@ -701,29 +689,24 @@ __ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
         /* Represent x as x = 2^(2*N) * y */
         L = M & 1;
         N = (M - L) >> 1;
-        y = mantissa *
-            ((__constant double *)__dhypot_la__vmldHypotHATab)[514 + (L)];
+        y = mantissa * ((__constant double *)__dhypot_la__vmldHypotHATab)[514 + (L)];
         /* Construct 2^N */
         TwoPowN = ((__constant double *)__dhypot_la__vmldHypotHATab)[514 + (0)];
         (((_iml_v2_dp_union_t *)&TwoPowN)->dwords.hi_dword =
              (((_iml_v2_dp_union_t *)&TwoPowN)->dwords.hi_dword & 0x800FFFFF) |
              (((_iml_uint32_t)(N + 0x3FF) & 0x7FF) << 20));
         /* Construct 2^(-2*N) */
-        TwoPowM2N =
-            ((__constant double *)__dhypot_la__vmldHypotHATab)[514 + (0)];
+        TwoPowM2N = ((__constant double *)__dhypot_la__vmldHypotHATab)[514 + (0)];
         (((_iml_v2_dp_union_t *)&TwoPowM2N)->dwords.hi_dword =
              (((_iml_v2_dp_union_t *)&TwoPowM2N)->dwords.hi_dword & 0x800FFFFF) |
              (((_iml_uint32_t)(-2 * N + 0x3FF) & 0x7FF) << 20));
         /* Construct 2^(-unscale) */
-        TwoPowNScale =
-            ((__constant double *)__dhypot_la__vmldHypotHATab)[514 + (0)];
+        TwoPowNScale = ((__constant double *)__dhypot_la__vmldHypotHATab)[514 + (0)];
         (((_iml_v2_dp_union_t *)&TwoPowNScale)->dwords.hi_dword =
-             (((_iml_v2_dp_union_t *)&TwoPowNScale)->dwords.hi_dword &
-              0x800FFFFF) |
+             (((_iml_v2_dp_union_t *)&TwoPowNScale)->dwords.hi_dword & 0x800FFFFF) |
              (((_iml_uint32_t)(0x3FF - unscale) & 0x7FF) << 20));
         /* Obtain j */
-        j = (((_iml_v2_dp_union_t *)&mantissa)->dwords.hi_dword & 0x000FFFFF) >>
-            12;
+        j = (((_iml_v2_dp_union_t *)&mantissa)->dwords.hi_dword & 0x000FFFFF) >> 12;
         j = j + (L << 8);
         /* Get 0.5 / sqrt(y) initial approximation */
         h = ((__constant double *)__dhypot_la__vmldHypotHATab)[513] *
@@ -745,9 +728,7 @@ __ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
         s = s + (d * s);
         /* Calculating d := y - (sHi + sLo) * (sHi + sLo) */
         /* Split s into sHi + sLo */
-        v1 = __spirv_ocl_fma(
-            (s), (((__constant double *)__dhypot_la__vmldHypotHATab)[516]),
-            0.0);
+        v1 = __spirv_ocl_fma((s), (((__constant double *)__dhypot_la__vmldHypotHATab)[516]), 0.0);
         v2 = __spirv_ocl_fma((v1), 1.0, -(s));
         v1 = __spirv_ocl_fma((v1), 1.0, -(v2));
         v2 = __spirv_ocl_fma((s), 1.0, -(v1));
@@ -755,9 +736,7 @@ __ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
         sLo = v2;
         ;
         d = (zHi * TwoPowM2N) - (sHi * sHi);
-        d -= (((__constant double *)__dhypot_la__vmldHypotHATab)[514 + (1)] *
-              sHi) *
-             sLo;
+        d -= (((__constant double *)__dhypot_la__vmldHypotHATab)[514 + (1)] * sHi) * sLo;
         d -= (sLo * sLo);
         d += (zLo * TwoPowM2N);
         /* Final iteration */
@@ -772,27 +751,22 @@ __ocl_svml_internal_dhypot_la(double *a, double *b, double *r) {
     /* One of arguments is not finite */
     else {
       /* If 1st argument is finite */
-      if ((((((_iml_v2_dp_union_t *)&(a[0]))->dwords.hi_dword >> 20) & 0x7FF) !=
-           0x7FF)) {
+      if ((((((_iml_v2_dp_union_t *)&(a[0]))->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) {
         r[i] = (b[0]) * (b[0]);
       } else {
         /* If 2nd argument is finite */
-        if ((((((_iml_v2_dp_union_t *)&(b[0]))->dwords.hi_dword >> 20) & 0x7FF) !=
-             0x7FF)) {
+        if ((((((_iml_v2_dp_union_t *)&(b[0]))->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) {
           r[i] = (a[0]) * (a[0]);
         } else {
           /* If both arguments are NaNs */
-          if (!(((((_iml_v2_dp_union_t *)&(a[0]))->dwords.hi_dword & 0x000FFFFF) ==
-                 0) &&
+          if (!(((((_iml_v2_dp_union_t *)&(a[0]))->dwords.hi_dword & 0x000FFFFF) == 0) &&
                 ((((_iml_v2_dp_union_t *)&(a[0]))->dwords.lo_dword) == 0)) &&
-              !(((((_iml_v2_dp_union_t *)&(b[0]))->dwords.hi_dword & 0x000FFFFF) ==
-                 0) &&
+              !(((((_iml_v2_dp_union_t *)&(b[0]))->dwords.hi_dword & 0x000FFFFF) == 0) &&
                 ((((_iml_v2_dp_union_t *)&(b[0]))->dwords.lo_dword) == 0))) {
             r[i] = (a[0]) * (b[0]);
           } else {
             /* If 1st argument is Inf */
-            if ((((((_iml_v2_dp_union_t *)&(a[0]))->dwords.hi_dword &
-                   0x000FFFFF) == 0) &&
+            if ((((((_iml_v2_dp_union_t *)&(a[0]))->dwords.hi_dword & 0x000FFFFF) == 0) &&
                  ((((_iml_v2_dp_union_t *)&(a[0]))->dwords.lo_dword) == 0))) {
               {
                 /* Return Inf */
@@ -870,19 +844,15 @@ double __ocl_svml_hypot_la(double x, double y) {
       _high_limit = (__ocl_svml_internal_dhypot_la_data._HighBoundary);
       _zl = as_ulong(_z);
       _zi = ((unsigned int)((unsigned long)_zl >> 32));
-      _low_limit = ((unsigned int)(-(signed int)((signed int)_zi <
-                                                 (signed int)_low_limit)));
-      _high_limit = ((unsigned int)(-(signed int)((signed int)_zi >
-                                                  (signed int)_high_limit)));
+      _low_limit = ((unsigned int)(-(signed int)((signed int)_zi < (signed int)_low_limit)));
+      _high_limit = ((unsigned int)(-(signed int)((signed int)_zi > (signed int)_high_limit)));
       _zi = (_low_limit | _high_limit);
-      _zl = (((unsigned long)(unsigned int)_zi << 32) |
-             (unsigned long)(unsigned int)_zi);
+      _zl = (((unsigned long)(unsigned int)_zi << 32) | (unsigned long)(unsigned int)_zi);
       vm = 0;
       vm = _zl;
       /* Avoid INVALID exception for zero arguments */
       _zd = as_double(_zl);
-      _z = as_double((((~as_ulong(_zd)) & as_ulong(_z)) |
-                      (as_ulong(_zd) & as_ulong(_one))));
+      _z = as_double((((~as_ulong(_zd)) & as_ulong(_z)) | (as_ulong(_zd) & as_ulong(_one))));
     }
     /* _s  ~ 1.0/sqrt(_z)                       */
     /* _s2 ~ 1.0/(sqrt(_z)*sqrt(_z)) ~ 1.0/_z   */

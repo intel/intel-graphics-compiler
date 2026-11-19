@@ -53,8 +53,7 @@ static __constant union {
   float f;
   int i;
 } __sexp10_ha_c1 = {0x40135d8eu};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_sexp10_ha(float *a, float *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_sexp10_ha(float *a, float *r) {
   int nRet = 0;
   float x = *a;
   union {
@@ -64,8 +63,7 @@ __ocl_svml_internal_sexp10_ha(float *a, float *r) {
   } S, Th, Tlr, Th2, xin, xa, res;
   float N, R, poly;
   int index_mask;
-  S.f = __spirv_ocl_fma(x, __sexp10_ha_L2_10.f,
-                                               __sexp10_ha_Shifter.f);
+  S.f = __spirv_ocl_fma(x, __sexp10_ha_L2_10.f, __sexp10_ha_Shifter.f);
   N = S.f - __sexp10_ha_Shifter.f;
   R = __spirv_ocl_fma((-N), __sexp10_ha_L2H.f, x);
   R = __spirv_ocl_fma((-N), __sexp10_ha_L2L.f, R);
@@ -78,8 +76,7 @@ __ocl_svml_internal_sexp10_ha(float *a, float *r) {
   // set Tl/Th value
   Tlr.w = index_mask & 0x329302AEu;
   // polynomial
-  poly = __spirv_ocl_fma(R, __sexp10_ha_c5.f,
-                                                __sexp10_ha_c4.f);
+  poly = __spirv_ocl_fma(R, __sexp10_ha_c5.f, __sexp10_ha_c4.f);
   poly = __spirv_ocl_fma(R, poly, __sexp10_ha_c3.f);
   poly = __spirv_ocl_fma(R, poly, __sexp10_ha_c2.f);
   poly = __spirv_ocl_fma(R, poly, __sexp10_ha_c1.f);

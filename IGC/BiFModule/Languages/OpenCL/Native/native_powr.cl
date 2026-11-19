@@ -9,21 +9,18 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS( native_powr, float, float )
+GENERATE_VECTOR_FUNCTIONS_2ARGS(native_powr, float, float)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE native_powr( double x, double y )
-{
-    return __spirv_ocl_native_powr( x, y );
-}
+INLINE double OVERLOADABLE native_powr(double x, double y) { return __spirv_ocl_native_powr(x, y); }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS( native_powr, double, double )
+GENERATE_VECTOR_FUNCTIONS_2ARGS(native_powr, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS( native_powr, half, half )
+GENERATE_VECTOR_FUNCTIONS_2ARGS(native_powr, half, half)
 
 #endif // defined(cl_khr_fp16)

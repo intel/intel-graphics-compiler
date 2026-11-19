@@ -57,16 +57,13 @@ static __constant union {
   float f;
   int i;
 } __slog10_ha_c2h = {0xbe5e5bd8u};
-static __constant float __slog10_ha_fc1[] = {
-    0x1.bcb7bp-2f,
-    0x1.33e4c2p-26f}; // C1 HI+LO:       0.43429446 + 1.7921765e-08 [0x3ede5bd8
-                      // + 0x3299f261]
-static __constant float __slog10_ha_fl10[] = {
-    0x1.344134p-2f,
-    0x1.09f7ap-26f}; // Log10(2) HI+LO: 0.30102998 + 1.5481334e-08 [0x3e9a209a +
-                     // 0x3284fbd0]
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_slog10_ha(float *a, float *r) {
+static __constant float __slog10_ha_fc1[] = {0x1.bcb7bp-2f,
+                                             0x1.33e4c2p-26f}; // C1 HI+LO:       0.43429446 + 1.7921765e-08 [0x3ede5bd8
+                                                               // + 0x3299f261]
+static __constant float __slog10_ha_fl10[] = {0x1.344134p-2f,
+                                              0x1.09f7ap-26f}; // Log10(2) HI+LO: 0.30102998 + 1.5481334e-08 [0x3e9a209a
+                                                               // + 0x3284fbd0]
+__attribute__((always_inline)) inline int __ocl_svml_internal_slog10_ha(float *a, float *r) {
   int nRet = 0;
   float xin = *a;
   union {
@@ -92,8 +89,7 @@ LOG10F_MAIN:
   // reduced argument
   R = mant.f - 1.0f;
   // polynomial
-  poly = __spirv_ocl_fma(__slog10_ha_c10.f, R,
-                                                __slog10_ha_c9.f);
+  poly = __spirv_ocl_fma(__slog10_ha_c10.f, R, __slog10_ha_c9.f);
   poly = __spirv_ocl_fma(poly, R, __slog10_ha_c8.f);
   poly = __spirv_ocl_fma(poly, R, __slog10_ha_c7.f);
   poly = __spirv_ocl_fma(poly, R, __slog10_ha_c6.f);
@@ -116,10 +112,8 @@ LOG10F_MAIN:
   };
   {
     float __ph, __ahl, __ahh;
-    __ph = __spirv_ocl_fma(fpolyh, 1.0f,
-                                                  __slog10_ha_fc1[0]);
-    __ahh =
-        __spirv_ocl_fma(__ph, 1.0f, -__slog10_ha_fc1[0]);
+    __ph = __spirv_ocl_fma(fpolyh, 1.0f, __slog10_ha_fc1[0]);
+    __ahh = __spirv_ocl_fma(__ph, 1.0f, -__slog10_ha_fc1[0]);
     __ahl = __spirv_ocl_fma(fpolyh, 1.0f, -__ahh);
     fpolyl = (fpolyl + __slog10_ha_fc1[1]) + __ahl;
     fpolyh = __ph;

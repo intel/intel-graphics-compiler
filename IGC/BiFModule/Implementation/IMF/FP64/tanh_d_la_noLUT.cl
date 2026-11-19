@@ -111,9 +111,7 @@ static __constant union {
   double f;
 } __dtanh_la___c0 = {0x0000000000000000uL};
 
-__attribute__((always_inline))
-static inline int __ocl_svml_internal_dtanh(double *px, double *pres)
-{
+__attribute__((always_inline)) static inline int __ocl_svml_internal_dtanh(double *px, double *pres) {
   int nRet = 0;
   double xin = *px;
   union {
@@ -135,18 +133,15 @@ static inline int __ocl_svml_internal_dtanh(double *px, double *pres)
   xa.f = ((xa.f > 20.0) && (xa.w <= 0x7ff0000000000000uL)) ? 20.0 : xa.f;
   // exp(2*xa.f)
   // Shifter + xa*log2e
-  S.f = __spirv_ocl_fma(xa.f, __dtanh_la___L2E.f,
-                                               __dtanh_la___Shifter.f);
-  dN =
-      __spirv_ocl_fma(S.f, 1.0, -__dtanh_la___Shifter.f);
+  S.f = __spirv_ocl_fma(xa.f, __dtanh_la___L2E.f, __dtanh_la___Shifter.f);
+  dN = __spirv_ocl_fma(S.f, 1.0, -__dtanh_la___Shifter.f);
   // Rh ~ N*log(2) + xa
   Rh = __spirv_ocl_fma(dN, __dtanh_la___mL2.f, xa.f);
   Rh = __spirv_ocl_fma(dN, __dtanh_la___mL2L.f, Rh);
   // T = 2^(rint(2*xa*log2e))
   S.w <<= 52;
   // e^(2*Rh)
-  poly = __spirv_ocl_fma(Rh, __dtanh_la___c12.f,
-                                                __dtanh_la___c11.f);
+  poly = __spirv_ocl_fma(Rh, __dtanh_la___c12.f, __dtanh_la___c11.f);
   poly = __spirv_ocl_fma(poly, Rh, __dtanh_la___c10.f);
   poly = __spirv_ocl_fma(poly, Rh, __dtanh_la___c9.f);
   poly = __spirv_ocl_fma(poly, Rh, __dtanh_la___c8.f);
@@ -187,8 +182,7 @@ static inline int __ocl_svml_internal_dtanh(double *px, double *pres)
   return nRet;
 }
 
-double __ocl_svml_tanh_noLUT(double x)
-{
+double __ocl_svml_tanh_noLUT(double x) {
   double r;
   __ocl_svml_internal_dtanh(&x, &r);
   return r;

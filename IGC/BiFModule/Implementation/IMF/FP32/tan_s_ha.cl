@@ -256,11 +256,9 @@ static __constant union {
   float f;
   int i;
 } __stan_ha___cs0l = {0xb3bbc50au};
-static __constant unsigned int __stan_ha_invpi_tbl[] = {
-    0,          0x28BE60DB, 0x9391054A, 0x7F09D5F4,
-    0x7D4D3770, 0x36D8A566, 0x4F10E410, 0x7F9458EA};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_stan_ha(float *a, float *pres) {
+static __constant unsigned int __stan_ha_invpi_tbl[] = {0,          0x28BE60DB, 0x9391054A, 0x7F09D5F4,
+                                                        0x7D4D3770, 0x36D8A566, 0x4F10E410, 0x7F9458EA};
+__attribute__((always_inline)) inline int __ocl_svml_internal_stan_ha(float *a, float *pres) {
   int nRet = 0;
   float xin = *a;
   unsigned long IP, IP2;
@@ -303,15 +301,11 @@ __ocl_svml_internal_stan_ha(float *a, float *pres) {
     j = ex & 0x1f;
     // x/Pi, scaled by 2^(63-j)
     ip_low = (((unsigned int)__stan_ha_invpi_tbl[index]) * ((unsigned int)mx));
-    IP = (((unsigned long)((unsigned int)(__stan_ha_invpi_tbl[index + 1]))) *
-          ((unsigned int)(mx))) +
+    IP = (((unsigned long)((unsigned int)(__stan_ha_invpi_tbl[index + 1]))) * ((unsigned int)(mx))) +
          (((unsigned long)ip_low) << 32);
     // scaled by 2^(95-j)
-    IP2 = (((unsigned long)((unsigned int)(__stan_ha_invpi_tbl[index + 2]))) *
-           ((unsigned int)(mx))) +
-          ((((unsigned long)((unsigned int)(__stan_ha_invpi_tbl[index + 3]))) *
-            ((unsigned int)(mx))) >>
-           32);
+    IP2 = (((unsigned long)((unsigned int)(__stan_ha_invpi_tbl[index + 2]))) * ((unsigned int)(mx))) +
+          ((((unsigned long)((unsigned int)(__stan_ha_invpi_tbl[index + 3]))) * ((unsigned int)(mx))) >> 32);
     IP = IP + (IP2 >> 32);
     // scale 2^63
     IP <<= j;
@@ -366,22 +360,16 @@ __ocl_svml_internal_stan_ha(float *a, float *pres) {
     R2l = __spirv_ocl_fma(Rl.f, Rh.f, R2l);
     R2l = __spirv_ocl_fma(Rh.f, Rl.f, R2l);
   };
-  spoly.f = __spirv_ocl_fma(__stan_ha___cs4.f, R2h,
-                                                   __stan_ha___cs3.f);
-  cpoly.f = __spirv_ocl_fma(__stan_ha___cc4.f, R2h,
-                                                   __stan_ha___cc3.f);
-  spoly.f =
-      __spirv_ocl_fma(spoly.f, R2h, __stan_ha___cs2.f);
-  cpoly1.f =
-      __spirv_ocl_fma(cpoly.f, R2h, __stan_ha___cc2.f);
+  spoly.f = __spirv_ocl_fma(__stan_ha___cs4.f, R2h, __stan_ha___cs3.f);
+  cpoly.f = __spirv_ocl_fma(__stan_ha___cc4.f, R2h, __stan_ha___cc3.f);
+  spoly.f = __spirv_ocl_fma(spoly.f, R2h, __stan_ha___cs2.f);
+  cpoly1.f = __spirv_ocl_fma(cpoly.f, R2h, __stan_ha___cc2.f);
   cpoly.f = __spirv_ocl_fma(cpoly1.f, R2h, 0.0f);
   cpoly_l.f = __spirv_ocl_fma(cpoly1.f, R2h, (-cpoly.f));
   {
     float __ph, __ahl, __ahh;
-    __ph = __spirv_ocl_fma(cpoly.f, 1.0f,
-                                                  __stan_ha___cc1.f);
-    __ahh =
-        __spirv_ocl_fma(__ph, 1.0f, -__stan_ha___cc1.f);
+    __ph = __spirv_ocl_fma(cpoly.f, 1.0f, __stan_ha___cc1.f);
+    __ahh = __spirv_ocl_fma(__ph, 1.0f, -__stan_ha___cc1.f);
     __ahl = __spirv_ocl_fma(cpoly.f, 1.0f, -__ahh);
     cpoly_l.f = (cpoly_l.f + __stan_ha___cc1l.f) + __ahl;
     cpoly.f = __ph;
@@ -396,24 +384,19 @@ __ocl_svml_internal_stan_ha(float *a, float *pres) {
   };
   {
     float __ph, __ahl, __ahh;
-    __ph = __spirv_ocl_fma(cpoly.f, 1.0f,
-                                                  __stan_ha___cc0.f);
-    __ahh =
-        __spirv_ocl_fma(__ph, 1.0f, -__stan_ha___cc0.f);
+    __ph = __spirv_ocl_fma(cpoly.f, 1.0f, __stan_ha___cc0.f);
+    __ahh = __spirv_ocl_fma(__ph, 1.0f, -__stan_ha___cc0.f);
     __ahl = __spirv_ocl_fma(cpoly.f, 1.0f, -__ahh);
     cpoly_l.f = cpoly_l.f + __ahl;
     cpoly.f = __ph;
   };
-  spoly1.f =
-      __spirv_ocl_fma(spoly.f, R2h, __stan_ha___cs1.f);
+  spoly1.f = __spirv_ocl_fma(spoly.f, R2h, __stan_ha___cs1.f);
   spoly.f = __spirv_ocl_fma(spoly1.f, R2h, 0.0f);
   spoly_l.f = __spirv_ocl_fma(spoly1.f, R2h, (-spoly.f));
   {
     float __ph, __ahl, __ahh;
-    __ph = __spirv_ocl_fma(spoly.f, 1.0f,
-                                                  __stan_ha___cs0.f);
-    __ahh =
-        __spirv_ocl_fma(__ph, 1.0f, -__stan_ha___cs0.f);
+    __ph = __spirv_ocl_fma(spoly.f, 1.0f, __stan_ha___cs0.f);
+    __ahh = __spirv_ocl_fma(__ph, 1.0f, -__stan_ha___cs0.f);
     __ahl = __spirv_ocl_fma(spoly.f, 1.0f, -__ahh);
     spoly_l.f = (spoly_l.f + __stan_ha___cs0l.f) + __ahl;
     spoly.f = __ph;
@@ -423,8 +406,7 @@ __ocl_svml_internal_stan_ha(float *a, float *pres) {
     __ph = __spirv_ocl_fma(spoly.f, Rh.f, 0.0f);
     __phl = __spirv_ocl_fma(spoly.f, Rh.f, -__ph);
     spoly_l.f = __spirv_ocl_fma(spoly_l.f, Rh.f, __phl);
-    spoly_l.f =
-        __spirv_ocl_fma(spoly.f, Rl.f, spoly_l.f);
+    spoly_l.f = __spirv_ocl_fma(spoly.f, Rl.f, spoly_l.f);
     spoly.f = __ph;
   };
   // adjust sign
@@ -440,9 +422,7 @@ __ocl_svml_internal_stan_ha(float *a, float *pres) {
   eps = __spirv_ocl_fma(cres.f, -Rh.f, 1.0f);
   eps = __spirv_ocl_fma(cres_l.f, -Rh.f, eps);
   Rl.f = __spirv_ocl_fma(Rh.f, eps, 0.0f);
-  tres.f = __spirv_ocl_fma(
-      sres.f, Rl.f,
-      __spirv_ocl_fma(sres_l.f, Rh.f, 0.0f));
+  tres.f = __spirv_ocl_fma(sres.f, Rl.f, __spirv_ocl_fma(sres_l.f, Rh.f, 0.0f));
   tres.f = __spirv_ocl_fma(sres.f, Rh.f, tres.f);
   tres.w ^= sgn_x;
   *pres = tres.f;

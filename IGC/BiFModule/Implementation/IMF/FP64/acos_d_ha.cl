@@ -468,8 +468,7 @@ static __constant union {
   float f;
   int i;
 } __dacos_ha_small_float = {0x01800000u};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dacos_ha(double *pxin, double *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dacos_ha(double *pxin, double *pres) {
   int nRet = 0;
   double xin = *pxin;
   union {
@@ -512,7 +511,7 @@ __ocl_svml_internal_dacos_ha(double *pxin, double *pres) {
     yf = (float)y.f;
     // fixup for |x|<=0.5 (set RS=0)
     fcorr.w = (xa.f <= 0.5) ? 0x7f800000 : 0; // 0x3f800000;
-    yf = yf + fcorr.f; // SP_FMA(fcorr.f, _VSTATIC(small_float).f, yf);
+    yf = yf + fcorr.f;                        // SP_FMA(fcorr.f, _VSTATIC(small_float).f, yf);
     // fixup for y.f==0
     yf += __dacos_ha_small_float.f;
     yf = 1.0f / __spirv_ocl_sqrt(yf);
@@ -537,8 +536,7 @@ __ocl_svml_internal_dacos_ha(double *pxin, double *pres) {
     // Shh2 - E*RS.f ~ -2*sqrt((1-|x|)/2)
     R0.f = __spirv_ocl_fma((-E), RS.f, Shh2.f);
     // polynomial
-    poly = __spirv_ocl_fma(__dacos_ha_c12.f, R,
-                                                  __dacos_ha_c11.f);
+    poly = __spirv_ocl_fma(__dacos_ha_c12.f, R, __dacos_ha_c11.f);
     poly = __spirv_ocl_fma(poly, R, __dacos_ha_c10.f);
     poly = __spirv_ocl_fma(poly, R, __dacos_ha_c9.f);
     poly = __spirv_ocl_fma(poly, R, __dacos_ha_c8.f);

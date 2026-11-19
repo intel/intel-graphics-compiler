@@ -7,8 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 #include "../imf.h"
 #pragma OPENCL FP_CONTRACT OFF
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_shypot_la(float *pa, float *pb, float *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_shypot_la(float *pa, float *pb, float *pres) {
   int nRet = 0;
   float x = *pa, y = *pb;
   volatile union {

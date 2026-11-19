@@ -90,8 +90,7 @@ static __constant union {
   int s32[2];
   double f;
 } __dexp_ep_Inf = {0x7ff0000000000000uL};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dexp_ep(double *a, double *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dexp_ep(double *a, double *r) {
   int nRet = 0;
   double x = *a;
   union {
@@ -117,8 +116,7 @@ __ocl_svml_internal_dexp_ep(double *a, double *r) {
   float fN, xf;
   xf = (float)x;
   // x*log2(e) + Shifter
-  idx.f = __spirv_ocl_fma(xf, __dexp_ep_p_L2Ef.f,
-                                                 __dexp_ep_p_Shifterf0.f);
+  idx.f = __spirv_ocl_fma(xf, __dexp_ep_p_L2Ef.f, __dexp_ep_p_Shifterf0.f);
   // x*log2(e), rounded to integral
   fN = idx.f - __dexp_ep_p_Shifterf0.f;
   N = (double)fN;
@@ -128,8 +126,7 @@ __ocl_svml_internal_dexp_ep(double *a, double *r) {
   // reduced argument
   R = __spirv_ocl_fma(__dexp_ep_p_NL2H.f, N, x);
   // start polynomial computation
-  poly =
-      __spirv_ocl_fma(__dexp_ep_c6.f, R, __dexp_ep_c5.f);
+  poly = __spirv_ocl_fma(__dexp_ep_c6.f, R, __dexp_ep_c5.f);
   poly = __spirv_ocl_fma(poly, R, __dexp_ep_c4.f);
   poly = __spirv_ocl_fma(poly, R, __dexp_ep_c3.f);
   poly = __spirv_ocl_fma(poly, R, __dexp_ep_c2.f);

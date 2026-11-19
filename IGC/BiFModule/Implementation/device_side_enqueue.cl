@@ -10,106 +10,96 @@ SPDX-License-Identifier: MIT
 
 // Implementation/ doesn't include cth.  Forward declare this so below users compile.
 // FIXME: this should really be defined in Implementation/ and used in Languages/.
-int __intel_enqueue_marker_impl(queue_t q, uint numEventsInWaitList, const __generic clk_event_t* waitList, __generic clk_event_t* returnEvent );
+int __intel_enqueue_marker_impl(queue_t q, uint numEventsInWaitList, const __generic clk_event_t *waitList,
+                                __generic clk_event_t *returnEvent);
 
-
-uint __attribute__((overloadable)) __spirv_EnqueueMarker(__spirv_Queue Queue, uint NumEvents, __spirv_DeviceEvent private* WaitEvents, __spirv_DeviceEvent private* RetEvent)
-{
-  return __intel_enqueue_marker_impl(__builtin_IB_convert_object_type_to_ocl_queue(Queue), NumEvents, __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(WaitEvents), __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(RetEvent));
+uint __attribute__((overloadable)) __spirv_EnqueueMarker(__spirv_Queue Queue, uint NumEvents,
+                                                         __spirv_DeviceEvent private *WaitEvents,
+                                                         __spirv_DeviceEvent private *RetEvent) {
+  return __intel_enqueue_marker_impl(__builtin_IB_convert_object_type_to_ocl_queue(Queue), NumEvents,
+                                     __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(WaitEvents),
+                                     __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(RetEvent));
 }
 
-uint __attribute__((overloadable)) __spirv_EnqueueMarker(__spirv_Queue Queue, uint NumEvents, __spirv_DeviceEvent local* WaitEvents, __spirv_DeviceEvent local* RetEvent)
-{
-  return __intel_enqueue_marker_impl(__builtin_IB_convert_object_type_to_ocl_queue(Queue), NumEvents, __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(WaitEvents), __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(RetEvent));
+uint __attribute__((overloadable)) __spirv_EnqueueMarker(__spirv_Queue Queue, uint NumEvents,
+                                                         __spirv_DeviceEvent local *WaitEvents,
+                                                         __spirv_DeviceEvent local *RetEvent) {
+  return __intel_enqueue_marker_impl(__builtin_IB_convert_object_type_to_ocl_queue(Queue), NumEvents,
+                                     __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(WaitEvents),
+                                     __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(RetEvent));
 }
 
-uint __attribute__((overloadable)) __spirv_EnqueueMarker(__spirv_Queue Queue, uint NumEvents, __spirv_DeviceEvent generic* WaitEvents, __spirv_DeviceEvent generic* RetEvent)
-{
-  return __intel_enqueue_marker_impl(__builtin_IB_convert_object_type_to_ocl_queue(Queue), NumEvents, __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(WaitEvents), __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(RetEvent));
+uint __attribute__((overloadable)) __spirv_EnqueueMarker(__spirv_Queue Queue, uint NumEvents,
+                                                         __spirv_DeviceEvent generic *WaitEvents,
+                                                         __spirv_DeviceEvent generic *RetEvent) {
+  return __intel_enqueue_marker_impl(__builtin_IB_convert_object_type_to_ocl_queue(Queue), NumEvents,
+                                     __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(WaitEvents),
+                                     __builtin_IB_convert_object_type_to_ocl_clk_event_ptr(RetEvent));
 }
 
-#define DEFN_GET_KERNEL_WORK_GROUP_SIZE(ADDRSPACE_NUMBER, ADDRSPACE_NAME)                                                                                                \
-uint __builtin_spirv_OpGetKernelWorkGroupSize_p0func_p##ADDRSPACE_NUMBER##i8_i32_i32(uchar* Invoke, ADDRSPACE_NAME uchar *Param, uint ParamSize, uint ParamAlign)  \
-{                                                                                                                                                                        \
-  return __builtin_IB_get_max_workgroup_size();                                                                                                                          \
-}
+#define DEFN_GET_KERNEL_WORK_GROUP_SIZE(ADDRSPACE_NUMBER, ADDRSPACE_NAME)                                              \
+  uint __builtin_spirv_OpGetKernelWorkGroupSize_p0func_p##ADDRSPACE_NUMBER##i8_i32_i32(                                \
+      uchar *Invoke, ADDRSPACE_NAME uchar *Param, uint ParamSize, uint ParamAlign) {                                   \
+    return __builtin_IB_get_max_workgroup_size();                                                                      \
+  }
 DEFN_GET_KERNEL_WORK_GROUP_SIZE(0, private)
 DEFN_GET_KERNEL_WORK_GROUP_SIZE(1, global)
 DEFN_GET_KERNEL_WORK_GROUP_SIZE(2, constant)
 DEFN_GET_KERNEL_WORK_GROUP_SIZE(3, local)
 DEFN_GET_KERNEL_WORK_GROUP_SIZE(4, generic)
 
-uint __get_kernel_work_group_size_impl(uchar* Block, uchar* Params)
-{
-  return __builtin_IB_get_max_workgroup_size();
-}
+uint __get_kernel_work_group_size_impl(uchar *Block, uchar *Params) { return __builtin_IB_get_max_workgroup_size(); }
 
-int OVERLOADABLE IGIL_RetainEvent( __spirv_DeviceEvent );
-void __attribute__((overloadable)) __spirv_RetainEvent(__spirv_DeviceEvent Event)
-{
-  IGIL_RetainEvent(Event);
-}
+int OVERLOADABLE IGIL_RetainEvent(__spirv_DeviceEvent);
+void __attribute__((overloadable)) __spirv_RetainEvent(__spirv_DeviceEvent Event) { IGIL_RetainEvent(Event); }
 
-int OVERLOADABLE IGIL_ReleaseEvent( __spirv_DeviceEvent in_event );
-void __attribute__((overloadable)) __spirv_ReleaseEvent(__spirv_DeviceEvent Event)
-{
-  IGIL_ReleaseEvent(Event);
-}
+int OVERLOADABLE IGIL_ReleaseEvent(__spirv_DeviceEvent in_event);
+void __attribute__((overloadable)) __spirv_ReleaseEvent(__spirv_DeviceEvent Event) { IGIL_ReleaseEvent(Event); }
 
 __spirv_DeviceEvent IGIL_CreateUserEvent();
 
-__spirv_DeviceEvent __attribute__((overloadable)) __spirv_CreateUserEvent()
-{
-  return IGIL_CreateUserEvent();
+__spirv_DeviceEvent __attribute__((overloadable)) __spirv_CreateUserEvent() { return IGIL_CreateUserEvent(); }
+
+bool OVERLOADABLE IGIL_Valid_Event(__spirv_DeviceEvent in_event);
+
+bool __attribute__((overloadable)) __spirv_IsValidEvent(__spirv_DeviceEvent Event) { return IGIL_Valid_Event(Event); }
+
+void OVERLOADABLE IGIL_SetUserEventStatus(__spirv_DeviceEvent event, int state);
+
+void __attribute__((overloadable)) __spirv_SetUserEventStatus(__spirv_DeviceEvent Event, int Status) {
+  IGIL_SetUserEventStatus(Event, Status);
 }
 
-bool OVERLOADABLE IGIL_Valid_Event( __spirv_DeviceEvent in_event );
+void OVERLOADABLE IGIL_CaptureEventProfilingInfo(__spirv_DeviceEvent event, clk_profiling_info name,
+                                                 __global void *value);
 
-bool __attribute__((overloadable)) __spirv_IsValidEvent(__spirv_DeviceEvent Event)
-{
-  return IGIL_Valid_Event(Event);
+void __attribute__((overloadable)) __spirv_CaptureEventProfilingInfo(__spirv_DeviceEvent Event, int ProfilingInfo,
+                                                                     global char *Value) {
+  // SPIR-V CmdExecTime has a different enum value than CLK_PROFILING_COMMAND_EXEC_TIME.
+  // Perform the mapping from SPIR-V enum to our internal/Clang enum before calling
+  // into our target implementation
+
+  clk_profiling_info profilingInfo = (ProfilingInfo == CmdExecTime)
+                                         ? CLK_PROFILING_COMMAND_EXEC_TIME
+                                         : ~CLK_PROFILING_COMMAND_EXEC_TIME; // known bad value
+
+  IGIL_CaptureEventProfilingInfo(Event, profilingInfo, Value);
 }
 
-void OVERLOADABLE IGIL_SetUserEventStatus( __spirv_DeviceEvent event, int state );
-
-void __attribute__((overloadable)) __spirv_SetUserEventStatus(__spirv_DeviceEvent Event, int Status)
-{
-    IGIL_SetUserEventStatus( Event, Status );
+INLINE uint __intel_calc_kernel_local_size_for_sub_group_count(uint subgroupCount, uint simdSize) {
+  return subgroupCount * simdSize;
 }
 
-void OVERLOADABLE IGIL_CaptureEventProfilingInfo( __spirv_DeviceEvent event, clk_profiling_info name,  __global void *value );
-
-void __attribute__((overloadable)) __spirv_CaptureEventProfilingInfo(__spirv_DeviceEvent Event, int ProfilingInfo, global char *Value)
-{
-    // SPIR-V CmdExecTime has a different enum value than CLK_PROFILING_COMMAND_EXEC_TIME.
-    // Perform the mapping from SPIR-V enum to our internal/Clang enum before calling
-    // into our target implementation
-
-    clk_profiling_info profilingInfo = (ProfilingInfo == CmdExecTime)
-        ? CLK_PROFILING_COMMAND_EXEC_TIME
-        : ~CLK_PROFILING_COMMAND_EXEC_TIME; //known bad value
-
-    IGIL_CaptureEventProfilingInfo(Event, profilingInfo, Value);
-}
-
-INLINE uint __intel_calc_kernel_local_size_for_sub_group_count(uint subgroupCount, uint simdSize)
-{
-    return subgroupCount * simdSize;
-}
-
-INLINE uint __intel_calc_kernel_max_num_subgroups(uint simdSize)
-{
-    // Note: We truncate here because the OpGetKernelMaxNumSubgroups is asking
-    // for the number of _whole_ subgroups that can execute.
-    return __builtin_IB_get_max_workgroup_size() / simdSize;
+INLINE uint __intel_calc_kernel_max_num_subgroups(uint simdSize) {
+  // Note: We truncate here because the OpGetKernelMaxNumSubgroups is asking
+  // for the number of _whole_ subgroups that can execute.
+  return __builtin_IB_get_max_workgroup_size() / simdSize;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-__spirv_Queue __attribute__((overloadable)) __spirv_GetDefaultQueue()
-{
-    return __builtin_IB_convert_object_type_to_spirv_queue(__builtin_IB_get_default_device_queue());
+__spirv_Queue __attribute__((overloadable)) __spirv_GetDefaultQueue() {
+  return __builtin_IB_convert_object_type_to_spirv_queue(__builtin_IB_get_default_device_queue());
 }
 
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
-

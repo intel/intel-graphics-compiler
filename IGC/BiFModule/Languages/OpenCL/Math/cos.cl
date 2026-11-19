@@ -9,31 +9,22 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-INLINE float OVERLOADABLE cos( float x )
-{
-    return __spirv_ocl_cos( x );
-}
+INLINE float OVERLOADABLE cos(float x) { return __spirv_ocl_cos(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cos, float, float )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(cos, float, float)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE cos( double x )
-{
-    return __spirv_ocl_cos( x );
-}
+INLINE double OVERLOADABLE cos(double x) { return __spirv_ocl_cos(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cos, double, double )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(cos, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE cos( half x )
-{
-    return __spirv_ocl_cos( x );
-}
+INLINE half OVERLOADABLE cos(half x) { return __spirv_ocl_cos(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( cos, half, half )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(cos, half, half)
 
 #endif // defined(cl_khr_fp16)

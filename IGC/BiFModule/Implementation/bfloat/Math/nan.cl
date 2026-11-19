@@ -9,9 +9,8 @@ SPDX-License-Identifier: MIT
 #include "include/BiF_Definitions.cl"
 #include "spirv_bfloat.h"
 
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_nan_RDF16b( ushort nancode )
-{
-    return as_bfloat( BFLOAT_QUIET_NAN );
+INLINE bfloat __attribute__((overloadable)) __spirv_ocl_nan_RDF16b(ushort nancode) {
+  return as_bfloat(BFLOAT_QUIET_NAN);
 }
 
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS_RMANGLED( nan, bfloat, ushort, i16, DF16b )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS_RMANGLED(nan, bfloat, ushort, i16, DF16b)

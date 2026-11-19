@@ -105,8 +105,7 @@ static __constant union {
   int s32[2];
   double f;
 } __dexp_ha_Inf = {0x7ff0000000000000uL};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dexp_ha(double *a, double *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dexp_ha(double *a, double *r) {
   int nRet = 0;
   double x = *a;
   union {
@@ -125,8 +124,7 @@ __ocl_svml_internal_dexp_ha(double *a, double *r) {
   int expon32, mask32, mask_h;
   unsigned int xa32, sgn_x, expon_corr;
   // x*log2(e) + Shifter
-  idx.f = __spirv_ocl_fma(x, __dexp_ha_p_L2E.f,
-                                                 __dexp_ha_p_Shifter.f);
+  idx.f = __spirv_ocl_fma(x, __dexp_ha_p_L2E.f, __dexp_ha_p_Shifter.f);
   // x*log2(e), rounded to 1 fractional bit
   N = idx.f - __dexp_ha_p_Shifter.f;
   // bit mask to select "table" value
@@ -138,8 +136,7 @@ __ocl_svml_internal_dexp_ha(double *a, double *r) {
   // reduced argument
   R = __spirv_ocl_fma(__dexp_ha_p_NL2L.f, N, R0);
   // start polynomial computation
-  poly = __spirv_ocl_fma(__dexp_ha_p_c7.f, R,
-                                                __dexp_ha_p_c6.f);
+  poly = __spirv_ocl_fma(__dexp_ha_p_c7.f, R, __dexp_ha_p_c6.f);
   poly = __spirv_ocl_fma(poly, R, __dexp_ha_p_c5.f);
   // bit mask to select "table" value
   mask32 = mask32 >> 31;

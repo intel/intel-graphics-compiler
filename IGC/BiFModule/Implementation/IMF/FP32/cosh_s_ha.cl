@@ -49,30 +49,21 @@ typedef struct {
 } __ocl_svml_internal_scosh_ha_data_t;
 static __ocl_svml_internal_scosh_ha_data_t __ocl_svml_internal_scosh_ha_data = {
     {/* _sExp_tbl_PH 2^(i/32-1), i=0..31 */
-     0x3f000000u, 0x3f02cd87u, 0x3f05aac3u, 0x3f08980fu, 0x3f0b95c2u,
-     0x3f0ea43au, 0x3f11c3d3u, 0x3f14f4f0u, 0x3f1837f0u, 0x3f1b8d3au,
-     0x3f1ef532u, 0x3f227043u, 0x3f25fed7u, 0x3f29a15bu, 0x3f2d583fu,
-     0x3f3123f6u, 0x3f3504f3u, 0x3f38fbafu, 0x3f3d08a4u, 0x3f412c4du,
-     0x3f45672au, 0x3f49b9beu, 0x3f4e248cu, 0x3f52a81eu, 0x3f5744fdu,
-     0x3f5bfbb8u, 0x3f60ccdfu, 0x3f65b907u, 0x3f6ac0c7u, 0x3f6fe4bau,
-     0x3f75257du, 0x3f7a83b3u},
+     0x3f000000u, 0x3f02cd87u, 0x3f05aac3u, 0x3f08980fu, 0x3f0b95c2u, 0x3f0ea43au, 0x3f11c3d3u, 0x3f14f4f0u,
+     0x3f1837f0u, 0x3f1b8d3au, 0x3f1ef532u, 0x3f227043u, 0x3f25fed7u, 0x3f29a15bu, 0x3f2d583fu, 0x3f3123f6u,
+     0x3f3504f3u, 0x3f38fbafu, 0x3f3d08a4u, 0x3f412c4du, 0x3f45672au, 0x3f49b9beu, 0x3f4e248cu, 0x3f52a81eu,
+     0x3f5744fdu, 0x3f5bfbb8u, 0x3f60ccdfu, 0x3f65b907u, 0x3f6ac0c7u, 0x3f6fe4bau, 0x3f75257du, 0x3f7a83b3u},
     {/*  for i in [|0,...,31|] do printsingle( 2^(i/32-1) -
         round(2^(i/32-1),SG,RN)); */
-     0x00000000u, 0xb2cea7a9u, 0x32cf9891u, 0xb2feda4bu, 0xb1e0aba1u,
-     0xb2e97465u, 0x32e75624u, 0xb2ae0212u, 0x32a31b71u, 0xb28c5563u,
-     0x32c12342u, 0x3043125au, 0xb2ac9d5eu, 0xb2962b08u, 0xb1adeaf6u,
-     0xb2fc5aa8u, 0x324fe77au, 0x328ec5f7u, 0xb2c14fe8u, 0xb256663eu,
-     0x318aa837u, 0xb2f323a2u, 0x31a8fc24u, 0xb2dc1daau, 0xb254a58au,
-     0xb2d04a1cu, 0xb19eab59u, 0xb1c41be6u, 0xb1c116deu, 0xb2c8464au,
-     0x31a92436u, 0xb2123758u},
+     0x00000000u, 0xb2cea7a9u, 0x32cf9891u, 0xb2feda4bu, 0xb1e0aba1u, 0xb2e97465u, 0x32e75624u, 0xb2ae0212u,
+     0x32a31b71u, 0xb28c5563u, 0x32c12342u, 0x3043125au, 0xb2ac9d5eu, 0xb2962b08u, 0xb1adeaf6u, 0xb2fc5aa8u,
+     0x324fe77au, 0x328ec5f7u, 0xb2c14fe8u, 0xb256663eu, 0x318aa837u, 0xb2f323a2u, 0x31a8fc24u, 0xb2dc1daau,
+     0xb254a58au, 0xb2d04a1cu, 0xb19eab59u, 0xb1c41be6u, 0xb1c116deu, 0xb2c8464au, 0x31a92436u, 0xb2123758u},
     {/* _sExp_tbl_NH 2^(-i/32-1), i=0..31 */
-     0x3f000000u, 0x3efa83b3u, 0x3ef5257du, 0x3eefe4bau, 0x3eeac0c7u,
-     0x3ee5b907u, 0x3ee0ccdfu, 0x3edbfbb8u, 0x3ed744fdu, 0x3ed2a81eu,
-     0x3ece248cu, 0x3ec9b9beu, 0x3ec5672au, 0x3ec12c4du, 0x3ebd08a4u,
-     0x3eb8fbafu, 0x3eb504f3u, 0x3eb123f6u, 0x3ead583fu, 0x3ea9a15bu,
-     0x3ea5fed7u, 0x3ea27043u, 0x3e9ef532u, 0x3e9b8d3au, 0x3e9837f0u,
-     0x3e94f4f0u, 0x3e91c3d3u, 0x3e8ea43au, 0x3e8b95c2u, 0x3e88980fu,
-     0x3e85aac3u, 0x3e82cd87u},
+     0x3f000000u, 0x3efa83b3u, 0x3ef5257du, 0x3eefe4bau, 0x3eeac0c7u, 0x3ee5b907u, 0x3ee0ccdfu, 0x3edbfbb8u,
+     0x3ed744fdu, 0x3ed2a81eu, 0x3ece248cu, 0x3ec9b9beu, 0x3ec5672au, 0x3ec12c4du, 0x3ebd08a4u, 0x3eb8fbafu,
+     0x3eb504f3u, 0x3eb123f6u, 0x3ead583fu, 0x3ea9a15bu, 0x3ea5fed7u, 0x3ea27043u, 0x3e9ef532u, 0x3e9b8d3au,
+     0x3e9837f0u, 0x3e94f4f0u, 0x3e91c3d3u, 0x3e8ea43au, 0x3e8b95c2u, 0x3e88980fu, 0x3e85aac3u, 0x3e82cd87u},
     0x48c00000u, /* 1.5*2^18 _sShifter_UISA */
     0x0000001fu, /* _iIndexMask_UISA   */
     0x42AEAC4Eu, /* _iDomainRange_UISA */
@@ -80,21 +71,20 @@ static __ocl_svml_internal_scosh_ha_data_t __ocl_svml_internal_scosh_ha_data = {
     0x3f00010fu, /* _sPC2_UISA         */
     0x3e2aaacdu, /* _sPC3_UISA         */
     0x3FB8AA3Bu,
-    /* _sInvLn2  */ // k=0
-    0x32A57060u,    /* _sInvLn2lo*/
-    0x3F317000u,    /* _sLn2hi   */
-    0x3805fdf4u,    /* _sLn2lo   */
-    0x80000000u,    /* _sSign    */
-    0x3f800000u,    /* _sOne     */
-    0xbf800000u,    /* _sNOne    */
-    0x7f800000u,    /* _iExpMask */
-    0x49400000u,    /* _sShifter */
-    255,            /* _iIndexMask = (1<<(K+4))-1 */
-    0x42B16700u,    /* _iDomainRange =(128*2^K-0.5)*log(2)/2^K*/
-    {               //_dbT
+    /* _sInvLn2  */                                        // k=0
+    0x32A57060u,                                           /* _sInvLn2lo*/
+    0x3F317000u,                                           /* _sLn2hi   */
+    0x3805fdf4u,                                           /* _sLn2lo   */
+    0x80000000u,                                           /* _sSign    */
+    0x3f800000u,                                           /* _sOne     */
+    0xbf800000u,                                           /* _sNOne    */
+    0x7f800000u,                                           /* _iExpMask */
+    0x49400000u,                                           /* _sShifter */
+    255,                                                   /* _iIndexMask = (1<<(K+4))-1 */
+    0x42B16700u,                                           /* _iDomainRange =(128*2^K-0.5)*log(2)/2^K*/
+    {                                                      //_dbT
      {0x384cffecu, 0x33e35aa1u, 0x3efffcccu, 0x3aec9983u}, // log2(rel_err)= 33
-     {0xb82404a3u, 0x3d31804eu, 0x3f002009u,
-      0x3bec9e23u}, // log2(rel_err)= 29 every where
+     {0xb82404a3u, 0x3d31804eu, 0x3f002009u, 0x3bec9e23u}, // log2(rel_err)= 29 every where
      {0xb824ab46u, 0x3db1aaf4u, 0x3f007c5cu, 0x3c6cbcdcu},
      {0xb82546cdu, 0x3e057590u, 0x3f01166cu, 0x3cb1efc2u},
      {0xb8265381u, 0x3e3255c8u, 0x3f01ee84u, 0x3cedafd2u},
@@ -395,8 +385,7 @@ static __constant union {
   float f;
   int i;
 } __scosh_ha_c1 = {0x3f800000u};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_scosh_ha(float *a, float *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_scosh_ha(float *a, float *r) {
   int nRet = 0;
   float x = __spirv_ocl_fabs(*a);
   union {
@@ -406,8 +395,7 @@ __ocl_svml_internal_scosh_ha(float *a, float *r) {
   } S, Th, Tlr, Th2, xin, xa, res;
   float N, R, poly;
   int index_mask;
-  S.f = __spirv_ocl_fma(x, __scosh_ha_L2E.f,
-                                               __scosh_ha_Shifter.f);
+  S.f = __spirv_ocl_fma(x, __scosh_ha_L2E.f, __scosh_ha_Shifter.f);
   N = S.f - __scosh_ha_Shifter.f;
   R = __spirv_ocl_fma((-N), __scosh_ha_L2H.f, x);
   R = __spirv_ocl_fma((-N), __scosh_ha_L2L.f, R);
@@ -420,8 +408,7 @@ __ocl_svml_internal_scosh_ha(float *a, float *r) {
   // set Tl/Th value
   Tlr.w = index_mask & 0x329302AEu;
   // polynomial
-  poly = __spirv_ocl_fma(R, __scosh_ha_c5.f,
-                                                __scosh_ha_c4.f);
+  poly = __spirv_ocl_fma(R, __scosh_ha_c5.f, __scosh_ha_c4.f);
   poly = __spirv_ocl_fma(R, poly, __scosh_ha_c3.f);
   poly = __spirv_ocl_fma(R, poly, __scosh_ha_c2.f);
   poly = __spirv_ocl_fma(R, poly, __scosh_ha_c1.f);
@@ -504,56 +491,44 @@ float __ocl_svml_coshf_ha(float x) {
     sLn2[1] = as_float(__ocl_svml_internal_scosh_ha_data._sLn2lo);
     sInvLn2 = as_float(__ocl_svml_internal_scosh_ha_data._sInvLn2);
     /* ............... Abs argument ............................ */
-    sAbsX = as_float((~(as_uint(sXSign)) & as_uint(va1)));
+    sAbsX = as_float((~(as_uint(sXSign))&as_uint(va1)));
     /* ............... Scale & Index............................ */
-    sM = __spirv_ocl_fma(
-        sAbsX, sInvLn2, sShifter); // sM = x*2^K/log(2) + RShifter
+    sM = __spirv_ocl_fma(sAbsX, sInvLn2, sShifter); // sM = x*2^K/log(2) + RShifter
     /* ...............Check for overflow\underflow ............. */
     iX = as_uint(sAbsX); // iX = bitimage(abs(x))
-    iRangeMask = ((unsigned int)(-(signed int)((signed int)iX >
-                                               (signed int)iDomainRange)));
+    iRangeMask = ((unsigned int)(-(signed int)((signed int)iX > (signed int)iDomainRange)));
     vm = 0;
     vm = iRangeMask;
     /* .............. Index and Scale ......................... */
     sN = as_float((as_uint(sM) ^ as_uint(sShifter)));
     iM = as_uint(sN);
     // trick2 : if sN>255, iIndex=iIndex|11110000b,so iIndex will be >=15
-    iIndex = (iIndexMask - iM); // iIndex=255-iM
-    iIndex = ((unsigned int)(iIndex) >>
-              ((32 - 4)));                    // iIndex=(255-iM)>>28= 0 OR 1111b
-    iIndex = ((unsigned int)(iIndex) << (4)); // iIndex= 0 OR 11110000b
-    iIndex = (iIndex | iM);         // iIndex=iM OR Mscale|new adjusted index
-    iIndex = (iIndex & iIndexMask); // iIndex=adjusted index
-    iMScale = (iM - iIndex);        // iMScale = iM-adjustedindex
-    iMScale = ((unsigned int)(iMScale)
-               << ((23 - 4))); // iMscale is in SPFP EXP bits now
+    iIndex = (iIndexMask - iM);                        // iIndex=255-iM
+    iIndex = ((unsigned int)(iIndex) >> ((32 - 4)));   // iIndex=(255-iM)>>28= 0 OR 1111b
+    iIndex = ((unsigned int)(iIndex) << (4));          // iIndex= 0 OR 11110000b
+    iIndex = (iIndex | iM);                            // iIndex=iM OR Mscale|new adjusted index
+    iIndex = (iIndex & iIndexMask);                    // iIndex=adjusted index
+    iMScale = (iM - iIndex);                           // iMScale = iM-adjustedindex
+    iMScale = ((unsigned int)(iMScale) << ((23 - 4))); // iMscale is in SPFP EXP bits now
     /* ................... R ................................... */
-    sN = (sM - sShifter); // sN = sM - RShifter
-    sR = __spirv_ocl_fma(
-        -(sLn2[0]), sN, sAbsX); // sR = sX - sN*sLog2_hi/2^K
-    sR = __spirv_ocl_fma(
-        -(sLn2[1]), sN, sR); // sR = (sX - sN*Log2_hi/2^K)-sN*Log2_lo/2^K
+    sN = (sM - sShifter);                        // sN = sM - RShifter
+    sR = __spirv_ocl_fma(-(sLn2[0]), sN, sAbsX); // sR = sX - sN*sLog2_hi/2^K
+    sR = __spirv_ocl_fma(-(sLn2[1]), sN, sR);    // sR = (sX - sN*Log2_hi/2^K)-sN*Log2_lo/2^K
     /* poly(r) = a0+a1*r+...a3*r^4...................... */
-    sPC[2] = as_float(
-        ((unsigned int *)(__ocl_svml_internal_scosh_ha_data
-                              ._dbT))[(((0 + iIndex) * (4 * 4)) >> (2)) + 2]);
-    sPC[3] = as_float(
-        ((unsigned int *)(__ocl_svml_internal_scosh_ha_data
-                              ._dbT))[(((0 + iIndex) * (4 * 4)) >> (2)) + 3]);
+    sPC[2] =
+        as_float(((unsigned int *)(__ocl_svml_internal_scosh_ha_data._dbT))[(((0 + iIndex) * (4 * 4)) >> (2)) + 2]);
+    sPC[3] =
+        as_float(((unsigned int *)(__ocl_svml_internal_scosh_ha_data._dbT))[(((0 + iIndex) * (4 * 4)) >> (2)) + 3]);
     sN = (sPC[2] + sPC[2]); // sN=2*a2
     sOut = __spirv_ocl_fma(sPC[3], sR,
-                                                  sPC[2]); // sOut = (a2 +a3*sR)
-    sPC[1] = as_float(
-        ((unsigned int *)(__ocl_svml_internal_scosh_ha_data
-                              ._dbT))[(((0 + iIndex) * (4 * 4)) >> (2)) + 1]);
-    sOut = __spirv_ocl_fma(
-        sOut, sR, sPC[1]); // sOut = a1+sR*(a2 +a3*sR)
-    sPC[0] = as_float(
-        ((unsigned int *)(__ocl_svml_internal_scosh_ha_data
-                              ._dbT))[(((0 + iIndex) * (4 * 4)) >> (2)) + 0]);
-    sOut = __spirv_ocl_fma(
-        sOut, sR, sPC[0]); // sOut = a0+sR*(a1+sR*(a2 +a3*sR))
-    sOut = (sOut + sN);    // sOut = (2*a2?sAbsX)+a0+sR*(a1+sR*(a2 +a3*sR))
+                           sPC[2]); // sOut = (a2 +a3*sR)
+    sPC[1] =
+        as_float(((unsigned int *)(__ocl_svml_internal_scosh_ha_data._dbT))[(((0 + iIndex) * (4 * 4)) >> (2)) + 1]);
+    sOut = __spirv_ocl_fma(sOut, sR, sPC[1]); // sOut = a1+sR*(a2 +a3*sR)
+    sPC[0] =
+        as_float(((unsigned int *)(__ocl_svml_internal_scosh_ha_data._dbT))[(((0 + iIndex) * (4 * 4)) >> (2)) + 0]);
+    sOut = __spirv_ocl_fma(sOut, sR, sPC[0]); // sOut = a0+sR*(a1+sR*(a2 +a3*sR))
+    sOut = (sOut + sN);                       // sOut = (2*a2?sAbsX)+a0+sR*(a1+sR*(a2 +a3*sR))
     /*...scale up..........................*/
     iM = as_uint(sOut);
     iM = (iM + iMScale);

@@ -92,8 +92,7 @@ static __constant float __sasinh_ha_fln2[] = {
     0x1.62e42ep-1, 0x1.efa39ep-25, // HI + LO: 0.69314712 + 5.7699989e-08
                                    // [0x3f317217 + 0x3377d1cf]
 };
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_sasinh_ha(float *a, float *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_sasinh_ha(float *a, float *r) {
   int nRet = 0;
   float x = *a;
   float x2h, z2h, x2l, z2l, A, B, Bh, Sh, S0h, Sl, RS, E, Yhh;
@@ -152,8 +151,7 @@ __ocl_svml_internal_sasinh_ha(float *a, float *r) {
   // add exponent correction
   expon += iexpon_corr;
   // log() polynomial
-  poly = __spirv_ocl_fma(__sasinh_ha_c9.f, R,
-                                                __sasinh_ha_c8.f);
+  poly = __spirv_ocl_fma(__sasinh_ha_c9.f, R, __sasinh_ha_c8.f);
   poly = __spirv_ocl_fma(poly, R, __sasinh_ha_c7.f);
   poly = __spirv_ocl_fma(poly, R, __sasinh_ha_c6.f);
   poly = __spirv_ocl_fma(poly, R, __sasinh_ha_c5.f);
@@ -173,16 +171,13 @@ __ocl_svml_internal_sasinh_ha(float *a, float *r) {
     __ph = __spirv_ocl_fma(fPoly[0], fR[0], 0.0f);
     __phl = __spirv_ocl_fma(fPoly[0], fR[0], -__ph);
     fPoly[1] = __spirv_ocl_fma(fPoly[1], fR[0], __phl);
-    fPoly[1] =
-        __spirv_ocl_fma(fPoly[0], fR[1], fPoly[1]);
+    fPoly[1] = __spirv_ocl_fma(fPoly[0], fR[1], fPoly[1]);
     fPoly[0] = __ph;
   };
   {
     float __ph, __ahl, __ahh;
-    __ph = __spirv_ocl_fma(fPoly[0], 1.0f,
-                                                  __sasinh_ha_fc0[0]);
-    __ahh =
-        __spirv_ocl_fma(__ph, 1.0f, -__sasinh_ha_fc0[0]);
+    __ph = __spirv_ocl_fma(fPoly[0], 1.0f, __sasinh_ha_fc0[0]);
+    __ahh = __spirv_ocl_fma(__ph, 1.0f, -__sasinh_ha_fc0[0]);
     __ahl = __spirv_ocl_fma(fPoly[0], 1.0f, -__ahh);
     fPoly[1] = (fPoly[1] + __sasinh_ha_fc0[1]) + __ahl;
     fPoly[0] = __ph;
@@ -200,8 +195,7 @@ __ocl_svml_internal_sasinh_ha(float *a, float *r) {
     __ph = __spirv_ocl_fma(fPoly[0], fR[0], 0.0f);
     __phl = __spirv_ocl_fma(fPoly[0], fR[0], -__ph);
     fPoly[1] = __spirv_ocl_fma(fPoly[1], fR[0], __phl);
-    fPoly[1] =
-        __spirv_ocl_fma(fPoly[0], fR[1], fPoly[1]);
+    fPoly[1] = __spirv_ocl_fma(fPoly[0], fR[1], fPoly[1]);
     fPoly[0] = __ph;
   };
   {
@@ -218,9 +212,7 @@ __ocl_svml_internal_sasinh_ha(float *a, float *r) {
   sgn.w = xin.w ^ xa.w;
   res.w ^= sgn.w;
   // fixup for small or Inf/NaN
-  res.f = ((xa.f < __sasinh_ha_small_x.f) | (xa.w > __sasinh_ha_largest_norm.w))
-              ? (x + sgn.f)
-              : res.f;
+  res.f = ((xa.f < __sasinh_ha_small_x.f) | (xa.w > __sasinh_ha_largest_norm.w)) ? (x + sgn.f) : res.f;
   *r = res.f;
   return nRet;
 }

@@ -9,31 +9,22 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-float OVERLOADABLE tanh( float x )
-{
-    return __spirv_ocl_tanh( x );
-}
+float OVERLOADABLE tanh(float x) { return __spirv_ocl_tanh(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, float, float )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(tanh, float, float)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE tanh( double x )
-{
-    return __spirv_ocl_tanh( x );
-}
+INLINE double OVERLOADABLE tanh(double x) { return __spirv_ocl_tanh(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, double, double )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(tanh, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE tanh( half x )
-{
-    return __spirv_ocl_tanh( x );
-}
+INLINE half OVERLOADABLE tanh(half x) { return __spirv_ocl_tanh(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( tanh, half, half )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(tanh, half, half)
 
 #endif // defined(cl_khr_fp16)

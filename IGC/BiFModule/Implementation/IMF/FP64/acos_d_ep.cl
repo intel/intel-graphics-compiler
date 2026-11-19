@@ -426,8 +426,7 @@ static __constant union {
   float f;
   int i;
 } __dacos_ep_small_float = {0x01800000u};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dacos_ep(double *pxin, double *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dacos_ep(double *pxin, double *pres) {
   int nRet = 0;
   double xin = *pxin;
   union {
@@ -485,8 +484,7 @@ __ocl_svml_internal_dacos_ep(double *pxin, double *pres) {
     // Shh2 + Shh2*E*(c1+c2*E)
     R0.f = __spirv_ocl_fma(R0.f, Shh2.f, Shh2.f);
     // polynomial
-    poly = __spirv_ocl_fma(__dacos_ep_c5.f, R,
-                                                  __dacos_ep_c4.f);
+    poly = __spirv_ocl_fma(__dacos_ep_c5.f, R, __dacos_ep_c4.f);
     poly = __spirv_ocl_fma(poly, R, __dacos_ep_c3.f);
     poly = __spirv_ocl_fma(poly, R, __dacos_ep_c2.f);
     poly = __spirv_ocl_fma(poly, R, __dacos_ep_c1.f);

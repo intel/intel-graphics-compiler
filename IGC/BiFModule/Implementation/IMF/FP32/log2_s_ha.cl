@@ -59,8 +59,7 @@ static __constant union {
 } __slog2_ha_c2h = {0xbf38aa3bu};
 static __constant float __slog2_ha_c1h = 0x1.715476p+0;
 static __constant float __slog2_ha_c1l = 0x1.4ae0cp-26;
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_slog2_ha(float *a, float *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_slog2_ha(float *a, float *r) {
   float xin = *a;
   union {
     unsigned int w;
@@ -86,8 +85,7 @@ LOG2F_MAIN:
   // reduced argument
   R = mant.f - 1.0f;
   // polynomial
-  poly = __spirv_ocl_fma(__slog2_ha_c10.f, R,
-                                                __slog2_ha_c9.f);
+  poly = __spirv_ocl_fma(__slog2_ha_c10.f, R, __slog2_ha_c9.f);
   poly = __spirv_ocl_fma(poly, R, __slog2_ha_c8.f);
   poly = __spirv_ocl_fma(poly, R, __slog2_ha_c7.f);
   poly = __spirv_ocl_fma(poly, R, __slog2_ha_c6.f);

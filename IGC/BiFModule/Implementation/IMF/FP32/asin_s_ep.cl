@@ -407,8 +407,7 @@ static __constant union {
   float f;
   int i;
 } __sasin_ep_pi2l = {0xB33BBD2Eu};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_sasin_ep(float *pxin, float *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_sasin_ep(float *pxin, float *pres) {
   int nRet = 0;
   float xin = *pxin;
   union {
@@ -436,14 +435,12 @@ __ocl_svml_internal_sasin_ep(float *pxin, float *pres) {
     R = xin * xin;
     R = __spirv_ocl_fmin(R, y.f);
     // rsqrt((1-|x|)/2)
-    RS.f =
-        1.0f / __spirv_ocl_sqrt(y.f + __sasin_ep_small_float.f);
+    RS.f = 1.0f / __spirv_ocl_sqrt(y.f + __sasin_ep_small_float.f);
     // Sh ~ -2.0*sqrt((1-|x|)/2)
     Sh.f = y.f * RS.f;
     Sh.f *= -2.0f;
     // polynomial
-    poly = __spirv_ocl_fma(__sasin_ep_c2.f, R,
-                                                  __sasin_ep_c1.f);
+    poly = __spirv_ocl_fma(__sasin_ep_c2.f, R, __sasin_ep_c1.f);
     poly = __spirv_ocl_fma(poly, R, __sasin_ep_c0.f);
     // R0 = sel_mask? Shh2 : xa.f
     R0.f = (xa.f <= 0.5f) ? xa.f : Sh.f;

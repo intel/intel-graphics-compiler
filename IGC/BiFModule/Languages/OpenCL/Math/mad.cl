@@ -9,26 +9,20 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-INLINE float OVERLOADABLE mad( float a, float b, float c )
-{
-    return __spirv_ocl_mad( a, b, c );
-}
+INLINE float OVERLOADABLE mad(float a, float b, float c) { return __spirv_ocl_mad(a, b, c); }
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( mad, float, float )
+GENERATE_VECTOR_FUNCTIONS_3ARGS(mad, float, float)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE mad( double a, double b, double c )
-{
-    return __spirv_ocl_mad( a, b, c );
-}
+INLINE double OVERLOADABLE mad(double a, double b, double c) { return __spirv_ocl_mad(a, b, c); }
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( mad, double, double )
+GENERATE_VECTOR_FUNCTIONS_3ARGS(mad, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-GENERATE_VECTOR_FUNCTIONS_3ARGS( mad, half, half )
+GENERATE_VECTOR_FUNCTIONS_3ARGS(mad, half, half)
 
 #endif // defined(cl_khr_fp16)

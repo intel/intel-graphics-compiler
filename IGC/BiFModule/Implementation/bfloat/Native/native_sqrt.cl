@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE
 bfloat __attribute__((overloadable)) __spirv_ocl_native_sqrt(bfloat x) {
-    return as_bfloat(__builtin_bf16_sqrt(as_ushort(x)));
+  return as_bfloat(__builtin_bf16_sqrt(as_ushort(x)));
 }
 
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_sqrt, bfloat, bfloat, )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS(native_sqrt, bfloat, bfloat, )

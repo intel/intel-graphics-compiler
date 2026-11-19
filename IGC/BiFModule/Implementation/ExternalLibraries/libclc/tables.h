@@ -36,11 +36,8 @@ THE SOFTWARE.
 
 #define DECLARE_TABLE(TYPE, NAME, LENGTH) TABLE_SPACE TYPE NAME[LENGTH]
 
-#define TABLE_FUNCTION(TYPE, TABLE, NAME) \
-    TYPE TABLE_MANGLE(NAME)(size_t idx)   \
-    {                                     \
-        return TABLE[idx];                \
-    }
+#define TABLE_FUNCTION(TYPE, TABLE, NAME)                                                                              \
+  TYPE TABLE_MANGLE(NAME)(size_t idx) { return TABLE[idx]; }
 
 #define TABLE_FUNCTION_DECL(TYPE, NAME) TYPE TABLE_MANGLE(NAME)(size_t idx);
 

@@ -108,10 +108,10 @@ SPDX-License-Identifier: MIT
 //
 
 // negative values underflow range
-static __constant float __stgamma_ep__neg_underflow[2] = { 43.0, -43.0 };
+static __constant float __stgamma_ep__neg_underflow[2] = {43.0, -43.0};
 
 // negative values "half" overflow range - multiply by 1/An
-static __constant float __stgamma_ep__neg_half_overflow[2] = { 40.0, -40.0 };
+static __constant float __stgamma_ep__neg_half_overflow[2] = {40.0, -40.0};
 
 // overflow boundary (35.04010009765625)
 static __constant unsigned int __stgamma_ep__overflowf_boundary[] = {
@@ -267,331 +267,299 @@ static __constant unsigned int __stgamma_ep__tgammaf_A175_table[] = {
 
 // Right shifter
 
-static __constant unsigned __stgamma_ep__two_23h[] = { 0x4b000000 };    // 2^23
+static __constant unsigned __stgamma_ep__two_23h[] = {0x4b000000}; // 2^23
 
 // Special values
 
-static __constant unsigned int __stgamma_ep__own_large_value_32[] = { 0x71800000, 0xf1800000 }; // +2^100,-2^100
+static __constant unsigned int __stgamma_ep__own_large_value_32[] = {0x71800000, 0xf1800000}; // +2^100,-2^100
 
-static __constant unsigned int __stgamma_ep__own_small_value_32[] = { 0x0d800000, 0x8d800000 }; // +2^(-100),-2^(-100)
+static __constant unsigned int __stgamma_ep__own_small_value_32[] = {0x0d800000, 0x8d800000}; // +2^(-100),-2^(-100)
 
 // constants
 
-static __constant unsigned int __stgamma_ep__zeros[] = { 0x00000000, 0x80000000 };
-static __constant unsigned int __stgamma_ep__ones[] = { 0x3f800000, 0xbf800000 };
-static __constant unsigned int __stgamma_ep__infs[] = { 0x7f800000, 0xff800000 };
-static __constant float __stgamma_ep_twos[] = { 2.0, -2.0 };
-static __constant float __stgamma_ep_ones_5[] = { 1.5, -1.5 };
-static __constant float __stgamma_ep_ones_25[] = { 1.25, -1.25 };
-static __constant float __stgamma_ep_ones_75[] = { 1.75, -1.75 };
+static __constant unsigned int __stgamma_ep__zeros[] = {0x00000000, 0x80000000};
+static __constant unsigned int __stgamma_ep__ones[] = {0x3f800000, 0xbf800000};
+static __constant unsigned int __stgamma_ep__infs[] = {0x7f800000, 0xff800000};
+static __constant float __stgamma_ep_twos[] = {2.0, -2.0};
+static __constant float __stgamma_ep_ones_5[] = {1.5, -1.5};
+static __constant float __stgamma_ep_ones_25[] = {1.25, -1.25};
+static __constant float __stgamma_ep_ones_75[] = {1.75, -1.75};
 
-#pragma float_control(precise,on)
+#pragma float_control(precise, on)
 
-__attribute__((always_inline))
-inline int __internal_stgamma_ep_cout (float *a, float *r)
-{
-    int nRet = 0;
-    int t = 0, i = 0, j = 0, irsign = 0;
-    int ix = 0, iabsx_n = 0, iabsx_t = 0, ixsign = 0, ixexp = 0;
-    float dix = 0.0f, diabsx_n = 0.0f, diabsx_t = 0.0f;
-    float tv = 0.0f;
-    float x = 0.0f;
-    float absx = 0.0f, res = 0.0f;
+__attribute__((always_inline)) inline int __internal_stgamma_ep_cout(float *a, float *r) {
+  int nRet = 0;
+  int t = 0, i = 0, j = 0, irsign = 0;
+  int ix = 0, iabsx_n = 0, iabsx_t = 0, ixsign = 0, ixexp = 0;
+  float dix = 0.0f, diabsx_n = 0.0f, diabsx_t = 0.0f;
+  float tv = 0.0f;
+  float x = 0.0f;
+  float absx = 0.0f, res = 0.0f;
 
-    float resf = 0.0f;
-    float s = 0.0f, r2 = 0.0f, r3 = 0.0f, rrr = 0.0f;
-    float curabsx = 0.0f;
-    float p = 0.0f, pr = 0.0f;
-    __constant float *A;
-    __constant float *Af;
-    x = *(a);
-    absx = x;
-    res = ((__constant float *) __stgamma_ep__zeros)[0];
+  float resf = 0.0f;
+  float s = 0.0f, r2 = 0.0f, r3 = 0.0f, rrr = 0.0f;
+  float curabsx = 0.0f;
+  float p = 0.0f, pr = 0.0f;
+  __constant float *A;
+  __constant float *Af;
+  x = *(a);
+  absx = x;
+  res = ((__constant float *)__stgamma_ep__zeros)[0];
 
-    // get arg sign
-    ixsign = (((_iml_v2_sp_union_t *) & x)->hex[0] >> 31);
-    // get arg exponent
-    ixexp = ((((_iml_v2_sp_union_t *) & x)->hex[0] >> 23) & 0xFF);
+  // get arg sign
+  ixsign = (((_iml_v2_sp_union_t *)&x)->hex[0] >> 31);
+  // get arg exponent
+  ixexp = ((((_iml_v2_sp_union_t *)&x)->hex[0] >> 23) & 0xFF);
 
-    // normal values
-    if (ixexp != 0xFF)
+  // normal values
+  if (ixexp != 0xFF) {
+    // create absolute value
+    (((_iml_v2_sp_union_t *)&absx)->hex[0] =
+         (((_iml_v2_sp_union_t *)&absx)->hex[0] & 0x7FFFFFFF) | ((_iml_uint32_t)(0) << 31));
+
+    ix = *((int *)(&absx));
+
+    // if x == 0 - zero divide exception
+    if (x == ((__constant float *)__stgamma_ep__zeros)[0]) {
+      *r = (((__constant float *)__stgamma_ep__ones)[(ixsign)] / ((__constant float *)__stgamma_ep__zeros)[0]);
+      nRet = 2;
+      return nRet;
+    }
+
+    if (ix <= 0x00200000) // if |x| < denorm_overflow
     {
-        // create absolute value
-        (((_iml_v2_sp_union_t *) & absx)->hex[0] = (((_iml_v2_sp_union_t *) & absx)->hex[0] & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
+      {
+        float tz = ((__constant float *)__stgamma_ep__own_large_value_32)[0];
+        ((*r)) = (((__constant float *)__stgamma_ep__own_large_value_32)[(ixsign)] * tz);
+      }; // raise overflow
+      nRet = 3;
+      return nRet;
+    }
 
-        ix = *((int *) (&absx));
-
-        // if x == 0 - zero divide exception
-        if (x == ((__constant float *) __stgamma_ep__zeros)[0])
+    // singularity at negative integer points
+    if (ixsign) {
+      // if |x| >= 2^23 - only integer values
+      if (ixexp >= 0x00000096) {
         {
-            *r = (((__constant float *) __stgamma_ep__ones)[(ixsign)] / ((__constant float *) __stgamma_ep__zeros)[0]);
-            nRet = 2;
-            return nRet;
+          float tz = ((__constant float *)__stgamma_ep__zeros)[0];
+          ((*r)) = (((__constant float *)__stgamma_ep__zeros)[(0)] / tz);
+        };
+        nRet = 1;
+        return nRet;
+      } // if(ixexp >= 0x00000096)
+      else {
+        // get integer value of arg (truncated)
+        tv = absx + (*(__constant float *)__stgamma_ep__two_23h);
+        diabsx_t = tv - (*(__constant float *)__stgamma_ep__two_23h);
+        iabsx_t = (0x000fffff) & (*((int *)(&tv)));
+        if (diabsx_t > absx) {
+          diabsx_t -= ((__constant float *)__stgamma_ep__ones)[0];
+          iabsx_t -= 1;
         }
+      } // else if(ixexp >= 0x00000096)
 
-        if (ix <= 0x00200000)   // if |x| < denorm_overflow
+      // if arg - integer then singularity
+      if (absx == diabsx_t) {
         {
-            {
-                float tz = ((__constant float *) __stgamma_ep__own_large_value_32)[0];
-                ((*r)) = (((__constant float *) __stgamma_ep__own_large_value_32)[(ixsign)] * tz);
-            };  // raise overflow
-            nRet = 3;
-            return nRet;
+          float tz = ((__constant float *)__stgamma_ep__zeros)[0];
+          ((*r)) = (((__constant float *)__stgamma_ep__zeros)[(0)] / tz);
+        };
+        nRet = 1;
+        return nRet;
+      }
+
+      // if arg < -185.0 then underflow (values rounded to zero)
+      if (x < __stgamma_ep__neg_underflow[1]) {
+        (*r) = (((__constant float *)__stgamma_ep__own_small_value_32)[((~iabsx_t) & 1)] *
+                ((__constant float *)__stgamma_ep__own_small_value_32)[0]); // raise underflow and inexact
+        nRet = 4;
+        return nRet;
+      }
+    } // if(ixsign)
+
+    // big positive values overflow domain (res rounded to INF)
+    if (x >= (*((__constant float *)__stgamma_ep__overflowf_boundary))) {
+      {
+        float tz = ((__constant float *)__stgamma_ep__own_large_value_32)[0];
+        ((*r)) = (((__constant float *)__stgamma_ep__own_large_value_32)[(0)] * tz);
+      }; // raise overflow and inexact
+      nRet = 3;
+      return nRet;
+    }
+
+    // compute sin(Pi*x)/x for negative values
+    if (ixsign) {
+      // get rounded to nearest abs arg
+      tv = absx + (*(__constant float *)__stgamma_ep__two_23h);
+      diabsx_n = tv - (*(__constant float *)__stgamma_ep__two_23h);
+      iabsx_n = (0x000fffff) & (*((int *)(&tv)));
+
+      rrr = absx - diabsx_n; // reduced argument
+
+      if (rrr < 0)
+        rrr = (-rrr); // IML_ABS_DP(rrr);  // remove sign
+
+      r2 = rrr * rrr; // rrr^2
+
+      // Tailor series
+      s = rrr + rrr * ((r2 * (((__constant float *)__stgamma_ep__tgammaf_sin_table)[0] +
+                              r2 * ((__constant float *)__stgamma_ep__tgammaf_sin_table)[1])) *
+                       (((__constant float *)__stgamma_ep__tgammaf_sin_table)[2] +
+                        r2 * (r2 + ((__constant float *)__stgamma_ep__tgammaf_sin_table)[3])) *
+                       (((__constant float *)__stgamma_ep__tgammaf_sin_table)[4] +
+                        r2 * (r2 + ((__constant float *)__stgamma_ep__tgammaf_sin_table)[5])) *
+                       (((__constant float *)__stgamma_ep__tgammaf_sin_table)[6] +
+                        r2 * (r2 + ((__constant float *)__stgamma_ep__tgammaf_sin_table)[7])));
+    } // if(ixsign)
+
+    // get truncated integer argument
+    tv = absx + (*(__constant float *)__stgamma_ep__two_23h);
+    diabsx_t = tv - (*(__constant float *)__stgamma_ep__two_23h);
+    iabsx_t = (0x000fffff) & (*((int *)(&tv)));
+
+    if (diabsx_t > absx) {
+      diabsx_t -= ((__constant float *)__stgamma_ep__ones)[0];
+      iabsx_t -= 1;
+    }
+    // get result sign
+    irsign = ((iabsx_t + 1) & 1);
+    // if x > 2.0 - simple polynomials
+    if (absx >= __stgamma_ep_twos[0]) {
+      t = iabsx_t & (~0x7); // index of table of coefficient
+      i = iabsx_t & (0x7);  // used in recursive formula
+      // for 2 <= x < 8 - shift index
+      if (iabsx_t < 8)
+        i = i - 2;
+
+      rrr = absx - diabsx_t;                                                               // reduced argument
+      A = &(((__constant float *)__stgamma_ep__tgammaf_A_table)[t + (t >> 1) + (t >> 3)]); // table address
+      r2 = rrr * rrr;                                                                      // rrr^2
+
+      // factorized polynomial
+      p = A[12] * (r2 + A[0] * rrr + A[6 + 0]) * (r2 + A[1] * rrr + A[6 + 1]) * (r2 + A[2] * rrr + A[6 + 2]) *
+          (r2 + A[3] * rrr + A[6 + 3]) * (r2 + A[4] * rrr + A[6 + 4]) * (r2 + A[5] * rrr + A[6 + 5]);
+
+      // if no recursion - p = 1.0
+      pr = ((__constant float *)__stgamma_ep__ones)[0];
+      // if i > 0 - recursies
+      if (i) {
+        for (j = 1; j <= i; j++) {
+          pr *= (absx - j);
         }
+      }
 
-        // singularity at negative integer points
-        if (ixsign)
-        {
-            // if |x| >= 2^23 - only integer values
-            if (ixexp >= 0x00000096)
-            {
-                {
-                    float tz = ((__constant float *) __stgamma_ep__zeros)[0];
-                    ((*r)) = (((__constant float *) __stgamma_ep__zeros)[(0)] / tz);
-                };
-                nRet = 1;
-                return nRet;
-            }   // if(ixexp >= 0x00000096)
-            else
-            {
-                // get integer value of arg (truncated)
-                tv = absx + (*(__constant float *) __stgamma_ep__two_23h);
-                diabsx_t = tv - (*(__constant float *) __stgamma_ep__two_23h);
-                iabsx_t = (0x000fffff) & (*((int *) (&tv)));
-                if (diabsx_t > absx)
-                {
-                    diabsx_t -= ((__constant float *) __stgamma_ep__ones)[0];
-                    iabsx_t -= 1;
-                }
-            }   // else if(ixexp >= 0x00000096)
+      if (ixsign) // for negatives rrr = 1/(x*s*gamma*recursies)
+      {
+        //[40; 48] for negatives
 
-            // if arg - integer then singularity
-            if (absx == diabsx_t)
-            {
-                {
-                    float tz = ((__constant float *) __stgamma_ep__zeros)[0];
-                    ((*r)) = (((__constant float *) __stgamma_ep__zeros)[(0)] / tz);
-                };
-                nRet = 1;
-                return nRet;
-            }
+        unsigned int __stgamma_ep__tgamma_A40_inv[] = {
+            0xEDBCC440, 0x368954EA // 1/An
+        };
 
-            // if arg < -185.0 then underflow (values rounded to zero)
-            if (x < __stgamma_ep__neg_underflow[1])
-            {
-                (*r) = (((__constant float *) __stgamma_ep__own_small_value_32)[((~iabsx_t) & 1)] * ((__constant float *) __stgamma_ep__own_small_value_32)[0]);    // raise underflow and inexact
-                nRet = 4;
-                return nRet;
-            }
-        }   // if(ixsign)
-
-        // big positive values overflow domain (res rounded to INF)
-        if (x >= (*((__constant float *) __stgamma_ep__overflowf_boundary)))
-        {
-            {
-                float tz = ((__constant float *) __stgamma_ep__own_large_value_32)[0];
-                ((*r)) = (((__constant float *) __stgamma_ep__own_large_value_32)[(0)] * tz);
-            };  // raise overflow and inexact
-            nRet = 3;
-            return nRet;
+        double resd = (double)((__constant float *)__stgamma_ep__ones)[0] / ((double)absx * s * p * pr);
+        if (x < __stgamma_ep__neg_half_overflow[1]) {
+          resd *= (*((double *)__stgamma_ep__tgamma_A40_inv));
         }
+        // set sign
+        if (irsign)
+          resd = -resd;
+        (*r) = (float)resd;
+      } else // for positives rrr = gamma*recursies
+      {
+        (*r) = p * pr;
+      }
 
-        // compute sin(Pi*x)/x for negative values
-        if (ixsign)
+      return nRet;
+    } // if(absx >= _VSTATIC(twos)[0])
+    else {
+      // if |x| < 1 - calculate gamma(x+1)
+      if (absx < ((__constant float *)__stgamma_ep__ones)[0]) {
+        curabsx = absx + (((__constant float *)__stgamma_ep__ones)[0]);
+      } else {
+        curabsx = absx;
+      }
+
+      // splitted intervals:
+      // x >= 1.75
+      if (curabsx >= __stgamma_ep_ones_75[0]) {
+        rrr = curabsx - (((__constant float *)__stgamma_ep__ones)[0]);
+        A = ((__constant float *)__stgamma_ep__tgammaf_A175_table);
+      } else if (curabsx >= __stgamma_ep_ones_5[0]) // x >= 1.5
+      {
+        rrr = curabsx - (((__constant float *)__stgamma_ep__ones)[0]);
+        A = ((__constant float *)__stgamma_ep__tgammaf_A150_table);
+      } else if (curabsx >= __stgamma_ep_ones_25[0]) // 1.5 > x >= 1.25
+      {
+        rrr = curabsx -
+              ((((__constant float *)__stgamma_ep__ones)[0]) + (*((__constant float *)__stgamma_ep__local_minimumf)));
+        A = ((__constant float *)__stgamma_ep__tgammaf_A125_table);
+      } else if (curabsx < __stgamma_ep_ones_25[0]) // 0 < x < 1.25
+      {
+        rrr = curabsx - (((__constant float *)__stgamma_ep__ones)[0]);
+        A = ((__constant float *)__stgamma_ep__tgammaf_A100_table);
+      }
+
+      if (ixexp) // for normal values - compute whole polynomial
+      {
+        p = A[0] +
+            rrr * (A[1] + rrr * (A[2] + rrr * (A[3] + rrr * (A[4] + rrr * (A[5] + rrr * (A[6] + rrr * (A[7])))))));
+      } else // for denormal - return just A[0]
+      {
+        p = A[0];
+      }
+
+      if (absx < ((__constant float *)__stgamma_ep__ones)[0]) // |x| < 1.0
+      {
+        if (ixsign) // if x < 0 then rrr = 1/(s*p)
         {
-            // get rounded to nearest abs arg
-            tv = absx + (*(__constant float *) __stgamma_ep__two_23h);
-            diabsx_n = tv - (*(__constant float *) __stgamma_ep__two_23h);
-            iabsx_n = (0x000fffff) & (*((int *) (&tv)));
-
-            rrr = absx - diabsx_n;  // reduced argument
-
-            if (rrr < 0)
-                rrr = (-rrr);   //IML_ABS_DP(rrr);  // remove sign
-
-            r2 = rrr * rrr; // rrr^2
-
-            // Tailor series
-            s = rrr +
-                rrr *
-                ((r2 * (((__constant float *) __stgamma_ep__tgammaf_sin_table)[0] + r2 * ((__constant float *) __stgamma_ep__tgammaf_sin_table)[1])) *
-                 (((__constant float *) __stgamma_ep__tgammaf_sin_table)[2] +
-                  r2 * (r2 +
-                        ((__constant float *) __stgamma_ep__tgammaf_sin_table)[3])) * (((__constant float *) __stgamma_ep__tgammaf_sin_table)[4] +
-                                                                                       r2 * (r2 +
-                                                                                             ((__constant float *)
-                                                                                              __stgamma_ep__tgammaf_sin_table)[5])) *
-                 (((__constant float *) __stgamma_ep__tgammaf_sin_table)[6] + r2 * (r2 + ((__constant float *) __stgamma_ep__tgammaf_sin_table)[7])));
-        }   // if(ixsign)
-
-        // get truncated integer argument
-        tv = absx + (*(__constant float *) __stgamma_ep__two_23h);
-        diabsx_t = tv - (*(__constant float *) __stgamma_ep__two_23h);
-        iabsx_t = (0x000fffff) & (*((int *) (&tv)));
-
-        if (diabsx_t > absx)
+          resf = (((__constant float *)__stgamma_ep__ones)[0]) / (s * p);
+          if (irsign)
+            resf = -resf;
+        } else // if x > 0 then rrr = p/x
         {
-            diabsx_t -= ((__constant float *) __stgamma_ep__ones)[0];
-            iabsx_t -= 1;
+          resf = p / (absx);
         }
-        // get result sign
-        irsign = ((iabsx_t + 1) & 1);
-        // if x > 2.0 - simple polynomials
-        if (absx >= __stgamma_ep_twos[0])
+      } // if(absx < ones[0]) // |x| < 1.0
+      else // |x| > 1.0
+      {
+        if (ixsign) // rrr = 1/(x*s*p);
         {
-            t = iabsx_t & (~0x7);   // index of table of coefficient
-            i = iabsx_t & (0x7);    // used in recursive formula
-            // for 2 <= x < 8 - shift index
-            if (iabsx_t < 8)
-                i = i - 2;
-
-            rrr = absx - diabsx_t;  // reduced argument
-            A = &(((__constant float *) __stgamma_ep__tgammaf_A_table)[t + (t >> 1) + (t >> 3)]);   // table address
-            r2 = rrr * rrr; // rrr^2
-
-            // factorized polynomial
-            p = A[12] * (r2 + A[0] * rrr + A[6 + 0]) *
-                (r2 + A[1] * rrr + A[6 + 1]) *
-                (r2 + A[2] * rrr + A[6 + 2]) * (r2 + A[3] * rrr + A[6 + 3]) * (r2 + A[4] * rrr + A[6 + 4]) * (r2 + A[5] * rrr + A[6 + 5]);
-
-            // if no recursion - p = 1.0
-            pr = ((__constant float *) __stgamma_ep__ones)[0];
-            // if i > 0 - recursies
-            if (i)
-            {
-                for (j = 1; j <= i; j++)
-                {
-                    pr *= (absx - j);
-                }
-            }
-
-            if (ixsign) // for negatives rrr = 1/(x*s*gamma*recursies)
-            {
-                //[40; 48] for negatives
-
-                unsigned int __stgamma_ep__tgamma_A40_inv[] = {
-                    0xEDBCC440, 0x368954EA  // 1/An
-                };
-
-                double resd = (double) ((__constant float *) __stgamma_ep__ones)[0] / ((double) absx * s * p * pr);
-                if (x < __stgamma_ep__neg_half_overflow[1])
-                {
-                    resd *= (*((double *) __stgamma_ep__tgamma_A40_inv));
-                }
-                // set sign
-                if (irsign)
-                    resd = -resd;
-                (*r) = (float) resd;
-            }
-            else    // for positives rrr = gamma*recursies
-            {
-                (*r) = p * pr;
-            }
-
-            return nRet;
-        }   // if(absx >= _VSTATIC(twos)[0])
-        else
+          resf = (((__constant float *)__stgamma_ep__ones)[0]) / ((absx)*s * p);
+        } else // rrr = p
         {
-            // if |x| < 1 - calculate gamma(x+1)
-            if (absx < ((__constant float *) __stgamma_ep__ones)[0])
-            {
-                curabsx = absx + (((__constant float *) __stgamma_ep__ones)[0]);
-            }
-            else
-            {
-                curabsx = absx;
-            }
-
-            // splitted intervals:
-            // x >= 1.75
-            if (curabsx >= __stgamma_ep_ones_75[0])
-            {
-                rrr = curabsx - (((__constant float *) __stgamma_ep__ones)[0]);
-                A = ((__constant float *) __stgamma_ep__tgammaf_A175_table);
-            }
-            else if (curabsx >= __stgamma_ep_ones_5[0]) // x >= 1.5
-            {
-                rrr = curabsx - (((__constant float *) __stgamma_ep__ones)[0]);
-                A = ((__constant float *) __stgamma_ep__tgammaf_A150_table);
-            }
-            else if (curabsx >= __stgamma_ep_ones_25[0])    // 1.5 > x >= 1.25
-            {
-                rrr = curabsx - ((((__constant float *) __stgamma_ep__ones)[0]) + (*((__constant float *) __stgamma_ep__local_minimumf)));
-                A = ((__constant float *) __stgamma_ep__tgammaf_A125_table);
-            }
-            else if (curabsx < __stgamma_ep_ones_25[0]) // 0 < x < 1.25
-            {
-                rrr = curabsx - (((__constant float *) __stgamma_ep__ones)[0]);
-                A = ((__constant float *) __stgamma_ep__tgammaf_A100_table);
-            }
-
-            if (ixexp)  // for normal values - compute whole polynomial
-            {
-                p = A[0] + rrr * (A[1] + rrr * (A[2] + rrr * (A[3] + rrr * (A[4] + rrr * (A[5] + rrr * (A[6] + rrr * (A[7])))))));
-            }
-            else    // for denormal - return just A[0]
-            {
-                p = A[0];
-            }
-
-            if (absx < ((__constant float *) __stgamma_ep__ones)[0])    // |x| < 1.0
-            {
-                if (ixsign) // if x < 0 then rrr = 1/(s*p)
-                {
-                    resf = (((__constant float *) __stgamma_ep__ones)[0]) / (s * p);
-                    if (irsign)
-                        resf = -resf;
-                }
-                else    // if x > 0 then rrr = p/x
-                {
-                    resf = p / (absx);
-                }
-            }   // if(absx < ones[0]) // |x| < 1.0
-            else    // |x| > 1.0
-            {
-                if (ixsign) // rrr = 1/(x*s*p);
-                {
-                    resf = (((__constant float *) __stgamma_ep__ones)[0]) / ((absx) * s * p);
-                }
-                else    // rrr = p
-                {
-                    resf = p;
-                }
-            }   // else if(absx < ones[0]) // |x| < 1.0
-
-            (*r) = (float) resf;
-            return nRet;
-        }   // else if(absx >= _VSTATIC(twos)[0])
-    }   // if (ixexp != IML_EXPINF_32)
-    else    // INF or NAN
-    {
-        // Singularity at negative INF
-        if (ixsign && (!((((_iml_v2_sp_union_t *) & x)->hex[0] & 0x007FFFFF) != 0)))
-        {
-            {
-                float tz = ((__constant float *) __stgamma_ep__zeros)[0];
-                ((*r)) = (((__constant float *) __stgamma_ep__zeros)[(1)] / tz);
-            };
-            nRet = 1;
-            return nRet;
+          resf = p;
         }
-        else
-        {
-            (*r) = x + x;   // raise invalid on SNaN
-            return nRet;
-        }
-    }   // else if (ixexp != IML_EXPINF_32)
-}   // inline int __internal_stgamma_ep_cout (float *a, float *r)
+      } // else if(absx < ones[0]) // |x| < 1.0
 
-float __ocl_svml_tgammaf_ep (float a)
-{
-    float va1;
-    float vr1;
-    float r;
+      (*r) = (float)resf;
+      return nRet;
+    } // else if(absx >= _VSTATIC(twos)[0])
+  } // if (ixexp != IML_EXPINF_32)
+  else // INF or NAN
+  {
+    // Singularity at negative INF
+    if (ixsign && (!((((_iml_v2_sp_union_t *)&x)->hex[0] & 0x007FFFFF) != 0))) {
+      {
+        float tz = ((__constant float *)__stgamma_ep__zeros)[0];
+        ((*r)) = (((__constant float *)__stgamma_ep__zeros)[(1)] / tz);
+      };
+      nRet = 1;
+      return nRet;
+    } else {
+      (*r) = x + x; // raise invalid on SNaN
+      return nRet;
+    }
+  } // else if (ixexp != IML_EXPINF_32)
+} // inline int __internal_stgamma_ep_cout (float *a, float *r)
 
-    va1 = a;
-    __internal_stgamma_ep_cout (&va1, &vr1);
-    r = vr1;
+float __ocl_svml_tgammaf_ep(float a) {
+  float va1;
+  float vr1;
+  float r;
 
-    return r;
+  va1 = a;
+  __internal_stgamma_ep_cout(&va1, &vr1);
+  r = vr1;
+
+  return r;
 }

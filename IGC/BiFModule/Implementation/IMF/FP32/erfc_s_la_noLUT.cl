@@ -157,9 +157,7 @@ static __constant union {
   float f;
 } __serfc_la___Inf = {0x7f800000u};
 
-__attribute__((always_inline))
-static inline int __ocl_svml_internal_serfc(float *px, float *pres)
-{
+__attribute__((always_inline)) static inline int __ocl_svml_internal_serfc(float *px, float *pres) {
   int nRet = 0;
   float xin = *px;
   int_float xa, res, apoly, poly, Te, Te2, S, N, two;
@@ -171,55 +169,32 @@ static inline int __ocl_svml_internal_serfc(float *px, float *pres)
   xa.w ^= sgn_x;
   if (xa.f <= 2.0f) {
     R = xa.f - 1.0f;
-    apoly.f = __spirv_ocl_fma(__serfc_la___cp012.f, R,
-                                                     __serfc_la___cp011.f);
-    apoly.f = __spirv_ocl_fma(apoly.f, R,
-                                                     __serfc_la___cp010.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp09.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp08.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp07.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp06.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp05.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp04.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp03.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp02.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp01.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp00.f);
+    apoly.f = __spirv_ocl_fma(__serfc_la___cp012.f, R, __serfc_la___cp011.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp010.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp09.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp08.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp07.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp06.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp05.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp04.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp03.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp02.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp01.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp00.f);
     // res.f = apoly.f;
   } else {
     R = 1.0f / xa.f; // get_rcp(xa.f);
-    apoly.f = __spirv_ocl_fma(__serfc_la___cp9.f, R,
-                                                     __serfc_la___cp8.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp7.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp6.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp5.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp4.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp3.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp2.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp1.f);
-    apoly.f =
-        __spirv_ocl_fma(apoly.f, R, __serfc_la___cp0l.f);
+    apoly.f = __spirv_ocl_fma(__serfc_la___cp9.f, R, __serfc_la___cp8.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp7.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp6.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp5.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp4.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp3.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp2.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp1.f);
+    apoly.f = __spirv_ocl_fma(apoly.f, R, __serfc_la___cp0l.f);
     // res.f = SP_FMA(apoly.f, R, SP_FMA(R, _VSTATIC(__cp0l).f, 0.0f));
-    apoly.f = __spirv_ocl_fma(
-        R, __serfc_la___cp0.f,
-        __spirv_ocl_fma(apoly.f, R, 0.0f));
+    apoly.f = __spirv_ocl_fma(R, __serfc_la___cp0.f, __spirv_ocl_fma(apoly.f, R, 0.0f));
   }
   // limit input range for exp() calculation
   xa.f = __spirv_ocl_fmin(xa.f, 12.0f);
@@ -227,8 +202,7 @@ static inline int __ocl_svml_internal_serfc(float *px, float *pres)
   x2h = __spirv_ocl_fma(xa.f, -xa.f, 0.0f);
   mx2l = __spirv_ocl_fma(xa.f, xa.f, x2h);
   // x2h*L2E + Shifter
-  S.f = __spirv_ocl_fma(x2h, __serfc_la___L2E.f,
-                                               __serfc_la___Shifter.f);
+  S.f = __spirv_ocl_fma(x2h, __serfc_la___L2E.f, __serfc_la___Shifter.f);
   // (int)(x2h*L2E)
   N.f = S.f - __serfc_la___Shifter.f;
   // x^2 - N*log(2)
@@ -240,18 +214,12 @@ static inline int __ocl_svml_internal_serfc(float *px, float *pres)
   Te.w = (S.w ^ Te2.w) << 22;
   Te2.w = (Te2.w << 23) + Te.w;
   // exp(R)-1
-  poly.f = __spirv_ocl_fma(__serfc_la___ce6.f, R,
-                                                  __serfc_la___ce5.f);
-  poly.f =
-      __spirv_ocl_fma(poly.f, R, __serfc_la___ce4.f);
-  poly.f =
-      __spirv_ocl_fma(poly.f, R, __serfc_la___ce3.f);
-  poly.f =
-      __spirv_ocl_fma(poly.f, R, __serfc_la___ce2.f);
-  poly.f =
-      __spirv_ocl_fma(poly.f, R, __serfc_la___ce1.f);
-  poly.f =
-      __spirv_ocl_fma(poly.f, R, __serfc_la___ce0.f);
+  poly.f = __spirv_ocl_fma(__serfc_la___ce6.f, R, __serfc_la___ce5.f);
+  poly.f = __spirv_ocl_fma(poly.f, R, __serfc_la___ce4.f);
+  poly.f = __spirv_ocl_fma(poly.f, R, __serfc_la___ce3.f);
+  poly.f = __spirv_ocl_fma(poly.f, R, __serfc_la___ce2.f);
+  poly.f = __spirv_ocl_fma(poly.f, R, __serfc_la___ce1.f);
+  poly.f = __spirv_ocl_fma(poly.f, R, __serfc_la___ce0.f);
   // poly*apoly*Te
   poly.f = __spirv_ocl_fma(poly.f, apoly.f, 0.0f);
   poly.f = __spirv_ocl_fma(poly.f, Te.f, 0.0f);
@@ -270,8 +238,7 @@ static inline int __ocl_svml_internal_serfc(float *px, float *pres)
   return nRet;
 }
 
-float __ocl_svml_erfcf_noLUT(float x)
-{
+float __ocl_svml_erfcf_noLUT(float x) {
   float r;
   __ocl_svml_internal_serfc(&x, &r);
   return r;

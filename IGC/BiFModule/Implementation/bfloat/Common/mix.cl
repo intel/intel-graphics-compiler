@@ -9,8 +9,8 @@ SPDX-License-Identifier: MIT
 #include "include/BiF_Definitions.cl"
 #include "spirv_bfloat.h"
 
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_mix(bfloat x, bfloat y, bfloat a ){
-    return __spirv_ocl_mad( ( y - x ), a, x );
+INLINE bfloat __attribute__((overloadable)) __spirv_ocl_mix(bfloat x, bfloat y, bfloat a) {
+  return __spirv_ocl_mad((y - x), a, x);
 }
 
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( mix, bfloat, bfloat, )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS(mix, bfloat, bfloat, )

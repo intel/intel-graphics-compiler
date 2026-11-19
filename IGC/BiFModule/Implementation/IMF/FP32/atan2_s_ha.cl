@@ -96,8 +96,7 @@ static __constant union {
   float f;
   int i;
 } __satan2_ha_zero = {0x00000000u};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_satan2_ha(float *pa, float *pb, float *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_satan2_ha(float *pa, float *pb, float *pres) {
   int nRet = 0;
   float xin = *pb, yin = *pa;
   // float atan2f_ha(float yin, float xin)
@@ -152,8 +151,7 @@ __ocl_svml_internal_satan2_ha(float *pa, float *pb, float *pres) {
     Q00.f = fQ0 = fy.f * frcp_x;
     // redirect special inputs:  NaN/Inf/zero, |x|>2^126
     // testing done on ordered inputs
-    if (((unsigned)(fx.w - 0x00800000) > 0x7e000000) ||
-        (fy.f == __satan2_ha_zero.f) || (Q00.w < 0x0d800000))
+    if (((unsigned)(fx.w - 0x00800000) > 0x7e000000) || (fy.f == __satan2_ha_zero.f) || (Q00.w < 0x0d800000))
       goto SPECIAL_ATAN2F;
   ATAN2F_MAIN:
     // low part of quotient
@@ -162,8 +160,7 @@ __ocl_svml_internal_satan2_ha(float *pa, float *pb, float *pres) {
     // reduced argument
     R = fQ0 - 0.5f;
     R = R + fQl;
-    poly = __spirv_ocl_fma(__satan2_ha_c11.f, R,
-                                                  __satan2_ha_c10.f);
+    poly = __spirv_ocl_fma(__satan2_ha_c11.f, R, __satan2_ha_c10.f);
     poly = __spirv_ocl_fma(poly, R, __satan2_ha_c9.f);
     poly = __spirv_ocl_fma(poly, R, __satan2_ha_c8.f);
     poly = __spirv_ocl_fma(poly, R, __satan2_ha_c7.f);
@@ -251,8 +248,7 @@ __ocl_svml_internal_satan2_ha(float *pa, float *pb, float *pres) {
       fQl = __spirv_ocl_fma(fy.f, frcp_x, (-fQ0));
       fQl = __spirv_ocl_fma(fQ0, f_eps, fQl);
       sres.f = fQ0 + fQl;
-      sres.f = __spirv_ocl_fma(
-          sres.f, __satan2_ha_twom64.f, hcorr.f);
+      sres.f = __spirv_ocl_fma(sres.f, __satan2_ha_twom64.f, hcorr.f);
       sres.w = sres.w ^ sgn_r;
       *pres = sres.f;
       return nRet;

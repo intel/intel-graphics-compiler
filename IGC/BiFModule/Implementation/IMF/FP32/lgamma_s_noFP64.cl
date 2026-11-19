@@ -102,10 +102,9 @@ SPDX-License-Identifier: MIT
 //--
 */
 
-typedef union
-{
-    uint  hex;
-    float fp;
+typedef union {
+  uint hex;
+  float fp;
 } _iml_lg_sp_union_t;
 
 static __constant float __slgamma_nofp64__TWO_23H[2] = {12582912.0, -12582912.0};
@@ -199,9 +198,8 @@ static __constant unsigned int __slgamma_nofp64___s[] = {
 //! @param[in] x       Argument
 //! @return            Returns absolute value
 //! ===========================================================================
-__attribute__((always_inline)) inline float __slgamma_nofp64_own_abs_fp32(float x)
-{
-    return (x > 0.0f) ? x : ((x == 0.0f) ? 0.0f : (-x));
+__attribute__((always_inline)) inline float __slgamma_nofp64_own_abs_fp32(float x) {
+  return (x > 0.0f) ? x : ((x == 0.0f) ? 0.0f : (-x));
 } // static inline float _VSTATIC(own_abs_fp32)(float x)
 
 //! ===========================================================================
@@ -210,127 +208,116 @@ __attribute__((always_inline)) inline float __slgamma_nofp64_own_abs_fp32(float 
 //! @param[in] a       Argument
 //! @return            Returns 32-bit natural logarithm
 //! ===========================================================================
-__attribute__((always_inline)) inline float __slgamma_nofp64_own_log_fp32(float a)
-{
-    unsigned int iHiDelta         = 0x0u;
-    unsigned int iLoRange         = 0x0u;
-    unsigned int iBrkValue        = 0x0u;
-    unsigned int iOffExpoMask     = 0x0u;
-    unsigned int iRangeMask       = 0x0u;
-    unsigned int iX               = 0x0u;
-    unsigned int iXTest           = 0x0u;
-    signed int   iN               = 0x0;
-    unsigned int iR               = 0x0u;
-    unsigned int vm               = 0x0u;
-    int          denorm_scale_exp = 0;
+__attribute__((always_inline)) inline float __slgamma_nofp64_own_log_fp32(float a) {
+  unsigned int iHiDelta = 0x0u;
+  unsigned int iLoRange = 0x0u;
+  unsigned int iBrkValue = 0x0u;
+  unsigned int iOffExpoMask = 0x0u;
+  unsigned int iRangeMask = 0x0u;
+  unsigned int iX = 0x0u;
+  unsigned int iXTest = 0x0u;
+  signed int iN = 0x0;
+  unsigned int iR = 0x0u;
+  unsigned int vm = 0x0u;
+  int denorm_scale_exp = 0;
 
-    float r        = 0.0f;
-    float sOne     = 0.0f;
-    float sLn2     = 0.0f;
-    float sPoly[8] = {0.0f};
-    float sP       = 0.0f;
-    float va1      = 0.0f;
-    float vr1      = 0.0f;
-    float sN       = 0.0f;
-    float sR       = 0.0f;
+  float r = 0.0f;
+  float sOne = 0.0f;
+  float sLn2 = 0.0f;
+  float sPoly[8] = {0.0f};
+  float sP = 0.0f;
+  float va1 = 0.0f;
+  float vr1 = 0.0f;
+  float sN = 0.0f;
+  float sR = 0.0f;
 
-    struct
-    {
-        unsigned int sPoly[8];
-        unsigned int iHiDelta;
-        unsigned int iLoRange;
-        unsigned int iBrkValue;
-        unsigned int iOffExpoMask;
-        unsigned int sOne;
-        unsigned int sLn2;
-        unsigned int sInfs[2];
-        unsigned int sOnes[2];
-        unsigned int sZeros[2];
-    } own_log_fp32_data = {
-        {0xbf000000u,
-         0x3eaaaa94u,
-         0xbe80058eu,
-         0x3e4ce190u,
-         0xbe28ad37u,
-         0x3e0fcb12u,
-         0xbe1ad9e3u,
-         0x3e0d84edu},
-        0x00800000u,
-        0x01000000u,
-        0x3f2aaaabu,
-        0x007fffffu,
-        0x3f800000u,
-        0x3f317218u,
-        {0x7f800000u, 0xff800000u},
-        {0x3f800000u, 0xbf800000u},
-        {0x00000000u, 0x80000000u}};
+  struct {
+    unsigned int sPoly[8];
+    unsigned int iHiDelta;
+    unsigned int iLoRange;
+    unsigned int iBrkValue;
+    unsigned int iOffExpoMask;
+    unsigned int sOne;
+    unsigned int sLn2;
+    unsigned int sInfs[2];
+    unsigned int sOnes[2];
+    unsigned int sZeros[2];
+  } own_log_fp32_data = {
+      {0xbf000000u, 0x3eaaaa94u, 0xbe80058eu, 0x3e4ce190u, 0xbe28ad37u, 0x3e0fcb12u, 0xbe1ad9e3u, 0x3e0d84edu},
+      0x00800000u,
+      0x01000000u,
+      0x3f2aaaabu,
+      0x007fffffu,
+      0x3f800000u,
+      0x3f317218u,
+      {0x7f800000u, 0xff800000u},
+      {0x3f800000u, 0xbf800000u},
+      {0x00000000u, 0x80000000u}};
 
-    va1 = a;
+  va1 = a;
 
-    /* argument is denormalized or [+/-]0 */
-    if (as_uint(va1) <= 0x007fffff)
-    {
-        /* Scale */
-        unsigned int _denorm_scale = 0x4D000000; // 2^27
-        float        denorm_scale  = *(float *)&_denorm_scale;
-        va1 *= denorm_scale;
-        denorm_scale_exp = 27;
-    }
+  /* argument is denormalized or [+/-]0 */
+  if (as_uint(va1) <= 0x007fffff) {
+    /* Scale */
+    unsigned int _denorm_scale = 0x4D000000; // 2^27
+    float denorm_scale = *(float *)&_denorm_scale;
+    va1 *= denorm_scale;
+    denorm_scale_exp = 27;
+  }
 
-    iHiDelta = (own_log_fp32_data.iHiDelta);
-    iLoRange = (own_log_fp32_data.iLoRange);
+  iHiDelta = (own_log_fp32_data.iHiDelta);
+  iLoRange = (own_log_fp32_data.iLoRange);
 
-    iX = as_uint(va1);
+  iX = as_uint(va1);
 
-    iXTest = (iX + iHiDelta);
-    iRangeMask =
-        ((unsigned int)(-(signed int)((signed int)iXTest < (signed int)iLoRange)));
-    iBrkValue    = (own_log_fp32_data.iBrkValue);
-    iOffExpoMask = (own_log_fp32_data.iOffExpoMask);
+  iXTest = (iX + iHiDelta);
+  iRangeMask = ((unsigned int)(-(signed int)((signed int)iXTest < (signed int)iLoRange)));
+  iBrkValue = (own_log_fp32_data.iBrkValue);
+  iOffExpoMask = (own_log_fp32_data.iOffExpoMask);
 
-    iX = (iX - iBrkValue);
-    iR = (iX & iOffExpoMask);
-    iN = ((signed int)iX >> (23));
-    iN = iN - denorm_scale_exp;
-    iR = (iR + iBrkValue);
-    sN = ((float)((int)(iN)));
-    sR = as_float(iR);
-    vm = iRangeMask;
+  iX = (iX - iBrkValue);
+  iR = (iX & iOffExpoMask);
+  iN = ((signed int)iX >> (23));
+  iN = iN - denorm_scale_exp;
+  iR = (iR + iBrkValue);
+  sN = ((float)((int)(iN)));
+  sR = as_float(iR);
+  vm = iRangeMask;
 
-    sOne = as_float(own_log_fp32_data.sOne);
-    sR   = (sR - sOne);
+  sOne = as_float(own_log_fp32_data.sOne);
+  sR = (sR - sOne);
 
-    sPoly[7] = as_float(own_log_fp32_data.sPoly[7]);
-    sPoly[6] = as_float(own_log_fp32_data.sPoly[6]);
-    sP       = __spirv_ocl_fma((sPoly[7]), (sR), (sPoly[6]));
+  sPoly[7] = as_float(own_log_fp32_data.sPoly[7]);
+  sPoly[6] = as_float(own_log_fp32_data.sPoly[6]);
+  sP = __spirv_ocl_fma((sPoly[7]), (sR), (sPoly[6]));
 
-    sPoly[5] = as_float(own_log_fp32_data.sPoly[5]);
-    sP       = __spirv_ocl_fma((sP), (sR), (sPoly[5]));
+  sPoly[5] = as_float(own_log_fp32_data.sPoly[5]);
+  sP = __spirv_ocl_fma((sP), (sR), (sPoly[5]));
 
-    sPoly[4] = as_float(own_log_fp32_data.sPoly[4]);
-    sP       = __spirv_ocl_fma((sP), (sR), (sPoly[4]));
+  sPoly[4] = as_float(own_log_fp32_data.sPoly[4]);
+  sP = __spirv_ocl_fma((sP), (sR), (sPoly[4]));
 
-    sPoly[3] = as_float(own_log_fp32_data.sPoly[3]);
-    sP       = __spirv_ocl_fma((sP), (sR), (sPoly[3]));
+  sPoly[3] = as_float(own_log_fp32_data.sPoly[3]);
+  sP = __spirv_ocl_fma((sP), (sR), (sPoly[3]));
 
-    sPoly[2] = as_float(own_log_fp32_data.sPoly[2]);
-    sP       = __spirv_ocl_fma((sP), (sR), (sPoly[2]));
+  sPoly[2] = as_float(own_log_fp32_data.sPoly[2]);
+  sP = __spirv_ocl_fma((sP), (sR), (sPoly[2]));
 
-    sPoly[1] = as_float(own_log_fp32_data.sPoly[1]);
-    sP       = __spirv_ocl_fma((sP), (sR), (sPoly[1]));
+  sPoly[1] = as_float(own_log_fp32_data.sPoly[1]);
+  sP = __spirv_ocl_fma((sP), (sR), (sPoly[1]));
 
-    sPoly[0] = as_float(own_log_fp32_data.sPoly[0]);
-    sP       = __spirv_ocl_fma((sP), (sR), (sPoly[0]));
+  sPoly[0] = as_float(own_log_fp32_data.sPoly[0]);
+  sP = __spirv_ocl_fma((sP), (sR), (sPoly[0]));
 
-    sP = (sP * sR);
-    sP = __spirv_ocl_fma((sP), (sR), (sR));
+  sP = (sP * sR);
+  sP = __spirv_ocl_fma((sP), (sR), (sR));
 
-    sLn2 = as_float(own_log_fp32_data.sLn2);
-    vr1  = __spirv_ocl_fma((sN), (sLn2), (sP));
+  sLn2 = as_float(own_log_fp32_data.sLn2);
+  vr1 = __spirv_ocl_fma((sN), (sLn2), (sP));
 
-    r = vr1;
+  r = vr1;
 
-    return r;
+  return r;
 } // static inline float _VSTATIC(own_log_fp32) (float a)
 
 //! ===========================================================================
@@ -339,32 +326,27 @@ __attribute__((always_inline)) inline float __slgamma_nofp64_own_log_fp32(float 
 //! @param[in] sA      Argument
 //! @return            Returns 32-bit nearbyint
 //! ===========================================================================
-__attribute__((always_inline)) inline float __slgamma_nofp64_own_nearbyint_fp32(float sA)
-{
-    float        _rnd_s2p23     = 0.0f;
-    float        _rnd_sSignMask = 0.0f;
-    float        _rnd_sSign     = 0.0f;
-    float        _rnd_sAbsArg   = 0.0f;
-    float        _rnd_sRes_ub   = 0.0f;
-    float        _rnd_sRange    = 0.0f;
-    unsigned int _rnd_i2p23     = 0x4b000000u;
-    unsigned int _rnd_iSignMask = 0x80000000u;
-    _rnd_s2p23                  = (*((float *)&(_rnd_i2p23)));
-    _rnd_sSignMask              = (*((float *)&(_rnd_iSignMask)));
-    (*((unsigned int *)&(_rnd_sSign))) =
-        ((*((unsigned int *)&(sA))) & (*((unsigned int *)&(_rnd_sSignMask))));
-    (*((unsigned int *)&(_rnd_sAbsArg))) =
-        (~((*((unsigned int *)&(_rnd_sSignMask)))) & (*((unsigned int *)&(sA))));
-    (*((unsigned int *)&(_rnd_sRange))) =
-        ((unsigned int)(-(int)(_rnd_sAbsArg > _rnd_s2p23)));
-    _rnd_sRes_ub = (_rnd_sAbsArg + _rnd_s2p23);
-    _rnd_sRes_ub = (_rnd_sRes_ub - _rnd_s2p23);
-    (*((unsigned int *)&(_rnd_sRes_ub))) =
-        ((*((unsigned int *)&(_rnd_sRes_ub))) | (*((unsigned int *)&(_rnd_sSign))));
-    (*((unsigned int *)&(_rnd_sRes_ub))) =
-        (((~(*((unsigned int *)&(_rnd_sRange)))) & (*((unsigned int *)&(_rnd_sRes_ub)))) |
-         ((*((unsigned int *)&(_rnd_sRange))) & (*((unsigned int *)&(sA)))));
-    return _rnd_sRes_ub;
+__attribute__((always_inline)) inline float __slgamma_nofp64_own_nearbyint_fp32(float sA) {
+  float _rnd_s2p23 = 0.0f;
+  float _rnd_sSignMask = 0.0f;
+  float _rnd_sSign = 0.0f;
+  float _rnd_sAbsArg = 0.0f;
+  float _rnd_sRes_ub = 0.0f;
+  float _rnd_sRange = 0.0f;
+  unsigned int _rnd_i2p23 = 0x4b000000u;
+  unsigned int _rnd_iSignMask = 0x80000000u;
+  _rnd_s2p23 = (*((float *)&(_rnd_i2p23)));
+  _rnd_sSignMask = (*((float *)&(_rnd_iSignMask)));
+  (*((unsigned int *)&(_rnd_sSign))) = ((*((unsigned int *)&(sA))) & (*((unsigned int *)&(_rnd_sSignMask))));
+  (*((unsigned int *)&(_rnd_sAbsArg))) = (~((*((unsigned int *)&(_rnd_sSignMask)))) & (*((unsigned int *)&(sA))));
+  (*((unsigned int *)&(_rnd_sRange))) = ((unsigned int)(-(int)(_rnd_sAbsArg > _rnd_s2p23)));
+  _rnd_sRes_ub = (_rnd_sAbsArg + _rnd_s2p23);
+  _rnd_sRes_ub = (_rnd_sRes_ub - _rnd_s2p23);
+  (*((unsigned int *)&(_rnd_sRes_ub))) = ((*((unsigned int *)&(_rnd_sRes_ub))) | (*((unsigned int *)&(_rnd_sSign))));
+  (*((unsigned int *)&(_rnd_sRes_ub))) =
+      (((~(*((unsigned int *)&(_rnd_sRange)))) & (*((unsigned int *)&(_rnd_sRes_ub)))) |
+       ((*((unsigned int *)&(_rnd_sRange))) & (*((unsigned int *)&(sA)))));
+  return _rnd_sRes_ub;
 } // static inline float _VSTATIC(own_nearbyint_fp32)( float sA )
 
 //! ===========================================================================
@@ -373,42 +355,35 @@ __attribute__((always_inline)) inline float __slgamma_nofp64_own_nearbyint_fp32(
 //! @param[in] sA      Argument
 //! @return            Returns 32-bit ceil
 //! ===========================================================================
-__attribute__((always_inline)) inline float __slgamma_nofp64_own_ceilf_fp32(float sA)
-{
-    float        _rnd_s2p23      = 0.0f;
-    float        _rnd_sSignMask  = 0.0f;
-    float        _rnd_sSign      = 0.0f;
-    float        _rnd_sIsGreater = 0.0f;
-    float        _rnd_sOne       = 0.0f;
-    float        _rnd_sAddOne    = 0.0f;
-    float        _rnd_sAbsArg    = 0.0f;
-    float        _rnd_sRes_ub    = 0.0f;
-    float        _rnd_sRange     = 0.0f;
-    unsigned int _rnd_i2p23      = 0x4b000000u;
-    unsigned int _rnd_iSignMask  = 0x80000000u;
-    unsigned int _rnd_iOne       = 0x3f800000u;
-    _rnd_sSignMask               = (*((float *)&(_rnd_iSignMask)));
-    (*((unsigned int *)&(_rnd_sSign))) =
-        ((*((unsigned int *)&(sA))) & (*((unsigned int *)&(_rnd_sSignMask))));
-    (*((unsigned int *)&(_rnd_sAbsArg))) =
-        (~((*((unsigned int *)&(_rnd_sSignMask)))) & (*((unsigned int *)&(sA))));
-    _rnd_s2p23 = (*((float *)&(_rnd_i2p23)));
-    (*((unsigned int *)&(_rnd_sRange))) =
-        ((unsigned int)(-(signed int)(_rnd_sAbsArg > _rnd_s2p23)));
-    _rnd_sRes_ub = (_rnd_sAbsArg + _rnd_s2p23);
-    _rnd_sRes_ub = (_rnd_sRes_ub - _rnd_s2p23);
-    (*((unsigned int *)&(_rnd_sRes_ub))) =
-        ((*((unsigned int *)&(_rnd_sRes_ub))) | (*((unsigned int *)&(_rnd_sSign))));
-    (*((unsigned int *)&(_rnd_sIsGreater))) =
-        ((unsigned int)(-(signed int)(sA > _rnd_sRes_ub)));
-    _rnd_sOne = (*((float *)&(_rnd_iOne)));
-    (*((unsigned int *)&(_rnd_sAddOne))) =
-        ((*((unsigned int *)&(_rnd_sOne))) & (*((unsigned int *)&(_rnd_sIsGreater))));
-    _rnd_sRes_ub = _rnd_sRes_ub + _rnd_sAddOne;
-    (*((unsigned int *)&(_rnd_sRes_ub))) =
-        (((~(*((unsigned int *)&(_rnd_sRange)))) & (*((unsigned int *)&(_rnd_sRes_ub)))) |
-         ((*((unsigned int *)&(_rnd_sRange))) & (*((unsigned int *)&(sA)))));
-    return _rnd_sRes_ub;
+__attribute__((always_inline)) inline float __slgamma_nofp64_own_ceilf_fp32(float sA) {
+  float _rnd_s2p23 = 0.0f;
+  float _rnd_sSignMask = 0.0f;
+  float _rnd_sSign = 0.0f;
+  float _rnd_sIsGreater = 0.0f;
+  float _rnd_sOne = 0.0f;
+  float _rnd_sAddOne = 0.0f;
+  float _rnd_sAbsArg = 0.0f;
+  float _rnd_sRes_ub = 0.0f;
+  float _rnd_sRange = 0.0f;
+  unsigned int _rnd_i2p23 = 0x4b000000u;
+  unsigned int _rnd_iSignMask = 0x80000000u;
+  unsigned int _rnd_iOne = 0x3f800000u;
+  _rnd_sSignMask = (*((float *)&(_rnd_iSignMask)));
+  (*((unsigned int *)&(_rnd_sSign))) = ((*((unsigned int *)&(sA))) & (*((unsigned int *)&(_rnd_sSignMask))));
+  (*((unsigned int *)&(_rnd_sAbsArg))) = (~((*((unsigned int *)&(_rnd_sSignMask)))) & (*((unsigned int *)&(sA))));
+  _rnd_s2p23 = (*((float *)&(_rnd_i2p23)));
+  (*((unsigned int *)&(_rnd_sRange))) = ((unsigned int)(-(signed int)(_rnd_sAbsArg > _rnd_s2p23)));
+  _rnd_sRes_ub = (_rnd_sAbsArg + _rnd_s2p23);
+  _rnd_sRes_ub = (_rnd_sRes_ub - _rnd_s2p23);
+  (*((unsigned int *)&(_rnd_sRes_ub))) = ((*((unsigned int *)&(_rnd_sRes_ub))) | (*((unsigned int *)&(_rnd_sSign))));
+  (*((unsigned int *)&(_rnd_sIsGreater))) = ((unsigned int)(-(signed int)(sA > _rnd_sRes_ub)));
+  _rnd_sOne = (*((float *)&(_rnd_iOne)));
+  (*((unsigned int *)&(_rnd_sAddOne))) = ((*((unsigned int *)&(_rnd_sOne))) & (*((unsigned int *)&(_rnd_sIsGreater))));
+  _rnd_sRes_ub = _rnd_sRes_ub + _rnd_sAddOne;
+  (*((unsigned int *)&(_rnd_sRes_ub))) =
+      (((~(*((unsigned int *)&(_rnd_sRange)))) & (*((unsigned int *)&(_rnd_sRes_ub)))) |
+       ((*((unsigned int *)&(_rnd_sRange))) & (*((unsigned int *)&(sA)))));
+  return _rnd_sRes_ub;
 } // static inline float _VSTATIC(own_ceilf_fp32)( float sA )
 
 //! ===========================================================================
@@ -417,17 +392,11 @@ __attribute__((always_inline)) inline float __slgamma_nofp64_own_ceilf_fp32(floa
 //! @param[in] arg     Argument
 //! @return            Returns 32-bit lgamma
 //! ===========================================================================
-__attribute__((always_inline)) inline float
-__slgamma_nofp64_own_lgamma_fast_fp32(float arg)
-{
-    unsigned int __slgamma_nofp64_own_log2pif = 0x3feb3f8eu;
-    float        result =
-        0.5f * ((*(float *)&(__slgamma_nofp64_own_log2pif)) - __spirv_ocl_log(arg));
-    result =
-        result +
-        (arg * (__spirv_ocl_log(arg + (1.0f / ((12.0f * arg) - (1.0f / (10.0f * arg))))) -
-                1.0f));
-    return result;
+__attribute__((always_inline)) inline float __slgamma_nofp64_own_lgamma_fast_fp32(float arg) {
+  unsigned int __slgamma_nofp64_own_log2pif = 0x3feb3f8eu;
+  float result = 0.5f * ((*(float *)&(__slgamma_nofp64_own_log2pif)) - __spirv_ocl_log(arg));
+  result = result + (arg * (__spirv_ocl_log(arg + (1.0f / ((12.0f * arg) - (1.0f / (10.0f * arg))))) - 1.0f));
+  return result;
 } // static inline float _VSTATIC(own_lgamma_fast_fp32) (float arg)
 
 //! ===========================================================================
@@ -437,101 +406,78 @@ __slgamma_nofp64_own_lgamma_fast_fp32(float arg)
 //! @return            Returns 64-bit lgamma
 //!
 //! ===========================================================================
-__attribute__((always_inline)) inline float
-__slgamma_nofp64_own_lgamma_pos_fp32(float arg)
-{
-    float result;
+__attribute__((always_inline)) inline float __slgamma_nofp64_own_lgamma_pos_fp32(float arg) {
+  float result;
 
-    if (arg >= 12.0f)
+  if (arg >= 12.0f) {
+    result = __slgamma_nofp64_own_lgamma_fast_fp32(arg);
+  } else {
+    // ===========================================================================
+    //   W. J. Cody and K. E. Hillstrom, 'Chebyshev Approximations for
+    //   the Natural Logarithm of the Gamma Function,' Math. Comp. 21,
+    //   1967, pp. 198-203.
+    // ===========================================================================
+    __constant float *_p1 = (__constant float *)__slgamma_nofp64___p1;
+    __constant float *_q1 = (__constant float *)__slgamma_nofp64___q1;
+    __constant float *_p2 = (__constant float *)__slgamma_nofp64___p2;
+    __constant float *_q2 = (__constant float *)__slgamma_nofp64___q2;
+    __constant float *_p3 = (__constant float *)__slgamma_nofp64___p3;
+    __constant float *_q3 = (__constant float *)__slgamma_nofp64___q3;
+
+    unsigned int _brk0p6 = 0x3f2e0000; // ~0.68
+    unsigned int _xsmall = 0x257ff2d6; // ~0.22e-15
+    float brk0p6 = *(float *)&_brk0p6;
+    float xsmall = *(float *)&_xsmall;
+
+    float qq, pp, rr, rrr, c0;
+    __constant float *_p, *_q;
+
+    if (arg >= 4.0) {
+      rr = arg - 4.0f;
+      c0 = 0.0f;
+      _p = _p3;
+      _q = _q3;
+      rrr = 1.0;
+    } else if (arg >= 1.5) {
+      rr = arg - 2.0f;
+      c0 = 0.0f;
+      _p = _p2;
+      _q = _q2;
+      rrr = rr;
+    } else if (arg > brk0p6) {
+      rr = arg - 1.0f;
+      c0 = 0.0f;
+      _p = _p1;
+      _q = _q1;
+      rrr = rr;
+    } else if (arg > 0.5) {
+      rr = arg - 1.0f;
+      c0 = -__spirv_ocl_log(arg);
+      _p = _p2;
+      _q = _q2;
+      rrr = rr;
+    } else if (arg > xsmall) {
+      rr = arg;
+      c0 = -__spirv_ocl_log(arg);
+      _p = _p1;
+      _q = _q1;
+      rrr = rr;
+    } else // arg <= xsmall
     {
-        result = __slgamma_nofp64_own_lgamma_fast_fp32(arg);
+      rr = 0.0;
+      c0 = -__spirv_ocl_log(arg);
+      _p = _p1;
+      _q = _q1;
+      rrr = rr;
     }
-    else
-    {
-        // ===========================================================================
-        //   W. J. Cody and K. E. Hillstrom, 'Chebyshev Approximations for
-        //   the Natural Logarithm of the Gamma Function,' Math. Comp. 21,
-        //   1967, pp. 198-203.
-        // ===========================================================================
-        __constant float *_p1 = (__constant float *)__slgamma_nofp64___p1;
-        __constant float *_q1 = (__constant float *)__slgamma_nofp64___q1;
-        __constant float *_p2 = (__constant float *)__slgamma_nofp64___p2;
-        __constant float *_q2 = (__constant float *)__slgamma_nofp64___q2;
-        __constant float *_p3 = (__constant float *)__slgamma_nofp64___p3;
-        __constant float *_q3 = (__constant float *)__slgamma_nofp64___q3;
 
-        unsigned int _brk0p6 = 0x3f2e0000; // ~0.68
-        unsigned int _xsmall = 0x257ff2d6; // ~0.22e-15
-        float        brk0p6  = *(float *)&_brk0p6;
-        float        xsmall  = *(float *)&_xsmall;
-
-        float             qq, pp, rr, rrr, c0;
-        __constant float *_p, *_q;
-
-        if (arg >= 4.0)
-        {
-            rr  = arg - 4.0f;
-            c0  = 0.0f;
-            _p  = _p3;
-            _q  = _q3;
-            rrr = 1.0;
-        }
-        else if (arg >= 1.5)
-        {
-            rr  = arg - 2.0f;
-            c0  = 0.0f;
-            _p  = _p2;
-            _q  = _q2;
-            rrr = rr;
-        }
-        else if (arg > brk0p6)
-        {
-            rr  = arg - 1.0f;
-            c0  = 0.0f;
-            _p  = _p1;
-            _q  = _q1;
-            rrr = rr;
-        }
-        else if (arg > 0.5)
-        {
-            rr  = arg - 1.0f;
-            c0  = -__spirv_ocl_log(arg);
-            _p  = _p2;
-            _q  = _q2;
-            rrr = rr;
-        }
-        else if (arg > xsmall)
-        {
-            rr  = arg;
-            c0  = -__spirv_ocl_log(arg);
-            _p  = _p1;
-            _q  = _q1;
-            rrr = rr;
-        }
-        else // arg <= xsmall
-        {
-            rr  = 0.0;
-            c0  = -__spirv_ocl_log(arg);
-            _p  = _p1;
-            _q  = _q1;
-            rrr = rr;
-        }
-
-        pp = _p[1] +
-             rr * (_p[2] +
-                   rr * (_p[3] +
-                         rr * (_p[4] +
-                               rr * (_p[5] + rr * (_p[6] + rr * (_p[7] + rr * _p[8]))))));
-        qq = _q[0] +
-             rr * (_q[1] +
-                   rr * (_q[2] +
-                         rr * (_q[3] +
-                               rr * (_q[4] +
-                                     rr * (_q[5] +
-                                           rr * (_q[6] + rr * (_q[7] + rr * _q[8])))))));
-        result = c0 + rrr * (_p[0] + rr * (pp / qq));
-    }
-    return result;
+    pp = _p[1] + rr * (_p[2] + rr * (_p[3] + rr * (_p[4] + rr * (_p[5] + rr * (_p[6] + rr * (_p[7] + rr * _p[8]))))));
+    qq = _q[0] +
+         rr * (_q[1] +
+               rr * (_q[2] + rr * (_q[3] + rr * (_q[4] + rr * (_q[5] + rr * (_q[6] + rr * (_q[7] + rr * _q[8])))))));
+    result = c0 + rrr * (_p[0] + rr * (pp / qq));
+  }
+  return result;
 }
 
 //! ===========================================================================
@@ -542,193 +488,161 @@ __slgamma_nofp64_own_lgamma_pos_fp32(float arg)
 //! @return          Computation status
 //! ===========================================================================
 
-__attribute__((always_inline)) inline int
-__internal_slgamma_nofp64_cout(float *a, float *r)
-{
-    float x = (*a);
-    float f = 0.0f, f1 = 0.0f;
-    float ldx = 0.0f, t0 = 0.0f, t1 = 0.0f, t2 = 0.0f, result = 0.0f, y = 0.0f, y2 = 0.0f;
-    float p = 0.0f, r1 = 0.0f, r2 = 0.0f;
-    signed int   ix    = ((signed int)(((_iml_lg_sp_union_t *)&x)->hex));
-    unsigned int iabsx = ((((_iml_lg_sp_union_t *)&x)->hex) & 0x7fffffff);
-    unsigned int xsig  = (((_iml_lg_sp_union_t *)&x)->hex >> 31);
-    unsigned int exp_x = ((((_iml_lg_sp_union_t *)&x)->hex >> 23) & 0xFF);
-    int          i = 0, intx = 0;
-    int          signgam = 1;
-    int          nRet    = 0;
+__attribute__((always_inline)) inline int __internal_slgamma_nofp64_cout(float *a, float *r) {
+  float x = (*a);
+  float f = 0.0f, f1 = 0.0f;
+  float ldx = 0.0f, t0 = 0.0f, t1 = 0.0f, t2 = 0.0f, result = 0.0f, y = 0.0f, y2 = 0.0f;
+  float p = 0.0f, r1 = 0.0f, r2 = 0.0f;
+  signed int ix = ((signed int)(((_iml_lg_sp_union_t *)&x)->hex));
+  unsigned int iabsx = ((((_iml_lg_sp_union_t *)&x)->hex) & 0x7fffffff);
+  unsigned int xsig = (((_iml_lg_sp_union_t *)&x)->hex >> 31);
+  unsigned int exp_x = ((((_iml_lg_sp_union_t *)&x)->hex >> 23) & 0xFF);
+  int i = 0, intx = 0;
+  int signgam = 1;
+  int nRet = 0;
 
-    if (exp_x == 0xFF)
-    {
-        // For x==+/-infinity: return +infinity.
-        // For x==NaN: raise invalid, return QNaN.
-        (*r) = x * x;
+  if (exp_x == 0xFF) {
+    // For x==+/-infinity: return +infinity.
+    // For x==NaN: raise invalid, return QNaN.
+    (*r) = x * x;
+  } else if (iabsx == 0x00000000u) {
+    // x==+/-0
+    if (xsig) {
+      signgam = -1;
     }
-    else if (iabsx == 0x00000000u)
-    {
-        // x==+/-0
-        if (xsig)
-        {
-            signgam = -1;
-        }
-        // Return +Infinity. Raise Zero divide.
-        f    = 0.0f;
-        (*r) = 1.0f / f;
-        nRet = 2;
+    // Return +Infinity. Raise Zero divide.
+    f = 0.0f;
+    (*r) = 1.0f / f;
+    nRet = 2;
+  } else if (ix > 0x7C44AF8E) {
+    unsigned int __big = 0x7f7fffff;
+    float _big = *(float *)&__big;
+
+    // OVERFLOW_BOUNDARY <= x <= +Max
+    // Return +Infinity. Raise Inexact and Overflow.
+    (*r) = _big * _big;
+    nRet = 3;
+  } else if (x > 0.0f) {
+    (*r) = __slgamma_nofp64_own_lgamma_pos_fp32(x);
+  } else // x < 0.0f
+  {
+    __constant float *_s = (__constant float *)__slgamma_nofp64___s;
+    unsigned int __ln_sqrt_2_pi = 0x3f6b3f8e; //      0.918938518
+    float _ln_sqrt_2_pi = *(float *)&__ln_sqrt_2_pi;
+
+    f = __slgamma_nofp64_own_nearbyint_fp32(x);
+    intx = (x == f); /* Is x an integer? */
+    if (!intx && (x > (__slgamma_nofp64__TWO_23H[1])) && !(((int)__slgamma_nofp64_own_ceilf_fp32(x)) & 1)) {
+      signgam = -1;
     }
-    else if (ix > 0x7C44AF8E)
-    {
-        unsigned int __big = 0x7f7fffff;
-        float        _big  = *(float *)&__big;
 
-        // OVERFLOW_BOUNDARY <= x <= +Max
-        // Return +Infinity. Raise Inexact and Overflow.
-        (*r) = _big * _big;
-        nRet = 3;
+    if (intx) {
+      // x is negative integer
+      // Return +Infinity. Raise Zero divide
+      f = 0.0f;
+      (*r) = 1.0f / f;
+      nRet = 2;
+    } else if (x > -12.0) {
+      // x > -12
+      y = x;
+      p = 1.0f;
+      while (y < 1.0f) {
+        p = p * y;
+        y = y + 1.0f;
+      }
+
+      p = __spirv_ocl_fabs(p);
+      p = __spirv_ocl_log(p);
+      result = __slgamma_nofp64_own_lgamma_pos_fp32(y);
+      result = result - p;
+      (*r) = result;
+    } else if (x > -8192.0f) {
+      // Here we use the formula:
+      // ln(GAMMA(-x)) = ln(Pi/(x*GAMMA(x)*sin(Pi*x))) =
+      // = -ln(x) - ln((GAMMA(x)) - ln(sin(Pi*r1)/(Pi*r1)) - ln(|r1|)
+      // where r1 = x - rounded_to_nearest_integer(x), i.e |r1| <= 0.5
+      // and ln(sin(Pi*r1)/(Pi*r1)) is approximated by
+      // 8-degree polynomial of r1^2.
+      //
+      f = (__slgamma_nofp64__TWO_23H[0]) - x;
+      f = f - (__slgamma_nofp64__TWO_23H[0]); // f=round(-x)
+      ldx = x;
+      ldx = -ldx;
+      r1 = f;
+      r1 = ldx - r1;
+      r2 = r1 * r1;
+
+      result = __spirv_ocl_log(-x);
+      result = -result;
+      y = __slgamma_nofp64_own_lgamma_pos_fp32(ldx);
+      result = result - y;
+
+      p = (((((((_s[7] * r2 + _s[6]) * r2 + _s[5]) * r2 + _s[4]) * r2 + _s[3]) * r2 + _s[2]) * r2 + _s[1]) * r2 +
+           _s[0]) *
+          r2;
+
+      result = result - p;
+
+      r1 = __spirv_ocl_fabs(r1);
+      y = __spirv_ocl_log(r1);
+      result = result - y;
+      (*r) = result;
+    } else {
+      //
+      // Case x < -2^13:
+      // ---------------
+      // Here we use algorithm based on the Stirling formula:
+      // ln(GAMMA(x)) = -ln(sqrt(2*Pi)) + (x-0.5)ln(|x|) -
+      // - x - ln(sin(Pi*r1)/(Pi*r1)) - ln(|r1|)
+      // where r1 = x - rounded_to_nearest_integer(x).
+      //
+      result = _ln_sqrt_2_pi;
+      ldx = x;
+      t1 = ldx - 0.5f;
+      t2 = -ldx;
+      t2 = __spirv_ocl_log(-x);
+      t1 = t1 * t2;
+      result = t1 - result;
+
+      result = result - ldx;
+
+      f = (__slgamma_nofp64__TWO_23H[0]);
+      f = f - x;
+      f = f - (__slgamma_nofp64__TWO_23H[0]);
+
+      r1 = -ldx;
+      r1 = r1 - f;
+      r2 = r1 * r1;
+
+      p = (((((((_s[7] * r2 + _s[6]) * r2 + _s[5]) * r2 + _s[4]) * r2 + _s[3]) * r2 + _s[2]) * r2 + _s[1]) * r2 +
+           _s[0]) *
+          r2;
+
+      result = result - p;
+
+      r1 = __spirv_ocl_fabs(r1);
+      y = __spirv_ocl_log(r1);
+      result = result - y;
+      (*r) = result;
     }
-    else if (x > 0.0f)
-    {
-        (*r) = __slgamma_nofp64_own_lgamma_pos_fp32(x);
-    }
-    else // x < 0.0f
-    {
-        __constant float *_s             = (__constant float *)__slgamma_nofp64___s;
-        unsigned int      __ln_sqrt_2_pi = 0x3f6b3f8e; //      0.918938518
-        float             _ln_sqrt_2_pi  = *(float *)&__ln_sqrt_2_pi;
+  } // else if ( exp_x == IML_EXPINF_32 )
 
-        f    = __slgamma_nofp64_own_nearbyint_fp32(x);
-        intx = (x == f); /* Is x an integer? */
-        if (!intx && (x > (__slgamma_nofp64__TWO_23H[1])) &&
-            !(((int)__slgamma_nofp64_own_ceilf_fp32(x)) & 1))
-        {
-            signgam = -1;
-        }
-
-        if (intx)
-        {
-            // x is negative integer
-            // Return +Infinity. Raise Zero divide
-            f    = 0.0f;
-            (*r) = 1.0f / f;
-            nRet = 2;
-        }
-        else if (x > -12.0)
-        {
-            // x > -12
-            y = x;
-            p = 1.0f;
-            while (y < 1.0f)
-            {
-                p = p * y;
-                y = y + 1.0f;
-            }
-
-            p      = __spirv_ocl_fabs(p);
-            p      = __spirv_ocl_log(p);
-            result = __slgamma_nofp64_own_lgamma_pos_fp32(y);
-            result = result - p;
-            (*r)   = result;
-        }
-        else if (x > -8192.0f)
-        {
-            // Here we use the formula:
-            // ln(GAMMA(-x)) = ln(Pi/(x*GAMMA(x)*sin(Pi*x))) =
-            // = -ln(x) - ln((GAMMA(x)) - ln(sin(Pi*r1)/(Pi*r1)) - ln(|r1|)
-            // where r1 = x - rounded_to_nearest_integer(x), i.e |r1| <= 0.5
-            // and ln(sin(Pi*r1)/(Pi*r1)) is approximated by
-            // 8-degree polynomial of r1^2.
-            //
-            f   = (__slgamma_nofp64__TWO_23H[0]) - x;
-            f   = f - (__slgamma_nofp64__TWO_23H[0]); // f=round(-x)
-            ldx = x;
-            ldx = -ldx;
-            r1  = f;
-            r1  = ldx - r1;
-            r2  = r1 * r1;
-
-            result = __spirv_ocl_log(-x);
-            result = -result;
-            y      = __slgamma_nofp64_own_lgamma_pos_fp32(ldx);
-            result = result - y;
-
-            p = (((((((_s[7] * r2 + _s[6]) * r2 + _s[5]) * r2 + _s[4]) * r2 + _s[3]) *
-                       r2 +
-                   _s[2]) *
-                      r2 +
-                  _s[1]) *
-                     r2 +
-                 _s[0]) *
-                r2;
-
-            result = result - p;
-
-            r1     = __spirv_ocl_fabs(r1);
-            y      = __spirv_ocl_log(r1);
-            result = result - y;
-            (*r)   = result;
-        }
-        else
-        {
-            //
-            // Case x < -2^13:
-            // ---------------
-            // Here we use algorithm based on the Stirling formula:
-            // ln(GAMMA(x)) = -ln(sqrt(2*Pi)) + (x-0.5)ln(|x|) -
-            // - x - ln(sin(Pi*r1)/(Pi*r1)) - ln(|r1|)
-            // where r1 = x - rounded_to_nearest_integer(x).
-            //
-            result = _ln_sqrt_2_pi;
-            ldx    = x;
-            t1     = ldx - 0.5f;
-            t2     = -ldx;
-            t2     = __spirv_ocl_log(-x);
-            t1     = t1 * t2;
-            result = t1 - result;
-
-            result = result - ldx;
-
-            f = (__slgamma_nofp64__TWO_23H[0]);
-            f = f - x;
-            f = f - (__slgamma_nofp64__TWO_23H[0]);
-
-            r1 = -ldx;
-            r1 = r1 - f;
-            r2 = r1 * r1;
-
-            p = (((((((_s[7] * r2 + _s[6]) * r2 + _s[5]) * r2 + _s[4]) * r2 + _s[3]) *
-                       r2 +
-                   _s[2]) *
-                      r2 +
-                  _s[1]) *
-                     r2 +
-                 _s[0]) *
-                r2;
-
-            result = result - p;
-
-            r1     = __spirv_ocl_fabs(r1);
-            y      = __spirv_ocl_log(r1);
-            result = result - y;
-            (*r)   = result;
-        }
-    } // else if ( exp_x == IML_EXPINF_32 )
-
-    return nRet;
+  return nRet;
 } // _VAPI_COUT_SCOPE int _VAPI_COUT_NAME( __constant float* a, float* r)
 
-float __ocl_svml_lgammaf(float a)
-{
-    float        va1;
-    float        vr1;
-    unsigned int vm;
+float __ocl_svml_lgammaf(float a) {
+  float va1;
+  float vr1;
+  unsigned int vm;
 
-    float r;
+  float r;
 
-    va1 = a;
-    ;
+  va1 = a;
+  ;
 
-    __internal_slgamma_nofp64_cout(&va1, &vr1);
-    r = vr1;
-    ;
+  __internal_slgamma_nofp64_cout(&va1, &vr1);
+  r = vr1;
+  ;
 
-    return r;
+  return r;
 }

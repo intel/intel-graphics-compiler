@@ -48,154 +48,153 @@ typedef struct {
   unsigned int _iAbsMask;
   unsigned int _iDomainRange;
 } __ocl_svml_internal_dexp10_ha_data_t;
-static __ocl_svml_internal_dexp10_ha_data_t __ocl_svml_internal_dexp10_ha_data =
+static __ocl_svml_internal_dexp10_ha_data_t __ocl_svml_internal_dexp10_ha_data = {
     {
-        {
-            0x3ff0000000000000uL, 0x0000000000000000uL, /*2^( 0 /128)*/
-            0x3ff0163da9fb3335uL, 0x3c9b61299ab8cdb7uL, /*2^( 1 /128)*/
-            0x3ff02c9a3e778061uL, 0xbc719083535b085duL, /*2^( 2 /128)*/
-            0x3ff04315e86e7f85uL, 0xbc90a31c1977c96euL, /*2^( 3 /128)*/
-            0x3ff059b0d3158574uL, 0x3c8d73e2a475b465uL, /*2^( 4 /128)*/
-            0x3ff0706b29ddf6deuL, 0xbc8c91dfe2b13c27uL, /*2^( 5 /128)*/
-            0x3ff0874518759bc8uL, 0x3c6186be4bb284ffuL, /*2^( 6 /128)*/
-            0x3ff09e3ecac6f383uL, 0x3c91487818316136uL, /*2^( 7 /128)*/
-            0x3ff0b5586cf9890fuL, 0x3c98a62e4adc610buL, /*2^( 8 /128)*/
-            0x3ff0cc922b7247f7uL, 0x3c901edc16e24f71uL, /*2^( 9 /128)*/
-            0x3ff0e3ec32d3d1a2uL, 0x3c403a1727c57b53uL, /*2^( 10 /128)*/
-            0x3ff0fb66affed31buL, 0xbc6b9bedc44ebd7buL, /*2^( 11 /128)*/
-            0x3ff11301d0125b51uL, 0xbc96c51039449b3auL, /*2^( 12 /128)*/
-            0x3ff12abdc06c31ccuL, 0xbc51b514b36ca5c7uL, /*2^( 13 /128)*/
-            0x3ff1429aaea92de0uL, 0xbc932fbf9af1369euL, /*2^( 14 /128)*/
-            0x3ff15a98c8a58e51uL, 0x3c82406ab9eeab0auL, /*2^( 15 /128)*/
-            0x3ff172b83c7d517buL, 0xbc819041b9d78a76uL, /*2^( 16 /128)*/
-            0x3ff18af9388c8deauL, 0xbc911023d1970f6cuL, /*2^( 17 /128)*/
-            0x3ff1a35beb6fcb75uL, 0x3c8e5b4c7b4968e4uL, /*2^( 18 /128)*/
-            0x3ff1bbe084045cd4uL, 0xbc995386352ef607uL, /*2^( 19 /128)*/
-            0x3ff1d4873168b9aauL, 0x3c9e016e00a2643cuL, /*2^( 20 /128)*/
-            0x3ff1ed5022fcd91duL, 0xbc91df98027bb78cuL, /*2^( 21 /128)*/
-            0x3ff2063b88628cd6uL, 0x3c8dc775814a8495uL, /*2^( 22 /128)*/
-            0x3ff21f49917ddc96uL, 0x3c82a97e9494a5eeuL, /*2^( 23 /128)*/
-            0x3ff2387a6e756238uL, 0x3c99b07eb6c70573uL, /*2^( 24 /128)*/
-            0x3ff251ce4fb2a63fuL, 0x3c8ac155bef4f4a4uL, /*2^( 25 /128)*/
-            0x3ff26b4565e27cdduL, 0x3c82bd339940e9d9uL, /*2^( 26 /128)*/
-            0x3ff284dfe1f56381uL, 0xbc9a4c3a8c3f0d7euL, /*2^( 27 /128)*/
-            0x3ff29e9df51fdee1uL, 0x3c8612e8afad1255uL, /*2^( 28 /128)*/
-            0x3ff2b87fd0dad990uL, 0xbc410adcd6381aa4uL, /*2^( 29 /128)*/
-            0x3ff2d285a6e4030buL, 0x3c90024754db41d5uL, /*2^( 30 /128)*/
-            0x3ff2ecafa93e2f56uL, 0x3c71ca0f45d52383uL, /*2^( 31 /128)*/
-            0x3ff306fe0a31b715uL, 0x3c86f46ad23182e4uL, /*2^( 32 /128)*/
-            0x3ff32170fc4cd831uL, 0x3c8a9ce78e18047cuL, /*2^( 33 /128)*/
-            0x3ff33c08b26416ffuL, 0x3c932721843659a6uL, /*2^( 34 /128)*/
-            0x3ff356c55f929ff1uL, 0xbc8b5cee5c4e4628uL, /*2^( 35 /128)*/
-            0x3ff371a7373aa9cbuL, 0xbc963aeabf42eae2uL, /*2^( 36 /128)*/
-            0x3ff38cae6d05d866uL, 0xbc9e958d3c9904bduL, /*2^( 37 /128)*/
-            0x3ff3a7db34e59ff7uL, 0xbc75e436d661f5e3uL, /*2^( 38 /128)*/
-            0x3ff3c32dc313a8e5uL, 0xbc9efff8375d29c3uL, /*2^( 39 /128)*/
-            0x3ff3dea64c123422uL, 0x3c8ada0911f09ebcuL, /*2^( 40 /128)*/
-            0x3ff3fa4504ac801cuL, 0xbc97d023f956f9f3uL, /*2^( 41 /128)*/
-            0x3ff4160a21f72e2auL, 0xbc5ef3691c309278uL, /*2^( 42 /128)*/
-            0x3ff431f5d950a897uL, 0xbc81c7dde35f7999uL, /*2^( 43 /128)*/
-            0x3ff44e086061892duL, 0x3c489b7a04ef80d0uL, /*2^( 44 /128)*/
-            0x3ff46a41ed1d0057uL, 0x3c9c944bd1648a76uL, /*2^( 45 /128)*/
-            0x3ff486a2b5c13cd0uL, 0x3c73c1a3b69062f0uL, /*2^( 46 /128)*/
-            0x3ff4a32af0d7d3deuL, 0x3c99cb62f3d1be56uL, /*2^( 47 /128)*/
-            0x3ff4bfdad5362a27uL, 0x3c7d4397afec42e2uL, /*2^( 48 /128)*/
-            0x3ff4dcb299fddd0duL, 0x3c98ecdbbc6a7833uL, /*2^( 49 /128)*/
-            0x3ff4f9b2769d2ca7uL, 0xbc94b309d25957e3uL, /*2^( 50 /128)*/
-            0x3ff516daa2cf6642uL, 0xbc8f768569bd93efuL, /*2^( 51 /128)*/
-            0x3ff5342b569d4f82uL, 0xbc807abe1db13caduL, /*2^( 52 /128)*/
-            0x3ff551a4ca5d920fuL, 0xbc8d689cefede59buL, /*2^( 53 /128)*/
-            0x3ff56f4736b527dauL, 0x3c99bb2c011d93aduL, /*2^( 54 /128)*/
-            0x3ff58d12d497c7fduL, 0x3c8295e15b9a1de8uL, /*2^( 55 /128)*/
-            0x3ff5ab07dd485429uL, 0x3c96324c054647aduL, /*2^( 56 /128)*/
-            0x3ff5c9268a5946b7uL, 0x3c3c4b1b816986a2uL, /*2^( 57 /128)*/
-            0x3ff5e76f15ad2148uL, 0x3c9ba6f93080e65euL, /*2^( 58 /128)*/
-            0x3ff605e1b976dc09uL, 0xbc93e2429b56de47uL, /*2^( 59 /128)*/
-            0x3ff6247eb03a5585uL, 0xbc9383c17e40b497uL, /*2^( 60 /128)*/
-            0x3ff6434634ccc320uL, 0xbc8c483c759d8933uL, /*2^( 61 /128)*/
-            0x3ff6623882552225uL, 0xbc9bb60987591c34uL, /*2^( 62 /128)*/
-            0x3ff68155d44ca973uL, 0x3c6038ae44f73e65uL, /*2^( 63 /128)*/
-            0x3ff6a09e667f3bcduL, 0xbc9bdd3413b26456uL, /*2^( 64 /128)*/
-            0x3ff6c012750bdabfuL, 0xbc72895667ff0b0duL, /*2^( 65 /128)*/
-            0x3ff6dfb23c651a2fuL, 0xbc6bbe3a683c88abuL, /*2^( 66 /128)*/
-            0x3ff6ff7df9519484uL, 0xbc883c0f25860ef6uL, /*2^( 67 /128)*/
-            0x3ff71f75e8ec5f74uL, 0xbc816e4786887a99uL, /*2^( 68 /128)*/
-            0x3ff73f9a48a58174uL, 0xbc90a8d96c65d53cuL, /*2^( 69 /128)*/
-            0x3ff75feb564267c9uL, 0xbc90245957316dd3uL, /*2^( 70 /128)*/
-            0x3ff780694fde5d3fuL, 0x3c9866b80a02162duL, /*2^( 71 /128)*/
-            0x3ff7a11473eb0187uL, 0xbc841577ee04992fuL, /*2^( 72 /128)*/
-            0x3ff7c1ed0130c132uL, 0x3c9f124cd1164dd6uL, /*2^( 73 /128)*/
-            0x3ff7e2f336cf4e62uL, 0x3c705d02ba15797euL, /*2^( 74 /128)*/
-            0x3ff80427543e1a12uL, 0xbc927c86626d972buL, /*2^( 75 /128)*/
-            0x3ff82589994cce13uL, 0xbc9d4c1dd41532d8uL, /*2^( 76 /128)*/
-            0x3ff8471a4623c7aduL, 0xbc88d684a341cdfbuL, /*2^( 77 /128)*/
-            0x3ff868d99b4492eduL, 0xbc9fc6f89bd4f6bauL, /*2^( 78 /128)*/
-            0x3ff88ac7d98a6699uL, 0x3c9994c2f37cb53auL, /*2^( 79 /128)*/
-            0x3ff8ace5422aa0dbuL, 0x3c96e9f156864b27uL, /*2^( 80 /128)*/
-            0x3ff8cf3216b5448cuL, 0xbc70d55e32e9e3aauL, /*2^( 81 /128)*/
-            0x3ff8f1ae99157736uL, 0x3c85cc13a2e3976cuL, /*2^( 82 /128)*/
-            0x3ff9145b0b91ffc6uL, 0xbc9dd6792e582524uL, /*2^( 83 /128)*/
-            0x3ff93737b0cdc5e5uL, 0xbc675fc781b57ebcuL, /*2^( 84 /128)*/
-            0x3ff95a44cbc8520fuL, 0xbc764b7c96a5f039uL, /*2^( 85 /128)*/
-            0x3ff97d829fde4e50uL, 0xbc9d185b7c1b85d1uL, /*2^( 86 /128)*/
-            0x3ff9a0f170ca07bauL, 0xbc9173bd91cee632uL, /*2^( 87 /128)*/
-            0x3ff9c49182a3f090uL, 0x3c7c7c46b071f2beuL, /*2^( 88 /128)*/
-            0x3ff9e86319e32323uL, 0x3c7824ca78e64c6euL, /*2^( 89 /128)*/
-            0x3ffa0c667b5de565uL, 0xbc9359495d1cd533uL, /*2^( 90 /128)*/
-            0x3ffa309bec4a2d33uL, 0x3c96305c7ddc36abuL, /*2^( 91 /128)*/
-            0x3ffa5503b23e255duL, 0xbc9d2f6edb8d41e1uL, /*2^( 92 /128)*/
-            0x3ffa799e1330b358uL, 0x3c9bcb7ecac563c7uL, /*2^( 93 /128)*/
-            0x3ffa9e6b5579fdbfuL, 0x3c90fac90ef7fd31uL, /*2^( 94 /128)*/
-            0x3ffac36bbfd3f37auL, 0xbc8f9234cae76cd0uL, /*2^( 95 /128)*/
-            0x3ffae89f995ad3aduL, 0x3c97a1cd345dcc81uL, /*2^( 96 /128)*/
-            0x3ffb0e07298db666uL, 0xbc9bdef54c80e425uL, /*2^( 97 /128)*/
-            0x3ffb33a2b84f15fbuL, 0xbc62805e3084d708uL, /*2^( 98 /128)*/
-            0x3ffb59728de5593auL, 0xbc9c71dfbbba6de3uL, /*2^( 99 /128)*/
-            0x3ffb7f76f2fb5e47uL, 0xbc75584f7e54ac3buL, /*2^( 100 /128)*/
-            0x3ffba5b030a1064auL, 0xbc9efcd30e54292euL, /*2^( 101 /128)*/
-            0x3ffbcc1e904bc1d2uL, 0x3c823dd07a2d9e84uL, /*2^( 102 /128)*/
-            0x3ffbf2c25bd71e09uL, 0xbc9efdca3f6b9c73uL, /*2^( 103 /128)*/
-            0x3ffc199bdd85529cuL, 0x3c811065895048dduL, /*2^( 104 /128)*/
-            0x3ffc40ab5fffd07auL, 0x3c9b4537e083c60auL, /*2^( 105 /128)*/
-            0x3ffc67f12e57d14buL, 0x3c92884dff483caduL, /*2^( 106 /128)*/
-            0x3ffc8f6d9406e7b5uL, 0x3c71acbc48805c44uL, /*2^( 107 /128)*/
-            0x3ffcb720dcef9069uL, 0x3c7503cbd1e949dbuL, /*2^( 108 /128)*/
-            0x3ffcdf0b555dc3fauL, 0xbc8dd83b53829d72uL, /*2^( 109 /128)*/
-            0x3ffd072d4a07897cuL, 0xbc9cbc3743797a9cuL, /*2^( 110 /128)*/
-            0x3ffd2f87080d89f2uL, 0xbc9d487b719d8578uL, /*2^( 111 /128)*/
-            0x3ffd5818dcfba487uL, 0x3c82ed02d75b3707uL, /*2^( 112 /128)*/
-            0x3ffd80e316c98398uL, 0xbc911ec18beddfe8uL, /*2^( 113 /128)*/
-            0x3ffda9e603db3285uL, 0x3c9c2300696db532uL, /*2^( 114 /128)*/
-            0x3ffdd321f301b460uL, 0x3c92da5778f018c3uL, /*2^( 115 /128)*/
-            0x3ffdfc97337b9b5fuL, 0xbc91a5cd4f184b5cuL, /*2^( 116 /128)*/
-            0x3ffe264614f5a129uL, 0xbc97b627817a1496uL, /*2^( 117 /128)*/
-            0x3ffe502ee78b3ff6uL, 0x3c839e8980a9cc8fuL, /*2^( 118 /128)*/
-            0x3ffe7a51fbc74c83uL, 0x3c92d522ca0c8de2uL, /*2^( 119 /128)*/
-            0x3ffea4afa2a490dauL, 0xbc9e9c23179c2893uL, /*2^( 120 /128)*/
-            0x3ffecf482d8e67f1uL, 0xbc9c93f3b411ad8cuL, /*2^( 121 /128)*/
-            0x3ffefa1bee615a27uL, 0x3c9dc7f486a4b6b0uL, /*2^( 122 /128)*/
-            0x3fff252b376bba97uL, 0x3c93a1a5bf0d8e43uL, /*2^( 123 /128)*/
-            0x3fff50765b6e4540uL, 0x3c99d3e12dd8a18buL, /*2^( 124 /128)*/
-            0x3fff7bfdad9cbe14uL, 0xbc9dbb12d006350auL, /*2^( 125 /128)*/
-            0x3fffa7c1819e90d8uL, 0x3c874853f3a5931euL, /*2^( 126 /128)*/
-            0x3fffd3c22b8f71f1uL, 0x3c62eb74966579e7uL  /*2^( 127 /128)*/
-        },
-        0x407a934f0979a371uL, /* _dbLg2_10*2^K */
-        0x4338800000000000uL, /* _dbShifter */
-        0x3f63441350a00000uL, /* _dbInvLg2_10hi/2^K 53-11-K bits*/
-        0xbd10c0219dc1da99uL, /* _dbInvLg2_10lo/2^K */
-        // PC0 = 1.0
-        0x40026bb1bbb55516uL, /* _dPC1 */
-        0x40053524c73ce8e3uL, /* _dPC2 */
-        0x4000470591ccea8buL, /* _dPC3 */
-        0x3ff2bd767584db59uL, /* _dPC4 */
-        0x3fe144c03efafb54uL, /* _dPC5 */
-        0xfff0000000000000uL, /* _lExpMask */
-        0x0000007fu,          /* _iIndexMask =(2^K-1)*/
-        // common
-        0x7fffffffu, /* _iAbsMask */
-        0x40733a70u  /* _iDomainRange */
-};                   /*dExp10_Table*/
+        0x3ff0000000000000uL, 0x0000000000000000uL, /*2^( 0 /128)*/
+        0x3ff0163da9fb3335uL, 0x3c9b61299ab8cdb7uL, /*2^( 1 /128)*/
+        0x3ff02c9a3e778061uL, 0xbc719083535b085duL, /*2^( 2 /128)*/
+        0x3ff04315e86e7f85uL, 0xbc90a31c1977c96euL, /*2^( 3 /128)*/
+        0x3ff059b0d3158574uL, 0x3c8d73e2a475b465uL, /*2^( 4 /128)*/
+        0x3ff0706b29ddf6deuL, 0xbc8c91dfe2b13c27uL, /*2^( 5 /128)*/
+        0x3ff0874518759bc8uL, 0x3c6186be4bb284ffuL, /*2^( 6 /128)*/
+        0x3ff09e3ecac6f383uL, 0x3c91487818316136uL, /*2^( 7 /128)*/
+        0x3ff0b5586cf9890fuL, 0x3c98a62e4adc610buL, /*2^( 8 /128)*/
+        0x3ff0cc922b7247f7uL, 0x3c901edc16e24f71uL, /*2^( 9 /128)*/
+        0x3ff0e3ec32d3d1a2uL, 0x3c403a1727c57b53uL, /*2^( 10 /128)*/
+        0x3ff0fb66affed31buL, 0xbc6b9bedc44ebd7buL, /*2^( 11 /128)*/
+        0x3ff11301d0125b51uL, 0xbc96c51039449b3auL, /*2^( 12 /128)*/
+        0x3ff12abdc06c31ccuL, 0xbc51b514b36ca5c7uL, /*2^( 13 /128)*/
+        0x3ff1429aaea92de0uL, 0xbc932fbf9af1369euL, /*2^( 14 /128)*/
+        0x3ff15a98c8a58e51uL, 0x3c82406ab9eeab0auL, /*2^( 15 /128)*/
+        0x3ff172b83c7d517buL, 0xbc819041b9d78a76uL, /*2^( 16 /128)*/
+        0x3ff18af9388c8deauL, 0xbc911023d1970f6cuL, /*2^( 17 /128)*/
+        0x3ff1a35beb6fcb75uL, 0x3c8e5b4c7b4968e4uL, /*2^( 18 /128)*/
+        0x3ff1bbe084045cd4uL, 0xbc995386352ef607uL, /*2^( 19 /128)*/
+        0x3ff1d4873168b9aauL, 0x3c9e016e00a2643cuL, /*2^( 20 /128)*/
+        0x3ff1ed5022fcd91duL, 0xbc91df98027bb78cuL, /*2^( 21 /128)*/
+        0x3ff2063b88628cd6uL, 0x3c8dc775814a8495uL, /*2^( 22 /128)*/
+        0x3ff21f49917ddc96uL, 0x3c82a97e9494a5eeuL, /*2^( 23 /128)*/
+        0x3ff2387a6e756238uL, 0x3c99b07eb6c70573uL, /*2^( 24 /128)*/
+        0x3ff251ce4fb2a63fuL, 0x3c8ac155bef4f4a4uL, /*2^( 25 /128)*/
+        0x3ff26b4565e27cdduL, 0x3c82bd339940e9d9uL, /*2^( 26 /128)*/
+        0x3ff284dfe1f56381uL, 0xbc9a4c3a8c3f0d7euL, /*2^( 27 /128)*/
+        0x3ff29e9df51fdee1uL, 0x3c8612e8afad1255uL, /*2^( 28 /128)*/
+        0x3ff2b87fd0dad990uL, 0xbc410adcd6381aa4uL, /*2^( 29 /128)*/
+        0x3ff2d285a6e4030buL, 0x3c90024754db41d5uL, /*2^( 30 /128)*/
+        0x3ff2ecafa93e2f56uL, 0x3c71ca0f45d52383uL, /*2^( 31 /128)*/
+        0x3ff306fe0a31b715uL, 0x3c86f46ad23182e4uL, /*2^( 32 /128)*/
+        0x3ff32170fc4cd831uL, 0x3c8a9ce78e18047cuL, /*2^( 33 /128)*/
+        0x3ff33c08b26416ffuL, 0x3c932721843659a6uL, /*2^( 34 /128)*/
+        0x3ff356c55f929ff1uL, 0xbc8b5cee5c4e4628uL, /*2^( 35 /128)*/
+        0x3ff371a7373aa9cbuL, 0xbc963aeabf42eae2uL, /*2^( 36 /128)*/
+        0x3ff38cae6d05d866uL, 0xbc9e958d3c9904bduL, /*2^( 37 /128)*/
+        0x3ff3a7db34e59ff7uL, 0xbc75e436d661f5e3uL, /*2^( 38 /128)*/
+        0x3ff3c32dc313a8e5uL, 0xbc9efff8375d29c3uL, /*2^( 39 /128)*/
+        0x3ff3dea64c123422uL, 0x3c8ada0911f09ebcuL, /*2^( 40 /128)*/
+        0x3ff3fa4504ac801cuL, 0xbc97d023f956f9f3uL, /*2^( 41 /128)*/
+        0x3ff4160a21f72e2auL, 0xbc5ef3691c309278uL, /*2^( 42 /128)*/
+        0x3ff431f5d950a897uL, 0xbc81c7dde35f7999uL, /*2^( 43 /128)*/
+        0x3ff44e086061892duL, 0x3c489b7a04ef80d0uL, /*2^( 44 /128)*/
+        0x3ff46a41ed1d0057uL, 0x3c9c944bd1648a76uL, /*2^( 45 /128)*/
+        0x3ff486a2b5c13cd0uL, 0x3c73c1a3b69062f0uL, /*2^( 46 /128)*/
+        0x3ff4a32af0d7d3deuL, 0x3c99cb62f3d1be56uL, /*2^( 47 /128)*/
+        0x3ff4bfdad5362a27uL, 0x3c7d4397afec42e2uL, /*2^( 48 /128)*/
+        0x3ff4dcb299fddd0duL, 0x3c98ecdbbc6a7833uL, /*2^( 49 /128)*/
+        0x3ff4f9b2769d2ca7uL, 0xbc94b309d25957e3uL, /*2^( 50 /128)*/
+        0x3ff516daa2cf6642uL, 0xbc8f768569bd93efuL, /*2^( 51 /128)*/
+        0x3ff5342b569d4f82uL, 0xbc807abe1db13caduL, /*2^( 52 /128)*/
+        0x3ff551a4ca5d920fuL, 0xbc8d689cefede59buL, /*2^( 53 /128)*/
+        0x3ff56f4736b527dauL, 0x3c99bb2c011d93aduL, /*2^( 54 /128)*/
+        0x3ff58d12d497c7fduL, 0x3c8295e15b9a1de8uL, /*2^( 55 /128)*/
+        0x3ff5ab07dd485429uL, 0x3c96324c054647aduL, /*2^( 56 /128)*/
+        0x3ff5c9268a5946b7uL, 0x3c3c4b1b816986a2uL, /*2^( 57 /128)*/
+        0x3ff5e76f15ad2148uL, 0x3c9ba6f93080e65euL, /*2^( 58 /128)*/
+        0x3ff605e1b976dc09uL, 0xbc93e2429b56de47uL, /*2^( 59 /128)*/
+        0x3ff6247eb03a5585uL, 0xbc9383c17e40b497uL, /*2^( 60 /128)*/
+        0x3ff6434634ccc320uL, 0xbc8c483c759d8933uL, /*2^( 61 /128)*/
+        0x3ff6623882552225uL, 0xbc9bb60987591c34uL, /*2^( 62 /128)*/
+        0x3ff68155d44ca973uL, 0x3c6038ae44f73e65uL, /*2^( 63 /128)*/
+        0x3ff6a09e667f3bcduL, 0xbc9bdd3413b26456uL, /*2^( 64 /128)*/
+        0x3ff6c012750bdabfuL, 0xbc72895667ff0b0duL, /*2^( 65 /128)*/
+        0x3ff6dfb23c651a2fuL, 0xbc6bbe3a683c88abuL, /*2^( 66 /128)*/
+        0x3ff6ff7df9519484uL, 0xbc883c0f25860ef6uL, /*2^( 67 /128)*/
+        0x3ff71f75e8ec5f74uL, 0xbc816e4786887a99uL, /*2^( 68 /128)*/
+        0x3ff73f9a48a58174uL, 0xbc90a8d96c65d53cuL, /*2^( 69 /128)*/
+        0x3ff75feb564267c9uL, 0xbc90245957316dd3uL, /*2^( 70 /128)*/
+        0x3ff780694fde5d3fuL, 0x3c9866b80a02162duL, /*2^( 71 /128)*/
+        0x3ff7a11473eb0187uL, 0xbc841577ee04992fuL, /*2^( 72 /128)*/
+        0x3ff7c1ed0130c132uL, 0x3c9f124cd1164dd6uL, /*2^( 73 /128)*/
+        0x3ff7e2f336cf4e62uL, 0x3c705d02ba15797euL, /*2^( 74 /128)*/
+        0x3ff80427543e1a12uL, 0xbc927c86626d972buL, /*2^( 75 /128)*/
+        0x3ff82589994cce13uL, 0xbc9d4c1dd41532d8uL, /*2^( 76 /128)*/
+        0x3ff8471a4623c7aduL, 0xbc88d684a341cdfbuL, /*2^( 77 /128)*/
+        0x3ff868d99b4492eduL, 0xbc9fc6f89bd4f6bauL, /*2^( 78 /128)*/
+        0x3ff88ac7d98a6699uL, 0x3c9994c2f37cb53auL, /*2^( 79 /128)*/
+        0x3ff8ace5422aa0dbuL, 0x3c96e9f156864b27uL, /*2^( 80 /128)*/
+        0x3ff8cf3216b5448cuL, 0xbc70d55e32e9e3aauL, /*2^( 81 /128)*/
+        0x3ff8f1ae99157736uL, 0x3c85cc13a2e3976cuL, /*2^( 82 /128)*/
+        0x3ff9145b0b91ffc6uL, 0xbc9dd6792e582524uL, /*2^( 83 /128)*/
+        0x3ff93737b0cdc5e5uL, 0xbc675fc781b57ebcuL, /*2^( 84 /128)*/
+        0x3ff95a44cbc8520fuL, 0xbc764b7c96a5f039uL, /*2^( 85 /128)*/
+        0x3ff97d829fde4e50uL, 0xbc9d185b7c1b85d1uL, /*2^( 86 /128)*/
+        0x3ff9a0f170ca07bauL, 0xbc9173bd91cee632uL, /*2^( 87 /128)*/
+        0x3ff9c49182a3f090uL, 0x3c7c7c46b071f2beuL, /*2^( 88 /128)*/
+        0x3ff9e86319e32323uL, 0x3c7824ca78e64c6euL, /*2^( 89 /128)*/
+        0x3ffa0c667b5de565uL, 0xbc9359495d1cd533uL, /*2^( 90 /128)*/
+        0x3ffa309bec4a2d33uL, 0x3c96305c7ddc36abuL, /*2^( 91 /128)*/
+        0x3ffa5503b23e255duL, 0xbc9d2f6edb8d41e1uL, /*2^( 92 /128)*/
+        0x3ffa799e1330b358uL, 0x3c9bcb7ecac563c7uL, /*2^( 93 /128)*/
+        0x3ffa9e6b5579fdbfuL, 0x3c90fac90ef7fd31uL, /*2^( 94 /128)*/
+        0x3ffac36bbfd3f37auL, 0xbc8f9234cae76cd0uL, /*2^( 95 /128)*/
+        0x3ffae89f995ad3aduL, 0x3c97a1cd345dcc81uL, /*2^( 96 /128)*/
+        0x3ffb0e07298db666uL, 0xbc9bdef54c80e425uL, /*2^( 97 /128)*/
+        0x3ffb33a2b84f15fbuL, 0xbc62805e3084d708uL, /*2^( 98 /128)*/
+        0x3ffb59728de5593auL, 0xbc9c71dfbbba6de3uL, /*2^( 99 /128)*/
+        0x3ffb7f76f2fb5e47uL, 0xbc75584f7e54ac3buL, /*2^( 100 /128)*/
+        0x3ffba5b030a1064auL, 0xbc9efcd30e54292euL, /*2^( 101 /128)*/
+        0x3ffbcc1e904bc1d2uL, 0x3c823dd07a2d9e84uL, /*2^( 102 /128)*/
+        0x3ffbf2c25bd71e09uL, 0xbc9efdca3f6b9c73uL, /*2^( 103 /128)*/
+        0x3ffc199bdd85529cuL, 0x3c811065895048dduL, /*2^( 104 /128)*/
+        0x3ffc40ab5fffd07auL, 0x3c9b4537e083c60auL, /*2^( 105 /128)*/
+        0x3ffc67f12e57d14buL, 0x3c92884dff483caduL, /*2^( 106 /128)*/
+        0x3ffc8f6d9406e7b5uL, 0x3c71acbc48805c44uL, /*2^( 107 /128)*/
+        0x3ffcb720dcef9069uL, 0x3c7503cbd1e949dbuL, /*2^( 108 /128)*/
+        0x3ffcdf0b555dc3fauL, 0xbc8dd83b53829d72uL, /*2^( 109 /128)*/
+        0x3ffd072d4a07897cuL, 0xbc9cbc3743797a9cuL, /*2^( 110 /128)*/
+        0x3ffd2f87080d89f2uL, 0xbc9d487b719d8578uL, /*2^( 111 /128)*/
+        0x3ffd5818dcfba487uL, 0x3c82ed02d75b3707uL, /*2^( 112 /128)*/
+        0x3ffd80e316c98398uL, 0xbc911ec18beddfe8uL, /*2^( 113 /128)*/
+        0x3ffda9e603db3285uL, 0x3c9c2300696db532uL, /*2^( 114 /128)*/
+        0x3ffdd321f301b460uL, 0x3c92da5778f018c3uL, /*2^( 115 /128)*/
+        0x3ffdfc97337b9b5fuL, 0xbc91a5cd4f184b5cuL, /*2^( 116 /128)*/
+        0x3ffe264614f5a129uL, 0xbc97b627817a1496uL, /*2^( 117 /128)*/
+        0x3ffe502ee78b3ff6uL, 0x3c839e8980a9cc8fuL, /*2^( 118 /128)*/
+        0x3ffe7a51fbc74c83uL, 0x3c92d522ca0c8de2uL, /*2^( 119 /128)*/
+        0x3ffea4afa2a490dauL, 0xbc9e9c23179c2893uL, /*2^( 120 /128)*/
+        0x3ffecf482d8e67f1uL, 0xbc9c93f3b411ad8cuL, /*2^( 121 /128)*/
+        0x3ffefa1bee615a27uL, 0x3c9dc7f486a4b6b0uL, /*2^( 122 /128)*/
+        0x3fff252b376bba97uL, 0x3c93a1a5bf0d8e43uL, /*2^( 123 /128)*/
+        0x3fff50765b6e4540uL, 0x3c99d3e12dd8a18buL, /*2^( 124 /128)*/
+        0x3fff7bfdad9cbe14uL, 0xbc9dbb12d006350auL, /*2^( 125 /128)*/
+        0x3fffa7c1819e90d8uL, 0x3c874853f3a5931euL, /*2^( 126 /128)*/
+        0x3fffd3c22b8f71f1uL, 0x3c62eb74966579e7uL  /*2^( 127 /128)*/
+    },
+    0x407a934f0979a371uL, /* _dbLg2_10*2^K */
+    0x4338800000000000uL, /* _dbShifter */
+    0x3f63441350a00000uL, /* _dbInvLg2_10hi/2^K 53-11-K bits*/
+    0xbd10c0219dc1da99uL, /* _dbInvLg2_10lo/2^K */
+    // PC0 = 1.0
+    0x40026bb1bbb55516uL, /* _dPC1 */
+    0x40053524c73ce8e3uL, /* _dPC2 */
+    0x4000470591ccea8buL, /* _dPC3 */
+    0x3ff2bd767584db59uL, /* _dPC4 */
+    0x3fe144c03efafb54uL, /* _dPC5 */
+    0xfff0000000000000uL, /* _lExpMask */
+    0x0000007fu,          /* _iIndexMask =(2^K-1)*/
+    // common
+    0x7fffffffu, /* _iAbsMask */
+    0x40733a70u  /* _iDomainRange */
+}; /*dExp10_Table*/
 static __constant _iml_v2_dp_union_t __dexp10_ha__imldExp10Tab[147] = {
     0x00000000, 0x3FF00000, /* T[0] = 1                       */
     0x00000000, 0x00000000, /* D[0] = 0                       */
@@ -350,8 +349,7 @@ static __constant _iml_v2_dp_union_t __dexp10_ha__imldExp10Tab[147] = {
     0x00000000, 0x3C300000, /* 2^(-60) */
     /* TWO_32H = 2^32 + 2^31 */
     0x00000000, 0x41F80000};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dexp10_ha(double *a, double *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dexp10_ha(double *a, double *r) {
   int nRet = 0;
   double w, Nj;
   double udfResHi, udfResLo;
@@ -359,7 +357,7 @@ __ocl_svml_internal_dexp10_ha(double *a, double *r) {
   double R, RHi, RLo, p, scale, tmp3, dbIn;
   _iml_uint32_t N, j;
   //_IML_DCOREFN_PROLOG2_IN_C(0, _IML_MODEX87_NEAR53_IN_C, _MODE_UNCHANGED, uf,
-  //pA, pRes)
+  // pA, pRes)
   /* Set all bits of scale to 0.                                           */
   /* Only bits of exponent field will be updated then before each use of   */
   /* scale. Notice, that all other bits (i.e. sign and significand) should */
@@ -368,12 +366,10 @@ __ocl_svml_internal_dexp10_ha(double *a, double *r) {
   scale = ((__constant double *)__dexp10_ha__imldExp10Tab)[142];
   dbIn = (*a);
   /* Filter out INFs and NaNs */
-  if ((((((_iml_v2_dp_union_t *)&dbIn)->dwords.hi_dword >> 20) & 0x7FF) !=
-       0x7FF)) {
+  if ((((((_iml_v2_dp_union_t *)&dbIn)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) {
     /* Here if argument is finite double precision number */
     /* Check if dbIn falls into "Near 0" range */
-    if (((((_iml_v2_dp_union_t *)&dbIn)->dwords.hi_dword >> 20) & 0x7FF) >
-        (0x3FF - 53)) {
+    if (((((_iml_v2_dp_union_t *)&dbIn)->dwords.hi_dword >> 20) & 0x7FF) > (0x3FF - 53)) {
       /* Here if argument is finite double precision number */
       /* and doesn't fall into "Near 0" range               */
       if (dbIn <= ((__constant double *)__dexp10_ha__imldExp10Tab)[135]) {
@@ -409,8 +405,7 @@ __ocl_svml_internal_dexp10_ha(double *a, double *r) {
           N = N >> 6;
           N = N + 0x3FF;
           /* T[j] * ( D[j] + p) */
-          p = (p +
-               ((__constant double *)__dexp10_ha__imldExp10Tab)[2 * j + 1]) *
+          p = (p + ((__constant double *)__dexp10_ha__imldExp10Tab)[2 * j + 1]) *
               ((__constant double *)__dexp10_ha__imldExp10Tab)[2 * j];
           if (dbIn >= ((__constant double *)__dexp10_ha__imldExp10Tab)[136]) {
             /* Here if exp(dbIn) is always finite and */
@@ -424,7 +419,7 @@ __ocl_svml_internal_dexp10_ha(double *a, double *r) {
               /* scale = 2^N */
               (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword =
                    (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword & 0x800FFFFF) |
-                   (((_iml_uint32_t)(N)&0x7FF) << 20));
+                   (((_iml_uint32_t)(N) & 0x7FF) << 20));
               /* scale * (T[j] + T[j] * ( D[j] + p)) */
               (*r) = (scale * p);
             } else {
@@ -435,8 +430,7 @@ __ocl_svml_internal_dexp10_ha(double *a, double *r) {
                    (((_iml_uint32_t)(N - 1) & 0x7FF) << 20));
               /* 2.0*(scale * (T[j] + T[j] * ( D[j] + p))) */
               p = (p * scale);
-              (*r) =
-                  (((__constant double *)__dexp10_ha__imldExp10Tab)[144] * p);
+              (*r) = (((__constant double *)__dexp10_ha__imldExp10Tab)[144] * p);
             }
           } else //(dbIn < UDF1)
           {
@@ -445,20 +439,17 @@ __ocl_svml_internal_dexp10_ha(double *a, double *r) {
             N = N & 0x7FF;
             /* scale = 2^(N + UNSCALE_SHIFT_EXP) */
             (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword =
-                 (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword & 0x800FFFFF) |
-                 (((_iml_uint32_t)(N)&0x7FF) << 20));
+                 (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t)(N) & 0x7FF) << 20));
             /* 2^(N + UNSCALE_SHIFT_EXP) * (T[j]*(D[j] + p) */
             p *= scale;
             /* (2^(N + UNSCALE_SHIFT_EXP) * T[j]) */
-            tmp3 = (scale *
-                    ((__constant double *)__dexp10_ha__imldExp10Tab)[2 * j]);
+            tmp3 = (scale * ((__constant double *)__dexp10_ha__imldExp10Tab)[2 * j]);
             /* Check if path 6.1.1 or 6.1.2 should follow */
             if (N <= (60 - 10)) {
               /* Here if "small" denormalized result */
               /* path 6.1.1 */
               p = (p + tmp3);
-              (*r) =
-                  (p * ((__constant double *)__dexp10_ha__imldExp10Tab)[145]);
+              (*r) = (p * ((__constant double *)__dexp10_ha__imldExp10Tab)[145]);
             } else {
               /* Here if "large" denormalized result */
               /* path 6.1.2 */
@@ -468,8 +459,7 @@ __ocl_svml_internal_dexp10_ha(double *a, double *r) {
               udfScaledResLo += p;
               /* udfResHi is udfScaledResHi rounded to */
               /* 32 most significant bits of mantissa  */
-              tmp1 = (((__constant double *)__dexp10_ha__imldExp10Tab)[146] *
-                      udfScaledResHi);
+              tmp1 = (((__constant double *)__dexp10_ha__imldExp10Tab)[146] * udfScaledResHi);
               tmp2 = (udfScaledResHi + tmp1);
               udfResHi = (tmp2 - tmp1);
               /* udfResLo = (udfScaledResHi - udfResHi) + */
@@ -478,12 +468,8 @@ __ocl_svml_internal_dexp10_ha(double *a, double *r) {
               udfResLo += udfScaledResLo;
               /* Return (*r) = (UNSCALE * udfResHi) +  */
               /*               + (UNSCALE * udfResLo)  */
-              udfResHi =
-                  (udfResHi *
-                   ((__constant double *)__dexp10_ha__imldExp10Tab)[145]);
-              udfResLo =
-                  (udfResLo *
-                   ((__constant double *)__dexp10_ha__imldExp10Tab)[145]);
+              udfResHi = (udfResHi * ((__constant double *)__dexp10_ha__imldExp10Tab)[145]);
+              udfResLo = (udfResLo * ((__constant double *)__dexp10_ha__imldExp10Tab)[145]);
               (*r) = (udfResHi + udfResLo);
             }
             nRet = 4;
@@ -546,10 +532,8 @@ double __ocl_svml_exp10_ha(double x) {
     unsigned int iAbsMask;
     unsigned int iDomainRange;
     dbLg2_10 = as_double(__ocl_svml_internal_dexp10_ha_data._dbLg2_10);
-    dbInvLg2_10hi =
-        as_double(__ocl_svml_internal_dexp10_ha_data._dbInvLg2_10hi);
-    dbInvLg2_10lo =
-        as_double(__ocl_svml_internal_dexp10_ha_data._dbInvLg2_10lo);
+    dbInvLg2_10hi = as_double(__ocl_svml_internal_dexp10_ha_data._dbInvLg2_10hi);
+    dbInvLg2_10lo = as_double(__ocl_svml_internal_dexp10_ha_data._dbInvLg2_10lo);
     dbShifter = as_double(__ocl_svml_internal_dexp10_ha_data._dbShifter);
     lExpMask = (__ocl_svml_internal_dexp10_ha_data._lExpMask);
     iIndexMask = (__ocl_svml_internal_dexp10_ha_data._iIndexMask);
@@ -567,8 +551,7 @@ double __ocl_svml_exp10_ha(double x) {
     lX = as_ulong(va1);
     iAbsX = ((unsigned int)((unsigned long)lX >> 32));
     iAbsX = (iAbsX & iAbsMask);
-    iRangeMask = ((unsigned int)(-(signed int)((signed int)iAbsX >
-                                               (signed int)iDomainRange)));
+    iRangeMask = ((unsigned int)(-(signed int)((signed int)iAbsX > (signed int)iDomainRange)));
     vm = 0;
     vm = iRangeMask;
     /* .............. Index and lookup ......................... */
@@ -576,10 +559,8 @@ double __ocl_svml_exp10_ha(double x) {
     iIndex = (((unsigned int)lM & (unsigned int)-1));
     iIndex = (iIndex & iIndexMask);
     iIndex = ((unsigned int)(iIndex) << (4)); // iIndex*=2*sizeof(D);
-    dTj[0] = as_double(((unsigned long *)(__ocl_svml_internal_dexp10_ha_data
-                                              ._dbT))[iIndex >> 3]);
-    dTj[1] = as_double(((unsigned long *)(__ocl_svml_internal_dexp10_ha_data
-                                              ._dbT))[(iIndex >> 3) + 1]);
+    dTj[0] = as_double(((unsigned long *)(__ocl_svml_internal_dexp10_ha_data._dbT))[iIndex >> 3]);
+    dTj[1] = as_double(((unsigned long *)(__ocl_svml_internal_dexp10_ha_data._dbT))[(iIndex >> 3) + 1]);
     /* ............... 2^N ..................................... */
     lM = ((unsigned long)(lM) << ((52 - 7)));
     lM = (lM & lExpMask); // lM==EXP(2^N)
@@ -592,12 +573,12 @@ double __ocl_svml_exp10_ha(double x) {
     dN = __spirv_ocl_fma(dN, dR, dPC[2]);
     dN = __spirv_ocl_fma(dN, dR, dPC[1]);
     dN = __spirv_ocl_fma(dN, dR,
-                                                dPC[0]); // a1+...+a5*dR^4 !
-    dN = (dN * dR);                                      // a1*dR+...+a5*dR^5
+                         dPC[0]); // a1+...+a5*dR^4 !
+    dN = (dN * dR);               // a1*dR+...+a5*dR^5
     /* ................... Reconstruction ...................... */
     // exp2 = {2^N later}*(Tj_h+Tj_l+Tj_h*poly)
     dN = __spirv_ocl_fma(dN, dTj[0],
-                                                dTj[1]); // Tj_l+Tj_h*poly
+                         dTj[1]); // Tj_l+Tj_h*poly
     dN = (dN + dTj[0]);
     /* ..................quick 2^N............................... */
     lX = as_ulong(dN);

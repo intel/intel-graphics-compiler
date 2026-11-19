@@ -37,8 +37,7 @@ static __constant union {
   float f;
   int i;
 } __sexp2_ha_c1 = {0x3e45c862u};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_sexp2_ha(float *a, float *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_sexp2_ha(float *a, float *r) {
   int nRet = 0;
   float x = *a;
   float fN, R, poly, High, Rh, Rl;
@@ -54,8 +53,7 @@ __ocl_svml_internal_sexp2_ha(float *a, float *r) {
   sN = (int)fN;
   // exponent
   N = sN;
-  poly = __spirv_ocl_fma(__sexp2_ha_c6.f, R,
-                                                __sexp2_ha_c5.f);
+  poly = __spirv_ocl_fma(__sexp2_ha_c6.f, R, __sexp2_ha_c5.f);
   // 1+0.5*R
   High = __spirv_ocl_fma(R, 0.5f, 1.0f);
   poly = __spirv_ocl_fma(poly, R, __sexp2_ha_c4.f);

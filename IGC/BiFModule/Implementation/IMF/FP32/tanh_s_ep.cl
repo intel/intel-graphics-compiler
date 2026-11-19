@@ -37,8 +37,7 @@ static __constant union {
   float f;
   int i;
 } __stanh_ep_dc0 = {0xb859e195u};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_stanh_ep(float *a, float *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_stanh_ep(float *a, float *r) {
   int nRet = 0;
   float xin = *a;
   union {
@@ -56,14 +55,10 @@ __ocl_svml_internal_stanh_ep(float *a, float *r) {
   xa.w = x0.w & 0x7fffffff;
   sgn_x = xa.w ^ x0.w;
   R2.f = xa.f * xa.f;
-  npoly.f = __spirv_ocl_fma(R2.f, __stanh_ep_nc2.f,
-                                                   __stanh_ep_nc1.f);
-  dpoly.f = __spirv_ocl_fma(R2.f, __stanh_ep_dc2.f,
-                                                   __stanh_ep_dc1.f);
-  npoly.f =
-      __spirv_ocl_fma(npoly.f, R2.f, __stanh_ep_nc0.f);
-  dpoly.f =
-      __spirv_ocl_fma(dpoly.f, R2.f, __stanh_ep_dc0.f);
+  npoly.f = __spirv_ocl_fma(R2.f, __stanh_ep_nc2.f, __stanh_ep_nc1.f);
+  dpoly.f = __spirv_ocl_fma(R2.f, __stanh_ep_dc2.f, __stanh_ep_dc1.f);
+  npoly.f = __spirv_ocl_fma(npoly.f, R2.f, __stanh_ep_nc0.f);
+  dpoly.f = __spirv_ocl_fma(dpoly.f, R2.f, __stanh_ep_dc0.f);
   dpoly.f = __spirv_ocl_fma(dpoly.f, xa.f, xa.f);
   // 1.0/npoly
   y.f = 1.0f / (npoly.f);

@@ -422,8 +422,7 @@ static __constant union {
   float f;
   int i;
 } __sasin_ha_pi2l = {0xB33BBD2Eu};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_sasin_ha(float *pxin, float *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_sasin_ha(float *pxin, float *pres) {
   int nRet = 0;
   float xin = *pxin;
   union {
@@ -451,24 +450,20 @@ __ocl_svml_internal_sasin_ha(float *pxin, float *pres) {
     R = xin * xin;
     R = __spirv_ocl_fmin(R, y.f);
     // rsqrt((1-|x|)/2)
-    RS.f = 1.0f /
-           __spirv_ocl_sqrt((y.f + __sasin_ha_small_float.f));
+    RS.f = 1.0f / __spirv_ocl_sqrt((y.f + __sasin_ha_small_float.f));
     // Sh ~ sqrt((1-|x|)/2)
     Sh = y.f * RS.f;
     // pi/2_high - 2*Sh
-    High.f = __spirv_ocl_fma((-Sh), __sasin_ha_two.f,
-                                                    __sasin_ha_pi2h.f);
+    High.f = __spirv_ocl_fma((-Sh), __sasin_ha_two.f, __sasin_ha_pi2h.f);
     //  Shh2 = (-2*Sh)_high
     Shh2.f = High.f - __sasin_ha_pi2h.f;
     Shh = 0.5f * Shh2.f;
     // y.f - Sh*Sh
     E = __spirv_ocl_fma((-Shh), Shh, y.f);
     // Low = (pi/2)_low - low part of 2*sqrt((1-|x|)/2)
-    Low.f =
-        __spirv_ocl_fma((-E), RS.f, __sasin_ha_pi2l.f);
+    Low.f = __spirv_ocl_fma((-E), RS.f, __sasin_ha_pi2l.f);
     // polynomial
-    poly = __spirv_ocl_fma(__sasin_ha_c5.f, R,
-                                                  __sasin_ha_c4.f);
+    poly = __spirv_ocl_fma(__sasin_ha_c5.f, R, __sasin_ha_c4.f);
     poly = __spirv_ocl_fma(poly, R, __sasin_ha_c3.f);
     poly = __spirv_ocl_fma(poly, R, __sasin_ha_c2.f);
     poly = __spirv_ocl_fma(poly, R, __sasin_ha_c1.f);

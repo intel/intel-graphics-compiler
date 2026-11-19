@@ -178,8 +178,7 @@ static __constant union {
   int s32[2];
   double f;
 } __derf_ep___a0 = {0x3ff0000000000000uL};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_derf_ep(double *a, double *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_derf_ep(double *a, double *pres) {
   int nRet = 0;
   double xin = *a;
   union {
@@ -207,58 +206,32 @@ __ocl_svml_internal_derf_ep(double *a, double *pres) {
   // fixup for NaNs
   dR = (xa.w > 0x7ff0000000000000uL) ? xa.f : dR;
   // polynomial evaluation
-  bpoly.f = __spirv_ocl_fma(__derf_ep___b13.f, dR2,
-                                                   __derf_ep___b12.f);
-  apoly.f = __spirv_ocl_fma(__derf_ep___a13.f, dR2,
-                                                   __derf_ep___a12.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b11.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a11.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b10.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a10.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b9.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a9.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b8.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a8.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b7.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a7.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b6.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a6.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b5.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a5.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b4.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a4.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b3.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a3.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b2.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a2.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b1.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a1.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b0.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a0.f);
+  bpoly.f = __spirv_ocl_fma(__derf_ep___b13.f, dR2, __derf_ep___b12.f);
+  apoly.f = __spirv_ocl_fma(__derf_ep___a13.f, dR2, __derf_ep___a12.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b11.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a11.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b10.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a10.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b9.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a9.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b8.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a8.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b7.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a7.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b6.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a6.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b5.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a5.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b4.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a4.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b3.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a3.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b2.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a2.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b1.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a1.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __derf_ep___b0.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __derf_ep___a0.f);
   fa = (float)apoly.f;
   fy = 1.0f / fa;
   Y.f = (double)fy;

@@ -9,31 +9,22 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-INLINE float OVERLOADABLE expm1( float a )
-{
-    return __spirv_ocl_expm1( a );
-}
+INLINE float OVERLOADABLE expm1(float a) { return __spirv_ocl_expm1(a); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( expm1, float, float )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(expm1, float, float)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE expm1( double x )
-{
-    return __spirv_ocl_expm1( x );
-}
+INLINE double OVERLOADABLE expm1(double x) { return __spirv_ocl_expm1(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( expm1, double, double )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(expm1, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE expm1( half x )
-{
-    return __spirv_ocl_expm1( x );
-}
+INLINE half OVERLOADABLE expm1(half x) { return __spirv_ocl_expm1(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( expm1, half, half )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(expm1, half, half)
 
 #endif // defined(cl_khr_fp16)

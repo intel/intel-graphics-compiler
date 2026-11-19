@@ -67,8 +67,7 @@ static __constant union {
   int s32[2];
   double f;
 } __dln_ep___c0 = {0x3e30eba0cce2e0b0uL};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dln_ep(double *a, double *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dln_ep(double *a, double *r) {
   int nRet = 0;
   union {
     unsigned long w;
@@ -121,8 +120,8 @@ __ocl_svml_internal_dln_ep(double *a, double *r) {
       *r = _res.f;
       return nRet;
     } // x = +NaN or +INF
-  }   // special branch for +/-0, negatives, +INFs, +NaNs
-      // scale denormals
+  } // special branch for +/-0, negatives, +INFs, +NaNs
+    // scale denormals
   denorm_scale.w = 0x43B0000000000000ull;
   denorm_scale_exp = (x.w <= 0x000fffffffffffffuL) ? (60 + 0x3FF) : 0x3FF;
   x.f = (x.w <= 0x000fffffffffffffuL) ? (x.f * denorm_scale.f) : x.f;
@@ -137,8 +136,7 @@ __ocl_svml_internal_dln_ep(double *a, double *r) {
   // reduced argument:  reduced_mantissa - 1.0
   R = x.f - one.f;
   // polynomial
-  poly = __spirv_ocl_fma(__dln_ep___c9.f, R,
-                                                __dln_ep___c8.f);
+  poly = __spirv_ocl_fma(__dln_ep___c9.f, R, __dln_ep___c8.f);
   poly = __spirv_ocl_fma(poly, R, __dln_ep___c7.f);
   poly = __spirv_ocl_fma(poly, R, __dln_ep___c6.f);
   poly = __spirv_ocl_fma(poly, R, __dln_ep___c5.f);

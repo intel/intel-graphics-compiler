@@ -53,25 +53,19 @@ typedef struct {
 } __ocl_svml_internal_dcosh_ha_data_t;
 static __ocl_svml_internal_dcosh_ha_data_t __ocl_svml_internal_dcosh_ha_data = {
     {/*== _dTp_h ==*/
-     0x3fe0000000000000uL, 0x3fe0b5586cf9890fuL, 0x3fe172b83c7d517buL,
-     0x3fe2387a6e756238uL, 0x3fe306fe0a31b715uL, 0x3fe3dea64c123422uL,
-     0x3fe4bfdad5362a27uL, 0x3fe5ab07dd485429uL, 0x3fe6a09e667f3bcduL,
-     0x3fe7a11473eb0187uL, 0x3fe8ace5422aa0dbuL, 0x3fe9c49182a3f090uL,
-     0x3feae89f995ad3aduL, 0x3fec199bdd85529cuL, 0x3fed5818dcfba487uL,
+     0x3fe0000000000000uL, 0x3fe0b5586cf9890fuL, 0x3fe172b83c7d517buL, 0x3fe2387a6e756238uL, 0x3fe306fe0a31b715uL,
+     0x3fe3dea64c123422uL, 0x3fe4bfdad5362a27uL, 0x3fe5ab07dd485429uL, 0x3fe6a09e667f3bcduL, 0x3fe7a11473eb0187uL,
+     0x3fe8ace5422aa0dbuL, 0x3fe9c49182a3f090uL, 0x3feae89f995ad3aduL, 0x3fec199bdd85529cuL, 0x3fed5818dcfba487uL,
      0x3feea4afa2a490dauL}, /* dTp_h */
     {                       /*== dTp_l ==*/
-     0x0000000000000000uL, 0x3c88a62e4adc610buL, 0xbc719041b9d78a76uL,
-     0x3c89b07eb6c70573uL, 0x3c76f46ad23182e4uL, 0x3c7ada0911f09ebcuL,
-     0x3c6d4397afec42e2uL, 0x3c86324c054647aduL, 0xbc8bdd3413b26456uL,
-     0xbc741577ee04992fuL, 0x3c86e9f156864b27uL, 0x3c6c7c46b071f2beuL,
-     0x3c87a1cd345dcc81uL, 0x3c711065895048dduL, 0x3c72ed02d75b3707uL,
+     0x0000000000000000uL, 0x3c88a62e4adc610buL, 0xbc719041b9d78a76uL, 0x3c89b07eb6c70573uL, 0x3c76f46ad23182e4uL,
+     0x3c7ada0911f09ebcuL, 0x3c6d4397afec42e2uL, 0x3c86324c054647aduL, 0xbc8bdd3413b26456uL, 0xbc741577ee04992fuL,
+     0x3c86e9f156864b27uL, 0x3c6c7c46b071f2beuL, 0x3c87a1cd345dcc81uL, 0x3c711065895048dduL, 0x3c72ed02d75b3707uL,
      0xbc8e9c23179c2893uL}, /* dTp_l */
     {                       /*== dTn_h ==*/
-     0x3fe0000000000000uL, 0x3fdea4afa2a490dauL, 0x3fdd5818dcfba487uL,
-     0x3fdc199bdd85529cuL, 0x3fdae89f995ad3aduL, 0x3fd9c49182a3f090uL,
-     0x3fd8ace5422aa0dbuL, 0x3fd7a11473eb0187uL, 0x3fd6a09e667f3bcduL,
-     0x3fd5ab07dd485429uL, 0x3fd4bfdad5362a27uL, 0x3fd3dea64c123422uL,
-     0x3fd306fe0a31b715uL, 0x3fd2387a6e756238uL, 0x3fd172b83c7d517buL,
+     0x3fe0000000000000uL, 0x3fdea4afa2a490dauL, 0x3fdd5818dcfba487uL, 0x3fdc199bdd85529cuL, 0x3fdae89f995ad3aduL,
+     0x3fd9c49182a3f090uL, 0x3fd8ace5422aa0dbuL, 0x3fd7a11473eb0187uL, 0x3fd6a09e667f3bcduL, 0x3fd5ab07dd485429uL,
+     0x3fd4bfdad5362a27uL, 0x3fd3dea64c123422uL, 0x3fd306fe0a31b715uL, 0x3fd2387a6e756238uL, 0x3fd172b83c7d517buL,
      0x3fd0b5586cf9890fuL}, /* dTn_h */
     0x42F8000000000000uL,   /* _dbShifter_UISA  */
     0x000000000000000FuL,   /* _lIndexMask_UISA */
@@ -222,9 +216,9 @@ static __ocl_svml_internal_dcosh_ha_data_t __ocl_svml_internal_dcosh_ha_data = {
     0x3F81111121A1CF67uL, /* _dPC5 */
     0x7ff0000000000000uL, /* _lExpMask */
     0x8000000000000000uL, /* _dSign*/
-    0x40861d99u /* _iDomainRange 0x40861d9ac12a3e85 =(1021*2^K-0.5)*log(2)/2^K
-                   -needed for quick exp*/
-};              /*dCosh_Table*/
+    0x40861d99u           /* _iDomainRange 0x40861d9ac12a3e85 =(1021*2^K-0.5)*log(2)/2^K
+                             -needed for quick exp*/
+}; /*dCosh_Table*/
 static __constant _iml_v2_dp_union_t __dcosh_ha_CoutTab[144] = {
     0x00000000, 0x3FF00000, /* T[0] = 1                       */
     0x00000000, 0x00000000, /* D[0] = 0                       */
@@ -383,8 +377,7 @@ static __constant _iml_v2_dp_union_t __dcosh_ha_CoutTab[144] = {
 //   hyperbolic cosine function starts here.
 //
 */
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dcosh_ha(double *a, double *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dcosh_ha(double *a, double *r) {
   double M, Nj;
   double R, RHi, RLo, scale;
   double p;
@@ -405,18 +398,15 @@ __ocl_svml_internal_dcosh_ha(double *a, double *r) {
   /* to 0 before each use of scale                                         */
   scale = ((__constant double *)__dcosh_ha_CoutTab)[141];
   /* Filter out INFs and NaNs */
-  if ((((((_iml_v2_dp_union_t *)&(*a))->dwords.hi_dword >> 20) & 0x7FF) !=
-       0x7FF)) {
+  if ((((((_iml_v2_dp_union_t *)&(*a))->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) {
     /* Here if argument is finite double precision number */
     /* Save intermediate (*a) to absAi and clear sign bit of absAi */
     /* since cosh(x) == cosh(-x)                                   */
     absAi = (*a);
     (((_iml_v2_dp_union_t *)&absAi)->dwords.hi_dword =
-         (((_iml_v2_dp_union_t *)&absAi)->dwords.hi_dword & 0x7FFFFFFF) |
-         ((_iml_uint32_t)(0) << 31));
+         (((_iml_v2_dp_union_t *)&absAi)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(0) << 31));
     /* Check if (*a) falls into "Near 0" range */
-    if (((((_iml_v2_dp_union_t *)&absAi)->dwords.hi_dword >> 20) & 0x7FF) >
-        (0x3FF - 54)) {
+    if (((((_iml_v2_dp_union_t *)&absAi)->dwords.hi_dword >> 20) & 0x7FF) > (0x3FF - 54)) {
       /* Here if argument is not within "Near 0" interval */
       /* Check if cosh((*a)) overflows */
       if (absAi < ((__constant double *)__dcosh_ha_CoutTab)[137]) {
@@ -460,8 +450,7 @@ __ocl_svml_internal_dcosh_ha(double *a, double *r) {
             /* Path 5.1) */
             /* scale = 2^N */
             (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword =
-                 (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword & 0x800FFFFF) |
-                 (((_iml_uint32_t)(N)&0x7FF) << 20));
+                 (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t)(N) & 0x7FF) << 20));
             /* scale * (T[j] + (D[j] + T[j] * p)) */
             (*r) = scale * p;
           } else {
@@ -513,10 +502,8 @@ __ocl_svml_internal_dcosh_ha(double *a, double *r) {
           (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword =
                (((_iml_v2_dp_union_t *)&scale)->dwords.hi_dword & 0x800FFFFF) |
                (((_iml_uint32_t)(N - 2) & 0x7FF) << 20));
-          TmHi =
-              ((__constant double *)__dcosh_ha_CoutTab)[2 * (64 - (j))] * scale;
-          TmLo = ((__constant double *)__dcosh_ha_CoutTab)[2 * (64 - (j)) + 1] *
-                 scale;
+          TmHi = ((__constant double *)__dcosh_ha_CoutTab)[2 * (64 - (j))] * scale;
+          TmLo = ((__constant double *)__dcosh_ha_CoutTab)[2 * (64 - (j)) + 1] * scale;
           /* TsH := round to double(TpHi + TmHi)  */
           /* TsL := (TpHi + TmHi) - TsH           */
           /* TsH + TsL exactly equals TpHi + TmHi */
@@ -544,8 +531,7 @@ __ocl_svml_internal_dcosh_ha(double *a, double *r) {
         }
       } else {
         /* Here if cosh overflows, Path 3 */
-        (*r) = ((__constant double *)__dcosh_ha_CoutTab)[140] *
-               ((__constant double *)__dcosh_ha_CoutTab)[140];
+        (*r) = ((__constant double *)__dcosh_ha_CoutTab)[140] * ((__constant double *)__dcosh_ha_CoutTab)[140];
         //_IML_FUNC_NAME_CALL_EM(dError,(_IML_SCODE_IN_C() =
         //  IML_STATUS_OVERFLOW,i, a, a, r, r, _IML_THISFUNC_NAME));
         nRet = 3;
@@ -604,36 +590,29 @@ double __ocl_svml_cosh_ha(double x) {
     dbLn2[0] = as_double(__ocl_svml_internal_dcosh_ha_data._dbLn2hi);
     dbLn2[1] = as_double(__ocl_svml_internal_dcosh_ha_data._dbLn2lo);
     /* ............... Abs argument ............................ */
-    dAbsX = as_double((~(as_ulong(dXSign)) & as_ulong(va1)));
+    dAbsX = as_double((~(as_ulong(dXSign))&as_ulong(va1)));
     /* ............... Load argument ........................... */
-    dM = __spirv_ocl_fma(
-        dAbsX, dbInvLn2, dbShifter); // dM = x*2^K/log(2) + RShifter
+    dM = __spirv_ocl_fma(dAbsX, dbInvLn2, dbShifter); // dM = x*2^K/log(2) + RShifter
     /* ...............Check for overflow\underflow ............. */
     lX = as_ulong(dAbsX);                              // lX = x
     iAbsX = ((unsigned int)((unsigned long)lX >> 32)); //
-    iRangeMask = ((unsigned int)(-(signed int)((signed int)iAbsX >
-                                               (signed int)iDomainRange)));
+    iRangeMask = ((unsigned int)(-(signed int)((signed int)iAbsX > (signed int)iDomainRange)));
     vm = 0;
     vm = iRangeMask;
     /* .............. Index and lookup ......................... */
     lM = as_ulong(dM);
     iIndex = (((unsigned int)lM & (unsigned int)-1));
     iIndex = (iIndex & iIndexMask);
-    dTp[0] = as_double(
-        ((unsigned long *)(__ocl_svml_internal_dcosh_ha_data
-                               ._dbT))[(((0 + iIndex) * (3 * 8)) >> (3)) + 0]);
-    dTp[1] = as_double(
-        ((unsigned long *)(__ocl_svml_internal_dcosh_ha_data
-                               ._dbT))[(((0 + iIndex) * (3 * 8)) >> (3)) + 1]);
-    dTn = as_double(
-        ((unsigned long *)(__ocl_svml_internal_dcosh_ha_data
-                               ._dbT))[(((0 + iIndex) * (3 * 8)) >> (3)) + 2]);
+    dTp[0] =
+        as_double(((unsigned long *)(__ocl_svml_internal_dcosh_ha_data._dbT))[(((0 + iIndex) * (3 * 8)) >> (3)) + 0]);
+    dTp[1] =
+        as_double(((unsigned long *)(__ocl_svml_internal_dcosh_ha_data._dbT))[(((0 + iIndex) * (3 * 8)) >> (3)) + 1]);
+    dTn = as_double(((unsigned long *)(__ocl_svml_internal_dcosh_ha_data._dbT))[(((0 + iIndex) * (3 * 8)) >> (3)) + 2]);
     /* ................... R ................................... */
-    dN = (dM - dbShifter); // dN = dM - RShifter
-    dR = __spirv_ocl_fma(
-        -(dbLn2[0]), dN, dAbsX); // dR = dX - dN*Log2_hi/2^K
+    dN = (dM - dbShifter);                        // dN = dM - RShifter
+    dR = __spirv_ocl_fma(-(dbLn2[0]), dN, dAbsX); // dR = dX - dN*Log2_hi/2^K
     dR = __spirv_ocl_fma(-(dbLn2[1]), dN,
-                                                dR); // dR = dX - dN*Log2_hi/2^K
+                         dR); // dR = dX - dN*Log2_hi/2^K
     // VMuL( D, dOut[0], /*=*/ dbLn2[0], dN );
     // VMuL( D, dOut[1], /*=*/ dbLn2[1], dN );
     // VSUB_HL_HHL(D, dR, dAbsX, dOut);
@@ -656,21 +635,19 @@ double __ocl_svml_cosh_ha(double x) {
     /* poly(r) = Gmjp(1 + a2*r^2 + a4*r^4) + Gmjn*(r+ a3*r^3 +a5*r^5)       = */
     /*   = Gmjp_h +Gmjp_l+ Gmjp*r^2*(a2 + a4*r^2) + Gmjn*(r+ r^3*(a3 +a5*r^2) */
     dM = __spirv_ocl_fma(dPC[4], dR2,
-                                                dPC[2]); // dM=(a3 +a5*r^2)
+                         dPC[2]); // dM=(a3 +a5*r^2)
     dOut = __spirv_ocl_fma(dPC[3], dR2,
-                                                  dPC[1]); // dOut=(a2 + a4*r^2)
-    dM = (dM * dR2);     // dM=r^2*(a3 +a5*r^2)
-    dOut = (dOut * dR2); // dOut=r^2*(a2 + a4*r^2)
+                           dPC[1]); // dOut=(a2 + a4*r^2)
+    dM = (dM * dR2);                // dM=r^2*(a3 +a5*r^2)
+    dOut = (dOut * dR2);            // dOut=r^2*(a2 + a4*r^2)
     // test VMuL( D, dOut, /*=*/ dOut, dGmjp );//error gets big
-    dOut = __spirv_ocl_fma(
-        dOut, dGmjp, dTp[1]); // dOut=Gmjp*r^2*(a2 + a4*r^2)+Gmjp_l(1)
+    dOut = __spirv_ocl_fma(dOut, dGmjp, dTp[1]); // dOut=Gmjp*r^2*(a2 + a4*r^2)+Gmjp_l(1)
     dM = __spirv_ocl_fma(dM, dR,
-                                                dR); // dM= r + r^3*(a3 +a5*r^2)
-    dOut = __spirv_ocl_fma(
-        dM, dGmjn, dOut); // dOut=Gmjp*r^2*(a2 + a4*r^2)+Gmjp_l(1) + Gmjn*(r+
-                          // r^3*(a3 +a5*r^2)
-    dOut = (dOut + dTn); // dOut=Gmjp*r^2*(a2 + a4*r^2)+Gmjp_l(1) + Gmjn*(r+
-                         // r^3*(a3 +a5*r^2) + Gmjp_l(2)
+                         dR);                // dM= r + r^3*(a3 +a5*r^2)
+    dOut = __spirv_ocl_fma(dM, dGmjn, dOut); // dOut=Gmjp*r^2*(a2 + a4*r^2)+Gmjp_l(1) + Gmjn*(r+
+                                             // r^3*(a3 +a5*r^2)
+    dOut = (dOut + dTn);                     // dOut=Gmjp*r^2*(a2 + a4*r^2)+Gmjp_l(1) + Gmjn*(r+
+                                             // r^3*(a3 +a5*r^2) + Gmjp_l(2)
     /* ................... Ret H ...................... */
     vr1 = (dOut + dTp[0]); // Gmjp_h +Gmjp_l+ Gmjp*r^2*(a2 + a4*r^2) + Gmjn*(r+
                            // r^3*(a3 +a5*r^2)

@@ -9,31 +9,22 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-INLINE float OVERLOADABLE sinpi( float x )
-{
-    return __spirv_ocl_sinpi( x );
-}
+INLINE float OVERLOADABLE sinpi(float x) { return __spirv_ocl_sinpi(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sinpi, float, float )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(sinpi, float, float)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE sinpi( double x )
-{
-    return __spirv_ocl_sinpi( x );
-}
+INLINE double OVERLOADABLE sinpi(double x) { return __spirv_ocl_sinpi(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sinpi, double, double )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(sinpi, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE sinpi( half x )
-{
-    return __spirv_ocl_sinpi( x );
-}
+INLINE half OVERLOADABLE sinpi(half x) { return __spirv_ocl_sinpi(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sinpi, half, half )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(sinpi, half, half)
 
 #endif // defined(cl_khr_fp16)

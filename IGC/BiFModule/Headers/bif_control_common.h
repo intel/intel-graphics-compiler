@@ -24,8 +24,7 @@ SPDX-License-Identifier: MIT
 #define BIF_FLAG_CTRL_N_S(BIF_FLAG_N_S) STR(BIF_FLAG_CTRL_N(BIF_FLAG_N_S))
 
 // BiF flag control token check with value
-#define BIF_FLAG_CTRL_CHECK_EQ(BIF_FLAG_N, VALUE_CHECK) \
-    (BIF_FLAG_CTRL_N(BIF_FLAG_N) == VALUE_CHECK)
+#define BIF_FLAG_CTRL_CHECK_EQ(BIF_FLAG_N, VALUE_CHECK) (BIF_FLAG_CTRL_N(BIF_FLAG_N) == VALUE_CHECK)
 
 // Get BiF flag control token
 #define BIF_FLAG_CTRL_GET(BIF_FLAG_N) BIF_FLAG_CTRL_N(BIF_FLAG_N)

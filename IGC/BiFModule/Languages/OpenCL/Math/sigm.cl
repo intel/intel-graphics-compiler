@@ -9,37 +9,25 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-float OVERLOADABLE sigm( float x )
-{
-    return __spirv_ocl_sigm( x );
-}
+float OVERLOADABLE sigm(float x) { return __spirv_ocl_sigm(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sigm, float, float )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(sigm, float, float)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE sigm( half x )
-{
-    return __spirv_ocl_sigm( x );
-}
+INLINE half OVERLOADABLE sigm(half x) { return __spirv_ocl_sigm(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( sigm, half, half )
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(sigm, half, half)
 
 #endif // defined(cl_khr_fp16)
 
-float OVERLOADABLE intel_sigmoid(float x)
-{
-    return __spirv_ocl_sigm(x);
-}
+float OVERLOADABLE intel_sigmoid(float x) { return __spirv_ocl_sigm(x); }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(intel_sigmoid, float, float)
 
 #if defined(cl_khr_fp16)
 
-INLINE half OVERLOADABLE intel_sigmoid(half x)
-{
-    return __spirv_ocl_sigm(x);
-}
+INLINE half OVERLOADABLE intel_sigmoid(half x) { return __spirv_ocl_sigm(x); }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP(intel_sigmoid, half, half)
 

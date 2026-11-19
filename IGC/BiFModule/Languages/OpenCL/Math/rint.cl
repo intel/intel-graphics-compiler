@@ -9,21 +9,18 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( rint, float, float )
+GENERATE_VECTOR_FUNCTIONS_1ARG(rint, float, float)
 
 #if defined(cl_khr_fp64)
 
-INLINE double OVERLOADABLE rint( double x )
-{
-    return __spirv_ocl_rint( x );
-}
+INLINE double OVERLOADABLE rint(double x) { return __spirv_ocl_rint(x); }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( rint, double, double )
+GENERATE_VECTOR_FUNCTIONS_1ARG(rint, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( rint, half, half )
+GENERATE_VECTOR_FUNCTIONS_1ARG(rint, half, half)
 
 #endif // defined(cl_khr_fp16)

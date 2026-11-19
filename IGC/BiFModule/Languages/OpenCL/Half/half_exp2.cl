@@ -9,32 +9,14 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-INLINE float OVERLOADABLE half_exp2( float x )
-{
-    return __spirv_ocl_half_exp2( x );
-}
+INLINE float OVERLOADABLE half_exp2(float x) { return __spirv_ocl_half_exp2(x); }
 
-INLINE float2 OVERLOADABLE half_exp2( float2 x )
-{
-    return __spirv_ocl_half_exp2( x );
-}
+INLINE float2 OVERLOADABLE half_exp2(float2 x) { return __spirv_ocl_half_exp2(x); }
 
-INLINE float3 OVERLOADABLE half_exp2( float3 x )
-{
-    return __spirv_ocl_half_exp2( x );
-}
+INLINE float3 OVERLOADABLE half_exp2(float3 x) { return __spirv_ocl_half_exp2(x); }
 
-INLINE float4 OVERLOADABLE half_exp2( float4 x )
-{
-    return __spirv_ocl_half_exp2( x );
-}
+INLINE float4 OVERLOADABLE half_exp2(float4 x) { return __spirv_ocl_half_exp2(x); }
 
-INLINE float8 OVERLOADABLE half_exp2( float8 x )
-{
-    return __spirv_ocl_half_exp2( x );
-}
+INLINE float8 OVERLOADABLE half_exp2(float8 x) { return __spirv_ocl_half_exp2(x); }
 
-INLINE float16 OVERLOADABLE half_exp2( float16 x )
-{
-    return __spirv_ocl_half_exp2( x );
-}
+INLINE float16 OVERLOADABLE half_exp2(float16 x) { return __spirv_ocl_half_exp2(x); }

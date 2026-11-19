@@ -91,8 +91,7 @@ static __constant union {
   int s32[2];
   double f;
 } __dexp2_ep_thres = {0x408ff00000000000uL};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_dexp2_ep(double *a, double *r) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_dexp2_ep(double *a, double *r) {
   int nRet = 0;
   double x = *a;
   union {
@@ -107,8 +106,7 @@ __ocl_svml_internal_dexp2_ep(double *a, double *r) {
   dS.f = x + __dexp2_ep_Shifter.f;
   dN = dS.f - __dexp2_ep_Shifter.f;
   R = x - dN;
-  poly = __spirv_ocl_fma(__dexp2_ep_c9.f, R,
-                                                __dexp2_ep_c8.f);
+  poly = __spirv_ocl_fma(__dexp2_ep_c9.f, R, __dexp2_ep_c8.f);
   poly = __spirv_ocl_fma(poly, R, __dexp2_ep_c7.f);
   poly = __spirv_ocl_fma(poly, R, __dexp2_ep_c6.f);
   poly = __spirv_ocl_fma(poly, R, __dexp2_ep_c5.f);

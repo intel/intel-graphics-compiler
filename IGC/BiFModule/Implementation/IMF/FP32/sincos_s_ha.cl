@@ -66,11 +66,9 @@ static __constant union {
   float f;
   int i;
 } __ssincos_ha___cs0l = {0xb3d195e9u};
-static __constant unsigned int __ssincos_ha_invpi_tbl[] = {
-    0,          0x28BE60DB, 0x9391054A, 0x7F09D5F4,
-    0x7D4D3770, 0x36D8A566, 0x4F10E410, 0x7F9458EA};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_ssincos_ha(float *pa, float *psin, float *pcos) {
+static __constant unsigned int __ssincos_ha_invpi_tbl[] = {0,          0x28BE60DB, 0x9391054A, 0x7F09D5F4,
+                                                           0x7D4D3770, 0x36D8A566, 0x4F10E410, 0x7F9458EA};
+__attribute__((always_inline)) inline int __ocl_svml_internal_ssincos_ha(float *pa, float *psin, float *pcos) {
   int nRet = 0;
   float xin = *pa;
   unsigned long IP, IP2;
@@ -105,18 +103,12 @@ __ocl_svml_internal_ssincos_ha(float *pa, float *psin, float *pcos) {
     // expon % 32
     j = ex & 0x1f;
     // x/Pi, scaled by 2^(63-j)
-    ip_low =
-        (((unsigned int)__ssincos_ha_invpi_tbl[index]) * ((unsigned int)mx));
-    IP = (((unsigned long)((unsigned int)(__ssincos_ha_invpi_tbl[index + 1]))) *
-          ((unsigned int)(mx))) +
+    ip_low = (((unsigned int)__ssincos_ha_invpi_tbl[index]) * ((unsigned int)mx));
+    IP = (((unsigned long)((unsigned int)(__ssincos_ha_invpi_tbl[index + 1]))) * ((unsigned int)(mx))) +
          (((unsigned long)ip_low) << 32);
     // scaled by 2^(95-j)
-    IP2 =
-        (((unsigned long)((unsigned int)(__ssincos_ha_invpi_tbl[index + 2]))) *
-         ((unsigned int)(mx))) +
-        ((((unsigned long)((unsigned int)(__ssincos_ha_invpi_tbl[index + 3]))) *
-          ((unsigned int)(mx))) >>
-         32);
+    IP2 = (((unsigned long)((unsigned int)(__ssincos_ha_invpi_tbl[index + 2]))) * ((unsigned int)(mx))) +
+          ((((unsigned long)((unsigned int)(__ssincos_ha_invpi_tbl[index + 3]))) * ((unsigned int)(mx))) >> 32);
     IP = IP + (IP2 >> 32);
     // scale 2^63
     IP <<= j;
@@ -171,29 +163,20 @@ __ocl_svml_internal_ssincos_ha(float *pa, float *psin, float *pcos) {
     R2l = __spirv_ocl_fma(Rl.f, Rh.f, R2l);
     R2l = __spirv_ocl_fma(Rh.f, Rl.f, R2l);
   };
-  cpoly.f = __spirv_ocl_fma(__ssincos_ha___cc4.f, R2h,
-                                                   __ssincos_ha___cc3.f);
-  spoly.f = __spirv_ocl_fma(__ssincos_ha___cs3.f, R2h,
-                                                   __ssincos_ha___cs2.f);
-  cpoly.f = __spirv_ocl_fma(cpoly.f, R2h,
-                                                   __ssincos_ha___cc2.f);
-  cpoly_l.f =
-      __spirv_ocl_fma(R2l, __ssincos_ha___cc1.f, 0.0f);
-  spoly.f = __spirv_ocl_fma(spoly.f, R2h,
-                                                   __ssincos_ha___cs1.f);
-  cpoly.f = __spirv_ocl_fma(cpoly.f, R2h,
-                                                   __ssincos_ha___cc1l.f);
-  spoly.f = __spirv_ocl_fma(spoly.f, R2h,
-                                                   __ssincos_ha___cs0l.f);
+  cpoly.f = __spirv_ocl_fma(__ssincos_ha___cc4.f, R2h, __ssincos_ha___cc3.f);
+  spoly.f = __spirv_ocl_fma(__ssincos_ha___cs3.f, R2h, __ssincos_ha___cs2.f);
+  cpoly.f = __spirv_ocl_fma(cpoly.f, R2h, __ssincos_ha___cc2.f);
+  cpoly_l.f = __spirv_ocl_fma(R2l, __ssincos_ha___cc1.f, 0.0f);
+  spoly.f = __spirv_ocl_fma(spoly.f, R2h, __ssincos_ha___cs1.f);
+  cpoly.f = __spirv_ocl_fma(cpoly.f, R2h, __ssincos_ha___cc1l.f);
+  spoly.f = __spirv_ocl_fma(spoly.f, R2h, __ssincos_ha___cs0l.f);
   // cc0 + cc1*R2h
   Ph = __spirv_ocl_fma(R2h, __ssincos_ha___cc1.f, 0.0f);
   Pl = __spirv_ocl_fma(R2h, __ssincos_ha___cc1.f, -Ph);
   {
     float __ph, __ahl, __ahh;
-    __ph =
-        __spirv_ocl_fma(Ph, 1.0f, __ssincos_ha___cc0.f);
-    __ahh = __spirv_ocl_fma(__ph, 1.0f,
-                                                   -__ssincos_ha___cc0.f);
+    __ph = __spirv_ocl_fma(Ph, 1.0f, __ssincos_ha___cc0.f);
+    __ahh = __spirv_ocl_fma(__ph, 1.0f, -__ssincos_ha___cc0.f);
     __ahl = __spirv_ocl_fma(Ph, 1.0f, -__ahh);
     Pl = Pl + __ahl;
     Ph = __ph;
@@ -202,10 +185,8 @@ __ocl_svml_internal_ssincos_ha(float *pa, float *psin, float *pcos) {
   cpoly.f = __spirv_ocl_fma(cpoly.f, R2h, cpoly_l.f);
   cpoly.f = __spirv_ocl_fma(cpoly.f, 1.0f, Ph);
   sgn_p = sgn_xp & 0x80000000;
-  High =
-      __spirv_ocl_fma(Rh.f, __ssincos_ha___cs0.f, 0.0f);
-  Low =
-      __spirv_ocl_fma(Rh.f, __ssincos_ha___cs0.f, -High);
+  High = __spirv_ocl_fma(Rh.f, __ssincos_ha___cs0.f, 0.0f);
+  Low = __spirv_ocl_fma(Rh.f, __ssincos_ha___cs0.f, -High);
   Low = __spirv_ocl_fma(Rl.f, __ssincos_ha___cs0.f, Low);
   Low = __spirv_ocl_fma(Rh.f, spoly.f, Low);
   spoly.f = __spirv_ocl_fma(High, 1.0f, Low);

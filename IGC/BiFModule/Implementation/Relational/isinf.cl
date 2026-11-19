@@ -9,26 +9,22 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-INLINE int OVERLOADABLE __intel_relaxed_isinf( float x )
-{
-    int result = __spirv_IsInf(x);
-    // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
-    return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 0 : result;
+INLINE int OVERLOADABLE __intel_relaxed_isinf(float x) {
+  int result = __spirv_IsInf(x);
+  // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
+  return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 0 : result;
 }
 
 #if defined(cl_khr_fp64)
-INLINE int OVERLOADABLE __intel_relaxed_isinf( double x )
-{
-    int result = __spirv_IsInf(x);
-    // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
-    return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 0 : result;
+INLINE int OVERLOADABLE __intel_relaxed_isinf(double x) {
+  int result = __spirv_IsInf(x);
+  // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
+  return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 0 : result;
 }
 #endif // defined(cl_khr_fp64)
 
-INLINE int OVERLOADABLE __intel_relaxed_isinf( half x )
-{
-    int result = __spirv_IsInf(x);
-    // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
-    return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 0 : result;
+INLINE int OVERLOADABLE __intel_relaxed_isinf(half x) {
+  int result = __spirv_IsInf(x);
+  // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
+  return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 0 : result;
 }
-

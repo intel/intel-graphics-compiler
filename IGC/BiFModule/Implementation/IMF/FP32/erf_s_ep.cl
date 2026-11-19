@@ -69,8 +69,7 @@ static __constant union {
   float f;
   int i;
 } __serf_ep___a0 = {0x3f800000u};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_serf_ep(float *a, float *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_serf_ep(float *a, float *pres) {
   int nRet = 0;
   float xin = *a;
   union {
@@ -96,26 +95,16 @@ __ocl_svml_internal_serf_ep(float *a, float *pres) {
   // fixup for NaNs
   dR = (xa.w > 0x7f800000uL) ? xa.f : dR;
   // polynomial evaluation
-  bpoly.f = __spirv_ocl_fma(__serf_ep___b5.f, dR2,
-                                                   __serf_ep___b4.f);
-  apoly.f = __spirv_ocl_fma(__serf_ep___a5.f, dR2,
-                                                   __serf_ep___a4.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __serf_ep___b3.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __serf_ep___a3.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __serf_ep___b2.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __serf_ep___a2.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __serf_ep___b1.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __serf_ep___a1.f);
-  bpoly.f =
-      __spirv_ocl_fma(bpoly.f, dR2, __serf_ep___b0.f);
-  apoly.f =
-      __spirv_ocl_fma(apoly.f, dR2, __serf_ep___a0.f);
+  bpoly.f = __spirv_ocl_fma(__serf_ep___b5.f, dR2, __serf_ep___b4.f);
+  apoly.f = __spirv_ocl_fma(__serf_ep___a5.f, dR2, __serf_ep___a4.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __serf_ep___b3.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __serf_ep___a3.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __serf_ep___b2.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __serf_ep___a2.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __serf_ep___b1.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __serf_ep___a1.f);
+  bpoly.f = __spirv_ocl_fma(bpoly.f, dR2, __serf_ep___b0.f);
+  apoly.f = __spirv_ocl_fma(apoly.f, dR2, __serf_ep___a0.f);
   Y.f = 1.0f / apoly.f;
   bpoly.f = __spirv_ocl_fma(bpoly.f, dR, 0.0f);
   res.f = __spirv_ocl_fma(bpoly.f, Y.f, 0.0f);

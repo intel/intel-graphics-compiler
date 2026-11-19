@@ -9,32 +9,25 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "spirv.h"
 
-float OVERLOADABLE hypot( float x, float y )
-{
-    return __spirv_ocl_hypot( x, y );
-}
+float OVERLOADABLE hypot(float x, float y) { return __spirv_ocl_hypot(x, y); }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( hypot, float, float, float )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP(hypot, float, float, float)
 
 #if defined(cl_khr_fp64)
 
-double OVERLOADABLE hypot( double x, double y )
-{
-    return __spirv_ocl_hypot( x, y );
-}
+double OVERLOADABLE hypot(double x, double y) { return __spirv_ocl_hypot(x, y); }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( hypot, double, double, double )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP(hypot, double, double, double)
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-half OVERLOADABLE hypot( half x, half y )
-{
-    // __builtin_spirv_OpenCL_hypot_f16_f16 is not precise enough, so we use f32
-    return __spirv_ocl_hypot( x, y );
+half OVERLOADABLE hypot(half x, half y) {
+  // __builtin_spirv_OpenCL_hypot_f16_f16 is not precise enough, so we use f32
+  return __spirv_ocl_hypot(x, y);
 }
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( hypot, half, half, half )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP(hypot, half, half, half)
 
 #endif // defined(cl_khr_fp16)

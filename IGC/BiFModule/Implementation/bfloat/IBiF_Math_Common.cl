@@ -6,8 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-
-OVERLOADABLE int __intel_relaxed_isnan(bfloat x );
+OVERLOADABLE int __intel_relaxed_isnan(bfloat x);
 
 // Common
 #include "Common/degrees.cl"

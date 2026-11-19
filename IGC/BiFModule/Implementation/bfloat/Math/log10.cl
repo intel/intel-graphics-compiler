@@ -9,9 +9,8 @@ SPDX-License-Identifier: MIT
 #include "include/BiF_Definitions.cl"
 #include "spirv_bfloat.h"
 
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_log10( bfloat x )
-{
-    return (bfloat)(__spirv_ocl_log10((float)x));
+INLINE bfloat __attribute__((overloadable)) __spirv_ocl_log10(bfloat x) {
+  return (bfloat)(__spirv_ocl_log10((float)x));
 }
 
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log10, bfloat, bfloat, )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP(log10, bfloat, bfloat, )

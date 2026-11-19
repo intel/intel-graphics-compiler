@@ -10,8 +10,8 @@ SPDX-License-Identifier: MIT
 #include "spirv_bfloat.h"
 
 INLINE
-bfloat __attribute__((overloadable)) __spirv_ocl_native_rsqrt(bfloat x ){
-    return __spirv_ocl_native_recip(__spirv_ocl_native_sqrt(x));
+bfloat __attribute__((overloadable)) __spirv_ocl_native_rsqrt(bfloat x) {
+  return __spirv_ocl_native_recip(__spirv_ocl_native_sqrt(x));
 }
 
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_rsqrt, bfloat, bfloat, )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS(native_rsqrt, bfloat, bfloat, )

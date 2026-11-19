@@ -33,9 +33,7 @@ THE SOFTWARE.
 #include "../../include/BiF_Definitions.cl"
 #include "../../../Headers/spirv.h"
 
-float __attribute__((overloadable)) __spirv_ocl_length(float p) {
-  return __spirv_ocl_fabs(p);
-}
+float __attribute__((overloadable)) __spirv_ocl_length(float p) { return __spirv_ocl_fabs(p); }
 
 float __attribute__((overloadable)) __spirv_ocl_length(float2 p) {
   float l2 = __spirv_Dot(p, p);
@@ -78,18 +76,16 @@ float __attribute__((overloadable)) __spirv_ocl_length(float4 p) {
 #ifdef cl_khr_fp64
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
-double __attribute__((overloadable)) __spirv_ocl_length(double p){
-  return __spirv_ocl_fabs(p);
-}
+double __attribute__((overloadable)) __spirv_ocl_length(double p) { return __spirv_ocl_fabs(p); }
 
 double __attribute__((overloadable)) __spirv_ocl_length(double2 p) {
   double l2 = __spirv_Dot(p, p);
   if (l2 < DBL_MIN) {
-      p *= 0x1.0p+563;
-      return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * 0x1.0p-563;
+    p *= 0x1.0p+563;
+    return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * 0x1.0p-563;
   } else if (__intel_relaxed_isinf(l2)) {
-      p *= 0x1.0p-513;
-      return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * 0x1.0p+513;
+    p *= 0x1.0p-513;
+    return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * 0x1.0p+513;
   }
   return __spirv_ocl_sqrt(l2);
 }
@@ -97,11 +93,11 @@ double __attribute__((overloadable)) __spirv_ocl_length(double2 p) {
 double __attribute__((overloadable)) __spirv_ocl_length(double3 p) {
   double l2 = __spirv_Dot(p, p);
   if (l2 < DBL_MIN) {
-      p *= 0x1.0p+563;
-      return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * 0x1.0p-563;
+    p *= 0x1.0p+563;
+    return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * 0x1.0p-563;
   } else if (__intel_relaxed_isinf(l2)) {
-      p *= 0x1.0p-513;
-      return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * 0x1.0p+513;
+    p *= 0x1.0p-513;
+    return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * 0x1.0p+513;
   }
   return __spirv_ocl_sqrt(l2);
 }
@@ -109,11 +105,11 @@ double __attribute__((overloadable)) __spirv_ocl_length(double3 p) {
 double __attribute__((overloadable)) __spirv_ocl_length(double4 p) {
   double l2 = __spirv_Dot(p, p);
   if (l2 < DBL_MIN) {
-      p *= 0x1.0p+563;
-      return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * 0x1.0p-563;
+    p *= 0x1.0p+563;
+    return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * 0x1.0p-563;
   } else if (__intel_relaxed_isinf(l2)) {
-      p *= 0x1.0p-513;
-      return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * 0x1.0p+513;
+    p *= 0x1.0p-513;
+    return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * 0x1.0p+513;
   }
   return __spirv_ocl_sqrt(l2);
 }
@@ -123,18 +119,16 @@ double __attribute__((overloadable)) __spirv_ocl_length(double4 p) {
 #ifdef cl_khr_fp16
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
 
-half __attribute__((overloadable)) __spirv_ocl_length(half p){
-  return __spirv_ocl_fabs(p);
-}
+half __attribute__((overloadable)) __spirv_ocl_length(half p) { return __spirv_ocl_fabs(p); }
 
 half __attribute__((overloadable)) __spirv_ocl_length(half2 p) {
   half l2 = __spirv_Dot(p, p);
   if (l2 < HALF_MIN) {
-      p *= HALF_MAX_SQRT;
-      return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * HALF_MIN_SQRT;
+    p *= HALF_MAX_SQRT;
+    return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * HALF_MIN_SQRT;
   } else if (__intel_relaxed_isinf(l2)) {
-      p *= HALF_MIN_SQRT;
-      return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * HALF_MAX_SQRT;
+    p *= HALF_MIN_SQRT;
+    return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * HALF_MAX_SQRT;
   }
   return __spirv_ocl_sqrt(l2);
 }
@@ -142,11 +136,11 @@ half __attribute__((overloadable)) __spirv_ocl_length(half2 p) {
 half __attribute__((overloadable)) __spirv_ocl_length(half3 p) {
   half l2 = __spirv_Dot(p, p);
   if (l2 < HALF_MIN) {
-      p *= HALF_MAX_SQRT;
-      return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * HALF_MIN_SQRT;
+    p *= HALF_MAX_SQRT;
+    return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * HALF_MIN_SQRT;
   } else if (__intel_relaxed_isinf(l2)) {
-      p *= HALF_MIN_SQRT;
-      return __spirv_ocl_sqrt(__spirv_Dot(p, p)) *HALF_MAX_SQRT;
+    p *= HALF_MIN_SQRT;
+    return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * HALF_MAX_SQRT;
   }
   return __spirv_ocl_sqrt(l2);
 }
@@ -154,14 +148,13 @@ half __attribute__((overloadable)) __spirv_ocl_length(half3 p) {
 half __attribute__((overloadable)) __spirv_ocl_length(half4 p) {
   half l2 = __spirv_Dot(p, p);
   if (l2 < HALF_MIN) {
-      p *= HALF_MAX_SQRT;
-      return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * HALF_MIN_SQRT;
+    p *= HALF_MAX_SQRT;
+    return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * HALF_MIN_SQRT;
   } else if (__intel_relaxed_isinf(l2)) {
-      p *= HALF_MIN_SQRT;
-      return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * HALF_MAX_SQRT;
+    p *= HALF_MIN_SQRT;
+    return __spirv_ocl_sqrt(__spirv_Dot(p, p)) * HALF_MAX_SQRT;
   }
   return __spirv_ocl_sqrt(l2);
 }
 
 #endif
-

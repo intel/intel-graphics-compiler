@@ -10,8 +10,6 @@ SPDX-License-Identifier: MIT
 #include "spirv_bfloat.h"
 
 INLINE
-bfloat __attribute__((overloadable)) __spirv_ocl_native_tan(bfloat x) {
-    return __spirv_ocl_native_tan((float)x);
-}
+bfloat __attribute__((overloadable)) __spirv_ocl_native_tan(bfloat x) { return __spirv_ocl_native_tan((float)x); }
 
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_tan, bfloat, bfloat, )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS(native_tan, bfloat, bfloat, )

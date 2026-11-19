@@ -456,8 +456,7 @@ static __constant union {
   int s32[2];
   double f;
 } __derf_ha___r40 = {0xBD7B0C1B6D3B24ADuL};
-__attribute__((always_inline)) inline int
-__ocl_svml_internal_derf_ha(double *a, double *pres) {
+__attribute__((always_inline)) inline int __ocl_svml_internal_derf_ha(double *a, double *pres) {
   int nRet = 0;
   double xin = *a;
   union {
@@ -476,30 +475,18 @@ __ocl_svml_internal_derf_ha(double *a, double *pres) {
     if (xa.f < .875) {
       dR2 = __spirv_ocl_fma(xa.f, xa.f, 0.0);
       // polynomial evaluation
-      cpoly.f = __spirv_ocl_fma(__derf_ha___c12.f, dR2,
-                                                       __derf_ha___c11.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___c10.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___c9.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___c8.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___c7.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___c6.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___c5.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___c4.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___c3.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___c2.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___c1.f);
-      res.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                     __derf_ha___c0.f);
+      cpoly.f = __spirv_ocl_fma(__derf_ha___c12.f, dR2, __derf_ha___c11.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___c10.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___c9.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___c8.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___c7.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___c6.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___c5.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___c4.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___c3.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___c2.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___c1.f);
+      res.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___c0.f);
       res.f = __spirv_ocl_fma(res.f, xin, xin);
       *pres = res.f;
       return nRet;
@@ -507,50 +494,28 @@ __ocl_svml_internal_derf_ha(double *a, double *pres) {
     {
       dR2 = xa.f - 1.6875;
       // polynomial evaluation
-      cpoly.f = __spirv_ocl_fma(__derf_ha___r222.f, dR2,
-                                                       __derf_ha___r221.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r220.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r219.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r218.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r217.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r216.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r215.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r214.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r213.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r212.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r211.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r210.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r29.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r28.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r27.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r26.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r25.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r24.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r23.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r22.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r21.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r20.f);
+      cpoly.f = __spirv_ocl_fma(__derf_ha___r222.f, dR2, __derf_ha___r221.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r220.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r219.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r218.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r217.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r216.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r215.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r214.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r213.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r212.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r211.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r210.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r29.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r28.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r27.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r26.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r25.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r24.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r23.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r22.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r21.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r20.f);
       res.f = cpoly.f + 1.0;
       res.w ^= sgn_x;
       *pres = res.f;
@@ -561,44 +526,25 @@ __ocl_svml_internal_derf_ha(double *a, double *pres) {
     if (xa.f < 4.0) {
       dR2 = xa.f - 3.25;
       // polynomial evaluation
-      cpoly.f = __spirv_ocl_fma(__derf_ha___r319.f, dR2,
-                                                       __derf_ha___r318.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r317.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r316.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r315.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r314.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r313.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r312.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r311.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r310.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r39.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r38.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r37.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r36.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r35.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r34.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r33.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r32.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r31.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r30.f);
+      cpoly.f = __spirv_ocl_fma(__derf_ha___r319.f, dR2, __derf_ha___r318.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r317.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r316.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r315.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r314.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r313.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r312.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r311.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r310.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r39.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r38.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r37.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r36.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r35.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r34.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r33.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r32.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r31.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r30.f);
       res.f = cpoly.f + 1.0;
       res.w ^= sgn_x;
       *pres = res.f;
@@ -609,40 +555,23 @@ __ocl_svml_internal_derf_ha(double *a, double *pres) {
       dR = (xa.w <= 0x7ff0000000000000uL) ? dR : xa.f;
       dR2 = dR - 5.0;
       // polynomial evaluation
-      cpoly.f = __spirv_ocl_fma(__derf_ha___r417.f, dR2,
-                                                       __derf_ha___r416.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r415.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r414.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r413.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r412.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r411.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r410.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r49.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r48.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r47.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r46.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r45.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r44.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r43.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r42.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r41.f);
-      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2,
-                                                       __derf_ha___r40.f);
+      cpoly.f = __spirv_ocl_fma(__derf_ha___r417.f, dR2, __derf_ha___r416.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r415.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r414.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r413.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r412.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r411.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r410.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r49.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r48.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r47.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r46.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r45.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r44.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r43.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r42.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r41.f);
+      cpoly.f = __spirv_ocl_fma(cpoly.f, dR2, __derf_ha___r40.f);
       res.f = cpoly.f + 1.0;
       res.w ^= sgn_x;
       *pres = res.f;

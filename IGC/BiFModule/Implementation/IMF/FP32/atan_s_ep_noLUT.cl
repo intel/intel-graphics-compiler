@@ -26,77 +26,68 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../imf.h"
 #pragma OPENCL FP_CONTRACT OFF
 
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __satan_ep_nolut_c4 = { 0xbca5054fu };
+static __constant union {
+  unsigned int w;
+  float f;
+} __satan_ep_nolut_c4 = {0xbca5054fu};
 
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __satan_ep_nolut_c3 = { 0x3e49099du };
+static __constant union {
+  unsigned int w;
+  float f;
+} __satan_ep_nolut_c3 = {0x3e49099du};
 
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __satan_ep_nolut_c2 = { 0xbecbaf63u };
+static __constant union {
+  unsigned int w;
+  float f;
+} __satan_ep_nolut_c2 = {0xbecbaf63u};
 
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __satan_ep_nolut_c1 = { 0x3bef4e52u };
+static __constant union {
+  unsigned int w;
+  float f;
+} __satan_ep_nolut_c1 = {0x3bef4e52u};
 
-static __constant union
-{
-    unsigned int w;
-    float f;
-} __satan_ep_nolut_c0 = { 0x3f7ff759u };
+static __constant union {
+  unsigned int w;
+  float f;
+} __satan_ep_nolut_c0 = {0x3f7ff759u};
 
-__attribute__((always_inline))
-inline int __internal_satan_ep_nolut_cout (float *pxin, float *pres)
-{
-    int nRet = 0;
-    float xin = *pxin;
-    {
-        union
-        {
-            unsigned int w;
-            float f;
-        } x, xa, hcorr, ya, R0, sres;
-        int sgn_x, smask, sgn_r, diff;
-        float poly, R;
-        x.f = xin;
-        xa.w = x.w & 0x7fffffffu;
-        sgn_x = x.w ^ xa.w;
-        ya.f = 1.0f / (xa.f);
-        diff = ya.w - xa.w;
-        smask = ((int) diff) >> 31;
-        hcorr.w = smask & 0xbfc90FDB;
-        sgn_r = sgn_x ^ (smask & 0x80000000u);
-        R0.w = xa.w + (diff & smask);
-        R = R0.f;
-        poly = __spirv_ocl_fma(__satan_ep_nolut_c4.f,R,__satan_ep_nolut_c3.f);
-        poly = __spirv_ocl_fma(poly,R,__satan_ep_nolut_c2.f);
-        poly = __spirv_ocl_fma(poly,R,__satan_ep_nolut_c1.f);
-        poly = __spirv_ocl_fma(poly,R,__satan_ep_nolut_c0.f);
-        sres.f = __spirv_ocl_fma(poly,R0.f,hcorr.f);
-        sres.w = sres.w ^ sgn_r;
-        *pres = sres.f;
-    }
-    return nRet;
+__attribute__((always_inline)) inline int __internal_satan_ep_nolut_cout(float *pxin, float *pres) {
+  int nRet = 0;
+  float xin = *pxin;
+  {
+    union {
+      unsigned int w;
+      float f;
+    } x, xa, hcorr, ya, R0, sres;
+    int sgn_x, smask, sgn_r, diff;
+    float poly, R;
+    x.f = xin;
+    xa.w = x.w & 0x7fffffffu;
+    sgn_x = x.w ^ xa.w;
+    ya.f = 1.0f / (xa.f);
+    diff = ya.w - xa.w;
+    smask = ((int)diff) >> 31;
+    hcorr.w = smask & 0xbfc90FDB;
+    sgn_r = sgn_x ^ (smask & 0x80000000u);
+    R0.w = xa.w + (diff & smask);
+    R = R0.f;
+    poly = __spirv_ocl_fma(__satan_ep_nolut_c4.f, R, __satan_ep_nolut_c3.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ep_nolut_c2.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ep_nolut_c1.f);
+    poly = __spirv_ocl_fma(poly, R, __satan_ep_nolut_c0.f);
+    sres.f = __spirv_ocl_fma(poly, R0.f, hcorr.f);
+    sres.w = sres.w ^ sgn_r;
+    *pres = sres.f;
+  }
+  return nRet;
 }
 
-float __ocl_svml_atanf_ep_noLUT (float a)
-{
-    float va1;
-    float vr1;
-    float r;
-    va1 = a;
-    __internal_satan_ep_nolut_cout (&va1, &vr1);
-    r = vr1;
-    return r;
+float __ocl_svml_atanf_ep_noLUT(float a) {
+  float va1;
+  float vr1;
+  float r;
+  va1 = a;
+  __internal_satan_ep_nolut_cout(&va1, &vr1);
+  r = vr1;
+  return r;
 }

@@ -29,6 +29,6 @@ SPDX-License-Identifier: MIT
 #define OPTNONE __attribute__((optnone))
 #define OVERLOADABLE __attribute__((overloadable))
 
-//Undef cl_khr_fp64 since native fp64 builtins are not supported. For double support we need to use the placeholder.
+// Undef cl_khr_fp64 since native fp64 builtins are not supported. For double support we need to use the placeholder.
 
 #endif //_IBIF_HEADER_

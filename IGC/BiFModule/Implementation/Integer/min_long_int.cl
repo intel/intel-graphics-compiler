@@ -9,7 +9,3 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 
 // Functions have been moved to IGILBiF_Intrinsics_Impl.cl since they had intrinsics call.
-
-
-
-

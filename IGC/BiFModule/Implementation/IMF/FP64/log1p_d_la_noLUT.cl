@@ -26,39 +26,38 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../imf.h"
 #pragma OPENCL FP_CONTRACT OFF
-typedef struct
-{
-    unsigned long OneEighth;
-    unsigned long ExpMask;
-    unsigned long ExpInv;
-    unsigned long OneHalf;
-    unsigned long Eight;
-    unsigned long ConvExp;
-    unsigned long ConvConst;
-    unsigned long One;
-    unsigned long Shifter;
-    unsigned long ThreeQuarters;
-    unsigned long CoeffD7;
-    unsigned long CoeffD6;
-    unsigned long CoeffD5;
-    unsigned long CoeffD4;
-    unsigned long CoeffD3;
-    unsigned long CoeffD2;
-    unsigned long CoeffP12;
-    unsigned long CoeffP11;
-    unsigned long CoeffP10;
-    unsigned long CoeffP9;
-    unsigned long CoeffP8;
-    unsigned long CoeffP7;
-    unsigned long CoeffP6;
-    unsigned long CoeffP5;
-    unsigned long CoeffP4;
-    unsigned long CoeffP3;
-    unsigned long CoeffP2;
-    unsigned long LogTwoHi;
-    unsigned long LogTwoLo;
-    unsigned long MinArg;
-    unsigned long MaxArg;
+typedef struct {
+  unsigned long OneEighth;
+  unsigned long ExpMask;
+  unsigned long ExpInv;
+  unsigned long OneHalf;
+  unsigned long Eight;
+  unsigned long ConvExp;
+  unsigned long ConvConst;
+  unsigned long One;
+  unsigned long Shifter;
+  unsigned long ThreeQuarters;
+  unsigned long CoeffD7;
+  unsigned long CoeffD6;
+  unsigned long CoeffD5;
+  unsigned long CoeffD4;
+  unsigned long CoeffD3;
+  unsigned long CoeffD2;
+  unsigned long CoeffP12;
+  unsigned long CoeffP11;
+  unsigned long CoeffP10;
+  unsigned long CoeffP9;
+  unsigned long CoeffP8;
+  unsigned long CoeffP7;
+  unsigned long CoeffP6;
+  unsigned long CoeffP5;
+  unsigned long CoeffP4;
+  unsigned long CoeffP3;
+  unsigned long CoeffP2;
+  unsigned long LogTwoHi;
+  unsigned long LogTwoLo;
+  unsigned long MinArg;
+  unsigned long MaxArg;
 } __internal_dlog1p_la_noLUT_data_t;
 static __constant __internal_dlog1p_la_noLUT_data_t __internal_dlog1p_la_noLUT_data = {
     // OneEighth = 0.125
@@ -82,23 +81,11 @@ static __constant __internal_dlog1p_la_noLUT_data_t __internal_dlog1p_la_noLUT_d
     // ThreeQuarters = 0.75
     0x3fe8000000000000uL,
     // Coefficients for polynomial d
-    0x3fd2d69f78622232uL,
-    0x3fc2896ff3f66bbduL,
-    0x3fc8c588ce05a097uL,
-    0x3fd013265a806008uL,
-    0x3fd55613246dd7cfuL,
+    0x3fd2d69f78622232uL, 0x3fc2896ff3f66bbduL, 0x3fc8c588ce05a097uL, 0x3fd013265a806008uL, 0x3fd55613246dd7cfuL,
     0x3fdfffdc599639e8uL,
     // Coefficients for polynomial p
-    0xbfbabc3280883f85uL,
-    0x3fb7569b705ccf22uL,
-    0xbfb98321c986c73fuL,
-    0x3fbc725277fd96beuL,
-    0xbfc00011b12ec07fuL,
-    0x3fc2492404508eb2uL,
-    0xbfc5555548c81da2uL,
-    0x3fc9999999f242c7uL,
-    0xbfd000000001dd61uL,
-    0x3fd5555555554d65uL,
+    0xbfbabc3280883f85uL, 0x3fb7569b705ccf22uL, 0xbfb98321c986c73fuL, 0x3fbc725277fd96beuL, 0xbfc00011b12ec07fuL,
+    0x3fc2492404508eb2uL, 0xbfc5555548c81da2uL, 0x3fc9999999f242c7uL, 0xbfd000000001dd61uL, 0x3fd5555555554d65uL,
     0xbfdfffffffffffd9uL,
     // Log2hi ~= log(2) (high part)
     0x3fe62e42fefa4000uL,
@@ -107,8 +94,7 @@ static __constant __internal_dlog1p_la_noLUT_data_t __internal_dlog1p_la_noLUT_d
     // MinArg
     0xbfefffffffffffffuL,
     // MaxArg
-    0x7fefffffffffffffuL
-};
+    0x7fefffffffffffffuL};
 
 /* Macros to access other precomputed constants */
 /* Table look-up: all DP constants are presented in hexadecimal form */
@@ -320,12 +306,11 @@ static __constant _iml_v2_dp_union_t __dlog1p_la_nolut_CoutTab[210] = {
     /* Scale for denormalized arguments */
     0x00000000, 0x43B00000, /* DENORM_SCALE = 2^60 */
     /* Double precision constants: 0.0, 1.0 */
-    0x00000000, 0x00000000,
-    0x00000000, 0x3FF00000,
-/*
-//      Coefficients for (ln(1+u) - u)/u^2 approximation by
-//        polynomial p0(u)
-*/
+    0x00000000, 0x00000000, 0x00000000, 0x3FF00000,
+    /*
+    //      Coefficients for (ln(1+u) - u)/u^2 approximation by
+    //        polynomial p0(u)
+    */
     0x00000000, 0xBFE00000, /* A0 = -.500000000000000 */
     0x55555613, 0x3FD55555, /* A1 =  .333333333333344 */
     0x00000262, 0xBFD00000, /* A2 = -.250000000000034 */
@@ -341,420 +326,420 @@ static __constant _iml_v2_dp_union_t __dlog1p_la_nolut_CoutTab[210] = {
 //   natural logarithm function starts here.
 //
 */
-__attribute__((always_inline))
-inline int __ocl_svml_internal_dlog1p_noLUT_cout (double *a0, double *r)
-{
-    double x, y, u, da, *a = (&da);
-    double dbP;
-    double dbAbsU;
-    double dbN, dbNLn2Hi, dbNLn2Lo;
-    double dbRcprY, dbLnRcprYHi, dbLnRcprYLo, dbWHi, dbWLo;
-    double dbYHi, dbYLo, dbUHi, dbuLo, dbResHi, dbResLo;
-    double dbTmp;
-    int iN, j;
-    int i;
-    int nRet = 0;
-    (*a) = (*a0) + 1.0;
-    /* Filter out Infs and NaNs */
-    if ((((((_iml_v2_dp_union_t *) & a[0])->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))
-    {
-        /* Here if argument is finite double precision number */
-/*
-//          Copy argument into temporary variable x,
-//            and initially set iN equal to 0
-*/
-        x = a[0];
-        iN = 0;
-        /* Check if x is denormalized number or [+/-]0 */
-        if (((((_iml_v2_dp_union_t *) & x)->dwords.hi_dword >> 20) & 0x7FF) == 0)
-        {
-            /* Here if argument is denormalized or [+/-]0 */
-            /* Scale x and properly adjust iN */
-            x *= ((__constant double *) __dlog1p_la_nolut_CoutTab)[200];
-            iN -= 60;
-        }
-        /* Starting from this point x is finite normalized number */
-        if (x > ((__constant double *) __dlog1p_la_nolut_CoutTab)[201])
-        {
-            /* Here if x is positive finite normalized number */
-            /* Get absolute value of u=x-1 */
-            u = (x - 1.0);
-            dbAbsU = u;
-            (((_iml_v2_dp_union_t *) & dbAbsU)->dwords.hi_dword =
-             (((_iml_v2_dp_union_t *) & dbAbsU)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
-            /* Check if a[0] falls into "Near 1" range */
-            if (dbAbsU > ((__constant double *) __dlog1p_la_nolut_CoutTab)[199])
-            {
-                /* 6) "Main" path */
-                /* a) Range reduction */
-                /* Get N taking into account denormalized arguments */
-                iN += ((((_iml_v2_dp_union_t *) & x)->dwords.hi_dword >> 20) & 0x7FF) - 0x3FF;
-                dbN = (double) iN;
-/*
-//                  Compute N*Ln2Hi and N*Ln2Lo. Notice that N*Ln2Hi
-//                    is error-free for any N
-*/
-                dbNLn2Hi = (dbN * ((__constant double *) __dlog1p_la_nolut_CoutTab)[195]);
-                dbNLn2Lo = (dbN * ((__constant double *) __dlog1p_la_nolut_CoutTab)[196]);
-                /* Get y */
-                y = x;
-                (((_iml_v2_dp_union_t *) & y)->dwords.hi_dword =
-                 (((_iml_v2_dp_union_t *) & y)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (0x3FF) & 0x7FF) << 20));
-                /* Obtain j */
-                dbTmp = (y + ((__constant double *) __dlog1p_la_nolut_CoutTab)[197]);
-                j = (((_iml_v2_dp_union_t *) & dbTmp)->dwords.lo_dword) & ((1 << (6 + 1)) - 1);
-                /* Get table values of RcprY, LnRcprYHi, LnRcprYLo */
-                dbRcprY = ((__constant double *) __dlog1p_la_nolut_CoutTab)[3 * (j)];
-                dbLnRcprYHi = ((__constant double *) __dlog1p_la_nolut_CoutTab)[3 * (j) + 1];
-                dbLnRcprYLo = ((__constant double *) __dlog1p_la_nolut_CoutTab)[3 * (j) + 2];
-                /* Calculate WHi and WLo */
-                dbWHi = (dbNLn2Hi + dbLnRcprYHi);
-                dbWLo = (dbNLn2Lo + dbLnRcprYLo);
-                /* Get YHi and YLo */
-                dbTmp = (y + ((__constant double *) __dlog1p_la_nolut_CoutTab)[198]);
-                dbYHi = (dbTmp - ((__constant double *) __dlog1p_la_nolut_CoutTab)[198]);
-                dbYLo = (y - dbYHi);
-                /* Get UHi, uLo and U */
-                dbUHi = ((dbRcprY * dbYHi) - 1.0);
-                dbuLo = (dbRcprY * dbYLo);
-                u = (dbUHi + dbuLo);
-                /* b) Approximation */
-                dbP =
-                    (((((((__constant double *) __dlog1p_la_nolut_CoutTab)[209] * u + ((__constant double *) __dlog1p_la_nolut_CoutTab)[208]) * u +
-                        ((__constant double *) __dlog1p_la_nolut_CoutTab)[207]) * u + ((__constant double *) __dlog1p_la_nolut_CoutTab)[206]) * u +
-                      ((__constant double *) __dlog1p_la_nolut_CoutTab)[205]) * u + ((__constant double *) __dlog1p_la_nolut_CoutTab)[204]) * u +
-                    ((__constant double *) __dlog1p_la_nolut_CoutTab)[203];
-                dbP = (dbP * u * u);
-                /* c) Reconstruction */
-                dbResHi = (dbWHi + dbUHi);
-                dbResLo = ((dbWLo + dbuLo) + dbP);
-                r[0] = (dbResHi + dbResLo);
-            }
-            else
-            {
-                /* 5) "Near 1" path (|u|<=NEAR0_BOUND) */
-                dbP =
-                    (((((((__constant double *) __dlog1p_la_nolut_CoutTab)[209] * u + ((__constant double *) __dlog1p_la_nolut_CoutTab)[208]) * u +
-                        ((__constant double *) __dlog1p_la_nolut_CoutTab)[207]) * u + ((__constant double *) __dlog1p_la_nolut_CoutTab)[206]) * u +
-                      ((__constant double *) __dlog1p_la_nolut_CoutTab)[205]) * u + ((__constant double *) __dlog1p_la_nolut_CoutTab)[204]) * u +
-                    ((__constant double *) __dlog1p_la_nolut_CoutTab)[203];
-                dbP = (dbP * u * u);
-                dbP = (dbP + u);
-                r[0] = dbP;
-            }
-        }
-        else
-        {
-            /* Path 3) or 4). Here if argument is negative number or +/-0 */
-            if (x == ((__constant double *) __dlog1p_la_nolut_CoutTab)[201])
-            {
-                /* Path 3). Here if argument is +/-0 */
-                r[0] = -((__constant double *) __dlog1p_la_nolut_CoutTab)[202] / ((__constant double *) __dlog1p_la_nolut_CoutTab)[201];
-                nRet = 2;
-            }
-            else
-            {
-                /* Path 4). Here if argument is negative number */
-                r[0] = ((__constant double *) __dlog1p_la_nolut_CoutTab)[201] / ((__constant double *) __dlog1p_la_nolut_CoutTab)[201];
-                nRet = 1;
-            }
-        }
+__attribute__((always_inline)) inline int __ocl_svml_internal_dlog1p_noLUT_cout(double *a0, double *r) {
+  double x, y, u, da, *a = (&da);
+  double dbP;
+  double dbAbsU;
+  double dbN, dbNLn2Hi, dbNLn2Lo;
+  double dbRcprY, dbLnRcprYHi, dbLnRcprYLo, dbWHi, dbWLo;
+  double dbYHi, dbYLo, dbUHi, dbuLo, dbResHi, dbResLo;
+  double dbTmp;
+  int iN, j;
+  int i;
+  int nRet = 0;
+  (*a) = (*a0) + 1.0;
+  /* Filter out Infs and NaNs */
+  if ((((((_iml_v2_dp_union_t *)&a[0])->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) {
+    /* Here if argument is finite double precision number */
+    /*
+    //          Copy argument into temporary variable x,
+    //            and initially set iN equal to 0
+    */
+    x = a[0];
+    iN = 0;
+    /* Check if x is denormalized number or [+/-]0 */
+    if (((((_iml_v2_dp_union_t *)&x)->dwords.hi_dword >> 20) & 0x7FF) == 0) {
+      /* Here if argument is denormalized or [+/-]0 */
+      /* Scale x and properly adjust iN */
+      x *= ((__constant double *)__dlog1p_la_nolut_CoutTab)[200];
+      iN -= 60;
     }
-    else
-    {
-        /* Path 1) or 2). Here if argument is NaN or +/-Infinity */
-        if (((((_iml_v2_dp_union_t *) & a[0])->dwords.hi_dword >> 31) == 1)
-            && (((((_iml_v2_dp_union_t *) & a[0])->dwords.hi_dword & 0x000FFFFF) == 0) && ((((_iml_v2_dp_union_t *) & a[0])->dwords.lo_dword) == 0)))
-        {
-            /* Path 2). Here if argument is -Infinity */
-            r[0] = ((__constant double *) __dlog1p_la_nolut_CoutTab)[201] / ((__constant double *) __dlog1p_la_nolut_CoutTab)[201];
-            nRet = 1;
-        }
-        else
-        {
-            /* Path 1). Here if argument is NaN or +Infinity */
-            r[0] = a[0] * a[0];
-        }
+    /* Starting from this point x is finite normalized number */
+    if (x > ((__constant double *)__dlog1p_la_nolut_CoutTab)[201]) {
+      /* Here if x is positive finite normalized number */
+      /* Get absolute value of u=x-1 */
+      u = (x - 1.0);
+      dbAbsU = u;
+      (((_iml_v2_dp_union_t *)&dbAbsU)->dwords.hi_dword =
+           (((_iml_v2_dp_union_t *)&dbAbsU)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t)(0) << 31));
+      /* Check if a[0] falls into "Near 1" range */
+      if (dbAbsU > ((__constant double *)__dlog1p_la_nolut_CoutTab)[199]) {
+        /* 6) "Main" path */
+        /* a) Range reduction */
+        /* Get N taking into account denormalized arguments */
+        iN += ((((_iml_v2_dp_union_t *)&x)->dwords.hi_dword >> 20) & 0x7FF) - 0x3FF;
+        dbN = (double)iN;
+        /*
+        //                  Compute N*Ln2Hi and N*Ln2Lo. Notice that N*Ln2Hi
+        //                    is error-free for any N
+        */
+        dbNLn2Hi = (dbN * ((__constant double *)__dlog1p_la_nolut_CoutTab)[195]);
+        dbNLn2Lo = (dbN * ((__constant double *)__dlog1p_la_nolut_CoutTab)[196]);
+        /* Get y */
+        y = x;
+        (((_iml_v2_dp_union_t *)&y)->dwords.hi_dword =
+             (((_iml_v2_dp_union_t *)&y)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t)(0x3FF) & 0x7FF) << 20));
+        /* Obtain j */
+        dbTmp = (y + ((__constant double *)__dlog1p_la_nolut_CoutTab)[197]);
+        j = (((_iml_v2_dp_union_t *)&dbTmp)->dwords.lo_dword) & ((1 << (6 + 1)) - 1);
+        /* Get table values of RcprY, LnRcprYHi, LnRcprYLo */
+        dbRcprY = ((__constant double *)__dlog1p_la_nolut_CoutTab)[3 * (j)];
+        dbLnRcprYHi = ((__constant double *)__dlog1p_la_nolut_CoutTab)[3 * (j) + 1];
+        dbLnRcprYLo = ((__constant double *)__dlog1p_la_nolut_CoutTab)[3 * (j) + 2];
+        /* Calculate WHi and WLo */
+        dbWHi = (dbNLn2Hi + dbLnRcprYHi);
+        dbWLo = (dbNLn2Lo + dbLnRcprYLo);
+        /* Get YHi and YLo */
+        dbTmp = (y + ((__constant double *)__dlog1p_la_nolut_CoutTab)[198]);
+        dbYHi = (dbTmp - ((__constant double *)__dlog1p_la_nolut_CoutTab)[198]);
+        dbYLo = (y - dbYHi);
+        /* Get UHi, uLo and U */
+        dbUHi = ((dbRcprY * dbYHi) - 1.0);
+        dbuLo = (dbRcprY * dbYLo);
+        u = (dbUHi + dbuLo);
+        /* b) Approximation */
+        dbP = (((((((__constant double *)__dlog1p_la_nolut_CoutTab)[209] * u +
+                   ((__constant double *)__dlog1p_la_nolut_CoutTab)[208]) *
+                      u +
+                  ((__constant double *)__dlog1p_la_nolut_CoutTab)[207]) *
+                     u +
+                 ((__constant double *)__dlog1p_la_nolut_CoutTab)[206]) *
+                    u +
+                ((__constant double *)__dlog1p_la_nolut_CoutTab)[205]) *
+                   u +
+               ((__constant double *)__dlog1p_la_nolut_CoutTab)[204]) *
+                  u +
+              ((__constant double *)__dlog1p_la_nolut_CoutTab)[203];
+        dbP = (dbP * u * u);
+        /* c) Reconstruction */
+        dbResHi = (dbWHi + dbUHi);
+        dbResLo = ((dbWLo + dbuLo) + dbP);
+        r[0] = (dbResHi + dbResLo);
+      } else {
+        /* 5) "Near 1" path (|u|<=NEAR0_BOUND) */
+        dbP = (((((((__constant double *)__dlog1p_la_nolut_CoutTab)[209] * u +
+                   ((__constant double *)__dlog1p_la_nolut_CoutTab)[208]) *
+                      u +
+                  ((__constant double *)__dlog1p_la_nolut_CoutTab)[207]) *
+                     u +
+                 ((__constant double *)__dlog1p_la_nolut_CoutTab)[206]) *
+                    u +
+                ((__constant double *)__dlog1p_la_nolut_CoutTab)[205]) *
+                   u +
+               ((__constant double *)__dlog1p_la_nolut_CoutTab)[204]) *
+                  u +
+              ((__constant double *)__dlog1p_la_nolut_CoutTab)[203];
+        dbP = (dbP * u * u);
+        dbP = (dbP + u);
+        r[0] = dbP;
+      }
+    } else {
+      /* Path 3) or 4). Here if argument is negative number or +/-0 */
+      if (x == ((__constant double *)__dlog1p_la_nolut_CoutTab)[201]) {
+        /* Path 3). Here if argument is +/-0 */
+        r[0] = -((__constant double *)__dlog1p_la_nolut_CoutTab)[202] /
+               ((__constant double *)__dlog1p_la_nolut_CoutTab)[201];
+        nRet = 2;
+      } else {
+        /* Path 4). Here if argument is negative number */
+        r[0] = ((__constant double *)__dlog1p_la_nolut_CoutTab)[201] /
+               ((__constant double *)__dlog1p_la_nolut_CoutTab)[201];
+        nRet = 1;
+      }
     }
-    return nRet;
+  } else {
+    /* Path 1) or 2). Here if argument is NaN or +/-Infinity */
+    if (((((_iml_v2_dp_union_t *)&a[0])->dwords.hi_dword >> 31) == 1) &&
+        (((((_iml_v2_dp_union_t *)&a[0])->dwords.hi_dword & 0x000FFFFF) == 0) &&
+         ((((_iml_v2_dp_union_t *)&a[0])->dwords.lo_dword) == 0))) {
+      /* Path 2). Here if argument is -Infinity */
+      r[0] =
+          ((__constant double *)__dlog1p_la_nolut_CoutTab)[201] / ((__constant double *)__dlog1p_la_nolut_CoutTab)[201];
+      nRet = 1;
+    } else {
+      /* Path 1). Here if argument is NaN or +Infinity */
+      r[0] = a[0] * a[0];
+    }
+  }
+  return nRet;
 }
 
-double __ocl_svml_log1p_noLUT (double a)
-{
-    unsigned int vm;
-    double va1;
-    double vr1;
+double __ocl_svml_log1p_noLUT(double a) {
+  unsigned int vm;
+  double va1;
+  double vr1;
+  double r;
+  va1 = a;
+  ;
+  {
+    double OneEighth;
+    double t;
+    unsigned long ExpMask;
+    unsigned long ExpInv;
+    unsigned long lt;
+    unsigned long te;
+    unsigned long ls;
+    double s;
+    double OneHalf;
+    double tt;
+    unsigned long ltt;
+    double ss;
+    double Eight;
+    unsigned long ConvExp;
+    double ConvConst;
+    double sss;
+    double k;
+    double One;
+    double q;
     double r;
-    va1 = a;;
-    {
-        double OneEighth;
-        double t;
-        unsigned long ExpMask;
-        unsigned long ExpInv;
-        unsigned long lt;
-        unsigned long te;
-        unsigned long ls;
-        double s;
-        double OneHalf;
-        double tt;
-        unsigned long ltt;
-        double ss;
-        double Eight;
-        unsigned long ConvExp;
-        double ConvConst;
-        double sss;
-        double k;
-        double One;
-        double q;
-        double r;
-        double Shifter;
-        double ThreeQuarters;
-        double sm;
-        double mm;
-        double m;
-        double b;
-        double nz;
-        double z;
-        double w;
-        double ww;
-        double v;
-        double dg;
-        double du;
-        double cdg;
-        double cdu;
-        double dd;
-        double pg;
-        double pu;
-        double pgg;
-        double pug;
-        double pgu;
-        double puu;
-        double cpgg;
-        double cpug;
-        double cpgu;
-        double cpuu;
-        double pp;
-        double a;
-        double mpzhi;
-        double mpzlo;
-        double LogTwoHi;
-        double LogTwoLo;
-        double lkhi;
-        double lklo;
-        double tts;
-        double yhi;
-        double tlo;
-        double ttlo;
-        double tttlo;
-        double ttttlo;
-        double ylo;
-        double y;
-        double MinArg;
-        double MaxArg;
-        double MaskArg;
-        unsigned long MaskArgTmp;
-        double MaskMin;
-        double MaskMax;
-// Compute t  = round(0.125 * x + 0.125) ~= 1/8 * (x + 1.0)
-        OneEighth = as_double (__internal_dlog1p_la_noLUT_data.OneEighth);
-        t = (OneEighth * va1);
-        t = (t + OneEighth);
-// We have 2^-56 <= t < 2^1021
-//
-// Compute exponent E of t
-//
-// Compute s = 2^-E
-//
-// We have s an integer power of two such that
-//
-// 2^-1023 <= s <= 2^53
-//
-        ExpMask = (__internal_dlog1p_la_noLUT_data.ExpMask);
-        ExpInv = (__internal_dlog1p_la_noLUT_data.ExpInv);
-        lt = as_ulong (t);
-        te = (lt & ExpMask);
-        ls = (ExpInv - te);
-        s = as_double (ls);
-// Compute tt = round(s * t + 0.5)
-//
-        OneHalf = as_double (__internal_dlog1p_la_noLUT_data.OneHalf);
-        tt = (s * t);
-        tt = (tt + OneHalf);
-// Rescale s to make it become s = 2^-E * 0.125
-        s = (s * OneEighth);
-// We have 1.5 <= tt <= 2.5
-//
-// Compute exponent F of tt
-//
-// We have F \in { 0, 1 }
-//
-// Compute ss = s * 2^-F
-//
-        ltt = as_ulong (tt);
-        te = (ltt & ExpMask);
-        ls = (ExpInv - te);
-        ss = as_double (ls);
-        ss = (ss * s);
-// We have ss an integer power of two such that
-//
-// 2^-1024 <= ss <= 2^53
-//
-// We compute k = -log2(ss)  where k is a FP number
-//
-// We have k an integer such that 53 <= k <= 1024.
-//
-        Eight = as_double (__internal_dlog1p_la_noLUT_data.Eight);
-        ConvExp = (__internal_dlog1p_la_noLUT_data.ConvExp);
-        ConvConst = as_double (__internal_dlog1p_la_noLUT_data.ConvConst);
-        sss = (ss * Eight);
-        ls = as_ulong (sss);
-        ls = ((unsigned long) (ls) >> (20));
-        ls = (ls | ConvExp);
-        sss = as_double (ls);
-        k = (ConvConst - sss);
-// Now we compute
-//
-// r = round(ss * x - round(1 - ss))
-//
-// That quantity is often exact.
-//
-        One = as_double (__internal_dlog1p_la_noLUT_data.One);
-        q = (One - ss);
-        r = __spirv_ocl_fma(ss,va1,-(q));
-// We have -0.25 <= r <= 0.5
-//
-// We compute
-//
-// sm = round((2^49 + 2^48) + r)
-// mm = round(sm - (2^49 + 2^48))
-// m  = round(mm * 0.75)
-//
-// It is pretty easy to show that
-//
-// m is "close" to 3/4 * nearestint(8.0 * r) * 0.125
-//
-        Shifter = as_double (__internal_dlog1p_la_noLUT_data.Shifter);
-        ThreeQuarters = as_double (__internal_dlog1p_la_noLUT_data.ThreeQuarters);
-        sm = (Shifter + r);
-        mm = (sm - Shifter);
-        m = (mm * ThreeQuarters);
-// Compute
-//
-// b = m - r
-// z = -round(r * m + b)
-//
-        b = (m - r);
-        nz = __spirv_ocl_fma(r,m,b);
-        z = (-(nz));
-// We will need m + z = r * (1 - m) later.
-//
-// We compute it as mpzhi + mpzlo
-//
-// The subtraction 1 - m is exact (only a couple of
-// cases to test).
-//
-        a = (One - m);
-        mpzhi = (r * a);
-        mpzlo = __spirv_ocl_fma(r,a,-(mpzhi));
-// It can be shown that -114/1000 <= z <= 78/1000
-//
-// We have (in the absence of rounding errors)
-//
-// log(1 + x) = k * log(2) + (-log(1 - m)) + log(1 + z)
-//
-// We replace -log(1 - m) by a polynomial that
-// needs to be accurate only at the couple of points m
-// that are possible.
-//
-// We replace log(1 + z) by another polynomial.
-//
-// We will be running the two polynomial evaluations in
-// parallel.
-//
-// We start by computing w = z^2 and v = m^2 in native precision
-//
-        w = (nz * nz);
-        ww = (w * w);
-        v = (m * m);
-// Polynomial evaluation of d(m) = m + v * dd(m)
-//
-        du = as_double (__internal_dlog1p_la_noLUT_data.CoeffD7);
-        dg = as_double (__internal_dlog1p_la_noLUT_data.CoeffD6);
-        cdu = as_double (__internal_dlog1p_la_noLUT_data.CoeffD5);
-        cdg = as_double (__internal_dlog1p_la_noLUT_data.CoeffD4);
-        du = __spirv_ocl_fma(v,du,cdu);
-        dg = __spirv_ocl_fma(v,dg,cdg);
-        cdu = as_double (__internal_dlog1p_la_noLUT_data.CoeffD3);
-        cdg = as_double (__internal_dlog1p_la_noLUT_data.CoeffD2);
-        du = __spirv_ocl_fma(v,du,cdu);
-        dg = __spirv_ocl_fma(v,dg,cdg);
-        dd = __spirv_ocl_fma(m,du,dg);
-// Polynomial evaluation of p(z) = z + w * pp(z)
-//
-        pgg = as_double (__internal_dlog1p_la_noLUT_data.CoeffP12);
-        puu = as_double (__internal_dlog1p_la_noLUT_data.CoeffP11);
-        pug = as_double (__internal_dlog1p_la_noLUT_data.CoeffP10);
-        pgu = as_double (__internal_dlog1p_la_noLUT_data.CoeffP9);
-        cpgg = as_double (__internal_dlog1p_la_noLUT_data.CoeffP8);
-        cpuu = as_double (__internal_dlog1p_la_noLUT_data.CoeffP7);
-        cpug = as_double (__internal_dlog1p_la_noLUT_data.CoeffP6);
-        cpgu = as_double (__internal_dlog1p_la_noLUT_data.CoeffP5);
-        pgg = __spirv_ocl_fma(ww,pgg,cpgg);
-        puu = __spirv_ocl_fma(ww,puu,cpuu);
-        pug = __spirv_ocl_fma(ww,pug,cpug);
-        pgu = __spirv_ocl_fma(ww,pgu,cpgu);
-        cpgg = as_double (__internal_dlog1p_la_noLUT_data.CoeffP4);
-        cpuu = as_double (__internal_dlog1p_la_noLUT_data.CoeffP3);
-        cpug = as_double (__internal_dlog1p_la_noLUT_data.CoeffP2);
-        pgg = __spirv_ocl_fma(ww,pgg,cpgg);
-        puu = __spirv_ocl_fma(ww,puu,cpuu);
-        pug = __spirv_ocl_fma(ww,pug,cpug);
-        pg = __spirv_ocl_fma(w,pgg,pug);
-        pu = __spirv_ocl_fma(w,pgu,puu);
-        pp = __spirv_ocl_fma(z,pu,pg);
-// Multiplication of LogTwoHi + LogTwoLo with k
-//
-// k holds on 12 bits. The two constants have trailing
-// zeros. Elementwise multiplication is exact
-//
-        LogTwoHi = as_double (__internal_dlog1p_la_noLUT_data.LogTwoHi);
-        LogTwoLo = as_double (__internal_dlog1p_la_noLUT_data.LogTwoLo);
-        lkhi = (k * LogTwoHi);
-        lklo = (k * LogTwoLo);
-// Here we have to do the final summation
-//
-// log(1 + x) ~= lkhi + lklo + m + dd + z + pp
-//             = (lkhi + mpzhi) + (mpzlo + lklo + dd + pp)
-//
-        yhi = (lkhi + mpzhi);
-        tts = (yhi - lkhi);
-        tlo = (mpzhi - tts);
-// Lower parts
-        ttlo = __spirv_ocl_fma(pp,w,lklo);
-        tttlo = __spirv_ocl_fma(dd,v,mpzlo);
-        ttttlo = (ttlo + tttlo);
-        ylo = (tlo + ttttlo);
-// Final summation
-        vr1 = (yhi + ylo);
-// Compute rangemask for main-path arguments: -1.0 < x < 2^1024
-        MinArg = as_double (__internal_dlog1p_la_noLUT_data.MinArg);
-        MaxArg = as_double (__internal_dlog1p_la_noLUT_data.MaxArg);
-        MaskMin = as_double ((unsigned long) ((va1 < MinArg) ? 0xffffffffffffffff : 0x0));
-        MaskMax = as_double ((unsigned long) (((!(va1 <= MaxArg)) ? 0xffffffffffffffff : 0x0)));
-        MaskArg = as_double ((as_ulong (MaskMin) | as_ulong (MaskMax)));
-        MaskArgTmp = as_ulong (MaskArg);
-        vm = 0;
-        vm = MaskArgTmp;
-    }
-    if (__builtin_expect ((vm) != 0, 0))
-    {
-        double _vapi_arg1[1];
-        double _vapi_res1[1];
-        ((double *) _vapi_arg1)[0] = va1;
-        ((double *) _vapi_res1)[0] = vr1;
-        __ocl_svml_internal_dlog1p_noLUT_cout (_vapi_arg1, _vapi_res1);
-        vr1 = ((double *) _vapi_res1)[0];
-    };
-    r = vr1;;
-    return r;
+    double Shifter;
+    double ThreeQuarters;
+    double sm;
+    double mm;
+    double m;
+    double b;
+    double nz;
+    double z;
+    double w;
+    double ww;
+    double v;
+    double dg;
+    double du;
+    double cdg;
+    double cdu;
+    double dd;
+    double pg;
+    double pu;
+    double pgg;
+    double pug;
+    double pgu;
+    double puu;
+    double cpgg;
+    double cpug;
+    double cpgu;
+    double cpuu;
+    double pp;
+    double a;
+    double mpzhi;
+    double mpzlo;
+    double LogTwoHi;
+    double LogTwoLo;
+    double lkhi;
+    double lklo;
+    double tts;
+    double yhi;
+    double tlo;
+    double ttlo;
+    double tttlo;
+    double ttttlo;
+    double ylo;
+    double y;
+    double MinArg;
+    double MaxArg;
+    double MaskArg;
+    unsigned long MaskArgTmp;
+    double MaskMin;
+    double MaskMax;
+    // Compute t  = round(0.125 * x + 0.125) ~= 1/8 * (x + 1.0)
+    OneEighth = as_double(__internal_dlog1p_la_noLUT_data.OneEighth);
+    t = (OneEighth * va1);
+    t = (t + OneEighth);
+    // We have 2^-56 <= t < 2^1021
+    //
+    // Compute exponent E of t
+    //
+    // Compute s = 2^-E
+    //
+    // We have s an integer power of two such that
+    //
+    // 2^-1023 <= s <= 2^53
+    //
+    ExpMask = (__internal_dlog1p_la_noLUT_data.ExpMask);
+    ExpInv = (__internal_dlog1p_la_noLUT_data.ExpInv);
+    lt = as_ulong(t);
+    te = (lt & ExpMask);
+    ls = (ExpInv - te);
+    s = as_double(ls);
+    // Compute tt = round(s * t + 0.5)
+    //
+    OneHalf = as_double(__internal_dlog1p_la_noLUT_data.OneHalf);
+    tt = (s * t);
+    tt = (tt + OneHalf);
+    // Rescale s to make it become s = 2^-E * 0.125
+    s = (s * OneEighth);
+    // We have 1.5 <= tt <= 2.5
+    //
+    // Compute exponent F of tt
+    //
+    // We have F \in { 0, 1 }
+    //
+    // Compute ss = s * 2^-F
+    //
+    ltt = as_ulong(tt);
+    te = (ltt & ExpMask);
+    ls = (ExpInv - te);
+    ss = as_double(ls);
+    ss = (ss * s);
+    // We have ss an integer power of two such that
+    //
+    // 2^-1024 <= ss <= 2^53
+    //
+    // We compute k = -log2(ss)  where k is a FP number
+    //
+    // We have k an integer such that 53 <= k <= 1024.
+    //
+    Eight = as_double(__internal_dlog1p_la_noLUT_data.Eight);
+    ConvExp = (__internal_dlog1p_la_noLUT_data.ConvExp);
+    ConvConst = as_double(__internal_dlog1p_la_noLUT_data.ConvConst);
+    sss = (ss * Eight);
+    ls = as_ulong(sss);
+    ls = ((unsigned long)(ls) >> (20));
+    ls = (ls | ConvExp);
+    sss = as_double(ls);
+    k = (ConvConst - sss);
+    // Now we compute
+    //
+    // r = round(ss * x - round(1 - ss))
+    //
+    // That quantity is often exact.
+    //
+    One = as_double(__internal_dlog1p_la_noLUT_data.One);
+    q = (One - ss);
+    r = __spirv_ocl_fma(ss, va1, -(q));
+    // We have -0.25 <= r <= 0.5
+    //
+    // We compute
+    //
+    // sm = round((2^49 + 2^48) + r)
+    // mm = round(sm - (2^49 + 2^48))
+    // m  = round(mm * 0.75)
+    //
+    // It is pretty easy to show that
+    //
+    // m is "close" to 3/4 * nearestint(8.0 * r) * 0.125
+    //
+    Shifter = as_double(__internal_dlog1p_la_noLUT_data.Shifter);
+    ThreeQuarters = as_double(__internal_dlog1p_la_noLUT_data.ThreeQuarters);
+    sm = (Shifter + r);
+    mm = (sm - Shifter);
+    m = (mm * ThreeQuarters);
+    // Compute
+    //
+    // b = m - r
+    // z = -round(r * m + b)
+    //
+    b = (m - r);
+    nz = __spirv_ocl_fma(r, m, b);
+    z = (-(nz));
+    // We will need m + z = r * (1 - m) later.
+    //
+    // We compute it as mpzhi + mpzlo
+    //
+    // The subtraction 1 - m is exact (only a couple of
+    // cases to test).
+    //
+    a = (One - m);
+    mpzhi = (r * a);
+    mpzlo = __spirv_ocl_fma(r, a, -(mpzhi));
+    // It can be shown that -114/1000 <= z <= 78/1000
+    //
+    // We have (in the absence of rounding errors)
+    //
+    // log(1 + x) = k * log(2) + (-log(1 - m)) + log(1 + z)
+    //
+    // We replace -log(1 - m) by a polynomial that
+    // needs to be accurate only at the couple of points m
+    // that are possible.
+    //
+    // We replace log(1 + z) by another polynomial.
+    //
+    // We will be running the two polynomial evaluations in
+    // parallel.
+    //
+    // We start by computing w = z^2 and v = m^2 in native precision
+    //
+    w = (nz * nz);
+    ww = (w * w);
+    v = (m * m);
+    // Polynomial evaluation of d(m) = m + v * dd(m)
+    //
+    du = as_double(__internal_dlog1p_la_noLUT_data.CoeffD7);
+    dg = as_double(__internal_dlog1p_la_noLUT_data.CoeffD6);
+    cdu = as_double(__internal_dlog1p_la_noLUT_data.CoeffD5);
+    cdg = as_double(__internal_dlog1p_la_noLUT_data.CoeffD4);
+    du = __spirv_ocl_fma(v, du, cdu);
+    dg = __spirv_ocl_fma(v, dg, cdg);
+    cdu = as_double(__internal_dlog1p_la_noLUT_data.CoeffD3);
+    cdg = as_double(__internal_dlog1p_la_noLUT_data.CoeffD2);
+    du = __spirv_ocl_fma(v, du, cdu);
+    dg = __spirv_ocl_fma(v, dg, cdg);
+    dd = __spirv_ocl_fma(m, du, dg);
+    // Polynomial evaluation of p(z) = z + w * pp(z)
+    //
+    pgg = as_double(__internal_dlog1p_la_noLUT_data.CoeffP12);
+    puu = as_double(__internal_dlog1p_la_noLUT_data.CoeffP11);
+    pug = as_double(__internal_dlog1p_la_noLUT_data.CoeffP10);
+    pgu = as_double(__internal_dlog1p_la_noLUT_data.CoeffP9);
+    cpgg = as_double(__internal_dlog1p_la_noLUT_data.CoeffP8);
+    cpuu = as_double(__internal_dlog1p_la_noLUT_data.CoeffP7);
+    cpug = as_double(__internal_dlog1p_la_noLUT_data.CoeffP6);
+    cpgu = as_double(__internal_dlog1p_la_noLUT_data.CoeffP5);
+    pgg = __spirv_ocl_fma(ww, pgg, cpgg);
+    puu = __spirv_ocl_fma(ww, puu, cpuu);
+    pug = __spirv_ocl_fma(ww, pug, cpug);
+    pgu = __spirv_ocl_fma(ww, pgu, cpgu);
+    cpgg = as_double(__internal_dlog1p_la_noLUT_data.CoeffP4);
+    cpuu = as_double(__internal_dlog1p_la_noLUT_data.CoeffP3);
+    cpug = as_double(__internal_dlog1p_la_noLUT_data.CoeffP2);
+    pgg = __spirv_ocl_fma(ww, pgg, cpgg);
+    puu = __spirv_ocl_fma(ww, puu, cpuu);
+    pug = __spirv_ocl_fma(ww, pug, cpug);
+    pg = __spirv_ocl_fma(w, pgg, pug);
+    pu = __spirv_ocl_fma(w, pgu, puu);
+    pp = __spirv_ocl_fma(z, pu, pg);
+    // Multiplication of LogTwoHi + LogTwoLo with k
+    //
+    // k holds on 12 bits. The two constants have trailing
+    // zeros. Elementwise multiplication is exact
+    //
+    LogTwoHi = as_double(__internal_dlog1p_la_noLUT_data.LogTwoHi);
+    LogTwoLo = as_double(__internal_dlog1p_la_noLUT_data.LogTwoLo);
+    lkhi = (k * LogTwoHi);
+    lklo = (k * LogTwoLo);
+    // Here we have to do the final summation
+    //
+    // log(1 + x) ~= lkhi + lklo + m + dd + z + pp
+    //             = (lkhi + mpzhi) + (mpzlo + lklo + dd + pp)
+    //
+    yhi = (lkhi + mpzhi);
+    tts = (yhi - lkhi);
+    tlo = (mpzhi - tts);
+    // Lower parts
+    ttlo = __spirv_ocl_fma(pp, w, lklo);
+    tttlo = __spirv_ocl_fma(dd, v, mpzlo);
+    ttttlo = (ttlo + tttlo);
+    ylo = (tlo + ttttlo);
+    // Final summation
+    vr1 = (yhi + ylo);
+    // Compute rangemask for main-path arguments: -1.0 < x < 2^1024
+    MinArg = as_double(__internal_dlog1p_la_noLUT_data.MinArg);
+    MaxArg = as_double(__internal_dlog1p_la_noLUT_data.MaxArg);
+    MaskMin = as_double((unsigned long)((va1 < MinArg) ? 0xffffffffffffffff : 0x0));
+    MaskMax = as_double((unsigned long)(((!(va1 <= MaxArg)) ? 0xffffffffffffffff : 0x0)));
+    MaskArg = as_double((as_ulong(MaskMin) | as_ulong(MaskMax)));
+    MaskArgTmp = as_ulong(MaskArg);
+    vm = 0;
+    vm = MaskArgTmp;
+  }
+  if (__builtin_expect((vm) != 0, 0)) {
+    double _vapi_arg1[1];
+    double _vapi_res1[1];
+    ((double *)_vapi_arg1)[0] = va1;
+    ((double *)_vapi_res1)[0] = vr1;
+    __ocl_svml_internal_dlog1p_noLUT_cout(_vapi_arg1, _vapi_res1);
+    vr1 = ((double *)_vapi_res1)[0];
+  };
+  r = vr1;
+  ;
+  return r;
 }

@@ -10,7 +10,3 @@ SPDX-License-Identifier: MIT
 #include "spirv.h"
 
 // Functions have been moved to IGILBiF_Intrinsics_Impl.cl since they had intrinsics call.
-
-
-
-

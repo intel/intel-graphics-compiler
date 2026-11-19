@@ -61,9 +61,7 @@ static __constant union {
   double f;
 } __slog10_ha_nolut_L10_2 = {0x3fd34413509F79FFuL};
 
-__attribute__((always_inline))
-static inline int __ocl_svml_internal_slog10_ha_nolut(float *a, float *r)
-{
+__attribute__((always_inline)) static inline int __ocl_svml_internal_slog10_ha_nolut(float *a, float *r) {
   float xin = *a;
   union {
     unsigned int w;
@@ -90,8 +88,7 @@ LOG10F_MAIN:
   R = mant.f - 1.0f;
   expon = (double)iexpon;
   // polynomial
-  poly = __spirv_ocl_fma(__slog10_ha_nolut_c10.f, R,
-                                                __slog10_ha_nolut_c9.f);
+  poly = __spirv_ocl_fma(__slog10_ha_nolut_c10.f, R, __slog10_ha_nolut_c9.f);
   poly = __spirv_ocl_fma(poly, R, __slog10_ha_nolut_c8.f);
   poly = __spirv_ocl_fma(poly, R, __slog10_ha_nolut_c7.f);
   poly = __spirv_ocl_fma(poly, R, __slog10_ha_nolut_c6.f);
@@ -143,8 +140,7 @@ LOG10F_SPECIAL:
   goto LOG10F_MAIN;
 }
 
-float __ocl_svml_log10f_ha_noLUT(float x)
-{
+float __ocl_svml_log10f_ha_noLUT(float x) {
   float r;
   __ocl_svml_internal_slog10_ha_nolut(&x, &r);
   return r;
