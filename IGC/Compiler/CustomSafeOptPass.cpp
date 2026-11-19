@@ -3799,10 +3799,11 @@ void GenSpecificPattern::visitBitCastInst(BitCastInst &I) {
             cast<IGCLLVM::FixedVectorType>(bitCastInst->getOperand(0)->getType())->getNumElements() == 2) {
           InsertElementInst *insertElementInst = cast<InsertElementInst>(bitCastInst->getOperand(0));
 
-          if (isa<Constant>(insertElementInst->getOperand(0)) &&
-              IGCLLVM::Constant::isNullValue(
-                  cast<Constant>(insertElementInst->getOperand(0))->getAggregateElement((unsigned int)0)) &&
-              cast<ConstantInt>(insertElementInst->getOperand(2))->getZExtValue() == 1) {
+          auto *BaseVec = dyn_cast<Constant>(insertElementInst->getOperand(0));
+          Constant *LowElt = BaseVec ? BaseVec->getAggregateElement((unsigned int)0) : nullptr;
+          auto *Index = dyn_cast<ConstantInt>(insertElementInst->getOperand(2));
+
+          if (LowElt && IGCLLVM::Constant::isNullValue(LowElt) && Index && Index->getZExtValue() == 1) {
             IRBuilder<> builder(&I);
             Value *vectorValue = UndefValue::get(bitCastInst->getOperand(0)->getType());
             vectorValue = builder.CreateInsertElement(vectorValue, zExtInst->getOperand(0), builder.getInt32(0));
