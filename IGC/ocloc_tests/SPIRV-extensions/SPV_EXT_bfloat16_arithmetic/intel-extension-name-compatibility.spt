@@ -1,0 +1,52 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; REQUIRES: cri-supported, llvm-spirv, llvm-spirv-SPV_EXT_bfloat16_arithmetic
+
+; RUN: llvm-spirv -to-binary %s -o %t.spv
+; RUN: FileCheck --input-file=%t.spv %s --check-prefix=SPV-BIN
+; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s
+
+; SPV_INTEL_bfloat16_arithmetic has been generalized into
+; SPV_EXT_bfloat16_arithmetic. IGC keeps accepting the INTEL name so that SPIR-V
+; from producers which have not moved to the EXT name yet still compiles.
+;
+; The capability is spelled with the EXT suffix because the translator dropped
+; the INTEL text-name alias. Both extensions share enumerant 6226, so this
+; affects only the assembler step here, not the binary.
+
+; SPV-BIN: SPV_INTEL_bfloat16_arithmetic
+
+; CHECK: add (M1, 16) [[R:[A-z0-9_]+]](0,0)<1> [[ARG:[A-z0-9_]+]](0,0)<1;1,0> [[ARG]](1,0)<1;1,0>
+; CHECK: // .decl [[R]] v_type=G type=bf num_elts=16
+
+119734787 65536 393230 9 0
+2 Capability Addresses
+2 Capability Linkage
+2 Capability Kernel
+2 Capability BFloat16TypeKHR
+2 Capability BFloat16ArithmeticEXT
+9 Extension "SPV_INTEL_bfloat16_arithmetic"
+6 Extension "SPV_KHR_bfloat16"
+5 ExtInstImport 1 "OpenCL.std"
+3 MemoryModel 2 2
+3 Source 0 0
+4 Name 4 "test"
+3 Name 5 "a"
+3 Name 6 "b"
+3 Name 8 "r"
+6 Decorate 4 LinkageAttributes "test" Export
+4 TypeFloat 2 16 0
+5 TypeFunction 3 2 2 2
+5 Function 2 4 0 3
+3 FunctionParameter 2 5
+3 FunctionParameter 2 6
+2 Label 7
+5 FAdd 2 8 5 6
+2 ReturnValue 8
+1 FunctionEnd

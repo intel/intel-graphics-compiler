@@ -2,6 +2,18 @@
 
 This document lists all SPIR-V extensions supported by IGC and their platform requirements.
 
+## SPV_EXT_bfloat16_arithmetic
+
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_bfloat16_arithmetic.html
+
+> **Experimentally supported on**: XE_HPG+ except METEORLAKE, ARL S, ARL U (DG2, PVC, ARL H, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
+
+**Capabilities**:
+
+- **BFloat16ArithmeticEXT**
+
+---
+
 ## SPV_EXT_float8
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_float8.html

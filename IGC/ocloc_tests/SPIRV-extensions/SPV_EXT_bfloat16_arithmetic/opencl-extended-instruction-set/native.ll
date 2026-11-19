@@ -6,10 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: cri-supported, llvm-spirv
+; REQUIRES: cri-supported, llvm-spirv, llvm-spirv-SPV_EXT_bfloat16_arithmetic
 
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
-; RUN: llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_KHR_bfloat16,+SPV_INTEL_bfloat16_arithmetic -o %t.spv
+; RUN: llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_KHR_bfloat16,+SPV_EXT_bfloat16_arithmetic -o %t.spv
 
 ; LLVM with opaque pointers:
 ; RUN: %if llvm-16-plus %{ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE-LLVM22%} %}
@@ -24,7 +24,7 @@
 target datalayout = "e-i64:64-v16:16-v24:32-v32:32-v48:64-v96:128-v192:256-v256:256-v512:512-v1024:1024"
 target triple = "spir64-unknown-unknown"
 
-; The following is quoted from the SPV_INTEL_bfloat16_arithmetic extension specification:
+; The following is quoted from the SPV_EXT_bfloat16_arithmetic extension specification:
 
 ; "Modifications to the SPIR-V Specification, Version 1.6
 ; Validation Rules
@@ -35,7 +35,7 @@ target triple = "spir64-unknown-unknown"
 
 
 ; Below is a list OpenCL.std functions that operate on floating-point types.
-; The SPV_INTEL_bfloat16_arithmetic extension requires these functions to
+; The SPV_EXT_bfloat16_arithmetic extension requires these functions to
 ; accept and correctly process bfloat16 inputs/outputs wherever they are
 ; defined for floating-point.
 ;

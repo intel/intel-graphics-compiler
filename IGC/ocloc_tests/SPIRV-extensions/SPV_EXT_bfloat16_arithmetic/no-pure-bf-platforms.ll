@@ -6,10 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: bmg-supported, llvm-spirv
+; REQUIRES: bmg-supported, llvm-spirv, llvm-spirv-SPV_EXT_bfloat16_arithmetic
 
 ; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_KHR_bfloat16,+SPV_INTEL_bfloat16_arithmetic -o %t.spv
+; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_KHR_bfloat16,+SPV_EXT_bfloat16_arithmetic -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device bmg -options "-igc_opts 'DumpASMToConsole=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s --check-prefix=FMA
 ; RUN: ocloc compile -spirv_input -file %t.spv -device bmg -options "-igc_opts 'DumpVISAASMToConsole=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s --check-prefix=TANH
 ; RUN: %if pvc-supported %{ ocloc compile -spirv_input -file %t.spv -device pvc -options "-igc_opts 'DumpASMToConsole=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s --check-prefix=FMA %}

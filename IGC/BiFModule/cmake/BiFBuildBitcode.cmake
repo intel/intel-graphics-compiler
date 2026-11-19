@@ -387,7 +387,7 @@ set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_sigmoid")
 
 set(BFLOAT_SOURCE_ENABLED TRUE)
 if(IGC_OPTION__ENABLE_BF16_BIF)
-  set(KHR_DEFINES ${KHR_DEFINES} "IGC_SPV_INTEL_bfloat16_arithmetic")
+  set(KHR_DEFINES ${KHR_DEFINES} "IGC_SPV_EXT_bfloat16_arithmetic")
   set(KHR_DEFINES ${KHR_DEFINES} "IGC_SPV_KHR_bfloat16")
 
   # Use source-code compilation for bfloat16 builtins if clang supports __bf16

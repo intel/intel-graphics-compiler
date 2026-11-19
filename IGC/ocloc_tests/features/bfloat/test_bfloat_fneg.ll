@@ -6,10 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-spirv
+; REQUIRES: llvm-spirv, llvm-spirv-SPV_EXT_bfloat16_arithmetic
 
 ; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_KHR_bfloat16,+SPV_INTEL_bfloat16_arithmetic -o %t.spv
+; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_KHR_bfloat16,+SPV_EXT_bfloat16_arithmetic -o %t.spv
 ; RUN: %if pvc-supported %{ ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1'" -device pvc 2>&1 | FileCheck %s --check-prefixes=CHECK-VISA-PVC %}
 
 ; CHECK-VISA-PVC-DAG: mov (M1_NM, 1) [[RESVAR_PVC:.*]](0,0)<1> (-)[[SRCVAR_PVC:.*]](0,0)<0;1,0>

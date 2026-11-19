@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 /// When the bfloat16 extension is not enabled, the builtin functions defined
 /// in this file will not be available.
 ///
-#if defined(IGC_SPV_KHR_bfloat16) && defined(IGC_SPV_INTEL_bfloat16_arithmetic)
+#if defined(IGC_SPV_KHR_bfloat16) && defined(IGC_SPV_EXT_bfloat16_arithmetic)
 
 #include "spirv_bfloat.h"
 #include "spirv_math_bfloat.h"
@@ -42,4 +42,4 @@ SPDX-License-Identifier: MIT
 // Vstore opcodes
 #include "vstore.cl"
 
-#endif // defined(IGC_SPV_KHR_bfloat16) && defined(IGC_SPV_INTEL_bfloat16_arithmetic)
+#endif // defined(IGC_SPV_KHR_bfloat16) && defined(IGC_SPV_EXT_bfloat16_arithmetic)

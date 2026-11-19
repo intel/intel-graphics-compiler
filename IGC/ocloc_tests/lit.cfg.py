@@ -9,6 +9,7 @@
 # -*- Python -*-
 
 import os
+import shutil
 import subprocess
 import sys
 import lit.formats
@@ -32,7 +33,7 @@ config.name = 'OfflineCompilationTests'
 config.test_format = VerboseUnsupportedShTest(False)
 
 # suffixes: A list of file extensions to treat as test files.
-config.suffixes = ['.cl', '.cpp', '.ll', '.spvasm', '.spv-test']
+config.suffixes = ['.cl', '.cpp', '.ll', '.spvasm', '.spv-test', '.spt']
 
 # test_source_root: The root path where tests are located.
 config.test_source_root = os.path.dirname(__file__)
@@ -154,9 +155,21 @@ if config.spirv_as_enabled:
   config.available_features.add('spirv-as')
   llvm_config.add_tool_substitutions([ToolSubst('spirv-as', unresolved='fatal')], config.spirv_as_dir)
 
+def _llvm_spirv_knows_extension(ext):
+  llvm_spirv = shutil.which('llvm-spirv', path=config.llvm_spirv_dir)
+  if not llvm_spirv:
+    return False
+  result = subprocess.run([llvm_spirv, '--spirv-ext=+' + ext, '-o', os.devnull, '-'],
+                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+  return 'Unknown extension' not in result.stderr.decode()
+
 if config.llvm_spirv_enabled:
   config.available_features.add('llvm-spirv')
   llvm_config.add_tool_substitutions([ToolSubst('llvm-spirv', unresolved='fatal')], config.llvm_spirv_dir)
+  # The open source build may use an older translator than the internal one.
+  # TODO: Remove once the open source translator supports SPV_EXT_bfloat16_arithmetic.
+  if _llvm_spirv_knows_extension('SPV_EXT_bfloat16_arithmetic'):
+    config.available_features.add('llvm-spirv-SPV_EXT_bfloat16_arithmetic')
 
 if config.is32b == "1":
   config.available_features.add('sys32')

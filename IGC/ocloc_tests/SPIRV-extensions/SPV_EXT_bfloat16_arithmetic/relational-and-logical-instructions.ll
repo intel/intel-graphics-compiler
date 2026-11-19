@@ -6,10 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: cri-supported, llvm-spirv
+; REQUIRES: cri-supported, llvm-spirv, llvm-spirv-SPV_EXT_bfloat16_arithmetic
 
 ; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_KHR_bfloat16,+SPV_INTEL_bfloat16_arithmetic -o %t.spv
+; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_KHR_bfloat16,+SPV_EXT_bfloat16_arithmetic -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{%if llvm-17-plus %{CHECK-PRE-LLVM22%} %else %{CHECK-PRE-LLVM17%}%}
 ; COM: Execute ocloc second time, this time without DumpVISAASMToConsole flag, to ensure that E2E compilation does not crash.
 ; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'ForceOCLSIMDWidth=16' -cl-intel-library-compilation"
@@ -19,7 +19,7 @@
 ; Add validation rules to section 2.16.1 Universal Validation Rules from:
 ;
 ; - Variables with a type that is or includes a floating-point type with the BFloat16KHR encoding must only be
-;   used with the following instructions, if BFloat16ArithmeticINTEL is declared:
+;   used with the following instructions, if BFloat16ArithmeticEXT is declared:
 ;
 ;    - Relational and Logical Instructions (https://registry.khronos.org/SPIR-V/specs/unified1/SPIRV.html#_relational_and_logical_instructions)
 
