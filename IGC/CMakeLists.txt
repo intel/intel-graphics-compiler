@@ -1128,31 +1128,6 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
             ${flags}
       )
     endif()
-  elseif(_igc_compiler_is_clang)
-    igc_config_flag_apply_settings(
-        CompilerOptions
-        "${_compilerFlagName}"
-        ALL_PATTERN ""
-        SET_RAW
-        -pipe
-        -fvisibility=hidden
-        -fvisibility-inlines-hidden
-        -Wcovered-switch-default
-        -Wno-unused-parameter
-        -Wno-gnu
-        -finline
-        -fkeep-inline-functions
-        -msse4.2
-    )
-    if(NOT CMAKE_C_COMPILER_VERSION LESS "4.0")
-      igc_config_flag_apply_settings(
-          CompilerOptions
-         "${_compilerFlagName}"
-          ALL_PATTERN ""
-          SET_RAW
-            -finline-functions
-      )
-    endif()
   endif()
 
 # NOTE: Increase bracket-depth to 1024 for clang because we exceed the default limit of 256.
@@ -2796,7 +2771,7 @@ if(UNIX)
   set(CPACK_RPM_IGC-OPENCL_PACKAGE_NAME "intel-igc-opencl-2")
   set(CPACK_RPM_IGC-OPENCL_PACKAGE_REQUIRES "intel-igc-core-2 = ${CPACK_PACKAGE_VERSION}")
   set(CPACK_RPM_IGC-OPENCL-DEVEL_FILE_NAME "intel-igc-opencl-devel-${PACKAGE_VERSION_WTH_METADATA}.${CPACK_RPM_PACKAGE_ARCHITECTURE}.rpm")
-  set(CPACK_RPM_IGC-OPENCL-DEVEL_PACKAGE_REQUIRES "intel-igc-opencl-2 = ${CPACK_PACKAGE_VERSION}}")
+  set(CPACK_RPM_IGC-OPENCL-DEVEL_PACKAGE_REQUIRES "intel-igc-opencl-2 = ${CPACK_PACKAGE_VERSION}")
 
   set(CPACK_ARCHIVE_IGC-CORE_FILE_NAME "intel-igc-core-2-${PACKAGE_VERSION_WTH_METADATA}.${CPACK_PACKAGE_ARCHITECTURE}")
   set(CPACK_ARCHIVE_IGC-OPENCL_FILE_NAME "intel-igc-opencl-2-${PACKAGE_VERSION_WTH_METADATA}.${CPACK_PACKAGE_ARCHITECTURE}")
