@@ -93,6 +93,8 @@ private:
                      unsigned int &);
   bool overlap(G4_INST *, std::list<INST_LIST_ITER> &);
   bool overlap(G4_INST *, G4_INST *, bool &);
+  bool redefinesPendingSpillPayload(G4_INST *,
+                                    const std::list<INST_LIST_ITER> &);
   void coalesceSpills(std::list<INST_LIST_ITER> &, unsigned int, unsigned int,
                       bool, G4_InstOption);
   bool allSpillsSameVar(std::list<INST_LIST_ITER> &);

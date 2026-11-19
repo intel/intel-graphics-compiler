@@ -765,6 +765,20 @@ bool CoalesceSpillFills::overlap(G4_INST *inst,
   return false;
 }
 
+// Return true if inst may write any part of a pending spill's payload.
+bool CoalesceSpillFills::redefinesPendingSpillPayload(
+    G4_INST *inst, const std::list<INST_LIST_ITER> &pendingSpills) {
+  auto dst = inst->getDst();
+  if (!dst || dst->isNullReg())
+    return false;
+  for (const auto &sp : pendingSpills) {
+    auto payload = (*sp)->asSpillIntrinsic()->getPayload();
+    if (dst->compareOperand(payload, *kernel.fg.builder) != Rel_disjoint)
+      return true;
+  }
+  return false;
+}
+
 void CoalesceSpillFills::removeWARFills(std::list<INST_LIST_ITER> &fills,
                                         std::list<INST_LIST_ITER> &spills) {
   for (auto flIt = fills.begin(); flIt != fills.end();) {
@@ -1025,7 +1039,7 @@ void CoalesceSpillFills::populateSendDstDcl() {
 void CoalesceSpillFills::spills() {
   populateSendDstDcl();
 
-  // Iterate over all BBs, find fills that are closeby and coalesce
+  // Iterate over all BBs, find spills that are closeby and coalesce
   // a bunch of them. Insert movs as required.
   for (auto bb : kernel.fg) {
     if (!isSpillCleanupEnabled(bb))
@@ -1130,6 +1144,13 @@ void CoalesceSpillFills::spills() {
           coalIt++;
         }
       }
+
+      // Coalesced spill is emitted after the last spill in the chain. If a
+      // pending spill's payload is redefined in between, the coalesced spill
+      // would store the new value, so end the chain here.
+      if (!earlyCoalesce && !inst->isSpillIntrinsic() &&
+          redefinesPendingSpillPayload(inst, spillsToCoalesce))
+        earlyCoalesce = true;
 
       if (spillsToCoalesce.size() > 0 && instRP > spillWindowSizeThreshold) {
         if (!allSpillsSameVar(spillsToCoalesce)) {
