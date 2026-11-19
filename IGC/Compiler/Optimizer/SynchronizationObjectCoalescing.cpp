@@ -2134,19 +2134,11 @@ bool SynchronizationObjectCoalescing::IsSubstituteInstruction(const llvm::Instru
     // 2.) reference fence is a .none operation
     // 3.) reference fence is an .invalidate and evaluated fence is
     //     an .invalidate or an .evict
-    // 4.) reference fence is a .clean and evaluated fence is
-    //     an .evict
-    // Note: a .clean fence and an .invalidate fence are not substitutes of
-    // each other. A potential future optimization is to coalesce such a pair
-    // of fences (same SFID, compatible scope) into a single .evict fence. It
-    // would require replacing both fences with a new one instead of only
-    // removing a redundant fence.
     bool cond1 = opReference == opEvaluated;
     bool cond2 = referenceIsOpNone;
     bool cond3 = !evaluatedIsOpNone && opReference == LSC_FENCE_OP_INVALIDATE &&
                  (opEvaluated == LSC_FENCE_OP_INVALIDATE || opEvaluated == LSC_FENCE_OP_EVICT);
-    bool cond4 = !evaluatedIsOpNone && opReference == LSC_FENCE_OP_CLEAN && opEvaluated == LSC_FENCE_OP_EVICT;
-    isDuplicate &= (cond1 || cond2 || cond3 || cond4);
+    isDuplicate &= (cond1 || cond2 || cond3);
 
     return isDuplicate;
   } else if (IsTypedMemoryFenceOperation(pEvaluatedInst) && IsTypedMemoryFenceOperation(pReferenceInst)) {
