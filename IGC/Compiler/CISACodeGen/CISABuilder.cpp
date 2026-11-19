@@ -6524,8 +6524,11 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
     }
   }
 
+  // OpenCL decides per kernel whether to retry, so the warning is stored here and emitted in GatherDataForDriver() for
+  // the shipped attempt.
+  const bool isOpenCL = context->type == ShaderType::OPENCL_SHADER;
   if ((jitInfo->stats.spillMemUsed || jitInfo->stats.numGRFSpillFillWeighted) &&
-      (noRetry || context->m_retryManager->IsLastTry()) && !isStackCallProgram) {
+      (isOpenCL || noRetry || context->m_retryManager->IsLastTry()) && !isStackCallProgram) {
     // report a spill warning to build log only if we:
     //   - spilled
     //   - are not retrying (IsLastTry() wasn't considered above
@@ -6540,7 +6543,10 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
     auto spilledRegs = std::max<unsigned>(1, (jitInfo->stats.spillMemUsed + getGRFSize() - 1) / getGRFSize());
     ss << " and spilled around " << spilledRegs;
 
-    context->EmitWarning(ss.str().c_str(), m_program->entry);
+    if (isOpenCL)
+      m_program->m_spillWarning = ss.str();
+    else
+      context->EmitWarning(ss.str().c_str(), m_program->entry);
   }
 }
 

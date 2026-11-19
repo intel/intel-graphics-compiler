@@ -2363,6 +2363,11 @@ void GatherDataForDriver(OpenCLProgramContext *ctx, COpenCLKernel *pShader, CSha
     // Common part for NO_Retry:
     {
       if (pSelectedKernel) {
+        // pSelectedKernel may be a previous attempt compiled at a different SIMD
+        // width than simdMode, so look up whichever width it actually shipped.
+        CShader *selectedShader = pSelectedKernel->GetShaderIfAny();
+        if (selectedShader && !selectedShader->m_spillWarning.empty())
+          ctx->EmitWarning(selectedShader->m_spillWarning.c_str(), pFunc);
         COMPILER_SHADER_STATS_PRINT(pSelectedKernel->m_shaderStats, ShaderType::OPENCL_SHADER, ctx->hash,
                                     pFunc->getName().str());
         COMPILER_SHADER_STATS_SUM(ctx->m_sumShaderStats, pSelectedKernel->m_shaderStats, ShaderType::OPENCL_SHADER);

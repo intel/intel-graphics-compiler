@@ -421,6 +421,7 @@ public:
   unsigned m_spillThreshold = 0;
   float m_spillCost = 0; // num weighted spill inst / total inst
   uint m_asmInstrCount = 0;
+  std::string m_spillWarning;
 
   std::vector<llvm::Value *> m_argListCache;
 

@@ -17,8 +17,9 @@ SPDX-License-Identifier: MIT
 //
 
 // Default (DPAS category on): the retry lifts the ceiling and VRT picks 512 GRF.
+// The first try spills but is discarded, so no spill warning is reported.
 // RUN: ocloc compile -file %s -device cri -options "-igc_opts 'EnableCRIDefault512GRF=0,EnableOCL512GRFForDPAS=1,DumpASMToConsole=1'" \
-// RUN: 2>&1 | FileCheck %s --check-prefix=COMPILE
+// RUN: 2>&1 | FileCheck %s --check-prefix=COMPILE --implicit-check-not="spilled around"
 
 // COMPILE: numGRF=256
 // COMPILE: numGRF=512
