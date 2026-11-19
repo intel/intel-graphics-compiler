@@ -627,7 +627,8 @@ void LivenessAnalysis::computeLiveness() {
   }
 
   if (fg.getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
-      (selectedRF & G4_GRF || selectedRF & G4_FLAG) && (numFnId > 0)) {
+      (selectedRF & G4_GRF || selectedRF & G4_FLAG) &&
+      !fg.funcInfoTable.empty()) {
     // compute the maydef for each subroutine
     maydefAnalysis();
   }
