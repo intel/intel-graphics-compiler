@@ -180,7 +180,6 @@ void initializeScalarizeFunctionLPMPass(llvm::PassRegistry &);
 void initializeSimd32ProfitabilityAnalysisPass(llvm::PassRegistry &);
 void initializeSetFastMathFlagsLPMPass(llvm::PassRegistry &);
 void initializeSinkPointerConstAddPassPass(llvm::PassRegistry &);
-void initializeSplitExitingLatchBackedgePass(llvm::PassRegistry &);
 void initializeSPIRMetaDataTranslationLPMPass(llvm::PassRegistry &);
 void initializeSplitStructurePhisPassPass(llvm::PassRegistry &);
 #if LLVM_VERSION_MAJOR == 22

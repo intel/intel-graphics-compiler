@@ -580,10 +580,6 @@ DECLARE_IGC_REGKEY(DWORD, RuntimeLoopUnrolling, 0,
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(DWORD, RuntimeLoopUnrollingCount, 0, "Runtime loop unrolling count", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableIndVarSimplification, true, "Enables IndVarSimplification pass.", ALWAYS)
-DECLARE_IGC_REGKEY(bool, EnableSplitExitingLatchBackedge, true,
-                   "Before LoopRotate, split only the back-edges of loops whose header and latch both exit, instead of "
-                   "running BreakCriticalEdges on the whole function",
-                   ALWAYS)
 DECLARE_IGC_REGKEY_UMD(bool, DisableBranchSwaping, false,
                        "Setting this to 1/true adds a compiler switch to disable branch swapping.", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableSynchronizationObjectCoalescingPass, false,
