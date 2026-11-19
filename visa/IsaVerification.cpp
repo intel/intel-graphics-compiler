@@ -4946,6 +4946,10 @@ struct LscInstVerifier {
 
     // check all the Src0Addr fields (U, V, R, LOD)
     if (opInfo.op == LSC_READ_STATE_INFO) {
+      if (builder.isEfficient64bEnabled() &&
+          builder.getPlatform() >= Xe3P_Graphics)
+        error("lsc_read_state_info is not supported with efficient64b on this "
+              "platform");
       verifyRawOperandNonNull("Src0Addr_UVRL", uIx);  // SIMD1 (U, V, R, LOD)
       verifyRawOperandNull("Src0Addr_Vs", vIx);     // V's
       verifyRawOperandNull("Src0Addr_Rs", rIx);     // R's

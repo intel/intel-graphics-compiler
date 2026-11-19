@@ -1800,6 +1800,9 @@ int IR_Builder::translateLscTypedInstUnified(
   };
 
   if (opInfo.is(LSC_READ_STATE_INFO)) {
+    vISA_ASSERT_INPUT(getPlatform() < Xe3P_Graphics,
+                      "lsc_read_state_info is not supported with efficient64b "
+                      "on this platform");
     // like fences, send requires *something* (at least one reg) to be
     // sent out; we pick the initial r0 value since it's known to
     // be floating around somewhere until EOT
