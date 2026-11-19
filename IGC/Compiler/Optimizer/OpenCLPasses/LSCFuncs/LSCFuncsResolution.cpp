@@ -1369,6 +1369,9 @@ Instruction *LSCFuncsResolution::CreateLSCFenceIntrinsicCallInst(CallInst &CI) {
     if (!context->platform.supportSystemFence()) {
       reportError("platform does not support system fence");
     }
+    if (memPort != LSC_UGM && memPort != LSC_TGM) {
+      reportError("LSC system scope is available for UGM data-port only");
+    }
   }
 
   Function *lscFunc =
