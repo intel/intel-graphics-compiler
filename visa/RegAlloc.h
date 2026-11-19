@@ -75,7 +75,6 @@ class LivenessAnalysis {
   unsigned numUnassignedVarId = 0; // the unassigned var count
   unsigned numAddrId = 0;          // the addr count
   unsigned numBBId = 0;            // the block count
-  unsigned numFnId = 0;            // the function count
   const unsigned char selectedRF =
       0; // the selected reg file kind for performing liveness
   const PointsToAnalysis &pointsToAnalysis;
