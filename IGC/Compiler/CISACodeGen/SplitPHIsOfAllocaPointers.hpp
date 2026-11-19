@@ -30,9 +30,10 @@ namespace IGC {
 //   %phi = phi i8 addrspace(4)* [ %p1, bb1 ], [ %p2, bb2 ]
 //   %v = load float, %phi
 //
-// The rewrite is only applied where it is provably non-speculative (each PHI
-// predecessor's sole successor is the merge block) and clobber-free (each load
-// is in the merge block with no memory-writing instruction before it).
+// The rewrite is applied where it is provably non-speculative (each PHI predecessor's sole successor is the merge
+// block) and clobber-free (each load is in the merge block with no memory-writing instruction before it). Additionally,
+// when across function SoA is enabled and platform has LSC support, split is done using predicated loads in cases where
+// it would otherwise be unsafe to hoist the load non-speculatively.
 //
 // VerifyAlloca restricts the rewrite to allocas for which splitting a pointer merge is worthwhile.
 // CheckCrossFnArgs additionally treats the callee arguments an alloca pointer flows into as roots of the merge

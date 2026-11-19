@@ -54,19 +54,6 @@ void collectCastChain(SelectInst *SI, Instruction *LeafUser, SmallVectorImpl<Ins
   std::reverse(Chain.begin(), Chain.end());
 }
 
-Instruction *createPredicatedLoad(IRBuilder<> &B, LoadInst *Model, Value *Ptr, Value *Pred) {
-  Module *Mod = B.GetInsertBlock()->getModule();
-  Type *MemType = Model->getType();
-  Type *ITys[3] = {MemType, Ptr->getType(), MemType};
-  Function *PredLoadFunc = GenISAIntrinsic::getDeclaration(Mod, GenISAIntrinsic::GenISA_PredicatedLoad, ITys);
-  Value *AlignV = ConstantInt::get(Type::getInt64Ty(B.getContext()), IGCLLVM::getAlignmentValue(Model));
-  Value *MergeV = PoisonValue::get(MemType);
-  Value *Args[4] = {Ptr, AlignV, Pred, MergeV};
-  Instruction *PredLoad = B.CreateCall(PredLoadFunc, Args);
-  PredLoad->setDebugLoc(Model->getDebugLoc());
-  return PredLoad;
-}
-
 // Transform: %v = load (chain(SI))  ==> %va = load chain(A); %vb = load chain(B); %v = select c, va, vb
 void splitLoadOfSelectPtr(LoadInst *LI, SelectInst *SI, bool UsePredicatedLoads, const DataLayout &DL,
                           const DenseSet<const Value *> &ExtraRoots) {
@@ -81,8 +68,8 @@ void splitLoadOfSelectPtr(LoadInst *LI, SelectInst *SI, bool UsePredicatedLoads,
   Value *VFalse = nullptr;
   if (UsePredicatedLoads) {
     Value *NotCond = B.CreateNot(Cond);
-    VTrue = createPredicatedLoad(B, LI, PtrTrue, Cond);
-    VFalse = createPredicatedLoad(B, LI, PtrFalse, NotCond);
+    VTrue = IGC::SoAAcrossFNUtil::createPredicatedLoad(B, LI, PtrTrue, Cond);
+    VFalse = IGC::SoAAcrossFNUtil::createPredicatedLoad(B, LI, PtrFalse, NotCond);
   } else {
     auto *LTrue = cast<LoadInst>(LI->clone());
     LTrue->setOperand(LI->getPointerOperandIndex(), PtrTrue);

@@ -112,7 +112,7 @@ traceUsesToArgs(Value *Root, const SmallPtrSetImpl<Function *> &UnsupportedFns,
         continue;
       }
       if (auto *PLI = llvm::dyn_cast<llvm::PredicatedLoadIntrinsic>(U)) {
-        if (PLI->getMergeValue() == V)
+        if (PLI->getPointerOperand() != V || PLI->getMergeValue() == V)
           return std::nullopt;
         continue;
       }
@@ -233,16 +233,24 @@ Value *replayGEP(IRBuilderBase &B, Value *Base, GetElementPtrInst *GEP) {
 }
 } // anonymous namespace
 
+Value *getRootBase(Value *V, const DataLayout &DL, const DenseSet<const Value *> &ExtraRoots) {
+  Value *Obj = IGCLLVM::getUnderlyingObject(V, DL);
+  if (!isa<AllocaInst>(Obj) && !ExtraRoots.contains(Obj)) {
+    return nullptr;
+  }
+  // Stripping bitcast/addrspacecast preserves the underlying object.
+  while (isa<BitCastInst, AddrSpaceCastInst>(V)) {
+    V = cast<Instruction>(V)->getOperand(0);
+  }
+  return V;
+}
+
 Value *replayAddressChain(IRBuilderBase &B, Value *Incoming, ArrayRef<Instruction *> Chain, const DataLayout &DL,
                           const DenseSet<const Value *> &ExtraRoots) {
   Value *Cur = Incoming;
   std::optional<unsigned> ClampAS;
-  Value *Obj = IGCLLVM::getUnderlyingObject(Incoming, DL);
-  if (isa<AllocaInst>(Obj) || ExtraRoots.contains(Obj)) {
-    // Stripping bitcast/addrspacecast preserves the underlying object.
-    while (isa<BitCastInst, AddrSpaceCastInst>(Cur)) {
-      Cur = cast<Instruction>(Cur)->getOperand(0);
-    }
+  if (Value *Base = getRootBase(Incoming, DL, ExtraRoots)) {
+    Cur = Base;
     ClampAS = Cur->getType()->getPointerAddressSpace();
   }
 
@@ -258,5 +266,34 @@ Value *replayAddressChain(IRBuilderBase &B, Value *Incoming, ArrayRef<Instructio
   // the chain ends without a cast restoring it (e.g. an empty chain).
   Type *OrigTy = Chain.empty() ? Incoming->getType() : Chain.back()->getType();
   return castTo(B, Cur, clampAddrSpace(OrigTy, ClampAS));
+}
+
+Instruction *createPredicatedLoad(IRBuilderBase &B, Instruction *Model, Value *Ptr, Value *Pred) {
+  Module *Mod = B.GetInsertBlock()->getModule();
+  Type *MemType = Model->getType();
+  Type *ITys[3] = {MemType, Ptr->getType(), MemType};
+  Function *PredLoadFunc = GenISAIntrinsic::getDeclaration(Mod, GenISAIntrinsic::GenISA_PredicatedLoad, ITys);
+
+  Instruction *PredLoad;
+  if (auto *LIModel = dyn_cast<LoadInst>(Model)) {
+    Value *AlignV = ConstantInt::get(Type::getInt64Ty(B.getContext()), IGCLLVM::getAlignmentValue(LIModel));
+    Value *Args[4] = {Ptr, AlignV, Pred, PoisonValue::get(MemType)};
+    PredLoad = B.CreateCall(PredLoadFunc, Args);
+  } else {
+    auto *PLIModel = cast<PredicatedLoadIntrinsic>(Model);
+    Value *AlignV = ConstantInt::get(Type::getInt64Ty(B.getContext()), PLIModel->getAlignment());
+    Value *NewPredicate = PLIModel->getPredicate();
+    auto *PredC = dyn_cast<ConstantInt>(Pred);
+    if (!PredC || !PredC->isOne())
+      NewPredicate = B.CreateAnd(Pred, NewPredicate);
+    Value *Args[4] = {Ptr, AlignV, NewPredicate, PLIModel->getMergeValue()};
+    PredLoad = B.CreateCall(PredLoadFunc, Args);
+  }
+  PredLoad->setDebugLoc(Model->getDebugLoc());
+  if (MDNode *CacheCtrl = Model->getMetadata("lsc.cache.ctrl"))
+    PredLoad->setMetadata("lsc.cache.ctrl", CacheCtrl);
+  if (MDNode *NonTemporal = Model->getMetadata(LLVMContext::MD_nontemporal))
+    PredLoad->setMetadata(LLVMContext::MD_nontemporal, NonTemporal);
+  return PredLoad;
 }
 } // namespace IGC::SoAAcrossFNUtil

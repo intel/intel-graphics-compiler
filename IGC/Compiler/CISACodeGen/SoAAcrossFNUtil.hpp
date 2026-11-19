@@ -40,6 +40,13 @@ class MetaDataUtils;
 }
 
 namespace SoAAcrossFNUtil {
+// A load that reads through a pointer merge (phi/select). Chain is the address chain between the merge and the load,
+// in the form replayAddressChain() expects.
+struct LoadVia {
+  llvm::Instruction *Load;
+  llvm::SmallVector<llvm::Instruction *, 4> Chain; // merge → Chain[0] → ... → Load (casts and const-GEPs)
+};
+
 void collectSoAUnsupportedFns(llvm::Module &M, llvm::CallGraph &CG, GenXFunctionGroupAnalysis *FGA,
                               IGCMD::MetaDataUtils *MdUtils, llvm::SmallPtrSetImpl<llvm::Function *> &UnsupportedFns);
 
@@ -58,6 +65,11 @@ bool isWorthwhileForAlloca(llvm::AllocaInst *AI, const llvm::DataLayout &DL);
 void collectRootArgs(llvm::Module &M, GenXFunctionGroupAnalysis *FGA, IGCMD::MetaDataUtils *MdUtils, bool VerifyAlloca,
                      llvm::DenseSet<const llvm::Value *> &RootArgs);
 
+// If V is rooted at an alloca or an ExtraRoots argument, returns V with its leading bitcasts / addrspacecasts stripped
+// (GEPs are kept), i.e. the base replayAddressChain() rebuilds from. Otherwise returns nullptr.
+llvm::Value *getRootBase(llvm::Value *V, const llvm::DataLayout &DL,
+                         const llvm::DenseSet<const llvm::Value *> &ExtraRoots);
+
 // Used when splitting a pointer merge (phi/select) into per-operand accesses.
 // Chain is the sequence of bitcasts, addrspacecasts and constant-index GEPs
 // between the merge and a load/store: Chain[0] uses the merge, each later
@@ -73,5 +85,13 @@ void collectRootArgs(llvm::Module &M, GenXFunctionGroupAnalysis *FGA, IGCMD::Met
 llvm::Value *replayAddressChain(llvm::IRBuilderBase &B, llvm::Value *Incoming,
                                 llvm::ArrayRef<llvm::Instruction *> Chain, const llvm::DataLayout &DL,
                                 const llvm::DenseSet<const llvm::Value *> &ExtraRoots);
+
+// Creates a GenISA_PredicatedLoad at B's insertion point that loads Model's type from Ptr. Model is either:
+//  - a LoadInst: the new load is enabled by Pred and yields poison when Pred is false;
+//  - a GenISA_PredicatedLoad: the new load is enabled by (Pred && Model's predicate) and yields Model's merge value
+//    when that is false.
+// The new load takes Model's alignment, debug location, and lsc.cache.ctrl / !nontemporal metadata.
+llvm::Instruction *createPredicatedLoad(llvm::IRBuilderBase &B, llvm::Instruction *Model, llvm::Value *Ptr,
+                                        llvm::Value *Pred);
 } // namespace SoAAcrossFNUtil
 } // namespace IGC
