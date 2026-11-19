@@ -52,11 +52,11 @@ entry:
 ; CHECK: {{\([0-9]+,[ ]*0[ ]*\) OG:[ A-Z]*}} [[PTR_PAIR:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p4(ptr addrspace(4) [[PTR_AS4]])
   %ptr_pair = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p4(i8 addrspace(4)* %ptr_as4)
 
-; Currently it's estimated as +64 -64: essentially correct, but
-; may be not perfect for the instruction choosing heuristics
+; The pair has no registers of its own: its halves are read from the pointer,
+; which stays live until the trunc of its ptrtoint. Each half adds 64.
 ; CHECK: {{\([0-9]+,[ ]*64[ ]*\) OG:[ A-Z]*}} [[PAIR_LOW:%.*]] = extractvalue { i32, i32 } [[PTR_PAIR]], 0
   %pair_low = extractvalue { i32, i32 } %ptr_pair, 0
-; CHECK: {{\([0-9]+,[ ]*-64[ ]*\) OG:[ A-Z]*}} [[PAIR_HIGH:%.*]] = extractvalue { i32, i32 } [[PTR_PAIR]], 1
+; CHECK: {{\([0-9]+,[ ]*64[ ]*\) OG:[ A-Z]*}} [[PAIR_HIGH:%.*]] = extractvalue { i32, i32 } [[PTR_PAIR]], 1
   %pair_high = extractvalue { i32, i32 } %ptr_pair, 1
 
 ; Prepare the first parameter (base address as i64)
@@ -91,6 +91,56 @@ entry:
 ; CHECK: {{\([0-9]+,[ ]*256[ ]*\) OG:[ A-Z]*}} [[DPAS_RESULT:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> [[LOAD_RESULT]], <8 x i32> zeroinitializer, i32 1, i32 1, i32 1, i32 1, i1 false)
   %dpas_result = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> %load_result, <8 x i32> zeroinitializer, i32 1, i32 1, i32 1, i32 1, i1 false)
 ; CHECK: {{\([0-9]+,[ ]*0[ ]*\) OG:[ A-Z]*}} ret void
+  ret void
+}
+
+; The pointer and the values computed from it die in the block. The pointer is
+; released once, by the trunc of its ptrtoint, and the pair is not released, as
+; it has no registers. The block ends at the pressure it starts with.
+
+define void @test_ptr_pair_released_once(i64 %base_addr, ptr addrspace(1) %dst) {
+; CHECK: Function test_ptr_pair_released_once
+; CHECK: Original schedule: entry
+; CHECK: ([[START:[0-9]+]], 0 {{.*}} OG:{{.*}} store i32 0
+; CHECK: {{\([0-9]+,[ ]*64[ ]*\) OG:[ A-Z]*}} %pair_high = extractvalue
+; CHECK: {{\([0-9]+,[ ]*-64[ ]*\) OG:[ A-Z]*}} %addr_trunc = trunc
+; CHECK: ([[START]], 0 {{.*}} OG:{{.*}} ret void
+entry:
+  store i32 0, ptr addrspace(1) %dst, align 4
+  %dpas = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 1, i32 1, i32 1, i32 1, i1 false)
+  store <8 x float> %dpas, ptr addrspace(1) %dst, align 32
+  %addr = add i64 %base_addr, 64
+  %ptr_as1 = inttoptr i64 %addr to ptr addrspace(1)
+  %ptr_as4 = addrspacecast ptr addrspace(1) %ptr_as1 to ptr addrspace(4)
+  %addr_as4 = ptrtoint ptr addrspace(4) %ptr_as4 to i64
+  %ptr_pair = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p4(ptr addrspace(4) %ptr_as4)
+  %pair_low = extractvalue { i32, i32 } %ptr_pair, 0
+  %pair_high = extractvalue { i32, i32 } %ptr_pair, 1
+  %sum = add i32 %pair_low, %pair_high
+  %addr_trunc = trunc i64 %addr_as4 to i32
+  %res = add i32 %sum, %addr_trunc
+  store i32 %res, ptr addrspace(1) %dst, align 4
+  ret void
+}
+
+; A constant pointer has no registers, so the pair is counted at its own size
+; and released by its last extract. The block ends at the pressure it starts with.
+
+define void @test_ptr_pair_of_null(ptr addrspace(1) %dst) {
+; CHECK: Function test_ptr_pair_of_null
+; CHECK: Original schedule: entry
+; CHECK: ([[START:[0-9]+]], 0 {{.*}} OG:{{.*}} store i32 0
+; CHECK: {{\([0-9]+,[ ]*128[ ]*\) OG:[ A-Z]*}} %ptr_pair = call
+; CHECK: ([[START]], 0 {{.*}} OG:{{.*}} ret void
+entry:
+  store i32 0, ptr addrspace(1) %dst, align 4
+  %dpas = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 1, i32 1, i32 1, i32 1, i1 false)
+  store <8 x float> %dpas, ptr addrspace(1) %dst, align 32
+  %ptr_pair = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p4(ptr addrspace(4) null)
+  %pair_low = extractvalue { i32, i32 } %ptr_pair, 0
+  %pair_high = extractvalue { i32, i32 } %ptr_pair, 1
+  %sum = add i32 %pair_low, %pair_high
+  store i32 %sum, ptr addrspace(1) %dst, align 4
   ret void
 }
 

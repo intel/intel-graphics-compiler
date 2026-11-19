@@ -175,15 +175,12 @@ VectorShuffleAnalysis::tryCreatingVectorToScalarsPattern(llvm::ExtractElementIns
 
   std::vector<int> ShuffleMask(VecSize, -1);
   std::vector<ExtractElementInst *> EEs;
-  bool AllUsesAreScalars = true;
 
   // iterate over uses
   for (auto *U : Vec->users()) {
     auto *EE = dyn_cast<ExtractElementInst>(U);
-    if (!EE) {
-      AllUsesAreScalars = false;
+    if (!EE)
       continue;
-    }
 
     auto Idx = dyn_cast<ConstantInt>(EE->getIndexOperand());
     if (!Idx)
@@ -211,7 +208,7 @@ VectorShuffleAnalysis::tryCreatingVectorToScalarsPattern(llvm::ExtractElementIns
     }
   }
 
-  return std::make_unique<VectorToScalarsPattern>(Vec, EEs, AllUsesAreScalars);
+  return std::make_unique<VectorToScalarsPattern>(Vec, EEs);
 }
 
 bool VectorShuffleAnalysis::runOnFunction(llvm::Function &F) {

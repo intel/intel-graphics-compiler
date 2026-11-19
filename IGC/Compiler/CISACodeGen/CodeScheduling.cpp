@@ -361,7 +361,9 @@ public:
 
     // copy the state
     BBIn = RPT.BBIn;
+    LiveInCasts = RPT.LiveInCasts;
     BBOut = RPT.BBOut;
+    LiveOutSources = RPT.LiveOutSources;
     BBCurrent = RPT.BBCurrent;
     CurrentPressure = RPT.CurrentPressure;
     EstimationCache = RPT.EstimationCache;
@@ -376,9 +378,9 @@ public:
     OpenDPASChains = RPT.OpenDPASChains;
 
     // deepcopy HangingLiveVarsVec and HangingLiveVars. HangingLiveVars also
-    // keeps the values that already died: the entry of the first scalar of a
-    // partially populated vector stops the update from tracking the vector a
-    // second time, with the dead scalar that would then never release it.
+    // keeps the values that already died: their entries find the HLV of a
+    // vector for the other vectors with the same owner and for the later
+    // instructions of the same pattern.
     HangingLiveVarsVec.clear();
     HangingLiveVarsVec.reserve(RPT.HangingLiveVarsVec.size());
     DenseMap<const HangingLiveVarsInfo *, HangingLiveVarsInfo *> CopyOf;
@@ -452,12 +454,130 @@ public:
     BBIn = RPE->getInSet()[BB];
     BBOut = RPE->getOutSet()[BB];
 
+    // A live-out no-op value uses the registers of its source, so the source
+    // stays live to the end of the block.
+    LiveOutSources.clear();
+    for (auto *V : BBOut)
+      for (Value *X = getNoOpSource(V); X; X = getNoOpSource(X))
+        LiveOutSources.insert(X);
+
     BBCurrent.clear();
+    HangingLiveVars.clear();
+    HangingLiveVarsVec.clear();
+
+    // The PHIs are placed first, and getRealOp stops at their incoming values.
+    // Both are set before the live-in HLVs, so a value used only by a PHI is no
+    // longer live, and reset() finds the same owners as the instructions of BB.
+    ValueSet LiveIn = BBIn;
+    for (auto &Phi : BB->phis()) {
+      BBCurrent.insert(&Phi);
+      for (auto &Op : Phi.operands())
+        BBIn.insert(Op.get());
+    }
+
+    // A no-op cast from another block shares the registers of its source. If
+    // the source is counted, the cast and the values of BBIn between them go to
+    // LiveInCasts: they are not counted, and getRealOp looks through them, so
+    // the uses of the cast release the source, which would never be released
+    // otherwise. A PHI incoming cast is in BBIn but not live-in; without the
+    // entry, a live-in extract of it would make it a second owner of the
+    // registers of its source.
+    auto addLiveInCast = [&](Value *V, function_ref<bool(Value *)> IsSource) {
+      SmallVector<Value *, 4> Between;
+      for (Value *X = getNoOpSource(V); X; X = getNoOpSource(X)) {
+        if (IsSource(X)) {
+          LiveInCasts.insert(V);
+          LiveInCasts.insert(Between.begin(), Between.end());
+          return true;
+        }
+        if (BBIn.count(X))
+          Between.push_back(X);
+      }
+      return false;
+    };
+
+    SmallVector<Value *, 32> FromOtherBlocks;
     for (auto *V : BBIn) {
+      auto *I = dyn_cast<Instruction>(V);
+      if (I && I->getParent() != BB)
+        FromOtherBlocks.push_back(V);
+    }
+
+    LiveInCasts.clear();
+    for (auto *V : FromOtherBlocks)
+      addLiveInCast(V, [&](Value *X) { return LiveIn.count(X); });
+
+    // Returns the owner of the vector registers that V uses, or nullptr, and the
+    // kind of its HLV in Type. V uses them if V, or the end of its no-op chain,
+    // is a no-op subvector, an extract of a shuffled vector or an extract of a
+    // vector split into scalars. That member need not be live-in: a live-out
+    // no-op value of it keeps the registers live (LiveOutSources). An
+    // insertelement of a copy or of a vector of scalars fills registers of its
+    // own.
+    //
+    // getRegisterOwner can return a value of BBIn, an inner owner, because
+    // getRealOp stops at it. If the inner owner is such a member too, the
+    // registers belong to its own owner, so the search goes on outward, and the
+    // inner owners go to InnerOwners. Without this, a live-in subvector of a
+    // live-in cast of a subvector would make the cast a second owner.
+    auto getVectorOwnerOf = [&](Value *V, HangingLiveVarsType *Type = nullptr,
+                                SmallVectorImpl<Value *> *InnerOwners = nullptr) -> Value * {
+      Value *Owner = nullptr;
+      for (Value *X = V; X;) {
+        Value *Member = X;
+        while (Value *Source = getNoOpSource(Member))
+          Member = Source;
+        auto *I = dyn_cast<Instruction>(Member);
+        Value *SourceVec = nullptr;
+        HangingLiveVarsType MemberType = HANGING_VECTORS;
+        if (auto *DV = I ? VSA->getDestVector(I) : nullptr) {
+          if (DV->isVectorShuffle() && (DV->isNoOp() || isa<ExtractElementInst>(I))) {
+            SourceVec = DV->getSourceVec();
+            MemberType = DV->isNoOp() ? HANGING_NOOP_VECTORS : HANGING_VECTORS;
+          }
+        } else if (auto *V2SP = I ? VSA->getVectorToScalarsPattern(I) : nullptr) {
+          SourceVec = V2SP->getSourceVec();
+          MemberType = HANGING_VECTOR_TO_SCALARS;
+        }
+        Value *VecOwner = SourceVec ? getRegisterOwner(SourceVec) : nullptr;
+        if (!VecOwner || isa<Constant>(VecOwner))
+          break;
+        if (Owner && InnerOwners)
+          InnerOwners->push_back(Owner);
+        Owner = VecOwner;
+        if (Type)
+          *Type = MemberType;
+        X = BBIn.count(Owner) ? Owner : nullptr;
+      }
+      return Owner;
+    };
+
+    // The owners are found after the first pass, because getRealOp looks
+    // through LiveInCasts. An owner is counted even if it is not live-in, so a
+    // second pass adds its casts from other blocks to LiveInCasts. The end of
+    // an owner's no-op chain is an owner too: without it, two casts of one
+    // vector would both be owners and count the vector twice.
+    ValueSet Owners;
+    for (auto *V : LiveIn) {
+      if (Value *Owner = getVectorOwnerOf(V)) {
+        Owners.insert(Owner);
+        while (Value *Source = getNoOpSource(Owner))
+          Owner = Source;
+        Owners.insert(Owner);
+      }
+    }
+    for (auto *V : FromOtherBlocks) {
+      if (!LiveInCasts.count(V))
+        addLiveInCast(V, [&](Value *X) { return Owners.count(X); });
+    }
+
+    for (auto *V : LiveIn) {
       if (isa<Argument>(V)) {
         BBCurrent.insert(V);
         continue;
       }
+      if (LiveInCasts.count(V))
+        continue;
 
       auto *I = dyn_cast<Instruction>(V);
       if (!I)
@@ -465,21 +585,29 @@ public:
 
       IGC_ASSERT(!IGCLLVM::isDebugOrPseudoInst(*I));
 
-      auto *DV = VSA->getDestVector(I);
-      if (DV && DV->isVectorShuffle()) {
-        BBCurrent.insert(DV->getSourceVec());
+      // A value that uses vector registers is counted at their owner and hangs
+      // in the HLV of the owner, which releases them when its last value dies,
+      // even if no instruction of their pattern is in the block.
+      //
+      // A pattern of the block finds the HLV through an inner owner, which
+      // needs no use in BB: getRegisterOwner walks from a live-in no-op
+      // subvector to its source vector. A live-in inner owner that is still live
+      // joins the HLV in its own iteration. Any other one, a PHI incoming value
+      // or a live-in value that is no longer live (used only by a dead no-op
+      // cast, for example), gets only the map entry; without it, the pattern
+      // would create a second HLV.
+      HangingLiveVarsType Type = HANGING_VECTORS;
+      SmallVector<Value *, 2> InnerOwners;
+      if (Value *Owner = getVectorOwnerOf(I, &Type, &InnerOwners)) {
+        BBCurrent.insert(Owner);
+        HangingLiveVarsInfo *HLV = getOwnerHLV(Owner, Type);
+        addToVectorHLV(HLV, I);
+        for (Value *Inner : InnerOwners) {
+          if (!LiveIn.count(Inner) || !isStillLive(Inner))
+            HangingLiveVars.try_emplace(Inner, HLV);
+        }
       } else {
         BBCurrent.insert(I);
-      }
-    }
-
-    // Add all Phi instructions from BB to BBCurrent
-    for (auto &Phi : BB->phis()) {
-      BBCurrent.insert(&Phi);
-      // add all the Phi Values to BBIn
-      for (auto &Op : Phi.operands()) {
-        Value *V = Op.get();
-        BBIn.insert(V);
       }
     }
 
@@ -491,6 +619,10 @@ public:
     PrintDumpLevel(VerbosityLevel::Medium, "Initial BBCurrent: " << BBCurrent.size() << "\n");
     for (auto *V : BBCurrent) {
       PrintInstructionDumpLevel(VerbosityLevel::Medium, V);
+    }
+    for (const auto &HLV : HangingLiveVarsVec) {
+      PrintDumpLevel(VerbosityLevel::Medium,
+                     "Initial HLV: " << HLV->LiveVars.size() << " live values, vector size " << HLV->Size << "\n");
     }
 
     PrintDump("\n\n");
@@ -688,7 +820,7 @@ public:
           if (isDbgIntrinsic(UI))
             continue;
 
-          if (isNoOpInst(UI, CTX)) {
+          if (isNoOpForPressure(UI)) {
             collectRealUses(UI);
           } else {
             Uses.insert(UI);
@@ -704,20 +836,46 @@ public:
 
   bool inBBCurrent(Value *V) { return BBCurrent.count(V); }
 
+  // An instruction whose result uses the registers of its operand 0: it adds no
+  // pressure, never enters BBCurrent, and its uses are uses of the operand.
+  // Codegen reads the halves of ptr.to.pair from the pointer. An addrspacecast
+  // is not one, because it moves the pointer to new registers, and neither is a
+  // ptr.to.pair of a constant, which has no registers (as in isNoOpInst).
+  bool isNoOpForPressure(Instruction *I) {
+    if (isNoOpInst(I, CTX))
+      return true;
+    auto *Intr = dyn_cast<GenIntrinsicInst>(I);
+    return Intr && Intr->getIntrinsicID() == GenISAIntrinsic::GenISA_ptr_to_pair && !isa<Constant>(Intr->getOperand(0));
+  }
+
+  Value *getNoOpSource(Value *V) {
+    auto *I = dyn_cast<Instruction>(V);
+    return I && isNoOpForPressure(I) ? I->getOperand(0) : nullptr;
+  }
+
+  // The value whose registers V uses: V itself, or the end of its no-op chain.
+  // The walk stops at a value of BBIn, a live-in value that reset() counts or a
+  // PHI incoming value, unless the value is in LiveInCasts: those share the
+  // registers of a value that reset() counts.
   Value *getRealOp(Value *V) {
-    if (BBIn.count(V))
+    if (BBIn.count(V) && !LiveInCasts.count(V))
       return V;
 
-    Instruction *I = dyn_cast<Instruction>(V);
-    if (!I)
-      return V;
+    Value *Source = getNoOpSource(V);
+    return Source ? getRealOp(Source) : V;
+  }
 
-    bool IsAddrSpaceCastAndNotConstOp = isa<AddrSpaceCastInst>(I) && !isa<Constant>(I->getOperand(0));
-
-    if (isNoOpInst(I, CTX) || IsAddrSpaceCastAndNotConstOp) {
-      return getRealOp(I->getOperand(0));
+  // The value whose registers Vec uses, through no-op casts and no-op subvectors.
+  Value *getRegisterOwner(Value *Vec, SmallVectorImpl<Instruction *> *Subvectors = nullptr) {
+    Value *Owner = getRealOp(Vec);
+    while (auto *DT = VSA->getDestVector(Owner)) {
+      if (!DT->isNoOp() || DT->getLastIE() != Owner)
+        break;
+      if (Subvectors)
+        Subvectors->push_back(DT->getLastIE());
+      Owner = getRealOp(DT->getSourceVec());
     }
-    return V;
+    return Owner;
   }
 
   DenseSet<Instruction *> getHangingS2VInstructions() {
@@ -784,7 +942,9 @@ private:
   int32_t OpenDPASChains = 0;
 
   ValueSet BBIn;
+  ValueSet LiveInCasts;
   ValueSet BBOut;
+  ValueSet LiveOutSources;
   ValueSet BBCurrent;
 
   llvm::DenseMap<Value *, int32_t> EstimationCache;
@@ -809,14 +969,19 @@ private:
   std::vector<std::unique_ptr<HangingLiveVarsInfo>> HangingLiveVarsVec;
   DenseMap<Value *, HangingLiveVarsInfo *> HangingLiveVars;
 
+  bool livesOut(Value *V) { return BBOut.count(V) || LiveOutSources.count(V); }
+
   // Check if the value dies on the instruction CurrentI. Looks through no-op instructions,
   // but doesn't check if the value "hangs". Handling the value that looks dead is in fact "hangs"
   // is the responsibility of the user function.
   bool operandDies(Value *V, Instruction *CurrentI) {
-    if (BBOut.count(V))
+    if (livesOut(V))
       return false;
 
-    if (isa<Argument>(V))
+    // A live-in argument is never released. An argument that is not live-in
+    // is counted only as the owner of registers that live-in values use, and
+    // it dies as the other owners do.
+    if (isa<Argument>(V) && RPE->getInSet()[BB].count(V))
       return false;
 
     for (auto *U : getRealUses(V)) {
@@ -838,6 +1003,53 @@ private:
     return true;
   };
 
+  // Check if V is still live in the block: it has a use in the block that is not
+  // placed yet (V itself need not be placed), it lives out (livesOut), or it is
+  // a live-in argument. A value that is no longer live can't release an HLV.
+  bool isStillLive(Value *V) { return !operandDies(V, nullptr); }
+
+  // All vectors with one owner share its HLV, so the registers are released
+  // once. A live owner is a value of the HLV too, because its own last use can
+  // come after its subvectors die.
+  HangingLiveVarsInfo *getOwnerHLV(Value *Owner, HangingLiveVarsType Type) {
+    if (HangingLiveVarsInfo *HLV = HangingLiveVars.lookup(Owner))
+      return HLV;
+    HangingLiveVarsVec.emplace_back(
+        std::make_unique<HangingLiveVarsInfo>(computeSizeInBytes(Owner, SIMD, WI, *DL), Type));
+    HangingLiveVarsInfo *HLV = HangingLiveVarsVec.back().get();
+    HangingLiveVars[Owner] = HLV;
+    if (isStillLive(Owner))
+      HLV->LiveVars.insert(Owner);
+    return HLV;
+  }
+
+  // A value that is no longer live would never release the HLV.
+  void addToVectorHLV(HangingLiveVarsInfo *HLV, Instruction *LiveVar) {
+    if (!isStillLive(LiveVar))
+      return;
+    auto It = HangingLiveVars.find(LiveVar);
+    if (It != HangingLiveVars.end()) {
+      IGC_ASSERT(It->second == HLV);
+      return;
+    }
+    HLV->LiveVars.insert(LiveVar);
+    HangingLiveVars[LiveVar] = HLV;
+  }
+
+  // Check if the real op of a scalar inserted into a vector (case 3) hangs in
+  // the HLV of the vector. Only an instruction that dies in the block can
+  // release the HLV: a constant has no registers, and a live-in argument or a
+  // value that lives out is never released. A value of another vector pattern,
+  // or one that already hangs, is released by that pattern or by its own HLV.
+  bool isHangingScalar(Value *RealOp) {
+    auto *RealI = dyn_cast<Instruction>(RealOp);
+    if (!RealI || livesOut(RealI) || !isStillLive(RealI))
+      return false;
+    if (VSA->getDestVector(RealI) || VSA->getVectorToScalarsPattern(RealI))
+      return false;
+    return !HangingLiveVars.count(RealI);
+  }
+
   // Main function of the RegisterPressureTracker class
   // It estimates the register pressure in case we add instruction I to the basic block
   // Or updates the state to reflect that we add the instruction I (if Update is true)
@@ -857,10 +1069,7 @@ private:
   }
 
   int32_t estimateOrUpdateImpl(Instruction *I, bool Update) {
-    auto *Intr = dyn_cast<GenIntrinsicInst>(I);
-    bool IsNoOpIntr = Intr && (Intr->getIntrinsicID() == GenISAIntrinsic::GenISA_ptr_to_pair);
-
-    if (IGCLLVM::isDebugOrPseudoInst(*I) || I->isLifetimeStartOrEnd() || isNoOpInst(I, CTX) || IsNoOpIntr) {
+    if (IGCLLVM::isDebugOrPseudoInst(*I) || I->isLifetimeStartOrEnd() || isNoOpForPressure(I)) {
       // NoOp instructions do not change register pressure
       if (Update)
         PrintDumpLevel(VerbosityLevel::High, "NoOp instruction: " << getName(I) << "\n");
@@ -933,37 +1142,45 @@ private:
 
     ResultSizeInBytes += RPIncrease;
 
-    // Function to create a HangingLiveVarsInfo for a two of vector cases
-    auto createHLVForVector = [&](HangingLiveVarsType Type, Value *SourceVec) {
-      // Create a HangingLiveVarsInfo for the vector
-      auto SourceVecSize = computeSizeInBytes(SourceVec, SIMD, WI, *DL);
-      HangingLiveVarsVec.emplace_back(std::make_unique<HangingLiveVarsInfo>(SourceVecSize, Type));
-      auto *HLV = HangingLiveVarsVec.back().get();
-      // One HLV covers all subvectors of the source vector, so that a vector
-      // with both no-op and copied subvectors is released once. A no-op
-      // subvector uses the registers of the vector until the subvector dies,
-      // at its LastIE. A copied subvector reads the vector until its LastEE.
+    // Function to find the owner of the source vector registers of the vector
+    // cases 1, 2 and 4, and the values that keep them live. Every EE and IE of
+    // a no-op subvector is one, because a partly built subvector can live out.
+    auto getVectorOwner = [&](Value *SourceVec, SmallVectorImpl<Instruction *> &Members) {
+      Value *Owner = getRegisterOwner(SourceVec, &Members);
       for (auto *DT : VSA->getDestVectorsForSourceVector(SourceVec)) {
-        Instruction *LiveVar = DT->isNoOp() ? static_cast<Instruction *>(DT->getLastIE()) : DT->getLastEE();
-        HLV->LiveVars.insert(LiveVar);
-        HangingLiveVars[LiveVar] = HLV;
+        if (!DT->isNoOp()) {
+          Members.push_back(DT->getLastEE());
+          continue;
+        }
+        for (InsertElementInst *IE : DT->getIEs()) {
+          if (auto *EE = dyn_cast<ExtractElementInst>(IE->getOperand(1)))
+            Members.push_back(EE);
+          Members.push_back(IE);
+        }
       }
-      // The source vector is live until its own last use too, which can come
-      // after its subvectors die, or out of the block. An operand dies as its
-      // real op, behind no-op casts, so the real op of the source vector is
-      // the hanging value. A source vector that is a no-op subvector of a
-      // larger vector stays a value of the larger vector's HLV.
-      Value *SourceOp = getRealOp(SourceVec);
-      if (!HangingLiveVars.count(SourceOp)) {
-        HLV->LiveVars.insert(SourceOp);
-        HangingLiveVars[SourceOp] = HLV;
-        if (Update)
-          PrintDumpLevel(VerbosityLevel::High, " (adding vector " << getName(SourceOp) << " to HLV)");
-      }
-      if (Update)
-        PrintDumpLevel(VerbosityLevel::High,
-                       " (populating HLV with " << HLV->LiveVars.size() << " values, vector size " << HLV->Size << ")");
+      return Owner;
+    };
+
+    // Function to get the HangingLiveVarsInfo for the source vector of the vector cases 1, 2 and 4.
+    // Case 3 has no source vector: its HLV holds the inserted scalars and is built in case 3.
+    auto createHLVForVector = [&](HangingLiveVarsType Type, Value *SourceVec, bool &NewHLV) {
+      // The HLV already exists if reset() created it for live-in values, if
+      // another vector with the same owner hangs, or if an earlier instruction
+      // of the same pattern created it.
+      SmallVector<Instruction *, 8> Members;
+      Value *Owner = getVectorOwner(SourceVec, Members);
+      NewHLV = !HangingLiveVars.count(Owner);
+      HangingLiveVarsInfo *HLV = getOwnerHLV(Owner, Type);
+      if (NewHLV && HLV->LiveVars.count(Owner))
+        PrintDumpLevel(VerbosityLevel::High, " (adding vector " << getName(Owner) << " to HLV)");
+      for (auto *Member : Members)
+        addToVectorHLV(HLV, Member);
       return HLV;
+    };
+
+    auto printVectorHLV = [&](HangingLiveVarsInfo *HLV, bool NewHLV) {
+      PrintDumpLevel(VerbosityLevel::High, (NewHLV ? " (populating HLV with " : " (joining HLV, now ")
+                                               << HLV->LiveVars.size() << " values, vector size " << HLV->Size << ")");
     };
 
     if (Update) {
@@ -980,9 +1197,9 @@ private:
       if (DTI && DTI->isNoOp()) {
         auto *LastIE = DTI->getLastIE();
         if (!HangingLiveVars.count(LastIE)) {
-          [[maybe_unused]] auto *HLV = createHLVForVector(HANGING_NOOP_VECTORS, DTI->getSourceVec());
-          IGC_ASSERT(HangingLiveVars[LastIE] == HLV);
-          IGC_ASSERT(HangingLiveVars.count(LastIE));
+          bool NewHLV = false;
+          auto *HLV = createHLVForVector(HANGING_NOOP_VECTORS, DTI->getSourceVec(), NewHLV);
+          printVectorHLV(HLV, NewHLV);
         }
       }
 
@@ -996,9 +1213,9 @@ private:
       else if (DTI && DTI->isVectorShuffle()) {
         auto *LastEE = DTI->getLastEE();
         if (!HangingLiveVars.count(LastEE)) {
-          [[maybe_unused]] auto *HLV = createHLVForVector(HANGING_VECTORS, DTI->getSourceVec());
-          IGC_ASSERT(HangingLiveVars[LastEE] == HLV);
-          IGC_ASSERT(HangingLiveVars.count(LastEE));
+          bool NewHLV = false;
+          auto *HLV = createHLVForVector(HANGING_VECTORS, DTI->getSourceVec(), NewHLV);
+          printVectorHLV(HLV, NewHLV);
         }
       }
 
@@ -1014,69 +1231,60 @@ private:
       else if (DTI) {
         IGC_ASSERT(isa<InsertElementInst>(I));
 
-        auto *FirstIE = DTI->getFirstIE();
-        auto *FirstScalar = FirstIE->getOperand(1);
-        if (!HangingLiveVars.count(FirstScalar)) {
+        // The first IE is placed before the other IEs of the vector, which use it.
+        if (I == DTI->getFirstIE()) {
           HangingLiveVarsVec.emplace_back(std::make_unique<HangingLiveVarsInfo>(0, HANGING_SCALARS_TO_VECTOR));
           auto *HLV = HangingLiveVarsVec.back().get();
 
+          // A scalar dies as its real op, behind no-op casts, so the HLV holds
+          // the real ops of the scalars that hang in it.
           for (Value *V : DTI->getSourceScalars()) {
-            if (HLV->LiveVars.count(V)) {
-              // If the scalar is already in the HLV, we don't need to add it again
+            Value *RealOp = getRealOp(V);
+            if (!isHangingScalar(RealOp))
               continue;
-            }
-            HLV->Size += computeSizeInBytes(V, SIMD, WI, *DL);
-            HLV->LiveVars.insert(V);
-            HangingLiveVars[V] = HLV;
+            HLV->Size += computeSizeInBytes(RealOp, SIMD, WI, *DL);
+            HLV->LiveVars.insert(RealOp);
+            HangingLiveVars[RealOp] = HLV;
           }
 
-          Value *CurrentInstructionScalarOp = I->getOperand(1);
-          bool CurrentScalarDies = operandDies(CurrentInstructionScalarOp, I);
-          if (CurrentScalarDies) {
-            HLV->LiveVars.erase(CurrentInstructionScalarOp);
+          Value *FirstRealOp = getRealOp(I->getOperand(1));
+          bool FirstScalarDies = HLV->LiveVars.count(FirstRealOp) && operandDies(FirstRealOp, I);
+          if (FirstScalarDies) {
+            HLV->LiveVars.erase(FirstRealOp);
           }
 
           if (HLV->LiveVars.empty()) {
-            // If there are no live vars, we don't need to keep the HLV. It is
-            // empty only when FirstScalar is its only scalar, so FirstScalar is
-            // its only entry in HangingLiveVars.
+            // If there are no live vars, we don't need to keep the HLV. Only the
+            // real op of the first scalar can have died by now, so it is the only
+            // entry in HangingLiveVars that can point to the HLV.
+            if (FirstScalarDies)
+              HangingLiveVars.erase(FirstRealOp);
             HangingLiveVarsVec.pop_back();
-            HangingLiveVars.erase(FirstScalar);
             PrintDumpLevel(VerbosityLevel::High, " (no live vars, removing HLV as soon as it's created)");
           } else {
             PrintDumpLevel(VerbosityLevel::High, " (populating HLV with "
-                                                     << HLV->LiveVars.size() << (CurrentScalarDies ? " remaining" : "")
+                                                     << HLV->LiveVars.size() << (FirstScalarDies ? " remaining" : "")
                                                      << " scalars, vector size " << HLV->Size << ")");
-            IGC_ASSERT(HangingLiveVars.count(FirstScalar));
           }
         }
       }
 
       else if (V2SP) {
         // 4. ExtractElement from a vector to scalars
-        // The vector is not dead on the last EE, it will die on the last usage of the last EE
-        // If the vector has uses apart from the ExtractElement instructions we also add it to the
-        // HangingLiveVars
+        // The vector is not dead on the last EE, it will die on the last usage of the last EE,
+        // or on its own last use if that comes later. As for a vector shuffle, the HLV holds the
+        // real op of the vector, because an operand behind a no-op cast dies as its real op.
         [[maybe_unused]] auto *EE = cast<ExtractElementInst>(I);
         if (!HangingLiveVars.count(I)) {
           IGC_ASSERT(V2SP->getSourceVec() == EE->getVectorOperand());
-          HangingLiveVarsVec.emplace_back(std::make_unique<HangingLiveVarsInfo>(
-              computeSizeInBytes(V2SP->getSourceVec(), SIMD, WI, *DL), HANGING_VECTOR_TO_SCALARS));
-          auto *HLV = HangingLiveVarsVec.back().get();
-          for (Value *V : V2SP->getEEs()) {
-            IGC_ASSERT(!HLV->LiveVars.count(V));
-            if (V->hasNUndroppableUsesOrMore(1)) {
-              HLV->LiveVars.insert(V);
-              HangingLiveVars[V] = HLV;
-            }
+          bool NewHLV = false;
+          auto *HLV = createHLVForVector(HANGING_VECTOR_TO_SCALARS, V2SP->getSourceVec(), NewHLV);
+          // An EE without uses never hangs, so placing it gets here again after the other EEs were added
+          for (ExtractElementInst *V : V2SP->getEEs()) {
+            if (V->hasNUndroppableUsesOrMore(1))
+              addToVectorHLV(HLV, V);
           }
-          if (!V2SP->areAllUsesScalars()) {
-            HangingLiveVars[V2SP->getSourceVec()] = HLV;
-            HLV->LiveVars.insert(V2SP->getSourceVec());
-            PrintDumpLevel(VerbosityLevel::High, " (adding vector " << getName(V2SP->getSourceVec()) << " to HLV)");
-          }
-          PrintDumpLevel(VerbosityLevel::High,
-                         " (populating HLV with " << HLV->LiveVars.size() << " EEs, vector size " << HLV->Size << ")");
+          printVectorHLV(HLV, NewHLV);
         }
       }
     }
@@ -1089,6 +1297,29 @@ private:
 
     SmallSet<Value *, 8> SeenRealOps; // "Real" refer to that they are not no-ops.
                                       // We make sure we don't count the same op twice on the same instruction
+
+    // The update erases each dying value from its HLV, so the last of several
+    // values that die at I sees itself alone. The estimate erases nothing, so
+    // it counts the values of each HLV that die at I instead.
+    SmallDenseMap<HangingLiveVarsInfo *, unsigned, 4> DyingHangingVars;
+
+    // The estimate does not add the values of the pattern of I to the HLV of
+    // its source vector, as the update does above. If one of them is still
+    // live, that HLV does not die at I, whichever operand of I dies.
+    bool PatternAddsLiveValue = false;
+    HangingLiveVarsInfo *PatternHLV = nullptr;
+    if (!Update && ((DTI && DTI->isVectorShuffle()) || V2SP)) {
+      SmallVector<Instruction *, 8> Members;
+      Value *Owner = getVectorOwner(V2SP ? V2SP->getSourceVec() : DTI->getSourceVec(), Members);
+      PatternHLV = HangingLiveVars.lookup(Owner);
+      if (V2SP) {
+        for (ExtractElementInst *EE : V2SP->getEEs())
+          if (EE->hasNUndroppableUsesOrMore(1))
+            Members.push_back(EE);
+      }
+      PatternAddsLiveValue = llvm::any_of(
+          Members, [&](Instruction *Member) { return !HangingLiveVars.count(Member) && isStillLive(Member); });
+    }
 
     for (auto &Op : I->operands()) {
       Value *V = Op.get();
@@ -1111,9 +1342,13 @@ private:
         if (Update)
           PrintDumpLevel(VerbosityLevel::High, " (X)");
 
-        if ((DTI && DTI->getSourceVec() == RealOp) || (V2SP && V2SP->getSourceVec() == RealOp)) {
-          // This operand is the source vector of the instruction
-          // It "hangs" - we'll check if it dies later
+        bool SourceHangs = (DTI && DTI->isVectorShuffle() && getRealOp(DTI->getSourceVec()) == RealOp) ||
+                           (V2SP && getRealOp(V2SP->getSourceVec()) == RealOp);
+        if (SourceHangs) {
+          // This operand is the source vector of the instruction, as its real op
+          // It "hangs" - we'll check if it dies later. The estimate needs this
+          // check, because the HLV of the vector does not exist before its
+          // first instruction is placed.
 
           if (Update)
             PrintDumpLevel(VerbosityLevel::High, " (source vector hangs)");
@@ -1140,28 +1375,27 @@ private:
           }
         }
 
-        if (!Update) {
-          if (DTI && !DTI->isVectorShuffle()) {
-            // Creating vector out of scalars
-            if ((DTI->getFirstIE() == I) && (I->getOperand(1) == V)) {
-              // Hack: Only for estimation (non-update) we assume that
-              // The scalar in the FirstIE doesn't die
-              // Because it usually happens this way when we create a vector of size >1 from different
-              // values
-
-              // For Update case it will be estimated properly using the hanging live vars information
-              RPDecrease = 0;
-            }
-          }
+        if (!Update && DTI && !DTI->isVectorShuffle() && DTI->getFirstIE() == I && I->getOperand(1) == V) {
+          // Creating vector out of scalars. The estimate has no HLV for the
+          // scalars yet. In the update, the scalar of the first IE hangs if the
+          // HLV takes it and at least one other scalar.
+          bool OtherScalarHangs = llvm::any_of(DTI->getSourceScalars(), [&](Value *S) {
+            Value *SRealOp = getRealOp(S);
+            return SRealOp != RealOp && isHangingScalar(SRealOp);
+          });
+          if (OtherScalarHangs && isHangingScalar(RealOp))
+            RPDecrease = 0;
         }
 
         // Check if this operand also kills the "hanging" values
-        if (HangingLiveVars.count(RealOp)) {
+        if (HangingLiveVars.count(RealOp) && !(PatternAddsLiveValue && HangingLiveVars.lookup(RealOp) == PatternHLV)) {
           auto HLV = HangingLiveVars[RealOp];
+          bool IsLiveVar = HLV->LiveVars.count(RealOp);
+          size_t LeftVars = HLV->LiveVars.size() - DyingHangingVars.lookup(HLV);
 
           // HLV->Size holds all the registers of the hanging values, so only
           // the last of them to die decreases the pressure, whichever it is.
-          if (HLV->LiveVars.count(RealOp) && HLV->LiveVars.size() == 1) // This op is the only live var left
+          if (IsLiveVar && LeftVars == 1) // This op is the only live var left
           {
             if (Update)
               PrintDumpLevel(VerbosityLevel::High, " (hanging vector dies)");
@@ -1169,14 +1403,13 @@ private:
           } else {
             if (Update)
               PrintDumpLevel(VerbosityLevel::High,
-                             " (hanging vector, left vars: "
-                                 << (HLV->LiveVars.count(RealOp) ? HLV->LiveVars.size() - 1 : HLV->LiveVars.size())
-                                 << ")");
+                             " (hanging vector, left vars: " << (IsLiveVar ? LeftVars - 1 : LeftVars) << ")");
             RPDecrease = 0; // We don't decrease pressure, because the vector is still alive
           }
-          if (Update) {
+          if (Update)
             HLV->LiveVars.erase(RealOp);
-          }
+          else if (IsLiveVar)
+            ++DyingHangingVars[HLV];
         }
 
         if (Update)
@@ -3146,7 +3379,9 @@ private:
                   NumOps--;
                   continue;
                 }
-                if (RT.inBBCurrent(OpI)) {
+                // An operand from another block is available, also when reset() put
+                // the owner of its vector registers in BBCurrent instead of it.
+                if (OpI->getParent() != BB || RT.inBBCurrent(OpI)) {
                   NumOps--;
                   if (OpI && isDPAS(OpI)) {
                     OneOpIsDPAS = true;

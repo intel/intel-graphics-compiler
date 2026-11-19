@@ -91,10 +91,8 @@ public:
 
 class VectorToScalarsPattern {
 public:
-  VectorToScalarsPattern(llvm::Value *SourceVec, std::vector<llvm::ExtractElementInst *> EEs, bool AllUsesAreScalars)
-      : SourceVec(SourceVec), EEs(std::move(EEs)), AllUsesAreScalars(AllUsesAreScalars) {};
-
-  bool areAllUsesScalars() const { return AllUsesAreScalars; }
+  VectorToScalarsPattern(llvm::Value *SourceVec, std::vector<llvm::ExtractElementInst *> EEs)
+      : SourceVec(SourceVec), EEs(std::move(EEs)) {};
 
   llvm::Value *getSourceVec() const { return SourceVec; }
 
@@ -105,7 +103,6 @@ private:
 
   llvm::Value *SourceVec;
   std::vector<llvm::ExtractElementInst *> EEs;
-  bool AllUsesAreScalars;
 };
 
 class VectorShuffleAnalysis : public llvm::FunctionPass {
