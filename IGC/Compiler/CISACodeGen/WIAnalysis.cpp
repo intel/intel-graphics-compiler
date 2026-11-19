@@ -2101,6 +2101,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CastInst *inst) {
   case Instruction::FPTrunc:
   case Instruction::FPExt:
   case Instruction::PtrToInt:
+#if LLVM_VERSION_MAJOR >= 22
+  case Instruction::PtrToAddr:
+#endif
   case Instruction::IntToPtr:
   case Instruction::AddrSpaceCast:
   case Instruction::UIToFP:
