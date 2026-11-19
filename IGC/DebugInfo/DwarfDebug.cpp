@@ -154,7 +154,7 @@ dwarf::Form getDwarfOperandForm(uint64_t Op, unsigned ArgIdx, uint64_t Value) {
 }
 } // namespace
 
-void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
+void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block, uint64_t EmittedPieceBits) const {
   IGC_ASSERT(CU);
   IGC_ASSERT(Block);
 
@@ -173,11 +173,15 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
   for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end(); I != E; ++I) {
     switch (I->getOp()) {
     case dwarf::DW_OP_LLVM_fragment: {
+      // Mirrors llvm AsmPrinter/DwarfExpression.cpp addExpression: emitted pieces count toward the fragment.
+      IGC_ASSERT_MESSAGE(EmittedPieceBits <= I->getArg(1), "pieces exceed fragment");
+      uint64_t Size = I->getArg(1) - EmittedPieceBits;
+      if (!Size)
+        continue;
       BitPieceIndex = Elements.size();
-      uint64_t size = I->getArg(1);
       // Offset 0: the location already describes this fragment directly;
       // we don't want additional shifting in GRF.
-      addOp(dwarf::DW_OP_bit_piece, {size, 0});
+      addOp(dwarf::DW_OP_bit_piece, {Size, 0});
       continue;
     }
 

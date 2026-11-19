@@ -245,7 +245,7 @@ public:
 
   bool hasFragmentExprs() const { return !FragmentExprs.empty(); }
 
-  void emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const;
+  void emitExpression(CompileUnit *CU, IGC::DIEBlock *Block, uint64_t EmittedPieceBits = 0) const;
 
   // Translate tag to proper Dwarf tag.
   llvm::dwarf::Tag getTag() const {
