@@ -3038,6 +3038,10 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
     return false;
   }
 
+  // For A64, inttoptr zero-extends a narrower add result, so the add can't be folded.
+  if (isA64AddressingModel && !addSubInst->getType()->isIntegerTy(64))
+    return false;
+
   // VISA interface accepts 32-bit immediate offset values
   const bool isConstant0 = Is32BitConstInt(addSubInst->getOperand(0));
   const bool isConstant1 = Is32BitConstInt(addSubInst->getOperand(1));
@@ -3227,8 +3231,12 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
     return false;
   auto IntToPtr = cast<IntToPtrInst>(PointerOperand);
 
-  if (!AddressOperand)
+  if (!AddressOperand) {
     AddressOperand = IntToPtr->getOperand(0);
+    // For A64, inttoptr zero-extends a narrower address, so it can't be split.
+    if (isA64AddressingModel && !AddressOperand->getType()->isIntegerTy(64))
+      return false;
+  }
 
   auto PatternAdd = m_c_Add(m_Value(Base), m_Value(Offset));
   auto ScalePattern = m_Shl(m_Value(NotScaledOffset), m_ConstantInt(Scale));
