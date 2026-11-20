@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: cri-supported, llvm-spirv, llvm-spirv-SPV_EXT_bfloat16_arithmetic
+; REQUIRES: cri-supported, llvm-spirv
 
 ; RUN: llvm-spirv -to-binary %s -o %t.spv
 ; RUN: FileCheck --input-file=%t.spv %s --check-prefix=SPV-BIN

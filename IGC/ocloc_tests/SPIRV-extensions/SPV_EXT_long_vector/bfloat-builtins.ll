@@ -11,7 +11,7 @@
 ; the calls only after LongVectorBuiltinScalarization, so the scalar bfloat
 ; variant counts as defined in BiF.
 
-; REQUIRES: llvm-spirv, regkeys, cri-supported, opaque-pointers, llvm-spirv-SPV_EXT_bfloat16_arithmetic
+; REQUIRES: llvm-spirv, regkeys, cri-supported, opaque-pointers
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc -o %t.spv --spirv-ext=+SPV_INTEL_sigmoid,+SPV_KHR_bfloat16,+SPV_EXT_bfloat16_arithmetic,+SPV_EXT_long_vector
 ; RUN: ocloc compile -device cri -spirv_input -file %t.spv -options " -igc_opts 'PrintToConsole=1 PrintAfter=igc-long-vector-builtin-scalarization'" 2>&1 \

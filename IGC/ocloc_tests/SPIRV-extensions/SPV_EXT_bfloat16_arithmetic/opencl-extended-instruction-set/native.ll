@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: cri-supported, llvm-spirv, llvm-spirv-SPV_EXT_bfloat16_arithmetic
+; REQUIRES: cri-supported, llvm-spirv
 
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_KHR_bfloat16,+SPV_EXT_bfloat16_arithmetic -o %t.spv

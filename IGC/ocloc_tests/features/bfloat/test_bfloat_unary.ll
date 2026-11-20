@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-spirv,regkeys,pvc-supported,spirv-promote,llvm-spirv-SPV_EXT_bfloat16_arithmetic
+; REQUIRES: llvm-spirv,regkeys,pvc-supported,spirv-promote
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_KHR_bfloat16,+SPV_EXT_bfloat16_arithmetic -o %t.spv
