@@ -1,0 +1,38 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2026 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+std::reverse_iterator requires a default-constructible iterator, and libstdc++
+from GCC 15 on enforces it, so LLVM 22 does not build with GCC 16 where it
+reverses successors(), e.g. in PromoteMemoryToRegister.cpp.
+
+Reported upstream as llvm/llvm-project#182417 and fixed in LLVM 23 by
+llvm/llvm-project#188601. This patch should be considered obsolete once IGC
+moves to LLVM 23.
+---
+--- a/llvm/include/llvm/IR/CFG.h
++++ b/llvm/include/llvm/IR/CFG.h
+@@ -147,8 +147,8 @@
+   using reference = BlockT *;
+ 
+ private:
+-  InstructionT *Inst;
+-  int Idx;
++  InstructionT *Inst = nullptr;
++  int Idx = 0;
+   using Self = SuccIterator<InstructionT, BlockT>;
+ 
+   inline bool index_is_valid(int Idx) {
+@@ -181,6 +181,8 @@
+ 
+ public:
+   // begin iterator
++  // std::reverse_iterator needs it from libstdc++ 16 on.
++  SuccIterator() = default;
+   explicit inline SuccIterator(InstructionT *Inst) : Inst(Inst), Idx(0) {}
+   // end iterator
+   inline SuccIterator(InstructionT *Inst, bool) : Inst(Inst) {
