@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -44,6 +44,8 @@ public:
                          llvm::SmallVector<unsigned, 8> &indices);
   llvm::Value *CreateGEP(IGCLLVM::IRBuilder<> &builder, llvm::Value *ptr, llvm::SmallVector<unsigned, 8> &indices);
   llvm::AllocaInst *CreateAlloca(llvm::Instruction *phi);
+
+  bool IsSplittable(llvm::Type *type) const;
 
   llvm::SmallVector<llvm::StoreInst *, 10> m_StoreInst;
   llvm::SmallVector<llvm::ExtractValueInst *, 10> m_ExtractValueInst;
