@@ -278,7 +278,7 @@ DECLARE_IGC_REGKEY(bool, GEPLoweringTruncOptEnabled, false,
 DECLARE_IGC_REGKEY_UMD(bool, NewSpillCostFunction, false, "Use new spill cost function in VISA RA", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, DisableNewSpillCostFunction, false,
                    "Kill-switch for the new spill cost function in VISA RA, which is enabled by default for 3D shaders "
-                   "on Xe3 platforms",
+                   "on Xe3 and newer platforms",
                    DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, EnableCoalesceScalarMoves, true, "Enable scalar moves to be coalesced into fewer moves",
                    ALWAYS)
