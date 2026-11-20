@@ -1932,9 +1932,11 @@ void SpillManagerGRF::sendInSpilledRegVarPortions(G4_Declare *fillRangeDcl,
       !headerNeeded()) {
     // Skip initializing message header
   } else {
-    // Initialize the message header with the spill disp for portion.
-    int offset = getDisp(fillRangeDcl->getRegVar()) +
-                 regOff * builder_->numEltPerGRF<Type_UB>();
+    // Initialize the message header with the spill disp for portion. Like the
+    // scratch and LSC messages, address the spilled variable's own slot: the
+    // fill range of an indirect access (ADDR_SP_FL) has no slot of its own.
+    int offset = getDisp(fillRangeDcl->getRegVar()->getBaseRegVar()) +
+                 srcRegOff * builder_->numEltPerGRF<Type_UB>();
     getSpillOffset(offset);
 
     unsigned segmentDisp = offset / OWORD_BYTE_SIZE;
@@ -2603,9 +2605,10 @@ void SpillManagerGRF::sendOutSpilledRegVarPortions(G4_Declare *spillRangeDcl,
     // scratch msg descriptor, the offset is part of send
     // msg descriptor and not the header.
   } else {
-    // Initialize the message header with the spill disp for portion.
-    int offset = getDisp(spillRangeDcl->getRegVar()) +
-                 regOff * builder_->numEltPerGRF<Type_UB>();
+    // Initialize the message header with the spill disp for portion, at the
+    // spilled variable's own slot (see sendInSpilledRegVarPortions).
+    int offset = getDisp(spillRangeDcl->getRegVar()->getBaseRegVar()) +
+                 srcRegOff * builder_->numEltPerGRF<Type_UB>();
     getSpillOffset(offset);
     unsigned segmentDisp = offset / OWORD_BYTE_SIZE;
 
