@@ -1,16 +1,16 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../include/BiF_Definitions.cl"
+#include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
 
 #if defined(cl_khr_fp64)
-#include "../IMF/FP64/exp2_d_la.cl"
+#include "../IMF/FP64/exp2_d_la.h"
 #endif // defined(cl_khr_fp64)
 
 INLINE float __attribute__((overloadable)) __spirv_ocl_exp2(float x) { return __spirv_ocl_native_exp2(x); }

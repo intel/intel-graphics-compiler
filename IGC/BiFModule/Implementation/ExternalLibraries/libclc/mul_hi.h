@@ -6,9 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../../include/BiF_Definitions.cl"
+#include "../../include/BiF_Definitions.h"
 #include "../../../Headers/spirv.h"
-#include "hadd.cl"
+#include "hadd.h"
 
 // FOIL-based long mul_hi
 //

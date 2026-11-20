@@ -1,15 +1,15 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../include/BiF_Definitions.cl"
+#include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
-#include "../include/mul_hilo.cl"
-#include "../ExternalLibraries/libclc/mad_sat.cl"
+#include "../include/mul_hilo.h"
+#include "../ExternalLibraries/libclc/mad_sat.h"
 
 INLINE
 char2 __attribute__((overloadable)) __spirv_ocl_s_mad_sat(char2 a, char2 b, char2 c) {

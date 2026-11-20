@@ -1,13 +1,17 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../include/BiF_Definitions.cl"
+#include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
+
+// Defined in IBiF_Intrinsics_Impl.cl.
+float FDIV_IEEE(float a, float b);
+double FDIV_IEEE_DOUBLE(double a, double b);
 
 float __builtin_spirv_divide_cr_f32_f32(float a, float b) { return FDIV_IEEE(a, b); }
 

@@ -1,18 +1,18 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../include/BiF_Definitions.cl"
+#include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
-#include "../include/exp_for_hyper.cl"
-#include "../IMF/FP32/tanh_s_la_noLUT.cl"
+#include "../include/exp_for_hyper.h"
+#include "../IMF/FP32/tanh_s_la_noLUT.h"
 
 #if defined(cl_khr_fp64)
-#include "../IMF/FP64/tanh_d_la.cl"
+#include "../IMF/FP64/tanh_d_la.h"
 #endif // defined(cl_khr_fp64)
 
 float __attribute__((overloadable)) __spirv_ocl_tanh(float x) {

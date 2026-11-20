@@ -1,13 +1,14 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2025 Intel Corporation
+Copyright (C) 2025-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../include/BiF_Definitions.cl"
+#include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
+#include "../include/exp_for_hyper.h"
 
 float __attribute__((overloadable)) __spirv_ocl_sigm(float x) {
   float result;

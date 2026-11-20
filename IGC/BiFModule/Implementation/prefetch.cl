@@ -1,12 +1,12 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "IGCBiF_Intrinsics_Lsc.cl"
+#include "IGCBiF_Intrinsics_Lsc.h"
 
 #define LSC_PREFETCH(p, num_elements) __lsc_prefetch(p, sizeof(*p), num_elements)
 

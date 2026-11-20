@@ -1,20 +1,20 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../include/BiF_Definitions.cl"
+#include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
-#include "../IMF/FP32/sincos_s_la.cl"
-#include "../IMF/FP32/sincos_s_noLUT.cl"
-#include "../ExternalLibraries/libclc/trig.cl"
+#include "../IMF/FP32/sincos_s_la.h"
+#include "../IMF/FP32/sincos_s_noLUT.h"
+#include "../ExternalLibraries/libclc/trig.h"
 
 #if defined(cl_khr_fp64)
-#include "../IMF/FP64/sincos_d_la.cl"
-#include "../IMF/FP64/sincos_d_la_noLUT.cl"
+#include "../IMF/FP64/sincos_d_la.h"
+#include "../IMF/FP64/sincos_d_la_noLUT.h"
 #endif
 
 static INLINE float __intel_sincos_f32_p0f32(float x, __private float *cosval, bool doFast) {

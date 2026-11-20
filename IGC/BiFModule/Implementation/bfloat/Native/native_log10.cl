@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "include/BiF_Definitions.cl"
+#include "include/BiF_Definitions.h"
 #include "spirv_bfloat.h"
 
 #define _M_LOG10_2 (as_float(0x3e9a209b)) // 0.30103000998497009f

@@ -1,33 +1,10 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-
-// SVML code
-
-extern __constant int __SVML;
-
-OVERLOADABLE int __intel_relaxed_isnan(float x);
-OVERLOADABLE int __intel_relaxed_isinf(float x);
-OVERLOADABLE int __intel_relaxed_isfinite(float x);
-OVERLOADABLE int __intel_relaxed_isnormal(float x);
-
-#if defined(cl_khr_fp64)
-OVERLOADABLE int __intel_relaxed_isnan(double x);
-OVERLOADABLE int __intel_relaxed_isinf(double x);
-OVERLOADABLE int __intel_relaxed_isfinite(double x);
-OVERLOADABLE int __intel_relaxed_isnormal(double x);
-#endif // defined(cl_khr_fp64)
-
-#if defined(cl_khr_fp16)
-OVERLOADABLE int __intel_relaxed_isinf(half x);
-OVERLOADABLE int __intel_relaxed_isnan(half x);
-OVERLOADABLE int __intel_relaxed_isfinite(half x);
-OVERLOADABLE int __intel_relaxed_isnormal(half x);
-#endif // defined(cl_khr_fp16)
 
 // Common file for intrinsics implementation used in Math library
 #include "IBiF_Intrinsics_Impl.cl"
@@ -51,6 +28,7 @@ OVERLOADABLE int __intel_relaxed_isnormal(half x);
 #include "Geometric/fast_normalize.cl"
 #include "ExternalLibraries/libclc/normalize.cl"
 #include "ExternalLibraries/libclc/length.cl"
+#include "ExternalLibraries/libclc/tables.cl"
 #include "ExternalLibraries/libclc/doubles.cl"
 
 // Half
@@ -79,6 +57,7 @@ OVERLOADABLE int __intel_relaxed_isnormal(half x);
 #include "Integer/hadd.cl"
 #include "Integer/mad24.cl"
 #include "Integer/mad_hi.cl"
+#include "include/mul_hilo.cl"
 #include "Integer/mad_sat.cl"
 #include "Integer/max.cl"
 #include "Integer/min.cl"
@@ -105,6 +84,7 @@ OVERLOADABLE int __intel_relaxed_isnormal(half x);
 #include "Math/cbrt.cl"
 #include "Math/ceil.cl"
 #include "Math/copysign.cl"
+#include "ExternalLibraries/libclc/trig.cl"
 #include "Math/cos.cl"
 #include "Math/cosh.cl"
 #include "Math/cospi.cl"

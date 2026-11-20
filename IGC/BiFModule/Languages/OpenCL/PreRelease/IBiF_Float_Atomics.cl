@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 // This file contain definitions of OpenCL 1.2 Atomic built-in functions.
 //
 //===----------------------------------------------------------------------===//
-#include "IBiF_Header.cl"
+#include "IBiF_Header.h"
 
 #define DEF_ATOM_2SRC(KEY, ADDRSPACE, TYPE, IGC_TYPE, IGC_CL_TYPE)                                                     \
   INLINE TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE TYPE *p, TYPE val) {                                      \

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -10,6 +10,9 @@ SPDX-License-Identifier: MIT
 
 constant uint RADIX_SORT_BITS_PER_PASS = 4;
 constant uint RADIX_SORT_CHAR_BIT = 8;
+
+// Defined in group.cl.
+int __builtin_IB_WorkGroupScanExclusive_IAdd_i32(int X);
 
 /* Default devicelib sub-group sort - bitonic sorting network.
    Two versions: key-value and value only. */

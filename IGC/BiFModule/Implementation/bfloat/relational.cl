@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "spirv_bfloat.h"
-#include "include/BiF_Definitions.cl"
+#include "include/BiF_Definitions.h"
 
 bool __attribute__((overloadable)) __spirv_IsNan(bfloat x) { return x != x; }
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNan, __bool, bfloat, )
@@ -24,6 +24,6 @@ SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(SignBitSet, __bool, bfloat, )
 bool __attribute__((overloadable)) __spirv_LessOrGreater(bfloat x, bfloat y) { return (x < y) | (x > y); }
 SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(LessOrGreater, __bool, bfloat, )
 
-#include "Relational/bitselect.cl"
-#include "Relational/isnan.cl"
-#include "Relational/select.cl"
+#include "Relational/bitselect.h"
+#include "Relational/isnan.h"
+#include "Relational/select.h"

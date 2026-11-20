@@ -1,31 +1,10 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-
-// SVML code
-
-int OVERLOADABLE __intel_relaxed_isnan(float x);
-int OVERLOADABLE __intel_relaxed_isinf(float x);
-int OVERLOADABLE __intel_relaxed_isfinite(float x);
-int OVERLOADABLE __intel_relaxed_isnormal(float x);
-
-#if defined(cl_khr_fp64)
-int OVERLOADABLE __intel_relaxed_isnan(double x);
-int OVERLOADABLE __intel_relaxed_isinf(double x);
-int OVERLOADABLE __intel_relaxed_isfinite(double x);
-int OVERLOADABLE __intel_relaxed_isnormal(double x);
-#endif // defined(cl_khr_fp64)
-
-#if defined(cl_khr_fp16)
-int OVERLOADABLE __intel_relaxed_isinf(half x);
-int OVERLOADABLE __intel_relaxed_isnan(half x);
-int OVERLOADABLE __intel_relaxed_isfinite(half x);
-int OVERLOADABLE __intel_relaxed_isnormal(half x);
-#endif // defined(cl_khr_fp16)
 
 // Common file for intrinsics implementation used in Math library
 #include "IBiF_Intrinsics_Impl.cl"

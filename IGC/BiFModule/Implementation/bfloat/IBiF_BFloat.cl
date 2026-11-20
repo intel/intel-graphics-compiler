@@ -18,11 +18,7 @@ SPDX-License-Identifier: MIT
 ///
 #if defined(IGC_SPV_KHR_bfloat16) && defined(IGC_SPV_EXT_bfloat16_arithmetic)
 
-#include "spirv_bfloat.h"
-#include "spirv_math_bfloat.h"
-
-// Generic Header
-#include "IBiF_Header.cl"
+#include "IBiF_BFloat_Header.h"
 
 // Math builtin functions
 #include "IBiF_Math_Common.cl"

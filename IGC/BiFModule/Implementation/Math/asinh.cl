@@ -1,18 +1,18 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../include/BiF_Definitions.cl"
+#include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
 
-#include "../IMF/FP32/asinh_s_la.cl"
+#include "../IMF/FP32/asinh_s_la.h"
 
 #if defined(cl_khr_fp64)
-#include "../IMF/FP64/asinh_d_la.cl"
+#include "../IMF/FP64/asinh_d_la.h"
 #endif // defined(cl_khr_fp64)
 
 INLINE float __intel_asinh_f32(float x, bool doFast) {

@@ -1,17 +1,17 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../include/BiF_Definitions.cl"
+#include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
-#include "../IMF/FP32/cosh_s_la.cl"
+#include "../IMF/FP32/cosh_s_la.h"
 
 #if defined(cl_khr_fp64)
-#include "../IMF/FP64/cosh_d_la.cl"
+#include "../IMF/FP64/cosh_d_la.h"
 #endif // defined(cl_khr_fp64)
 
 float __attribute__((overloadable)) __spirv_ocl_cosh(float x) {

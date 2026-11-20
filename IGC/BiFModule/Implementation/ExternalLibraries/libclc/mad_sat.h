@@ -6,9 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../../include/BiF_Definitions.cl"
+#include "../../include/BiF_Definitions.h"
 #include "../../../Headers/spirv.h"
-#include "mul_hi.cl"
+#include "mul_hi.h"
 
 INLINE OVERLOADABLE long libclc_mad_sat(long x, long y, long z) {
   long hi = libclc_mul_hi(x, y);

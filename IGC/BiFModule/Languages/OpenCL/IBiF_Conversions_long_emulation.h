@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 // This file defines target independent versions of OpenCL explicit
 // long<->float and long<->double conversion functions.
 
-#include "include/BiF_Definitions.cl"
+#include "include/BiF_Definitions.h"
 #include "spirv.h"
 
 long OVERLOADABLE convert_long(float _T) { return __spirv_ConvertFToS_Rlong(_T); }

@@ -1,18 +1,18 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../include/BiF_Definitions.cl"
+#include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS(acos, float, float, f32)
 
 #if defined(cl_khr_fp64)
-#include "../IMF/FP64/acos_d_la.cl"
+#include "../IMF/FP64/acos_d_la.h"
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp64)

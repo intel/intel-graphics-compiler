@@ -1,13 +1,14 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../include/BiF_Definitions.cl"
+#include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
+#include "../ExternalLibraries/libclc/bool_conversions.h"
 
 INLINE float __attribute__((overloadable)) __spirv_ocl_fract(float x, __global float *iptr) {
   *iptr = __spirv_ocl_select(__spirv_ocl_floor(x), __spirv_ocl_nan((uint)0), (int)(__intel_relaxed_isnan(x)));

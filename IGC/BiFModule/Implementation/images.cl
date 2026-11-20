@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 #define CLK_FILTER_NEAREST 0x00
 #define CLK_FILTER_LINEAR 0x10
 
-#include "IBiF_Header.cl"
+#include "IBiF_Header.h"
 
 __spirv_Sampler __bindless_sampler_initializer(uint sampler);
 

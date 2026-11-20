@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 //*****************************************************************************/
 // Generic Header
 //*****************************************************************************/
-#include "IBiF_Header.cl"
+#include "IBiF_Header.h"
 
 //*****************************************************************************/
 // Math builtin functions

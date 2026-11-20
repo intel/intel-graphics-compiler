@@ -1,10 +1,13 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
+#ifndef __IBIF_SPIRV_UTILS_CL__
+#define __IBIF_SPIRV_UTILS_CL__
 
 //*****************************************************************************/
 // Functions to convert enum of memory_fence and cl_mem_fence_flags to
@@ -68,3 +71,5 @@ static inline uint get_spirv_mem_order(memory_order order) {
   }
 }
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+
+#endif // __IBIF_SPIRV_UTILS_CL__

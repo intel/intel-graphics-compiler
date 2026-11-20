@@ -1,13 +1,13 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
 #include "spirv.h"
-#include "IMF/FP32/asin_s_la.cl"
+#include "IMF/FP32/asin_s_la.h"
 
 INLINE float __attribute__((overloadable)) __spirv_ocl_fclamp(float x, float minval, float maxval) {
   return __spirv_ocl_fmin(__spirv_ocl_fmax(x, minval), maxval);

@@ -1,12 +1,12 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "IBiF_intel_rt_utils.cl"
+#include "IBiF_intel_rt_utils.h"
 
 inline uint float_to_unorm24(float f) {
   if (isnan(f))

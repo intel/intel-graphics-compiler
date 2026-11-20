@@ -1,13 +1,13 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
 // This file defines helper builtins of OpenCL VA (Video Analytics) extension functions.
-#include "../../../Implementation/IGCBiF_Intrinsics.cl"
+#include "../../../Implementation/IGCBiF_Intrinsics.h"
 #include "../../../Headers/spirv.h"
 /*****************************************************************************/
 /*                       VA (Video Analytics)                                */

@@ -1,12 +1,12 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../Languages/OpenCL/IBiF_SPIRV_Utils.cl"
+#include "../Languages/OpenCL/IBiF_SPIRV_Utils.h"
 
 // EmitVISAPass support for __builtin_IB_memfence/__builtin_IB_typedmemfence requires some arguments to
 // be constants as those are used to prepare a message descriptor, so must be known at compile time.

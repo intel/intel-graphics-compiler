@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 //
 //===----------------------------------------------------------------------===//
 
-#include "IBiF_Conversions_long_emulation.cl"
+#include "IBiF_Conversions_long_emulation.h"
 #include "spirv.h"
 
 #define RT_POS 0

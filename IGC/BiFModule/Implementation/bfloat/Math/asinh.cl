@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "include/BiF_Definitions.cl"
+#include "include/BiF_Definitions.h"
 #include "spirv_bfloat.h"
 
 INLINE bfloat __attribute__((overloadable)) __spirv_ocl_asinh(bfloat x) { return __spirv_ocl_asinh((float)x); }

@@ -1,7 +1,7 @@
 
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 // Generic Headers
 //*****************************************************************************/
 
-#include "IBiF_Header.cl"
+#include "IBiF_Header.h"
 #include "../../Headers/spirv.h"
 
 //*****************************************************************************/
@@ -1662,6 +1662,9 @@ INLINE void OVERLOADABLE prefetch(const __global double16 *p, size_t num_element
 
 // This vload function is added because of the clang 4.0 itanium mangling update
 // See http://llvm.org/viewvc/llvm-project?view=revision&revision=262414
+
+// Defined in IBiF_VLoadStore.cl.
+char16 OVERLOADABLE vload16(size_t offset, const __global char *p);
 
 INLINE char16 _Z7vload16jPKU3AS1h(size_t offset, const __global char *p) { return vload16(offset, p); }
 

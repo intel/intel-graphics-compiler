@@ -11,28 +11,7 @@ SPDX-License-Identifier: MIT
 #ifndef __SVML_DATA_STRUCTURES_CL__
 #define __SVML_DATA_STRUCTURES_CL__
 
-typedef int VINT32;
-typedef signed int VSINT32;
-typedef unsigned int VUINT32;
-
-typedef long VINT64;
-typedef signed long VSINT64;
-typedef unsigned long VUINT64;
-
-typedef int int1_gen;
-typedef long long1_gen;
-typedef float float1_gen;
-typedef float float1_ref;
-typedef int int1_ref;
-
-typedef unsigned int _iml_uint32_t;
-typedef int _iml_int32_t;
-typedef unsigned long _iml_uint64_t;
-
-typedef union {
-  uint hex;
-  float fp;
-} _iml_pow_sp_union_t;
+#include "pow_s_prev_common.h"
 
 __attribute__((always_inline)) uint _castf32_u32(float a) { return as_uint(a); }
 
@@ -40,73 +19,12 @@ __attribute__((always_inline)) float _castu32_f32(uint a) { return as_float(a); 
 
 #if defined(cl_khr_fp64)
 
-typedef double double1_ref;
-
-typedef struct tag_iml_dpdwords_t {
-  _iml_uint32_t lo_dword;
-  _iml_uint32_t hi_dword;
-} _iml_pow_dpdwords_t;
-
-typedef union {
-  _iml_uint32_t hex[2];
-  _iml_pow_dpdwords_t dwords;
-  double fp;
-} _iml_pow_dp_union_t;
-
-typedef union {
-  ulong hex;
-  double fp;
-} _lng_dbl_union_t;
-
 __attribute__((always_inline)) double _castu64_f64(ulong a) { return as_double(a); }
 
 __attribute__((always_inline)) ulong _castf64_u64(double a) { return as_ulong(a); }
 
 __attribute__((always_inline)) double _nearbyint(double a) { return __spirv_ocl_rint(a); }
 #endif
-
-typedef struct {
-  VUINT32 sHiMask;
-  VUINT32 sRSValue;
-  VUINT32 NMINNORM;
-  VUINT32 NMAXVAL;
-  VUINT32 INF;
-
-  VUINT32 LFR_TBL[65][3];
-  VUINT32 LFR_I_CHK_WORK_SUB;
-  VUINT32 LFR_I_CHK_WORK_CMP;
-  VUINT32 S_MANT_MASK;
-  VUINT32 S_ONE;
-  VUINT32 LFR_I_INDEX_MASK;
-  VUINT32 LFR_I_INDEX_ADD;
-  VUINT32 S_HI10BITS_MASK;
-  VUINT32 LFR_S_P4;
-  VUINT32 LFR_S_P3;
-  VUINT32 LFR_S_P2;
-  VUINT32 I_BIAS;
-  VUINT32 LFR_I_NZ_ADD;
-  VUINT32 LFR_I_NZ_CMP;
-  VUINT32 S_LOG2_HI;
-  VUINT32 S_LOG2_LO;
-
-  VUINT32 _sInvLn2;
-  VUINT32 _sShifter;
-  VUINT32 _sLn2hi;
-  VUINT32 _sLn2lo;
-  VUINT32 _sPC0;
-  VUINT32 _sPC1;
-  VUINT32 _sPC2;
-  VUINT32 _sPC3;
-  VUINT32 _sPC4;
-  VUINT32 _sPC5;
-  VUINT32 _iBias;
-  VUINT32 _iAbsMask;
-  VUINT32 _iDomainRange;
-  VUINT32 _s2N_2;
-  VUINT32 _sHuge;
-  VUINT32 _sTiny;
-
-} sPow_Table_Type;
 
 __constant sPow_Table_Type __ocl_svml_spow_data = {
 
@@ -282,49 +200,6 @@ __constant VUINT32 _vmlsPowHATab[380] = {
 
     0x5F800000, 0x1F800000, 0x00000000, 0x80000000,
 };
-
-typedef struct {
-  uint sHiMask;
-  uint sRSValue;
-  uint NMINNORM;
-  uint NMAXVAL;
-  uint INF;
-
-  uint LFR_TBL[65][3][1];
-  uint LFR_I_CHK_WORK_SUB;
-  uint LFR_I_CHK_WORK_CMP;
-  uint S_MANT_MASK;
-  uint S_ONE;
-  uint LFR_I_INDEX_MASK;
-  uint LFR_I_INDEX_ADD;
-  uint S_HI10BITS_MASK;
-  uint LFR_S_P4;
-  uint LFR_S_P3;
-  uint LFR_S_P2;
-  uint I_BIAS;
-  uint LFR_I_NZ_ADD;
-  uint LFR_I_NZ_CMP;
-  uint S_LOG2_HI;
-  uint S_LOG2_LO;
-
-  uint _sInvLn2;
-  uint _sShifter;
-  uint _sLn2hi;
-  uint _sLn2lo;
-  uint _sPC0;
-  uint _sPC1;
-  uint _sPC2;
-  uint _sPC3;
-  uint _sPC4;
-  uint _sPC5;
-  uint _iBias;
-  uint _iAbsMask;
-  uint _iDomainRange;
-  uint _s2N_2;
-  uint _sHuge;
-  uint _sTiny;
-
-} sRootn_Table_Type;
 
 __constant sRootn_Table_Type __ocl_svml_srootn_data = {
 

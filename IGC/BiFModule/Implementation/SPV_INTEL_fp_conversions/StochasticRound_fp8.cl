@@ -1,10 +1,12 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2024-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
+#include "SPV_INTEL_fp_conversions.h"
 
 // StochasticRoundFP16ToE4M3INTEL without output pointer
 char __attribute__((overloadable)) __builtin_spirv_StochasticRoundFP16ToE4M3INTEL(half a, int seed) {

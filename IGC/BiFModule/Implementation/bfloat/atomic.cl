@@ -1,14 +1,15 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
 #include "spirv_bfloat.h"
+#include "include/BiF_Definitions.h"
 #include "include/atomic_fence_impl.h"
-#include "../../Languages/OpenCL/IBiF_SPIRV_Utils.cl"
+#include "../../Languages/OpenCL/IBiF_SPIRV_Utils.h"
 
 #if defined(cl_intel_bfloat16_atomics)
 

@@ -1,10 +1,12 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2024-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
+#include "SPV_INTEL_fp_conversions.h"
 
 // ConvertE5M2ToFP16EXT
 half __attribute__((overloadable)) __builtin_spirv_ConvertE5M2ToFP16EXT(char a) { return __builtin_IB_bf8tohf_1(a); }

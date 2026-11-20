@@ -1,14 +1,14 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../include/BiF_Definitions.cl"
+#include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
-#include "../include/mul_hilo.cl"
+#include "../include/mul_hilo.h"
 
 INLINE
 char __attribute__((overloadable)) __spirv_ocl_s_mul_hi(char x, char y) {

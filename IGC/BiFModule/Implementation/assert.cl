@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 //    4. We need to ensure that all stores in this function are uncached.
 //       This is handled by NontemporalLoadsAndStoresInAssert pass.
 
-#include "IBiF_Header.cl"
+#include "IBiF_Header.h"
 
 enum ERROR_TYPE {
   ERROR_TYPE_NONE = 0,

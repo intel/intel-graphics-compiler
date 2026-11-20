@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,6 +11,8 @@ SPDX-License-Identifier: MIT
 // This file contains definitions of OpenCL Atomic built-in functions.
 //
 //===----------------------------------------------------------------------===//
+
+#include "IBiF_SPIRV_Utils.h"
 
 
 //-----------------------------------------------------------------------------

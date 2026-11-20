@@ -1,18 +1,18 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../include/BiF_Definitions.cl"
+#include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
 
 #define USE_IMF_TGAMMA_IMPL 1
 
 #ifdef USE_IMF_TGAMMA_IMPL
-#include "../IMF/FP32/tgamma_s_noFP64.cl"
+#include "../IMF/FP32/tgamma_s_noFP64.h"
 #endif // USE_IMF_TGAMMA_IMPL
 
 #define SQRT_2PI (as_float(0x40206C98)) // 2.5066282746310007f
@@ -70,6 +70,9 @@ float __attribute__((overloadable)) __spirv_ocl_tgamma(float x) {
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP(tgamma, float, float, f32)
 
 #if defined(cl_khr_fp64)
+
+// Defined in ExternalLibraries/libclc/doubles.cl.
+double libclc_tgamma_f64(double x);
 
 INLINE double __attribute__((overloadable)) __spirv_ocl_tgamma(double x) { return libclc_tgamma_f64(x); }
 

@@ -1,18 +1,18 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../include/BiF_Definitions.cl"
+#include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
-#include "../IMF/FP32/log10_s_la.cl"
+#include "../IMF/FP32/log10_s_la.h"
 
 #if defined(cl_khr_fp64)
-#include "../IMF/FP64/log10_d_la.cl"
-#include "../IMF/FP64/log10_d_la_noLUT.cl"
+#include "../IMF/FP64/log10_d_la.h"
+#include "../IMF/FP64/log10_d_la_noLUT.h"
 #endif // defined(cl_khr_fp64)
 
 #define _M_LOG10_E_DBL (as_double(0x3fdbcb7b1526e50e)) // 0.4342944819032518276511289

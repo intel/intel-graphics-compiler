@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 //*****************************************************************************/
 // Generic Header
 //*****************************************************************************/
-#include "../IBiF_Header.cl"
+#include "../IBiF_Header.h"
 
 //*****************************************************************************/
 // Extensions (Device side VME, VA)
@@ -35,7 +35,6 @@ SPDX-License-Identifier: MIT
 // Intel Joint Matrix load/store functions
 //*****************************************************************************/
 #include "Matrix/IBiF_matrix.cl"
-#include "IBiF_matrix_generated.h"
 
 //*****************************************************************************/
 // DPAS Functions - Extension

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../../include/BiF_Definitions.cl"
+#include "../../include/BiF_Definitions.h"
 #include "../../../Headers/spirv.h"
 
 float __attribute__((overloadable)) __spirv_ocl_length(float p) { return __spirv_ocl_fabs(p); }

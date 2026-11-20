@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "SPV_INTEL_fp_conversions.h"
+
 half __attribute__((overloadable)) __spirv_StochasticRoundFToFINTEL_Rhalf(float a, int seed) {
   uint new_seed = __builtin_IB_lfsr_b16v2(as_uint(seed), LfsrPolynomial_b16v2);
   return __builtin_IB_srnd_ftohf_1(a, as_short2(new_seed).x);

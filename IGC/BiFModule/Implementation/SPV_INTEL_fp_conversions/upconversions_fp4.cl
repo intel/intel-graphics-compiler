@@ -1,10 +1,12 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2025 Intel Corporation
+Copyright (C) 2025-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
+#include "SPV_INTEL_fp_conversions.h"
 
 //
 // Builtins in this file use manual mangling that is mismatched with their argument types.

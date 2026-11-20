@@ -1,10 +1,12 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2025 Intel Corporation
+Copyright (C) 2025-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
+#include "SPV_INTEL_fp_conversions.h"
 
 // ConvertFP16ToE2M1INTEL
 uchar __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE2M1INTEL(half a) {

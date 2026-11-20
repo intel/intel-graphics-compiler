@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 //*****************************************************************************/
 // Generic Header
 //*****************************************************************************/
-#include "IBiF_Header.cl"
+#include "IBiF_Header.h"
 
 //*****************************************************************************/
 // Explicit conversion functions
@@ -38,7 +38,7 @@ SPDX-License-Identifier: MIT
 //*****************************************************************************/
 // SPIRV Utils functions
 //*****************************************************************************/
-#include "IBiF_SPIRV_Utils.cl"
+#include "IBiF_SPIRV_Utils.h"
 
 //*****************************************************************************/
 // Math builtin functions
@@ -70,6 +70,7 @@ SPDX-License-Identifier: MIT
 //*****************************************************************************/
 // Intel production raytracing extension
 //*****************************************************************************/
+#include "IBiF_intel_rt_utils.cl"
 #include "IBiF_intel_rt_production.cl"
 
 

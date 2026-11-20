@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "IBiF_Header.cl"
+#include "IBiF_Header.h"
 
 #ifndef IGCBIF_INTRINSICS_CL
 #define IGCBIF_INTRINSICS_CL
@@ -1135,7 +1135,7 @@ uint16 __builtin_IB_shfl_idx4_to_fp16_16_packed(uint16 lut, char16 source) __att
 
 uint16 __builtin_IB_shfl_idx4_lut(int lut_index) __attribute__((const));
 
-#include "IGCBiF_Intrinsics_Dpas.cl"
-#include "IGCBiF_Intrinsics_Lsc.cl"
+#include "IGCBiF_Intrinsics_Dpas.h"
+#include "IGCBiF_Intrinsics_Lsc.h"
 
 #endif // IGCBIF_INTRINSICS_CL
