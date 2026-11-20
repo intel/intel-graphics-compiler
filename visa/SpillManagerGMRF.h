@@ -375,6 +375,12 @@ private:
 
   template <class REGION_TYPE> unsigned getRegionDisp(REGION_TYPE *region);
 
+  // Scratch offset of a HWord block message in HWords. It may not fit the
+  // 12-bit descriptor field, see GlobalRA::expandSpillNonStackcall.
+  unsigned getScratchHWordOffset(G4_RegVar *base, unsigned regOff);
+  template <class REGION_TYPE>
+  unsigned getScratchHWordOffset(REGION_TYPE *region);
+
   unsigned calculateSpillDisp(G4_RegVar *lRange) const;
 
   unsigned calculateSpillDispForLS(G4_RegVar *regVar) const;
