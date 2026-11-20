@@ -658,11 +658,9 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
     int srcId = useInst->getSrcNum(opndNum);
     G4_Operand *src = useInst->getSrc(srcId);
 
-    // On CRI+, the precision of acc is the same as GRF for all operands (the
-    // sign bit comes from the MSB of the datatype bits), so reading acc with a
-    // type different from the def's dst type behaves as with GRF.
-    if ((!kernel.fg.builder->hasIntACCRestrictions() &&
-         (dst->getType() != src->getType())) ||
+    // Fixme: the rule should be removed with
+    // kernel.fg.builder->removedAccRestrictionsAsGRF().
+    if ((dst->getType() != src->getType()) ||
         kernel.fg.globalOpndHT.isOpndGlobal(src)) {
       return false;
     }

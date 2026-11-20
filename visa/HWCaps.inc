@@ -895,13 +895,6 @@ bool hasSimplifiedRegions() const {
   return getPlatform() > Xe3;
 }
 
-// On top of removedAccRestrictionsAsGRF, integer acc operands are restricted:
-// -- only W(UW), D(UD) and Q(UQ) integer operands can use acc
-// -- source modifier must not be used with integer src1 acc
-bool hasIntACCRestrictions() const {
-  return removedAccRestrictionsAsGRF() && getPlatform() >= Xe3P_CRI;
-}
-
 bool needBothAcc(G4_Operand *opnd) const {
   if (hasSimplifiedRegions()) {
     return (((unsigned)opnd->getInst()->getExecSize() * opnd->getTypeSize())

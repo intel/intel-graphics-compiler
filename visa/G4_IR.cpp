@@ -7616,12 +7616,6 @@ bool G4_INST::mayExpandToAccMacro() const {
 }
 
 bool G4_INST::canOpndBeAccCommon(Gen4_Operand_Number opndNum) const {
-  if (builder.hasIntACCRestrictions()) {
-    // Only W(UW), D(UD) and Q(UQ) integer operands can use acc.
-    if (IS_BTYPE(getOperand(opndNum)->getType())) {
-      return false;
-    }
-  }
   if (!builder.hasAccExecSizeRestrictions()) {
     return isSupportedAccDstType();
   }
@@ -7939,17 +7933,12 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
   }
 
   G4_SrcRegRegion *src = getSrc(srcId)->asSrcRegRegion();
-  if (srcId == 1 && src->hasModifier()) {
-    if (builder.removedAccRestrictionsAsGRF()) {
-      // When acc is used as src1, source modifier must not be used with
-      // integer datatypes.
-      if (builder.hasIntACCRestrictions() &&
-          !IS_TYPE_FLOAT_ALL(src->getType()))
-        return false;
-    } else if (!IS_TYPE_FLOAT_ALL(src->getType()) ||
-               !builder.relaxedACCRestrictions()) {
-      // some platforms allow float src1 acc modifiers,
-      // while some don't allow src1 acc modifier at all.
+  if (!builder.removedAccRestrictionsAsGRF() && srcId == 1 &&
+      src->hasModifier()) {
+    // some platforms allow float src1 acc modifiers,
+    // while some don't allow src1 acc modifier at all.
+    if (!IS_TYPE_FLOAT_ALL(src->getType()) ||
+        !builder.relaxedACCRestrictions()) {
       return false;
     }
   }
@@ -8065,11 +8054,9 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
     return builder.useAccForMadm();
   case G4_mad:
     if (builder.removedAccRestrictionsAsGRF()) {
-      // With hasIntACCRestrictions, integer src1 can use acc.
-      // Integer src2 never can.
-      if (IS_INT(src->getType()))
-        return srcId == 0 || (srcId == 1 && builder.hasIntACCRestrictions());
-      return true;
+      if (!(srcId != 0 && IS_INT(src->getType())))
+        return true;
+      return false;
     } else {
       return builder.canMadHaveAcc() &&
              ((srcId == 1 &&
