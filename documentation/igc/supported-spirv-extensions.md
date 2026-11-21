@@ -246,14 +246,14 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_fp_conversions
 
-**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_fp_conversions.html
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_fp_conversions.asciidoc
 
-> **Supported on**: XE3P+ (NVL P, CRI)
+> **Experimentally supported on**: XE3P+ (NVL P, CRI)
 
 **Capabilities**:
 
-- **FloatConversionsFToFINTEL**
-- **FloatConversionsFToSINTEL**
+- **FloatConversionsFtoFINTEL**
+- **FloatConversionsFtoSINTEL**
 
 ---
 
