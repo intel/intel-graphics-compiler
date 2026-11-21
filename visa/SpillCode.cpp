@@ -109,11 +109,9 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl,
   G4_Declare *sp = builder.createDeclare(name, G4_ADDRESS, num_reg,
                                          1, // 1 row
                                          type);
-  //The address register is in size of W
-  auto subAlign = Get_G4_SubRegAlign_From_Size(
-      num_reg * 2, builder.getPlatform(), builder.getGRFAlign());
 
-  sp->setSubRegAlign(subAlign);
+  // Caller must set sub-reg align if Any is not sufficient
+  sp->setSubRegAlign(Any);
   gra.setBBId(sp, bbId);
   // Live range of new temp addrs is short so that there is no point spilling
   // them. indicate this is for newly created addr temp so that RA won't spill
@@ -381,6 +379,8 @@ void SpillManager::replaceSpilledSrc(
 
       if (!match_found) {
         tmpDcl = createNewTempAddrDeclare(spDcl, num_reg);
+        tmpDcl->setSubRegAlign(ss->getTopDcl()->getSubRegAlign());
+        gra.setSubRegAlign(tmpDcl, ss->getTopDcl()->getSubRegAlign());
         operands_analyzed[i] = ss;
         declares_created[i] = tmpDcl;
         bool isNoMask = (inst->getOption() & InstOpt_WriteEnable) != 0;
