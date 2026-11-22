@@ -86,6 +86,7 @@ private:
 };
 
 bool allowDump(const Options &options, const std::string &fileName);
+bool allowDump(const Options &options, const char *fileName);
 
 } // namespace CisaFramework
 #endif

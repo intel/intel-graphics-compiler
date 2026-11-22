@@ -38,6 +38,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/InitializePasses.h>
 #include <llvm/Pass.h>
 
+#include <cmath>
+
 using namespace llvm;
 using namespace genx;
 
@@ -76,10 +78,11 @@ public:
                                 Expr.Addend - RHS.Expr.Addend);
   }
   LoopCountExprWrapper operator/(unsigned Val) const {
-    auto Res =
-        LoopCountExprWrapper(Expr.Factor / Val, Expr.Symbol, Expr.Addend / Val);
-    Res.Expr.IsUndef = Expr.IsUndef;
-    return Res;
+    // Propagate undef and guard against zero step.
+    if (!Val || Expr.IsUndef)
+      return LoopCountExprWrapper{};
+    return LoopCountExprWrapper(Expr.Factor / Val, Expr.Symbol,
+                                Expr.Addend / Val);
   }
 };
 
@@ -207,7 +210,11 @@ Value *LCEFinder::visitBinaryOperator(BinaryOperator &BO) {
   case Instruction::UDiv:
   case Instruction::SDiv:
   case Instruction::FDiv:
+    if (ConstAsFP == 0.0f)
+      return nullptr;
     LCE.Expr.Factor /= ConstAsFP;
+    if (!std::isfinite(LCE.Expr.Factor))
+      return nullptr;
     break;
   case Instruction::Shl:
     LCE.Expr.Factor *= 1 << (unsigned)ConstAsFP;
@@ -283,9 +290,13 @@ GenXLCECalculation::processLoop(const Loop &L, const Function &F,
   if (!StepValueCI)
     return LCELoopInfo{};
 
+  APInt AbsStep = StepValueCI->getValue().abs();
+  if (AbsStep.getActiveBits() > 32)
+    return LCELoopInfo{};
+
   auto *DL = &F.getParent()->getDataLayout();
   LCELoopInfo Result;
-  Result.AbsStepValue = std::abs(StepValueCI->getSExtValue());
+  Result.AbsStepValue = static_cast<unsigned>(AbsStep.getZExtValue());
   Result.Direction = LB.getDirection();
 
   auto &IVFinalV = LB.getFinalIVValue();

@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <fstream>
 #include <regex>
 #include <sstream>
+#include <string_view>
 
 #include "IsaDisassembly.h"
 #include "IsaVerification.h"
@@ -123,7 +124,7 @@ int CisaInst::createCisaInstruction(ISA_Opcode opcode, unsigned char exec_size,
   return VISA_SUCCESS;
 }
 
-bool allowDump(const Options &options, const std::string &fullPath) {
+static bool allowDumpImpl(const Options &options, std::string_view fullPath) {
   const char *regex = options.getOptionCstr(vISA_ShaderDumpRegexFilter);
   if (!regex || *regex == '\0')
     return true;
@@ -131,18 +132,25 @@ bool allowDump(const Options &options, const std::string &fullPath) {
   std::regex fileRegex(regex);
 
   const auto fileNameIdx = fullPath.find_last_of("/\\");
-  if (std::string::npos != fileNameIdx)
-  {
-      const auto fileNamePos = 1 + fileNameIdx;
-      const auto fileName = fullPath.substr(fileNamePos, fullPath.size() - fileNamePos);
+  if (std::string_view::npos != fileNameIdx) {
+    const auto fileNamePos = 1 + fileNameIdx;
+    const auto fileName = fullPath.substr(fileNamePos);
 
-      return std::regex_search(fileName, fileRegex);
+    return std::regex_search(fileName.begin(), fileName.end(), fileRegex);
   }
-  else
-  {
-      // Do NOT dump if there's no prefix path.
-      return false;
-  }
+
+  // Do NOT dump if there's no prefix path.
+  return false;
+}
+
+bool allowDump(const Options &options, const std::string &fullPath) {
+  return allowDumpImpl(options, fullPath);
+}
+
+bool allowDump(const Options &options, const char *fullPath) {
+  if (!fullPath)
+    return false;
+  return allowDumpImpl(options, fullPath);
 }
 
 } // namespace CisaFramework
