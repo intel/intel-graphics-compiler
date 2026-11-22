@@ -326,7 +326,8 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   uint32_t registerPressureEst = (uint32_t)(IGC_GET_FLAG_VALUE(SetRegisterPressureThresholdForLoopUnroll) *
                                             (ctx->getNumGRFPerThread(true, L->getHeader()->getParent()) / 128.0));
   bool lowPressure = (this->ctx->m_tempCount < registerPressureEst) && (totalInstCountInShader < LoopUnrollThreshold);
-  // Threshold for shaders with high register pressure. It is also the lower bound of the per-loop threshold below.
+  // Threshold for shaders with high register pressure. Also the base of the lower bound of the per-loop threshold
+  // below.
   unsigned HighRegPressureThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThresholdForHighRegPressure);
   if (!IGC_IS_FLAG_SET(SetLoopUnrollThresholdForHighRegPressure) &&
       ctx->getModuleMetaData()->compOpt.SetLoopUnrollThresholdForHighRegPressure > 0) {
@@ -352,13 +353,18 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
       return MaxTripCount && MaxTripCount <= MaxTripCountToUseUpperBound &&
              getLoopSize(L, *this) * MaxTripCount <= 2 * LoopUnrollThreshold;
     };
-    if (ctx->m_DriverInfo.LimitLoopUnrollToRemainingBudget() && totalInstCountInShader < LoopUnrollThreshold &&
-        !IsTinyTripCountLoop()) {
+    bool LimitToRemainingBudget =
+        ctx->m_DriverInfo.LimitLoopUnrollToRemainingBudget() && totalInstCountInShader < LoopUnrollThreshold;
+    if (LimitToRemainingBudget && !IsTinyTripCountLoop()) {
       // The shader-size threshold bounds the whole shader, not each loop separately. Limit a loop's threshold to the
-      // budget still unused (but not below the high-pressure threshold), so one loop does not usually exhaust it and
-      // push all later loops to the high-pressure settings. The limit is soft: LLVM may still boost the threshold
-      // (UP.MaxPercentThresholdBoost) for a loop that simplifies when fully unrolled.
-      unsigned Remaining = std::max(LoopUnrollThreshold - totalInstCountInShader, HighRegPressureThreshold);
+      // budget still unused, so one loop does not usually exhaust it and push all later loops to the high-pressure
+      // settings. The limit is soft: LLVM may still boost the threshold (UP.MaxPercentThresholdBoost) for a loop that
+      // simplifies when fully unrolled. Do not limit below 1.5x the high-pressure threshold: a loop that is visited
+      // late, when the shader has nearly used the gate, would otherwise be left rolled even though its full unroll is
+      // only a little larger than the high-pressure threshold, and a rolled loop can need more registers than the
+      // unrolled one (which can cost the shader its widest SIMD mode).
+      unsigned MinRemaining = HighRegPressureThreshold + HighRegPressureThreshold / 2;
+      unsigned Remaining = std::max(LoopUnrollThreshold - totalInstCountInShader, MinRemaining);
       UP.Threshold = std::min(UP.Threshold, Remaining);
       UP.PartialThreshold = std::min(UP.PartialThreshold, Remaining);
     }
