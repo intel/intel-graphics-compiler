@@ -239,8 +239,7 @@ private:
   void addAddrConvIfExtract(
       std::map<std::pair<Value *, int>, ExtractBucket> *ExtractBuckets,
       Value *Index);
-  bool tryConvertWholeRegion(SmallVector<Extract, 4> &Extracts,
-                             Instruction *VecDef);
+  bool tryConvertWholeRegion(ArrayRef<Extract> Extracts, Instruction *VecDef);
   bool vectorizeAddrsFromOneVector(ArrayRef<Instruction *> Addrs);
   DominatorTree *getDominatorTree();
   bool isValueInCurrentFunc(Value *V);
@@ -772,8 +771,8 @@ void GenXAddressCommoning::addAddrConvIfExtract(
  * in parent function. Idea of this subroutine is to convert whole
  * region if possible
  */
-bool GenXAddressCommoning::tryConvertWholeRegion(
-    SmallVector<Extract, 4> &Extracts, Instruction *VecDef) {
+bool GenXAddressCommoning::tryConvertWholeRegion(ArrayRef<Extract> Extracts,
+                                                 Instruction *VecDef) {
   Instruction *InsertBefore = Extracts[0].Addr;
   unsigned int MinNum, MaxNum;
 
@@ -867,6 +866,7 @@ bool GenXAddressCommoning::tryConvertWholeRegion(
  */
 bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
     ArrayRef<Instruction *> Addrs) {
+  IGC_ASSERT(Addrs.size() >= 2);
   bool Modified = false;
   SmallVector<Extract, 4> Extracts;
   bool HasVector = false;
@@ -924,7 +924,7 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
   // if we tried to convert whole region and failed
   // we shall check that we will try to optimize further
   // correct extract set
-  IGC_ASSERT(Extracts.size() > 0);
+  IGC_ASSERT(Extracts.size() >= 2);
   Type *FirstType = Extracts[0].Addr->getOperand(0)->getType();
   IGC_ASSERT(FirstType);
 
@@ -935,8 +935,8 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
   }
 
   // Scan through the address conversions...
-  for (unsigned Idx = 0, Num = 1, End = Extracts.size(); Idx < End - 2;
-       Idx += Num) {
+  unsigned Num = 1;
+  for (size_t Idx = 0, End = Extracts.size(); Idx + 2 < End; Idx += Num) {
     // See how many extracts we can take in one go that have evenly spaced
     // offsets, max is the number of elements in address register.
     int Diff = Extracts[Idx + 1].Offset - Extracts[Idx].Offset;

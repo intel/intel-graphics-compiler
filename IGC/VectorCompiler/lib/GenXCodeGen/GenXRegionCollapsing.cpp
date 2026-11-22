@@ -403,7 +403,7 @@ static void combineBitCastWithUser(Value *PossibleBC) {
 /***********************************************************************
  * debugPrintInnerOuter : debug print inner/outer of region with debug-locations
  */
-static void debugPrintInnerOuter(std::string FuncName, Instruction *Inner,
+static void debugPrintInnerOuter(StringRef FuncName, Instruction *Inner,
                                  Instruction *Outer) {
   std::string OuterLine = Outer->getDebugLoc()
                               ? std::to_string(Outer->getDebugLoc().getLine())

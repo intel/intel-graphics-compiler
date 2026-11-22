@@ -87,6 +87,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/SmallSet.h"
+#include "llvm/ADT/bit.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -2169,14 +2170,9 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
 }
 
 static bool is8bitPackedFloat(float f) {
-  union {
-    float f;
-    unsigned u;
-  } u;
-
-  u.f = f;
-  unsigned Exp = (u.u >> 23) & 0xFF;
-  unsigned Frac = u.u & 0x7FFFFF;
+  uint32_t Bits = llvm::bit_cast<uint32_t>(f);
+  unsigned Exp = (Bits >> 23) & 0xFF;
+  unsigned Frac = Bits & 0x7FFFFF;
   if (Exp == 0 && Frac == 0)
     return true;
   if (Exp < 124 || Exp > 131)

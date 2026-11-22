@@ -265,12 +265,10 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst) {
   // array to translate a value from Decomposition[] into the GRF offset, so
   // for this example { 0, 2, 4, 8 }.
   Offsets.clear();
-  for (unsigned Last = UINT_MAX, i = 0, e = Decomposition.size(); i != e; ++i) {
-    if (Decomposition[i] != Last) {
-      Offsets.push_back(Decomposition[i]);
-      Last = Decomposition[i];
-    }
-    Decomposition[i] = Offsets.size() - 1;
+  for (unsigned &D : Decomposition) {
+    if (Offsets.empty() || D != Offsets.back())
+      Offsets.push_back(D);
+    D = Offsets.size() - 1;
   }
   LLVM_DEBUG({
     dbgs() << "decompose to";

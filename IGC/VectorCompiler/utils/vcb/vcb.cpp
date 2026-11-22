@@ -35,8 +35,8 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/Support/TargetRegistry.h>
 using namespace llvm;
 
-void vcbCompileModule(std::unique_ptr<Module> &M, std::string Platform);
-void vcbCompileUnique(std::string InputFilename, std::string OutputFilename);
+void vcbCompileModule(std::unique_ptr<Module> &M, StringRef Platform);
+void vcbCompileUnique(StringRef InputFilename, StringRef OutputFilename);
 
 static cl::opt<bool> TextOutput(
     "S", cl::desc("emitting text IR when the option is set, binary otherwise"));
@@ -73,7 +73,7 @@ static int initializeAll() {
 }
 
 static Expected<std::unique_ptr<TargetMachine>>
-createTargetMachine(Triple &TheTriple, std::string CPUStr) {
+createTargetMachine(Triple &TheTriple, StringRef CPUStr) {
   std::string Error;
   const Target *TheTarget = TargetRegistry::lookupTarget(
       TheTriple.getArchName().str(), TheTriple, Error);
@@ -98,14 +98,14 @@ createTargetMachine(Triple &TheTriple, std::string CPUStr) {
 // primary entry points to vcb tool.
 // Precompilation is performed via VC CodeGen pipeline configured to use a
 // special "BiFCompilation" mode.
-void vcbCompileModule(std::unique_ptr<Module> &M, std::string Platform) {
+void vcbCompileModule(std::unique_ptr<Module> &M, StringRef Platform) {
   GenXBackendOptions Options;
   Options.BiFCompilation = true;
   // Target configuration.
   Triple TheTriple{Is32Bit ? "genx32-unknown-unknown"
                            : "genx64-unknown-unknown"};
   IGCLLVM::setTargetTriple(*M, TheTriple.getTriple());
-  auto ExpTargetMachine = createTargetMachine(TheTriple, std::move(Platform));
+  auto ExpTargetMachine = createTargetMachine(TheTriple, Platform);
   if (!ExpTargetMachine) {
     errs() << ExpTargetMachine.takeError();
     report_fatal_error("Can't find Target Machine");

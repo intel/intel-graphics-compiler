@@ -2227,7 +2227,7 @@ GenXLegalization::convertToMultiIndirect(Instruction *Inst, Value *LastJoinVal,
   IGC_ASSERT(!R->is2D());
   IGC_ASSERT((R->NumElements == 4) || (R->NumElements == 8));
   Value *Indirect = R->Indirect;
-  IGC_ASSERT(Indirect);
+  IGC_ASSERT_EXIT(Indirect);
   const DebugLoc &DL = Inst->getDebugLoc();
 
   // scalar indirect index
@@ -2730,21 +2730,21 @@ GenXLegalization::SplitKind GenXLegalization::checkBaleSplittingKind() {
 
   if (Head->Info.Type == BaleInfo::WRREGION) {
     Value *WrRegionInput = Head->Inst->getOperand(0);
-    Region R1 = makeRegionFromBaleInfo(Head->Inst, Head->Info);
-    for (auto &I : B) {
+    const Region R1 = makeRegionFromBaleInfo(Head->Inst, Head->Info);
+    for (const auto &I : B) {
       if (I.Info.Type != BaleInfo::RDREGION)
         continue;
       if (I.Inst->getOperand(0) != WrRegionInput)
         continue;
       Region R2 = makeRegionFromBaleInfo(I.Inst, I.Info);
       if (R1 != R2) {
-        // Check if R1 overlaps with R2. Create a new region for R1 as we are
-        // rewriting region offsets if their difference is a constant.
-        Region R = makeRegionFromBaleInfo(Head->Inst, Head->Info);
+        // Check if R1 overlaps with R2. Neither B nor Head's operands change
+        // in this loop, so copy R1 locally before rewriting offsets and mask.
+        Region R = R1;
 
         // Analyze dynamic offset difference, but only for a scalar offset.
-        if (R1.Indirect && R2.Indirect) {
-          if (R1.Indirect->getType()->isVectorTy() ||
+        if (R.Indirect && R2.Indirect) {
+          if (R.Indirect->getType()->isVectorTy() ||
               R2.Indirect->getType()->isVectorTy())
             return SplitKind::SplitKind_Normal;
 
@@ -2767,7 +2767,6 @@ GenXLegalization::SplitKind GenXLegalization::checkBaleSplittingKind() {
             auto S1 = SE->getSCEV(Offset1);
             auto S2 = SE->getSCEV(Offset2);
             auto Diff = SE->getMinusSCEV(S1, S2);
-            IGC_ASSERT(R.Indirect);
             Diff = SE->getTruncateOrNoop(Diff, R.Indirect->getType());
             if (auto SCC = dyn_cast<SCEVConstant>(Diff)) {
               ConstantInt *CI = SCC->getValue();

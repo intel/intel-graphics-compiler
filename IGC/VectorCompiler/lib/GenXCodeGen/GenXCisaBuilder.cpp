@@ -56,6 +56,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/IndexedMap.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringExtras.h"
+#include "llvm/ADT/bit.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
@@ -635,9 +636,12 @@ private:
     CISA_CALL(Kernel->AppendVISACFCallInst(Pred, ExecMask, ExecSize, Label));
   }
 
-  inline void appendVISACFFunctionCallInst(
-      VISA_PredOpnd *Pred, VISA_EMask_Ctrl ExecMask, VISA_Exec_Size ExecSize,
-      std::string FuncName, unsigned char ArgSize, unsigned char ReturnSize) {
+  inline void appendVISACFFunctionCallInst(VISA_PredOpnd *Pred,
+                                           VISA_EMask_Ctrl ExecMask,
+                                           VISA_Exec_Size ExecSize,
+                                           const std::string &FuncName,
+                                           unsigned char ArgSize,
+                                           unsigned char ReturnSize) {
     updateSIMDSize(ExecMask, ExecSize);
     CISA_CALL(Kernel->AppendVISACFFunctionCallInst(
         Pred, ExecMask, ExecSize, FuncName, ArgSize, ReturnSize));
@@ -854,15 +858,10 @@ static bool isDerivedFromUndef(Constant *C) {
 }
 
 static unsigned get8bitPackedFloat(float f) {
-  union {
-    float f;
-    unsigned u;
-  } u;
-
-  u.f = f;
-  unsigned char Sign = (u.u >> 31) << 7;
-  unsigned Exp = (u.u >> 23) & 0xFF;
-  unsigned Frac = u.u & 0x7FFFFF;
+  uint32_t Bits = llvm::bit_cast<uint32_t>(f);
+  unsigned char Sign = (Bits >> 31) << 7;
+  unsigned Exp = (Bits >> 23) & 0xFF;
+  unsigned Frac = Bits & 0x7FFFFF;
   if (Exp == 0 && Frac == 0)
     return Sign;
 
@@ -2162,13 +2161,12 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(
 }
 
 static void diagnoseInlineAsm(llvm::LLVMContext &Context,
-                              const Instruction *Inst, const std::string Suffix,
+                              const Instruction *Inst, StringRef Suffix,
                               DiagnosticSeverity DS_type) {
   auto *CI = cast<CallInst>(Inst);
   const InlineAsm *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
-  const std::string Message =
-      '"' + std::string(IA->getAsmString()) + '"' + Suffix;
-  vc::diagnose(Context, "GenXCisaBuilder", Message.c_str(), DS_type,
+  vc::diagnose(Context, "GenXCisaBuilder",
+               Twine('"') + IA->getAsmString() + Twine('"') + Suffix, DS_type,
                vc::WarningName::Generic, Inst);
 }
 
@@ -5176,7 +5174,9 @@ VISA_VectorOpnd *GenXKernelBuilder::createIndirectOperand(Region *R,
                                                           unsigned MaxWidth) {
   VISA_VectorOpnd *ResultOperand = nullptr;
   // Check if the indirect operand is a baled in rdregion.
-  Value *Indirect = R->Indirect;
+  Value *OrigIndirect = R->Indirect;
+  IGC_ASSERT_EXIT(OrigIndirect);
+  Value *Indirect = OrigIndirect;
   if (GenXIntrinsic::isRdRegion(Indirect)) {
     auto AddrRdR = cast<Instruction>(Indirect);
     Indirect = AddrRdR->getOperand(0);
@@ -5193,7 +5193,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createIndirectOperand(Region *R,
     // by looking at the partial constant for the index
     // before the constant is added on.
     // This only works for a scalar index.
-    if (auto IndirInst = dyn_cast<Instruction>(R->Indirect)) {
+    if (auto IndirInst = dyn_cast<Instruction>(OrigIndirect)) {
       auto A = AI.get(IndirInst);
       unsigned Mask = (1U << std::min(5U, A.getLogAlign())) - 1;
       if (Mask) {
@@ -5208,7 +5208,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createIndirectOperand(Region *R,
   }
   visa::TypeDetails TD(DL, R->ElementTy, Signed);
   unsigned VStride = R->VStride;
-  if (isa<VectorType>(R->Indirect->getType()))
+  if (isa<VectorType>(OrigIndirect->getType()))
     // multi indirect (vector index), set vstride
     VStride = 0x8000; // field to null
   VISA_AddrVar *AddrDecl = IdxReg->GetVar<VISA_AddrVar>(Kernel);
