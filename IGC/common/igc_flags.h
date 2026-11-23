@@ -2086,6 +2086,14 @@ DECLARE_IGC_REGKEY(DWORD, RematVRTProximityPercent, 5,
                    ALWAYS)
 DECLARE_IGC_REGKEY(bool, RematSingleFlowRematEnabled, true,
                    "Allow singleFlowRemat stage inside CloneAddressArithmeticPass", DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, RematRetryRollback, true,
+                   "Outside the first compile, undo a CloneAddressArithmeticPass stage that raises the estimated "
+                   "register pressure past the GRF count or VRT thread band of the kernel",
+                   DEBUG_ONLY)
+DECLARE_IGC_REGKEY(bool, RematSingleFlowOwnedChains, true,
+                   "In the singleFlowRemat stage, do not clone a chain operand that has users outside the remat flow "
+                   "and several non-constant operands",
+                   DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, RematEnable, false, "Enable clone address arithmetic pass not only on retry", DEBUG_ONLY)
 DECLARE_IGC_REGKEY(bool, RematFirstCompile, true,
                    "Run clone address arithmetic on the first OpenCL compile attempt on XE2/XE3, using the kernel's "

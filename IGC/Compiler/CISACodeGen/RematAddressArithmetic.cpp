@@ -244,25 +244,29 @@ private:
   bool m_firstCompile = false;
   bool greedyRemat(Function &F);
   bool singleFlowRemat(Function &F);
-  bool rematerialize(RematSet &ToProcess, unsigned int FlowThreshold, IRTransaction *Tx = nullptr);
+  bool rematerialize(RematSet &ToProcess, unsigned int FlowThreshold, IRTransaction &Tx, bool OwnedChainsOnly);
   bool isRegPressureLow(Function &F);
   bool skipChain(RematChain &Chain, Instruction *Root);
 
-  RematChain collectRematChain(llvm::Instruction *I, unsigned int NumOfUsesLimit);
+  RematChain collectRematChain(llvm::Instruction *I, unsigned int NumOfUsesLimit, const RematSet *OwnedSeeds);
 
   unsigned int getFlowThreshold(RematSet &ToProcess, Function &F);
 
   void countUses(Function &);
-  void speculateWholeChain(RematSet &ToProcess, unsigned int UsesLimit);
+  void speculateWholeChain(RematSet &ToProcess, unsigned int UsesLimit, bool OwnedChainsOnly);
   void collectInstToProcess(RematSet &ToProcess, Function &F);
   void addToSystem(CloneAddressArithmetic::RematSet &Set, llvm::Instruction *I);
   void computeFlow(RematSet &ToProcess);
   void computeFlow(llvm::Instruction *I);
-  void rematWholeChain(llvm::Instruction *I, RematChain &Chain, IRTransaction *Tx);
+  llvm::Instruction *cloneWithDependency(llvm::Instruction *I);
+  void rematWholeChain(llvm::Instruction *I, RematChain &Chain, IRTransaction &Tx);
   unsigned int measurePressure(Function &F);
   unsigned int pressureBudget(Function &F);
   bool prefersSIMD16OnVRT(Function &F);
+  unsigned int retryPressureBudget(Function &F);
+  bool isOwnedByFlow(Instruction *Op, const RematSet &Seeds);
   void commitIfBudgetReached(Function &F, IRTransaction &Remat, unsigned int Budget);
+  void rematerializeWithinBudget(Function &F, RematSet &ToProcess, unsigned int FlowThreshold, bool OwnedChainsOnly);
   void estimateProfit(RematSet &ToProcess);
   void initializeLogFile(Function &F);
   void writeLog();
@@ -462,8 +466,10 @@ void CloneAddressArithmetic::computeFlow(llvm::Instruction *I) {
   }
 }
 
+// With OwnedSeeds, an operand with several register operands is only cloned if isOwnedByFlow.
 CloneAddressArithmetic::RematChain CloneAddressArithmetic::collectRematChain(llvm::Instruction *I,
-                                                                             unsigned int NumOfUsesLimit) {
+                                                                             unsigned int NumOfUsesLimit,
+                                                                             const RematSet *OwnedSeeds) {
 
   RematChain RematVector;
   std::queue<llvm::Instruction *> BFSQ;
@@ -503,11 +509,14 @@ CloneAddressArithmetic::RematChain CloneAddressArithmetic::collectRematChain(llv
       bool NotTooManyUses = FlowMap[Op] <= NumOfUsesLimit;
       bool NotExplored = !Explored.count(Op);
       bool AlwaysProfitable = isAlwaysProfitableToRemat(Op);
+      bool Eligible = SameBB && NotConstant && NotPHI && (NotTooManyUses || AlwaysProfitable) && AddressArithmetic &&
+                      NotUniform && NotExplored;
+      bool MultipleVariableOps = llvm::count_if(Op->operands(), [](Use &U) { return !isa<Constant>(U.get()); }) > 1;
+      bool NotOwned = Eligible && OwnedSeeds && MultipleVariableOps && !isOwnedByFlow(Op, *OwnedSeeds);
 
       PRINT_LOG("\t\t " << "BB:" << SameBB << "Uses:" << NotTooManyUses << "Ar:" << AddressArithmetic
-                        << "Un:" << NotUniform << "Prof:" << AlwaysProfitable);
-      bool Skip = !(SameBB && NotConstant && NotPHI && (NotTooManyUses || AlwaysProfitable) && AddressArithmetic &&
-                    NotUniform && NotExplored);
+                        << "Un:" << NotUniform << "Prof:" << AlwaysProfitable << "NotOwn:" << NotOwned);
+      bool Skip = !Eligible || NotOwned;
       if (UseOnlyAlwaysProfitable)
         Skip = !(AlwaysProfitable && NotExplored);
       if (Skip) {
@@ -565,13 +574,21 @@ void CloneAddressArithmetic::addToSystem(RematSet &Set, llvm::Instruction *I) {
   PRINT_LOG_NL("");
 }
 
-void CloneAddressArithmetic::rematWholeChain(llvm::Instruction *I, RematChain &Chain, IRTransaction *Tx) {
+// Clones I and gives the clone the WIAnalysis dependency of I, if one was computed.
+Instruction *CloneAddressArithmetic::cloneWithDependency(Instruction *I) {
+  Instruction *Clone = I->clone();
+  if (WI->Runner.hasDependency(I))
+    WI->incUpdateDepend(Clone, WI->whichDepend(I));
+  return Clone;
+}
+
+void CloneAddressArithmetic::rematWholeChain(llvm::Instruction *I, RematChain &Chain, IRTransaction &Tx) {
 
   std::unordered_map<Instruction *, Instruction *> OldToNew;
 
   for (auto el : Chain) {
 
-    auto Clone = el->clone();
+    auto Clone = cloneWithDependency(el);
     OldToNew[el] = Clone;
     for (unsigned int i = 0; i < Clone->getNumOperands(); ++i) {
 
@@ -585,8 +602,7 @@ void CloneAddressArithmetic::rematWholeChain(llvm::Instruction *I, RematChain &C
     Clone->setMetadata("remat", Node);
     Clone->setName("remat");
     IGCLLVM::insertBefore(Clone, I);
-    if (Tx)
-      Tx->created(Clone);
+    Tx.created(Clone);
   }
 
   for (unsigned int i = 0; i < I->getNumOperands(); ++i) {
@@ -616,7 +632,8 @@ bool CloneAddressArithmetic::skipChain(RematChain &Chain, Instruction *Root) {
   return Result;
 }
 
-bool CloneAddressArithmetic::rematerialize(RematSet &ToProcess, unsigned int FlowThreshold, IRTransaction *Tx) {
+bool CloneAddressArithmetic::rematerialize(RematSet &ToProcess, unsigned int FlowThreshold, IRTransaction &Tx,
+                                           bool OwnedChainsOnly) {
 
   for (auto El : ToProcess) {
 
@@ -636,7 +653,7 @@ bool CloneAddressArithmetic::rematerialize(RematSet &ToProcess, unsigned int Flo
       continue;
     PRINT_LOG_NL(" ---> all uses accepted ");
 
-    RematChain Chain = collectRematChain(El, FlowThreshold);
+    RematChain Chain = collectRematChain(El, FlowThreshold, OwnedChainsOnly ? &ToProcess : nullptr);
     if (skipChain(Chain, El))
       continue;
     std::reverse(Chain.begin(), Chain.end());
@@ -655,26 +672,19 @@ bool CloneAddressArithmetic::rematerialize(RematSet &ToProcess, unsigned int Flo
       PRINT_INST(User);
       PRINT_LOG(" --> ");
 
-      auto Clone = El->clone();
+      auto Clone = cloneWithDependency(El);
       MDNode *Node = MDNode::get(El->getContext(), MDString::get(El->getContext(), "remat"));
       Clone->setMetadata("remat", Node);
       Clone->setName("cloned_" + El->getName());
       IGCLLVM::insertBefore(Clone, UserInst);
-      if (Tx) {
-        Tx->created(Clone);
-        Tx->replaceUse(*Use, Clone);
-      } else {
-        *Use = Clone;
-      }
+      Tx.created(Clone);
+      Tx.replaceUse(*Use, Clone);
 
       PRINT_INST_NL(Clone);
       rematWholeChain(Clone, Chain, Tx);
     }
 
-    if (Tx)
-      Tx->replaced(El);
-    else
-      RecursivelyDeleteTriviallyDeadInstructions(El);
+    Tx.replaced(El);
 
     PRINT_LOG_NL("");
   }
@@ -725,13 +735,13 @@ void CloneAddressArithmetic::estimateProfit(RematSet &ToProcess) {
   return;
 }
 
-// Pressure a first-compile stage has to reach to be worth keeping, 0 when no such target applies to the function.
+// Pressure a stage has to stay within to be kept, 0 when no such target applies to the function.
 // On XE2 an OpenCL kernel whose SIMD32 pressure is above the GRF budget is dropped to SIMD16 before codegen, so
 // rematerialization only helps if it brings the pressure back under that budget. On platforms with VRT a kernel
 // above the largest GRF mode cannot get more registers, so it only helps if it brings the pressure under that mode.
 unsigned int CloneAddressArithmetic::pressureBudget(Function &F) {
   if (!m_firstCompile)
-    return 0;
+    return IGC_IS_FLAG_ENABLED(RematRetryRollback) ? retryPressureBudget(F) : 0;
   if (SIMD == numLanes(SIMDMode::SIMD32) && !IGC::hasFixedSIMDSize(CGCtx, &F, FGA)) {
     unsigned int Budget = IGC::getXe2SIMD16DropBudget(CGCtx, &F);
     if (Budget && MaxPressure > Budget)
@@ -741,6 +751,30 @@ unsigned int CloneAddressArithmetic::pressureBudget(Function &F) {
   if (!VRTTable.empty() && (int)MaxPressure > VRTTable.back().first)
     return VRTTable.back().first;
   return 0;
+}
+
+// A retry stage must not raise the pressure past the GRF count the kernel gets, or past the end of its current
+// VRT thread band, unless the pressure is already beyond it.
+unsigned int CloneAddressArithmetic::retryPressureBudget(Function &F) {
+  unsigned int GRFBudget = CGCtx->getNumGRFPerThread(true, &F);
+  if (CGCtx->isAutoGRFSelectionEnabled(&F) && CGCtx->getNumGRFPerThread(false, &F) == 0) {
+    auto Modes = CGCtx->getAutoGRFVRTTable();
+    if (!Modes.empty())
+      GRFBudget = findVRTBand(Modes, MaxPressure)->first;
+  }
+  return std::max(MaxPressure, GRFBudget);
+}
+
+// True if Op stays dead after its clone, i.e. all users are seeds or carry flow of the stage. Clones of earlier
+// chains are outside the flow, as they keep Op live.
+bool CloneAddressArithmetic::isOwnedByFlow(Instruction *Op, const RematSet &Seeds) {
+  return llvm::all_of(Op->users(), [&](User *U) {
+    auto *UI = dyn_cast<Instruction>(U);
+    if (!UI || Seeds.count(UI) || isa<DbgInfoIntrinsic>(UI))
+      return true;
+    auto It = FlowMap.find(UI);
+    return It != FlowMap.end() && It->second != 0;
+  });
 }
 
 // Pressure of the function as it is now.
@@ -765,27 +799,39 @@ bool CloneAddressArithmetic::prefersSIMD16OnVRT(Function &F) {
 // The static profit estimate assumes every cloned value is live at the pressure peak and is far too optimistic to
 // predict whether a budget is reached, so the pressure of the rematerialized function is measured instead.
 // Rematerialization that leaves it over the budget is undone: the clones would only add instructions. So is
-// rematerialization at SIMD32 that lowers the pressure enough for the XE3 VRT SIMD16 drop: the kernel would not keep
-// SIMD32, and the clones would only shrink the SIMD16 register allocation. Otherwise the transaction is committed.
+// first-compile rematerialization at SIMD32 that lowers the pressure enough for the XE3 VRT SIMD16 drop: the kernel
+// would not keep SIMD32, and the clones would only shrink the SIMD16 register allocation. Otherwise the transaction is
+// committed.
 void CloneAddressArithmetic::commitIfBudgetReached(Function &F, IRTransaction &Remat, unsigned int Budget) {
   const unsigned int Pressure = measurePressure(F);
   PRINT_LOG_NL("Pressure budget: " << Budget << " MaxPressure: " << MaxPressure << " -> " << Pressure);
   const bool OverBudget = Budget && Pressure > Budget;
-  if (OverBudget || prefersSIMD16OnVRT(F)) {
+  if (OverBudget || (m_firstCompile && prefersSIMD16OnVRT(F))) {
     PRINT_LOG_NL((OverBudget ? "Budget not reached" : "SIMD16 drop after rematerialization") << ", rolling back");
     Remat.rollback();
-    measurePressure(F);
+    RPE->rerunLivenessAnalysis(F);
     return;
   }
   Remat.commit();
 }
 
-void CloneAddressArithmetic::speculateWholeChain(RematSet &ToProcess, unsigned int UsesLimit) {
+// Keeps the remat only if the measured pressure is within pressureBudget; liveness is up to date afterwards.
+// The caller must report a change even after a rollback to invalidate WIAnalysis entries of the erased clones.
+void CloneAddressArithmetic::rematerializeWithinBudget(Function &F, RematSet &ToProcess, unsigned int FlowThreshold,
+                                                       bool OwnedChainsOnly) {
+  const unsigned int Budget = pressureBudget(F);
+  IRTransaction Remat;
+  rematerialize(ToProcess, FlowThreshold, Remat, OwnedChainsOnly);
+  Remat.detachDead();
+  commitIfBudgetReached(F, Remat, Budget);
+}
+
+void CloneAddressArithmetic::speculateWholeChain(RematSet &ToProcess, unsigned int UsesLimit, bool OwnedChainsOnly) {
 
   PRINT_LOG_NL("speculate, FlowThreshold:" << UsesLimit);
   for (auto I : ToProcess) {
 
-    RematChain Chain = collectRematChain(I, UsesLimit);
+    RematChain Chain = collectRematChain(I, UsesLimit, OwnedChainsOnly ? &ToProcess : nullptr);
     RematSet Set;
 
     addToSetRemat(I, Set);
@@ -817,18 +863,15 @@ static bool shouldRematForVRT(llvm::ArrayRef<VRT::ModeEntry> Table, uint32_t Max
   if ((int)MaxPressure > Table.back().first)
     return true;
 
-  // Find the band the kernel currently lands in.
-  unsigned Cur = 0;
-  while (Cur + 1 < Table.size() && Table[Cur].first < (int)MaxPressure)
-    Cur++;
-  int CurThreads = Table[Cur].second;
+  auto Cur = findVRTBand(Table, MaxPressure);
 
   // Walk down to the nearest band that grants more threads and check whether it
   // is within reach.
-  for (int J = (int)Cur - 1; J >= 0; --J) {
-    if (Table[J].second == CurThreads)
+  for (auto It = Cur; It != Table.begin();) {
+    --It;
+    if (It->second == Cur->second)
       continue;
-    int TargetBudget = Table[J].first;
+    int TargetBudget = It->first;
     uint32_t Threshold = TargetBudget + (uint32_t)TargetBudget * ProximityPercent / 100;
     return MaxPressure <= Threshold;
   }
@@ -995,13 +1038,13 @@ bool CloneAddressArithmetic::singleFlowRemat(Function &F) {
   computeFlow(ToProcess);
   writeLog();
 
-  speculateWholeChain(ToProcess, 1);
+  const bool OwnedChainsOnly = IGC_IS_FLAG_ENABLED(RematSingleFlowOwnedChains);
+  speculateWholeChain(ToProcess, 1, OwnedChainsOnly);
   writeLog();
 
-  rematerialize(ToProcess, 1);
+  rematerializeWithinBudget(F, ToProcess, 1, OwnedChainsOnly);
   writeLog();
 
-  RPE->rerunLivenessAnalysis(F);
   FlowMap.clear();
   Vector.clear();
   return true;
@@ -1026,22 +1069,11 @@ bool CloneAddressArithmetic::greedyRemat(Function &F) {
   writeLog();
 
   if (DEBUG) {
-    speculateWholeChain(ToProcess, FlowThreshold);
+    speculateWholeChain(ToProcess, FlowThreshold, false);
     writeLog();
   }
 
-  if (m_firstCompile) {
-    // On the first compile the result is measured before it is kept: stage -> remat -> analysis -> commit | rollback.
-    // The function always counts as changed, even after a rollback: WIAnalysis has entries for the erased clones and
-    // reporting a change invalidates it.
-    const unsigned int Budget = pressureBudget(F);
-    IRTransaction Remat;
-    rematerialize(ToProcess, FlowThreshold, &Remat);
-    Remat.detachDead();
-    commitIfBudgetReached(F, Remat, Budget);
-  } else {
-    rematerialize(ToProcess, FlowThreshold);
-  }
+  rematerializeWithinBudget(F, ToProcess, FlowThreshold, false);
   writeLog();
 
   FlowMap.clear();
@@ -1094,8 +1126,7 @@ bool CloneAddressArithmetic::runOnFunction(Function &F) {
   auto OriginalRematFlags = m_rematFlags;
   bool Modified = false;
 
-  // The first compile measures its result before keeping it, which only the greedy stage does. The single flow stage
-  // would clone chains without that check.
+  // The single flow stage only runs on retry.
   m_rematFlags = static_cast<IGC::REMAT_OPTIONS>(m_rematFlags & ~REMAT_COMPARISONS);
   Modified |= !m_firstCompile && IGC_IS_FLAG_ENABLED(RematSingleFlowRematEnabled) && singleFlowRemat(F);
 

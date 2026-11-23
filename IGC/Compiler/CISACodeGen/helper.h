@@ -420,6 +420,9 @@ bool hasLargePrivateMemoryKernel(const CodeGenContext *CTX, const llvm::Function
 // GRF budget above which the early SIMD32 pressure check drops an OpenCL kernel to SIMD16 on XE2, 0 elsewhere.
 uint32_t getXe2SIMD16DropBudget(CodeGenContext *CTX, llvm::Function *F);
 
+// The VRT mode a kernel with Pressure GRFs lands in, the largest one if it does not fit any.
+llvm::ArrayRef<VRT::ModeEntry>::iterator findVRTBand(llvm::ArrayRef<VRT::ModeEntry> Table, unsigned Pressure);
+
 // SIMD16 preference of the XE3 VRT SIMD16 drop: SIMD32 pressure is high while
 // SIMD16 pressure is low, so SIMD16 is chosen even if SIMD32 would fit.
 bool prefersSIMD16OnXE3VRT(const CodeGenContext *CTX, const llvm::Function *F, uint32_t simd16Pressure,

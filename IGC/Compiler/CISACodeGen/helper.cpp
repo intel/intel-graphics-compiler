@@ -2391,6 +2391,11 @@ uint32_t getXe2SIMD16DropBudget(CodeGenContext *CTX, llvm::Function *F) {
   return GRFBudget;
 }
 
+llvm::ArrayRef<VRT::ModeEntry>::iterator findVRTBand(llvm::ArrayRef<VRT::ModeEntry> Table, unsigned Pressure) {
+  auto Band = llvm::find_if(Table, [&](const VRT::ModeEntry &M) { return (unsigned)M.first >= Pressure; });
+  return Band == Table.end() && !Table.empty() ? std::prev(Band) : Band;
+}
+
 bool prefersSIMD16OnXE3VRT(const CodeGenContext *CTX, const llvm::Function *F, uint32_t simd16Pressure,
                            uint32_t simd32Pressure) {
   if (!CTX->supportsVRT() || CTX->platform.GetPlatformFamily() != IGFX_XE3_CORE)

@@ -13,28 +13,28 @@
 ; Xe3 / PTL, default 5% proximity
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-clone-address-arithmetic \
 ; RUN:   --regkey=RematChainLimit=10 --regkey=RematSingleFlowRematEnabled=0 --regkey=RematFlowThreshold=100 \
-; RUN:   --regkey=RematRPELimit=5 --regkey=RematVRTProximityPercent=5 --platformPtl \
+; RUN:   --regkey=RematRetryRollback=0 --regkey=RematRPELimit=5 --regkey=RematVRTProximityPercent=5 --platformPtl \
 ; RUN:   | FileCheck %s --check-prefix=P5
 
 ; Xe3 / PTL, tighter 2% proximity
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-clone-address-arithmetic \
 ; RUN:   --regkey=RematChainLimit=10 --regkey=RematSingleFlowRematEnabled=0 --regkey=RematFlowThreshold=100 \
-; RUN:   --regkey=RematRPELimit=5 --regkey=RematVRTProximityPercent=2 --platformPtl \
+; RUN:   --regkey=RematRetryRollback=0 --regkey=RematRPELimit=5 --regkey=RematVRTProximityPercent=2 --platformPtl \
 ; RUN:   | FileCheck %s --check-prefix=P2
 
 ; Non-VRT platform
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-clone-address-arithmetic \
 ; RUN:   --regkey=RematChainLimit=10 --regkey=RematSingleFlowRematEnabled=0 --regkey=RematFlowThreshold=100 \
-; RUN:   --regkey=RematRPELimit=5 --platformlnl | FileCheck %s --check-prefix=FALLBACK
+; RUN:   --regkey=RematRetryRollback=0 --regkey=RematRPELimit=5 --platformlnl | FileCheck %s --check-prefix=FALLBACK
 
 ; Xe3P platform (CRI), with and without efficient 64-bit addressing
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-clone-address-arithmetic \
 ; RUN:   --regkey=RematChainLimit=10 --regkey=RematSingleFlowRematEnabled=0 --regkey=RematFlowThreshold=100 \
-; RUN:   --regkey=RematRPELimit=5 --regkey=RematVRTProximityPercent=5 --regkey=EnableEfficient64b=1 \
+; RUN:   --regkey=RematRetryRollback=0 --regkey=RematRPELimit=5 --regkey=RematVRTProximityPercent=5 --regkey=EnableEfficient64b=1 \
 ; RUN:   --platformCri | FileCheck %s --check-prefix=P5CRI
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-clone-address-arithmetic \
 ; RUN:   --regkey=RematChainLimit=10 --regkey=RematSingleFlowRematEnabled=0 --regkey=RematFlowThreshold=100 \
-; RUN:   --regkey=RematRPELimit=5 --regkey=RematVRTProximityPercent=5 --regkey=EnableEfficient64b=0 \
+; RUN:   --regkey=RematRetryRollback=0 --regkey=RematRPELimit=5 --regkey=RematVRTProximityPercent=5 --regkey=EnableEfficient64b=0 \
 ; RUN:   --platformCri | FileCheck %s --check-prefix=P5CRI-NO-EFFICIENT-64B
 
 ; Max register pressure of the four kernels, as reported by the register

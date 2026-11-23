@@ -87,6 +87,11 @@ public:
   /// @return Dependency kind
   WIBaseClass::WIDependancy whichDepend(const llvm::Value *val) const;
 
+  /// @brief return true if there is calculated dependency type for requested value
+  /// @param val llvm::Value to examine
+  /// @return true if value has dependency type, false otherwise.
+  bool hasDependency(const llvm::Value *val) const;
+
   /// @brief Returns True if 'val' is uniform
   /// @param val llvm::Value to test
   bool isUniform(const llvm::Value *val) const;
@@ -193,11 +198,6 @@ private:
   /// @param val llvm::Value to examine
   /// @return Dependency type. Returns Uniform for unknown type
   WIBaseClass::WIDependancy getDependency(const llvm::Value *val);
-
-  /// @brief return true if there is calculated dependency type for requested value
-  /// @param val llvm::Value to examine
-  /// @return true if value has dependency type, false otherwise.
-  bool hasDependency(const llvm::Value *val) const;
 
   /// @brief return true if all uses of this value are marked RANDOM
   bool allUsesRandom(const llvm::Value *val);
