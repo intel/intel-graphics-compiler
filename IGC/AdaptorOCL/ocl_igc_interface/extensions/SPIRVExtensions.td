@@ -210,6 +210,12 @@ def SPV_INTEL_long_composites : Extension<
   "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_long_composites.html"
 >;
 
+def SPV_INTEL_masked_gather_scatter : Extension<
+  "SPV_INTEL_masked_gather_scatter",
+  [ Capability<"MaskedGatherScatterINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_masked_gather_scatter.html"
+>;
+
 def SPV_INTEL_split_barrier : Extension<
   "SPV_INTEL_split_barrier",
   [ Capability<"SplitBarrierINTEL"> ],
