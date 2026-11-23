@@ -1982,26 +1982,19 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
     case Intrinsic::usub_sat:
       Boundary = Constant::getIntegerValue(OpType, APInt::getMinValue(BitWidth));
       break;
-    case Intrinsic::ssub_sat: {
-      Value *Zero = Constant::getNullValue(I.getArgOperand(1)->getType());
-      Value *isMaxOrMinOverflow = Builder.CreateICmpSLT(Zero, I.getArgOperand(1));
-      APInt MinVal = APInt::getSignedMinValue(BitWidth);
-      APInt MaxVal = APInt::getSignedMaxValue(BitWidth);
-      Value *MinBoundary = Constant::getIntegerValue(OpType, MinVal);
-      Value *MaxBoundary = Constant::getIntegerValue(OpType, MaxVal);
-      Boundary = Builder.CreateSelect(isMaxOrMinOverflow, MinBoundary, MaxBoundary);
-    } break;
     case Intrinsic::uadd_sat:
       Boundary = Constant::getIntegerValue(OpType, APInt::getMaxValue(BitWidth));
       break;
+    case Intrinsic::ssub_sat:
     case Intrinsic::sadd_sat: {
-      Value *Zero = Constant::getNullValue(I.getArgOperand(1)->getType());
-      Value *isMaxOrMinOverflow = Builder.CreateICmpSLT(Zero, I.getArgOperand(1));
-      APInt MinVal = APInt::getSignedMinValue(BitWidth);
-      APInt MaxVal = APInt::getSignedMaxValue(BitWidth);
-      Value *MaxBoundary = Constant::getIntegerValue(OpType, MaxVal);
-      Value *MinBoundary = Constant::getIntegerValue(OpType, MinVal);
-      Boundary = Builder.CreateSelect(isMaxOrMinOverflow, MaxBoundary, MinBoundary);
+      // Signed x - y can only overflow when x and y have different signs, and x + y only when they have
+      // the same sign, so in both cases the exact result has the sign of x. Testing the sign of x needs
+      // only its top bit, which is cheaper than comparing y with zero (e.g. one dword compare for i64).
+      Value *Zero = Constant::getNullValue(OpType);
+      Value *IsNegative = Builder.CreateICmpSLT(I.getArgOperand(0), Zero);
+      Value *MinBoundary = Constant::getIntegerValue(OpType, APInt::getSignedMinValue(BitWidth));
+      Value *MaxBoundary = Constant::getIntegerValue(OpType, APInt::getSignedMaxValue(BitWidth));
+      Boundary = Builder.CreateSelect(IsNegative, MinBoundary, MaxBoundary);
     } break;
     default:
       IGC_ASSERT_MESSAGE(0, "Incorrect intrinsic");
@@ -2044,31 +2037,25 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
       break;
     case Intrinsic::sadd_with_overflow:
     case Intrinsic::ssub_with_overflow: {
-      Instruction *usrc0 = BitCastInst::CreateZExtOrBitCast(src0, src0->getType(), "", IGCLLVM::insertPosition(&I));
-      usrc0->setDebugLoc(I.getDebugLoc());
-      Instruction *usrc1 = BitCastInst::CreateZExtOrBitCast(src1, src1->getType(), "", IGCLLVM::insertPosition(&I));
-      usrc1->setDebugLoc(I.getDebugLoc());
       res = BinaryOperator::Create(intrinsicID == Intrinsic::sadd_with_overflow ? Instruction::Add : Instruction::Sub,
-                                   usrc0, usrc1, "", IGCLLVM::insertPosition(&I));
-      if (intrinsicID == Intrinsic::ssub_with_overflow) {
-        usrc1 = BinaryOperator::CreateNot(usrc1, "", IGCLLVM::insertPosition(&I));
-        usrc1->setDebugLoc(I.getDebugLoc());
+                                   src0, src1, "", IGCLLVM::insertPosition(&I));
+      // The sign bit of andOpt is set on overflow:
+      // signed a + b overflows if a and b have the same sign and the result's differs: ~(a ^ b) & (res ^ a);
+      // signed a - b overflows if a and b have different signs and the result's differs from a's: (a ^ b) & (res ^ a).
+      Instruction *signsDiffer = BinaryOperator::Create(Instruction::Xor, src0, src1, "", IGCLLVM::insertPosition(&I));
+      signsDiffer->setDebugLoc(I.getDebugLoc());
+      Instruction *res_xor_src0 = BinaryOperator::Create(Instruction::Xor, res, src0, "", IGCLLVM::insertPosition(&I));
+      res_xor_src0->setDebugLoc(I.getDebugLoc());
+      Instruction *canOverflow = signsDiffer;
+      if (intrinsicID == Intrinsic::sadd_with_overflow) {
+        canOverflow = BinaryOperator::CreateNot(signsDiffer, "", IGCLLVM::insertPosition(&I));
+        canOverflow->setDebugLoc(I.getDebugLoc());
       }
-      Instruction *usrc0_xor_usrc1 =
-          BinaryOperator::Create(Instruction::Xor, usrc0, usrc1, "", IGCLLVM::insertPosition(&I));
-      usrc0_xor_usrc1->setDebugLoc(I.getDebugLoc());
-      Instruction *res_xor_usrc0 =
-          BinaryOperator::Create(Instruction::Xor, res, usrc0, "", IGCLLVM::insertPosition(&I));
-      res_xor_usrc0->setDebugLoc(I.getDebugLoc());
-      Instruction *negOpt = BinaryOperator::CreateNot(usrc0_xor_usrc1, "", IGCLLVM::insertPosition(&I));
-      negOpt->setDebugLoc(I.getDebugLoc());
-      Instruction *andOpt = BinaryOperator::CreateAnd(negOpt, res_xor_usrc0, "", IGCLLVM::insertPosition(&I));
+      Instruction *andOpt = BinaryOperator::CreateAnd(canOverflow, res_xor_src0, "", IGCLLVM::insertPosition(&I));
       andOpt->setDebugLoc(I.getDebugLoc());
       Type *SrcScalarType = src0->getType()->getScalarType();
       const unsigned ScalarBitWidth = SrcScalarType->getIntegerBitWidth();
       auto zero = Constant::getNullValue(src0->getType());
-      // Signed a - b overflows if the sign of a and -b are the same, but diffrent from the result
-      // Signed a + b overflows if the sign of a and b are the same, but diffrent from the result
       if (ScalarBitWidth == 8 && !m_ctx->platform.supportByteALUOperation()) {
         // The promotion char->short is breaking the current logic for overflow algorithm.
         // For ex. in PVC we are losing the sign bit here, if we are operating on signed char.

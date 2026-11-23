@@ -259,6 +259,9 @@ char __builtin_IB_popcount_1u8(char) __attribute__((const));
 short __builtin_IB_popcount_1u16(short) __attribute__((const));
 int __builtin_IB_popcount_1u32(int) __attribute__((const));
 
+// Saturating integer arithmetic, resolved to llvm.ssub.sat
+long __builtin_IB_ssub_sat_i64(long, long) __attribute__((const));
+
 // Native math operations - float version
 float __builtin_IB_frnd_ne(float) __attribute__((const));
 float __builtin_IB_frnd_ni(float) __attribute__((const));

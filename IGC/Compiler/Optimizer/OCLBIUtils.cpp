@@ -1634,6 +1634,7 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap *paramMap, CImagesBI::I
   m_CommandMap["__builtin_IB_popcount_1u32"] = CSimpleIntrinMapping::create(Intrinsic::ctpop);
   m_CommandMap["__builtin_IB_popcount_1u16"] = CSimpleIntrinMapping::create(Intrinsic::ctpop);
   m_CommandMap["__builtin_IB_popcount_1u8"] = CSimpleIntrinMapping::create(Intrinsic::ctpop);
+  m_CommandMap["__builtin_IB_ssub_sat_i64"] = CSimpleIntrinMapping::create(Intrinsic::ssub_sat);
   m_CommandMap["__builtin_IB_native_powrf"] = CSimpleIntrinMapping::create(Intrinsic::pow);
   m_CommandMap["__builtin_IB_fma"] = CSimpleIntrinMapping::create(Intrinsic::fma);
   m_CommandMap["__builtin_IB_fmah"] = CSimpleIntrinMapping::create(Intrinsic::fma);

@@ -389,11 +389,9 @@ uint16 __attribute__((overloadable)) __spirv_ocl_u_sub_sat(uint16 x, uint16 y) {
 
 INLINE
 long __attribute__((overloadable)) __spirv_ocl_s_sub_sat(long x, long y) {
-  if ((x > 0 && y < x - LONG_MAX) || (x < 0 && y > x - LONG_MIN)) {
-    return x > 0 ? LONG_MAX : LONG_MIN;
-  } else {
-    return x - y;
-  }
+  // Resolved to llvm.ssub.sat.i64 and expanded by Legalization, like the narrower overloads,
+  // whose widen-and-clamp pattern the compiler already turns into llvm.ssub.sat.
+  return __builtin_IB_ssub_sat_i64(x, y);
 }
 
 INLINE
