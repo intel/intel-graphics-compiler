@@ -616,7 +616,7 @@ public:
     return kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
   }
 
-  void bindInputDecl(G4_Declare *dcl, int grfOffset);
+  int bindInputDecl(G4_Declare *dcl, int grfOffset);
 
   uint32_t getPerThreadInputSize() const {
     return kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
