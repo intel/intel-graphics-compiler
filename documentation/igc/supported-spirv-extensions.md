@@ -350,13 +350,13 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 **Capabilities**:
 
 - **PackedCooperativeMatrixINTEL**
-  > **Experimentally supported on**: XE_HPG+ (DG2, PVC, METEORLAKE, ARL H, ARL S, ARL U, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
+  > **Experimentally supported on**: XE_HPG+ except METEORLAKE, ARL S (DG2, PVC, ARL H, ARL U, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
 - **CooperativeMatrixInvocationInstructionsINTEL**
-  > **Experimentally supported on**: XE_HPG+ (DG2, PVC, METEORLAKE, ARL H, ARL S, ARL U, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
+  > **Experimentally supported on**: XE_HPG+ except METEORLAKE, ARL S (DG2, PVC, ARL H, ARL U, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
 - **CooperativeMatrixTF32ComponentTypeINTEL**
   > **Experimentally supported on**: XE_HPC+ (PVC, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
 - **CooperativeMatrixBFloat16ComponentTypeINTEL**
-  > **Experimentally supported on**: XE_HPG+ (DG2, PVC, METEORLAKE, ARL H, ARL S, ARL U, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
+  > **Experimentally supported on**: XE_HPG+ except METEORLAKE, ARL S (DG2, PVC, ARL H, ARL U, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
 - **CooperativeMatrixPrefetchINTEL**
   > **Experimentally supported on**: XE_HPC+ (PVC, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
 
@@ -658,7 +658,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_cooperative_matrix.html
 
-> **Experimentally supported on**: XE_HPG+ (DG2, PVC, METEORLAKE, ARL H, ARL S, ARL U, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
+> **Experimentally supported on**: XE_HPG+ except METEORLAKE, ARL S (DG2, PVC, ARL H, ARL U, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
 
 **Capabilities**:
 

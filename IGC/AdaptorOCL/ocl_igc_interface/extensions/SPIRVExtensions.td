@@ -72,6 +72,10 @@ def AllPlatformsWithBF16Support : AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>,
                                          Not<isDevice<ARL_S>>,
                                          Not<isDevice<ARL_U>>]>;
 
+def AllPlatformsWithCooperativeMatrixSupport: AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>,
+                                                     Not<ExactPlatform<IGFX_METEORLAKE>>,
+                                                     Not<isDevice<ARL_S>>]>;
+
 // NOTE: The list of extensions below is INCOMPLETE and will be expanded
 // incrementally in future commits. Current entries may have provisional or
 // incorrect PlatformSupport assignments; they are included now to demonstrate
@@ -361,10 +365,10 @@ def SPV_EXT_shader_atomic_float_add : Extension<
 
 def SPV_INTEL_joint_matrix : ExperimentalExtension<
   "SPV_INTEL_joint_matrix",
-  [ Capability<"PackedCooperativeMatrixINTEL", isCoreChildOf<IGFX_XE_HPG_CORE>>,
-    Capability<"CooperativeMatrixInvocationInstructionsINTEL", isCoreChildOf<IGFX_XE_HPG_CORE>>,
+  [ Capability<"PackedCooperativeMatrixINTEL", AllPlatformsWithCooperativeMatrixSupport>,
+    Capability<"CooperativeMatrixInvocationInstructionsINTEL", AllPlatformsWithCooperativeMatrixSupport>,
     Capability<"CooperativeMatrixTF32ComponentTypeINTEL", isCoreChildOf<IGFX_XE_HPC_CORE>>,
-    Capability<"CooperativeMatrixBFloat16ComponentTypeINTEL", isCoreChildOf<IGFX_XE_HPG_CORE>>,
+    Capability<"CooperativeMatrixBFloat16ComponentTypeINTEL", AllPlatformsWithCooperativeMatrixSupport>,
     Capability<"CooperativeMatrixPrefetchINTEL", isCoreChildOf<IGFX_XE_HPC_CORE>> ],
   "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_joint_matrix.asciidoc",
   InheritFromCapabilities
@@ -374,7 +378,7 @@ def SPV_KHR_cooperative_matrix : ExperimentalExtension<
   "SPV_KHR_cooperative_matrix",
   [ Capability<"CooperativeMatrixKHR"> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_cooperative_matrix.html",
-  isCoreChildOf<IGFX_XE_HPG_CORE>
+  AllPlatformsWithCooperativeMatrixSupport
 >;
 
 def SPV_INTEL_subgroup_matrix_multiply_accumulate : Extension<
