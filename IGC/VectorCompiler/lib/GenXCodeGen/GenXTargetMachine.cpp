@@ -49,6 +49,8 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/PassManager.h"
 
+#include "common/igc_llvm_option_defaults.hpp"
+
 #include "llvmWrapper/ADT/Optional.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
 #include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
@@ -282,6 +284,10 @@ TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function &F)
 void GenXTTIImpl::getUnrollingPreferences(
     Loop *L, ScalarEvolution &SE, TargetTransformInfo::UnrollingPreferences &UP,
     OptimizationRemarkEmitter *ORE) const {
+#if LLVM_VERSION_MAJOR >= 18
+  UP.MaxUpperBound = IGC::UnrollMaxUpperBound;
+#endif
+
   if (BC.ignoreLoopUnrollThresholdOnPragma() &&
       GetUnrollMetadataForLoop(L, "llvm.loop.unroll.enable"))
     UP.Threshold = UP.PartialThreshold = std::numeric_limits<unsigned>::max();

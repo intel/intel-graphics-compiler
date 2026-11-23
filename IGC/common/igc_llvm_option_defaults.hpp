@@ -15,6 +15,10 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
+// UP.MaxUpperBound set by GenTTI and GenXTTIImpl on LLVM 18+ (LLVM default 8).
+// Replaces alter-unroll-max-upperbound-command-line-option-value.patch.
+inline constexpr unsigned UnrollMaxUpperBound = 15;
+
 // IGC's defaults for LLVM cl::opt options.
 // Precedence (lowest first): these, IGC_LLVMCommandLine, VC -llvm-options.
 enum class LLVMOptionScope {
@@ -34,7 +38,7 @@ struct LLVMOptionDefault {
 inline constexpr LLVMOptionDefault LLVMOptionDefaults[] = {
   // Replaces no-instcombine-code-sinking.patch.
   {"instcombine-code-sinking",      LLVMOptionDefault::Bool,     false, LLVMOptionScope::All},
-  // LLVM default 8. TODO: UnrollingPreferences::MaxUpperBound when available.
+  // LLVM default 8. Used only on LLVM < 18; on LLVM 18+ GenTTI/GenXTTIImpl set UnrollMaxUpperBound instead.
   {"unroll-max-upperbound",         LLVMOptionDefault::Unsigned, 16,    LLVMOptionScope::OCL},
   // LLVM default 250.
   {"licm-mssa-max-acc-promotion",   LLVMOptionDefault::Unsigned, 500,   LLVMOptionScope::OCL},

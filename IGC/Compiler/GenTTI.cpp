@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "common/igc_llvm_option_defaults.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 
@@ -214,6 +215,10 @@ static bool hasLongSelectLikePHIChain(const Function *F, unsigned Threshold) {
 
 void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE, TTI::UnrollingPreferences &UP,
                                                    OptimizationRemarkEmitter *ORE) const {
+#if LLVM_VERSION_MAJOR >= 18
+  UP.MaxUpperBound = IGC::UnrollMaxUpperBound;
+#endif
+
   bool IsJointMatrixApplyLoop = false;
   for (auto BB : L->blocks()) {
     for (auto &I : *BB) {
