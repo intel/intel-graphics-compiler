@@ -23534,6 +23534,9 @@ void EmitPass::emitSrnd(llvm::GenIntrinsicInst *GII) {
       m_encoder->Push();
     }
   } else {
+    // srnd is NoMask-only, so inside divergent CF write a temp and copy it to dst under EMask.
+    const bool NeedMaskedCopy = !dst->IsUniform() && m_currShader->InsideDivergentCF(GII);
+    CVariable *SrndDst = NeedMaskedCopy ? m_currShader->GetNewVariable(dst, "srnd_tmp") : dst;
     uint32_t dstOff = 0, s0Off = 0, s1Off = 0;
     for (int i = 0; i < nelts; ++i) {
       if (isSat) {
@@ -23543,8 +23546,15 @@ void EmitPass::emitSrnd(llvm::GenIntrinsicInst *GII) {
       m_encoder->SetDstSubReg(dstOff);
       m_encoder->SetSrcSubReg(0, s0Off);
       m_encoder->SetSrcSubReg(1, s1Off);
-      m_encoder->srnd(dst, src0, src1);
+      m_encoder->srnd(SrndDst, src0, src1);
       m_encoder->Push();
+
+      if (NeedMaskedCopy) {
+        m_encoder->SetDstSubReg(dstOff);
+        m_encoder->SetSrcSubReg(0, dstOff);
+        m_encoder->Copy(dst, SrndDst);
+        m_encoder->Push();
+      }
 
       dstOff += (dst->IsUniform() ? 1 : nsimdsize);
       s0Off += (src0->IsUniform() ? 1 : nsimdsize);
