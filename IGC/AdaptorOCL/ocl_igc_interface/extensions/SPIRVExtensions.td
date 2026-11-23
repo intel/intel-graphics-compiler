@@ -466,11 +466,11 @@ def SPV_INTEL_int4 : ExperimentalExtension<
   InheritFromCapabilities
 >;
 
-def SPV_INTEL_fp_conversions : ExperimentalExtension<
+def SPV_INTEL_fp_conversions : Extension<
   "SPV_INTEL_fp_conversions",
-  [ Capability<"FloatConversionsFtoFINTEL">,
-    Capability<"FloatConversionsFtoSINTEL"> ],
-  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_fp_conversions.asciidoc",
+  [ CapabilityWithManualId<"FloatConversionsFToFINTEL", 6215>,
+    CapabilityWithManualId<"FloatConversionsFToSINTEL", 6216> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_fp_conversions.html",
   isCoreChildOf<IGFX_XE3P_CORE>
 >;
 
