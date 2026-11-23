@@ -1112,8 +1112,10 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I) {
     match = MatchIMad(I) || MatchAdd3(I) || MatchMulAdd16(I) || MatchModifier(I);
     break;
   case Instruction::UDiv:
-  case Instruction::SDiv:
     match = MatchAvg(I) || MatchModifier(I);
+    break;
+  case Instruction::SDiv:
+    match = MatchModifier(I);
     break;
   case Instruction::AShr:
     match = MatchAvg(I) || MatchBinaryUnpack4i8(I) || MatchModifier(I);
@@ -1130,7 +1132,7 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I) {
     match = MatchBinaryUnpack4i8(I) || MatchModifier(I);
     break;
   case Instruction::LShr:
-    match = MatchBinaryUnpack4i8(I) || MatchModifier(I, false);
+    match = MatchAvg(I) || MatchBinaryUnpack4i8(I) || MatchModifier(I, false);
     break;
   case Instruction::FDiv:
     match = MatchRsqrt(I) || MatchModifier(I);
@@ -6800,12 +6802,16 @@ bool CodeGenPatternMatch::MatchDbgInstruction(llvm::DbgInfoIntrinsic &I) {
 
 bool CodeGenPatternMatch::MatchAvg(llvm::Instruction &I) {
   // "Average value" pattern:
-  // (x + y + 1) / 2  -->  avg(x, y)
+  // (x + y + 1) >> 1  -->  avg(x, y)
   //
   // We're looking for patterns like this:
   //    % 14 = add nsw i32 % 10, % 13
   //    % 15 = add nsw i32 % 14, 1
   //    % 16 = ashr i32 % 15, 1
+  //
+  // HW avg doesn't wrap the intermediate sum, so both adds must be nsw for
+  // ashr (signed avg) or nuw for lshr / udiv by 2 (unsigned avg).
+  // sdiv by 2 isn't matched: it rounds toward zero, avg rounds toward -inf.
 
   struct AvgPattern : Pattern {
     SSource sources[2];
@@ -6816,37 +6822,42 @@ bool CodeGenPatternMatch::MatchAvg(llvm::Instruction &I) {
   llvm::Value *sources[2] = {};
   e_modifier src_mod[2] = {};
 
-  IGC_ASSERT(I.getOpcode() == Instruction::SDiv || I.getOpcode() == Instruction::UDiv ||
-             I.getOpcode() == Instruction::AShr);
+  IGC_ASSERT(I.getOpcode() == Instruction::AShr || I.getOpcode() == Instruction::LShr ||
+             I.getOpcode() == Instruction::UDiv);
+  const bool isUnsigned = I.getOpcode() != Instruction::AShr;
 
   // HW avg instruction only supports types up to 32 bits (B/UB/W/UW/D/UD).
   if (I.getType()->getScalarSizeInBits() > 32)
     return false;
 
-  // We expect 2 for "div" and 1 for "right shift".
-  int expectedVal = (I.getOpcode() == Instruction::SDiv ? 2 : 1);
-  Value *opnd1 = I.getOperand(1); // Divisor or shift factor.
-  if (!isa<ConstantInt>(opnd1) || (cast<ConstantInt>(opnd1))->getZExtValue() != expectedVal) {
+  // Shift by 1 or udiv by 2.
+  ConstantInt *opnd1 = dyn_cast<ConstantInt>(I.getOperand(1));
+  if (!opnd1 || !opnd1->equalsInt(I.getOpcode() == Instruction::UDiv ? 2 : 1)) {
     return false;
   }
 
-  if (Instruction *divSrc = dyn_cast<Instruction>(I.getOperand(0))) {
-    if (divSrc->getOpcode() == Instruction::Add && !NeedInstruction(*divSrc)) {
-      Instruction *instAdd = cast<Instruction>(divSrc);
-      for (int i = 0; i < 2; i++) {
-        if (ConstantInt *cnst = dyn_cast<ConstantInt>(instAdd->getOperand(i))) {
-          // "otherArg" is the second argument of "instAdd" (which is not constant).
-          Value *otherArg = instAdd->getOperand(i == 0 ? 1 : 0);
-          if (cnst->getZExtValue() == 1 && isa<AddOperator>(otherArg) &&
-              !NeedInstruction(*cast<Instruction>(otherArg))) {
-            Instruction *firstAdd = cast<Instruction>(otherArg);
-            sources[0] = firstAdd->getOperand(0);
-            sources[1] = firstAdd->getOperand(1);
+  auto isNoWrapAdd = [&](BinaryOperator *add) {
+    return add && add->getOpcode() == Instruction::Add && !NeedInstruction(*add) &&
+           (isUnsigned ? add->hasNoUnsignedWrap() : add->hasNoSignedWrap());
+  };
+
+  BinaryOperator *instAdd = dyn_cast<BinaryOperator>(I.getOperand(0));
+  if (isNoWrapAdd(instAdd)) {
+    for (int i = 0; i < 2; i++) {
+      if (ConstantInt *cnst = dyn_cast<ConstantInt>(instAdd->getOperand(i))) {
+        // "otherArg" is the second argument of "instAdd" (which is not constant).
+        Value *otherArg = instAdd->getOperand(i == 0 ? 1 : 0);
+        BinaryOperator *firstAdd = dyn_cast<BinaryOperator>(otherArg);
+        if (cnst->isOne() && isNoWrapAdd(firstAdd)) {
+          sources[0] = firstAdd->getOperand(0);
+          sources[1] = firstAdd->getOperand(1);
+          // neg/abs source modifiers are signed, so not used for unsigned avg.
+          if (!isUnsigned) {
             GetModifier(*sources[0], src_mod[0], sources[0]);
             GetModifier(*sources[1], src_mod[1], sources[1]);
-            found = true;
-            break;
           }
+          found = true;
+          break;
         }
       }
     }
@@ -6856,6 +6867,12 @@ bool CodeGenPatternMatch::MatchAvg(llvm::Instruction &I) {
     AvgPattern *pattern = new (m_allocator) AvgPattern();
     pattern->sources[0] = GetSource(sources[0], src_mod[0], false, IsSourceOfSample(&I));
     pattern->sources[1] = GetSource(sources[1], src_mod[1], false, IsSourceOfSample(&I));
+    if (isUnsigned) {
+      // Unsigned avg: read the sources as UB/UW/UD.
+      const unsigned bits = I.getType()->getScalarSizeInBits();
+      pattern->sources[0].type = pattern->sources[1].type =
+          bits == 8 ? ISA_TYPE_UB : (bits == 16 ? ISA_TYPE_UW : ISA_TYPE_UD);
+    }
     AddPattern(pattern);
   }
   return found;
