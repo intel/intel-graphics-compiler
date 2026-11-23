@@ -294,8 +294,11 @@ bool PrivateMemoryToSLM::runOnModule(Module &M) {
         // Add new SLM variable offset to MD.
         LocalOffsetMD localOffset;
         localOffset.m_Var = slmVar;
-        localOffset.m_Offset =
-            useAsPointerOnly(slmVar) ? (offset & LOW_BITS_MASK) : ((offset & LOW_BITS_MASK) | VALID_LOCAL_HIGH_BITS);
+        localOffset.m_Offset = offset & LOW_BITS_MASK;
+        if (!useAsPointerOnly(slmVar)) {
+          localOffset.m_Offset |= VALID_LOCAL_HIGH_BITS;
+          ModuleMD->validLocalHighBitsUsed = true;
+        }
         ModuleMD->FuncMD[F].localOffsets.push_back(localOffset);
 
         // Update total SLM usage MD.

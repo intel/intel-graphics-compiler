@@ -147,8 +147,10 @@ bool InlineLocalsResolution::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtilsP
 
       bool UseAsPointerOnly = useAsPointerOnly(arg);
       unsigned Offset = totalSize;
-      if (!UseAsPointerOnly)
+      if (!UseAsPointerOnly) {
         Offset |= VALID_LOCAL_HIGH_BITS;
+        modMD->validLocalHighBitsUsed = true;
+      }
 
       if (IsFirstSLMArgument) {
         auto BufType = ArrayType::get(Type::getInt8Ty(M.getContext()), 0);
@@ -501,8 +503,10 @@ void InlineLocalsResolution::computeOffsetList(Module &M, llvm::MapVector<Functi
     // And now the offsets.
     for (const auto &offsetIter : offsetMap[iter.first]) {
       unsigned Offset = offsetIter.second;
-      if (!useAsPointerOnly(offsetIter.first))
+      if (!useAsPointerOnly(offsetIter.first)) {
         Offset |= VALID_LOCAL_HIGH_BITS;
+        modMD->validLocalHighBitsUsed = true;
+      }
 
       LocalOffsetMD localOffset;
       localOffset.m_Var = offsetIter.first;

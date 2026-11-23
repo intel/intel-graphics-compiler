@@ -3001,6 +3001,9 @@ inline bool Is32BitConstInt(llvm::Value *val) {
 // ignores VALID_LOCAL_HIGH_BITS, so the bit just below it works as the sign bit.
 static bool isNonNegativeA32Offset(llvm::Value *Offset, bool IsSLMOffset, const llvm::DataLayout *DL) {
   KnownBits Known = IGCLLVM::computeKnownBits(Offset, *DL);
+  // The A32 payload keeps only the low 32 bits of the offset.
+  if (Known.getBitWidth() > 32)
+    Known = Known.trunc(32);
   if (!Known.isNonNegative())
     return false;
   if (!IsSLMOffset)
@@ -3012,8 +3015,10 @@ static bool isNonNegativeA32Offset(llvm::Value *Offset, bool IsSLMOffset, const 
   return Known.Zero[BitBelowTag];
 }
 
-static bool isSLMPointer(llvm::Value *Ptr) {
-  return Ptr && Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL;
+// Returns true if Ptr is an SLM pointer that may carry VALID_LOCAL_HIGH_BITS.
+static bool mayBeTaggedSLMPointer(llvm::Value *Ptr, const CodeGenContext *Ctx) {
+  return Ptr && Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL &&
+         Ctx->getModuleMetaData()->validLocalHighBitsUsed;
 }
 
 bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
@@ -3129,14 +3134,27 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
                        "Both operands are immediate - constants should be folded elsewhere.");
 
     llvm::Value *varOffset = isConstant0 ? addSubInst->getOperand(1) : addSubInst->getOperand(0);
-    bool isSLM = isSLMPointer(intToPtrInst);
+
+    // For "var - imm" the folded offset must carry the negation.
+    ConstantInt *immOffset = cast<ConstantInt>(isConstant0 ? addSubInst->getOperand(0) : addSubInst->getOperand(1));
+    if (addSubInst->getOpcode() == Instruction::Sub) {
+      // A minimum signed value when negated is not representable in same data width, so bail out
+      if (immOffset->getValue().isMinSignedValue())
+        return false;
+      immOffset = ConstantInt::get(immOffset->getContext(), -immOffset->getValue());
+    }
+
+    // A 32-bit immediate of at least VALID_LOCAL_HIGH_BITS carries the tag, so the variable
+    // part has no tag and the plain sign check is enough.
+    bool mayHaveSLMTag = mayBeTaggedSLMPointer(intToPtrInst, m_ctx) &&
+                         !(immOffset->getBitWidth() == 32 && immOffset->getSExtValue() >= VALID_LOCAL_HIGH_BITS);
 
     // HW does an early bounds check on varOffset for A32 messages. Thus, if varOffset
     // is negative, then the bounds check fails early even though the immediate offset
     // would bring the final calculation to a positive number.
     bool disableA32ImmediateGlobalBaseOffset =
         !isA64AddressingModel && !UsedWithoutImmInMemInst(varOffset) &&
-        !isNonNegativeA32Offset(varOffset, isSLM, m_DL) && IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3;
+        !isNonNegativeA32Offset(varOffset, mayHaveSLMTag, m_DL) && IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3;
 
     if (disableA32ImmediateGlobalBaseOffset)
       return false;
@@ -3148,15 +3166,6 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
       if (I.getOperand(i) != intToPtrInst && I.getOperand(i) != addSubInst) {
         MarkAsSource(I.getOperand(i), IsSourceOfSample(&I));
       }
-    }
-
-    // For "var - imm" the folded offset must carry the negation.
-    ConstantInt *immOffset = dyn_cast<ConstantInt>(isConstant0 ? addSubInst->getOperand(0) : addSubInst->getOperand(1));
-    if (immOffset && addSubInst->getOpcode() == Instruction::Sub) {
-      // A minimum signed value when negated is not representable in same data width, so bail out
-      if (immOffset->getValue().isMinSignedValue())
-        return false;
-      immOffset = ConstantInt::get(immOffset->getContext(), -immOffset->getValue());
     }
 
     LSCImmOffsetPattern *pattern = new (m_allocator) LSCImmOffsetPattern(&I, varOffset, immOffset);
@@ -3347,7 +3356,8 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
     }
   }
 
-  // The SLM tag is in the byte offset, so keep it for the SLM check below.
+  // SLM checks the byte offset: it may carry the tag, and vISA may emit the
+  // scaled offset into the payload.
   Value *ByteOffset = Offset;
   // Check if the offset is scaled.
   if (match(Offset, ScalePattern)) {
@@ -3391,9 +3401,10 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
   }
 
   if (ImmOffset) {
-    bool IsSLM = isSLMPointer(PointerOperand);
+    bool IsSLM = PointerOperand->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL;
+    bool MayHaveSLMTag = mayBeTaggedSLMPointer(PointerOperand, m_ctx);
     bool disableA32ImmediateGlobalBaseOffset =
-        !isA64AddressingModel && !isNonNegativeA32Offset(IsSLM ? ByteOffset : Offset, IsSLM, m_DL) &&
+        !isA64AddressingModel && !isNonNegativeA32Offset(IsSLM ? ByteOffset : Offset, MayHaveSLMTag, m_DL) &&
         IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3;
 
     if (disableA32ImmediateGlobalBaseOffset)

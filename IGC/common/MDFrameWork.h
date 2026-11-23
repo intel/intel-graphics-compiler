@@ -883,6 +883,9 @@ enum class ShaderTypeMD
         // some memory accesses.
         bool genericAccessesResolved = false;
 
+        // When true, some local memory offsets carry VALID_LOCAL_HIGH_BITS.
+        bool validLocalHighBitsUsed = false;
+
         //when true, compiler disables/enables separate spill pvt scratch space
         bool disableSeparateSpillPvtScratchSpace = false;
         bool enableSeparateSpillPvtScratchSpace = false;

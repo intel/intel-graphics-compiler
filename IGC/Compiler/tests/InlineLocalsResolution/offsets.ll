@@ -58,3 +58,4 @@ entry:
 ; CHECK: ![[IDX4]] = !{!"localOffsetsVec[2]", ![[IDX9:[0-9]+]], ![[IDX10:[0-9]+]]}
 ; CHECK: ![[IDX9]] = !{!"m_Offset", i32 268533760}
 ; CHECK: ![[IDX10]] = !{!"m_Var", ptr addrspace(3) @test.C}
+; CHECK: !{!"validLocalHighBitsUsed", i1 true}
