@@ -492,7 +492,7 @@ bool TranslateSPIRVToLLVM(const STB_TranslateInputArgs &InputArgs, llvm::LLVMCon
     GenerateSPIRVExtensionsMD(Context, *LLVMModule, SPIRVBinary.str());
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpTranslationOnly))
-      LLVMModule->dump();
+      LLVMModule->print(llvm::errs(), nullptr);
   }
 
   return success;
