@@ -100,8 +100,6 @@ void Subgroup2DBlockIoResolution::visitCallInst(CallInst &CI) {
   // at a width different from the one this 2D block IO lowering assumes. Defaults to 16
   // when the kernel carries no reqd_sub_group_size.
   m_SimdSize = m_simdResolver->resolve(CI.getParent()->getParent());
-  if (m_SimdSize != 16 && m_SimdSize != 32)
-    return; // resolve() already emitted an error for an unsupported forced/attribute size
 
   if (IsSPIRV) {
     visit2DBlockCallInst(CI, Matches, true);

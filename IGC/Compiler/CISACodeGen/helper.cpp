@@ -2514,7 +2514,6 @@ int32_t KernelSIMDSizeResolver::resolve(Function *F) {
     std::string Msg = "Sub group size " + std::to_string(ForcedSIMDSize) + " is forced by flags but not supported by " +
                       m_featureName.str() + " on this platform.";
     m_Ctx->EmitError(Msg.c_str(), NoIRContext);
-    return 0;
   }
 
   // if not forced by driver of flags, check on entry function level
@@ -2529,7 +2528,6 @@ int32_t KernelSIMDSizeResolver::resolve(Function *F) {
       std::string Msg = "Sub group size " + std::to_string(KernelSIMDSize) +
                         " is forced by attribute but not supported by " + m_featureName.str() + " on this platform.";
       m_Ctx->EmitError(Msg.c_str(), NoIRContext);
-      return 0;
     }
     // if not set on entry function level, define ourselves
     int32_t SIMDSize = m_defineDefault();

@@ -263,17 +263,14 @@ int32_t JointMatrixFuncsResolutionPass::DefineKernelSIMDSize() {
     std::string msg = "Sub group sizes supported by Joint Matrix for this platform are disabled by flags or "
                       "non-supported sub group size forced.";
     m_Ctx->EmitError(msg.c_str(), NoIRContext);
-    return 0;
   }
   if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD32) && IGC_IS_FLAG_ENABLED(ForceCSSIMD32)) {
     std::string msg = "Sub group size 32 forced by flags but not supported by Joint Matrix on this platform.";
     m_Ctx->EmitError(msg.c_str(), NoIRContext);
-    return 0;
   }
   if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD16) && IGC_IS_FLAG_ENABLED(ForceCSSIMD16)) {
     std::string msg = "Sub group size 16 forced by flags but not supported by Joint Matrix on this platform.";
     m_Ctx->EmitError(msg.c_str(), NoIRContext);
-    return 0;
   }
   return 8;
 }
