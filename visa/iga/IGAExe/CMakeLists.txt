@@ -107,6 +107,7 @@ if(IGC_BUILD)
     bs_set_wdk(IGA_EXE)
     add_custom_command( TARGET IGA_EXE
                         POST_BUILD
+                        COMMAND "${CMAKE_COMMAND}" -E make_directory $<TARGET_FILE_DIR:IGA_DLL>
                         COMMAND "${CMAKE_COMMAND}" -E copy $<TARGET_FILE:IGA_EXE> $<TARGET_FILE_DIR:IGA_DLL>
                         COMMAND "${CMAKE_COMMAND}" -E copy $<TARGET_PDB_FILE:IGA_EXE> $<TARGET_FILE_DIR:IGA_DLL>
     )

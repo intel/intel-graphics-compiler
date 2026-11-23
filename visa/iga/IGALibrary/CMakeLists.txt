@@ -337,6 +337,7 @@ if(IGC_BUILD AND MSVC)
     bs_set_wdk(IGA_DLL)
     add_custom_command(TARGET IGA_DLL
                        POST_BUILD
+                       COMMAND "${CMAKE_COMMAND}" -E make_directory $<TARGET_FILE_DIR:GenX_IR_Exe>
                        COMMAND "${CMAKE_COMMAND}" -E copy $<TARGET_FILE:IGA_DLL> $<TARGET_FILE_DIR:GenX_IR_Exe>
                        COMMAND "${CMAKE_COMMAND}" -E copy $<TARGET_PDB_FILE:IGA_DLL> $<TARGET_FILE_DIR:GenX_IR_Exe>
     )

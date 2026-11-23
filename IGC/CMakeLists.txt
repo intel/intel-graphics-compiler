@@ -61,6 +61,10 @@ endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+# IGC does not use C++20 modules. Without this, CMake >= 3.28 (policy CMP0155)
+# scans every C++20 source for module dependencies, which needs clang-scan-deps
+# when building with Clang.
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 # GFX_DEVELOPMENT_DIR shall be provided by UFO build system. Must be set
 # before including bs_dir_names.cmake, which requires it to already be

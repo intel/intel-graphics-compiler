@@ -38,7 +38,7 @@ MACRO(ADD_RUN_GTEST_TARGET TARGET_NAME CMD_NAME DEPENDENCIES)
     ADD_CUSTOM_COMMAND(TARGET ${TARGET_NAME}
                        POST_BUILD
                        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-                       COMMENT Running ${TARGET_NAME} tests
+                       COMMENT "Running ${TARGET_NAME} tests"
                        COMMAND ${CMD_NAME} --gtest_repeat=1 --gtest_output=xml:test_out/test_details_18_1_3_8.xml
                       )
 ENDMACRO(ADD_RUN_GTEST_TARGET)
