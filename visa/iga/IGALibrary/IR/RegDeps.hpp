@@ -563,9 +563,12 @@ private:
     // Instruction having internal dependency on dst to src is not allowed
     // to be in a macro. Only for dpas8x8, insternal dep on dst and src0 is
     // allowed, but only when src0 and dst memory footprint is entirely the
-    // same
+    // same. When inFwdSeq is set (the instruction is part of a Fwd sequence),
+    // dst and src0 only need to start at the same register and subregister;
+    // their footprints may differ.
     bool hasInternalDep(const Instruction &cur, const DstRegRangeType &dst_range,
-                        const SrcRegRangeType &src_range, bool isDepth8) const;
+                        const SrcRegRangeType &src_range, bool isDepth8,
+                        bool inFwdSeq = false) const;
 
     // check if the dst_range/src_range have producer-consumer (RAW)
     // dependency to target_dst_bits/target_src_bits

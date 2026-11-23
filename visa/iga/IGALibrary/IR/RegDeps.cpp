@@ -941,10 +941,12 @@ bool DepSetBuilder::DpasMacroBuilder::hasEntireOverlap(
 // check if the instruction having internal dependency
 // Instruction having internal dependency on dst to src is not allowed to be in
 // a macro. Only for depth 8 dpas, internal dep on dst and src0 is allowed, but
-// only when src0 and dst memory footprint is entirely the same
+// only when src0 and dst memory footprint is entirely the same. Within a Fwd
+// sequence (inFwdSeq), dst and src0 only need to share the same base register
+// and subregister.
 bool DepSetBuilder::DpasMacroBuilder::hasInternalDep(
     const Instruction &dpas, const DstRegRangeType &dst_range,
-    const SrcRegRangeType &src_range, bool isDepth8) const {
+    const SrcRegRangeType &src_range, bool isDepth8, bool inFwdSeq) const {
 
   const auto &dstOp = dpas.getDestination();
   const auto &src0Op = dpas.getSource(0);
@@ -963,7 +965,19 @@ bool DepSetBuilder::DpasMacroBuilder::hasInternalDep(
     // for depth 8 dpas, sr0 and dst having the same footprint is
     // treated as no internal dependency for other rep_count, having
     // intersect is internal dependency
-    if (isDepth8) {
+    if (isDepth8 && inFwdSeq) {
+      // in a Fwd sequence the dst/src0 footprints may differ (e.g. bf16 dst
+      // with fp32 src0), as long as both start at the same register and
+      // subregister byte offset
+      auto subRegByteOffset = [](const Operand &op) {
+        return op.getDirRegRef().subRegNum * TypeSizeInBits(op.getType()) / 8;
+      };
+      if (dst_range.first == src_range[0].first &&
+          subRegByteOffset(dstOp) == subRegByteOffset(src0Op))
+        return false;
+      if (hasIntersect(dst_range, src_range[0]))
+        return true;
+    } else if (isDepth8) {
       // if the ranges entirely overlap but the subregisters are different, we
       // have an internal dependency and hence, cannot form a macro
       if (hasEntireOverlap(dst_range, src_range[0])) {
@@ -985,8 +999,12 @@ size_t DepSetBuilder::DpasMacroBuilder::formFwdBlock(InstListIterator first) {
   m_inps.getDpasSrcDependency(**cur, src_range, src_extra_range, m_model,
                               m_encMode);
   m_inps.getDpasDstDependency(**cur, dst_range);
+  // Every instruction in the Fwd block is checked for internal dependency with
+  // the Fwd dst/src0 rule. If no Fwd block is formed, formSrcSuppressionBlock
+  // re-checks the instructions with the non-Fwd rule.
   if (hasInternalDep(**cur, dst_range, src_range,
-                     GetDpasSystolicDepth((*cur)->getDpasFc()) == 8))
+                     GetDpasSystolicDepth((*cur)->getDpasFc()) == 8,
+                     /*inFwdSeq=*/true))
     return count;
 
   InstListIterator next = cur;
@@ -1000,6 +1018,10 @@ size_t DepSetBuilder::DpasMacroBuilder::formFwdBlock(InstListIterator first) {
     m_inps.getDpasSrcDependency(**next, next_src_range, next_src_extra_range,
                                 m_model, m_encMode);
     m_inps.getDpasDstDependency(**next, next_dst_range);
+    if (hasInternalDep(**next, next_dst_range, next_src_range,
+                       GetDpasSystolicDepth((*next)->getDpasFc()) == 8,
+                       /*inFwdSeq=*/true))
+      break;
     // no need to check the producer-consumer dependency (leave
     // allDstBits/allSrcBits as 0) since if FWD block can be formed, add the dst
     // must be the same
