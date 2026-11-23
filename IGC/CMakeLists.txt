@@ -17,7 +17,7 @@
 #  - IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS
 #  - IGC_OPTION__OUTPUT_DIR
 
-cmake_minimum_required(VERSION 3.13.4 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.31 FATAL_ERROR)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 

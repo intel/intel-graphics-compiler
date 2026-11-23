@@ -42,6 +42,9 @@ IGC is continuously built and tested on the following 64-bit Linux operating sys
 * Ubuntu 26.04
 * Ubuntu 24.04
 
+Building IGC requires CMake 3.31 or newer. Ubuntu 24.04 provides CMake 3.28 through `apt`, which is too old.
+Install a newer CMake from the [Kitware APT repository](https://apt.kitware.com/).
+
 
 ## Documentation
 

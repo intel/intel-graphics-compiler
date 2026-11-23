@@ -6,7 +6,7 @@
 #
 #============================ end_copyright_notice =============================
 
-CMAKE_MINIMUM_REQUIRED( VERSION 3.1 )
+CMAKE_MINIMUM_REQUIRED( VERSION 3.31 )
 
 PROJECT( CIF )
 

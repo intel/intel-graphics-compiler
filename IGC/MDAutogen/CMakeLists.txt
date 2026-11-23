@@ -6,7 +6,7 @@
 #
 #============================ end_copyright_notice =============================
 
-cmake_minimum_required(VERSION 3.13.4)
+cmake_minimum_required(VERSION 3.31)
 
 set(_autogenScript "${IGC_SOURCE_DIR}/common/autogen.py")
 set(_autogenSource "${IGC_SOURCE_DIR}/common/MDFrameWork.h")
