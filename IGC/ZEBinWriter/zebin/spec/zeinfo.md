@@ -135,6 +135,7 @@ If an attribute is **Required**, it must be present in execution_env. If it's **
 | ------ | ------ |  ------ | ------ | ------ |
 | barrier_count | int32 | Optional | 0 | Number of barriers |
 | cross_thread_load_size | int32 | Optional | 0 | End offset in bytes of the payload data that is already in GRFs at kernel entry, counted from the start of the payload (inline data included), like the offsets in payload_arguments. Payload arguments at or above this offset are loaded from memory by the kernel where they are used. 0 means the whole payload is in GRFs at kernel entry. |
+| rounding_mode | <rounding_mode> | Optional | | Default floating-point rounding mode of the kernel. If not present, the value is re. |
 | disable_mid_thread_preemption | bool | Optional | false | |
 | grf_count | int32 | Required | | |
 | has_4gb_buffers | bool | Optional | false | Compiled for greater than 4GB buffers |
@@ -185,6 +186,17 @@ Supported <thread_scheduling_mode> of execution_env.
 | round_robin | |
 | round_robin_stall | |
 <!--- <thread_scheduling_mode> ArgThreadSchedulingMode -->
+
+### Supported rounding mode:
+Supported <rounding_mode> of execution_env. The values match the rounding modes in the PISA spec.
+
+| Rounding Mode | Description |
+| ----- | ----- |
+| re | Round to nearest even. |
+| ru | Round up (toward positive infinity). |
+| rd | Round down (toward negative infinity). |
+| rz | Round toward zero. |
+<!--- <rounding_mode> ArgRoundingMode -->
 
 ## Payload Arguments
 This section defines payload_arguments attribute.
