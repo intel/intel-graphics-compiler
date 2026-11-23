@@ -15,13 +15,17 @@ SPDX-License-Identifier: MIT
 // RUN: %if dg2-supported %{ ocloc compile -file %s -device dg2 -o %t.dg2 %}
 // RUN: %if dg2-supported %{ oneapi-readelf -p .ze_info %t.dg2 | FileCheck %s --check-prefix=WB %}
 // RUN: %if cri-supported %{ ocloc compile -file %s -device cri -o %t.cri %}
-// RUN: %if cri-supported %{ oneapi-readelf -p .ze_info %t.cri | FileCheck %s --check-prefix=WB %}
+// RUN: %if cri-supported %{ oneapi-readelf -p .ze_info %t.cri | FileCheck %s --check-prefix=CRI-DEFAULT %}
 
 // RUN: %if cri-supported && regkeys %{ env IGC_ExtraOCLInternalOptions="-cl-store-cache-default=28 -cl-load-cache-default=25" ocloc compile -file %s -device cri -o %t.cri.ws %}
 // RUN: %if cri-supported && regkeys %{ oneapi-readelf -p .ze_info %t.cri.ws | FileCheck %s --check-prefix=WS %}
 
+// RUN: %if cri-supported && regkeys %{ env IGC_ExtraOCLInternalOptions="-cl-store-cache-default=30 -cl-load-cache-default=25" ocloc compile -file %s -device cri -o %t.cri.wb %}
+// RUN: %if cri-supported && regkeys %{ oneapi-readelf -p .ze_info %t.cri.wb | FileCheck %s --check-prefix=WB %}
+
 // WBP: l1_cache_policy: wbp
 // WB:  l1_cache_policy: wb
 // WS:  l1_cache_policy: ws
+// CRI-DEFAULT: l1_cache_policy: {{(wb|ws)}}
 
 kernel void test(global int *out) { out[0] = 0; }
