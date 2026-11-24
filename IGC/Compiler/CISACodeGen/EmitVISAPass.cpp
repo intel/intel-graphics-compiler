@@ -25753,7 +25753,8 @@ void EmitPass::emitWideMul(Instruction *inst, const SSource *Sources, ResultScop
       dstHi = m_currShader->BitCast(dstHi, ISA_TYPE_UQ);
     }
   }
-  if (mulResultScope == ResultScope::Hi && forceUnsigned && dst->GetType() == ISA_TYPE_Q) {
+  // Mul64 takes the signedness of the multiply from dst's type, also for the paired low half.
+  if (forceUnsigned && dst->GetType() == ISA_TYPE_Q) {
     dst = m_currShader->BitCast(dst, ISA_TYPE_UQ);
   }
   Mul64(dst, src, m_currShader->m_SIMDSize, false, mulResultScope, dstHi);
