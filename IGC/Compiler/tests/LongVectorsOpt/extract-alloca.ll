@@ -128,20 +128,36 @@ define float @read_only_late_index(ptr addrspace(2) %p, i32 %i) {
   ret float %e
 }
 
-; Global memory may be written. An index loaded from memory can't be computed again at the load, so the extract reads
-; from a copy of the loaded vector instead.
+; Global memory may be written, but nothing writes it between the load and the extract, so the element is loaded at
+; the extract.
 ; CHECK-LABEL: @writable_late_index(
+; CHECK-NEXT:    %j = load i32, ptr addrspace(1) %q, align 4
+; CHECK-NEXT:    [[P:%.*]] = getelementptr <64 x float>, ptr addrspace(1) %p, i32 0, i32 %j
+; CHECK-NEXT:    [[E:%.*]] = load float, ptr addrspace(1) [[P]], align 4
+; CHECK-NEXT:    ret float [[E]]
+define float @writable_late_index(ptr addrspace(1) %p, ptr addrspace(1) %q) {
+  %v = load <64 x float>, ptr addrspace(1) %p, align 4
+  %j = load i32, ptr addrspace(1) %q, align 4
+  %e = extractelement <64 x float> %v, i32 %j
+  ret float %e
+}
+
+; A store between the load and the extract may write the loaded memory. An index loaded from memory can't be computed
+; again at the load, so the extract reads from a copy of the loaded vector instead.
+; CHECK-LABEL: @written_late_index(
 ; CHECK-NEXT:    [[SLOT:%.*]] = alloca <64 x float>
 ; CHECK-NEXT:    %v = load <64 x float>, ptr addrspace(1) %p, align 4
 ; CHECK-NEXT:    store <64 x float> %v, ptr [[SLOT]]
+; CHECK-NEXT:    store float 0.000000e+00, ptr addrspace(1) %p, align 4
 ; CHECK-NEXT:    %j = load i32, ptr addrspace(1) %q, align 4
 ; CHECK-NEXT:    [[JJ:%.*]] = freeze i32 %j
 ; CHECK-NEXT:    [[J:%.*]] = and i32 [[JJ]], 63
 ; CHECK-NEXT:    [[P:%.*]] = getelementptr <64 x float>, ptr [[SLOT]], i32 0, i32 [[J]]
 ; CHECK-NEXT:    [[E:%.*]] = load float, ptr [[P]], align 4
 ; CHECK-NEXT:    ret float [[E]]
-define float @writable_late_index(ptr addrspace(1) %p, ptr addrspace(1) %q) {
+define float @written_late_index(ptr addrspace(1) %p, ptr addrspace(1) %q) {
   %v = load <64 x float>, ptr addrspace(1) %p, align 4
+  store float 0.0, ptr addrspace(1) %p, align 4
   %j = load i32, ptr addrspace(1) %q, align 4
   %e = extractelement <64 x float> %v, i32 %j
   ret float %e
@@ -184,12 +200,12 @@ define float @hoisted_index_shared(ptr addrspace(1) %p, i32 %i) {
   ret float %e
 }
 
-; A division may trap, so it isn't computed again at the load, and the extract reads from a copy.
+; A division may trap, so it isn't computed again at the load. Nothing writes the loaded memory before the extract,
+; so the element is loaded there.
 ; CHECK-LABEL: @trapping_index(
-; CHECK-NEXT:    [[SLOT:%.*]] = alloca <64 x float>
-; CHECK-NEXT:    %v = load <64 x float>, ptr addrspace(1) %p, align 4
-; CHECK-NEXT:    store <64 x float> %v, ptr [[SLOT]]
 ; CHECK-NEXT:    %j = udiv i32 %a, %b
+; CHECK-NEXT:    [[P:%.*]] = getelementptr <64 x float>, ptr addrspace(1) %p, i32 0, i32 %j
+; CHECK-NEXT:    [[E:%.*]] = load float, ptr addrspace(1) [[P]], align 4
 define float @trapping_index(ptr addrspace(1) %p, i32 %a, i32 %b) {
   %v = load <64 x float>, ptr addrspace(1) %p, align 4
   %j = udiv i32 %a, %b

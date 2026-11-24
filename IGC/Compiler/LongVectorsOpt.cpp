@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallPtrSet.h"
+#include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/Support/KnownBits.h"
@@ -52,11 +53,13 @@ private:
   bool resolveExtractElement(ExtractElementInst *Extract);
   bool collectHoistable(Value *V, Instruction *Load, SmallSetVector<Instruction *, 8> &ToHoist);
   bool resolveExtractElementToLoad(ExtractElementInst *Extract);
+  bool isLoadedMemoryUnchangedAt(LoadInst *Load, Instruction *Pos);
   bool resolveInsertElement(InsertElementInst *Insert);
 
 private:
   const DataLayout *DL;
   DominatorTree *DT;
+  AAResults *AA;
   SmallSetVector<PHINode *, 4> Phis;
   SmallSetVector<ExtractElementInst *, 4> ExtractElements;
   SmallSetVector<InsertElementInst *, 4> InsertElements;
@@ -66,10 +69,12 @@ private:
   SmallPtrSet<InsertElementInst *, 16> ErasedInserts;
   // Private-memory copies of long vectors read by variable-index extracts.
   DenseMap<Value *, AllocaInst *> VectorToAlloca;
+  DenseMap<std::pair<LoadInst *, BasicBlock *>, bool> UnchangedAfterLoad;
 };
 
 IGC_INITIALIZE_PASS_BEGIN(LongVectorsOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 IGC_INITIALIZE_PASS_END(LongVectorsOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char LongVectorsOpt::ID = 0;
@@ -83,6 +88,7 @@ LongVectorsOpt::LongVectorsOpt() : FunctionPass(LongVectorsOpt::ID) {
 void LongVectorsOpt::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesCFG();
   AU.addRequired<DominatorTreeWrapperPass>();
+  AU.addRequired<AAResultsWrapperPass>();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -402,6 +408,38 @@ bool LongVectorsOpt::collectHoistable(Value *V, Instruction *Load, SmallSetVecto
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// Returns true if nothing can write the memory Load reads between Load and Pos, which Load dominates.
+// Pos may run many times after Load, e.g. in a loop, so no block that reaches Pos's block without passing through
+// Load's block, where Load runs again, may write it at all. That includes Pos's block itself.
+bool LongVectorsOpt::isLoadedMemoryUnchangedAt(LoadInst *Load, Instruction *Pos) {
+  IGC_ASSERT(DT->dominates(Load, Pos));
+  MemoryLocation Loc = MemoryLocation::get(Load);
+  auto MayWrite = [&](Instruction &I) { return I.mayWriteToMemory() && isModSet(AA->getModRefInfo(&I, Loc)); };
+  BasicBlock *LoadBB = Load->getParent();
+  BasicBlock *PosBB = Pos->getParent();
+  if (PosBB == LoadBB) {
+    return none_of(make_range(std::next(Load->getIterator()), Pos->getIterator()), MayWrite);
+  }
+  if (auto It = UnchangedAfterLoad.find({Load, PosBB}); It != UnchangedAfterLoad.end()) {
+    return It->second;
+  }
+  bool Unchanged = none_of(make_range(std::next(Load->getIterator()), LoadBB->end()), MayWrite);
+  SmallVector<BasicBlock *, 8> Worklist = {PosBB};
+  SmallPtrSet<BasicBlock *, 16> Visited = {PosBB};
+  while (Unchanged && !Worklist.empty()) {
+    BasicBlock *BB = Worklist.pop_back_val();
+    Unchanged = none_of(*BB, MayWrite);
+    for (BasicBlock *Pred : predecessors(BB)) {
+      if (Pred != LoadBB && Visited.insert(Pred).second) {
+        Worklist.push_back(Pred);
+      }
+    }
+  }
+  UnchangedAfterLoad[{Load, PosBB}] = Unchanged;
+  return Unchanged;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 bool LongVectorsOpt::resolveExtractElementToLoad(ExtractElementInst *Extract) {
   Instruction *LoadInstr = dyn_cast<Instruction>(Extract->getVectorOperand());
   if (!LoadInstr || !(isa<LoadInst>(LoadInstr) || isa<LdRawIntrinsic>(LoadInstr)) || !isSimpleAccess(LoadInstr)) {
@@ -412,13 +450,12 @@ bool LongVectorsOpt::resolveExtractElementToLoad(ExtractElementInst *Extract) {
   bool IsReadOnly = isReadOnlyLoad(LoadInstr);
   // The element load is created at the original load if the index must be available there.
   // Otherwise, the index is hoisted to the load if it is cheap and safe to compute there.
-  // If the memory is readonly, the load may be moved to the extract.
+  // If the memory is readonly, or nothing can write it before the extract, the load may be moved to the extract.
   Value *Idx = Extract->getIndexOperand();
   SmallSetVector<Instruction *, 8> ToHoist;
   if (Instruction *IdxInst = dyn_cast<Instruction>(Idx)) {
     if (!DT->dominates(IdxInst, LoadInstr)) {
-      if (IsReadOnly) {
-        // If the load is read-only, we can create the load at the ExtractElementInst
+      if (IsReadOnly || (isStateless(LoadInstr) && isLoadedMemoryUnchangedAt(cast<LoadInst>(LoadInstr), Extract))) {
         Builder.SetInsertPoint(Extract);
       } else if (collectHoistable(IdxInst, LoadInstr, ToHoist)) {
         // The index is cheap and safe to compute at the load, so compute it again there.
@@ -542,6 +579,7 @@ bool LongVectorsOpt::resolvePhi(PHINode *Phi) {
 bool LongVectorsOpt::runOnFunction(Function &F) {
   DL = &F.getParent()->getDataLayout();
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   Phis.clear();
   ExtractElements.clear();
   InsertElements.clear();
@@ -549,6 +587,7 @@ bool LongVectorsOpt::runOnFunction(Function &F) {
   ResolvedLoads.clear();
   ErasedInserts.clear();
   VectorToAlloca.clear();
+  UnchangedAfterLoad.clear();
 
   gatherInstructions(F);
   bool Modified = false;
