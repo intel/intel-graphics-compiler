@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2026 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -34,23 +34,23 @@ TypesLegalizationPassLPM::TypesLegalizationPassLPM() : FunctionPass(ID) {
   initializeTypesLegalizationPassLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool TypesLegalizationPass::IsSplittable(Type *type) const {
-  if (type == nullptr || !type->isAggregateType())
-    return false;
-  return true;
-}
-
 void TypesLegalizationPass::visitExtractValueInst(ExtractValueInst &ev) { m_ExtractValueInst.push_back(&ev); }
 
 void TypesLegalizationPass::visitStoreInst(StoreInst &storeInst) {
   Value *arg = storeInst.getOperand(0);
-  if (arg != NULL && IsSplittable(arg->getType())) {
-    m_StoreInst.push_back(&storeInst);
+  if (arg != NULL) {
+    Type *type = arg->getType();
+
+    if ((type != NULL) && type->isAggregateType()) {
+      m_StoreInst.push_back(&storeInst);
+    }
   }
 }
 
 void TypesLegalizationPass::visitPHINode(PHINode &phi) {
-  if (IsSplittable(phi.getType())) {
+  Type *type = phi.getType();
+
+  if ((type != NULL) && type->isAggregateType()) {
     m_PhiNodes.push_back(&phi);
   }
 }
@@ -59,7 +59,7 @@ void TypesLegalizationPass::visitPHINode(PHINode &phi) {
 // nothing else splits a loaded aggregate passed by value to a call. The loads
 // are looked up only after PHI nodes are resolved, as that creates new ones.
 void TypesLegalizationPass::visitCallInst(CallInst &call) {
-  if (any_of(call.args(), [this](Value *arg) { return IsSplittable(arg->getType()); }))
+  if (any_of(call.args(), [](Value *arg) { return arg->getType()->isAggregateType(); }))
     m_Calls.push_back(&call);
 }
 
@@ -197,7 +197,7 @@ bool TypesLegalizationPass::LegalizeTypes() {
   for (CallInst *call : m_Calls) {
     for (Value *arg : call->args()) {
       auto *ld = dyn_cast<LoadInst>(arg);
-      if (ld && IsSplittable(ld->getType()))
+      if (ld && ld->getType()->isAggregateType())
         callArgLoads.insert(ld);
     }
   }
@@ -376,7 +376,7 @@ void TypesLegalizationPass::ResolveExtractValue(ExtractValueInst *evInst) {
 /// @param  indices leading to current structure filed or array element
 void TypesLegalizationPass::ResolveStoreInst(StoreInst *storeInst, Type *type, SmallVector<unsigned, 8> &indices) {
 
-  if (type->isStructTy() && IsSplittable(type)) {
+  if (type->isStructTy()) {
     for (unsigned field = 0; field < type->getStructNumElements(); field++) {
       indices.push_back(field);
       ResolveStoreInst(storeInst, type->getStructElementType(field), indices);
