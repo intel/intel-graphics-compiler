@@ -32,6 +32,8 @@
 ; CHECK-NEXT: <End of list>
 
 ; complex_sliced
+; Before the uitofp writes its register only the immediate fragment is available.
+; CHECK-NEXT: (DW_OP_piece: 4; DW_OP_implicit_value 4 byte block: 0 0 80 3f ; DW_OP_piece: 4)
 ; CHECK-NEXT: (DW_OP_INTEL_push_simd_lane; DW_OP_lit16; DW_OP_ge; DW_OP_bra: 20; {{.*}} DW_OP_INTEL_regval_bits: 32; DW_OP_stack_value; DW_OP_bit_piece: size: 32 offset: 0 ; DW_OP_skip: 19; {{.*}} DW_OP_INTEL_regval_bits: 32; DW_OP_stack_value; DW_OP_bit_piece: size: 32 offset: 0 ; DW_OP_implicit_value 4 byte block: 0 0 80 3f ; DW_OP_piece: 4)
 
 define spir_kernel void @foo(ptr addrspace(1) %src, ptr addrspace(1) %out_real, ptr addrspace(1) %out_imag, ptr addrspace(1) %out_sliced) #0 !dbg !5 {

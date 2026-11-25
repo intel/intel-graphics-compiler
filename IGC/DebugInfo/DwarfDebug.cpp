@@ -1823,7 +1823,11 @@ void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vec
     if (LB == Map.end() || UB == Map.end())
       return {0, 0};
 
-    start = LB->second.front();
+    const auto &StartGenIPs = LB->second;
+    if (StartGenIPs.empty() || UB->second.empty())
+      return {0, 0};
+    auto LastStartGenIP = *std::max_element(StartGenIPs.begin(), StartGenIPs.end());
+    start = LastStartGenIP + VisaDbgInfo->getGenToSizeInBytesLUT().lookup(LastStartGenIP);
     end = UB->second.front();
     if (start >= end)
       return {0, 0};
@@ -1899,6 +1903,16 @@ void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vec
       if (!VarInfo)
         continue;
 
+      // The scheduler can move the instruction that writes the register below
+      // instructions that follow the dbg.value. The register holds the value
+      // only after the last Gen instruction of its definition.
+      uint64_t defEndIp = 0;
+      auto *DefInst = dyn_cast_or_null<Instruction>(IGCLLVM::getVariableLocation(dbgEntry));
+      if (DefInst && !isa<PHINode>(DefInst) && m_pModule->HasVisaOffset(DefInst)) {
+        for (const auto &DefRange : m_pModule->getGenISARange(*VisaDbgInfo, {DefInst, DefInst}))
+          defEndIp = std::max<uint64_t>(defEndIp, DefRange.second);
+      }
+
       for (const auto &visaRange : VarInfo->lrs) {
         auto startEnd = findSemiOpenInterval(visaRange.start, visaRange.end);
         uint64_t startRange = startEnd.first;
@@ -1907,7 +1921,7 @@ void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vec
         if (startRange == endRange || endRange < startIp || startRange > endIp)
           continue;
 
-        startRange = std::max(startRange, startIp);
+        startRange = std::max({startRange, startIp, defEndIp});
         endRange = std::min(endRange, endIp);
 
         if (startRange >= endRange)

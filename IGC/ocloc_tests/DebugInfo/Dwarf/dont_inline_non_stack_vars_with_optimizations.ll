@@ -40,13 +40,13 @@ define spir_kernel void @foo(i64 %0) {
   br i1 %5, label %7, label %6
 
 6:                                                ; preds = %1
-  store i8 0, ptr %2, align 4
-  %.phi.trans.insert = getelementptr [81 x float], ptr %2, i64 0, i64 %0
-  %.pre = load float, ptr %.phi.trans.insert, align 4
+  store i8 0, ptr %2, align 4, !dbg !21
+  %.phi.trans.insert = getelementptr [81 x float], ptr %2, i64 0, i64 %0, !dbg !21
+  %.pre = load float, ptr %.phi.trans.insert, align 4, !dbg !21
   br label %.loopexit2
 
 .loopexit2:                                       ; preds = %.loopexit2, %6
-  store float %.pre, ptr addrspace(1) null, align 4294967296
+  store float %.pre, ptr addrspace(1) null, align 4294967296, !dbg !21
   br label %.loopexit2
 
 7:                                                ; preds = %1
@@ -82,4 +82,4 @@ attributes #0 = { nocallback nofree nosync nounwind speculatable willreturn memo
 !18 = !DIBasicType(name: "float", size: 32, encoding: DW_ATE_float)
 !19 = !DILocation(line: 454, column: 15, scope: !12)
 !20 = !DILocation(line: 452, column: 1, scope: !12)
-
+!21 = !DILocation(line: 455, column: 1, scope: !12)
