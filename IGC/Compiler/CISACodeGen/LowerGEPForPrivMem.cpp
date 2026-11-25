@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/RegisterPressureEstimate.hpp"
 #include "common/LLVMUtils.h"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
+#include "Compiler/CISACodeGen/SoAAcrossFNUtil.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/IGCPassSupport.h"
@@ -20,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/Function.h>
+#include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Support/KnownBits.h>
 #include <llvm/Support/SaveAndRestore.h>
@@ -812,22 +814,10 @@ bool SOALayoutChecker::isChunkSpanningType(Type *Ty) const {
   return !Ty->isVectorTy() && Bytes > SOAPartitionBytes && (Bytes % SOAPartitionBytes) == 0;
 }
 
-bool SOALayoutChecker::hasZeroOffset(const llvm::Value *V) const {
-  while (true) {
-    if (auto *GEP = llvm::dyn_cast<llvm::GetElementPtrInst>(V)) {
-      if (!GEP->hasAllZeroIndices())
-        return false;
-      V = GEP->getPointerOperand();
-    } else if (auto *BC = llvm::dyn_cast<llvm::BitCastInst>(V)) {
-      V = BC->getOperand(0);
-    } else if (auto *ASC = llvm::dyn_cast<llvm::AddrSpaceCastInst>(V)) {
-      V = ASC->getOperand(0);
-    } else if (auto *PHI = llvm::dyn_cast<llvm::PHINode>(V); PHI && PHI->getNumIncomingValues() == 1) {
-      V = PHI->getIncomingValue(0);
-    } else {
-      return isSoARoot(V);
-    }
-  }
+bool SOALayoutChecker::hasZeroOffset(llvm::Value *V) const {
+  const Value *Root =
+      SoAAcrossFNUtil::stripToSoARoot(V, [](const GetElementPtrInst &GEP) { return GEP.hasAllZeroIndices(); });
+  return Root && isSoARoot(Root);
 }
 
 bool SOALayoutChecker::isSoARoot(const llvm::Value *Ptr) const {
@@ -850,53 +840,33 @@ bool SOALayoutChecker::isAlignedDynamicOffset(Value *Idx, uint64_t Stride, uint6
   return KB.countMinTrailingZeros() + IGCLLVM::countr_zero(Stride) >= Log2_32(TargetAlignment);
 }
 
-bool SOALayoutChecker::isAlignedChain(const Value *Ptr, uint64_t TargetAlignment, bool CheckAllLinks) const {
+bool SOALayoutChecker::isAlignedChain(Value *Ptr, uint64_t TargetAlignment, bool CheckAllLinks) const {
   int64_t ConstBytes = 0;
-  while (true) {
-    if (auto *GEP = dyn_cast<GetElementPtrInst>(Ptr)) {
-      for (auto GTI = gep_type_begin(GEP), GTE = gep_type_end(GEP); GTI != GTE; ++GTI) {
-        Value *Idx = GTI.getOperand();
-        if (StructType *STy = GTI.getStructTypeOrNull()) {
-          ConstBytes += pDL->getStructLayout(STy)->getElementOffset(cast<ConstantInt>(Idx)->getZExtValue());
-          continue;
-        }
-        uint64_t Stride = pDL->getTypeAllocSize(GTI.getIndexedType());
-        if (auto *CI = dyn_cast<ConstantInt>(Idx)) {
-          ConstBytes += CI->getSExtValue() * (int64_t)Stride;
-          continue;
-        }
-        // A dynamic index contributes an unknown multiple of its stride, so it keeps the
-        // offset partition-aligned when the stride itself is. If it is not,
-        // the alignment can still be provable from the index value.
-        if ((Stride % TargetAlignment) != 0 && !isAlignedDynamicOffset(Idx, Stride, TargetAlignment))
-          return false;
+  auto AddGEPOffset = [&](const GetElementPtrInst &GEP) {
+    for (auto GTI = gep_type_begin(GEP), GTE = gep_type_end(GEP); GTI != GTE; ++GTI) {
+      Value *Idx = GTI.getOperand();
+      if (StructType *STy = GTI.getStructTypeOrNull()) {
+        ConstBytes += pDL->getStructLayout(STy)->getElementOffset(cast<ConstantInt>(Idx)->getZExtValue());
+        continue;
       }
-      Ptr = GEP->getPointerOperand();
-      if (CheckAllLinks && ConstBytes % (int64_t)TargetAlignment != 0)
+      uint64_t Stride = pDL->getTypeAllocSize(GTI.getIndexedType());
+      if (auto *CI = dyn_cast<ConstantInt>(Idx)) {
+        ConstBytes += CI->getSExtValue() * (int64_t)Stride;
+        continue;
+      }
+      // A dynamic index contributes an unknown multiple of its stride, so it keeps the
+      // offset partition-aligned when the stride itself is. If it is not,
+      // the alignment can still be provable from the index value.
+      if ((Stride % TargetAlignment) != 0 && !isAlignedDynamicOffset(Idx, Stride, TargetAlignment))
         return false;
-      continue;
     }
-    if (auto *CI = dyn_cast<CastInst>(Ptr)) {
-      if (!isa<BitCastInst>(CI) && !isa<AddrSpaceCastInst>(CI))
-        return false;
-      Ptr = CI->getOperand(0);
-      continue;
-    }
-    // A single-incoming PHI merges nothing, so the offset of its incoming pointer is the
-    // offset of the PHI. A real merge has one offset per incoming block and is rejected
-    // below with the rest.
-    if (auto *PHI = dyn_cast<PHINode>(Ptr)) {
-      if (PHI->getNumIncomingValues() != 1)
-        return false;
-      Ptr = PHI->getIncomingValue(0);
-      continue;
-    }
-    if (isSoARoot(Ptr))
-      break;
-    // Unknown origin (a select, unsupported function argument, ...): the offset cannot be proven,
-    // so it can not be assumed aligned.
+    return !CheckAllLinks || ConstBytes % (int64_t)TargetAlignment == 0;
+  };
+  // A real merge (a PHI with several incoming values, or a select) has one offset per incoming pointer, and a pointer
+  // of unknown origin (e.g. an unsupported function argument) has an unknown one: neither can be assumed aligned.
+  const Value *Root = SoAAcrossFNUtil::stripToSoARoot(Ptr, AddGEPOffset);
+  if (!Root || !isSoARoot(Root))
     return false;
-  }
   return (ConstBytes % (int64_t)TargetAlignment) == 0;
 }
 
@@ -1305,6 +1275,47 @@ bool SOALayoutChecker::visitCallInst(CallInst &CI) {
   return llvm::all_of(CalleeArgs, [&](Argument *Arg) { return checkUsers(*Arg); });
 }
 
+// SoA changes the physical order of the bytes of the alloca, so a pointer comparison is only kept valid when the
+// transpose can rewrite it using the logical byte offsets: both pointers must be derived from the same root (the
+// alloca, or the same promoted callee argument) through inbounds GEPs, or the other one is null.
+bool SOALayoutChecker::visitICmpInst(ICmpInst &I) {
+  if (IGC_IS_FLAG_DISABLED(EnableAggressiveSOAPromotion) || !pInfo->useNewAlgoTranspose) {
+    return false;
+  }
+  Value *Op0 = I.getOperand(0);
+  Value *Op1 = I.getOperand(1);
+  if (!Op0->getType()->isPointerTy() || !Op1->getType()->isPointerTy()) {
+    return false;
+  }
+  const unsigned Self = Op0 == ParentLevelVal ? 0 : 1;
+  IGC_ASSERT(I.getOperand(Self) == ParentLevelVal);
+  Value *Other = I.getOperand(1 - Self);
+  // With only inbounds GEPs from the root, the offsets lie within the alloca (a promoted argument only receives the
+  // alloca itself): they are non-negative and compare like the pointers.
+  auto IsInBounds = [](const GetElementPtrInst &GEP) { return GEP.isInBounds(); };
+  const Value *Root = SoAAcrossFNUtil::stripToSoARoot(ParentLevelVal, IsInBounds);
+  if (!Root || !isSoARoot(Root)) {
+    return false;
+  }
+  if (isa<ConstantPointerNull>(Other)) {
+    return I.isEquality();
+  }
+  if (SoAAcrossFNUtil::stripToSoARoot(Other, IsInBounds) != Root) {
+    return false;
+  }
+  switch (I.getPredicate()) {
+  case CmpInst::ICMP_EQ:
+  case CmpInst::ICMP_NE:
+  case CmpInst::ICMP_ULT:
+  case CmpInst::ICMP_ULE:
+  case CmpInst::ICMP_UGT:
+  case CmpInst::ICMP_UGE:
+    return true;
+  default:
+    return false;
+  }
+}
+
 /// Can the user type be treated as a same-footprint reinterpretation of
 /// the alloca element?  Returns true only for int/fp scalars or
 /// fixed-vectors-of-int/fp whose store size equals \p allocaStoreBits.
@@ -1671,10 +1682,11 @@ void LowerGEPForPrivMem::visitAllocaInst(AllocaInst &I) {
 }
 
 void TransposeHelper::HandleAllocaSources(Value *v, Value *idx) {
-  SmallVector<Value *, 10> instructions;
+  // A user that uses v more than once (e.g. icmp p, p) is handled once.
+  SmallSetVector<Value *, 8> instructions;
   for (Value::user_iterator it = v->user_begin(), e = v->user_end(); it != e; ++it) {
     Value *inst = cast<Value>(*it);
-    instructions.push_back(inst);
+    instructions.insert(inst);
   }
 
   for (auto instruction : instructions) {
@@ -1692,6 +1704,8 @@ void TransposeHelper::HandleAllocaSources(Value *v, Value *idx) {
       handleLoadInst(pLoad, idx);
     } else if (PredicatedLoadIntrinsic *pPredLoad = dyn_cast<PredicatedLoadIntrinsic>(instruction)) {
       handlePredicatedLoadInst(pPredLoad, idx);
+    } else if (ICmpInst *ICmp = dyn_cast<ICmpInst>(instruction)) {
+      handleICmpInst(ICmp, v, idx);
     } else if (IntrinsicInst *inst = dyn_cast<IntrinsicInst>(instruction)) {
       handleLifetimeMark(inst);
     } else if (PHINode *PPHI = dyn_cast<PHINode>(instruction)) {
@@ -1709,6 +1723,10 @@ void TransposeHelper::handlePredicatedLoadInst(PredicatedLoadIntrinsic *, Value 
   // Predicated loads only arise on the no-scratch SELECT-of-alloca-pointer path,
   // which uses the new-algo TransposePrivMem helper (which overrides this).
   IGC_ASSERT_MESSAGE(0, "predicated load unsupported by this transpose helper");
+}
+
+void TransposeHelper::handleICmpInst(ICmpInst *, Value *, Value *) {
+  IGC_ASSERT_MESSAGE(0, "pointer comparison unsupported by this transpose helper");
 }
 
 class TransposeHelperPromote : public TransposeHelper {

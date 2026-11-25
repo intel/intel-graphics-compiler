@@ -124,14 +124,21 @@ public:
     m_shtAmt = Log2_32(m_chunkBytes);
     m_offsetMask = maskTrailingOnes<uint32_t>(m_shtAmt);
   }
+  ~TransposePrivMem() {
+    // Every comparison of two pointers into the promoted memory must be reached through both operands.
+    IGC_ASSERT_MESSAGE(ICmpOffsets.empty(), "SoA: pointer comparison left with only one operand rewritten");
+  }
 
   void handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx);
   void handleStoreInst(StoreInst *pStore, Value *pScalarizedIdx);
   void handleLifetimeMark(IntrinsicInst *inst);
   void handlePredicatedLoadInst(PredicatedLoadIntrinsic *pPredLoad, Value *pScalarizedIdx);
+  void handleICmpInst(ICmpInst *ICmp, Value *SourcePointer, Value *ScalarizedIdx);
   bool useNewAlgo() { return true; }
 
 private:
+  // Logical byte offsets collected while visiting each pointer operand.
+  DenseMap<ICmpInst *, std::pair<Value *, Value *>> ICmpOffsets;
   const DataLayout &m_DL;
   Value *m_simdSize;
   Value *m_bufferBase;
@@ -255,46 +262,30 @@ traceArgToAlloca(Function &F, unsigned ArgIdx, SmallPtrSetImpl<Function *> &Unsu
       continue;
     if (!CI->isCallee(&U) || !CI->getFunctionType() || CI->getFunctionType() != F.getFunctionType())
       return {};
-    auto *V = CI->getArgOperand(ArgIdx);
-    while (true) {
-      if (auto *GEP = dyn_cast<GetElementPtrInst>(V)) {
-        V = GEP->getPointerOperand();
-      } else if (auto *CastI = dyn_cast<CastInst>(V)) {
-        if (!isa<BitCastInst>(CastI) && !isa<AddrSpaceCastInst>(CastI)) {
-          return {};
-        }
-        V = CastI->getOperand(0);
-      } else if (auto *PHI = dyn_cast<PHINode>(V)) {
-        if (PHI->getNumIncomingValues() != 1)
-          return {};
-        V = PHI->getIncomingValue(0);
-      } else if (auto *AI = dyn_cast<AllocaInst>(V)) {
-        RootAllocas.insert(AI);
-        break;
-      } else if (auto *Arg = dyn_cast<Argument>(V)) {
-        if (!Arg->getType()->isPointerTy() || Arg->hasStructRetAttr() || Arg->hasByValAttr()) {
-          return {};
-        }
-        if (UnsupportedFns.contains(Arg->getParent()))
-          return {};
-
-        // Use memoized result if available
-        if (auto It = ArgToAllocaCache.find(Arg); It != ArgToAllocaCache.end()) {
-          if (It->second.empty())
-            return {};
-          RootAllocas.insert(It->second.begin(), It->second.end());
-          break;
-        }
-        auto SubCallAllocas = traceArgToAlloca(*Arg->getParent(), Arg->getArgNo(), UnsupportedFns, ArgToAllocaCache);
-        ArgToAllocaCache[Arg] = SubCallAllocas;
-        if (SubCallAllocas.empty())
-          return {};
-        RootAllocas.insert(SubCallAllocas.begin(), SubCallAllocas.end());
-        break;
-      } else {
-        return {};
-      }
+    Value *V = SoAAcrossFNUtil::stripToSoARoot(CI->getArgOperand(ArgIdx));
+    if (auto *AI = dyn_cast<AllocaInst>(V)) {
+      RootAllocas.insert(AI);
+      continue;
     }
+    auto *Arg = dyn_cast<Argument>(V);
+    if (!Arg || !Arg->getType()->isPointerTy() || Arg->hasStructRetAttr() || Arg->hasByValAttr()) {
+      return {};
+    }
+    if (UnsupportedFns.contains(Arg->getParent()))
+      return {};
+
+    // Use memoized result if available
+    if (auto It = ArgToAllocaCache.find(Arg); It != ArgToAllocaCache.end()) {
+      if (It->second.empty())
+        return {};
+      RootAllocas.insert(It->second.begin(), It->second.end());
+      continue;
+    }
+    auto SubCallAllocas = traceArgToAlloca(*Arg->getParent(), Arg->getArgNo(), UnsupportedFns, ArgToAllocaCache);
+    ArgToAllocaCache[Arg] = SubCallAllocas;
+    if (SubCallAllocas.empty())
+      return {};
+    RootAllocas.insert(SubCallAllocas.begin(), SubCallAllocas.end());
   }
   return SmallVector<AllocaInst *, 8>(RootAllocas.begin(), RootAllocas.end());
 }
@@ -1105,6 +1096,37 @@ void TransposePrivMem::handleLifetimeMark(IntrinsicInst *inst) {
   IGC_ASSERT((inst->getIntrinsicID() == llvm::Intrinsic::lifetime_start) ||
              (inst->getIntrinsicID() == llvm::Intrinsic::lifetime_end));
   inst->eraseFromParent();
+}
+
+// The scalarized index of this helper is the logical byte offset into the alloca (or the promoted argument), so a
+// comparison of two pointers into it is a comparison of their indices. SOALayoutChecker only accepts comparisons of
+// pointers with the same root reached through inbounds GEPs, or with null.
+void TransposePrivMem::handleICmpInst(ICmpInst *ICmp, Value *SourcePointer, Value *ScalarizedIdx) {
+  const unsigned SourceOperand = ICmp->getOperand(0) == SourcePointer ? 0 : 1;
+  if (isa<ConstantPointerNull>(ICmp->getOperand(1 - SourceOperand))) {
+    // The pointer is never null.
+    IGC_ASSERT(ICmp->isEquality());
+    ICmp->replaceAllUsesWith(ConstantInt::getBool(ICmp->getType(), ICmp->getPredicate() == ICmpInst::ICMP_NE));
+    ICmp->eraseFromParent();
+    return;
+  }
+
+  // The comparison is reached once through the use chain of each operand. Rewrite it once both offsets are known.
+  auto &[Offset0, Offset1] = ICmpOffsets[ICmp];
+  if (ICmp->getOperand(0) == SourcePointer)
+    Offset0 = ScalarizedIdx;
+  if (ICmp->getOperand(1) == SourcePointer)
+    Offset1 = ScalarizedIdx;
+  if (!Offset0 || !Offset1)
+    return;
+
+  // SOALayoutChecker only accepts operands reached through inbounds GEPs, so both offsets lie within the alloca and
+  // are non-negative: they compare like the pointers, with the same unsigned predicate.
+  IGCLLVM::IRBuilder<> IRB(ICmp);
+  Value *Replacement = IRB.CreateICmp(ICmp->getPredicate(), Offset0, Offset1);
+  ICmp->replaceAllUsesWith(Replacement);
+  ICmpOffsets.erase(ICmp);
+  ICmp->eraseFromParent();
 }
 
 void TransposePrivMem::handlePredicatedLoadInst(PredicatedLoadIntrinsic *pPredLoad, Value *pScalarizedIdx) {

@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/DenseSet.h>
+#include <llvm/ADT/STLFunctionalExtras.h>
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/ADT/SmallVector.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -27,6 +28,7 @@ class Argument;
 class CallGraph;
 class DataLayout;
 class Function;
+class GetElementPtrInst;
 class Instruction;
 class IRBuilderBase;
 class Module;
@@ -64,6 +66,12 @@ bool isWorthwhileForAlloca(llvm::AllocaInst *AI, const llvm::DataLayout &DL);
 // VerifyAlloca restricts the allocas considered to those passing isWorthwhileForAlloca.
 void collectRootArgs(llvm::Module &M, GenXFunctionGroupAnalysis *FGA, IGCMD::MetaDataUtils *MdUtils, bool VerifyAlloca,
                      llvm::DenseSet<const llvm::Value *> &RootArgs);
+
+// Walk the pointer V back through the GEPs, bitcasts, addrspacecasts and single-incoming PHIs that the SoA layout
+// checker and transpose walk through, and return the value it is derived from (an alloca, a function argument, or
+// whatever else stops the walk). OnGEP, if given, is called on each GEP on the way, and returning false from it stops
+// the walk with nullptr.
+llvm::Value *stripToSoARoot(llvm::Value *V, llvm::function_ref<bool(const llvm::GetElementPtrInst &)> OnGEP = nullptr);
 
 // If V is rooted at an alloca or an ExtraRoots argument, returns V with its leading bitcasts / addrspacecasts stripped
 // (GEPs are kept), i.e. the base replayAddressChain() rebuilds from. Otherwise returns nullptr.

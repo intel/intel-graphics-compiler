@@ -172,11 +172,11 @@ private:
   bool hasUnsupportedAccess(bool IsNewAlgo) const;
   // Return true if every byte offset \p Ptr can carry relative to the alloca is provably a
   // multiple of given alignment.
-  bool isAlignedChain(const llvm::Value *Ptr, uint64_t TargetAlignment, bool CheckAllLinks = false) const;
+  bool isAlignedChain(llvm::Value *Ptr, uint64_t TargetAlignment, bool CheckAllLinks = false) const;
   // Return true if a dynamic GEP index contributing \p Idx * \p Stride bytes provably keeps
   // the running byte offset a multiple of given alignment.
   bool isAlignedDynamicOffset(llvm::Value *Idx, uint64_t Stride, uint64_t TargetAlignment) const;
-  bool hasZeroOffset(const llvm::Value *V) const;
+  bool hasZeroOffset(llvm::Value *V) const;
   bool isSoARoot(const llvm::Value *Ptr) const;
   bool isSupportedArg(const llvm::Argument *Arg) const;
   bool getSupportedCalleeArgs(const llvm::CallInst &CI, const llvm::Value *V,
@@ -204,6 +204,7 @@ private:
   bool visitGetElementPtrInst(llvm::GetElementPtrInst &);
   bool visitIntrinsicInst(llvm::IntrinsicInst &);
   bool visitCallInst(llvm::CallInst &);
+  bool visitICmpInst(llvm::ICmpInst &);
   bool visitLoadInst(llvm::LoadInst &);
   bool MismatchDetected(llvm::Instruction &LI);
   bool visitStoreInst(llvm::StoreInst &);
@@ -225,6 +226,7 @@ public:
   virtual void handleStoreInst(llvm::StoreInst *pStore, llvm::Value *pScalarizedIdx) = 0;
   virtual void handleLifetimeMark(llvm::IntrinsicInst *inst) = 0;
   virtual void handlePredicatedLoadInst(llvm::PredicatedLoadIntrinsic *pPredLoad, llvm::Value *pScalarizedIdx);
+  virtual void handleICmpInst(llvm::ICmpInst *ICmp, llvm::Value *SourcePointer, llvm::Value *ScalarizedIdx);
   // For select handleGEPinstNew
   virtual bool useNewAlgo() { return false; }
   void EraseDeadCode();

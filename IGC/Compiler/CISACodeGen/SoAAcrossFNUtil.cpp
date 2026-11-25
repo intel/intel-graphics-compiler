@@ -108,7 +108,7 @@ traceUsesToArgs(Value *Root, const SmallPtrSetImpl<Function *> &UnsupportedFns,
         Worklist.push_back(U);
         continue;
       }
-      if (llvm::isa<llvm::LoadInst>(U)) {
+      if (llvm::isa<llvm::LoadInst, llvm::ICmpInst>(U)) {
         continue;
       }
       if (auto *PLI = llvm::dyn_cast<llvm::PredicatedLoadIntrinsic>(U)) {
@@ -232,6 +232,23 @@ Value *replayGEP(IRBuilderBase &B, Value *Base, GetElementPtrInst *GEP) {
   return GEP->isInBounds() ? B.CreateInBoundsGEP(SrcElemTy, Base, Idxs) : B.CreateGEP(SrcElemTy, Base, Idxs);
 }
 } // anonymous namespace
+
+Value *stripToSoARoot(Value *V, function_ref<bool(const GetElementPtrInst &)> OnGEP) {
+  while (true) {
+    if (auto *GEP = dyn_cast<GetElementPtrInst>(V)) {
+      if (OnGEP && !OnGEP(*GEP))
+        return nullptr;
+      V = GEP->getPointerOperand();
+    } else if (isa<BitCastInst, AddrSpaceCastInst>(V)) {
+      V = cast<Instruction>(V)->getOperand(0);
+    } else if (auto *PHI = dyn_cast<PHINode>(V); PHI && PHI->getNumIncomingValues() == 1) {
+      // A single-incoming PHI (e.g. LCSSA) merges nothing.
+      V = PHI->getIncomingValue(0);
+    } else {
+      return V;
+    }
+  }
+}
 
 Value *getRootBase(Value *V, const DataLayout &DL, const DenseSet<const Value *> &ExtraRoots) {
   Value *Obj = IGCLLVM::getUnderlyingObject(V, DL);
