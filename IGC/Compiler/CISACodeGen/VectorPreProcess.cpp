@@ -945,11 +945,7 @@ bool VectorPreProcess::splitLoad(AbstractLoadInst &ALI, V2SMap &vecToSubVec, WIA
       IGC_ASSERT((svals.size() % scalarsPerElement) == 0);
 
       ValVector mergedScalars;
-      IRBuilder<> builder(LI->getParent());
-      Instruction *nextInst = LI->getNextNode();
-      if (nextInst) {
-        builder.SetInsertPoint(nextInst);
-      }
+      IRBuilder<> builder(LI);
       Value *undef = UndefValue::get(FixedVectorType::get(svals[0]->getType(), scalarsPerElement));
       for (uint32_t i = 0; i < svals.size() / scalarsPerElement; i++) {
         Value *newElement = undef;
