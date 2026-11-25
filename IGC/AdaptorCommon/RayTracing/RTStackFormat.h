@@ -171,12 +171,15 @@ struct KSP64 {
   static constexpr uint64_t NullValue = 0;
 
   uint64_t _registers_per_thread : 4; // This specifies the number of GRFs.
+
   uint64_t _reserved : 1;
+
   uint64_t _bindless_shader_dispatch_mode : 1; // 0 = SIMD16, 1 = SIMD32
   uint64_t _instruction_pointer : 58;          // shader function pointer
 };
 
 static_assert(sizeof(KSP64) == 8, "changed?");
+
 
 static_assert(sizeof(KSP) == sizeof(KSP64), "All KSP definitions must have the same size.");
 
