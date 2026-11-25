@@ -30,7 +30,7 @@ define <2 x i32> @basic(i1 %switch, <2 x i32> %src1, <2 x i32> %src2) {
 ; CHECK:       [[EXIT]]:
 ; CHECK-NEXT:    [[RESULT1:%.*]] = phi i32 [ [[SRC1_SCALAR]], %[[FIRST]] ], [ [[SRC2_SCALAR]], %[[SECOND]] ]
 ; CHECK-NEXT:    [[RESULT2:%.*]] = phi i32 [ [[SRC1_SCALAR3]], %[[FIRST]] ], [ [[SRC2_SCALAR4]], %[[SECOND]] ]
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[RESULT1]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[RESULT1]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT5:%.*]] = insertelement <2 x i32> [[RESULT_ASSEMBLED_VECT]], i32 [[RESULT2]], i32 1
 ; CHECK-NEXT:    ret <2 x i32> [[RESULT_ASSEMBLED_VECT5]]
 ;
@@ -61,7 +61,7 @@ define <2 x i32> @should_preserve_metadata(i1 %switch, <2 x i32> %src1, <2 x i32
 ; CHECK:       [[EXIT]]:
 ; CHECK-NEXT:    [[RESULT1:%.*]] = phi i32 [ [[SRC1_SCALAR]], %[[FIRST]] ], [ [[SRC2_SCALAR]], %[[SECOND]] ], !any_metadata [[META0:![0-9]+]]
 ; CHECK-NEXT:    [[RESULT2:%.*]] = phi i32 [ [[SRC1_SCALAR3]], %[[FIRST]] ], [ [[SRC2_SCALAR4]], %[[SECOND]] ], !any_metadata [[META0]]
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[RESULT1]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[RESULT1]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT5:%.*]] = insertelement <2 x i32> [[RESULT_ASSEMBLED_VECT]], i32 [[RESULT2]], i32 1
 ; CHECK-NEXT:    ret <2 x i32> [[RESULT_ASSEMBLED_VECT5]]
 ;
@@ -92,7 +92,7 @@ define <2 x float> @should_work_with_different_value_type(i1 %switch, <2 x float
 ; CHECK:       [[EXIT]]:
 ; CHECK-NEXT:    [[RESULT1:%.*]] = phi float [ [[SRC1_SCALAR]], %[[FIRST]] ], [ [[SRC2_SCALAR]], %[[SECOND]] ]
 ; CHECK-NEXT:    [[RESULT2:%.*]] = phi float [ [[SRC1_SCALAR3]], %[[FIRST]] ], [ [[SRC2_SCALAR4]], %[[SECOND]] ]
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[RESULT1]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x float> poison, float [[RESULT1]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT5:%.*]] = insertelement <2 x float> [[RESULT_ASSEMBLED_VECT]], float [[RESULT2]], i32 1
 ; CHECK-NEXT:    ret <2 x float> [[RESULT_ASSEMBLED_VECT5]]
 ;
@@ -123,7 +123,7 @@ define <2 x float> @should_work_with_fast_math_flags(i1 %switch, <2 x float> %sr
 ; CHECK:       [[EXIT]]:
 ; CHECK-NEXT:    [[RESULT1:%.*]] = phi fast float [ [[SRC1_SCALAR]], %[[FIRST]] ], [ [[SRC2_SCALAR]], %[[SECOND]] ]
 ; CHECK-NEXT:    [[RESULT2:%.*]] = phi fast float [ [[SRC1_SCALAR3]], %[[FIRST]] ], [ [[SRC2_SCALAR4]], %[[SECOND]] ]
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[RESULT1]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x float> poison, float [[RESULT1]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT5:%.*]] = insertelement <2 x float> [[RESULT_ASSEMBLED_VECT]], float [[RESULT2]], i32 1
 ; CHECK-NEXT:    ret <2 x float> [[RESULT_ASSEMBLED_VECT5]]
 ;
@@ -196,7 +196,7 @@ define <16 x i32> @should_work_with_larger_vector_size(i1 %switch, <16 x i32> %s
 ; CHECK-NEXT:    [[RESULT14:%.*]] = phi i32 [ [[SRC1_SCALAR29]], %[[FIRST]] ], [ [[SRC2_SCALAR44]], %[[SECOND]] ]
 ; CHECK-NEXT:    [[RESULT15:%.*]] = phi i32 [ [[SRC1_SCALAR30]], %[[FIRST]] ], [ [[SRC2_SCALAR45]], %[[SECOND]] ]
 ; CHECK-NEXT:    [[RESULT16:%.*]] = phi i32 [ [[SRC1_SCALAR31]], %[[FIRST]] ], [ [[SRC2_SCALAR46]], %[[SECOND]] ]
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <16 x i32> undef, i32 [[RESULT1]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <16 x i32> poison, i32 [[RESULT1]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT47:%.*]] = insertelement <16 x i32> [[RESULT_ASSEMBLED_VECT]], i32 [[RESULT2]], i32 1
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT48:%.*]] = insertelement <16 x i32> [[RESULT_ASSEMBLED_VECT47]], i32 [[RESULT3]], i32 2
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT49:%.*]] = insertelement <16 x i32> [[RESULT_ASSEMBLED_VECT48]], i32 [[RESULT4]], i32 3
@@ -239,7 +239,7 @@ define <2 x i32> @should_work_with_constant_value(i1 %switch, <2 x i32> %src1) {
 ; CHECK:       [[EXIT]]:
 ; CHECK-NEXT:    [[RESULT1:%.*]] = phi i32 [ [[SRC1_SCALAR]], %[[FIRST]] ], [ 2, %[[SECOND]] ]
 ; CHECK-NEXT:    [[RESULT2:%.*]] = phi i32 [ [[SRC1_SCALAR3]], %[[FIRST]] ], [ 4, %[[SECOND]] ]
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[RESULT1]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[RESULT1]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT4:%.*]] = insertelement <2 x i32> [[RESULT_ASSEMBLED_VECT]], i32 [[RESULT2]], i32 1
 ; CHECK-NEXT:    ret <2 x i32> [[RESULT_ASSEMBLED_VECT4]]
 ;
@@ -572,7 +572,7 @@ define spir_kernel void @should_work_with_nested_phi(i1 %switch) {
 ; CHECK-NEXT:    [[RESULT321:%.*]] = phi i32 [ [[RESULT16]], %[[FIRST]] ], [ [[RESULT229]], %[[SECOND]] ]
 ; CHECK-NEXT:    [[RESULT322:%.*]] = phi i32 [ [[RESULT17]], %[[FIRST]] ], [ [[RESULT230]], %[[SECOND]] ]
 ; CHECK-NEXT:    [[RESULT323:%.*]] = phi i32 [ [[RESULT18]], %[[FIRST]] ], [ [[RESULT231]], %[[SECOND]] ]
-; CHECK-NEXT:    [[RESULT3_ASSEMBLED_VECT:%.*]] = insertelement <8 x i32> undef, i32 [[RESULT316]], i32 0
+; CHECK-NEXT:    [[RESULT3_ASSEMBLED_VECT:%.*]] = insertelement <8 x i32> poison, i32 [[RESULT316]], i32 0
 ; CHECK-NEXT:    [[RESULT3_ASSEMBLED_VECT32:%.*]] = insertelement <8 x i32> [[RESULT3_ASSEMBLED_VECT]], i32 [[RESULT317]], i32 1
 ; CHECK-NEXT:    [[RESULT3_ASSEMBLED_VECT33:%.*]] = insertelement <8 x i32> [[RESULT3_ASSEMBLED_VECT32]], i32 [[RESULT318]], i32 2
 ; CHECK-NEXT:    [[RESULT3_ASSEMBLED_VECT34:%.*]] = insertelement <8 x i32> [[RESULT3_ASSEMBLED_VECT33]], i32 [[RESULT319]], i32 3

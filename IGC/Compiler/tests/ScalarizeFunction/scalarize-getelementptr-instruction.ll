@@ -25,8 +25,8 @@ define double @basic(<2 x double*> %pointers) {
 ; CHECK-OPAQUE-NEXT:    [[POINTERS_SCALAR1:%.*]] = extractelement <2 x ptr> [[POINTERS]], i32 1
 ; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE2:%.*]] = getelementptr double, double* [[POINTERS_SCALAR]], i32 1
 ; CHECK-OPAQUE-NEXT:    [[POINTER_TO_DOUBLE2:%.*]] = getelementptr double, ptr [[POINTERS_SCALAR]], i32 1
-; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <2 x double*> undef, double* [[POINTER_TO_DOUBLE2]], i32 0
-; CHECK-OPAQUE-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <2 x ptr> undef, ptr [[POINTER_TO_DOUBLE2]], i32 0
+; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <2 x double*> poison, double* [[POINTER_TO_DOUBLE2]], i32 0
+; CHECK-OPAQUE-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <2 x ptr> poison, ptr [[POINTER_TO_DOUBLE2]], i32 0
 ; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE3:%.*]] = getelementptr double, double* [[POINTERS_SCALAR1]], i32 1
 ; CHECK-OPAQUE-NEXT:    [[POINTER_TO_DOUBLE3:%.*]] = getelementptr double, ptr [[POINTERS_SCALAR1]], i32 1
 ; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT4:%.*]] = insertelement <2 x double*> [[POINTER_TO_DOUBLE_ASSEMBLED_VECT]], double* [[POINTER_TO_DOUBLE3]], i32 1
@@ -58,8 +58,8 @@ define double @should_preserve_metadata(<2 x double*> %pointers) {
 ; CHECK-OPAQUE-NEXT:    [[POINTERS_SCALAR1:%.*]] = extractelement <2 x ptr> [[POINTERS]], i32 1
 ; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE2:%.*]] = getelementptr double, double* [[POINTERS_SCALAR]], i32 1, !any_metadata [[META0:![0-9]+]]
 ; CHECK-OPAQUE-NEXT:    [[POINTER_TO_DOUBLE2:%.*]] = getelementptr double, ptr [[POINTERS_SCALAR]], i32 1, !any_metadata [[META0:![0-9]+]]
-; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <2 x double*> undef, double* [[POINTER_TO_DOUBLE2]], i32 0
-; CHECK-OPAQUE-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <2 x ptr> undef, ptr [[POINTER_TO_DOUBLE2]], i32 0
+; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <2 x double*> poison, double* [[POINTER_TO_DOUBLE2]], i32 0
+; CHECK-OPAQUE-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <2 x ptr> poison, ptr [[POINTER_TO_DOUBLE2]], i32 0
 ; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE3:%.*]] = getelementptr double, double* [[POINTERS_SCALAR1]], i32 1, !any_metadata [[META0]]
 ; CHECK-OPAQUE-NEXT:    [[POINTER_TO_DOUBLE3:%.*]] = getelementptr double, ptr [[POINTERS_SCALAR1]], i32 1, !any_metadata [[META0]]
 ; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT4:%.*]] = insertelement <2 x double*> [[POINTER_TO_DOUBLE_ASSEMBLED_VECT]], double* [[POINTER_TO_DOUBLE3]], i32 1
@@ -91,8 +91,8 @@ define double @should_work_with_vector_of_indices(<2 x double*> %pointers) {
 ; CHECK-OPAQUE-NEXT:    [[POINTERS_SCALAR1:%.*]] = extractelement <2 x ptr> [[POINTERS]], i32 1
 ; CHECK-TYPED-NEXT:    [[POINTERS_TO_DOUBLE2:%.*]] = getelementptr double, double* [[POINTERS_SCALAR]], i32 0
 ; CHECK-OPAQUE-NEXT:    [[POINTERS_TO_DOUBLE2:%.*]] = getelementptr double, ptr [[POINTERS_SCALAR]], i32 0
-; CHECK-TYPED-NEXT:    [[POINTERS_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <2 x double*> undef, double* [[POINTERS_TO_DOUBLE2]], i32 0
-; CHECK-OPAQUE-NEXT:    [[POINTERS_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <2 x ptr> undef, ptr [[POINTERS_TO_DOUBLE2]], i32 0
+; CHECK-TYPED-NEXT:    [[POINTERS_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <2 x double*> poison, double* [[POINTERS_TO_DOUBLE2]], i32 0
+; CHECK-OPAQUE-NEXT:    [[POINTERS_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <2 x ptr> poison, ptr [[POINTERS_TO_DOUBLE2]], i32 0
 ; CHECK-TYPED-NEXT:    [[POINTERS_TO_DOUBLE3:%.*]] = getelementptr double, double* [[POINTERS_SCALAR1]], i32 1
 ; CHECK-OPAQUE-NEXT:    [[POINTERS_TO_DOUBLE3:%.*]] = getelementptr double, ptr [[POINTERS_SCALAR1]], i32 1
 ; CHECK-TYPED-NEXT:    [[POINTERS_TO_DOUBLE_ASSEMBLED_VECT4:%.*]] = insertelement <2 x double*> [[POINTERS_TO_DOUBLE_ASSEMBLED_VECT]], double* [[POINTERS_TO_DOUBLE3]], i32 1
@@ -124,8 +124,8 @@ define i64 @should_work_with_different_value_type(<2 x i64*> %pointers) {
 ; CHECK-OPAQUE-NEXT:    [[POINTERS_SCALAR1:%.*]] = extractelement <2 x ptr> [[POINTERS]], i32 1
 ; CHECK-TYPED-NEXT:    [[POINTER_TO_I642:%.*]] = getelementptr i64, i64* [[POINTERS_SCALAR]], i32 1
 ; CHECK-OPAQUE-NEXT:    [[POINTER_TO_I642:%.*]] = getelementptr i64, ptr [[POINTERS_SCALAR]], i32 1
-; CHECK-TYPED-NEXT:    [[POINTER_TO_I64_ASSEMBLED_VECT:%.*]] = insertelement <2 x i64*> undef, i64* [[POINTER_TO_I642]], i32 0
-; CHECK-OPAQUE-NEXT:    [[POINTER_TO_I64_ASSEMBLED_VECT:%.*]] = insertelement <2 x ptr> undef, ptr [[POINTER_TO_I642]], i32 0
+; CHECK-TYPED-NEXT:    [[POINTER_TO_I64_ASSEMBLED_VECT:%.*]] = insertelement <2 x i64*> poison, i64* [[POINTER_TO_I642]], i32 0
+; CHECK-OPAQUE-NEXT:    [[POINTER_TO_I64_ASSEMBLED_VECT:%.*]] = insertelement <2 x ptr> poison, ptr [[POINTER_TO_I642]], i32 0
 ; CHECK-TYPED-NEXT:    [[POINTER_TO_I643:%.*]] = getelementptr i64, i64* [[POINTERS_SCALAR1]], i32 1
 ; CHECK-OPAQUE-NEXT:    [[POINTER_TO_I643:%.*]] = getelementptr i64, ptr [[POINTERS_SCALAR1]], i32 1
 ; CHECK-TYPED-NEXT:    [[POINTER_TO_I64_ASSEMBLED_VECT4:%.*]] = insertelement <2 x i64*> [[POINTER_TO_I64_ASSEMBLED_VECT]], i64* [[POINTER_TO_I643]], i32 1
@@ -185,8 +185,8 @@ define double @should_work_with_larger_vector_size(<16 x double*> %pointers) {
 ; CHECK-OPAQUE-NEXT:    [[POINTERS_SCALAR15:%.*]] = extractelement <16 x ptr> [[POINTERS]], i32 15
 ; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE16:%.*]] = getelementptr double, double* [[POINTERS_SCALAR]], i32 1
 ; CHECK-OPAQUE-NEXT:    [[POINTER_TO_DOUBLE16:%.*]] = getelementptr double, ptr [[POINTERS_SCALAR]], i32 1
-; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <16 x double*> undef, double* [[POINTER_TO_DOUBLE16]], i32 0
-; CHECK-OPAQUE-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <16 x ptr> undef, ptr [[POINTER_TO_DOUBLE16]], i32 0
+; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <16 x double*> poison, double* [[POINTER_TO_DOUBLE16]], i32 0
+; CHECK-OPAQUE-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <16 x ptr> poison, ptr [[POINTER_TO_DOUBLE16]], i32 0
 ; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE17:%.*]] = getelementptr double, double* [[POINTERS_SCALAR1]], i32 1
 ; CHECK-OPAQUE-NEXT:    [[POINTER_TO_DOUBLE17:%.*]] = getelementptr double, ptr [[POINTERS_SCALAR1]], i32 1
 ; CHECK-TYPED-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT18:%.*]] = insertelement <16 x double*> [[POINTER_TO_DOUBLE_ASSEMBLED_VECT]], double* [[POINTER_TO_DOUBLE17]], i32 1

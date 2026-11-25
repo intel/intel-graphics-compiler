@@ -35,7 +35,7 @@ define spir_func void @test_smin(<4 x i64> %a, <4 x i64> %b, <4 x i64>* %c)
 ; CHECK: [[R2:%[0-9a-zA-Z_.]+]] = call i64 @llvm.smin.i64(i64 [[A2]], i64 [[B2]])
 ; CHECK: [[R3:%[0-9a-zA-Z_.]+]] = call i64 @llvm.smin.i64(i64 [[A3]], i64 [[B3]])
 
-; CHECK: [[V0:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> undef, i64 [[R0]], i32 0
+; CHECK: [[V0:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> poison, i64 [[R0]], i32 0
 ; CHECK: [[V1:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[V0]], i64 [[R1]], i32 1
 ; CHECK: [[V2:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[V1]], i64 [[R2]], i32 2
 ; CHECK: [[V3:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[V2]], i64 [[R3]], i32 3
@@ -64,7 +64,7 @@ define spir_func void @test_smax(<4 x i64> %a, <4 x i64> %b, <4 x i64>* %c) {
 ; CHECK: [[R2:%[0-9a-zA-Z_.]+]] = call i64 @llvm.smax.i64(i64 [[A2]], i64 [[B2]])
 ; CHECK: [[R3:%[0-9a-zA-Z_.]+]] = call i64 @llvm.smax.i64(i64 [[A3]], i64 [[B3]])
 
-; CHECK: [[V0:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> undef, i64 [[R0]], i32 0
+; CHECK: [[V0:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> poison, i64 [[R0]], i32 0
 ; CHECK: [[V1:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[V0]], i64 [[R1]], i32 1
 ; CHECK: [[V2:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[V1]], i64 [[R2]], i32 2
 ; CHECK: [[V3:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[V2]], i64 [[R3]], i32 3
@@ -94,7 +94,7 @@ define spir_func void @test_umin(<4 x i64> %a, <4 x i64> %b, <4 x i64>* %c) {
 ; CHECK: [[R2:%[0-9a-zA-Z_.]+]] = call i64 @llvm.umin.i64(i64 [[A2]], i64 [[B2]])
 ; CHECK: [[R3:%[0-9a-zA-Z_.]+]] = call i64 @llvm.umin.i64(i64 [[A3]], i64 [[B3]])
 
-; CHECK: [[V0:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> undef, i64 [[R0]], i32 0
+; CHECK: [[V0:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> poison, i64 [[R0]], i32 0
 ; CHECK: [[V1:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[V0]], i64 [[R1]], i32 1
 ; CHECK: [[V2:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[V1]], i64 [[R2]], i32 2
 ; CHECK: [[V3:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[V2]], i64 [[R3]], i32 3
@@ -129,7 +129,7 @@ define spir_func void @test_umax_with_usage(<4 x i64> %a, <4 x i64> %b, <4 x i64
 ; CHECK: [[R2:%[0-9a-zA-Z_.]+]] = call i64 @llvm.umax.i64(i64 [[A2]], i64 [[B2]])
 ; CHECK: [[R3:%[0-9a-zA-Z_.]+]] = call i64 @llvm.umax.i64(i64 [[A3]], i64 [[B3]])
 
-; CHECK: [[V0:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> undef, i64 [[R0]], i32 0
+; CHECK: [[V0:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> poison, i64 [[R0]], i32 0
 ; CHECK: [[V1:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[V0]], i64 [[R1]], i32 1
 ; CHECK: [[V2:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[V1]], i64 [[R2]], i32 2
 ; CHECK: [[V3:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[V2]], i64 [[R3]], i32 3
@@ -139,7 +139,7 @@ define spir_func void @test_umax_with_usage(<4 x i64> %a, <4 x i64> %b, <4 x i64
 ; CHECK: [[Q2:%[0-9a-zA-Z_.]+]] = add i64 [[R2]], [[C2]]
 ; CHECK: [[Q3:%[0-9a-zA-Z_.]+]] = add i64 [[R3]], [[C3]]
 
-; CHECK: [[X0:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> undef, i64 [[Q0]], i32 0
+; CHECK: [[X0:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> poison, i64 [[Q0]], i32 0
 ; CHECK: [[X1:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[X0]], i64 [[Q1]], i32 1
 ; CHECK: [[X2:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[X1]], i64 [[Q2]], i32 2
 ; CHECK: [[X3:%[0-9a-zA-Z_.]+]] = insertelement <4 x i64> [[X2]], i64 [[Q3]], i32 3

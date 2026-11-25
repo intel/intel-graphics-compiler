@@ -140,7 +140,7 @@ define spir_kernel void @test_selective_5() {
 ; CHECK-NEXT:    [[DATA7:%.*]] = phi i32 [ 0, [[TMP0]] ], [ undef, [[LOOP]] ]
 ; CHECK-NEXT:    [[DATA8:%.*]] = phi i32 [ 0, [[TMP0]] ], [ undef, [[LOOP]] ]
 ; CHECK-NEXT:    [[DATA9:%.*]] = phi i32 [ 0, [[TMP0]] ], [ undef, [[LOOP]] ]
-; CHECK-NEXT:    [[DATA2_ASSEMBLED_VECT:%.*]] = insertelement <4 x i32> undef, i32 [[DATA1]], i32 0
+; CHECK-NEXT:    [[DATA2_ASSEMBLED_VECT:%.*]] = insertelement <4 x i32> poison, i32 [[DATA1]], i32 0
 ; CHECK-NEXT:    [[DATA2_ASSEMBLED_VECT13:%.*]] = insertelement <4 x i32> [[DATA2_ASSEMBLED_VECT]], i32 [[DATA3]], i32 1
 ; CHECK-NEXT:    [[DATA2_ASSEMBLED_VECT14:%.*]] = insertelement <4 x i32> [[DATA2_ASSEMBLED_VECT13]], i32 [[DATA4]], i32 2
 ; CHECK-NEXT:    [[DATA2_ASSEMBLED_VECT15:%.*]] = insertelement <4 x i32> [[DATA2_ASSEMBLED_VECT14]], i32 [[DATA5]], i32 3
@@ -285,7 +285,7 @@ define <32 x i1> @test_selective_9(i64 %addr) #0 {
 
 define <2 x i32> @should_not_scalarize_if_the_index_is_not_a_constant(i32 %src) {
 ; CHECK-LABEL: @should_not_scalarize_if_the_index_is_not_a_constant(
-; CHECK-NEXT:    [[VECTOR_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[SRC:%.*]], i32 0
+; CHECK-NEXT:    [[VECTOR_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[SRC:%.*]], i32 0
 ; CHECK-NEXT:    [[VECTOR_ASSEMBLED_VECT1:%.*]] = insertelement <2 x i32> [[VECTOR_ASSEMBLED_VECT]], i32 undef, i32 1
 ; CHECK-NEXT:    [[RESULT:%.*]] = insertelement <2 x i32> [[VECTOR_ASSEMBLED_VECT1]], i32 3, i32 [[SRC]]
 ; CHECK-NEXT:    ret <2 x i32> [[RESULT]]
@@ -297,7 +297,7 @@ define <2 x i32> @should_not_scalarize_if_the_index_is_not_a_constant(i32 %src) 
 
 define i32 @should_not_scalarize_if_the_index_is_not_a_constant_2(i32 %src) {
 ; CHECK-LABEL: @should_not_scalarize_if_the_index_is_not_a_constant_2(
-; CHECK-NEXT:    [[VECTOR_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[SRC:%.*]], i32 0
+; CHECK-NEXT:    [[VECTOR_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[SRC:%.*]], i32 0
 ; CHECK-NEXT:    [[VECTOR_ASSEMBLED_VECT1:%.*]] = insertelement <2 x i32> [[VECTOR_ASSEMBLED_VECT]], i32 undef, i32 1
 ; CHECK-NEXT:    [[RESULT:%.*]] = extractelement <2 x i32> [[VECTOR_ASSEMBLED_VECT1]], i32 [[SRC]]
 ; CHECK-NEXT:    ret i32 [[RESULT]]

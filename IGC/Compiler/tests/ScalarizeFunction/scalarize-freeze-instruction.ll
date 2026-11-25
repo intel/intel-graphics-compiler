@@ -25,7 +25,7 @@ define <4 x i32> @freeze_div(<4 x i32> %a, <4 x i32> %b) {
 ; CHECK-NEXT:    [[F1:%.*]] = freeze i32 [[D1]]
 ; CHECK-NEXT:    [[F2:%.*]] = freeze i32 [[D2]]
 ; CHECK-NEXT:    [[F3:%.*]] = freeze i32 [[D3]]
-; CHECK-NEXT:    [[V0:%.*]] = insertelement <4 x i32> undef, i32 [[F0]], i32 0
+; CHECK-NEXT:    [[V0:%.*]] = insertelement <4 x i32> poison, i32 [[F0]], i32 0
 ; CHECK-NEXT:    [[V1:%.*]] = insertelement <4 x i32> [[V0]], i32 [[F1]], i32 1
 ; CHECK-NEXT:    [[V2:%.*]] = insertelement <4 x i32> [[V1]], i32 [[F2]], i32 2
 ; CHECK-NEXT:    [[V3:%.*]] = insertelement <4 x i32> [[V2]], i32 [[F3]], i32 3

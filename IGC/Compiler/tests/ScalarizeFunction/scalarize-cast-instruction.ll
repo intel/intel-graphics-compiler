@@ -21,7 +21,7 @@ define <2 x i8> @basic(<2 x i32> %src1) {
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i32> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[TMP1:%.*]] = trunc i32 [[SRC1_SCALAR]] to i8
 ; CHECK-NEXT:    [[TMP2:%.*]] = trunc i32 [[SRC1_SCALAR1]] to i8
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i8> undef, i8 [[TMP1]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i8> poison, i8 [[TMP1]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x i8> [[DOTASSEMBLED_VECT]], i8 [[TMP2]], i32 1
 ; CHECK-NEXT:    ret <2 x i8> [[DOTASSEMBLED_VECT2]]
 ;
@@ -36,7 +36,7 @@ define <2 x i8> @should_preserve_metadata(<2 x i32> %src1) {
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i32> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[TMP1:%.*]] = trunc i32 [[SRC1_SCALAR]] to i8, !any_metadata [[META0:![0-9]+]]
 ; CHECK-NEXT:    [[TMP2:%.*]] = trunc i32 [[SRC1_SCALAR1]] to i8, !any_metadata [[META0]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i8> undef, i8 [[TMP1]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i8> poison, i8 [[TMP1]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x i8> [[DOTASSEMBLED_VECT]], i8 [[TMP2]], i32 1
 ; CHECK-NEXT:    ret <2 x i8> [[DOTASSEMBLED_VECT2]]
 ;
@@ -51,7 +51,7 @@ define <2 x float> @should_work_with_different_instruction_type(<2 x double> %sr
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x double> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[TMP1:%.*]] = fptrunc double [[SRC1_SCALAR]] to float
 ; CHECK-NEXT:    [[TMP2:%.*]] = fptrunc double [[SRC1_SCALAR1]] to float
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[TMP1]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x float> poison, float [[TMP1]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x float> [[DOTASSEMBLED_VECT]], float [[TMP2]], i32 1
 ; CHECK-NEXT:    ret <2 x float> [[DOTASSEMBLED_VECT2]]
 ;
@@ -66,7 +66,7 @@ define <2 x i8> @should_work_with_different_value_type(<2 x i64> %src1) {
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i64> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[TMP1:%.*]] = trunc i64 [[SRC1_SCALAR]] to i8
 ; CHECK-NEXT:    [[TMP2:%.*]] = trunc i64 [[SRC1_SCALAR1]] to i8
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i8> undef, i8 [[TMP1]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i8> poison, i8 [[TMP1]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x i8> [[DOTASSEMBLED_VECT]], i8 [[TMP2]], i32 1
 ; CHECK-NEXT:    ret <2 x i8> [[DOTASSEMBLED_VECT2]]
 ;
@@ -81,7 +81,7 @@ define <2 x i16> @should_work_with_different_cast_type(<2 x i32> %src1) {
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i32> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[TMP1:%.*]] = trunc i32 [[SRC1_SCALAR]] to i16
 ; CHECK-NEXT:    [[TMP2:%.*]] = trunc i32 [[SRC1_SCALAR1]] to i16
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i16> undef, i16 [[TMP1]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i16> poison, i16 [[TMP1]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x i16> [[DOTASSEMBLED_VECT]], i16 [[TMP2]], i32 1
 ; CHECK-NEXT:    ret <2 x i16> [[DOTASSEMBLED_VECT2]]
 ;
@@ -96,7 +96,7 @@ define <2 x float> @should_work_with_type_cast_type_2(<2 x i32> %src1) {
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i32> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i32 [[SRC1_SCALAR]] to float
 ; CHECK-NEXT:    [[TMP2:%.*]] = bitcast i32 [[SRC1_SCALAR1]] to float
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[TMP1]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x float> poison, float [[TMP1]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x float> [[DOTASSEMBLED_VECT]], float [[TMP2]], i32 1
 ; CHECK-NEXT:    ret <2 x float> [[DOTASSEMBLED_VECT2]]
 ;
@@ -111,7 +111,7 @@ define <2 x i32> @should_work_with_type_extension(<2 x i16> %src1) {
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i16> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[TMP1:%.*]] = zext i16 [[SRC1_SCALAR]] to i32
 ; CHECK-NEXT:    [[TMP2:%.*]] = zext i16 [[SRC1_SCALAR1]] to i32
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[TMP1]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[TMP1]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x i32> [[DOTASSEMBLED_VECT]], i32 [[TMP2]], i32 1
 ; CHECK-NEXT:    ret <2 x i32> [[DOTASSEMBLED_VECT2]]
 ;
@@ -154,7 +154,7 @@ define <16 x i8> @should_work_with_larger_vector_size(<16 x i32> %src1) {
 ; CHECK-NEXT:    [[TMP14:%.*]] = trunc i32 [[SRC1_SCALAR13]] to i8
 ; CHECK-NEXT:    [[TMP15:%.*]] = trunc i32 [[SRC1_SCALAR14]] to i8
 ; CHECK-NEXT:    [[TMP16:%.*]] = trunc i32 [[SRC1_SCALAR15]] to i8
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <16 x i8> undef, i8 [[TMP1]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <16 x i8> poison, i8 [[TMP1]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT16:%.*]] = insertelement <16 x i8> [[DOTASSEMBLED_VECT]], i8 [[TMP2]], i32 1
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT17:%.*]] = insertelement <16 x i8> [[DOTASSEMBLED_VECT16]], i8 [[TMP3]], i32 2
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT18:%.*]] = insertelement <16 x i8> [[DOTASSEMBLED_VECT17]], i8 [[TMP4]], i32 3
@@ -183,7 +183,7 @@ define <2 x ptr> @should_work_with_different_instruction_type_2(<2 x i64> %src1)
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i64> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[TMP1:%.*]] = inttoptr i64 [[SRC1_SCALAR]] to ptr
 ; CHECK-NEXT:    [[TMP2:%.*]] = inttoptr i64 [[SRC1_SCALAR1]] to ptr
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x ptr> undef, ptr [[TMP1]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x ptr> poison, ptr [[TMP1]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x ptr> [[DOTASSEMBLED_VECT]], ptr [[TMP2]], i32 1
 ; CHECK-NEXT:    ret <2 x ptr> [[DOTASSEMBLED_VECT2]]
 ;

@@ -25,7 +25,7 @@ define <2 x i32> @basic(<2 x i1> %switch, <2 x i32> %src1, <2 x i32> %src2) {
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i32> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[RESULT4:%.*]] = select i1 [[SWITCH_SCALAR]], i32 [[SRC1_SCALAR]], i32 [[SRC2_SCALAR]]
 ; CHECK-NEXT:    [[RESULT5:%.*]] = select i1 [[SWITCH_SCALAR3]], i32 [[SRC1_SCALAR1]], i32 [[SRC2_SCALAR2]]
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[RESULT4]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[RESULT4]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT6:%.*]] = insertelement <2 x i32> [[RESULT_ASSEMBLED_VECT]], i32 [[RESULT5]], i32 1
 ; CHECK-NEXT:    ret <2 x i32> [[RESULT_ASSEMBLED_VECT6]]
 ;
@@ -44,7 +44,7 @@ define <2 x i32> @should_preserve_metadata(<2 x i1> %switch, <2 x i32> %src1, <2
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i32> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[RESULT4:%.*]] = select i1 [[SWITCH_SCALAR]], i32 [[SRC1_SCALAR]], i32 [[SRC2_SCALAR]], !any_metadata [[META0:![0-9]+]]
 ; CHECK-NEXT:    [[RESULT5:%.*]] = select i1 [[SWITCH_SCALAR3]], i32 [[SRC1_SCALAR1]], i32 [[SRC2_SCALAR2]], !any_metadata [[META0]]
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[RESULT4]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[RESULT4]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT6:%.*]] = insertelement <2 x i32> [[RESULT_ASSEMBLED_VECT]], i32 [[RESULT5]], i32 1
 ; CHECK-NEXT:    ret <2 x i32> [[RESULT_ASSEMBLED_VECT6]]
 ;
@@ -63,7 +63,7 @@ define <2 x float> @should_work_with_different_value_type(<2 x i1> %switch, <2 x
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x float> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[RESULT4:%.*]] = select i1 [[SWITCH_SCALAR]], float [[SRC1_SCALAR]], float [[SRC2_SCALAR]]
 ; CHECK-NEXT:    [[RESULT5:%.*]] = select i1 [[SWITCH_SCALAR3]], float [[SRC1_SCALAR1]], float [[SRC2_SCALAR2]]
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[RESULT4]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x float> poison, float [[RESULT4]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT6:%.*]] = insertelement <2 x float> [[RESULT_ASSEMBLED_VECT]], float [[RESULT5]], i32 1
 ; CHECK-NEXT:    ret <2 x float> [[RESULT_ASSEMBLED_VECT6]]
 ;
@@ -82,7 +82,7 @@ define <2 x float> @should_work_with_fast_math_flags(<2 x i1> %switch, <2 x floa
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x float> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[RESULT4:%.*]] = select fast i1 [[SWITCH_SCALAR]], float [[SRC1_SCALAR]], float [[SRC2_SCALAR]]
 ; CHECK-NEXT:    [[RESULT5:%.*]] = select fast i1 [[SWITCH_SCALAR3]], float [[SRC1_SCALAR1]], float [[SRC2_SCALAR2]]
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[RESULT4]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x float> poison, float [[RESULT4]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT6:%.*]] = insertelement <2 x float> [[RESULT_ASSEMBLED_VECT]], float [[RESULT5]], i32 1
 ; CHECK-NEXT:    ret <2 x float> [[RESULT_ASSEMBLED_VECT6]]
 ;
@@ -157,7 +157,7 @@ define <16 x i32> @should_work_with_larger_vector_size(<16 x i1> %switch, <16 x 
 ; CHECK-NEXT:    [[RESULT59:%.*]] = select i1 [[SWITCH_SCALAR43]], i32 [[SRC1_SCALAR13]], i32 [[SRC2_SCALAR28]]
 ; CHECK-NEXT:    [[RESULT60:%.*]] = select i1 [[SWITCH_SCALAR44]], i32 [[SRC1_SCALAR14]], i32 [[SRC2_SCALAR29]]
 ; CHECK-NEXT:    [[RESULT61:%.*]] = select i1 [[SWITCH_SCALAR45]], i32 [[SRC1_SCALAR15]], i32 [[SRC2_SCALAR30]]
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <16 x i32> undef, i32 [[RESULT46]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <16 x i32> poison, i32 [[RESULT46]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT62:%.*]] = insertelement <16 x i32> [[RESULT_ASSEMBLED_VECT]], i32 [[RESULT47]], i32 1
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT63:%.*]] = insertelement <16 x i32> [[RESULT_ASSEMBLED_VECT62]], i32 [[RESULT48]], i32 2
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT64:%.*]] = insertelement <16 x i32> [[RESULT_ASSEMBLED_VECT63]], i32 [[RESULT49]], i32 3
@@ -188,7 +188,7 @@ define <2 x i32> @should_work_with_constant_value(<2 x i1> %switch, <2 x i32> %s
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i32> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[RESULT3:%.*]] = select i1 [[SWITCH_SCALAR]], i32 [[SRC1_SCALAR]], i32 2
 ; CHECK-NEXT:    [[RESULT4:%.*]] = select i1 [[SWITCH_SCALAR2]], i32 [[SRC1_SCALAR1]], i32 4
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[RESULT3]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[RESULT3]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT5:%.*]] = insertelement <2 x i32> [[RESULT_ASSEMBLED_VECT]], i32 [[RESULT4]], i32 1
 ; CHECK-NEXT:    ret <2 x i32> [[RESULT_ASSEMBLED_VECT5]]
 ;
@@ -205,7 +205,7 @@ define <2 x i32> @should_work_with_non_vector_condition(i1 %switch, <2 x i32> %s
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i32> [[SRC1]], i32 1
 ; CHECK-NEXT:    [[RESULT3:%.*]] = select i1 [[SWITCH]], i32 [[SRC1_SCALAR]], i32 [[SRC2_SCALAR]]
 ; CHECK-NEXT:    [[RESULT4:%.*]] = select i1 [[SWITCH]], i32 [[SRC1_SCALAR1]], i32 [[SRC2_SCALAR2]]
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[RESULT3]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[RESULT3]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT5:%.*]] = insertelement <2 x i32> [[RESULT_ASSEMBLED_VECT]], i32 [[RESULT4]], i32 1
 ; CHECK-NEXT:    ret <2 x i32> [[RESULT_ASSEMBLED_VECT5]]
 ;
@@ -220,7 +220,7 @@ define <2 x i32> @should_not_select_from_the_same_value(<2 x i1> %switch, <2 x i
 ; CHECK-NEXT:    [[SWITCH_SCALAR2:%.*]] = extractelement <2 x i1> [[SWITCH]], i32 1
 ; CHECK-NEXT:    [[SRC1_SCALAR:%.*]] = extractelement <2 x i32> [[SRC1]], i32 0
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i32> [[SRC1]], i32 1
-; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[SRC1_SCALAR]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[SRC1_SCALAR]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT3:%.*]] = insertelement <2 x i32> [[RESULT_ASSEMBLED_VECT]], i32 [[SRC1_SCALAR1]], i32 1
 ; CHECK-NEXT:    ret <2 x i32> [[RESULT_ASSEMBLED_VECT3]]
 ;

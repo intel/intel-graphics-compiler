@@ -23,7 +23,7 @@ define spir_kernel void @basic(<2 x float> %src1) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x float>, align 8
 ; CHECK-NEXT:    [[TMP2:%.*]] = fneg float [[SRC1_SCALAR]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = fneg float [[SRC1_SCALAR1]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x float> poison, float [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x float> [[DOTASSEMBLED_VECT]], float [[TMP3]], i32 1
 ; CHECK-NEXT:    store <2 x float> [[DOTASSEMBLED_VECT2]], <2 x float>* [[TMP1]], align 8
 ; CHECK-NEXT:    ret void
@@ -42,7 +42,7 @@ define spir_kernel void @should_preserve_metadata(<2 x float> %src1) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x float>, align 8
 ; CHECK-NEXT:    [[TMP2:%.*]] = fneg float [[SRC1_SCALAR]], !any_metadata [[META0:![0-9]+]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = fneg float [[SRC1_SCALAR1]], !any_metadata [[META0]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x float> poison, float [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x float> [[DOTASSEMBLED_VECT]], float [[TMP3]], i32 1
 ; CHECK-NEXT:    store <2 x float> [[DOTASSEMBLED_VECT2]], <2 x float>* [[TMP1]], align 8
 ; CHECK-NEXT:    ret void
@@ -61,7 +61,7 @@ define spir_kernel void @should_work_with_different_type(<2 x double> %src1) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x double>, align 16
 ; CHECK-NEXT:    [[TMP2:%.*]] = fneg double [[SRC1_SCALAR]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = fneg double [[SRC1_SCALAR1]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x double> undef, double [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x double> poison, double [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x double> [[DOTASSEMBLED_VECT]], double [[TMP3]], i32 1
 ; CHECK-NEXT:    store <2 x double> [[DOTASSEMBLED_VECT2]], <2 x double>* [[TMP1]], align 16
 ; CHECK-NEXT:    ret void
@@ -79,7 +79,7 @@ define spir_kernel void @should_work_with_fast_math_flags(<2 x double> %src1) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x double>, align 16
 ; CHECK-NEXT:    [[TMP2:%.*]] = fneg fast double [[SRC1_SCALAR]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = fneg fast double [[SRC1_SCALAR1]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x double> undef, double [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x double> poison, double [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x double> [[DOTASSEMBLED_VECT]], double [[TMP3]], i32 1
 ; CHECK-NEXT:    store <2 x double> [[DOTASSEMBLED_VECT2]], <2 x double>* [[TMP1]], align 16
 ; CHECK-NEXT:    ret void
@@ -126,7 +126,7 @@ define spir_kernel void @should_work_with_larger_vector_size(<16 x float> %src1)
 ; CHECK-NEXT:    [[TMP15:%.*]] = fneg float [[SRC1_SCALAR13]]
 ; CHECK-NEXT:    [[TMP16:%.*]] = fneg float [[SRC1_SCALAR14]]
 ; CHECK-NEXT:    [[TMP17:%.*]] = fneg float [[SRC1_SCALAR15]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <16 x float> undef, float [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <16 x float> poison, float [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT16:%.*]] = insertelement <16 x float> [[DOTASSEMBLED_VECT]], float [[TMP3]], i32 1
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT17:%.*]] = insertelement <16 x float> [[DOTASSEMBLED_VECT16]], float [[TMP4]], i32 2
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT18:%.*]] = insertelement <16 x float> [[DOTASSEMBLED_VECT17]], float [[TMP5]], i32 3
@@ -190,7 +190,7 @@ define void @test_fneg_optnone(<4 x float> %src, <3 x float> addrspace(1)* %out)
 ; CHECK: [[EE1:%.*]] = extractelement <4 x float> %src, i32 1
 ; CHECK: [[EE2:%.*]] = extractelement <4 x float> %src, i32 2
 ; CHECK: [[EE3:%.*]] = extractelement <4 x float> %src, i32 3
-; CHECK: [[IE0:%.*]] = insertelement <3 x float> undef, float [[EE0]], i32 0
+; CHECK: [[IE0:%.*]] = insertelement <3 x float> poison, float [[EE0]], i32 0
 ; CHECK: [[IE1:%.*]] = insertelement <3 x float> [[IE0]], float [[EE1]], i32 1
 ; CHECK: [[IE2:%.*]] = insertelement <3 x float> [[IE1]], float [[EE2]], i32 2
 ; CHECK: [[FNEG:%.*]] = fneg <3 x float> [[IE2]]

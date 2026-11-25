@@ -24,7 +24,7 @@ define spir_kernel void @basic(<2 x i32> %src1, <2 x i32> %src2) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x i32>, align 8
 ; CHECK-NEXT:    [[TMP2:%.*]] = add i32 [[SRC1_SCALAR]], [[SRC2_SCALAR]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = add i32 [[SRC1_SCALAR1]], [[SRC2_SCALAR2]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT3:%.*]] = insertelement <2 x i32> [[DOTASSEMBLED_VECT]], i32 [[TMP3]], i32 1
 ; CHECK-NEXT:    store <2 x i32> [[DOTASSEMBLED_VECT3]], ptr [[TMP1]], align 8
 ; CHECK-NEXT:    ret void
@@ -45,7 +45,7 @@ define spir_kernel void @should_preserve_metadata(<2 x i32> %src1, <2 x i32> %sr
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x i32>, align 8
 ; CHECK-NEXT:    [[TMP2:%.*]] = add i32 [[SRC1_SCALAR]], [[SRC2_SCALAR]], !any_metadata [[META0:![0-9]+]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = add i32 [[SRC1_SCALAR1]], [[SRC2_SCALAR2]], !any_metadata [[META0]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT3:%.*]] = insertelement <2 x i32> [[DOTASSEMBLED_VECT]], i32 [[TMP3]], i32 1
 ; CHECK-NEXT:    store <2 x i32> [[DOTASSEMBLED_VECT3]], ptr [[TMP1]], align 8
 ; CHECK-NEXT:    ret void
@@ -66,7 +66,7 @@ define spir_kernel void @should_work_with_different_instruction_type(<2 x float>
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x float>, align 8
 ; CHECK-NEXT:    [[TMP2:%.*]] = fadd float [[SRC1_SCALAR]], [[SRC2_SCALAR]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = fadd float [[SRC1_SCALAR1]], [[SRC2_SCALAR2]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x float> poison, float [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT3:%.*]] = insertelement <2 x float> [[DOTASSEMBLED_VECT]], float [[TMP3]], i32 1
 ; CHECK-NEXT:    store <2 x float> [[DOTASSEMBLED_VECT3]], ptr [[TMP1]], align 8
 ; CHECK-NEXT:    ret void
@@ -87,7 +87,7 @@ define spir_kernel void @should_work_with_exact_flag(<2 x i32> %src1, <2 x i32> 
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x i32>, align 8
 ; CHECK-NEXT:    [[TMP2:%.*]] = udiv exact i32 [[SRC1_SCALAR]], [[SRC2_SCALAR]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = udiv exact i32 [[SRC1_SCALAR1]], [[SRC2_SCALAR2]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT3:%.*]] = insertelement <2 x i32> [[DOTASSEMBLED_VECT]], i32 [[TMP3]], i32 1
 ; CHECK-NEXT:    store <2 x i32> [[DOTASSEMBLED_VECT3]], ptr [[TMP1]], align 8
 ; CHECK-NEXT:    ret void
@@ -108,7 +108,7 @@ define spir_kernel void @should_work_with_fast_math_flags(<2 x float> %src1, <2 
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x float>, align 8
 ; CHECK-NEXT:    [[TMP2:%.*]] = fadd fast float [[SRC1_SCALAR]], [[SRC2_SCALAR]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = fadd fast float [[SRC1_SCALAR1]], [[SRC2_SCALAR2]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x float> poison, float [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT3:%.*]] = insertelement <2 x float> [[DOTASSEMBLED_VECT]], float [[TMP3]], i32 1
 ; CHECK-NEXT:    store <2 x float> [[DOTASSEMBLED_VECT3]], ptr [[TMP1]], align 8
 ; CHECK-NEXT:    ret void
@@ -129,7 +129,7 @@ define spir_kernel void @should_work_with_different_value_type(<2 x i64> %src1, 
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x i64>, align 16
 ; CHECK-NEXT:    [[TMP2:%.*]] = add i64 [[SRC1_SCALAR]], [[SRC2_SCALAR]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = add i64 [[SRC1_SCALAR1]], [[SRC2_SCALAR2]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i64> undef, i64 [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i64> poison, i64 [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT3:%.*]] = insertelement <2 x i64> [[DOTASSEMBLED_VECT]], i64 [[TMP3]], i32 1
 ; CHECK-NEXT:    store <2 x i64> [[DOTASSEMBLED_VECT3]], ptr [[TMP1]], align 16
 ; CHECK-NEXT:    ret void
@@ -192,7 +192,7 @@ define spir_kernel void @should_work_with_larger_vector_size(<16 x i32> %src1, <
 ; CHECK-NEXT:    [[TMP15:%.*]] = add i32 [[SRC1_SCALAR13]], [[SRC2_SCALAR28]]
 ; CHECK-NEXT:    [[TMP16:%.*]] = add i32 [[SRC1_SCALAR14]], [[SRC2_SCALAR29]]
 ; CHECK-NEXT:    [[TMP17:%.*]] = add i32 [[SRC1_SCALAR15]], [[SRC2_SCALAR30]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <16 x i32> undef, i32 [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <16 x i32> poison, i32 [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT31:%.*]] = insertelement <16 x i32> [[DOTASSEMBLED_VECT]], i32 [[TMP3]], i32 1
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT32:%.*]] = insertelement <16 x i32> [[DOTASSEMBLED_VECT31]], i32 [[TMP4]], i32 2
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT33:%.*]] = insertelement <16 x i32> [[DOTASSEMBLED_VECT32]], i32 [[TMP5]], i32 3
@@ -227,7 +227,7 @@ define spir_kernel void @should_work_with_bit_wise_instruction(<2 x i32> %src1, 
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x i32>, align 8
 ; CHECK-NEXT:    [[TMP2:%.*]] = shl i32 [[SRC1_SCALAR]], [[SRC2_SCALAR]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = shl i32 [[SRC1_SCALAR1]], [[SRC2_SCALAR2]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT3:%.*]] = insertelement <2 x i32> [[DOTASSEMBLED_VECT]], i32 [[TMP3]], i32 1
 ; CHECK-NEXT:    store <2 x i32> [[DOTASSEMBLED_VECT3]], ptr [[TMP1]], align 8
 ; CHECK-NEXT:    ret void
@@ -246,7 +246,7 @@ define spir_kernel void @should_work_with_constant_value(<2 x i32> %src1) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x i32>, align 8
 ; CHECK-NEXT:    [[TMP2:%.*]] = add i32 [[SRC1_SCALAR]], 2
 ; CHECK-NEXT:    [[TMP3:%.*]] = add i32 [[SRC1_SCALAR1]], 4
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x i32> [[DOTASSEMBLED_VECT]], i32 [[TMP3]], i32 1
 ; CHECK-NEXT:    store <2 x i32> [[DOTASSEMBLED_VECT2]], ptr [[TMP1]], align 8
 ; CHECK-NEXT:    ret void
@@ -267,7 +267,7 @@ define spir_kernel void @should_work_with_nuw_nsw(<2 x i32> %src1, <2 x i32> %sr
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x i32>, align 8
 ; CHECK-NEXT:    [[TMP2:%.*]] = add nuw nsw i32 [[SRC1_SCALAR]], [[SRC2_SCALAR]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = add nuw nsw i32 [[SRC1_SCALAR1]], [[SRC2_SCALAR2]]
-; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i32> poison, i32 [[TMP2]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT3:%.*]] = insertelement <2 x i32> [[DOTASSEMBLED_VECT]], i32 [[TMP3]], i32 1
 ; CHECK-NEXT:    store <2 x i32> [[DOTASSEMBLED_VECT3]], ptr [[TMP1]], align 8
 ; CHECK-NEXT:    ret void

@@ -1064,7 +1064,7 @@ void ScalarizeFunction::visitGetElementPtrInst(GetElementPtrInst &GI) {
   SmallVector<Value *, MAX_INPUT_VECTOR_WIDTH> scalarValues;
   scalarValues.resize(width);
 
-  Value *assembledVector = UndefValue::get(IGCLLVM::FixedVectorType::get(ptrTy, width));
+  Value *assembledVector = PoisonValue::get(IGCLLVM::FixedVectorType::get(ptrTy, width));
   for (unsigned i = 0; i < width; ++i) {
     auto op1 = baseValue->getType()->isVectorTy() ? operand1[i] : baseValue;
     auto op2 = indexValue->getType()->isVectorTy() ? operand2[i] : indexValue;
@@ -1253,7 +1253,7 @@ void ScalarizeFunction::obtainVectorValueWhichMightBeScalarizedImpl(Value *vecto
 
   V_PRINT(scalarizer, "\t\t\tTrying to use a removed value. Reassembling it...\n");
   // The vector value was removed. Need to reassemble it...
-  //   %assembled.vect.0 = insertelement <4 x type> undef             , type %scalar.0, i32 0
+  //   %assembled.vect.0 = insertelement <4 x type> poison            , type %scalar.0, i32 0
   //   %assembled.vect.1 = insertelement <4 x type> %indx.vect.0, type %scalar.1, i32 1
   //   %assembled.vect.2 = insertelement <4 x type> %indx.vect.1, type %scalar.2, i32 2
   //   %assembled.vect.3 = insertelement <4 x type> %indx.vect.2, type %scalar.3, i32 3
@@ -1266,7 +1266,7 @@ void ScalarizeFunction::obtainVectorValueWhichMightBeScalarizedImpl(Value *vecto
     insertLocation = IGCLLVM::getFirstNonPHI(insertLocation->getParent());
   }
 
-  Value *assembledVector = UndefValue::get(vectorVal->getType());
+  Value *assembledVector = PoisonValue::get(vectorVal->getType());
   unsigned width = int_cast<unsigned>(dyn_cast<IGCLLVM::FixedVectorType>(vectorVal->getType())->getNumElements());
   for (unsigned i = 0; i < width; i++) {
     IGC_ASSERT_MESSAGE(NULL != valueEntry->scalarValues[i], "SCM entry has NULL value");
