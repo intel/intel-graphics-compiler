@@ -299,8 +299,8 @@ static void finalizeFEOutput(const IGC::AdaptorCM::Frontend::IOutputArgs &FEOutp
   }
 }
 
-static std::optional<std::string> MakeTemporaryCMSource(CIF::Builtins::BufferSimple *Src, std::string tmpFilename,
-                                                        OclTranslationOutputBase &outI);
+static std::optional<std::string> MakeTemporaryCMSource(CIF::Builtins::BufferSimple *Src,
+                                                        const std::string &tmpFilename, OclTranslationOutputBase &outI);
 
 static bool processCmSrcOptions(llvm::SmallVectorImpl<const char *> &userArgs, std::string optname,
                                 std::string &inputFile) {
@@ -388,7 +388,8 @@ static std::vector<const char *> processFeOptions(llvm::sys::DynamicLibrary &Lib
 
 // TODO: most probably we should remove this function once FrontendWrapper
 // is capable to handle in-memory objects properly
-static std::optional<std::string> MakeTemporaryCMSource(CIF::Builtins::BufferSimple *Src, std::string tmpFilename,
+static std::optional<std::string> MakeTemporaryCMSource(CIF::Builtins::BufferSimple *Src,
+                                                        const std::string &tmpFilename,
                                                         OclTranslationOutputBase &outI) {
 
   auto &outputInterface = *outI.GetImpl();

@@ -72,7 +72,7 @@ private:
                                                     llvm::SmallVectorImpl<llvm::StringRef> &Matches);
   void handleFPRoundingMode(llvm::Instruction &I, llvm::SmallPtrSetImpl<llvm::MDNode *> &MDNodes);
 
-  llvm::Type *getArgumentType(std::string demangledName, size_t argNo, llvm::LLVMContext &ctx);
+  llvm::Type *getArgumentType(const std::string &demangledName, size_t argNo, llvm::LLVMContext &ctx);
 };
 
 // Legacy Pass Manager wrapper.

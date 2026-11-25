@@ -2200,8 +2200,8 @@ static Value *loadEltsFromVecAlloca(Type *DstTy, AllocaInst *pVecAlloca, Value *
 
   // For vectors, bitcast to <N * iDstBits>, then change element type if needed.
   IGCLLVM::FixedVectorType *VecIntTy = IGCLLVM::FixedVectorType::get(IRB.getIntNTy((unsigned)DstBits), N);
-  Value *AsIntVec = (NeedBits == (uint64_t)DL.getTypeStoreSizeInBits(VecIntTy)) ? IRB.CreateBitCast(NeedInt, VecIntTy)
-                                                                                : (Value *)nullptr;
+  IGC_ASSERT(NeedBits == (uint64_t)DL.getTypeStoreSizeInBits(VecIntTy));
+  Value *AsIntVec = IRB.CreateBitCast(NeedInt, VecIntTy);
 
   if (!DstScalarTy->isPointerTy()) {
     if (DstScalarTy->isIntegerTy((unsigned)DstBits))

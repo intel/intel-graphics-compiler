@@ -5790,7 +5790,7 @@ VISAKernel *CEncoder::shaderOverrideVISASecondPassOrInlineAsm(bool visaAsmOverri
                                                               bool emitVisaOnly,
                                                               const std::vector<const char *> *additionalVISAAsmToLink,
                                                               const std::vector<std::string> &visaOverrideFiles,
-                                                              const std::string kernelName) {
+                                                              const std::string &kernelName) {
   llvm::SmallVector<const char *, 10> params;
   llvm::SmallVector<std::unique_ptr<const char, std::function<void(const char *)>>, 10> params2;
   InitBuildParams(params2);
@@ -7508,7 +7508,7 @@ std::string CEncoder::GetVariableName(CVariable *var) {
   }
 }
 
-std::string CEncoder::GetDumpFileName(std::string extension) {
+std::string CEncoder::GetDumpFileName(const std::string &extension) {
   std::string filename = IGC::Debug::GetDumpNameObj(m_program, extension.c_str()).str();
   return filename;
 }

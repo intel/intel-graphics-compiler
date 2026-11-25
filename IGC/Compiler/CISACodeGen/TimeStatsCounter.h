@@ -43,7 +43,7 @@ public:
 
 llvm::ModulePass *createTimeStatsCounterPass(CodeGenContext *_ctx, COMPILE_TIME_INTERVALS _interval,
                                              TimeStatsCounterStartEndMode _mode);
-llvm::ModulePass *createTimeStatsIGCPass(CodeGenContext *_ctx, std::string _igcPass,
+llvm::ModulePass *createTimeStatsIGCPass(CodeGenContext *_ctx, const std::string &_igcPass,
                                          TimeStatsCounterStartEndMode _mode);
 void initializeTimeStatsCounterLPMPass(llvm::PassRegistry &);
 

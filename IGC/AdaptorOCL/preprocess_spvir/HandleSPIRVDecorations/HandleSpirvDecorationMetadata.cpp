@@ -47,7 +47,8 @@ HandleSpirvDecorationMetadataLPM::HandleSpirvDecorationMetadataLPM() : ModulePas
 
 // Get type from demangled name for both typed and opaque pointers
 // For opaque pointers, we cannot deduce type from ptr
-Type *HandleSpirvDecorationMetadata::getArgumentType(std::string demangledName, size_t argNo, llvm::LLVMContext &ctx) {
+Type *HandleSpirvDecorationMetadata::getArgumentType(const std::string &demangledName, size_t argNo,
+                                                     llvm::LLVMContext &ctx) {
   auto open = demangledName.find('('), close = demangledName.find(')', open);
   if (open == std::string::npos || close == std::string::npos || close <= open + 1) {
     IGC_ASSERT_MESSAGE(0, "Unexpected demangled name!");

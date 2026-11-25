@@ -33,7 +33,7 @@ public:
   static char ID;
 
   PrivateMemoryToSLM(bool enableOptReport = false);
-  PrivateMemoryToSLM(std::string forcedBuffers, bool enableOptReport);
+  PrivateMemoryToSLM(const std::string &forcedBuffers, bool enableOptReport);
 
   virtual StringRef getPassName() const override { return "PrivateMemoryToSLMPass"; }
 

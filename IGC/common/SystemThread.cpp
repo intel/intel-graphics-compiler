@@ -1838,8 +1838,6 @@ CGenSystemInstructionKernelProgram *CGenSystemInstructionKernelProgram::Create(c
       default:
         break;
       }
-    } else if (mode == SYSTEM_THREAD_MODE_CSR_64B) {
-      break;
     }
     break;
   }

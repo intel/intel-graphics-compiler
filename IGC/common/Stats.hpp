@@ -226,8 +226,8 @@ public:
     return getCompileTime(compileInterval) / (double)m_freq * 1000.0;
   }
 
-  void recordPerPassTimerStart(std::string PassName);
-  void recordPerPassTimerEnd(std::string PassName);
+  void recordPerPassTimerStart(const std::string &PassName);
+  void recordPerPassTimerEnd(const std::string &PassName);
 
 private:
   /// \deprecated Print aggregate times for multiple shaders in csv format

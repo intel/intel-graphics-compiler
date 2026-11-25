@@ -45,7 +45,7 @@ public:
 
   bool checkDependencyAndTryToEliminate(VecArr &Slice, unsigned WindowSize);
   unsigned checkSIMD(llvm::Function &F, IGC::ModuleMetaData *modMD);
-  void initializeLogFile(Function &F, string Name);
+  void initializeLogFile(Function &F, const string &Name);
   void writeLog();
 
   Instruction *getMaxPoint(VecArr &Slice);

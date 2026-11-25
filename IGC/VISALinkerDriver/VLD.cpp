@@ -139,7 +139,8 @@ llvm::Expected<int> GetSIMDSizeFromZeInfo(const zebin::zeInfoContainer &ZeInfo) 
   return *SimdSizes.begin();
 }
 
-void DumpSPIRVFile(const char *programData, size_t programSizeInBytes, const ShaderHash &inputShHash, std::string ext) {
+void DumpSPIRVFile(const char *programData, size_t programSizeInBytes, const ShaderHash &inputShHash,
+                   const std::string &ext) {
   const char *pOutputFolder = IGC::Debug::GetShaderOutputFolder();
 
   TC::DumpShaderFile(pOutputFolder, programData, programSizeInBytes, inputShHash.getAsmHash(), ext);

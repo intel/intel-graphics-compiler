@@ -294,8 +294,8 @@ struct DEVICE_INFO {
 void GetKeysSetExplicitly(std::string *KeyValuePairs, std::string *OptionKeys);
 void LoadIGCFlagsFromRegistryAndGetString(std::string &outToken);
 void DumpIGCRegistryKeyDefinitions();
-void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned long pciBus, unsigned long pciDevice,
-                                    unsigned long pciFunction);
+void DumpIGCRegistryKeyDefinitions3(const std::string &driverRegistryPath, unsigned long pciBus,
+                                    unsigned long pciDevice, unsigned long pciFunction);
 void InitializeRegKeys();
 void LoadRegistryKeys(const std::string &options = "", std::string *optionsParseError = nullptr);
 extern "C" bool ReadIGCRegistry(const char *pName, void *pValue, unsigned int size, IGCFlagType type);

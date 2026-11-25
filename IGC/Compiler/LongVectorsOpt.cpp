@@ -57,9 +57,9 @@ private:
   bool resolveInsertElement(InsertElementInst *Insert);
 
 private:
-  const DataLayout *DL;
-  DominatorTree *DT;
-  AAResults *AA;
+  const DataLayout *DL = nullptr;
+  DominatorTree *DT = nullptr;
+  AAResults *AA = nullptr;
   SmallSetVector<PHINode *, 4> Phis;
   SmallSetVector<ExtractElementInst *, 4> ExtractElements;
   SmallSetVector<InsertElementInst *, 4> InsertElements;

@@ -650,8 +650,8 @@ void DumpIGCRegistryKeyDefinitions() {
   DumpIGCRegistryKeyDefinitions(registryKeyPath, xmlPath);
 }
 
-void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned long pciBus, unsigned long pciDevice,
-                                    unsigned long pciFunction) {
+void DumpIGCRegistryKeyDefinitions3(const std::string &driverRegistryPath, unsigned long pciBus,
+                                    unsigned long pciDevice, unsigned long pciFunction) {
   if (driverRegistryPath.empty()) {
     IGC_ASSERT_MESSAGE(0, "Failed to find the driver registry path, cannot create the debug variable XML file.");
     return;

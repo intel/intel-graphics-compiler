@@ -207,6 +207,6 @@ CastToGASInfoWrapper::CastToGASInfoWrapper() : ModulePass(ID) {
 bool CastToGASInfoWrapper::runOnModule(Module &M) {
   CastToGASAnalysis &CTGA = getAnalysis<CastToGASAnalysis>();
   CastToGASInfo &CTGI = getAnalysis<CastToGASInfo>();
-  CTGI.setGASInfo(CTGA.getGASInfo());
+  CTGI.stealGASInfo(std::move(CTGA.getGASInfo()));
   return false;
 }

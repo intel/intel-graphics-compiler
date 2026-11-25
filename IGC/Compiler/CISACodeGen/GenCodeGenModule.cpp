@@ -75,8 +75,8 @@ void GenXCodeGenModule::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<llvm::CallGraphWrapperPass>();
 }
 
-static Function *cloneFunc(IGCMD::MetaDataUtils *pM, ModuleMetaData *modMD, Function *F, string prefix = "",
-                           string postfix = "_GenXClone") {
+static Function *cloneFunc(IGCMD::MetaDataUtils *pM, ModuleMetaData *modMD, Function *F, const string &prefix = "",
+                           const string &postfix = "_GenXClone") {
   ValueToValueMapTy VMap;
 
   Function *ClonedFunc = CloneFunction(F, VMap);

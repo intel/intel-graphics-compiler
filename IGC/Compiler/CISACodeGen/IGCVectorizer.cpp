@@ -156,7 +156,7 @@ void IGCVectorizerCommon::writeLog() {
   OutputLogStream.str().clear();
 }
 
-void IGCVectorizerCommon::initializeLogFile(Function &F, string FileName) {
+void IGCVectorizerCommon::initializeLogFile(Function &F, const string &FileName) {
   if (!IGC_IS_FLAG_ENABLED(VectorizerLog))
     return;
 

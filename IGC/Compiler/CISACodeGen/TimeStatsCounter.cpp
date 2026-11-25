@@ -48,7 +48,7 @@ ModulePass *IGC::createTimeStatsCounterPass(CodeGenContext *_ctx, COMPILE_TIME_I
   return new TimeStatsCounterLPM(_ctx, _interval, _mode);
 }
 
-ModulePass *IGC::createTimeStatsIGCPass(CodeGenContext *_ctx, std::string _igcPass,
+ModulePass *IGC::createTimeStatsIGCPass(CodeGenContext *_ctx, const std::string &_igcPass,
                                         TimeStatsCounterStartEndMode _mode) {
   return new TimeStatsCounterLPM(_ctx, _igcPass, _mode);
 }

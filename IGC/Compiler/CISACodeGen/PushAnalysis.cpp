@@ -73,7 +73,7 @@ template <typename T> std::string to_string(const T &n) {
   return stm.str();
 }
 
-Value *PushAnalysis::addArgumentAndMetadata(llvm::Type *pType, std::string argName,
+Value *PushAnalysis::addArgumentAndMetadata(llvm::Type *pType, const std::string &argName,
                                             IGC::WIAnalysis::WIDependancy dependency) {
   auto pArgInfo = m_pFuncUpgrade.AddArgument(argName, pType);
   ModuleMetaData *modMD = nullptr;

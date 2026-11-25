@@ -125,7 +125,8 @@ public:
     AU.addRequired<PullConstantHeuristics>();
   }
 
-  llvm::Value *addArgumentAndMetadata(llvm::Type *pType, std::string argName, IGC::WIAnalysis::WIDependancy dependency);
+  llvm::Value *addArgumentAndMetadata(llvm::Type *pType, const std::string &argName,
+                                      IGC::WIAnalysis::WIDependancy dependency);
   bool runOnModule(llvm::Module &) override;
   void ProcessFunction();
   void AnalyzeFunction(llvm::Function *F) {

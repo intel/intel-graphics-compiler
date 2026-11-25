@@ -68,7 +68,7 @@ static string ToStringAbove1(int number) {
 }
 
 // Replaces all occurrences of `toReplace` with `newText` in `source`
-static string Replace(string source, string toReplace, const string &newText) {
+static string Replace(string source, const string &toReplace, const string &newText) {
   size_t pos = 0;
   while ((pos = source.find(toReplace, pos)) != std::string::npos) {
     source.replace(pos, toReplace.length(), newText);
@@ -292,7 +292,7 @@ static string GetVectorLoadSuffix(int bitWidth) {
   return "";
 }
 
-static string ConstructVector(string vecType, string varPrefix, int count) {
+static string ConstructVector(const string &vecType, const string &varPrefix, int count) {
   string s = "(" + vecType + ")(";
   for (int i = 0; i < count; i++) {
     s += varPrefix + to_string(i);

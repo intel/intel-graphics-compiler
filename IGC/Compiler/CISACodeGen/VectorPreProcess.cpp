@@ -1352,7 +1352,7 @@ void VectorPreProcess::getOrGenScalarValues(Function &F, Value *VecVal, ValVecto
 Instruction *VectorPreProcess::simplifyLoadStore(Instruction *Inst) {
   if (std::optional<AbstractLoadInst> optionalALI = AbstractLoadInst::get(Inst, *m_DL)) {
     bool optReportEnabled = IGC_IS_FLAG_ENABLED(EnableOptReportLoadNarrowing);
-    auto emitOptReport = [&](std::string report, Instruction *from, Instruction *to) {
+    auto emitOptReport = [&](const std::string &report, Instruction *from, Instruction *to) {
       std::string strFrom;
       llvm::raw_string_ostream rsoFrom(strFrom);
       from->print(rsoFrom);

@@ -458,7 +458,7 @@ public:
   void AddVISASymbol(std::string &symName, CVariable *cvar);
 
   std::string GetVariableName(CVariable *var);
-  std::string GetDumpFileName(std::string extension);
+  std::string GetDumpFileName(const std::string &extension);
 
   bool IsPayloadSectionAsPrimary() { return vKernel == vPayloadSection; }
   void SetPayloadSectionAsPrimary() {
@@ -637,7 +637,7 @@ private:
   VISAKernel *shaderOverrideVISASecondPassOrInlineAsm(bool visaAsmOverride, bool hasSymbolTable, bool emitVisaOnly,
                                                       const std::vector<const char *> *additionalVISAAsmToLink,
                                                       const std::vector<std::string> &visaOverrideFiles,
-                                                      const std::string kernelName);
+                                                      const std::string &kernelName);
 
   // setup m_retryManager according to jitinfo and other factors
   void SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO *jitInfo, GenXFunctionGroupAnalysis *&pFGA);

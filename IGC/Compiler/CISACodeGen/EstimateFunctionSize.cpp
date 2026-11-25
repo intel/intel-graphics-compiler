@@ -488,7 +488,7 @@ struct FunctionNode {
     return "";
   }
 
-  void dumpFuncInfo(uint16_t type, std::string message) {
+  void dumpFuncInfo(uint16_t type, const std::string &message) {
     std::string dumpInfo = message + ", ";
     dumpInfo += F->getName().str();
     dumpInfo += ", Function Attribute: ";

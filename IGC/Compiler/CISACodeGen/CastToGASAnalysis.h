@@ -116,10 +116,7 @@ public:
   virtual llvm::StringRef getPassName() const override { return "Cast To GAS info for EmitPass"; }
 
   const GASInfo &getGASInfo() const { return GI; }
-  void setGASInfo(GASInfo &aGI) {
-    GI.~GASInfo();
-    GI = std::move(aGI);
-  }
+  void stealGASInfo(GASInfo &&aGI) { GI = std::move(aGI); }
 };
 
 class CastToGASInfoWrapper : public llvm::ModulePass {

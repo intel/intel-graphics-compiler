@@ -625,7 +625,7 @@ void TimeStats::printPerPassSumTimeCSV(std::string const &outputFile) const {
   }
 }
 
-void TimeStats::recordPerPassTimerStart(std::string PassName) {
+void TimeStats::recordPerPassTimerStart(const std::string &PassName) {
   IGC_ASSERT(!PassName.empty());
 
   std::map<std::string, PerPassTimeStat>::iterator iter = m_PassTimeStatsMap.find(PassName);
@@ -641,7 +641,7 @@ void TimeStats::recordPerPassTimerStart(std::string PassName) {
   }
 }
 
-void TimeStats::recordPerPassTimerEnd(std::string PassName) {
+void TimeStats::recordPerPassTimerEnd(const std::string &PassName) {
   IGC_ASSERT(!PassName.empty());
 
   std::map<std::string, PerPassTimeStat>::iterator iter = m_PassTimeStatsMap.find(PassName);

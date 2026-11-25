@@ -47,7 +47,7 @@ PrivateMemoryToSLM::PrivateMemoryToSLM(bool enableOptReport /* = false */)
   initializePrivateMemoryToSLMPass(*PassRegistry::getPassRegistry());
 }
 
-PrivateMemoryToSLM::PrivateMemoryToSLM(std::string forcedBuffers, bool enableOptReport)
+PrivateMemoryToSLM::PrivateMemoryToSLM(const std::string &forcedBuffers, bool enableOptReport)
     : ModulePass(ID), m_ForceAll(false), m_EnableOptReport(enableOptReport) {
   // Parse semocolon-separated list of forced buffers.
   const char *SEPARATORS = ";";
@@ -66,7 +66,7 @@ PrivateMemoryToSLM::PrivateMemoryToSLM(std::string forcedBuffers, bool enableOpt
   initializePrivateMemoryToSLMPass(*PassRegistry::getPassRegistry());
 }
 
-void emitOptReport(std::string report) {
+void emitOptReport(const std::string &report) {
   std::stringstream optReportFile;
   optReportFile << IGC::Debug::GetShaderOutputFolder() << "PrivateMemoryToSLM.opt";
 
