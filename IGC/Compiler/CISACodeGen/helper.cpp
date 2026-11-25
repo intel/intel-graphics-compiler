@@ -2391,6 +2391,109 @@ uint32_t getXe2SIMD16DropBudget(CodeGenContext *CTX, llvm::Function *F) {
   return GRFBudget;
 }
 
+uint32_t getMaxGRFNumForReqdWorkGroupSize(const CodeGenContext *CTX, llvm::Function *F, SIMDMode simdMode) {
+  // NEO reduces maxWorkGroupSize in proportion to the HW threads per EU of the
+  // GRF number. It allows the full size down to the threads per EU of 128 GRF,
+  // or to half of them for SIMD32. Returns the largest GRF number that still fits
+  // reqd_work_group_size, or 0 when no cap is needed.
+  const CPlatform &Platform = CTX->platform;
+  if (!Platform.isCoreChildOf(IGFX_XE_HP_CORE))
+    return 0;
+
+  uint32_t reqdWorkGroupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSize(CTX->getModuleMetaData(), F);
+  if (reqdWorkGroupSize == 0)
+    return 0;
+
+  uint32_t maxWGSize = CTX->getModuleMetaData()->csInfo.maxWorkGroupSize;
+  if (maxWGSize == 0)
+    maxWGSize = Platform.getOfflineCompilerMaxWorkGroupSize();
+
+  auto Modes = Platform.getMaxGRFVRTTable(/*MaxNumGRF=*/0, /*StaticModes=*/true);
+  auto DefaultMode = llvm::find_if(Modes, [](const VRT::ModeEntry &Mode) {
+    return static_cast<uint32_t>(Mode.first) >= CodeGenContext::DEFAULT_TOTAL_GRF_NUM;
+  });
+  if (DefaultMode == Modes.end())
+    return 0;
+
+  uint64_t FullSizeThreads = static_cast<uint64_t>(DefaultMode->second);
+  if (simdMode == SIMDMode::SIMD32)
+    FullSizeThreads = std::max<uint64_t>(FullSizeThreads / 2, 1);
+
+  // A work group that fits no mode keeps the smallest one, never the no-cap result 0.
+  uint32_t MaxNumGRF = static_cast<uint32_t>(Modes.front().first);
+  for (const VRT::ModeEntry &Mode : Modes) {
+    uint64_t Threads = std::min(static_cast<uint64_t>(Mode.second), FullSizeThreads);
+    if (static_cast<uint64_t>(reqdWorkGroupSize) * FullSizeThreads > static_cast<uint64_t>(maxWGSize) * Threads)
+      break;
+    MaxNumGRF = static_cast<uint32_t>(Mode.first);
+  }
+
+  return MaxNumGRF == static_cast<uint32_t>(Modes.back().first) ? 0 : MaxNumGRF;
+}
+
+uint32_t getXe2SIMD16NumGRF(CodeGenContext *CTX, llvm::Function *F) {
+  uint32_t NumGRF = getXe2SIMD16DropBudget(CTX, F);
+  if (NumGRF == 0 || CTX->type != ShaderType::OPENCL_SHADER || !CTX->platform.supportsStaticRegSharing())
+    return NumGRF;
+  // vISA takes the mode with a requested number of threads over the GRF number, or keeps its default mode when there
+  // is none.
+  auto Modes = CTX->platform.getVRTTable(/*SelectableOnly=*/false, /*StaticModes=*/true);
+  auto NumGRFForThreads = [&Modes](int32_t NumThreads) {
+    auto It = llvm::find_if(Modes, [NumThreads](const VRT::ModeEntry &Mode) { return Mode.second == NumThreads; });
+    return It != Modes.end() ? static_cast<uint32_t>(It->first) : CodeGenContext::DEFAULT_TOTAL_GRF_NUM;
+  };
+  // CEncoder passes getNumGRFPerThread to vISA as TotalGRFNum, which turns automatic GRF selection off. Otherwise
+  // automatic selection is capped at the VRT GRF ceiling, which does not limit a fixed GRF number or thread count.
+  const bool HasTotalGRFNum = CTX->getNumGRFPerThread(false, F) != 0;
+  const uint32_t Ceiling = CTX->getVRTGRFCeiling();
+  auto AutoNumGRF = [HasTotalGRFNum, Ceiling, NumGRF](uint32_t MaxNumGRF) {
+    if (HasTotalGRFNum)
+      return NumGRF;
+    return Ceiling != 0 ? std::min(MaxNumGRF, Ceiling) : MaxNumGRF;
+  };
+  auto *OCLCtx = static_cast<OpenCLProgramContext *>(CTX);
+  const bool HasNumGRFForThreads = OCLCtx->getNumGRFForRequestedThreads(F) != 0;
+  // CEncoder sets the thread count of the kernel attribute last when getNumGRFForRequestedThreads finds no GRF number
+  // for it, as next to a GRF kernel option or register file size.
+  int32_t NumThreads = 0;
+  if (!HasNumGRFForThreads && F->hasFnAttribute("num-thread-per-eu") &&
+      !F->getFnAttribute("num-thread-per-eu").getValueAsString().getAsInteger(10, NumThreads) && NumThreads > 0)
+    return NumGRFForThreads(NumThreads);
+  // Otherwise as in CEncoder: a register count requested by the kernel or the GRF number for the requested threads
+  // wins, then the regular and large GRF kernel options, which set 8 and 4 threads per EU outside getNumGRFPerThread,
+  // then the thread count annotated in the kernel metadata, a register file size and the module thread count.
+  // Module-wide automatic GRF selection is capped to fit reqd_work_group_size, unlike an annotated automatic selection.
+  const int32_t RequestedNumGRF = OCLCtx->getRequestedNumGRF(F);
+  if (RequestedNumGRF == 0)
+    return AutoNumGRF(NumGRF);
+  if (RequestedNumGRF > 0 || HasNumGRFForThreads)
+    return NumGRF;
+  auto KernelNameMatches = [F](const std::vector<std::string> &SubNames) {
+    return llvm::any_of(SubNames, [F](const std::string &SubName) { return F->getName().contains(SubName); });
+  };
+  if (KernelNameMatches(OCLCtx->m_Options.RegularGRFKernels))
+    return 128;
+  if (KernelNameMatches(OCLCtx->m_Options.LargeGRFKernels))
+    return 256;
+  const auto &FuncMD = CTX->getModuleMetaData()->FuncMD;
+  auto FuncInfo = FuncMD.find(F);
+  int32_t AnnotatedNumThreads = FuncInfo != FuncMD.end() ? extractAnnotatedNumThreads(FuncInfo->second) : -1;
+  if (CTX->platform.isValidNumThreads(AnnotatedNumThreads)) {
+    if (AnnotatedNumThreads > 0)
+      return NumGRFForThreads(AnnotatedNumThreads);
+    return AutoNumGRF(static_cast<uint32_t>(Modes.back().first));
+  }
+  if (OCLCtx->getExpGRFSize() != 0)
+    return NumGRF;
+  if (OCLCtx->getNumThreadsPerEU() > 0)
+    return NumGRFForThreads(OCLCtx->getNumThreadsPerEU());
+  if (!HasTotalGRFNum && CTX->isAutoGRFSelectionEnabled(F)) {
+    uint32_t MaxNumGRF = getMaxGRFNumForReqdWorkGroupSize(CTX, F, SIMDMode::SIMD16);
+    return AutoNumGRF(MaxNumGRF != 0 ? std::min(NumGRF, MaxNumGRF) : NumGRF);
+  }
+  return NumGRF;
+}
+
 llvm::ArrayRef<VRT::ModeEntry>::iterator findVRTBand(llvm::ArrayRef<VRT::ModeEntry> Table, unsigned Pressure) {
   auto Band = llvm::find_if(Table, [&](const VRT::ModeEntry &M) { return (unsigned)M.first >= Pressure; });
   return Band == Table.end() && !Table.empty() ? std::prev(Band) : Band;

@@ -262,10 +262,11 @@ private:
   void rematWholeChain(llvm::Instruction *I, RematChain &Chain, IRTransaction &Tx);
   unsigned int measurePressure(Function &F);
   unsigned int pressureBudget(Function &F);
+  unsigned int simd16DropPressure(Function &F, unsigned int Budget);
   bool prefersSIMD16OnVRT(Function &F);
   unsigned int retryPressureBudget(Function &F);
   bool isOwnedByFlow(Instruction *Op, const RematSet &Seeds);
-  void commitIfBudgetReached(Function &F, IRTransaction &Remat, unsigned int Budget);
+  void commitIfBudgetReached(Function &F, IRTransaction &Remat, unsigned int Budget, unsigned int SIMD16Pressure);
   void rematerializeWithinBudget(Function &F, RematSet &ToProcess, unsigned int FlowThreshold, bool OwnedChainsOnly);
   void estimateProfit(RematSet &ToProcess);
   void initializeLogFile(Function &F);
@@ -737,8 +738,9 @@ void CloneAddressArithmetic::estimateProfit(RematSet &ToProcess) {
 
 // Pressure a stage has to stay within to be kept, 0 when no such target applies to the function.
 // On XE2 an OpenCL kernel whose SIMD32 pressure is above the GRF budget is dropped to SIMD16 before codegen, so
-// rematerialization only helps if it brings the pressure back under that budget. On platforms with VRT a kernel
-// above the largest GRF mode cannot get more registers, so it only helps if it brings the pressure under that mode.
+// rematerialization helps if it brings the pressure back under that budget, or if it lets the SIMD16 kernel fit its
+// GRF number (see commitIfBudgetReached). On platforms with VRT a kernel above the largest GRF mode cannot get more
+// registers, so it only helps if it brings the pressure under that mode.
 unsigned int CloneAddressArithmetic::pressureBudget(Function &F) {
   if (!m_firstCompile)
     return IGC_IS_FLAG_ENABLED(RematRetryRollback) ? retryPressureBudget(F) : 0;
@@ -783,6 +785,15 @@ unsigned int CloneAddressArithmetic::measurePressure(Function &F) {
   return RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
 }
 
+// On XE2 a kernel that stays over the SIMD16 drop budget is compiled at SIMD16. Returns the SIMD16 pressure of the
+// function as it is now when that applies to a first-compile stage with the given budget, otherwise 0.
+unsigned int CloneAddressArithmetic::simd16DropPressure(Function &F, unsigned int Budget) {
+  if (!m_firstCompile || !Budget || SIMD != numLanes(SIMDMode::SIMD32) ||
+      Budget != IGC::getXe2SIMD16DropBudget(CGCtx, &F))
+    return 0;
+  return RPE->getMaxRegCountForFunction(F, numLanes(SIMDMode::SIMD16), &WI->Runner);
+}
+
 // The XE3 VRT SIMD16 drop picks SIMD16 when SIMD16 pressure is low, even if SIMD32 would fit. A fixed SIMD32 width
 // is never dropped. Checked on the current IR, for a stage that estimates pressure at SIMD32.
 bool CloneAddressArithmetic::prefersSIMD16OnVRT(Function &F) {
@@ -798,14 +809,24 @@ bool CloneAddressArithmetic::prefersSIMD16OnVRT(Function &F) {
 
 // The static profit estimate assumes every cloned value is live at the pressure peak and is far too optimistic to
 // predict whether a budget is reached, so the pressure of the rematerialized function is measured instead.
-// Rematerialization that leaves it over the budget is undone: the clones would only add instructions. So is
-// first-compile rematerialization at SIMD32 that lowers the pressure enough for the XE3 VRT SIMD16 drop: the kernel
-// would not keep SIMD32, and the clones would only shrink the SIMD16 register allocation. Otherwise the transaction is
-// committed.
-void CloneAddressArithmetic::commitIfBudgetReached(Function &F, IRTransaction &Remat, unsigned int Budget) {
+// Rematerialization that leaves it over the budget is undone: the clones would only add instructions. The exception
+// is the XE2 SIMD16 drop: the kernel then compiles at SIMD16, and the clones are kept when they bring SIMD16 pressure
+// (SIMD16Pressure, measured before rematerialization) from over the kernel's SIMD16 GRF number to within it, since
+// without them the SIMD16 compile would spill. First-compile rematerialization at SIMD32 that lowers the pressure
+// enough for the XE3 VRT SIMD16 drop is undone too: the kernel would not keep SIMD32, and the clones would only shrink
+// the SIMD16 register allocation. Otherwise the transaction is committed.
+void CloneAddressArithmetic::commitIfBudgetReached(Function &F, IRTransaction &Remat, unsigned int Budget,
+                                                   unsigned int SIMD16Pressure) {
   const unsigned int Pressure = measurePressure(F);
   PRINT_LOG_NL("Pressure budget: " << Budget << " MaxPressure: " << MaxPressure << " -> " << Pressure);
-  const bool OverBudget = Budget && Pressure > Budget;
+  bool OverBudget = Budget && Pressure > Budget;
+  const unsigned int SIMD16NumGRF = SIMD16Pressure ? IGC::getXe2SIMD16NumGRF(CGCtx, &F) : 0;
+  if (OverBudget && SIMD16Pressure > SIMD16NumGRF) {
+    const unsigned int NewSIMD16Pressure = simd16DropPressure(F, Budget);
+    PRINT_LOG_NL("SIMD16 GRF number: " << SIMD16NumGRF << " SIMD16 pressure: " << SIMD16Pressure << " -> "
+                                       << NewSIMD16Pressure);
+    OverBudget = NewSIMD16Pressure > SIMD16NumGRF;
+  }
   if (OverBudget || (m_firstCompile && prefersSIMD16OnVRT(F))) {
     PRINT_LOG_NL((OverBudget ? "Budget not reached" : "SIMD16 drop after rematerialization") << ", rolling back");
     Remat.rollback();
@@ -815,15 +836,17 @@ void CloneAddressArithmetic::commitIfBudgetReached(Function &F, IRTransaction &R
   Remat.commit();
 }
 
-// Keeps the remat only if the measured pressure is within pressureBudget; liveness is up to date afterwards.
+// Keeps the remat only if the measured pressure is within pressureBudget, or the XE2 SIMD16 drop exception of
+// commitIfBudgetReached applies; liveness is up to date afterwards.
 // The caller must report a change even after a rollback to invalidate WIAnalysis entries of the erased clones.
 void CloneAddressArithmetic::rematerializeWithinBudget(Function &F, RematSet &ToProcess, unsigned int FlowThreshold,
                                                        bool OwnedChainsOnly) {
   const unsigned int Budget = pressureBudget(F);
+  const unsigned int SIMD16Pressure = simd16DropPressure(F, Budget);
   IRTransaction Remat;
   rematerialize(ToProcess, FlowThreshold, Remat, OwnedChainsOnly);
   Remat.detachDead();
-  commitIfBudgetReached(F, Remat, Budget);
+  commitIfBudgetReached(F, Remat, Budget, SIMD16Pressure);
 }
 
 void CloneAddressArithmetic::speculateWholeChain(RematSet &ToProcess, unsigned int UsesLimit, bool OwnedChainsOnly) {

@@ -4313,6 +4313,8 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   //    1.3 compiler option for entire module
   //  2. Compiler heuristics
   //
+  // getXe2SIMD16NumGRF in helper.cpp copies this chain and the vISA_MaxGRFNum cap of InitEncoder, keep them in sync.
+  //
   if (context->type == ShaderType::OPENCL_SHADER) {
     auto ClContext = static_cast<OpenCLProgramContext *>(context);
     if (m_program->m_Platform->supportsStaticRegSharing()) {
@@ -4358,10 +4360,10 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
         // to determine number of threads per EU
         SaveOption(vISA_AutoGRFSelection, true);
 
-        auto *oclKernel = static_cast<COpenCLKernel *>(m_program);
         // Cap GRF count for kernels with reqd_work_group_size that would
         // exceed the runtime's reduced maxWorkGroupSize when using more GRFs.
-        if (uint32_t maxGRFNum = oclKernel->getMaxGRFNumForReqdWorkGroupSize(m_program->m_State.m_dispatchSize))
+        if (uint32_t maxGRFNum =
+                getMaxGRFNumForReqdWorkGroupSize(ClContext, m_program->entry, m_program->m_State.m_dispatchSize))
           SaveOption(vISA_MaxGRFNum, maxGRFNum);
       }
 

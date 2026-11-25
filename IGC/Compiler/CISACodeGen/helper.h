@@ -419,6 +419,17 @@ unsigned pressureThresholdSIMDLanes(const CodeGenContext *CTX, const llvm::Funct
 bool hasLargePrivateMemoryKernel(const CodeGenContext *CTX, const llvm::Function *F);
 // GRF budget above which the early SIMD32 pressure check drops an OpenCL kernel to SIMD16 on XE2, 0 elsewhere.
 uint32_t getXe2SIMD16DropBudget(CodeGenContext *CTX, llvm::Function *F);
+// Largest GRF number for which the OpenCL kernel F keeps its reqd_work_group_size at the given SIMD, 0 when no cap is
+// needed.
+uint32_t getMaxGRFNumForReqdWorkGroupSize(const CodeGenContext *CTX, llvm::Function *F, SIMDMode simdMode);
+// Largest GRF number an OpenCL kernel dropped to SIMD16 on XE2 compiles with, 0 elsewhere.
+// Temporary copy of the GRF option chain of CEncoder::InitVISABuilderOptions and InitEncoder, which must follow every
+// change there. It covers the inputs that still bypass getNumGRFPerThread, isAutoGRFSelectionEnabled and
+// getAutoGRFVRTTable: the regular and large GRF kernel lists, thread counts only in the kernel metadata, a thread
+// count next to a register file size, and the work group size and VRT GRF ceiling caps of automatic selection. The
+// SIMD16 drop decision and other passes read those queries, so they can see another GRF number for such kernels.
+// Once the queries cover these inputs, this should return their answer.
+uint32_t getXe2SIMD16NumGRF(CodeGenContext *CTX, llvm::Function *F);
 
 // The VRT mode a kernel with Pressure GRFs lands in, the largest one if it does not fit any.
 llvm::ArrayRef<VRT::ModeEntry>::iterator findVRTBand(llvm::ArrayRef<VRT::ModeEntry> Table, unsigned Pressure);
