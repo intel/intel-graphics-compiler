@@ -36,10 +36,10 @@ kernel void test_simple(global int* output)
   // To force spill of the variable private_array.
   // This will generate the metadata !user_as_priv in LLVM-IR
   // and comment in asm dump "address space: private;"
-  int private_array[1024];
-  int private_array_2[1024];
+  int private_array[1020];
+  int private_array_2[1020];
 
-  for(int i = 0; i < 1024; ++i)
+  for(int i = 0; i < 1020; ++i)
   {
 // Look first for the debugInfo mark which indetify the asign place
 // CHECK-LLVM: [[PA1:![0-9]+]] = !DILocation(line: [[@LINE+7]], column: 22,
@@ -52,7 +52,7 @@ kernel void test_simple(global int* output)
     private_array[i] = i;
   }
 
-  for(int i = 1023; i >= 0 ; --i)
+  for(int i = 1019; i >= 0 ; --i)
   {
 // CHECK-LLVM2: [[PA2:![0-9]+]] = !DILocation(line: [[@LINE+3]], column: 21,
 // CHECK-LLVM2-NOT: {{^ store .*, !dbg }}[[PA2]]{{, !([^u]|u[^s]|us[^e]|use[^r]|user[^_]|user_[^a]|user_a[^s]|user_as[^_]|user_as_[^p])}}
@@ -64,7 +64,7 @@ kernel void test_simple(global int* output)
     private_array_2[i] = tmp;
   }
 
-  for(int i = 0; i < 1024; ++i)
+  for(int i = 0; i < 1020; ++i)
   {
 // CHECK-LLVM4: [[PA4:![0-9]+]] = !DILocation(line: [[@LINE+3]], column: 21,
 // CHECK-LLVM4-NOT: {{^ store .*, !dbg }}[[PA4]]{{, !([^u]|u[^s]|us[^e]|use[^r]|user[^_]|user_[^a]|user_a[^s]|user_as[^_]|user_as_[^p])}}

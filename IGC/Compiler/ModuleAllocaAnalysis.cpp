@@ -209,6 +209,12 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const {
       scratchSpaceLimitPerWI = maxScratchSpaceBytes / simd_size;
     }
 
+    // If the configuration does not support multiple scratch surfaces and private memory
+    // size is equal to the limit there is no space left for spill. Switch to stateless.
+    if (!SeparateSpillAndScratch(&Ctx) && supportsStatelessSpacePrivateMemory &&
+        scratchSpaceLimitPerWI == totalPrivateMemPerWI) {
+      return false; // use stateless
+    }
 
     if (totalPrivateMemPerWI > scratchSpaceLimitPerWI) {
       // IGC errors out when we are trying to remove statelesspvtmem of OCL (even though OCl still supports
