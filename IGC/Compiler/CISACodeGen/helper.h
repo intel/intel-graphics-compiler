@@ -407,10 +407,10 @@ SIMDMode widestAllowedSIMDSize(const CodeGenContext *CTX, const llvm::Function *
 // function group head, or the module-forced width.
 bool hasFixedSIMDSize(const CodeGenContext *CTX, const llvm::Function *F, GenXFunctionGroupAnalysis *FGA = nullptr);
 
-// Lane count at which early retry and the BCR options evaluate the published uniform/non-uniform
-// register pressure pair of F. Their thresholds were tuned at SIMD16 on XE2/XE3 with the SIMD16
-// drop, so the width is SIMD16 there when it is not fixed. In all other cases, including a fixed
-// width, it is the width the pair was published at.
+// Lane count at which early retry, the BCR options and the fallback threshold of the SIMD16 drop
+// evaluate the published uniform/non-uniform register pressure pair of F. Their thresholds were
+// tuned at SIMD16 on XE2/XE3 with the SIMD16 drop, so the width is SIMD16 there when it is not
+// fixed. In all other cases, including a fixed width, it is the width the pair was published at.
 unsigned pressureThresholdSIMDLanes(const CodeGenContext *CTX, const llvm::Function *F,
                                     GenXFunctionGroupAnalysis *FGA = nullptr);
 

@@ -2723,7 +2723,7 @@ static bool isPastHighestVRTBudget(llvm::ArrayRef<VRT::ModeEntry> Table, uint32_
   return Pressure > Cutoff;
 }
 
-static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, uint32_t simd32Pressure,
+static bool shouldDropToSIMD16(uint32_t ThresholdPressure, uint32_t simd16Pressure, uint32_t simd32Pressure,
                                SIMDMode simdMode, CodeGenContext *pCtx, MetaDataUtils *pMdUtils, llvm::Function *F) {
   if (simdMode != SIMDMode::SIMD32 || !isEntryFunc(pMdUtils, F)) {
     return false;
@@ -2763,7 +2763,9 @@ static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, ui
       return true;
   }
 
-  return maxPressure > threshold;
+  // ThresholdPressure is the published pressure at the width the threshold was
+  // tuned at: SIMD16, unless the kernel has a fixed SIMD width.
+  return ThresholdPressure > threshold;
 }
 
 SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitPass &EP, llvm::Function &F,
@@ -2879,7 +2881,11 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
   if (EP.m_canAbortOnSpill && isSupportedCore && IGC_IS_FLAG_ENABLED(AllowSIMD16DropForXE2Plus)) {
     uint32_t simd16Pressure = getMaxPressureForSIMD(F, numLanes(SIMDMode::SIMD16));
     uint32_t simd32Pressure = getMaxPressureForSIMD(F, numLanes(SIMDMode::SIMD32));
-    bool shouldDrop = shouldDropToSIMD16(maxPressure, simd16Pressure, simd32Pressure, simdMode, pCtx, pMdUtils, &F);
+    // The last check of shouldDropToSIMD16 compares EarlySIMD16DropForXE3Threshold
+    // with the published pressure pair at the width the threshold was tuned at.
+    uint32_t ThresholdPressure = getMaxPressure(F, IGC::pressureThresholdSIMDLanes(pCtx, &F, m_FGA));
+    bool shouldDrop =
+        shouldDropToSIMD16(ThresholdPressure, simd16Pressure, simd32Pressure, simdMode, pCtx, pMdUtils, &F);
     if (shouldDrop) {
       pCtx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
       return SIMDStatus::SIMD_FUNC_FAIL;
