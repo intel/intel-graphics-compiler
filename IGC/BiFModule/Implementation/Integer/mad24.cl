@@ -134,3 +134,9 @@ uint16 __attribute__((overloadable)) __spirv_ocl_u_mad24(uint16 x, uint16 y, uin
   temp.sf = __spirv_ocl_u_mad24(x.sf, y.sf, z.sf);
   return temp;
 }
+
+INLINE
+int __attribute__((overloadable)) __spirv_ocl_s_mad24(int x, int y, int z) { return __spirv_ocl_s_mul24(x, y) + z; }
+
+INLINE
+uint __attribute__((overloadable)) __spirv_ocl_u_mad24(uint x, uint y, uint z) { return __spirv_ocl_u_mul24(x, y) + z; }

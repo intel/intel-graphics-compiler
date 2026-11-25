@@ -134,3 +134,21 @@ ulong8 OVERLOADABLE sub_sat(ulong8 x, ulong8 y) { return __spirv_ocl_u_sub_sat(x
 
 INLINE
 ulong16 OVERLOADABLE sub_sat(ulong16 x, ulong16 y) { return __spirv_ocl_u_sub_sat(x, y); }
+
+INLINE
+char OVERLOADABLE sub_sat(char x, char y) { return __spirv_ocl_s_sub_sat(x, y); }
+
+INLINE
+uchar OVERLOADABLE sub_sat(uchar x, uchar y) { return __spirv_ocl_u_sub_sat(x, y); }
+
+INLINE
+short OVERLOADABLE sub_sat(short x, short y) { return __spirv_ocl_s_sub_sat(x, y); }
+
+INLINE
+ushort OVERLOADABLE sub_sat(ushort x, ushort y) { return __spirv_ocl_u_sub_sat(x, y); }
+
+INLINE
+int OVERLOADABLE sub_sat(int x, int y) { return __spirv_ocl_s_sub_sat(x, y); }
+
+INLINE
+uint OVERLOADABLE sub_sat(uint x, uint y) { return __spirv_ocl_u_sub_sat(x, y); }

@@ -9,6 +9,14 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.h"
 #include "spirv.h"
 
+INLINE
+float OVERLOADABLE native_tan(float x) { return __spirv_ocl_native_tan(x); }
+
+#ifdef cl_khr_fp16
+INLINE
+half OVERLOADABLE native_tan(half x) { return __spirv_ocl_native_tan(x); }
+#endif
+
 GENERATE_VECTOR_FUNCTIONS_1ARG(native_tan, float, float)
 
 #if defined(cl_khr_fp64)

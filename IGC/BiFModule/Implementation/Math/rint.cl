@@ -9,6 +9,16 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
 
+INLINE
+float __attribute__((overloadable)) __spirv_ocl_rint(float x) { return __builtin_IB_frnd_ne(x); }
+
+#ifdef cl_khr_fp16
+INLINE
+half __attribute__((overloadable)) __spirv_ocl_rint(half x) {
+  return __spirv_FConvert_Rhalf(__spirv_ocl_rint(__spirv_FConvert_Rfloat(x)));
+}
+#endif
+
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS(rint, float, float, f32)
 
 #if defined(cl_khr_fp64)

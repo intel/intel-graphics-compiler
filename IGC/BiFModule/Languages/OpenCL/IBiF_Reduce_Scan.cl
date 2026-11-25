@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -515,3 +515,21 @@ DEFN_SUB_GROUP_NON_UNIFORM_BITWISE_OPERATIONS(ulong, long, i64)
 DEFN_SUB_GROUP_NON_UNIFORM_LOGICAL_OPERATIONS(int, i1)
 
 #endif // defined(cl_khr_subgroup_non_uniform_arithmetic) || defined(cl_khr_subgroup_clustered_reduce)
+
+INLINE int OVERLOADABLE work_group_any(int predicate) {
+  GET_MEMPOOL_PTR(tmp, int, false, 1)
+  *tmp = 0;
+  barrier(CLK_LOCAL_MEM_FENCE);   // Wait for tmp to be initialized
+  atomic_or(tmp, predicate != 0); // Set to true if predicate is non-zero
+  barrier(CLK_LOCAL_MEM_FENCE);
+  return *tmp; // Return true if any of them passed the test
+}
+
+INLINE int OVERLOADABLE work_group_all(int predicate) {
+  GET_MEMPOOL_PTR(tmp, int, false, 1)
+  *tmp = 0;
+  barrier(CLK_LOCAL_MEM_FENCE);   // Wait for tmp to be initialized
+  atomic_or(tmp, predicate == 0); // Set to true if predicate is zero
+  barrier(CLK_LOCAL_MEM_FENCE);   // Wait for threads
+  return (*tmp == 0);             // Return true if none of them failed the test
+}

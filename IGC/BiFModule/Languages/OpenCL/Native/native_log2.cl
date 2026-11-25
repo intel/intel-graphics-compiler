@@ -9,6 +9,14 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.h"
 #include "spirv.h"
 
+INLINE
+float OVERLOADABLE native_log2(float x) { return __spirv_ocl_native_log2(x); }
+
+#ifdef cl_khr_fp16
+INLINE
+half OVERLOADABLE native_log2(half x) { return __spirv_ocl_native_log2(x); }
+#endif
+
 GENERATE_VECTOR_FUNCTIONS_1ARG(native_log2, float, float)
 
 #if defined(cl_khr_fp64)

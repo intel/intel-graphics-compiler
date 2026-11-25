@@ -9,6 +9,16 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.h"
 #include "spirv.h"
 
+INLINE float OVERLOADABLE max(float x, float y) { return __spirv_ocl_fmax_common(x, y); }
+
+#ifdef cl_khr_fp16
+INLINE half OVERLOADABLE max(half x, half y) { return __builtin_IB_HMAX(x, y); }
+#endif
+
+#if defined(cl_khr_fp64)
+INLINE double OVERLOADABLE max(double x, double y) { return (x >= y) ? x : y; }
+#endif
+
 GENERATE_VECTOR_FUNCTIONS_2ARGS(max, float, float)
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(max, float, float, float)
 

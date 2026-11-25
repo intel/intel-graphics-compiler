@@ -8,10 +8,19 @@ SPDX-License-Identifier: MIT
 
 #include "../include/BiF_Definitions.h"
 #include "../../Headers/spirv.h"
+#include "../IMF/FP32/asin_s_la.h"
 
 #if defined(cl_khr_fp64)
 #include "../IMF/FP64/asin_d_la.h"
 #endif // defined(cl_khr_fp64)
+
+INLINE
+float __attribute__((overloadable)) __spirv_ocl_asin(float value) { return __ocl_svml_asinf(value); }
+
+#ifdef cl_khr_fp16
+INLINE
+half __attribute__((overloadable)) __spirv_ocl_asin(half x) { return (half)__spirv_ocl_asin((float)x); }
+#endif
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS(asin, float, float, f32)
 

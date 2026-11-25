@@ -525,3 +525,30 @@ ulong16 __attribute__((overloadable)) __spirv_ocl_u_sub_sat(ulong16 x, ulong16 y
   temp.sf = __spirv_ocl_u_sub_sat(x.sf, y.sf);
   return temp;
 }
+
+INLINE
+char __attribute__((overloadable)) __spirv_ocl_s_sub_sat(char x, char y) {
+  short tmp = (short)x - (short)y;
+  return (char)__spirv_ocl_s_clamp(tmp, (short)CHAR_MIN, (short)CHAR_MAX);
+}
+
+INLINE
+uchar __attribute__((overloadable)) __spirv_ocl_u_sub_sat(uchar x, uchar y) { return (x <= y) ? 0 : x - y; }
+
+INLINE
+short __attribute__((overloadable)) __spirv_ocl_s_sub_sat(short x, short y) {
+  int tmp = (int)x - (int)y;
+  return (short)__spirv_ocl_s_clamp(tmp, (int)SHRT_MIN, (int)SHRT_MAX);
+}
+
+INLINE
+ushort __attribute__((overloadable)) __spirv_ocl_u_sub_sat(ushort x, ushort y) { return (x <= y) ? 0 : x - y; }
+
+INLINE
+int __attribute__((overloadable)) __spirv_ocl_s_sub_sat(int x, int y) {
+  long tmp = (long)x - (long)y;
+  return (int)__spirv_ocl_s_clamp(tmp, (long)INT_MIN, (long)INT_MAX);
+}
+
+INLINE
+uint __attribute__((overloadable)) __spirv_ocl_u_sub_sat(uint x, uint y) { return (x <= y) ? 0 : x - y; }

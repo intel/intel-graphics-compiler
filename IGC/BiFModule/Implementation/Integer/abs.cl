@@ -344,3 +344,17 @@ ulong8 __attribute__((overloadable)) __spirv_ocl_u_abs(ulong8 x) { return x; }
 
 INLINE
 ulong16 __attribute__((overloadable)) __spirv_ocl_u_abs(ulong16 x) { return x; }
+
+INLINE
+uchar __attribute__((overloadable)) __spirv_ocl_s_abs(char x) { return x > 0 ? x : -x; }
+
+INLINE
+ushort __attribute__((overloadable)) __spirv_ocl_s_abs(short x) { return x > 0 ? x : -x; }
+
+INLINE
+uint __attribute__((overloadable)) __spirv_ocl_s_abs(int x) {
+  // Convert signed to unsigned to have consistent result.
+  // Also, make abs(INT32_MIN) well defined : abs(INT32_MIN) = (ui32)(-(i64)INT32_MIN)
+  uint ux = (uint)x;
+  return x > 0 ? ux : -ux;
+}

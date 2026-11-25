@@ -11,6 +11,11 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE mad(float a, float b, float c) { return __spirv_ocl_mad(a, b, c); }
 
+#ifdef cl_khr_fp16
+INLINE
+half OVERLOADABLE mad(half a, half b, half c) { return __spirv_ocl_mad(a, b, c); }
+#endif
+
 GENERATE_VECTOR_FUNCTIONS_3ARGS(mad, float, float)
 
 #if defined(cl_khr_fp64)

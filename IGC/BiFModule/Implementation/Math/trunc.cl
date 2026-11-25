@@ -60,6 +60,16 @@ double __attribute__((overloadable)) __spirv_ocl_trunc(double x) {
 
 #endif // defined(cl_khr_fp64)
 
+INLINE
+float __attribute__((overloadable)) __spirv_ocl_trunc(float x) { return __builtin_IB_frnd_zi(x); }
+
+#ifdef cl_khr_fp16
+INLINE
+half __attribute__((overloadable)) __spirv_ocl_trunc(half x) {
+  return __spirv_FConvert_Rhalf(__spirv_ocl_trunc(__spirv_FConvert_Rfloat(x)));
+}
+#endif
+
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS(trunc, float, float, f32)
 
 #if defined(cl_khr_fp64)

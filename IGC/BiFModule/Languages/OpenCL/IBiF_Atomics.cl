@@ -583,3 +583,28 @@ void __attribute__((overloadable)) atomic_flag_clear_explicit(volatile generic a
 }
 
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+INLINE cl_mem_fence_flags OVERLOADABLE get_fence(generic void *ptr) {
+
+  if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((ptr), __generic char *), StorageWorkgroup) != NULL) {
+    return CLK_LOCAL_MEM_FENCE;
+  }
+  return CLK_GLOBAL_MEM_FENCE;
+}
+
+INLINE cl_mem_fence_flags OVERLOADABLE get_fence(generic const void *ptr) { return get_fence((generic void *)ptr); }
+#endif
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+// atomic_work_item_fence()
+// Caller to this function should understand that for an acq or rel memory
+// models you would have to perform additional checks inside a calle,
+// ie. look at the INLINE TYPE OVERLOADABLE atomic_fetch_##KEY##_explicit(volatile ADDRSPACE atomic_##TYPE *object,
+// OPTYPE operand, memory_order order, memory_scope scope) implementation. We need only single fence around an operation
+// for acq/rel as opposed to 2 for acq+rel/seq_cst. This function does not distinguish between acq/rel.
+
+INLINE void OVERLOADABLE atomic_work_item_fence(cl_mem_fence_flags flags, memory_order order, memory_scope scope) {
+  __spirv_MemoryBarrier(get_spirv_mem_scope(scope), get_spirv_mem_order(order) | get_spirv_mem_fence(flags));
+}
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0

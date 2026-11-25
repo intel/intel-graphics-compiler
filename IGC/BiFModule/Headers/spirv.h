@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -5509,6 +5509,7 @@ void __attribute__((overloadable)) __spirv_SubgroupBlockPrefetchINTEL(const glob
   DECL_SUB_GROUP_BROADCAST_BASE(TYPE##8, v8##TYPE_ABBR)                                                                \
   DECL_SUB_GROUP_BROADCAST_BASE(TYPE##16, v16##TYPE_ABBR)
 
+DECL_SUB_GROUP_BROADCAST_BASE(bool, i1)
 DECL_SUB_GROUP_BROADCAST(char, i8)
 DECL_SUB_GROUP_BROADCAST(short, i16)
 DECL_SUB_GROUP_BROADCAST(int, i32)

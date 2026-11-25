@@ -143,3 +143,12 @@ ulong8 OVERLOADABLE ctz(ulong8 x) { return as_ulong8(__spirv_ocl_ctz(as_long8(x)
 
 INLINE
 ulong16 OVERLOADABLE ctz(ulong16 x) { return as_ulong16(__spirv_ocl_ctz(as_long16(x))); }
+
+INLINE
+uchar OVERLOADABLE ctz(uchar x) { return __spirv_ocl_ctz(x); }
+
+INLINE
+ushort OVERLOADABLE ctz(ushort x) { return __spirv_ocl_ctz(x); }
+
+INLINE
+uint OVERLOADABLE ctz(uint x) { return as_uint(__spirv_ocl_ctz(as_int(x))); }

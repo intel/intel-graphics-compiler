@@ -9,6 +9,16 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.h"
 #include "spirv.h"
 
+INLINE float OVERLOADABLE min(float x, float y) { return __spirv_ocl_fmin_common(x, y); }
+
+#ifdef cl_khr_fp16
+INLINE half OVERLOADABLE min(half x, half y) { return __builtin_IB_HMIN(x, y); }
+#endif
+
+#if defined(cl_khr_fp64)
+INLINE double OVERLOADABLE min(double x, double y) { return __builtin_IB_dmin(x, y); }
+#endif
+
 GENERATE_VECTOR_FUNCTIONS_2ARGS(min, float, float)
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS(min, float, float, float)
 

@@ -134,3 +134,21 @@ ulong8 OVERLOADABLE mad_sat(ulong8 a, ulong8 b, ulong8 c) { return __spirv_ocl_u
 
 INLINE
 ulong16 OVERLOADABLE mad_sat(ulong16 a, ulong16 b, ulong16 c) { return __spirv_ocl_u_mad_sat(a, b, c); }
+
+INLINE
+char OVERLOADABLE mad_sat(char a, char b, char c) { return __spirv_ocl_s_mad_sat(a, b, c); }
+
+INLINE
+uchar OVERLOADABLE mad_sat(uchar a, uchar b, uchar c) { return __spirv_ocl_u_mad_sat(a, b, c); }
+
+INLINE
+short OVERLOADABLE mad_sat(short a, short b, short c) { return __spirv_ocl_s_mad_sat(a, b, c); }
+
+INLINE
+ushort OVERLOADABLE mad_sat(ushort a, ushort b, ushort c) { return __spirv_ocl_u_mad_sat(a, b, c); }
+
+INLINE
+int OVERLOADABLE mad_sat(int a, int b, int c) { return __spirv_ocl_s_mad_sat(a, b, c); }
+
+INLINE
+uint OVERLOADABLE mad_sat(uint a, uint b, uint c) { return __spirv_ocl_u_mad_sat(a, b, c); }

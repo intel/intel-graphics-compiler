@@ -18,6 +18,14 @@ INLINE float __attribute__((overloadable)) __spirv_ocl_mad(float a, float b, flo
   }
 }
 
+#ifdef cl_khr_fp16
+INLINE
+half __attribute__((overloadable)) __spirv_ocl_mad(half a, half b, half c) {
+  // return __builtin_IB_madh(a, b, c);
+  return a * b + c;
+}
+#endif
+
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS(mad, float, float, f32)
 
 #if defined(cl_khr_fp64)

@@ -9,6 +9,16 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.h"
 #include "spirv.h"
 
+INLINE float OVERLOADABLE clamp(float x, float minval, float maxval) { return __spirv_ocl_fclamp(x, minval, maxval); }
+
+#ifdef cl_khr_fp16
+INLINE half OVERLOADABLE clamp(half x, half minval, half maxval) { return fmin(fmax(x, minval), maxval); }
+#endif
+
+#if defined(cl_khr_fp64)
+INLINE double OVERLOADABLE clamp(double x, double minval, double maxval) { return fmin(fmax(x, minval), maxval); }
+#endif
+
 GENERATE_VECTOR_FUNCTIONS_3ARGS(clamp, float, float)
 GENERATE_VECTOR_FUNCTIONS_3ARGS_VSS(clamp, float, float, float)
 

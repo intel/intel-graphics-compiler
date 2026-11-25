@@ -146,3 +146,9 @@ ulong8 OVERLOADABLE mul_hi(ulong8 x, ulong8 y) { return __spirv_ocl_u_mul_hi(x, 
 
 INLINE
 ulong16 OVERLOADABLE mul_hi(ulong16 x, ulong16 y) { return __spirv_ocl_u_mul_hi(x, y); }
+
+INLINE
+uint OVERLOADABLE mul_hi(uint x, uint y) { return __spirv_ocl_u_mul_hi(x, y); }
+
+INLINE
+int OVERLOADABLE mul_hi(int x, int y) { return __spirv_ocl_s_mul_hi(x, y); }

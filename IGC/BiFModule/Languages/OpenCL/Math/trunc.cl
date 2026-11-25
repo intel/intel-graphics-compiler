@@ -9,6 +9,19 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.h"
 #include "spirv.h"
 
+INLINE
+float OVERLOADABLE trunc(float x) { return __spirv_ocl_trunc(x); }
+
+#ifdef cl_khr_fp16
+INLINE
+half OVERLOADABLE trunc(half x) { return __spirv_ocl_trunc(x); }
+#endif
+
+#if defined(cl_khr_fp64)
+INLINE
+double OVERLOADABLE trunc(double x) { return __spirv_ocl_trunc(x); }
+#endif
+
 GENERATE_VECTOR_FUNCTIONS_1ARG(trunc, float, float)
 
 #if defined(cl_khr_fp64)

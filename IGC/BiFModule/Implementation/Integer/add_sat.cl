@@ -527,3 +527,35 @@ ulong16 __attribute__((overloadable)) __spirv_ocl_u_add_sat(ulong16 x, ulong16 y
   temp.sf = __spirv_ocl_u_add_sat(x.sf, y.sf);
   return temp;
 }
+
+INLINE
+char __attribute__((overloadable)) __spirv_ocl_s_add_sat(char x, char y) {
+  return (char)__spirv_ocl_s_min(__spirv_ocl_s_max((int)x + (int)y, CHAR_MIN), CHAR_MAX);
+}
+
+INLINE
+uchar __attribute__((overloadable)) __spirv_ocl_u_add_sat(uchar x, uchar y) {
+  return (uchar)__spirv_ocl_u_min(__spirv_ocl_u_max((uint)x + (uint)y, 0), UCHAR_MAX);
+}
+
+INLINE
+short __attribute__((overloadable)) __spirv_ocl_s_add_sat(short x, short y) {
+  return (short)__spirv_ocl_s_min(__spirv_ocl_s_max((int)x + (int)y, SHRT_MIN), SHRT_MAX);
+}
+
+INLINE
+ushort __attribute__((overloadable)) __spirv_ocl_u_add_sat(ushort x, ushort y) {
+  return (ushort)__spirv_ocl_u_min(__spirv_ocl_u_max((uint)x + (uint)y, 0), USHRT_MAX);
+}
+
+INLINE
+int __attribute__((overloadable)) __spirv_ocl_s_add_sat(int x, int y) {
+  long tmp = (long)x + (long)y;
+  return (int)__spirv_ocl_s_clamp(tmp, (long)INT_MIN, (long)INT_MAX);
+}
+
+INLINE
+uint __attribute__((overloadable)) __spirv_ocl_u_add_sat(uint x, uint y) {
+  long tmp = (long)x + (long)y;
+  return (uint)__spirv_ocl_s_clamp(tmp, 0L, (long)UINT_MAX);
+}

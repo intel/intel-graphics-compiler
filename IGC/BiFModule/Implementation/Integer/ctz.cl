@@ -269,3 +269,19 @@ long16 __attribute__((overloadable)) __spirv_ocl_ctz(long16 x) {
   temp.sf = __spirv_ocl_ctz(x.sf);
   return temp;
 }
+
+INLINE
+char __attribute__((overloadable)) __spirv_ocl_ctz(char x) {
+  return (char)__spirv_ocl_ctz(as_int((uint)x | (1U << sizeof(x) * 8)));
+}
+
+INLINE
+short __attribute__((overloadable)) __spirv_ocl_ctz(short x) {
+  return (short)__spirv_ocl_ctz(as_int((uint)x | (1U << sizeof(x) * 8)));
+}
+
+INLINE
+int __attribute__((overloadable)) __spirv_ocl_ctz(int x) {
+  uint rev = __builtin_IB_bfrev(x);
+  return __spirv_ocl_clz(as_int(rev));
+}

@@ -559,3 +559,9 @@ ulong16 __attribute__((overloadable)) __spirv_ocl_u_mul_hi(ulong16 x, ulong16 y)
   temp.sf = __spirv_ocl_u_mul_hi(x.sf, y.sf);
   return temp;
 }
+
+INLINE
+uint __attribute__((overloadable)) __spirv_ocl_u_mul_hi(uint x, uint y) { return ((ulong)x * (ulong)y) >> 32; }
+
+INLINE
+int __attribute__((overloadable)) __spirv_ocl_s_mul_hi(int x, int y) { return ((long)x * (long)y) >> 32; }

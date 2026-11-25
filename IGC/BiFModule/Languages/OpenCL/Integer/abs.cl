@@ -143,3 +143,12 @@ ulong8 OVERLOADABLE abs(ulong8 x) { return __spirv_ocl_u_abs(x); }
 
 INLINE
 ulong16 OVERLOADABLE abs(ulong16 x) { return __spirv_ocl_u_abs(x); }
+
+INLINE
+uchar OVERLOADABLE abs(char x) { return __spirv_ocl_s_abs(x); }
+
+INLINE
+ushort OVERLOADABLE abs(short x) { return __spirv_ocl_s_abs(x); }
+
+INLINE
+uint OVERLOADABLE abs(int x) { return __spirv_ocl_s_abs(x); }

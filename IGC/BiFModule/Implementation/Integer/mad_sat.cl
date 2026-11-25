@@ -543,3 +543,34 @@ ulong16 __attribute__((overloadable)) __spirv_ocl_u_mad_sat(ulong16 a, ulong16 b
   temp.sf = __spirv_ocl_u_mad_sat(a.sf, b.sf, c.sf);
   return temp;
 }
+
+INLINE char __attribute__((overloadable)) __spirv_ocl_s_mad_sat(char a, char b, char c) {
+  short res = (short)a * (short)b + (short)c;
+  return __spirv_SConvert_Rchar_sat(res);
+}
+
+INLINE uchar __attribute__((overloadable)) __spirv_ocl_u_mad_sat(uchar a, uchar b, uchar c) {
+  ushort res = (ushort)a * (ushort)b + (ushort)c;
+  return __spirv_UConvert_Ruchar_sat(res);
+}
+
+INLINE short __attribute__((overloadable)) __spirv_ocl_s_mad_sat(short a, short b, short c) {
+  int res = (int)a * (int)b + (int)c;
+  return __spirv_SConvert_Rshort_sat(res);
+}
+
+INLINE ushort __attribute__((overloadable)) __spirv_ocl_u_mad_sat(ushort a, ushort b, ushort c) {
+  uint res = (uint)a * (uint)b + (uint)c;
+  return __spirv_UConvert_Rushort_sat(res);
+}
+
+INLINE int __attribute__((overloadable)) __spirv_ocl_s_mad_sat(int a, int b, int c) {
+  long res = (long)a * (long)b + (long)c;
+  return __spirv_SConvert_Rint_sat(res);
+}
+
+INLINE
+uint __attribute__((overloadable)) __spirv_ocl_u_mad_sat(uint a, uint b, uint c) {
+  ulong res = (ulong)a * (ulong)b + (ulong)c;
+  return __spirv_UConvert_Ruint_sat(res);
+}

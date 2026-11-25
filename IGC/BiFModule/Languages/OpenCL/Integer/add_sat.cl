@@ -134,3 +134,21 @@ ulong8 OVERLOADABLE add_sat(ulong8 x, ulong8 y) { return __spirv_ocl_u_add_sat(x
 
 INLINE
 ulong16 OVERLOADABLE add_sat(ulong16 x, ulong16 y) { return __spirv_ocl_u_add_sat(x, y); }
+
+INLINE
+char OVERLOADABLE add_sat(char x, char y) { return __spirv_ocl_s_add_sat(x, y); }
+
+INLINE
+uchar OVERLOADABLE add_sat(uchar x, uchar y) { return __spirv_ocl_u_add_sat(x, y); }
+
+INLINE
+short OVERLOADABLE add_sat(short x, short y) { return __spirv_ocl_s_add_sat(x, y); }
+
+INLINE
+ushort OVERLOADABLE add_sat(ushort x, ushort y) { return __spirv_ocl_u_add_sat(x, y); }
+
+INLINE
+int OVERLOADABLE add_sat(int x, int y) { return __spirv_ocl_s_add_sat(x, y); }
+
+INLINE
+uint OVERLOADABLE add_sat(uint x, uint y) { return __spirv_ocl_u_add_sat(x, y); }

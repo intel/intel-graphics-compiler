@@ -9,6 +9,14 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.h"
 #include "spirv.h"
 
+INLINE
+float OVERLOADABLE acos(float x) { return __spirv_ocl_acos(x); }
+
+#ifdef cl_khr_fp16
+INLINE
+half OVERLOADABLE acos(half x) { return __spirv_ocl_acos(x); }
+#endif
+
 GENERATE_VECTOR_FUNCTIONS_1ARG(acos, float, float)
 
 #if defined(cl_khr_fp64)

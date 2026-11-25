@@ -25,11 +25,14 @@ SPDX-License-Identifier: MIT
 // Atomics opcodes
 //*****************************************************************************/
 #include "atomics.cl"
+#include "kmp_lock.cl"
 
 //*****************************************************************************/
 // Barrier opcodes
 //*****************************************************************************/
+#include "memfence.cl"
 #include "barrier.cl"
+#include "named_barrier.cl"
 
 
 //*****************************************************************************/
@@ -41,6 +44,9 @@ SPDX-License-Identifier: MIT
 // Bits opcodes
 //*****************************************************************************/
 #include "conversions.cl"
+#include "conversions_int.cl"
+#include "conversions_fp.cl"
+#include "generic_cast.cl"
 
 //*****************************************************************************/
 // SPV_INTEL_fp_conversions builtins
@@ -51,11 +57,15 @@ SPDX-License-Identifier: MIT
 // Device-Side Enqueue opcodes
 //*****************************************************************************/
 #include "device_side_enqueue.cl"
+#include "device_side_enqueue_marker.cl"
 
 //*****************************************************************************/
 // Group opcodes
 //*****************************************************************************/
 #include "group.cl"
+#include "group_broadcast.cl"
+#include "subgroup_shuffle.cl"
+#include "subgroup_mask.cl"
 
 //*****************************************************************************/
 // Group sort devicelib functions

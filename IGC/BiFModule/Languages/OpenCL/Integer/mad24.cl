@@ -38,3 +38,9 @@ uint8 OVERLOADABLE mad24(uint8 x, uint8 y, uint8 z) { return __spirv_ocl_u_mad24
 
 INLINE
 uint16 OVERLOADABLE mad24(uint16 x, uint16 y, uint16 z) { return __spirv_ocl_u_mad24(x, y, z); }
+
+INLINE
+int OVERLOADABLE mad24(int x, int y, int z) { return __spirv_ocl_s_mad24(x, y, z); }
+
+INLINE
+uint OVERLOADABLE mad24(uint x, uint y, uint z) { return __spirv_ocl_u_mad24(x, y, z); }
