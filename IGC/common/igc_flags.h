@@ -1221,6 +1221,10 @@ DECLARE_IGC_REGKEY(bool, deadLoopForFloatException, false, "enable a dead loop i
 DECLARE_IGC_REGKEY(bool, EnableIEEEFloatExceptionTrap, false, "Enable CR0 IEEE float exception trap bit", ALWAYS)
 DECLARE_IGC_REGKEY(debugString, ExtraOCLOptions, 0, "Extra options for OpenCL", ALWAYS)
 DECLARE_IGC_REGKEY(debugString, ExtraOCLInternalOptions, 0, "Extra internal options for OpenCL", ALWAYS)
+DECLARE_IGC_REGKEY(bool, EnableIncompatiblePointerTypesError, false,
+                   "Make clang's incompatible-pointer-types diagnostic an error in OpenCL C, as clang 22+ does by "
+                   "default. FCL otherwise downgrades it to a warning.",
+                   ALWAYS)
 DECLARE_IGC_REGKEY(debugString, LibClangOverride, 0,
                    "Override opencl-clang library loaded by FCL. Accepts bare name, absolute path, or igc-clang for "
                    "the OS specific igc-clang prebuild name. Empty = use default.",
