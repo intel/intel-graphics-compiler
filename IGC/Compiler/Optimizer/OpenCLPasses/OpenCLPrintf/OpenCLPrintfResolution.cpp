@@ -796,6 +796,16 @@ Value *OpenCLPrintfResolution::lowerPrintfArgToBufferValue(CallInst &printfCall,
     }
     break;
 
+  case IGC::SHADER_PRINTF_INT:
+    // DPC++ passes bool unpromoted, against OpenCL SPIR-V environment spec 2.11.
+    // Keep this after DPC++ is fixed; SPIR-V from older compilers still has i1.
+    if (arg->getType()->isIntegerTy(1)) {
+      IRBuilder<> B(&printfCall);
+      B.SetCurrentDebugLocation(m_DL);
+      return B.CreateZExt(arg, B.getInt32Ty(), "bool_to_int");
+    }
+    break;
+
   default:
     break;
   }
@@ -837,6 +847,10 @@ void OpenCLPrintfResolution::appendPrintfValueArg(CallInst &printfCall, Value *a
   // OCL marks the resolved string globals host-only; non-OCL uses string indices.
   SmallVector<GlobalVariable *, 2> stringGlobals;
   IGC::SHADER_PRINTF_TYPE argDataType = getPrintfArgDataType(arg, isOCL ? &stringGlobals : nullptr);
+  if (argDataType == IGC::SHADER_PRINTF_INVALID) {
+    m_CGContext->EmitError("Unsupported printf argument type", &printfCall);
+    return;
+  }
   arg = lowerPrintfArgToBufferValue(printfCall, arg, argDataType, stringGlobals);
   addArgDescriptor(arg, argDataType, argType, /*inlineFmtString=*/false);
 }
@@ -1021,6 +1035,7 @@ IGC::SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value *prin
       return IGC::SHADER_PRINTF_BYTE;
     case 16:
       return IGC::SHADER_PRINTF_SHORT;
+    case 1:
     case 32:
       return IGC::SHADER_PRINTF_INT;
     case 64:

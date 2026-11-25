@@ -95,7 +95,7 @@ private:
   unsigned formatStringSpecifierCount(const llvm::SmallVectorImpl<llvm::GlobalVariable *> &formatGlobals);
 
   // Converts a printf argument into the value stored in the output buffer,
-  // applying the type/HW coercions the buffer requires (pointer -> int,
+  // applying the type/HW coercions the buffer requires (pointer -> int, bool -> int,
   // half -> float, double -> float when fp64 is unsupported, string -> pointer
   // or index). May update 'argDataType' to match. 'stringGlobals' are the string
   // globals the operand resolves to (from getPrintfArgDataType); the OCL string
