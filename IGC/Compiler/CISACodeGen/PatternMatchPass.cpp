@@ -1860,21 +1860,31 @@ bool CodeGenPatternMatch::matchWideMul64Pair(Instruction &I) {
       continue;
     }
 
-    auto [MI, New] = WidePairMap.insert(std::make_pair(wideInstHi, wideInstLo));
-    if (New) {
-      WideMulPattern *pattern = new (m_allocator) WideMulPattern();
-      pattern->isUnsigned = (opCodeHi == llvm_wideUMulHi);
-      pattern->mul64Lo = wideInstLo;
-      pattern->mul64Hi = wideInstHi;
-      pattern->sources[0] = GetSource(src0, false, false, IsSourceOfSample(&I));
-      pattern->sources[1] = GetSource(src1, false, false, IsSourceOfSample(&I));
-      AddPattern(pattern);
-      return true;
-    } else {
+    if (WidePairMap.count(wideInstHi)) {
       WideMulSubPattern *pattern = new (m_allocator) WideMulSubPattern();
       AddPattern(pattern);
       return true;
     }
+
+    // The pair is emitted at I: uses in later blocks follow it, uses in this block must too.
+    auto IsUsedBeforeI = [&](User *U) {
+      auto *UserInst = cast<Instruction>(U);
+      return UserInst->getParent() == I.getParent() && UserInst->comesBefore(&I);
+    };
+    if (anotherInst->getParent() != I.getParent() || !anotherInst->comesBefore(&I) ||
+        llvm::any_of(anotherInst->users(), IsUsedBeforeI)) {
+      continue;
+    }
+
+    WidePairMap.insert(std::make_pair(wideInstHi, wideInstLo));
+    WideMulPattern *pattern = new (m_allocator) WideMulPattern();
+    pattern->isUnsigned = (opCodeHi == llvm_wideUMulHi);
+    pattern->mul64Lo = wideInstLo;
+    pattern->mul64Hi = wideInstHi;
+    pattern->sources[0] = GetSource(src0, false, false, IsSourceOfSample(&I));
+    pattern->sources[1] = GetSource(src1, false, false, IsSourceOfSample(&I));
+    AddPattern(pattern);
+    return true;
   }
 
   return false;
