@@ -87,7 +87,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ubuntu_version: [ '24.04' ]
+        ubuntu_version: [ '26.04' ]
         llvm_ver: [ 22 ]
 
     steps:
@@ -134,7 +134,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ubuntu_version: [ '24.04' ]
+        ubuntu_version: [ '26.04' ]
         llvm_ver: [ 22 ]
         compiler: [ gcc, clang ]
     steps:

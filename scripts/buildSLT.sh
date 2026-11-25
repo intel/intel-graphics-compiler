@@ -9,15 +9,15 @@
 #============================ end_copyright_notice =============================
 
 set -e
-# UBUNTU_VERSION   supported value [ 24.04, 26.04 ]                                          default 24.04
+# UBUNTU_VERSION   supported value [ 24.04, 26.04 ]                                          default 26.04
 # LLVM_VERSION     supported value [ 16, 17, 22 ]                                            default 22
-# example run:     UBUNTU_VERSION=24.04 LLVM_VERSION=22 sh /home/buildSLT.sh
+# example run:     UBUNTU_VERSION=26.04 LLVM_VERSION=22 sh /home/buildSLT.sh
 
 echo "====================BUILD SPIRV-LLVM-Translator========================="
 echo "[Build Status] build script started"
 if [ -z ${UBUNTU_VERSION+x} ]; then
-    echo "[Build Status] UBUNTU_VERSION is unset, use default 24.04";
-    UBUNTU_VERSION="24.04"
+    echo "[Build Status] UBUNTU_VERSION is unset, use default 26.04";
+    UBUNTU_VERSION="26.04"
 else
     echo "[Build Status] UBUNTU_VERSION = ${UBUNTU_VERSION}"
 fi

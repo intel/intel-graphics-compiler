@@ -9,17 +9,17 @@
 #============================ end_copyright_notice =============================
 
 set -e
-# UBUNTU_VERSION   supported value [ 24.04, 26.04 ]                                          default 24.04
+# UBUNTU_VERSION   supported value [ 24.04, 26.04 ]                                          default 26.04
 # LLVM_VERSION     supported value [ 16, 17, 22 ]                                            default 22
 # COMPILER         supported value [ gcc, clang ]                                            default gcc
 # OWN_CMAKE_FLAGS  not suported but can be use as WA (each flag should be with -D prefix)    default empty
-# example run:     UBUNTU_VERSION=24.04 LLVM_VERSION=22 COMPILER=gcc sh /home/buildIGC.sh
+# example run:     UBUNTU_VERSION=26.04 LLVM_VERSION=22 COMPILER=gcc sh /home/buildIGC.sh
 
 echo "====================BUILD IGC========================="
 echo "[Build Status] build script started"
 if [ -z ${UBUNTU_VERSION+x} ]; then
-    echo "[Build Status] UBUNTU_VERSION is unset, use default 24.04";
-    UBUNTU_VERSION="24.04"
+    echo "[Build Status] UBUNTU_VERSION is unset, use default 26.04";
+    UBUNTU_VERSION="26.04"
 else
     echo "[Build Status] UBUNTU_VERSION = ${UBUNTU_VERSION}"
 fi
