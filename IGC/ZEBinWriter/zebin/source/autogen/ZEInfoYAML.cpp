@@ -28,6 +28,7 @@ void MappingTraits<zeInfoContainer>::mapping(IO& io, zeInfoContainer& info)
     io.mapOptional("kernels_misc_info", info.kernels_misc_info, KernelsMiscInfoTy());
     io.mapOptional("kernels_cost_info", info.kernels_cost_info, KernelsCostInfoTy());
     io.mapOptional("l1_cache_policy", info.l1_cache_policy, std::string());
+    io.mapOptional("igca_target", info.igca_target, std::string());
 }
 void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
 {

@@ -46,6 +46,7 @@ could be used to describe a dynamic sized int32 array.
 | kernels_misc_info | KernelsMiscInfoTy | Optional | vector. Other miscellaneous kernel information which is required by certain API requesters, but is not necessary for kernel execution. |
 | kernels_cost_info | KernelsCostInfoTy | Optional | vector. kernel cost information which is experimental and required by certain API requesters, but is not necessary for kernel execution. |
 | l1_cache_policy | <l1_cache_policy> | Optional | L1 caching policy used. See Supported L1 caching policy below for valid modes. |
+| igca_target | str | Optional | IGCA target of the SPIR-V or PISA the module was compiled from. |
 <!--- Container --->
 
 ### Supported L1 caching policy:

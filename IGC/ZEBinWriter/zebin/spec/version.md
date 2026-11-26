@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.76
+Version 1.77
 =======
 
 ## Versioning
@@ -16,6 +16,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.77**: Add igca_target module-level attribute.
 - **Version 1.76**: Internal feature.
 - **Version 1.75**: Add rounding_mode execution_env field.
 - **Version 1.74**: Add cross_thread_load_size execution_env field.
