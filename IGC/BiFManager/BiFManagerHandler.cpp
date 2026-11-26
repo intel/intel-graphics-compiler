@@ -15,7 +15,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/ErrorHandling.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/Bitcode/BitcodeReader.h>
+#include <llvm/ADT/DenseSet.h>
 #include <llvm/ADT/SetVector.h>
+#include <llvm/ADT/StringMap.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/Linker/Linker.h>
@@ -28,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/TargetParser/Triple.h"
 #include "BiFManagerHandler.hpp"
 
+#include <algorithm>
 #include <string>
 #include <list>
 #include <AdaptorOCL/OCL/BuiltinResource.h>
@@ -100,8 +103,8 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
   BIF_COMPILER_TIME_START(TIME_OCL_BiFMgr_LinkAllSections);
 
   // Link all BiF modules into shader module
-  for (auto bifsection_i = LoadedBiFSections.begin(); bifsection_i != LoadedBiFSections.end(); ++bifsection_i) {
-    BiFSectionID SeletectedID = bifsection_i->first;
+  for (auto sectionIt = LoadedBiFSections.begin(); sectionIt != LoadedBiFSections.end(); ++sectionIt) {
+    BiFSectionID SeletectedID = sectionIt->first;
     std::unique_ptr<llvm::Module> *BiFSection = &LoadedBiFSections[SeletectedID];
 
     if (BiFSection->get() == nullptr) {
@@ -122,7 +125,7 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
         IGC_ASSERT_MESSAGE(0, "Error linking generic builtin module");
       }
 
-      bool isLastItem = std::next(bifsection_i) == LoadedBiFSections.end();
+      bool isLastItem = std::next(sectionIt) == LoadedBiFSections.end();
       if (isLastItem) {
         for (auto &f : Module.functions()) {
           if (IsBiF(&f)) {
@@ -146,7 +149,7 @@ void BiFManagerHandler::LinkBiF(llvm::Module &Module) {
         IGC_ASSERT_MESSAGE(0, "Error linking generic builtin module");
       }
 
-      bool isLastItem = std::next(bifsection_i) == LoadedBiFSections.end();
+      bool isLastItem = std::next(sectionIt) == LoadedBiFSections.end();
       if (isLastItem) {
         CallbackLinker(Module, InternalizeLinkList);
       }
@@ -192,9 +195,8 @@ bool BiFManagerHandler::IsBiF(llvm::Function *pFunc) { return pFunc->getMetadata
 
 bool BiFManagerHandler::IsBiF(llvm::GlobalVariable *pVar) { return pVar->getMetadata(bifMark) != nullptr; }
 
-bool BiFManagerHandler::IsBiFDefined(llvm::Module *pModule, llvm::StringRef FuncName) {
-  std::string Name = FuncName.str();
-  return (isModulePtrSize32(pModule) ? GetDepList32(Name) : GetDepList64(Name))[0] > -1;
+bool BiFManagerHandler::IsBiFDefined(llvm::Module *pModule, llvm::StringRef funcName) {
+  return findModule(isModulePtrSize32(pModule), funcName) > -1;
 }
 
 void BiFManagerHandler::SetCallbackLinker(
@@ -203,17 +205,22 @@ void BiFManagerHandler::SetCallbackLinker(
 }
 
 void BiFManagerHandler::findAllBuiltins(llvm::Module *pModule, TFunctionsVec &neededBuiltinInstr) {
-  std::function<bool(llvm::Function *)> predicate = [&](llvm::Function *pFunc) -> bool {
-    auto funcName = pFunc->getName().str();
+  for (auto &F : pModule->functions())
+    if (F.isDeclaration() && !F.use_empty() && findModule(isPtrSizeInBits32, F.getName()) > -1)
+      neededBuiltinInstr.push_back(&F);
+}
 
-    if (isPtrSizeInBits32) {
-      return GetDepList32(funcName)[0] > -1;
-    } else {
-      return GetDepList64(funcName)[0] > -1;
-    }
-  };
+BiFSectionID BiFManagerHandler::findModule(bool isPtrSize32, llvm::StringRef funcName) {
+  const uint64_t *hashBegin = isPtrSize32 ? std::begin(FuncHash32) : std::begin(FuncHash64);
+  const uint64_t *hashEnd = isPtrSize32 ? std::end(FuncHash32) : std::end(FuncHash64);
+  const int *funcModule = isPtrSize32 ? FuncModule32 : FuncModule64;
 
-  FindAllBuiltins(pModule, predicate, neededBuiltinInstr);
+  uint64_t hash = getHash(funcName);
+  const uint64_t *hashIt = std::lower_bound(hashBegin, hashEnd, hash);
+  if (hashIt == hashEnd || *hashIt != hash) {
+    return -1;
+  }
+  return funcModule[hashIt - hashBegin];
 }
 
 void BiFManagerHandler::preapareBiFSections(llvm::Module &pMainModule, TFunctionsVec &BuiltInNeeded) {
@@ -226,39 +233,35 @@ void BiFManagerHandler::preapareBiFSections(llvm::Module &pMainModule, TFunction
   // Exclude the begin ptr of modules
   const char *entryStreamForModules = (beginOfStream + entryRecord->bufferSize);
 
-  std::map<BiFSectionID, BiFDataRecord *> neededModules;
+  llvm::DenseSet<BiFSectionID> neededModules;
 
-  // Collect all needed Modules which should be prepared for linking
-  auto getModulePtr = [&, beginOfStream, entryStreamForModules](BiFSectionID bifIndexSection) {
-    BiFDataRecord *recordBifIndex = (BiFDataRecord *)(beginOfStream + (sizeof(BiFDataRecord) * (bifIndexSection + 1)));
+  // Collect the modules which define the needed built-in functions and,
+  // following the module dependency graph, all modules those depend on.
+  const int *depsBegin = isPtrSizeInBits32 ? ModuleDepsBegin32 : ModuleDepsBegin64;
+  const int *deps = isPtrSizeInBits32 ? ModuleDeps32 : ModuleDeps64;
+  std::vector<BiFSectionID> worklist;
 
-    return recordBifIndex;
+  auto addModule = [&](BiFSectionID bifIndexModule) {
+    if (neededModules.insert(bifIndexModule).second)
+      worklist.push_back(bifIndexModule);
   };
 
-  auto process_deps = [&](const auto &deps) {
-    for (auto dep_i = deps.begin(); dep_i != deps.end() && *dep_i >= 0; ++dep_i) {
-      auto bifIndexSection = *dep_i;
+  for (auto pBuiltin : BuiltInNeeded) {
+    addModule(findModule(isPtrSizeInBits32, pBuiltin->getName()));
+  }
 
-      if (neededModules.count(bifIndexSection) > 0) {
-        // Allready loaded section
-        continue;
-      }
+  while (!worklist.empty()) {
+    BiFSectionID bifIndexModule = worklist.back();
+    worklist.pop_back();
 
-      neededModules[bifIndexSection] = getModulePtr(bifIndexSection);
-    }
-  };
-
-  for (auto bif_i : BuiltInNeeded) {
-    auto funcName = bif_i->getName().str();
-
-    if (isPtrSizeInBits32) {
-      process_deps(GetDepList32(funcName));
-    } else {
-      process_deps(GetDepList64(funcName));
+    for (int depIdx = depsBegin[bifIndexModule]; depIdx < depsBegin[bifIndexModule + 1]; ++depIdx) {
+      addModule(deps[depIdx]);
     }
   }
 
-  auto LoadModule = [&](BiFDataRecord *record) {
+  auto LoadModule = [&](BiFSectionID bifIndexModule) {
+    BiFDataRecord *record = (BiFDataRecord *)(beginOfStream + (sizeof(BiFDataRecord) * (bifIndexModule + 1)));
+
     // Localize the module in stream
     const char *bifModuleBegin = (entryStreamForModules + record->bufferStart);
 
@@ -271,9 +274,9 @@ void BiFManagerHandler::preapareBiFSections(llvm::Module &pMainModule, TFunction
         getLazyBitcodeModule(bifMemBuffer->getMemBufferRef(), Context);
 
     if (llvm::Error EC = ModuleOrErr.takeError()) {
-      std::string error_str = "Error lazily loading bitcode for generic builtins,"
-                              "is bitcode the right version and correctly formed?";
-      // SetErrorMessage(error_str, *pOutputArgs);
+      std::string errorStr = "Error lazily loading bitcode for generic builtins,"
+                             "is bitcode the right version and correctly formed?";
+      // SetErrorMessage(errorStr, *pOutputArgs);
       // return false;
     } else {
       if (this->LoadedBiFSections.count(record->ID) == 0) {
@@ -302,21 +305,12 @@ void BiFManagerHandler::preapareBiFSections(llvm::Module &pMainModule, TFunction
   };
 
   BIF_COMPILER_TIME_START(TIME_OCL_BiFMgr_LazyBiFLoading);
-  if (isPtrSizeInBits32) {
-    auto record = getModulePtr(Module32Idx);
-    neededModules[Module32Idx] = record;
-    LoadModule(record);
-  } else {
-    auto record = getModulePtr(Module64Idx);
-    neededModules[Module64Idx] = record;
-    LoadModule(record);
-  }
+  // The module of the pointer size goes first: the other modules take its triple.
+  LoadModule(isPtrSizeInBits32 ? Module32Idx : Module64Idx);
 
   // Load and preapre BiF Modules
-  for (const auto &bif_record : neededModules) {
-    // Localize the module in stream
-    BiFDataRecord *record = bif_record.second;
-    LoadModule(record);
+  for (BiFSectionID bifIndexModule : neededModules) {
+    LoadModule(bifIndexModule);
   }
   BIF_COMPILER_TIME_END(TIME_OCL_BiFMgr_LazyBiFLoading);
 
@@ -358,6 +352,17 @@ std::unique_ptr<llvm::MemoryBuffer> BiFManagerHandler::getBiFModuleBuffer() {
 }
 
 void BiFManagerHandler::cleanModule(llvm::Module &Base) {
+  // Definitions of the functions in the loaded sections by the name. If more
+  // sections define a function, the one with the lowest ID is used.
+  llvm::StringMap<Function *> definitions;
+  for (auto sectionIt = LoadedBiFSections.begin(); sectionIt != LoadedBiFSections.end(); ++sectionIt) {
+    for (auto &F : *sectionIt->second) {
+      if (!F.isDeclaration()) {
+        definitions.try_emplace(F.getName(), &F);
+      }
+    }
+  }
+
   std::function<void(Function *)> Explore = [&](Function *pRoot) -> void {
     TFunctionsVec calledFuncs;
     getCalledFunctions(pRoot, calledFuncs);
@@ -365,19 +370,11 @@ void BiFManagerHandler::cleanModule(llvm::Module &Base) {
     for (auto *pCallee : calledFuncs) {
       Function *pFunc = nullptr;
       if (pCallee->isDeclaration()) {
-        auto funcName = pCallee->getName();
-        Function *pSrcFunc = nullptr;
-
-        for (auto bifsection_i = LoadedBiFSections.begin(); bifsection_i != LoadedBiFSections.end(); ++bifsection_i) {
-          pSrcFunc = bifsection_i->second->getFunction(funcName);
-          if (pSrcFunc && !pSrcFunc->isDeclaration()) {
-            break;
-          }
-        }
-        if (!pSrcFunc || pSrcFunc->isDeclaration())
+        auto definitionIt = definitions.find(pCallee->getName());
+        if (definitionIt == definitions.end())
           continue;
 
-        pFunc = pSrcFunc;
+        pFunc = definitionIt->second;
       } else {
         pFunc = pCallee;
       }
@@ -419,8 +416,8 @@ void BiFManagerHandler::cleanModule(llvm::Module &Base) {
     }
   };
 
-  for (auto bifsection_i = LoadedBiFSections.begin(); bifsection_i != LoadedBiFSections.end(); ++bifsection_i) {
-    llvm::Module *Module = bifsection_i->second.get();
+  for (auto sectionIt = LoadedBiFSections.begin(); sectionIt != LoadedBiFSections.end(); ++sectionIt) {
+    llvm::Module *Module = sectionIt->second.get();
     CleanUnused(Module);
   }
 #else

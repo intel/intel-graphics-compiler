@@ -1,95 +1,91 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2024-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/Pass.h>
-#include <llvm/IR/DataLayout.h>
-#include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Function.h>
-#include <llvm/IRReader/IRReader.h>
-#include <llvm/IR/LegacyPassManager.h>
-#include <llvm/Support/FileSystem.h>
-#include <llvm/Support/ManagedStatic.h>
-#include <llvm/Transforms/IPO.h>
-#include <llvm/Bitcode/BitcodeReader.h>
-#include <llvm/Bitcode/BitcodeWriterPass.h>
-#include <llvm/Support/SourceMgr.h>
+#include <llvm/ADT/StringSet.h>
 #include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
-#include <llvmWrapper/IR/Instructions.h>
-#include <llvmWrapper/IR/Module.h>
-#include <llvmWrapper/ADT/STLExtras.h>
 #include <llvmWrapper/IR/LLVMContext.h>
 #include "BiFManagerTool.hpp"
 
-#include <string>
-#include <list>
+#include <cstdio>
 #include <fstream>
-#include <sstream>
+#include <string>
+#include <vector>
 
 using namespace std;
 using namespace llvm;
 
-static cl::opt<std::string> InputBCFilename(cl::Positional, cl::desc("<input .bc file>"), cl::init("-"));
-static cl::opt<std::string> InputBC32Filename(cl::Positional, cl::desc("<input .bc file>"), cl::init("-"));
-static cl::opt<std::string> InputBC64Filename(cl::Positional, cl::desc("<input .bc file>"), cl::init("-"));
-static cl::opt<std::string> OutputPath(cl::Positional, cl::desc("<output .bifbc file>"), cl::init("-"));
-static cl::opt<std::string> OutputPathH(cl::Positional, cl::desc("<output .h file>"), cl::init("-"));
+// BiFManager-bin -symbols -main <list> -size32 <list> -size64 <list> -o <symbols.json>
+//   lists the symbols of the modules for depgraph.py
+// BiFManager-bin -pack <modules> -shared-globals <list> -o <package.bifbc>
+//   packs the modules, in the order of depgraph.py
+// A list file names one module or global variable per line.
+static cl::opt<bool> Symbols("symbols", cl::desc("List the symbols of the modules"));
+static cl::opt<std::string> MainListFilename("main", cl::desc("File listing the modules for both pointer sizes"));
+static cl::opt<std::string> Size32ListFilename("size32", cl::desc("File listing the modules for pointer size 32"));
+static cl::opt<std::string> Size64ListFilename("size64", cl::desc("File listing the modules for pointer size 64"));
+static cl::opt<std::string> PackListFilename("pack", cl::desc("File listing the modules to pack, in package order"));
+static cl::opt<std::string> SharedGlobalsFilename("shared-globals",
+                                                  cl::desc("File listing the global variables used across modules"));
+static cl::opt<std::string> OutputPath("o", cl::desc("Output file"), cl::Required);
+
+// Reads the lines of the file, skipping empty ones
+static bool readList(const std::string &ListPath, std::vector<std::string> &Lines) {
+  std::ifstream List(ListPath);
+  if (!List) {
+    printf("[BiFManager] - Unable to read %s\n", ListPath.c_str());
+    return false;
+  }
+  std::string Line;
+  while (std::getline(List, Line)) {
+    if (!Line.empty() && Line.back() == '\r')
+      Line.pop_back();
+    if (!Line.empty())
+      Lines.push_back(Line);
+  }
+  return true;
+}
 
 int main(int argc, char *argv[]) {
+  // Print the progress right away, so that the build log shows how far the
+  // tool got if it dies.
+  setvbuf(stdout, nullptr, _IONBF, 0);
+
   LLVMContext Context;
   IGCLLVM::setOpaquePointers(&Context);
 
   cl::ParseCommandLineOptions(argc, argv);
 
-  auto LoadModule = [&](std::string *PathToModule) {
-    SMDiagnostic Err;
-    ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr = MemoryBuffer::getFileOrSTDIN(*PathToModule);
-    std::unique_ptr<llvm::MemoryBuffer> genericBufferPtr(FileOrErr.get().release());
-    Expected<std::unique_ptr<Module>> M = llvm::parseBitcodeFile(genericBufferPtr->getMemBufferRef(), Context);
-    if (llvm::Error EC = M.takeError()) {
-      std::stringstream stringBuilder("");
-      stringBuilder << "[BiFManager] - Unable to Parse bitcode:";
-      llvm::handleAllErrors(std::move(EC), [&](llvm::ErrorInfoBase &EIB) { stringBuilder << EIB.message(); });
-      Err.print(stringBuilder.str().c_str(), errs());
-    }
-    return M;
-  };
-  auto ModuleMain = LoadModule(&InputBCFilename);
-  if (ModuleMain)
-    printf("[BiFManager] - Loaded Main module\n");
-  else {
-    printf("[BiFManager] - Problem with loading Main module\n");
-    return -13;
-  }
-
-  auto Module32 = LoadModule(&InputBC32Filename);
-  if (Module32)
-    printf("[BiFManager] - Loaded Size32 module\n");
-  else {
-    printf("[BiFManager] - Problem with loading Size32 module\n");
-    return -13;
-  }
-  auto Module64 = LoadModule(&InputBC64Filename);
-  if (Module64)
-    printf("[BiFManager] - Loaded Size64 module\n");
-  else {
-    printf("[BiFManager] - Problem with loading Size64 module\n");
-    return -13;
-  }
-
   IGC::BiFManager::BiFManagerTool bif(Context);
-  bif.MakeBiFPackage(&(*ModuleMain.get()), &(*Module32.get()), &(*Module64.get()));
+  if (Symbols) {
+    std::vector<std::string> MainModules, Size32Modules, Size64Modules;
+    if (!readList(MainListFilename, MainModules) || !readList(Size32ListFilename, Size32Modules) ||
+        !readList(Size64ListFilename, Size64Modules) ||
+        !bif.WriteSymbols(MainModules, Size32Modules, Size64Modules, OutputPath)) {
+      printf("[BiFManager] - Problem with listing the symbols of the modules\n");
+      return -13;
+    }
+    return 0;
+  }
 
-  bif.WriteHeader(OutputPathH.c_str());
+  std::vector<std::string> Modules, Globals;
+  if (!readList(PackListFilename, Modules) || !readList(SharedGlobalsFilename, Globals)) {
+    return -13;
+  }
+  StringSet<> SharedGlobals;
+  for (const auto &Name : Globals)
+    SharedGlobals.insert(Name);
+  if (!bif.MakeBiFPackage(Modules, SharedGlobals)) {
+    printf("[BiFManager] - Problem with making the BiF package\n");
+    return -13;
+  }
   bif.WriteBitcode(OutputPath.c_str());
-
   return 0;
 }

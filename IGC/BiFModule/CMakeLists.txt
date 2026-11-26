@@ -13,6 +13,10 @@
 
 # =============================================== Tools ================================================
 add_subdirectory(Languages/OpenCL/PreRelease/Matrix)
+# Let Visual Studio compile the BiF modules in parallel.
+if(POLICY CMP0147)
+  cmake_policy(SET CMP0147 NEW)
+endif()
 include(BiFModuleCache)
 
 if(UNIX)
