@@ -2407,13 +2407,43 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable *dst, CVariable *src0, CV
       m_encoder->Cast(dst, tmp);
       break;
     }
-    IGC_ASSERT(dst->GetType() == ISA_TYPE_UQ);
-    // TODO: So far, 64-bit popcnt is handled in LLVM IR as follows:
-    // dst = popcnt.32(src & 0xFFFFFFFF);
-    // dst += popcnt.32(src >> 32);
-    // We could do the same thing here if the original sequence in LLVM IR
-    // cannot be translated efficienty.
-    IGC_ASSERT_MESSAGE(0, "NOT IMPLEMENTED YET!");
+    // 64-bit popcnt is implemented as two 32-bit cbit instructions
+    // because vISA needs popcnt source operands to be UB/UW/UD
+    // and destination operands to be UD
+
+    // dst = zext(cbit(src.lo) + cbit(src.hi))
+    if (dst->GetType() == ISA_TYPE_UQ) {
+      const bool uniform = src0->IsUniform();
+      const uint16_t numElts = dst->GetNumberElement();
+      const e_alignment align = dst->IsUniform() ? EALIGN_DWORD : EALIGN_GRF;
+      CVariable *srcUD = m_currShader->GetNewAlias(src0, ISA_TYPE_UD, 0, src0->GetNumberElement() * 2);
+      CVariable *lo = m_currShader->GetNewVariable(numElts, ISA_TYPE_UD, align, dst->IsUniform(), "popcnt_lo");
+      CVariable *hi = m_currShader->GetNewVariable(numElts, ISA_TYPE_UD, align, dst->IsUniform(), "popcnt_hi");
+
+      // lo = cbit(src.lo)
+      if (uniform)
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+      else
+        m_encoder->SetSrcRegion(0, 2, 1, 0);
+      m_encoder->CBit(lo, srcUD);
+      m_encoder->Push();
+
+      // hi = cbit(src.hi)
+      if (uniform)
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+      else
+        m_encoder->SetSrcRegion(0, 2, 1, 0);
+      m_encoder->SetSrcSubReg(0, 1);
+      m_encoder->CBit(hi, srcUD);
+      m_encoder->Push();
+
+      // lo += hi; dst = zext(lo)
+      m_encoder->Add(lo, lo, hi);
+      m_encoder->Push();
+      m_encoder->Cast(dst, lo);
+      break;
+    }
+    IGC_ASSERT_MESSAGE(0, "Unsupported destination type for popcnt");
     break;
   }
   case llvm_ieee_sqrt:
