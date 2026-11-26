@@ -1431,15 +1431,16 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
 
   // Skip when we see a non-promoted type GEP with a non-constant (dynamic) byte offset. The legacy (old) algorithm
   // assumes byte offsets map exactly to whole promoted elements (e.g. multiples of the lane size) and cannot safely
-  // reconstruct sub‑element (inter-lane or unaligned) accesses. Using it would risk incorrect indexing. The new
-  // byte-precise algorithm could handle this, but while it is disabled we treat such dynamic non-promoted type GEPs as
-  // a mismatch and leave them untouched. A byte-array GEP whose stride covers whole elements is exempt: its dynamic
-  // index counts whole elements.
+  // reconstruct sub‑element (inter-lane or unaligned) accesses. Using it would risk incorrect indexing. A byte-array
+  // GEP whose stride covers whole elements is exempt: its dynamic index counts whole elements. So is, on the
+  // heterogeneous-struct path, a GEP whose dynamic indices stride over whole SoA chunks: that path lowers the GEP
+  // byte-precisely.
+  bool IsAggressiveStructSoA = useAggressiveStructSOA();
   for (User *U : allocaRef.users()) {
     if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
       auto gepBitsSize = pDL->getTypeStoreSizeInBits(extractArrayOrVecEleType(GEP->getSourceElementType()));
       if (allocaEltBitsSize != gepBitsSize && GEP->getNumOperands() > 1 && !isa<ConstantInt>(GEP->getOperand(1)) &&
-          !isElementStrideByteArrayGEP(*GEP, indexUnitBytes)) {
+          !isElementStrideByteArrayGEP(*GEP, indexUnitBytes) && !IsAggressiveStructSoA) {
         pInfo->canUseSOALayout = false;
         return true;
       }
