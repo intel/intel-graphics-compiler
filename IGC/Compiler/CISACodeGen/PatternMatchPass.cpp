@@ -33,7 +33,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryToSLM.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Probe/Assertion.h"
-#include <tuple>
 
 using namespace llvm;
 using namespace IGC;
@@ -97,7 +96,6 @@ void CodeGenPatternMatch::releaseMemory() {
   UniformBools.clear();
   LoopExitingBlocksCache.clear();
   VectorConstantUseCounts.clear();
-  KnownBitsCache.clear();
   delete[] m_blocks;
   m_blocks = nullptr;
 }
@@ -327,15 +325,6 @@ bool CodeGenPatternMatch::SIMDConstExpr(Instruction *C) {
   }
   m_IsSIMDConstExpr.insert(std::make_pair(C, isConstExpr));
   return isConstExpr;
-}
-
-bool CodeGenPatternMatch::FitsInWord(llvm::Value *V, bool &IsSigned) {
-  auto It = KnownBitsCache.find(V);
-  if (It == KnownBitsCache.end()) {
-    It = KnownBitsCache.try_emplace(V, computeKnownBits(V, *m_DL)).first;
-  }
-  IsSigned = It->second.countMaxSignificantBits() <= 16;
-  return IsSigned || It->second.countMaxActiveBits() <= 16;
 }
 
 bool CodeGenPatternMatch::NeedInstruction(llvm::Instruction &I) {
@@ -2493,137 +2482,7 @@ bool CodeGenPatternMatch::IsMulCandidateForIMad(llvm::BinaryOperator *Mul, llvm:
   return true;
 }
 
-namespace {
-// Modes of Add3SkipMask.
-enum class Add3SkipOpt : unsigned {
-#define ADD3_SKIP_FLAG(Name, Val, Description) Name = Val,
-#include "common/igc_regkeys_enums_defs.h"
-  ADD3_SKIP_MASK
-#undef ADD3_SKIP_FLAG
-#undef ADD3_SKIP_MASK
-};
-
-// The value of a constant, extended by its sign.
-int64_t getIntValue(const ConstantInt *CI) { return CI->isNegative() ? CI->getSExtValue() : CI->getZExtValue(); }
-
-// Whether a value fits in a 16-bit source; IsSigned tells W from UW.
-bool fitsIn16Bits(int64_t IntVal, bool &IsSigned) {
-  IsSigned = INT16_MIN <= IntVal && IntVal <= INT16_MAX;
-  return IsSigned || (0 <= IntVal && IntVal <= UINT16_MAX);
-}
-
-// Whether GetSource() set a region other than a scalar <0;1,0>.
-bool hasRegion(const SSource &VisaSrc) {
-  return VisaSrc.region_set && !(VisaSrc.region[0] == 0 && VisaSrc.region[1] == 1 && VisaSrc.region[2] == 0);
-}
-
-void setRegion(SSource &VisaSrc, unsigned char VStride, unsigned char Width, unsigned char HStride) {
-  VisaSrc.region_set = true;
-  VisaSrc.region[0] = VStride;
-  VisaSrc.region[1] = Width;
-  VisaSrc.region[2] = HStride;
-}
-
-// One source of a 32-bit integer instruction that can read 16-bit sources (mad, add3): the value read, and how.
-struct MixedIntSource {
-  Value *Val = nullptr;       // value read
-  Value *DwordVal = nullptr;  // the original 32-bit LLVM operand
-  e_modifier Mod = EMOD_NONE; // modifier of the value read, part of DwordVal (folded from under a zext, a negated word)
-  bool Negated = false;       // neg added by the instruction (a sub): kept when the source becomes its dword
-  bool IsSigned = false;      // read as W rather than UW
-  bool IsConst16 = false;     // a constant that fits in 16 bits
-  bool IsUpcast = false;      // zext/sext of an i16 value: value is the i16 value
-  bool IsHalf = false;        // a 16-bit half of a dword: value is the dword, read as words with stride 2
-  bool IsLowerHalf = true;    // which half
-
-  bool isWord() const { return IsConst16 || IsUpcast || IsHalf; }
-  void resetToDword() {
-    const bool WasNegated = Negated;
-    *this = MixedIntSource{DwordVal, DwordVal};
-    Negated = WasNegated;
-  }
-  // The modifier of the source as read: as a word (Val) or as its dword (DwordVal, which includes Mod).
-  e_modifier wordMod() const { return Negated ? CombineModifier(EMOD_NEG, Mod) : Mod; }
-  e_modifier dwordMod() const { return Negated ? EMOD_NEG : EMOD_NONE; }
-  void setHalf(Value *DwordValue, bool IsSignedHalf, bool IsLower) {
-    Val = DwordValue;
-    IsHalf = true;
-    IsSigned = IsSignedHalf;
-    IsLowerHalf = IsLower;
-  }
-  // A zext of a sub-dword load is emitted from the zext itself, i.e. as a dword (see MatchIMad's emission loop).
-  bool readsZExtOfLoad() const { return IsUpcast && !IsSigned && !IsHalf && isa<LoadInst>(Val); }
-  // Fold a neg/abs of the value into the modifier. Under a zext the i16 value is then treated as signed. Not on top of
-  // a modifier already set (a negated word source): GetModifier() replaces it.
-  void foldModifier() {
-    if (Mod != EMOD_NONE) {
-      return;
-    }
-    if (GetModifier(*Val, Mod, Val) && IsUpcast && (Mod == EMOD_NEG || Mod == EMOD_ABS || Mod == EMOD_NEGABS)) {
-      IsSigned = true;
-    }
-  }
-  // A neg on a word, signed or unsigned, applies to the value widened to the execution type: the 2-source add has
-  // relied on it (MatchMulAdd16 emits x - (y >> 16) as add x, -y.hi:uw), and vISA copy propagation folds a zext into a
-  // negated use of a mad/mul as -x:uw.
-  void addNeg() { Negated = !Negated; }
-};
-
-// Recognize a 16-bit half of a dword (and/shift forms) or a zext/sext of an i16 value; false if V is neither.
-bool matchWordSource(Value *V, MixedIntSource &Src) {
-  using namespace llvm::PatternMatch;
-  Value *L = nullptr;
-  if (match(V, m_And(m_Value(L), m_SpecificInt(0xFFFF)))) {
-    Src.setHalf(L, /*IsSignedHalf=*/false, /*IsLower=*/true);
-  } else if (match(V, m_LShr(m_Value(L), m_SpecificInt(16)))) {
-    Src.setHalf(L, /*IsSignedHalf=*/false, /*IsLower=*/false);
-  } else if (match(V, m_AShr(m_Shl(m_Value(L), m_SpecificInt(16)), m_SpecificInt(16)))) {
-    Src.setHalf(L, /*IsSignedHalf=*/true, /*IsLower=*/true);
-  } else if (match(V, m_AShr(m_Value(L), m_SpecificInt(16)))) {
-    Src.setHalf(L, /*IsSignedHalf=*/true, /*IsLower=*/false);
-  } else if ((match(V, m_ZExt(m_Value(L))) || match(V, m_SExt(m_Value(L)))) && L->getType()->isIntegerTy(16)) {
-    Src.Val = L;
-    Src.IsUpcast = true;
-    Src.IsSigned = isa<SExtInst>(V);
-  } else {
-    return false;
-  }
-  return true;
-}
-
-// Recognize a single-use negation (0 - x) of a single-use 16-bit form x (not a zext of a load, which is read from the
-// zext): the word with a neg modifier. The negation and x then need no instruction.
-bool matchNegatedWordSource(Value *V, MixedIntSource &Src) {
-  using namespace llvm::PatternMatch;
-  Value *X = nullptr;
-  if (!V->hasOneUse() || !match(V, m_Sub(m_Zero(), m_Value(X))) || !X->hasOneUse()) {
-    return false;
-  }
-  MixedIntSource Word{V, V};
-  if (!matchWordSource(X, Word) || Word.readsZExtOfLoad()) {
-    return false;
-  }
-  Word.Mod = EMOD_NEG;
-  Src = Word;
-  return true;
-}
-
-// Read a word source: override the 32-bit type GetSource() set, and recompute the offset in words.
-void setWordSource(const MixedIntSource &Src, bool IsUniformVal, SSource &VisaSrc) {
-  // Use W/UW only if region_set is false or the src is scalar.
-  if (!hasRegion(VisaSrc)) {
-    VisaSrc.type = Src.IsSigned ? ISA_TYPE_W : ISA_TYPE_UW;
-    if (Src.IsHalf) {
-      VisaSrc.elementOffset = 2 * VisaSrc.elementOffset + (Src.IsLowerHalf ? 0 : 1);
-    }
-  }
-  if (Src.IsHalf && !IsUniformVal) {
-    setRegion(VisaSrc, 16, 8, 2);
-  }
-}
-} // namespace
-
-bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I, bool DryRun) {
+bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I) {
   struct IMadPattern : Pattern {
     SSource sources[3];
     virtual void Emit(EmitPass *pass, const DstModifier &modifier) { pass->Mad(sources, modifier); }
@@ -2638,280 +2497,360 @@ bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I, bool DryRun) {
     return false;
   }
 
-  // vISA mad is src0 * src1 + src2; the finalizer emits it as gen mad src2 * src1 + src0. What the finalizer accepts
-  // (checked per operand kind with the vISA standalone finalizer):
-  // - Before XE3P (HWConformity): anything else splits the mad into mul (+ mach) + add.
-  //   - src0 (gen src2): no dword and no regioning, i.e. only a 16-bit immediate, a scalar word, or a word with the
-  //     stride of the dword dst (the GRF-aligned lower word of a dword). Not a packed word vector, nor the upper
-  //     word of a dword.
-  //   - src1: a dword or a word with any stride, but no source modifier on a dword.
-  //   - src2: any register; at most one 16-bit immediate among src0 and src2.
-  // - XE3P (HWConformityPro): dword * dword is allowed, and source modifiers on dwords.
-  //   - src0 and src1 must be "flat": a dword, a scalar, a 16-bit immediate, or the lower word of a dword (the stride
-  //     and offset of the dword dst). An upper word or a packed word vector costs a mov.
-  //   - src2 may be any register if src0 is a non-scalar register (true region on gen src0), else it must be flat too.
-  //   - Type combinations (gen src0, src1, src2): W/D + W * W, W/D + D * W, D + D * D, imm16 + D * D. A word addend
-  //     with dword * dword splits the mad into mul + add.
-  // Wider constants come from the constant pool.
-  const bool HasDwordTimesDword = m_Platform.isCoreChildOf(IGFX_XE3P_CORE) || m_Platform.hasWideMulMad();
-  const bool HasSimplifiedRegioning = m_Platform.isCoreChildOf(IGFX_XE3P_CORE);
-  const bool AllowsModifierOnDwordSrc1 = m_Platform.supportsSourceModifierForMixedIntMad();
-  const bool IsInt32 = I.getType()->isIntegerTy(32);
+  for (int i = 0; i < 2; i++) {
+    auto *mul = llvm::dyn_cast<llvm::BinaryOperator>(I.getOperand(i));
 
-  // A constant (or simdSize expression) that fits in a 16-bit source; isSigned tells W from UW.
-  auto FitsIn16Bits = [&](Value *V, bool &IsSigned) {
-    IsSigned = false;
-    if (auto *CI = dyn_cast<ConstantInt>(V)) {
-      return fitsIn16Bits(getIntValue(CI), IsSigned);
-    }
-    if (isa<Instruction>(V) && SIMDConstExpr(cast<Instruction>(V))) {
-      // Rudimentary: doesn't account for negative values resulting from operations on simdSize.
-      return computeKnownBits(V, I.getModule()->getDataLayout()).countMaxActiveBits() <= 16;
-    }
-    return false;
-  };
-
-  // Recognize the 16-bit forms of a mad operand (also negated: 0 - x); anything else is read as the dword.
-  // With EnableMixIntKnownBits, the known bits of a multiplicand also count: a dword that fits in 16 bits is read as
-  // its lower word (the word with the stride and offset of the dword: no instruction needed) where there is no
-  // dword * dword mad.
-  auto ClassifySource = [&](Value *V, bool IsMultiplicand) {
-    MixedIntSource Src{V, V};
-    // Only 32-bit mads take mixed 16-bit sources.
-    // TODO: Can this also extend to 8-bit sources? vISA has more restrictions for byte regioning in mad.
-    if (IGC_IS_FLAG_DISABLED(EnableMixIntOperands) || !IsInt32) {
-      return Src;
-    }
-    if (IsConstOrSimdConstExpr(V)) {
-      Src.IsConst16 = FitsIn16Bits(V, Src.IsSigned);
-      return Src;
-    }
-    const bool UseKnownBits = IsMultiplicand && IGC_IS_FLAG_ENABLED(EnableMixIntKnownBits);
-    bool FitsSigned = false;
-    if (!matchWordSource(V, Src) && !matchNegatedWordSource(V, Src) && UseKnownBits && !HasDwordTimesDword &&
-        FitsInWord(V, FitsSigned)) {
-      Src.setHalf(V, FitsSigned, /*IsLower=*/true);
-    }
-    return Src;
-  };
-
-  // How well a multiplicand fits src0, best first.
-  enum Src0Rank { NotAllowed = -1, RestridedWord = 0, Dword = 1, StridedWord = 2, ScalarWord = 3, Immediate = 4 };
-  auto RankForSrc0 = [&](const MixedIntSource &Src) -> int {
-    if (!IsInt32) {
-      // Same-sized sources: no regioning concerns.
-      return isa<ConstantInt>(Src.Val) ? Immediate : isUniform(Src.Val) ? Dword : RestridedWord;
-    }
-    if (Src.IsConst16) {
-      return isa<ConstantInt>(Src.Val) ? Immediate : ScalarWord;
-    }
-    if (Src.isWord() && isUniform(Src.Val) && !Src.readsZExtOfLoad()) {
-      return ScalarWord;
-    }
-    if (Src.IsHalf && Src.IsLowerHalf) {
-      return StridedWord;
-    }
-    // Dwords, packed word vectors and upper words: the word vectors are emitted as their dword.
-    return HasDwordTimesDword ? Dword : NotAllowed;
-  };
-
-  // No source modifier on a dword src1 before XE3P.
-  auto AllowsModifier = [&](const MixedIntSource &Src, int SrcIdx) {
-    return !(SrcIdx == 1 && IsInt32 && !Src.isWord() && !AllowsModifierOnDwordSrc1);
-  };
-
-  // Replace a constant by its negation; false if that overflows.
-  auto NegateConstant = [&](MixedIntSource &Src) {
-    auto *CI = cast<ConstantInt>(Src.Val);
-    const int64_t IntVal = getIntValue(CI);
-    if (CI->isNegative()) {
-      Src.Val = ConstantInt::get(CI->getType(), -IntVal);
-      Src.IsSigned = false;
-      return true;
-    }
-    if ((IntVal > (int64_t)(INT32_MAX) + 1 && !m_Platform.hasWideMulMad()) ||
-        (uint64_t)IntVal > (uint64_t)(INT64_MAX) + 1) {
-      return false;
-    }
-    Src.Val = ConstantInt::getSigned(CI->getType(), -IntVal);
-    Src.IsSigned = true;
-    Src.IsConst16 = Src.IsConst16 && IntVal <= (int64_t)(INT16_MAX) + 1;
-    return true;
-  };
-
-  // On a tie for src0, prefer a word (the dword then goes to src1, which takes it), then a constant, then a uniform
-  // value (src0 has the regioning restrictions).
-  auto TieBreakKey = [&](const MixedIntSource &Src) {
-    return std::make_tuple(Src.isWord(), IsConstOrSimdConstExpr(Src.Val), isUniform(Src.Val));
-  };
-  // A flat word: a scalar, a constant, or the lower word of a dword (the stride and offset of the dword dst).
-  auto IsFlatWord = [&](const MixedIntSource &Src) {
-    return !Src.isWord() || Src.IsConst16 || isUniform(Src.Val) || Src.readsZExtOfLoad() ||
-           (Src.IsHalf && Src.IsLowerHalf);
-  };
-
-  // A negation of a single-use add/sub is looked through: 0 - (a * b +- x) is a mad with both the product and the
-  // addend negated.
-  llvm::BinaryOperator *Root = &I;
-  bool RootNegated = false;
-  if (I.getOpcode() == Instruction::Sub && llvm::PatternMatch::match(I.getOperand(0), llvm::PatternMatch::m_Zero())) {
-    auto *S = llvm::dyn_cast<llvm::BinaryOperator>(I.getOperand(1));
-    if (S && S->hasOneUse() && (S->getOpcode() == Instruction::Add || S->getOpcode() == Instruction::Sub) &&
-        S->getOperand(0) != S->getOperand(1)) {
-      Root = S;
-      RootNegated = true;
-    }
-  }
-
-  for (int MulIdx = 0; MulIdx < 2; MulIdx++) {
-    // A single-use negation of the product is looked through: x +- (0 - a * b) = x -+ a * b.
-    auto *MulUser = Root;
-    auto *MulInst = llvm::dyn_cast<llvm::BinaryOperator>(Root->getOperand(MulIdx));
-    bool ProductNegated = false;
-    if (MulInst && MulInst->getOpcode() == Instruction::Sub && MulInst->hasOneUse() &&
-        llvm::PatternMatch::match(MulInst->getOperand(0), llvm::PatternMatch::m_Zero())) {
-      MulUser = MulInst;
-      MulInst = llvm::dyn_cast<llvm::BinaryOperator>(MulInst->getOperand(1));
-      ProductNegated = true;
-    }
-    if (!MulInst || MulInst->getOpcode() != Instruction::Mul || !IsMulCandidateForIMad(MulInst, MulUser)) {
-      continue;
-    }
-
-    // srcs[0] and srcs[1] are the multiplicands (vISA src0, src1), srcs[2] the addend.
-    // Usually a constant LLVM operand will be the 2nd mul operand at this point.
-    MixedIntSource Srcs[3] = {ClassifySource(MulInst->getOperand(1), true),
-                              ClassifySource(MulInst->getOperand(0), true),
-                              ClassifySource(Root->getOperand(1 - MulIdx), false)};
-
-    // Put the multiplicand that fits src0 best there (see TieBreakKey for a tie).
-    int Rank0 = RankForSrc0(Srcs[0]);
-    int Rank1 = RankForSrc0(Srcs[1]);
-    if (Rank0 == NotAllowed && Rank1 == NotAllowed) {
-      continue;
-    }
-    if (Rank1 > Rank0 || (Rank1 == Rank0 && TieBreakKey(Srcs[1]) > TieBreakKey(Srcs[0]))) {
-      std::swap(Srcs[0], Srcs[1]);
-      std::swap(Rank0, Rank1);
-    }
-    if (Rank0 == Dword && Srcs[0].isWord()) {
-      Srcs[0].resetToDword();
-    }
-    if (HasSimplifiedRegioning && IsInt32) {
-      // XE3P: src1 must be flat, and src2 too unless src0 is a non-scalar register (else the finalizer adds a mov).
-      if (!IsFlatWord(Srcs[1])) {
-        Srcs[1].resetToDword();
+    if (mul && mul->getOpcode() == Instruction::Mul) {
+      if (!IsMulCandidateForIMad(mul, &I)) {
+        continue;
       }
-      if (!IsFlatWord(Srcs[2]) && (IsConstOrSimdConstExpr(Srcs[0].Val) || isUniform(Srcs[0].Val))) {
-        Srcs[2].resetToDword();
-      }
-    }
 
-    // Fold neg/abs into source modifiers. Not from a half: the modifier found there would apply to the whole dword.
-    for (int SrcIdx = 0; SrcIdx < 3; ++SrcIdx) {
-      if (!Srcs[SrcIdx].IsHalf && AllowsModifier(Srcs[SrcIdx], SrcIdx)) {
-        Srcs[SrcIdx].foldModifier();
-      }
-    }
-
-    // A sub negates either the addend (mul - x) or the product (x - mul); a looked-through negation of the product
-    // negates it too (and cancels a sub's). A constant is negated directly; otherwise a neg modifier goes on the addend
-    // or on one of the multiplicands. A source that can't take the neg becomes its dword.
-    const bool IsSub = Root->getOpcode() == Instruction::Sub;
-    if ((IsSub && MulIdx == 0) != RootNegated) {
-      MixedIntSource &Addend = Srcs[2];
-      if (isa<ConstantInt>(Addend.Val)) {
-        if (!NegateConstant(Addend)) {
-          return false;
+      // Helper to hold relevant info about how to emit each source operand
+      struct {
+        Value *src = nullptr;         // LLVM operand
+        Value *originalSrc = nullptr; // original LLVM operand, before any modification for matching
+        e_modifier mod = EMOD_NONE;
+        bool isSigned = false;
+        bool isConstant16BitEq = false;
+        bool isUpcastSrc = false;
+        bool isCandidate() { return needsRegioning || isConstant16BitEq || isUpcastSrc; }
+        void reset() {
+          src = originalSrc;
+          mod = EMOD_NONE;
+          isSigned = false;
+          isConstant16BitEq = false;
+          isUpcastSrc = false;
+          needsRegioning = false;
+          useLower = true;
         }
-      } else {
-        Addend.addNeg();
-      }
-    }
-    if (((IsSub && MulIdx == 1) != ProductNegated) != RootNegated) {
-      if (auto *CI = dyn_cast<ConstantInt>(Srcs[0].Val)) {
-        // Keep a 16-bit constant if negating it would make it wider and src1 can take the neg instead.
-        bool NegationWidens = !CI->isNegative() && CI->getZExtValue() > (uint64_t)(INT16_MAX) + 1;
-        if (NegationWidens && Srcs[0].IsConst16 && AllowsModifier(Srcs[1], 1)) {
-          Srcs[1].addNeg();
-        } else if (!NegateConstant(Srcs[0])) {
-          return false;
-        } else if (RankForSrc0(Srcs[0]) == NotAllowed) {
-          // The negated constant no longer fits src0: swap in the other multiplicand if it fits there as is.
-          int OtherRank = RankForSrc0(Srcs[1]);
-          if (OtherRank == NotAllowed || (OtherRank == Dword && Srcs[1].isWord())) {
-            continue;
+
+        // below properties relevant when src is 32-bit but can be represented in 16 bits
+        bool needsRegioning = false; // needs regioning to reduce bit width
+        bool useLower = true;        // for setting offset
+      } oprdInfo[3];
+
+      oprdInfo[2].src = I.getOperand(1 - i);
+      oprdInfo[2].originalSrc = oprdInfo[2].src;
+      oprdInfo[1].src = mul->getOperand(0);
+      oprdInfo[1].originalSrc = oprdInfo[1].src;
+      oprdInfo[0].src = mul->getOperand(1); // usually a constant LLVM operand will be 2nd mul op at this point
+      oprdInfo[0].originalSrc = oprdInfo[0].src;
+
+      // Check whether we can replace some/all of 32-bit MUL+ADD operands with partial 16-bit MAD operands
+      // TODO: Can this also extend to replacing 16-bit operands with 8 bits? Need to be careful for byte regioning,
+      // seems like there are more restrictions in vISA for matching 8-bit MAD
+      if (IGC_IS_FLAG_ENABLED(EnableMixIntOperands) && I.getType()->isIntegerTy(32)) {
+        using namespace llvm::PatternMatch;
+        for (int opI = 0; opI < 3; ++opI) {
+          Value *L = nullptr;
+          if (IsConstOrSimdConstExpr(oprdInfo[opI].src)) {
+            if (auto *CI = dyn_cast<ConstantInt>(oprdInfo[opI].src)) {
+              int64_t val = CI->isNegative() ? CI->getSExtValue() : CI->getZExtValue();
+              if (INT16_MIN <= val && val <= INT16_MAX) {
+                oprdInfo[opI].isSigned = true;
+                oprdInfo[opI].isConstant16BitEq = true;
+              } else if (0 <= val && val <= UINT16_MAX) {
+                oprdInfo[opI].isConstant16BitEq = true;
+              }
+            } else {
+              // If the source is a derivative of simdSize intrinsic, compute the known bits
+              // Not guaranteed to fit in 16 or 8 bits, because of intermediate operations modifying var range
+              KnownBits knownBits = computeKnownBits(oprdInfo[opI].src, I.getModule()->getDataLayout());
+              // rudimentary check since this doesn't account for negative values as a result of operations performed on
+              // SIMDSize, may not catch all cases
+              if (knownBits.countMaxActiveBits() <= 16) {
+                oprdInfo[opI].isConstant16BitEq = true;
+              }
+            }
+            // When doing matches for m_Value(L), if L is a captured 32-bit variable, then we set needsRegioning to true
+            // to know to set regioning later
+          } else if (match(oprdInfo[opI].src, m_And(m_Value(L), m_SpecificInt(0xFFFF)))) {
+            oprdInfo[opI].src = L;
+            oprdInfo[opI].needsRegioning = true;
+          } else if (match(oprdInfo[opI].src, m_LShr(m_Value(L), m_SpecificInt(16)))) {
+            oprdInfo[opI].src = L;
+            oprdInfo[opI].needsRegioning = true;
+            oprdInfo[opI].useLower = false;
+          } else if (match(oprdInfo[opI].src, m_AShr(m_Shl(m_Value(L), m_SpecificInt(16)), m_SpecificInt(16)))) {
+            oprdInfo[opI].src = L;
+            oprdInfo[opI].isSigned = true;
+            oprdInfo[opI].needsRegioning = true;
+          } else if (PatternMatch::match(oprdInfo[opI].src, m_AShr(m_Value(L), m_SpecificInt(16)))) {
+            oprdInfo[opI].src = L;
+            oprdInfo[opI].isSigned = true;
+            oprdInfo[opI].needsRegioning = true;
+            oprdInfo[opI].useLower = false;
+          } else if (match(oprdInfo[opI].src, m_ZExt(m_Value(L))) && L->getType()->isIntegerTy(16)) {
+            oprdInfo[opI].src = L;
+            oprdInfo[opI].isUpcastSrc = true;
+          } else if (match(oprdInfo[opI].src, m_SExt(m_Value(L))) && L->getType()->isIntegerTy(16)) {
+            oprdInfo[opI].src = L;
+            oprdInfo[opI].isSigned = true;
+            oprdInfo[opI].isUpcastSrc = true;
           }
-          std::swap(Srcs[0], Srcs[1]);
+        }
+      }
+
+      // Preemptive swapping of mul operands to try to get better candidates for src0 and src1 of mad
+      // Order of if statements in increasing order of priority
+      if (isUniform(oprdInfo[1].src) && !isUniform(oprdInfo[0].src) &&
+          !(oprdInfo[1].needsRegioning && !oprdInfo[1].useLower)) {
+        // put non-uniform value in src1, since src0 (src2 in gen) has regioning restrictions, but only if new value
+        // in src0 will still be GRF aligned
+        std::swap(oprdInfo[0], oprdInfo[1]);
+      }
+      if (IsConstOrSimdConstExpr(oprdInfo[1].src)) {
+        // put the constant in src0
+        std::swap(oprdInfo[0], oprdInfo[1]);
+      }
+      if (mul->getType()->isIntegerTy(32) && oprdInfo[1].isCandidate() && !oprdInfo[0].isCandidate()) {
+        // put the wider operand in src1
+        std::swap(oprdInfo[0], oprdInfo[1]);
+      }
+
+      // Need GRF-aligned src0 (in vISA, src2 in gen) for mad. Since preemptive swapping happened earlier, if conditions
+      // are not satisfied just don't match mad. Alignment and regioning are limited for src0
+      // - dword aligned but not using lower bits
+      if (oprdInfo[0].needsRegioning && !oprdInfo[0].useLower &&
+          !m_Platform.isCoreChildOf(IGFX_XE3P_CORE) // Simplified regioning
+      ) {
+        continue;
+      }
+
+      // - word aligned
+      if (oprdInfo[0].isUpcastSrc) {
+        oprdInfo[0].reset();
+      }
+
+      // Get source modifiers for all operands if not using regioning
+      // Source modifier not supported on src1 for DW and lower precision integer multiply
+      bool skipModifierSrc1 = false;
+      if (m_Platform.supportsSourceModifierForMixedIntMad() ||
+          !(mul->getType()->isIntegerTy(32) && (oprdInfo[0].isCandidate() ^ oprdInfo[1].isCandidate()))) {
+        // Source modifier supported, but will only get applied properly if not using special regioning to specify
+        // reduced values
+        if (!oprdInfo[1].needsRegioning) {
+          bool mod = GetModifier(*oprdInfo[1].src, oprdInfo[1].mod, oprdInfo[1].src);
+          // Special case: NEG, ABS, or NEGABS modifier on unsigned upcasted source
+          // Happens when:
+          // B = llvm.abs(A) OR B = sub 0, A OR B = sub 0, llvm.abs(A)
+          // C = zext i16 B to i32
+          // origSrc=C, src=B, isSigned=false (from zext), mod=NONE -> src=A, isSigned=false, mod=ABS/NEG/NEGABS
+          // Mod on A, which is guaranteed signed 16-bit since abs or neg or negabs was applied, undef for unsigned
+          // values
+          if (mod && oprdInfo[1].isUpcastSrc &&
+              (oprdInfo[1].mod == EMOD_NEG || oprdInfo[1].mod == EMOD_ABS || oprdInfo[1].mod == EMOD_NEGABS)) {
+            oprdInfo[1].isSigned = true;
+          }
         }
       } else {
-        // src0 takes the neg: a word (signed or unsigned), or a dword where dwords are allowed there.
-        Srcs[0].addNeg();
+        skipModifierSrc1 = true;
       }
-    }
+      if (!oprdInfo[0].needsRegioning) {
+        bool mod = GetModifier(*oprdInfo[0].src, oprdInfo[0].mod, oprdInfo[0].src);
+        if (mod && oprdInfo[0].isUpcastSrc &&
+            (oprdInfo[0].mod == EMOD_NEG || oprdInfo[0].mod == EMOD_ABS || oprdInfo[0].mod == EMOD_NEGABS)) {
+          oprdInfo[0].isSigned = true;
+        }
+      }
+      if (!oprdInfo[2].needsRegioning) {
+        bool mod = GetModifier(*oprdInfo[2].src, oprdInfo[2].mod, oprdInfo[2].src);
+        if (mod && oprdInfo[2].isUpcastSrc &&
+            (oprdInfo[2].mod == EMOD_NEG || oprdInfo[2].mod == EMOD_ABS || oprdInfo[2].mod == EMOD_NEGABS)) {
+          oprdInfo[2].isSigned = true;
+        }
+      }
 
-    // XE3P has no word addend with dword * dword (only a 16-bit immediate): the mad would be split into mul + add.
-    if (HasSimplifiedRegioning && IsInt32 && Srcs[2].isWord() && !isa<ConstantInt>(Srcs[2].Val) && !Srcs[0].isWord() &&
-        !Srcs[1].isWord()) {
-      Srcs[2].resetToDword();
-    }
+      if (I.getOpcode() == Instruction::Sub) {
+        if (i == 0) {
+          // Matching sub to mad instruction by trying to apply negative modifier to subtrahend
+          if (auto *CI = dyn_cast<ConstantInt>(oprdInfo[2].src)) {
+            int64_t val = CI->isNegative() ? CI->getSExtValue() : CI->getZExtValue();
+            if (CI->isNegative()) {
+              // flip without overflow concerns
+              oprdInfo[2].src = ConstantInt::get(CI->getType(), -val);
+              oprdInfo[2].isSigned = false;
+            } else {
+              if (val > (int64_t)(INT32_MAX) + 1 && !m_Platform.hasWideMulMad() ||
+                  (uint64_t)val > (uint64_t)(INT64_MAX) + 1) {
+                // negating will overflow
+                return false;
+              } else if (val > (int64_t)(INT16_MAX) + 1) {
+                // negating will invalidate status
+                oprdInfo[2].isConstant16BitEq = false;
+              }
+              oprdInfo[2].src = ConstantInt::getSigned(CI->getType(), -val);
+              oprdInfo[2].isSigned = true;
+            }
+          } else {
+            // If src2 is candidate and unsigned, neg modifier will do 2s complement
+            // This will result in incorrect values if src2 value falls between INT16_MAX and UINT16_MAX.
+            // Unless NEG already present, fallback to full dword operand
+            if (oprdInfo[2].isCandidate() && !oprdInfo[2].isSigned && oprdInfo[2].mod != EMOD_NEG) {
+              oprdInfo[2].reset();
+              GetModifier(*oprdInfo[2].src, oprdInfo[2].mod, oprdInfo[2].src);
+              // fallthrough to combine neg modifier from sub instruction
+            }
+            oprdInfo[2].mod = CombineModifier(EMOD_NEG, oprdInfo[2].mod);
+          }
+        } else {
+          // Matching sub to mad instruction by trying to apply negative modifier to minuend
+          // try to apply neg to src0 if possible
+          if (auto *CI = dyn_cast<ConstantInt>(oprdInfo[0].src)) {
+            int64_t val = CI->isNegative() ? CI->getSExtValue() : CI->getZExtValue();
+            // if src0 is a constant, need to make sure to negate it properly
+            if (CI->isNegative()) {
+              // flip without overflow concerns
+              oprdInfo[0].src = ConstantInt::get(CI->getType(), -val);
+              oprdInfo[0].isSigned = false;
+            } else {
+              if (val > (int64_t)(INT32_MAX) + 1 && !m_Platform.hasWideMulMad() ||
+                  (uint64_t)val > (uint64_t)(INT64_MAX) + 1) {
+                // negating will overflow
+                return false;
+              } else if (val > (int64_t)(INT16_MAX) + 1) {
+                // can flip to negative, need to recheck 16-bit candidacy
+                if (oprdInfo[0].isConstant16BitEq && !skipModifierSrc1 &&
+                    (!oprdInfo[1].isCandidate() || oprdInfo[1].isSigned)) {
+                  // if src0 was never a candidate, no consequence for flipping. Only consider flipping src1 if src0 is
+                  // a candidate not modifier restricted for src1 and won't mess with src1 type/regioning by adding neg
+                  // modifier, put modifier on src1 without making src0 non-16-bit candidate
+                  oprdInfo[1].mod = CombineModifier(EMOD_NEG, oprdInfo[1].mod);
+                } else {
+                  // cannot put modifier on src1 or will need to reset src1, just negate src0
+                  // this will likely result in mad no longer getting matched, but there is no other way
+                  oprdInfo[0].src = ConstantInt::getSigned(CI->getType(), -val);
+                  oprdInfo[0].isSigned = true;
+                  oprdInfo[0].isConstant16BitEq = false;
+                }
+              } else {
+                // negative constant fits in 16 bits
+                oprdInfo[0].src = ConstantInt::getSigned(CI->getType(), -val);
+                oprdInfo[0].isSigned = true;
+              }
+            }
+          } else {
+            // if src0 is candidate and unsigned, neg modifier will do 2s complement
+            // this will result in incorrect values if src0 value falls between INT16_MAX and UINT16_MAX
+            // unless NEG already present, fallback to full dword operand
+            if (oprdInfo[0].isCandidate() && !oprdInfo[0].isSigned && oprdInfo[0].mod != EMOD_NEG) {
+              if (!skipModifierSrc1) {
+                oprdInfo[1].mod = CombineModifier(EMOD_NEG, oprdInfo[1].mod);
+              } else {
+                // this will likely cause mad not to be matched, but no other way
+                oprdInfo[0].reset();
+                GetModifier(*oprdInfo[0].src, oprdInfo[0].mod, oprdInfo[0].src);
+                // combine neg modifier from sub instruction
+                oprdInfo[0].mod = CombineModifier(EMOD_NEG, oprdInfo[0].mod);
+              }
+            } else {
+              oprdInfo[0].mod = CombineModifier(EMOD_NEG, oprdInfo[0].mod);
+            }
+          }
+        }
+      }
 
-    // Constants that don't fit in 16 bits come from the constant pool; allow one with AllowConstMadOpMovToReg or on
-    // XE3P, none otherwise.
-    unsigned NumWideConst = 0;
-    for (const MixedIntSource &Src : Srcs) {
-      bool IsSigned = false;
-      NumWideConst += IsConstOrSimdConstExpr(Src.Val) &&
-                      !(m_Platform.support16BitImmSrcForMad() && FitsIn16Bits(Src.Val, IsSigned));
-    }
-    const unsigned MaxWideConst =
-        IGC_IS_FLAG_ENABLED(AllowConstMadOpMovToReg) || m_Platform.isCoreChildOf(IGFX_XE3P_CORE) ? 1 : 0;
-    if (NumWideConst > MaxWideConst) {
-      continue;
-    }
-    if (DryRun) {
+      // Mad instruction does not support dword * dword, no operands were able to get reduced.
+      if (mul->getType()->isIntegerTy(32) && !oprdInfo[0].isCandidate() &&
+          !oprdInfo[1].isCandidate()
+          /* Unless supported platform is performing dword * dword + {dword or qword} = qword */
+          && !m_Platform.hasWideMulMad()
+          /* Simplified regioning, dword * dword allowed */
+          && !m_Platform.isCoreChildOf(IGFX_XE3P_CORE)) {
+        return false;
+      }
+
+      auto isValueConstantInt16Bit = [&](Value *V) {
+        if (auto *CI = dyn_cast<ConstantInt>(V)) {
+          return CI->getValue().isNegative() ? CI->getValue().sge(INT16_MIN) && CI->getValue().sle(INT16_MAX)
+                                             : CI->getValue().uge(0) && CI->getValue().ule(UINT16_MAX);
+        } else if (isa<Instruction>(V) && SIMDConstExpr(cast<Instruction>(V))) {
+          KnownBits knownBits = computeKnownBits(V, I.getModule()->getDataLayout());
+          // rudimentary check since this doesn't account for negative values as a result of operations performed on
+          // SIMDSize
+          return knownBits.countMaxActiveBits() <= 16;
+        }
+        return false;
+      };
+
+      unsigned numConst = 0;
+      unsigned num16BitImm = 0;
+      // At this point check whether constants can be immediate or they need to be in constant pool
+      for (int i = 0; i < 3; ++i) {
+        if (IsConstOrSimdConstExpr(oprdInfo[i].src)) {
+          numConst++;
+          if (m_Platform.support16BitImmSrcForMad() && isValueConstantInt16Bit(oprdInfo[i].src)) {
+            num16BitImm++;
+          }
+        }
+      }
+
+      // control whether to allow any constant operand >16-bit to be generated to be used from the constant pool
+      // if AllowConstMadOpMovToReg is set, we allow one such constant, otherwise all constants must be 16-bit
+      const unsigned constLimit =
+          IGC_IS_FLAG_ENABLED(AllowConstMadOpMovToReg) || m_Platform.isCoreChildOf(IGFX_XE3P_CORE) ? 1 : 0;
+      if ((numConst - num16BitImm) > constLimit) {
+        continue;
+      }
+
+      IMadPattern *pattern = new (m_allocator) IMadPattern();
+
+      bool addToConstantPool = false;
+      for (int i = 0; i < 3; ++i) {
+        // ZExt from a sub-dword LoadInst: use originalSrc (ZExtInst) so MarkAsSource
+        // keeps ZExtByteLoadPattern active; otherwise the dead-copy skip in
+        // emitLSCVectorLoad_subDW leaves Dest:UW uninitialized.
+        // ZExt from non-load (e.g. extractelement): use src (the i16 extractelement)
+        // directly. Using the ZExtInst here causes GetSrcVariable to alias its dword
+        // CVariable as UW, producing a 64-element UW alias of a 32-element dword var.
+        // A mad (M1,32) reading 32 elements from that alias covers only lanes 0-15.
+        // SExt: use src (i16/i8 load) directly; originalSrc (sext) maps to a dword
+        // CVariable whose stride-1 word alias reads wrong lanes on SIMD32.
+        bool useOriginalSrc = oprdInfo[i].isUpcastSrc && !oprdInfo[i].isSigned && !oprdInfo[i].needsRegioning &&
+                              isa<LoadInst>(oprdInfo[i].src);
+        llvm::Value *srcVal = useOriginalSrc ? oprdInfo[i].originalSrc : oprdInfo[i].src;
+        pattern->sources[i] = GetSource(srcVal, oprdInfo[i].mod, false, IsSourceOfSample(&I));
+        if (oprdInfo[i].isCandidate()) {
+          SSource &thisSrc = pattern->sources[i];
+
+          // useOriginalSrc: GetSource(ZExtInst) returns gatherDst (UD, N elts)
+          // which already holds zero-extended i16 values. No ISA_TYPE_UW override
+          // or special regioning needed; leave the UD type intact.
+          if (!useOriginalSrc) {
+            // for now, Use W/UW only if region_set is false or the src is scalar
+            if (!thisSrc.region_set || (thisSrc.region[0] == 0 && thisSrc.region[1] == 1 && thisSrc.region[2] == 0)) {
+              // Note that SSource's type, if set by GetSource(), should be 32bit type. It's safe to override it with
+              // either UW or W. But for SSource's offset, need to re-calculate in term of 16bit, not 32bit.
+              thisSrc.type = oprdInfo[i].isSigned ? ISA_TYPE_W : ISA_TYPE_UW;
+              if (oprdInfo[i].needsRegioning) {
+                thisSrc.elementOffset = (2 * thisSrc.elementOffset) + (oprdInfo[i].useLower ? 0 : 1);
+              }
+            }
+            if (oprdInfo[i].needsRegioning && !isUniform(oprdInfo[i].src)) {
+              thisSrc.region_set = true;
+              thisSrc.region[0] = 16;
+              thisSrc.region[1] = 8;
+              thisSrc.region[2] = 2;
+            }
+          }
+        }
+
+        if (isa<ConstantInt>(oprdInfo[i].src)) {
+          if (!m_Platform.support16BitImmSrcForMad() || !isValueConstantInt16Bit(oprdInfo[i].src) ||
+              addToConstantPool) {
+            // Add all constants that are unable to fit in 16-bits to constant pool.
+            AddToConstantPool(I.getParent(), oprdInfo[i].src);
+            pattern->sources[i].fromConstantPool = true;
+          } else if (!addToConstantPool
+                     // Pre XE3P only one immediate constant allowed in mad
+                     && !m_Platform.isCoreChildOf(IGFX_XE3P_CORE)) {
+            addToConstantPool = true;
+          }
+        }
+      }
+      AddPattern(pattern);
       return true;
     }
-
-    IMadPattern *MadPattern = new (m_allocator) IMadPattern();
-    bool ImmUsed = false;
-    for (int SrcIdx = 0; SrcIdx < 3; ++SrcIdx) {
-      // ZExt from a sub-dword LoadInst: use the ZExtInst so MarkAsSource keeps ZExtByteLoadPattern active; otherwise
-      // the dead-copy skip in emitLSCVectorLoad_subDW leaves Dest:UW uninitialized. GetSource(ZExtInst) returns
-      // gatherDst (UD), which already holds the zero-extended values, so no word type or regioning is needed.
-      // ZExt from non-load (e.g. extractelement): use the i16 value directly. Using the ZExtInst here causes
-      // GetSrcVariable to alias its dword CVariable as UW, producing a 64-element UW alias of a 32-element dword var;
-      // a mad (M1,32) reading 32 elements from that alias covers only lanes 0-15.
-      // SExt: use the i16/i8 load directly; the sext maps to a dword CVariable whose stride-1 word alias reads wrong
-      // lanes on SIMD32.
-      const MixedIntSource &MadSrc = Srcs[SrcIdx];
-      const bool ReadsZExt = MadSrc.readsZExtOfLoad();
-      SSource &VisaSrc = MadPattern->sources[SrcIdx];
-      VisaSrc = GetSource(ReadsZExt ? MadSrc.DwordVal : MadSrc.Val, ReadsZExt ? MadSrc.dwordMod() : MadSrc.wordMod(),
-                          false, IsSourceOfSample(&I));
-      if (MadSrc.isWord() && !ReadsZExt) {
-        if (MadSrc.IsHalf && hasRegion(VisaSrc)) {
-          // GetSource() already set a region (the dword is a strided part of another variable): a word stride on top
-          // of it would read other elements, so read the dword, as MatchAdd3 does.
-          VisaSrc = GetSource(MadSrc.DwordVal, MadSrc.dwordMod(), false, IsSourceOfSample(&I));
-        } else {
-          setWordSource(MadSrc, isUniform(MadSrc.Val), VisaSrc);
-        }
-      }
-
-      if (isa<ConstantInt>(MadSrc.Val)) {
-        bool IsSigned = false;
-        if (!m_Platform.support16BitImmSrcForMad() || !FitsIn16Bits(MadSrc.Val, IsSigned) || ImmUsed) {
-          AddToConstantPool(I.getParent(), MadSrc.Val);
-          VisaSrc.fromConstantPool = true;
-        } else {
-          // Pre XE3P only one immediate constant allowed in mad
-          ImmUsed = !m_Platform.isCoreChildOf(IGFX_XE3P_CORE);
-        }
-      }
-    }
-    AddPattern(MadPattern);
-    return true;
   }
 
   return false;
@@ -4495,6 +4434,8 @@ bool CodeGenPatternMatch::MatchFullMul32(llvm::Instruction &I) {
 //         ( mul (16|M0)  r14.0<1>:d   r12.1<2;1,0>:w   r12.0<2;1,0>:w )
 //
 bool CodeGenPatternMatch::MatchMulAdd16(Instruction &I) {
+  using namespace llvm::PatternMatch;
+
   struct Oprd16Pattern : public Pattern {
     SSource srcs[2];
     Instruction *rootInst;
@@ -4515,114 +4456,85 @@ bool CodeGenPatternMatch::MatchMulAdd16(Instruction &I) {
     return false;
   }
 
-  // Try to replace any source operands with ones of type short if any: a constant that fits in 16 bits, a 16-bit half
-  // of a dword, or a zext/sext of an i16 value. As vISA allows the mix of any integer type, each operand is considered
-  // separately.
-  const bool IsXe3P = m_Platform.isCoreChildOf(IGFX_XE3P_CORE);
-  const bool HasWideMulMad = m_Platform.hasWideMulMad();
-  Value *Ops[2] = {I.getOperand(0), I.getOperand(1)};
-  MixedIntSource Srcs[2] = {{Ops[0], Ops[0]}, {Ops[1], Ops[1]}};
-  bool KeptExtend[2] = {false, false};
+  // Try to replace any source operands with ones of type short if any. As vISA
+  // allows the mix of any integer type, each operand is considered separately.
+  struct {
+    Value *src;
+    bool useLower;
+    bool isSigned;
+  } oprdInfo[2];
+  bool isCandidate = false;
+
   for (int i = 0; i < 2; ++i) {
-    MixedIntSource &Src = Srcs[i];
-    if (ConstantInt *CI = dyn_cast<ConstantInt>(Ops[i])) {
-      // If src needs to be negated (y = x - a = x + (-a), as gen only has add), the negated src must fit into W/UW.
-      const int64_t Val = getIntValue(CI);
-      Src.IsConst16 = fitsIn16Bits(opc == Instruction::Sub && i == 1 ? -Val : Val, Src.IsSigned);
-    } else if (matchWordSource(Ops[i], Src)) {
-      // A zext/sext is only worth reading as a word if it dies (otherwise it is still emitted); a zext of a sub-dword
-      // load is read as its dword (see MatchIMad).
-      if (Src.IsUpcast && (!Ops[i]->hasOneUse() || Src.readsZExtOfLoad())) {
-        Src.resetToDword();
-        KeptExtend[i] = true;
-      }
-    } else {
-      // A negated 16-bit form: the word with a neg (applied to the widened value, see MixedIntSource::addNeg).
-      matchNegatedWordSource(Ops[i], Src);
-    }
-  }
-  // With EnableMixIntKnownBits, a dword whose known bits fit in 16 bits can be read as its lower word (the word with
-  // the stride and offset of the dword: no instruction needed). Not an extend kept as its dword: the finalizer
-  // propagates the 16-bit source of the extend into its users, which a region of the dword would prevent (the extend
-  // is then a mov, and its dword stays live).
-  auto FitsInLowerWord = [&](int i, bool &IsSigned) {
-    return IGC_IS_FLAG_ENABLED(EnableMixIntKnownBits) && !KeptExtend[i] && !isa<Constant>(Ops[i]) &&
-           FitsInWord(Ops[i], IsSigned);
-  };
+    Value *oprd = I.getOperand(i);
+    Value *L = nullptr;
 
-  // Before XE3P a negated word in a mul is only accepted next to another word or a 16-bit immediate; next to a dword
-  // the finalizer moves it to a dword, which also makes the multiply dword * dword (mul + mach).
-  if (opc == Instruction::Mul && !IsXe3P) {
-    for (int i = 0; i < 2; ++i) {
-      if (Srcs[i].Mod == EMOD_NONE || Srcs[1 - i].isWord()) {
-        continue;
+    // oprdInfo[i].src == null --> no W operand replacement.
+    oprdInfo[i].src = nullptr;
+    if (ConstantInt *CI = dyn_cast<ConstantInt>(oprd)) {
+      int64_t val = CI->isNegative() ? CI->getSExtValue() : CI->getZExtValue();
+      // If src needs to be negated (y = x - a = x + (-a), as gen only
+      // has add), need to check if the negated src fits into W/UW.
+      bool isNegSrc = (opc == Instruction::Sub && i == 1);
+      if (isNegSrc) {
+        val = -val;
       }
-      // The other operand can still be a word if its known bits fit in 16 bits.
-      bool IsSigned = false;
-      if (!HasWideMulMad && FitsInLowerWord(1 - i, IsSigned)) {
-        Srcs[1 - i].setHalf(Ops[1 - i], IsSigned, /*IsLower=*/true);
-      } else {
-        Srcs[i].resetToDword();
+      if (INT16_MIN <= val && val <= INT16_MAX) {
+        oprdInfo[i].src = oprd;
+        oprdInfo[i].useLower = true; // does not matter for const
+        oprdInfo[i].isSigned = true;
+        isCandidate = true;
+      } else if (0 <= val && val <= UINT16_MAX) {
+        oprdInfo[i].src = oprd;
+        oprdInfo[i].useLower = true; // does not matter for const
+        oprdInfo[i].isSigned = false;
+        isCandidate = true;
       }
-    }
-  }
-
-  // A mul of two dwords reads one that fits in 16 bits as its lower word: dword * word is one mul, while dword * dword
-  // needs mul + macl where there is no dword * dword multiply.
-  if (opc == Instruction::Mul && !Srcs[0].isWord() && !Srcs[1].isWord() && !IsXe3P && !HasWideMulMad) {
-    for (int i = 0; i < 2; ++i) {
-      bool IsSigned = false;
-      if (FitsInLowerWord(i, IsSigned)) {
-        Srcs[i].setHalf(Ops[i], IsSigned, /*IsLower=*/true);
-        break;
-      }
+    } else if (match(oprd, m_And(m_Value(L), m_SpecificInt(0xFFFF)))) {
+      oprdInfo[i].src = L;
+      oprdInfo[i].useLower = true;
+      oprdInfo[i].isSigned = false;
+      isCandidate = true;
+    } else if (match(oprd, m_LShr(m_Value(L), m_SpecificInt(16)))) {
+      oprdInfo[i].src = L;
+      oprdInfo[i].useLower = false;
+      oprdInfo[i].isSigned = false;
+      isCandidate = true;
+    } else if (match(oprd, m_AShr(m_Shl(m_Value(L), m_SpecificInt(16)), m_SpecificInt(16)))) {
+      oprdInfo[i].src = L;
+      oprdInfo[i].useLower = true;
+      oprdInfo[i].isSigned = true;
+      isCandidate = true;
+    } else if (match(oprd, m_AShr(m_Value(L), m_SpecificInt(16)))) {
+      oprdInfo[i].src = L;
+      oprdInfo[i].useLower = false;
+      oprdInfo[i].isSigned = true;
+      isCandidate = true;
     }
   }
 
-  // XE3P (HWConformityPro, checked per operand kind with the vISA standalone finalizer): src1 of add must be "flat"
-  // (a scalar, a constant, or the lower word of a dword: the stride and offset of the dword dst), else the finalizer
-  // adds a mov; src0 takes any region (an upper word, a packed i16 vector), so a non-flat src1 is moved there. Where
-  // no placement avoids the mov (a sub, a mul, two non-flat words, a word next to a 32-bit immediate in a mul), the
-  // words are kept: the mov costs no more than materializing the dword, which would also make a mul wider (32x32
-  // needs mul + macl before XE3P).
-  auto IsFlat = [&](const MixedIntSource &Src) {
-    return !Src.isWord() || Src.IsConst16 || isUniform(Src.Val) || (Src.IsHalf && Src.IsLowerHalf);
-  };
-  if (IsXe3P && opc == Instruction::Add && !IsFlat(Srcs[1]) && IsFlat(Srcs[0])) {
-    std::swap(Srcs[0], Srcs[1]);
-    std::swap(Ops[0], Ops[1]);
-  }
-
-  if (!Srcs[0].isWord() && !Srcs[1].isWord()) {
+  if (!isCandidate) {
     return false;
   }
 
   Oprd16Pattern *Pat = new (m_allocator) Oprd16Pattern();
   for (int i = 0; i < 2; ++i) {
-    const MixedIntSource &Src = Srcs[i];
-    SSource &VisaSrc = Pat->srcs[i];
-    if (!Src.isWord()) {
-      VisaSrc = GetSource(Ops[i], true, false, IsSourceOfSample(&I));
-      continue;
-    }
-    VisaSrc = GetSource(Src.Val, false, false, IsSourceOfSample(&I));
-    // for now, Use W/UW only if region_set is false or the src is scalar
-    if (hasRegion(VisaSrc)) {
-      VisaSrc = GetSource(Ops[i], true, false, IsSourceOfSample(&I));
-      continue;
-    }
-    const bool IsUniformVal = isUniform(Src.Val);
-    setWordSource(Src, IsUniformVal, VisaSrc);
-    if (Src.Mod != EMOD_NONE) {
-      VisaSrc.mod = CombineModifier(Src.Mod, VisaSrc.mod);
-    }
-    // emitMulAdd16 reads a word of a per-lane variable without a region with the stride of a half of a dword. Set the
-    // region of the others: a packed i16 vector, and a uniform value, which can still be stored per lane (a local ID
-    // payload when the work group size makes it uniform) and is then read as a scalar.
-    if (!Src.IsConst16 && IsUniformVal) {
-      setRegion(VisaSrc, 0, 1, 0);
-    } else if (Src.IsUpcast) {
-      setRegion(VisaSrc, 1, 1, 0);
+    if (oprdInfo[i].src) {
+      Pat->srcs[i] = GetSource(oprdInfo[i].src, false, false, IsSourceOfSample(&I));
+      SSource &thisSrc = Pat->srcs[i];
+
+      // for now, Use W/UW only if region_set is false or the src is scalar
+      if (thisSrc.region_set && !(thisSrc.region[0] == 0 && thisSrc.region[1] == 1 && thisSrc.region[2] == 0)) {
+        Pat->srcs[i] = GetSource(I.getOperand(i), true, false, IsSourceOfSample(&I));
+      } else {
+        // Note that SSource's type, if set by GetSource(), should be 32bit type. It's
+        // safe to override it with either UW or W. But for SSource's offset, need to
+        // re-calculate in term of 16bit, not 32bit.
+        thisSrc.type = oprdInfo[i].isSigned ? ISA_TYPE_W : ISA_TYPE_UW;
+        thisSrc.elementOffset = (2 * thisSrc.elementOffset) + (oprdInfo[i].useLower ? 0 : 1);
+      }
+    } else {
+      Pat->srcs[i] = GetSource(I.getOperand(i), true, false, IsSourceOfSample(&I));
     }
   }
   Pat->rootInst = &I;
@@ -5722,182 +5634,73 @@ bool CodeGenPatternMatch::MatchAdd3(Instruction &I) {
     return false;
   }
 
-  const unsigned Add3Skip = IGC_GET_FLAG_VALUE(Add3SkipMask);
-  auto IsSkipSet = [Add3Skip](Add3SkipOpt Opt) { return (Add3Skip & static_cast<unsigned>(Opt)) != 0; };
-  const bool SkipMultiUseFold = IsSkipSet(Add3SkipOpt::SkipMultiUseFold);
-  const bool SkipIgnoresConstExprOperand = IsSkipSet(Add3SkipOpt::IgnoreConstExprOperand);
-  const bool SkipCountsPeerFolds = IsSkipSet(Add3SkipOpt::CountPeerFolds);
-  const bool SkipPrefersRemovingFold = IsSkipSet(Add3SkipOpt::PreferRemovingFold);
-
-  // A negation (0 - x) is a free neg modifier on its user (MatchModifier): folding it saves nothing and only adds a 0
-  // source, so with SkipMultiUseFold it is neither folded nor counted as an operand that Add2's own match absorbs. (A
-  // negated 16-bit form is still read as a negated word source, see below.)
-  auto IsNegation = [&](BinaryOperator *BO) {
-    return SkipMultiUseFold && BO->getOpcode() == Instruction::Sub && match(BO->getOperand(0), m_Zero());
-  };
-  auto AsAddOrSub = [&](Value *V) -> BinaryOperator * {
-    auto *BO = dyn_cast<BinaryOperator>(V);
-    if (!BO || (BO->getOpcode() != Instruction::Add && BO->getOpcode() != Instruction::Sub) || IsNegation(BO)) {
-      return nullptr;
+  Value *s0 = I.getOperand(0);
+  Value *s1 = nullptr, *s2 = nullptr;
+  e_modifier Mod1 = EMOD_NONE, Mod2 = EMOD_NONE;
+  Instruction *I0 = dyn_cast<Instruction>(s0);
+  Instruction *Add2 = nullptr;
+  if (I0) {
+    if (I0->getOpcode() == Instruction::Sub) {
+      s0 = I0->getOperand(0);
+      s1 = I0->getOperand(1);
+      Mod1 = EMOD_NEG;
+      Add2 = I0;
+    } else if (I0->getOpcode() == Instruction::Add) {
+      s0 = I0->getOperand(0);
+      s1 = I0->getOperand(1);
+      Add2 = I0;
     }
-    return BO;
-  };
-  auto IsSingleUse = [](Value *V, unsigned Opcode) {
-    auto *BO = dyn_cast<BinaryOperator>(V);
-    return BO && BO->hasOneUse() && BO->getOpcode() == Opcode;
-  };
-
-  // Whether folding Add2, an add/sub operand of I whose other operand is Other, into this add3 pays off.
-  auto IsProfitableFold = [&](BinaryOperator *Add2, Value *Other) {
-    // If source operand corresponding to first add instruction
-    // has many uses the add3 pattern match is unlikely to be profitable,
-    // as it increases register pressure and makes register bank
-    // conflicts more likely. Unless some of the operands are constants
-    // then there is no increase of register pressure from add3 construction
-    if (m_ctx->type == ShaderType::OPENCL_SHADER) {
-      const int Threshold = 3;
-
-      if (!isa<ConstantInt>(Add2->getOperand(0)) && !isa<ConstantInt>(Add2->getOperand(1)) &&
-          !isa<ConstantInt>(Other) && (Add2->getOperand(0)->hasOneUse() || Add2->getOperand(1)->hasOneUse()) &&
-          Add2->hasNUsesOrMore(Threshold)) {
-        return false;
-      }
-    }
-
-    // If Add2 has other users, each of them costs one instruction whether it reads Add2 or folds Add2's operands (as
-    // this add3 would). Folding pays off only if those operands are needed anyway; if Add2's own match absorbs one of
-    // them (a single-use add/sub into an add3, or a single-use mul into a mad), reading Add2 here instead saves
-    // materializing that operand. Typical case: the conditional `x + (2^k-1)` of a signed division by 2^k, where the
-    // sum x also feeds the is-neg compare (IntDivConstantReduction).
-    if (!SkipMultiUseFold || Add2->hasOneUse()) {
-      return true;
-    }
-    bool Add2AbsorbsOperand = false;
-    bool HasSingleUseMul = false;
-    for (Value *Op : Add2->operands()) {
-      // A constant expression (e.g. on simdSize) is emitted as an immediate: absorbing it saves nothing.
-      Add2AbsorbsOperand |= (IsSingleUse(Op, Instruction::Add) || IsSingleUse(Op, Instruction::Sub)) &&
-                            !IsNegation(cast<BinaryOperator>(Op)) &&
-                            !(SkipIgnoresConstExprOperand && IsConstOrSimdConstExpr(Op));
-      HasSingleUseMul |= IsSingleUse(Op, Instruction::Mul);
-    }
-    if (!Add2AbsorbsOperand && HasSingleUseMul) {
-      Add2AbsorbsOperand = MatchIMad(*Add2, /*DryRun=*/true);
-    }
-    if (!Add2AbsorbsOperand) {
-      return true;
-    }
-    // An add/sub user that MatchAdd3 would fold Add2 into, as it does for this add3 (and that doesn't match a mad
-    // first), makes the same decision as this add3, so it doesn't make Add2 emitted by itself. Otherwise, with only
-    // such users, the first one matched would skip, its read would make NeedInstruction(Add2) true, and every other one
-    // would skip too: Add2 would then be emitted only because of the skips.
-    auto FoldsAdd2 = [&](Instruction *UI) {
-      if (!AsAddOrSub(UI) || UI->getType() != I.getType()) {
-        return false;
-      }
-      Value *Folded = AsAddOrSub(UI->getOperand(0)) ? UI->getOperand(0) : UI->getOperand(1);
-      return Folded == Add2 && !MatchIMad(*cast<BinaryOperator>(UI), /*DryRun=*/true);
-    };
-    // Users of Add2 matched before this add3 (later in this block, or in a block this one dominates: blocks are matched
-    // bottom-up in a post-order of the dominator tree) have already decided whether they read Add2. If none did and no
-    // other user is left, they all folded Add2 away (an immediate offset, another add3, ...), and skipping here would
-    // emit Add2 for this add3 alone. A user not matched yet is assumed to read Add2, unless it folds Add2 like this
-    // one.
-    auto DoesNotForceAdd2 = [&](User *U) {
-      auto *UI = dyn_cast<Instruction>(U);
-      if (!UI || UI == &I) {
-        return true;
-      }
-      bool Matched =
-          UI->getParent() == I.getParent() ? I.comesBefore(UI) : DT->properlyDominates(I.getParent(), UI->getParent());
-      return Matched || (SkipCountsPeerFolds && FoldsAdd2(UI));
-    };
-    return !NeedInstruction(*Add2) && llvm::all_of(Add2->users(), DoesNotForceAdd2);
-  };
-
-  // Add2 is an add/sub operand of I. Folding an Add2 that nothing else reads (no non-add user, no user already
-  // matched that reads it) removes its instruction. Folding one that is emitted anyway saves nothing over an add: it
-  // may shorten the dependency chain by one, but keeps Add2's sources live longer (e.g. a loop counter i read after its
-  // increment i + 1, which then can't share i's register).
-  // Operand 0 is folded if it pays off, as before. With SkipMultiUseFold, operand 1 is folded instead when folding
-  // operand 0 doesn't pay off and folding operand 1 removes its instruction; with SkipPrefersRemovingFold, also when
-  // folding operand 0 doesn't remove its instruction.
-  auto RemovesFold = [&](BinaryOperator *V) {
-    return !NeedInstruction(*V) && llvm::none_of(V->users(), [&](User *U) {
-      return U != &I && (!AsAddOrSub(U) || U->getType() != I.getType());
-    });
-  };
-  // A single-use negation (0 - y) of a single-use add/sub y is looked through: I = a +- (0 - y) = a -+ y, and folding y
-  // removes both y and the negation. Other negations are not candidates (see IsNegation).
-  struct Candidate {
-    BinaryOperator *Add2 = nullptr;
-    bool Negated = false;
-  };
-  auto GetCandidate = [&](Value *V) {
-    Candidate C;
-    auto *BO = dyn_cast<BinaryOperator>(V);
-    if (!BO || (BO->getOpcode() != Instruction::Add && BO->getOpcode() != Instruction::Sub)) {
-      return C;
-    }
-    if (!IsNegation(BO)) {
-      C.Add2 = BO;
-    } else if (BinaryOperator *Y = AsAddOrSub(BO->getOperand(1)); Y && BO->hasOneUse() && Y->hasOneUse()) {
-      C.Add2 = Y;
-      C.Negated = true;
-    }
-    return C;
-  };
-  auto Removes = [&](const Candidate &C) { return C.Negated || RemovesFold(C.Add2); };
-  const Candidate C0 = GetCandidate(I.getOperand(0));
-  const Candidate C1 = GetCandidate(I.getOperand(1));
-  Candidate Chosen;
-  bool Add2IsOperand0 = false;
-  if (!C0.Add2) {
-    if (C1.Add2 && IsProfitableFold(C1.Add2, I.getOperand(0))) {
-      Chosen = C1;
-    }
-  } else if (IsProfitableFold(C0.Add2, I.getOperand(1)) &&
-             (!SkipMultiUseFold || !SkipPrefersRemovingFold || Removes(C0))) {
-    Chosen = C0;
-    Add2IsOperand0 = true;
-  } else if (SkipMultiUseFold && C1.Add2 && Removes(C1) && IsProfitableFold(C1.Add2, I.getOperand(0))) {
-    Chosen = C1;
-  } else if (SkipMultiUseFold && SkipPrefersRemovingFold && IsProfitableFold(C0.Add2, I.getOperand(1))) {
-    Chosen = C0;
-    Add2IsOperand0 = true;
   }
-  BinaryOperator *Add2 = Chosen.Add2;
-  if (!Add2) {
+
+  bool isNeg = (I.getOpcode() == Instruction::Sub);
+  if (s1 == nullptr) {
+    s1 = I.getOperand(1);
+    Instruction *I1 = dyn_cast<Instruction>(s1);
+    if (I1) {
+      if (I1->getOpcode() == Instruction::Sub) {
+        s1 = I1->getOperand(0);
+        s2 = I1->getOperand(1);
+        Add2 = I1;
+        if (isNeg) {
+          Mod1 = EMOD_NEG;
+        } else {
+          Mod2 = EMOD_NEG;
+        }
+      } else if (I1->getOpcode() == Instruction::Add) {
+        s1 = I1->getOperand(0);
+        s2 = I1->getOperand(1);
+        Add2 = I1;
+        if (isNeg) {
+          Mod1 = EMOD_NEG;
+          Mod2 = EMOD_NEG;
+        }
+      }
+    }
+  } else {
+    s2 = I.getOperand(1);
+    if (isNeg) {
+      Mod2 = EMOD_NEG;
+    }
+  }
+
+  if (s2 == nullptr) {
     return false;
   }
 
-  // I = (s0 +- s1) +- s2 or I = s0 +- (s1 +- s2), with Add2 negated if it was looked through: the signs become neg
-  // modifiers. add3 is commutative, so a negated s0 is swapped with a positive source if there is one.
-  const bool Add2IsNeg = (!Add2IsOperand0 && I.getOpcode() == Instruction::Sub) != Chosen.Negated;
-  const bool OtherIsNeg = Add2IsOperand0 && I.getOpcode() == Instruction::Sub;
-  Value *Other = I.getOperand(Add2IsOperand0 ? 1 : 0);
-  Value *Y0 = Add2->getOperand(0);
-  Value *Y1 = Add2->getOperand(1);
-  const bool NegY1 = Add2IsNeg != (Add2->getOpcode() == Instruction::Sub);
-  Value *s0 = Add2IsOperand0 ? Y0 : Other;
-  Value *s1 = Add2IsOperand0 ? Y1 : Y0;
-  Value *s2 = Add2IsOperand0 ? Other : Y1;
-  bool NegS0 = Add2IsOperand0 ? Add2IsNeg : OtherIsNeg;
-  bool NegS1 = Add2IsOperand0 ? NegY1 : Add2IsNeg;
-  bool NegS2 = Add2IsOperand0 ? OtherIsNeg : NegY1;
-  if (NegS0 && !NegS1) {
-    std::swap(s0, s1);
-    std::swap(NegS0, NegS1);
-  } else if (NegS0 && !NegS2) {
-    std::swap(s0, s2);
-    std::swap(NegS0, NegS2);
-  } else if (NegS0 && isa<ConstantInt>(s0)) {
-    s0 = ConstantExpr::getNeg(cast<ConstantInt>(s0));
-    NegS0 = false;
+  // If source operand corresponding to first add instruction
+  // has many uses the add3 pattern match is unlikely to be profitable,
+  // as it increases register pressure and makes register bank
+  // conflicts more likely. Unless some of the operands are constants
+  // then there is no increase of register pressure from add3 construction
+  if (m_ctx->type == ShaderType::OPENCL_SHADER) {
+    const int Threshold = 3;
+
+    if (!isa<ConstantInt>(s0) && !isa<ConstantInt>(s1) && !isa<ConstantInt>(s2) &&
+        (Add2->getOperand(0)->hasOneUse() || Add2->getOperand(1)->hasOneUse()) && Add2->hasNUsesOrMore(Threshold)) {
+      // add3 is unlikely to be profitable.
+      return false;
+    }
   }
-  const e_modifier Mod0 = NegS0 ? EMOD_NEG : EMOD_NONE;
-  e_modifier Mod1 = NegS1 ? EMOD_NEG : EMOD_NONE;
-  e_modifier Mod2 = NegS2 ? EMOD_NEG : EMOD_NONE;
 
   // Found the pattern.
   // Make sure that the middle one is not constant
@@ -5906,100 +5709,16 @@ bool CodeGenPatternMatch::MatchAdd3(Instruction &I) {
     std::swap(Mod1, Mod2);
   }
 
-  // Read the 16-bit forms of the sources (a half of a dword, a zext/sext of an i16 value) as words, as MatchMulAdd16
-  // does for a 2-source add, which saves the and/shift/ext. A "flat" word (a scalar, or the lower half: the stride and
-  // offset of the dword dst) fits any source. Other words (an upper half, a packed i16 vector) need a region, and the
-  // finalizer otherwise inserts a mov:
-  // - before XE3P (HWConformity, align1 ternary): src0 and src1 take any stride, src2 only a flat word, so a
-  //   non-flat src2 is moved to src1;
-  // - XE3P (HWConformityPro): src1 and src2 must be flat, and src0 takes a region only if src2 is a non-scalar
-  //   register; at most one non-flat word, moved to src0.
-  // Words that don't fit are read as their dword.
-  MixedIntSource Srcs[3] = {{s0, s0}, {s1, s1}, {s2, s2}};
-  e_modifier Mods[3] = {Mod0, Mod1, Mod2};
-  if (IGC_IS_FLAG_ENABLED(EnableAdd3WordSources) && IGC_IS_FLAG_ENABLED(EnableMixIntOperands) && Ty->isIntegerTy(32)) {
-    for (int SrcIdx = 0; SrcIdx < 3; ++SrcIdx) {
-      MixedIntSource &Src = Srcs[SrcIdx];
-      // Only worth it if the and/shift/ext dies: otherwise it is still emitted, and reading the word only adds a live
-      // range. An operand of Add2 also dies only if Add2 does (Add2's other users read it).
-      const bool IsOperandOfI = Src.DwordVal == I.getOperand(0) || Src.DwordVal == I.getOperand(1);
-      if (!Src.DwordVal->hasOneUse() || (!IsOperandOfI && !Add2->hasOneUse())) {
-        continue;
-      }
-      // A zext of a sub-dword load is read from the zext (see MatchIMad), i.e. as a dword. A negated 16-bit form is the
-      // word with a neg (the neg on a word applies to the widened value, see MixedIntSource::addNeg).
-      if (matchWordSource(Src.DwordVal, Src)) {
-        if (Src.readsZExtOfLoad()) {
-          Src.resetToDword();
-        }
-      } else {
-        matchNegatedWordSource(Src.DwordVal, Src);
-      }
-    }
-    auto IsFlat = [&](const MixedIntSource &Src) {
-      return !Src.isWord() || isUniform(Src.Val) || (Src.IsHalf && Src.IsLowerHalf);
-    };
-    auto SwapSrcs = [&](int A, int B) {
-      std::swap(Srcs[A], Srcs[B]);
-      std::swap(Mods[A], Mods[B]);
-    };
-    const bool HasSimplifiedRegioning = m_Platform.isCoreChildOf(IGFX_XE3P_CORE);
-    if (!HasSimplifiedRegioning) {
-      if (!IsFlat(Srcs[2])) {
-        if (IsFlat(Srcs[1])) {
-          // Srcs[1] is not a constant (see above), so the middle source stays non-constant.
-          SwapSrcs(1, 2);
-        } else {
-          Srcs[2].resetToDword();
-        }
-      }
-    } else {
-      int NonFlat = -1;
-      for (int SrcIdx = 0; SrcIdx < 3; ++SrcIdx) {
-        if (IsFlat(Srcs[SrcIdx])) {
-          continue;
-        }
-        if (NonFlat < 0) {
-          NonFlat = SrcIdx;
-        } else {
-          Srcs[SrcIdx].resetToDword();
-        }
-      }
-      // The non-flat word moves to src0 only if it stays a word there: src2 (after the swap) is a non-scalar
-      // register, and src1 is not a constant (immediates go to src0 or src2). Otherwise the order is kept.
-      if (NonFlat >= 0) {
-        const MixedIntSource &NewSrc2 = Srcs[NonFlat == 2 ? 0 : 2];
-        if ((NonFlat == 1 && isa<Constant>(Srcs[0].Val)) || isa<Constant>(NewSrc2.Val) || isUniform(NewSrc2.Val)) {
-          Srcs[NonFlat].resetToDword();
-        } else if (NonFlat > 0) {
-          SwapSrcs(0, NonFlat);
-        }
-      }
-    }
-  }
-
   Add3Pattern *pattern = new (m_allocator) Add3Pattern();
   pattern->instruction = &I;
-  for (int SrcIdx = 0; SrcIdx < 3; ++SrcIdx) {
-    const MixedIntSource &Src = Srcs[SrcIdx];
-    SSource &VisaSrc = pattern->sources[SrcIdx];
-    if (Src.isWord()) {
-      // No modifier is folded from the value: under a half it would apply to the whole dword.
-      VisaSrc = GetSource(Src.Val, false, false, IsSourceOfSample(&I));
-      if (hasRegion(VisaSrc)) {
-        VisaSrc = GetSource(Src.DwordVal, true, false, IsSourceOfSample(&I));
-      } else {
-        setWordSource(Src, isUniform(Src.Val), VisaSrc);
-        if (Src.Mod != EMOD_NONE) {
-          VisaSrc.mod = CombineModifier(Src.Mod, VisaSrc.mod);
-        }
-      }
-    } else {
-      VisaSrc = GetSource(Src.DwordVal, true, false, IsSourceOfSample(&I));
-    }
-    if (Mods[SrcIdx] != EMOD_NONE) {
-      VisaSrc.mod = CombineModifier(Mods[SrcIdx], VisaSrc.mod);
-    }
+  pattern->sources[0] = GetSource(s0, true, false, IsSourceOfSample(&I));
+  pattern->sources[1] = GetSource(s1, true, false, IsSourceOfSample(&I));
+  pattern->sources[2] = GetSource(s2, true, false, IsSourceOfSample(&I));
+  if (Mod1 != EMOD_NONE) {
+    pattern->sources[1].mod = CombineModifier(Mod1, pattern->sources[1].mod);
+  }
+  if (Mod2 != EMOD_NONE) {
+    pattern->sources[2].mod = CombineModifier(Mod2, pattern->sources[2].mod);
   }
   AddPattern(pattern);
   return true;

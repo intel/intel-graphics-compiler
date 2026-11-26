@@ -113,25 +113,25 @@ __kernel void test_const_vector(__global const int16* in, __global int16* out, c
 
 // CHECK-ASM: kernel test_non_const_vector
 // CHECK-ASM-DAG:         cmp (32|M0)   (le)[[F6:f[0-9\.]+]]   null<1>:d
-// CHECK-ASM-DAG:         add (32|M0)              [[L16:r[0-9]+]].0<1>:d    [[GID:r[0-9]+]].0<1;1,0>:d     1:w
-// CHECK-ASM-DAG:         add (32|M0)             r{{[0-9]+}}.0<1>:d    [[GID]].0<1;1,0>:d       2:w
-// CHECK-ASM-DAG:         add (32|M0)             r{{[0-9]+}}.0<1>:d    [[GID]].0<1;1,0>:d       3:w
-// CHECK-ASM-DAG:         add (32|M0)             r{{[0-9]+}}.0<1>:d    [[GID]].0<1;1,0>:d       4:w
+// CHECK-ASM-DAG:         add3 (32|M0)             [[L16:r[0-9]+]].0<1>:d    [[R3:r[0-9]+]].0<1;0>:d       [[R4:r[0-9]+]].0<0;0>:d       1:w
+// CHECK-ASM-DAG:         add3 (32|M0)             r{{[0-9]+}}.0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       2:w
+// CHECK-ASM-DAG:         add3 (32|M0)             r{{[0-9]+}}.0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       3:w
+// CHECK-ASM-DAG:         add3 (32|M0)             r{{[0-9]+}}.0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       4:w
 // CHECK-ASM: ([[F6]])  load.ugm.d32x4.a64 (32|M0)  [[L16]]:8
-// CHECK-ASM-DAG:         add (32|M0)             [[L17:r[0-9]+]].0<1>:d    [[GID]].0<1;1,0>:d       5:w
-// CHECK-ASM-DAG:         add (32|M0)             r{{[0-9]+}}.0<1>:d    [[GID]].0<1;1,0>:d       6:w
-// CHECK-ASM-DAG:         add (32|M0)             r{{[0-9]+}}.0<1>:d    [[GID]].0<1;1,0>:d       7:w
-// CHECK-ASM-DAG:         add (32|M0)             r{{[0-9]+}}.0<1>:d    [[GID]].0<1;1,0>:d       8:w
+// CHECK-ASM-DAG:         add3 (32|M0)             [[L17:r[0-9]+]].0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       5:w
+// CHECK-ASM-DAG:         add3 (32|M0)             r{{[0-9]+}}.0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       6:w
+// CHECK-ASM-DAG:         add3 (32|M0)             r{{[0-9]+}}.0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       7:w
+// CHECK-ASM-DAG:         add3 (32|M0)             r{{[0-9]+}}.0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       8:w
 // CHECK-ASM: ([[F6]])  load.ugm.d32x4.a64 (32|M0)  [[L17]]:8
-// CHECK-ASM-DAG:         add (32|M0)             [[L18:r[0-9]+]].0<1>:d    [[GID]].0<1;1,0>:d       9:w
-// CHECK-ASM-DAG:         add (32|M0)             r{{[0-9]+}}.0<1>:d    [[GID]].0<1;1,0>:d       10:w
-// CHECK-ASM-DAG:         add (32|M0)             r{{[0-9]+}}.0<1>:d    [[GID]].0<1;1,0>:d       11:w
-// CHECK-ASM-DAG:         add (32|M0)             r{{[0-9]+}}.0<1>:d    [[GID]].0<1;1,0>:d       12:w
+// CHECK-ASM-DAG:         add3 (32|M0)             [[L18:r[0-9]+]].0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       9:w
+// CHECK-ASM-DAG:         add3 (32|M0)             r{{[0-9]+}}.0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       10:w
+// CHECK-ASM-DAG:         add3 (32|M0)             r{{[0-9]+}}.0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       11:w
+// CHECK-ASM-DAG:         add3 (32|M0)             r{{[0-9]+}}.0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       12:w
 // CHECK-ASM: ([[F6]])  load.ugm.d32x4.a64 (32|M0)  [[L18]]:8
-// CHECK-ASM-DAG:         add (32|M0)             [[L19:r[0-9]+]].0<1>:d    [[GID]].0<1;1,0>:d       13:w
-// CHECK-ASM-DAG:         add (32|M0)             r{{[0-9]+}}.0<1>:d    [[GID]].0<1;1,0>:d       14:w
-// CHECK-ASM-DAG:         add (32|M0)             r{{[0-9]+}}.0<1>:d    [[GID]].0<1;1,0>:d       15:w
-// CHECK-ASM-DAG:         add (32|M0)             r{{[0-9]+}}.0<1>:d    [[GID]].0<1;1,0>:d       16:w
+// CHECK-ASM-DAG:         add3 (32|M0)             [[L19:r[0-9]+]].0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       13:w
+// CHECK-ASM-DAG:         add3 (32|M0)             r{{[0-9]+}}.0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       14:w
+// CHECK-ASM-DAG:         add3 (32|M0)             r{{[0-9]+}}.0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       15:w
+// CHECK-ASM-DAG:         add3 (32|M0)             r{{[0-9]+}}.0<1>:d    [[R3]].0<1;0>:d       [[R4]].0<0;0>:d       16:w
 // CHECK-ASM: ([[F6]])  load.ugm.d32x4.a64 (32|M0)  [[L19]]:8
 
 // test verifies non-constant vector merge value split

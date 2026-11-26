@@ -63,7 +63,6 @@ SPDX-License-Identifier: MIT
 #define REMAT_FLAG(Name, Val, Description) #Name " [" Description "]=" IGC_REGKEY_STRINGIFY(Val) ","
 #define SIMD1_OPT_FLAG(Name, Val, Description) #Name " [" Description "]=" IGC_REGKEY_STRINGIFY(Val) ","
 #define CONSTANT_BRANCH_FOLDING_FLAG(Name, Val, Description) #Name " [" Description "]=" IGC_REGKEY_STRINGIFY(Val) ","
-#define ADD3_SKIP_FLAG(Name, Val, Description) #Name " [" Description "]=" IGC_REGKEY_STRINGIFY(Val) ","
 
 #define INJECT_PRINTF_OPTION(Name, Val) #Name "=" IGC_REGKEY_STRINGIFY(Val) ","
 
@@ -80,8 +79,6 @@ SPDX-License-Identifier: MIT
 #undef SIMD1_OPT_MASK
 #undef CONSTANT_BRANCH_FOLDING_FLAG
 #undef CONSTANT_BRANCH_FOLDING_MASK
-#undef ADD3_SKIP_FLAG
-#undef ADD3_SKIP_MASK
 #undef LSC_CACHE_CTRL_OPTION
 #undef LSC_CACHE_CTRL_OPTIONS
 #undef LSC_CACHE_CTRL_LOAD_OPTION
