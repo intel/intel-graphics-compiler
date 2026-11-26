@@ -129,32 +129,35 @@ ushort16 __attribute__((overloadable)) __spirv_ocl_u_mad_hi(ushort16 a, ushort16
   return __spirv_ocl_u_mul_hi(a, b) + c;
 }
 
+// The sum wraps; signed overflow would be UB.
 INLINE
-int __attribute__((overloadable)) __spirv_ocl_s_mad_hi(int a, int b, int c) { return __spirv_ocl_s_mul_hi(a, b) + c; }
+int __attribute__((overloadable)) __spirv_ocl_s_mad_hi(int a, int b, int c) {
+  return as_int(as_uint(__spirv_ocl_s_mul_hi(a, b)) + as_uint(c));
+}
 
 INLINE
 int2 __attribute__((overloadable)) __spirv_ocl_s_mad_hi(int2 a, int2 b, int2 c) {
-  return __spirv_ocl_s_mul_hi(a, b) + c;
+  return as_int2(as_uint2(__spirv_ocl_s_mul_hi(a, b)) + as_uint2(c));
 }
 
 INLINE
 int3 __attribute__((overloadable)) __spirv_ocl_s_mad_hi(int3 a, int3 b, int3 c) {
-  return __spirv_ocl_s_mul_hi(a, b) + c;
+  return as_int3(as_uint3(__spirv_ocl_s_mul_hi(a, b)) + as_uint3(c));
 }
 
 INLINE
 int4 __attribute__((overloadable)) __spirv_ocl_s_mad_hi(int4 a, int4 b, int4 c) {
-  return __spirv_ocl_s_mul_hi(a, b) + c;
+  return as_int4(as_uint4(__spirv_ocl_s_mul_hi(a, b)) + as_uint4(c));
 }
 
 INLINE
 int8 __attribute__((overloadable)) __spirv_ocl_s_mad_hi(int8 a, int8 b, int8 c) {
-  return __spirv_ocl_s_mul_hi(a, b) + c;
+  return as_int8(as_uint8(__spirv_ocl_s_mul_hi(a, b)) + as_uint8(c));
 }
 
 INLINE
 int16 __attribute__((overloadable)) __spirv_ocl_s_mad_hi(int16 a, int16 b, int16 c) {
-  return __spirv_ocl_s_mul_hi(a, b) + c;
+  return as_int16(as_uint16(__spirv_ocl_s_mul_hi(a, b)) + as_uint16(c));
 }
 
 INLINE
@@ -189,32 +192,32 @@ uint16 __attribute__((overloadable)) __spirv_ocl_u_mad_hi(uint16 a, uint16 b, ui
 
 INLINE
 long __attribute__((overloadable)) __spirv_ocl_s_mad_hi(long a, long b, long c) {
-  return __spirv_ocl_s_mul_hi(a, b) + c;
+  return as_long(as_ulong(__spirv_ocl_s_mul_hi(a, b)) + as_ulong(c));
 }
 
 INLINE
 long2 __attribute__((overloadable)) __spirv_ocl_s_mad_hi(long2 a, long2 b, long2 c) {
-  return __spirv_ocl_s_mul_hi(a, b) + c;
+  return as_long2(as_ulong2(__spirv_ocl_s_mul_hi(a, b)) + as_ulong2(c));
 }
 
 INLINE
 long3 __attribute__((overloadable)) __spirv_ocl_s_mad_hi(long3 a, long3 b, long3 c) {
-  return __spirv_ocl_s_mul_hi(a, b) + c;
+  return as_long3(as_ulong3(__spirv_ocl_s_mul_hi(a, b)) + as_ulong3(c));
 }
 
 INLINE
 long4 __attribute__((overloadable)) __spirv_ocl_s_mad_hi(long4 a, long4 b, long4 c) {
-  return __spirv_ocl_s_mul_hi(a, b) + c;
+  return as_long4(as_ulong4(__spirv_ocl_s_mul_hi(a, b)) + as_ulong4(c));
 }
 
 INLINE
 long8 __attribute__((overloadable)) __spirv_ocl_s_mad_hi(long8 a, long8 b, long8 c) {
-  return __spirv_ocl_s_mul_hi(a, b) + c;
+  return as_long8(as_ulong8(__spirv_ocl_s_mul_hi(a, b)) + as_ulong8(c));
 }
 
 INLINE
 long16 __attribute__((overloadable)) __spirv_ocl_s_mad_hi(long16 a, long16 b, long16 c) {
-  return __spirv_ocl_s_mul_hi(a, b) + c;
+  return as_long16(as_ulong16(__spirv_ocl_s_mul_hi(a, b)) + as_ulong16(c));
 }
 
 INLINE

@@ -135,8 +135,11 @@ uint16 __attribute__((overloadable)) __spirv_ocl_u_mad24(uint16 x, uint16 y, uin
   return temp;
 }
 
+// The 32-bit sum wraps; signed overflow would be UB.
 INLINE
-int __attribute__((overloadable)) __spirv_ocl_s_mad24(int x, int y, int z) { return __spirv_ocl_s_mul24(x, y) + z; }
+int __attribute__((overloadable)) __spirv_ocl_s_mad24(int x, int y, int z) {
+  return as_int(as_uint(__spirv_ocl_s_mul24(x, y)) + as_uint(z));
+}
 
 INLINE
 uint __attribute__((overloadable)) __spirv_ocl_u_mad24(uint x, uint y, uint z) { return __spirv_ocl_u_mul24(x, y) + z; }

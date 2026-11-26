@@ -222,7 +222,8 @@ short16 __attribute__((overloadable)) __spirv_ocl_s_mul_hi(short16 x, short16 y)
 
 INLINE
 ushort __attribute__((overloadable)) __spirv_ocl_u_mul_hi(ushort x, ushort y) {
-  int temp = (int)(x * y);
+  // ushort operands promote to int, where the product can overflow.
+  uint temp = (uint)x * (uint)y;
   int numBits = 8 * sizeof(ushort);
   return (ushort)(temp >> numBits);
 }
