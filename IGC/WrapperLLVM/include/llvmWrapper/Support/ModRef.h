@@ -10,13 +10,14 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_SUPPORT_MODREF_H
 
 #include "IGC/common/LLVMWarningsPush.hpp"
+// Must precede the version checks: targets outside IGC (e.g. OGL) lack -DLLVM_VERSION_MAJOR.
+#include "llvm/Config/llvm-config.h"
 #if LLVM_VERSION_MAJOR >= 17
 #include "llvm/IR/AttributeMask.h"
 #endif
 #if LLVM_VERSION_MAJOR >= 16
 #include "llvm/Support/ModRef.h"
 #endif // LLVM_VERSION_MAJOR
-#include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/ADT/BitmaskEnum.h"
