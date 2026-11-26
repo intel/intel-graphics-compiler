@@ -420,6 +420,15 @@ public:
             AlignUp(loadedCrossThreadInputSize + inlineDataSize,
                     crossThreadDataAlignment) - inlineDataSize :
             AlignUp(loadedCrossThreadInputSize, crossThreadDataAlignment);
+      // Cross-thread data in memory may also contain kernel arguments that are
+      // not loaded here but read from memory by the kernel body (pulled
+      // arguments). Per-thread data (local IDs) is placed after them, so it
+      // starts at least at ATTR_PerThreadPayloadOffset when it is set.
+      const int perThreadPayloadOffset =
+          kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadPayloadOffset);
+      if (perThreadPayloadOffset > 0)
+        perThreadOffsetMem = std::max(
+            perThreadOffsetMem, static_cast<uint32_t>(perThreadPayloadOffset));
 
       // cross-thread payload vars
       numCrossThreadDW =

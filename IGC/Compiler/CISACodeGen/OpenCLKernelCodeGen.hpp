@@ -138,6 +138,8 @@ public:
   CVariable *GetSLMMapping(llvm::Value *c) override;
 
   const SOpenCLKernelInfo &getKernelInfo() const { return m_kernelInfo; }
+  // Offset of a pulled kernel argument in cross-thread data in memory
+  uint getPulledArgMemOffset(uint argNo) const;
 
   static bool IsValidShader(COpenCLKernel *shader);
   static bool IsVisaCompiledSuccessfullyForShader(COpenCLKernel *shader);
@@ -170,6 +172,11 @@ protected:
   // Return true: if the argument is supported in ZEBinary and it's created successfully
   // Return false: if the argument cannot be supported by ZEBinary
   bool CreateZEPayloadArguments(IGC::KernelArg *kernelArg, uint payloadPosition, PtrArgsAttrMapType &ptrArgsAttrMap);
+
+  // Creates zeinfo payload arguments for pulled kernel arguments after all pushed ones.
+  // inlinePayloadSize: bytes of the payload passed in inline data (0 if inline data is not used)
+  void AllocatePulledArgs(llvm::SmallVectorImpl<KernelArg> &pulledArgs, uint inlinePayloadSize,
+                          PtrArgsAttrMapType &ptrArgsAttrMap);
 
   // Fill SOpenCLKernelInfo::m_zeUserAttribute for ZEBinary
   void FillZEUserAttributes(IGC::IGCMD::FunctionInfoMetaDataHandle &funcInfoMD);
@@ -208,6 +215,9 @@ protected:
   // Maps GlobalVariables representing local address-space pointers
   // to their offsets in SLM.
   std::map<llvm::Value *, unsigned int> m_localOffsetsMap;
+
+  // Pulled kernel argument number -> offset in cross-thread data in memory
+  llvm::DenseMap<uint, uint> m_pulledArgMemOffsets;
 
   OpenCLProgramContext *m_Context;
 

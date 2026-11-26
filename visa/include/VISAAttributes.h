@@ -73,6 +73,10 @@ DEF_ATTR_INT32(ATTR_Scope, "Scope", AK_VAR, 0, "")
 DEF_ATTR_INT32(ATTR_SurfaceUsage, "SurfaceUsage", AK_VAR, 0, "")
 DEF_ATTR_INT32(ATTR_CrossThreadInputSize, "CrossThreadInputSize", AK_KERNEL, -1,
                "cross-thread payload size in bytes")
+DEF_ATTR_INT32(ATTR_PerThreadPayloadOffset, "PerThreadPayloadOffset", AK_KERNEL,
+               -1,
+               "per-thread payload offset in bytes; set when cross-thread data "
+               "has arguments loaded by the kernel body (pulled arguments)")
 DEF_ATTR_INT32(ATTR_NBarrierCnt, "NBarrierCnt", AK_KERNEL, 0, "")
 DEF_ATTR_INT32(ATTR_MaxRegThreadDispatch, "MaxRegThreadDispatch", AK_KERNEL,
                0, "Maximum register number used for thread dispatch")

@@ -658,6 +658,7 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function
 
 bool EmitPass::runOnFunction(llvm::Function &F) {
   m_currFuncHasSubroutine = false;
+  m_crossThreadOffset = nullptr;
   m_FPInitVisaIdRange.reset();
 
   m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -926,12 +927,17 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
   // TODO: Remove this WA once vISA handles the register copy
   bool needKernelArgOverrideWA =
       isFuncGroupHead && m_currShader->HasStackCalls() && m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER;
-  if (needKernelArgOverrideWA) {
+  // Pulled kernel arguments are read from memory offsets that are known only after payload allocation
+  const bool hasPulledArgs = isFuncGroupHead && !isDummyKernel && hasPulledKernelArgs(F, *m_moduleMD);
+  const bool allocatePayloadEarly = needKernelArgOverrideWA || hasPulledArgs;
+  if (allocatePayloadEarly) {
     // Requires early payload allocation to know the kernel arg offsets
     m_currShader->CacheArgumentsList();
     m_currShader->MapPushedInputs();
     m_currShader->AllocatePayload();
+  }
 
+  if (needKernelArgOverrideWA) {
     // This WA copies all kernel args > r26.0 into a temp register when
     // stackcalls are enabled. Since vISA stackcall ABI predefine the argument
     // register to r26.0, if the payload is larger than 26GRFs then doing a
@@ -970,6 +976,14 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
         m_currShader->SetDependency(tempCall, m_currShader->GetDependency(kernArg));
       }
     }
+  }
+
+  // Runtime may place implicit_args in front of cross-thread data and patches their size into this
+  // relocation. Emit it once, at the kernel start
+  if (hasPulledArgs && EmitsCrossThreadOffsetReloc(m_pCtx)) {
+    m_crossThreadOffset = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, CName("crossThreadOffset"));
+    std::string symName = vISA::CROSS_THREAD_OFF_R0_RELOCATION_NAME;
+    m_encoder->AddVISASymbol(symName, m_crossThreadOffset);
   }
 
   if (m_moduleMD->NBarrierCnt > 0) {
@@ -1246,7 +1260,7 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
   bool skipPrologue = false;
 
   if (isFuncGroupHead && !isDummyKernel) {
-    if (!needKernelArgOverrideWA) {
+    if (!allocatePayloadEarly) {
       // Cache the arguments list into a vector for faster access
       m_currShader->CacheArgumentsList();
       // Associates values pushed to CVariable
@@ -10422,6 +10436,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     break; // pseudo instruction, do nothing
   case GenISAIntrinsic::GenISA_staticConstantPatchValue:
     emitStaticConstantPatchValue(cast<StaticConstantPatchIntrinsic>(inst));
+    break;
+  case GenISAIntrinsic::GenISA_getKernelArgPtr:
+    emitGetKernelArgPtr(inst);
     break;
   case GenISAIntrinsic::GenISA_SetStackCallsBaseAddress:
     emitSetStackCallsBaseAddress(inst);
@@ -21433,6 +21450,29 @@ void IGC::EmitPass::emitStaticConstantPatchValue(llvm::StaticConstantPatchIntrin
   }
   std::string patchName = nameRef.str();
   m_encoder->AddVISASymbol(patchName, m_destination);
+}
+
+// Address of a pulled kernel argument: offset in cross-thread data in memory. The load from
+// ADDRESS_SPACE_THREAD_ARG adds the indirect data base (r0.0) by itself
+void EmitPass::emitGetKernelArgPtr(llvm::GenIntrinsicInst *inst) {
+  IGC_ASSERT(m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER);
+  IGC_ASSERT_MESSAGE(m_destination->IsUniform(), "Pulled argument address must be uniform");
+  IGC_ASSERT_MESSAGE(m_crossThreadOffset || !EmitsCrossThreadOffsetReloc(m_pCtx),
+                     "Cross-thread offset must be emitted at the kernel start");
+
+  const uint argNo = int_cast<uint>(cast<ConstantInt>(inst->getOperand(0))->getZExtValue());
+  const uint memOffset = static_cast<COpenCLKernel *>(m_currShader)->getPulledArgMemOffset(argNo);
+  CVariable *memOffsetImm = m_currShader->ImmToVariable(memOffset, ISA_TYPE_UD);
+
+  m_encoder->SetUniformSIMDSize(lanesToSIMDMode(1));
+  m_encoder->SetNoMask();
+  if (m_crossThreadOffset) {
+    m_encoder->Add(m_destination, m_crossThreadOffset, memOffsetImm);
+  } else {
+    // Without the relocation the runtime never places implicit_args in front of cross-thread data
+    m_encoder->Copy(m_destination, memOffsetImm);
+  }
+  m_encoder->Push();
 }
 
 // emit llvm.bswap

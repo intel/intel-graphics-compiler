@@ -708,12 +708,20 @@ bool UsedWithoutImmInMemInst(llvm::Value *v);
 bool AllowShortImplicitPayloadHeader(const CodeGenContext *ctx);
 bool AllowRemovingUnusedImplicitArguments(const CodeGenContext *ctx);
 bool AllowRemovingUnusedImplicitLocalIDs(const CodeGenContext *ctx);
+// vISA emits the cross-thread data offset relocation (-emitCrossThreadOffR0Reloc)
+bool EmitsCrossThreadOffsetReloc(const CodeGenContext *ctx);
 // Pulling of explicit kernel arguments over the push budget is enabled
 bool AllowPullingKernelArguments(const CodeGenContext *ctx);
 // In-memory size of a kernel argument
 uint64_t getKernelArgAllocSize(const llvm::Argument &Arg, const llvm::DataLayout &DL);
+// Alignment of a kernel argument: param align of a byval arg if present, ABI alignment of the type otherwise
+llvm::Align getKernelArgAlign(const llvm::Argument &Arg, const llvm::DataLayout &DL);
+// Alignment of a pulled kernel argument in cross-thread memory
+llvm::Align getPulledKernelArgAlign(const llvm::Argument &Arg, const llvm::DataLayout &DL);
 // Returns true if the kernel arg is pulled
 bool isPulledKernelArg(const llvm::Argument &Arg, const ModuleMetaData &ModMD);
+// Returns true if the kernel has pulled arguments
+bool hasPulledKernelArgs(const llvm::Function &F, const ModuleMetaData &ModMD);
 
 int16_t GetVectorAliasControl(const CodeGenContext *ctx, bool HasCalls = false);
 

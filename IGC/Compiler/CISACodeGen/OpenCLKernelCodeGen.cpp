@@ -1470,9 +1470,17 @@ void COpenCLKernel::AllocatePayload() {
   // keep track of the pointer arguments' addrspace and access_type for setting the correct
   // attributes to their corresponding bindless offset arguments
   PtrArgsAttrMapType ptrArgsAttrMap;
+  SmallVector<KernelArg, 8> pulledArgs;
   for (KernelArgs::const_iterator i = kernelArgs.begin(), e = kernelArgs.end(); i != e; ++i) {
     KernelArg arg = *i;
     prevOffset = offset;
+
+    // Pulled arguments are read from memory by the kernel body, so they get no GRF.
+    // Their payload slots are placed after all pushed arguments
+    if (!arg.isImplicitArg() && arg.getArg() && isPulledKernelArg(*arg.getArg(), *m_ModuleMetadata)) {
+      pulledArgs.push_back(arg);
+      continue;
+    }
 
     if (arg.getArgType() == KernelArg::ArgType::IMPLICIT_SCRATCH_POINTER && skipIndirectScratchPointer) {
       m_TryNoScratchPointer = true;
@@ -1628,6 +1636,10 @@ void COpenCLKernel::AllocatePayload() {
     }
   }
 
+  if (!pulledArgs.empty()) {
+    AllocatePulledArgs(pulledArgs, useInlineData ? inlineDataSize : 0, ptrArgsAttrMap);
+  }
+
   // Disable EU Fusion.
   if (IGC_IS_FLAG_ENABLED(DisableEuFusion) || m_Context->m_InternalOptions.DisableEUFusion ||
       m_Context->getModuleMetaData()->compOpt.DisableEUFusion) {
@@ -1655,6 +1667,68 @@ void COpenCLKernel::AllocatePayload() {
   m_State.m_ConstantBufferLength = iSTD::Align(m_State.m_ConstantBufferLength, getGRFSize());
 
   CreateZEInlineSamplerAnnotations();
+}
+
+void COpenCLKernel::AllocatePulledArgs(SmallVectorImpl<KernelArg> &pulledArgs, uint inlinePayloadSize,
+                                       PtrArgsAttrMapType &ptrArgsAttrMap) {
+  // Place pulled arguments after the last pushed argument
+  uint64_t payloadEnd = inlinePayloadSize;
+  for (const zebin::zeInfoPayloadArgument &zeArg : m_kernelInfo.m_zePayloadArgs) {
+    payloadEnd = std::max<uint64_t>(payloadEnd, zeArg.offset + zeArg.size);
+  }
+
+  // Args are grouped by type in KernelArgs, so sort them back to declaration order for zeinfo readability
+  llvm::sort(pulledArgs,
+             [](const KernelArg &L, const KernelArg &R) { return L.getAssociatedArgNo() < R.getAssociatedArgNo(); });
+
+  for (KernelArg &arg : pulledArgs) {
+    const llvm::Argument &A = *arg.getArg();
+    const uint argNo = arg.getAssociatedArgNo();
+    const uint64_t size = getKernelArgAllocSize(A, *m_DL);
+    const uint64_t payloadOffset = llvm::alignTo(payloadEnd, getPulledKernelArgAlign(A, *m_DL));
+    payloadEnd = payloadOffset + size;
+
+    if (arg.getArgType() == KernelArg::ArgType::STRUCT) {
+      // A pushed struct is described by its pieces (implicit args). A pulled struct has no
+      // pieces, so it gets a single by-value entry for the whole struct
+      zebin::ZEInfoBuilder::addPayloadArgumentByValue(m_kernelInfo.m_zePayloadArgs, int_cast<int32_t>(payloadOffset),
+                                                      int_cast<int32_t>(size), argNo, /*source_offset*/ 0,
+                                                      /*is_ptr*/ false);
+    } else {
+      // Rest of the pulled args can be created by CreateZEPayloadArguments
+      IGC_ASSERT_MESSAGE(arg.getSize() == size, "Pulled argument size mismatch");
+      bool Res = CreateZEPayloadArguments(&arg, int_cast<uint>(payloadOffset), ptrArgsAttrMap);
+      IGC_ASSERT_MESSAGE(Res, "ZEBin: unsupported pulled KernelArg Type");
+      (void)Res;
+    }
+
+    // Inline data is not stored in memory, so memory offsets start where inline data ends
+    m_pulledArgMemOffsets[argNo] = int_cast<uint>(payloadOffset - inlinePayloadSize);
+  }
+
+  // Runtime aligns the cross-thread data size and keeps it in 16 bits
+  const uint64_t crossThreadDataSize = llvm::alignTo(payloadEnd, m_DriverInfo->getCrossThreadDataAlignment());
+  const uint64_t crossThreadDataLimit = std::numeric_limits<uint16_t>::max();
+  if (crossThreadDataSize > crossThreadDataLimit) {
+    std::string ErrorMsg =
+        "Total size of kernel arguments exceeds cross-thread data limit! Size: " + std::to_string(crossThreadDataSize) +
+        ", limit: " + std::to_string(crossThreadDataLimit);
+    m_Context->EmitError(ErrorMsg.c_str(), entry);
+    return;
+  }
+
+  // Runtime places per-thread data (local IDs) right after the cross-thread data, minus the part
+  // passed in inline data. The prologue computes this offset from the pushed arguments only, so
+  // pass the real one.
+  const int32_t perThreadPayloadOffset = int_cast<int32_t>(crossThreadDataSize - inlinePayloadSize);
+  encoder.GetVISAKernel()->AddKernelAttribute("PerThreadPayloadOffset", sizeof(perThreadPayloadOffset),
+                                              &perThreadPayloadOffset);
+}
+
+uint COpenCLKernel::getPulledArgMemOffset(uint argNo) const {
+  auto It = m_pulledArgMemOffsets.find(argNo);
+  IGC_ASSERT_MESSAGE(It != m_pulledArgMemOffsets.end(), "No memory offset for pulled argument");
+  return It->second;
 }
 
 bool COpenCLKernel::isUnusedArg(KernelArg &arg) const {

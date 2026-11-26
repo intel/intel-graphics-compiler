@@ -638,6 +638,7 @@ public:
   void emitInt4VectorUnpack(llvm::GenIntrinsicInst *GII);
   void emitInt4VectorPack(llvm::GenIntrinsicInst *GII);
   void emitStaticConstantPatchValue(llvm::StaticConstantPatchIntrinsic *staticConstantPatch32);
+  void emitGetKernelArgPtr(llvm::GenIntrinsicInst *inst);
   // Debug Built-Ins
   void emitStateRegID(uint32_t BitStart, uint32_t BitEnd);
   void emitThreadPause(llvm::GenIntrinsicInst *inst);
@@ -980,7 +981,9 @@ private:
   uint m_currentBlock = UINT32_MAX;
 
   bool m_currFuncHasSubroutine = false;
-
+  // Size of implicit_args in front of cross-thread data, patched by the runtime (relocation).
+  // Set at the kernel start when the kernel has pulled arguments.
+  CVariable *m_crossThreadOffset = nullptr;
   // vISA ids [first, last] of the instructions setting FP = SP in the current function.
   std::optional<std::pair<unsigned, unsigned>> m_FPInitVisaIdRange;
 

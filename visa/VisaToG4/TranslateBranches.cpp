@@ -171,6 +171,22 @@ int IR_Builder::translateVISACFSymbolInst(const std::string &symbolName,
                                           G4_DstRegRegion *dst) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
+  // The cross-thread offset is patched by the runtime only when it places
+  // implicit args in front of the cross-thread data, otherwise the immediate
+  // is used as emitted. Emit it like the payload prologue does: a 32-bit
+  // move of 0 with R_SYM_ADDR_32.
+  if (symbolName == CROSS_THREAD_OFF_R0_RELOCATION_NAME) {
+    vISA_ASSERT(dst->getTypeSize() == 4,
+                "cross-thread offset relocation requires a 32-bit destination");
+    auto patchImm = createRelocImm(GenRelocType::R_SYM_ADDR_32, symbolName,
+                                   /*immval*/ 0, Type_UD);
+    auto movInst =
+        createMov(g4::SIMD1, dst, patchImm, InstOpt_WriteEnable, true);
+    RelocationEntry::createRelocation(kernel, *movInst, 0, symbolName,
+                                      GenRelocType::R_SYM_ADDR_32);
+    return VISA_SUCCESS;
+  }
+
   if (Type_D == dst->getType()) {
     auto patchImm =
         createRelocImm(GenRelocType::R_GLOBAL_IMM_32, symbolName,

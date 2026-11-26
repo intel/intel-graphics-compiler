@@ -20,7 +20,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/SmallVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
-#include <algorithm>
 #include <string>
 
 using namespace llvm;
@@ -70,20 +69,6 @@ static Value *createKernelArgPtr(IGCLLVM::IRBuilder<> &B, Argument &Arg) {
   return B.CreateCall(GetArgPtr, B.getInt32(Arg.getArgNo()), Arg.getName() + "_pulled");
 }
 
-// Alignment of the kernel arg: param align of byval arg if present, ABI of the type as a fallback
-static Align getArgAlign(const Argument &Arg, const DataLayout &DL) {
-  if (!Arg.hasByValAttr())
-    return DL.getABITypeAlign(Arg.getType());
-  if (MaybeAlign ParamAlign = Arg.getParamAlign())
-    return *ParamAlign;
-  return DL.getABITypeAlign(Arg.getParamByValType());
-}
-
-// Alignment of the arg slot in cross-thread memory
-static Align getPulledArgAlign(const Argument &Arg, const DataLayout &DL) {
-  return std::clamp(getArgAlign(Arg, DL), Align(4), Align(32));
-}
-
 // Replace all uses of arg with a load of its value from cross-thread memory
 static void pullArgument(Function &F, Argument &Arg, const DataLayout &DL) {
   Type *ArgTy = Arg.getType();
@@ -91,7 +76,7 @@ static void pullArgument(Function &F, Argument &Arg, const DataLayout &DL) {
   IGCLLVM::IRBuilder<> B(&Entry, Entry.getFirstInsertionPt());
   Value *ArgPtr = createKernelArgPtr(B, Arg);
 
-  Align ArgAlign = getPulledArgAlign(Arg, DL);
+  Align ArgAlign = getPulledKernelArgAlign(Arg, DL);
   LoadInst *Val = B.CreateAlignedLoad(ArgTy, ArgPtr, ArgAlign, Arg.getName());
   Val->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(F.getContext(), {}));
   Arg.replaceAllUsesWith(Val);
@@ -105,8 +90,8 @@ static void rewriteByValArg(Function &F, Argument &Arg, const DataLayout &DL) {
   Value *ArgPtr = createKernelArgPtr(B, Arg);
 
   AllocaInst *Copy = B.CreateAlloca(StructTy, nullptr, Arg.getName() + "_copy");
-  Copy->setAlignment(getArgAlign(Arg, DL));
-  B.CreateMemCpy(Copy, Copy->getAlign(), ArgPtr, getPulledArgAlign(Arg, DL), getKernelArgAllocSize(Arg, DL));
+  Copy->setAlignment(getKernelArgAlign(Arg, DL));
+  B.CreateMemCpy(Copy, Copy->getAlign(), ArgPtr, getPulledKernelArgAlign(Arg, DL), getKernelArgAllocSize(Arg, DL));
   Arg.replaceAllUsesWith(Copy);
 }
 
@@ -115,7 +100,7 @@ static void rewriteStructValueArg(Function &F, Argument &Arg, const DataLayout &
   BasicBlock &Entry = F.getEntryBlock();
   IGCLLVM::IRBuilder<> B(&Entry, Entry.getFirstInsertionPt());
   Value *ArgPtr = createKernelArgPtr(B, Arg);
-  replaceStructValueUses(&Arg, ArgPtr, Arg.getType(), getPulledArgAlign(Arg, DL), B, /*InvariantLoads=*/true);
+  replaceStructValueUses(&Arg, ArgPtr, Arg.getType(), getPulledKernelArgAlign(Arg, DL), B, /*InvariantLoads=*/true);
 }
 } // namespace
 

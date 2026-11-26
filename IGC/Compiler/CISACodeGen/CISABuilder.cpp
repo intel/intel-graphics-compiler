@@ -3408,11 +3408,8 @@ void CEncoder::InitBuildParams(
     params.push_back(param_uptr("-fasterRA", literal_deleter));
     params.push_back(param_uptr("-noLocalSplit", literal_deleter));
   }
-  if (IGC_IS_FLAG_ENABLED(EnableGlobalStateBuffer)) {
-    if (context->type == ShaderType::OPENCL_SHADER &&
-        static_cast<OpenCLProgramContext *>(context)->m_InternalOptions.AllowRelocAdd) {
-      params.push_back(param_uptr("-emitCrossThreadOffR0Reloc", literal_deleter));
-    }
+  if (EmitsCrossThreadOffsetReloc(context)) {
+    params.push_back(param_uptr("-emitCrossThreadOffR0Reloc", literal_deleter));
   }
 
   if (context->type == ShaderType::COMPUTE_SHADER && context->getModuleMetaData()->csInfo.forceSpillCompression) {

@@ -602,6 +602,10 @@ void ImplicitArgs::addBindlessOffsetArgs(llvm::Function &F, const IGCMD::MetaDat
       continue;
     }
 
+    // Pulled pointers are read from cross-thread memory, so they cannot be promoted to bindless
+    if (isPulledKernelArg(Arg, *modMD))
+      continue;
+
     OffsetArgs[ImplicitArg::BINDLESS_OFFSET].insert(argNo);
   }
 

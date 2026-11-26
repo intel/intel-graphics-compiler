@@ -1838,7 +1838,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       GII_id == GenISAIntrinsic::GenISA_getStageInGridSize || GII_id == GenISAIntrinsic::GenISA_getSyncBuffer ||
       GII_id == GenISAIntrinsic::GenISA_getRtGlobalBufferPtr || GII_id == GenISAIntrinsic::GenISA_GetGlobalBufferArg ||
       GII_id == GenISAIntrinsic::GenISA_GetImplicitBufferPtr || GII_id == GenISAIntrinsic::GenISA_GetLocalIdBufferPtr ||
-      GII_id == GenISAIntrinsic::GenISA_ReadFromReservedArgSpace ||
+      GII_id == GenISAIntrinsic::GenISA_getKernelArgPtr || GII_id == GenISAIntrinsic::GenISA_ReadFromReservedArgSpace ||
       GII_id == GenISAIntrinsic::GenISA_getAssertBufferPtr || GII_id == GenISAIntrinsic::GenISA_getIndirectDataPtr ||
       GII_id == GenISAIntrinsic::GenISA_getScratchPtr || GII_id == GenISAIntrinsic::GenISA_getRegionGroupSize ||
       GII_id == GenISAIntrinsic::GenISA_getRegionGroupWGCount ||
@@ -1875,6 +1875,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       // Make sure they are UNIFORM_WORKGROUP
       // return WIAnalysis::UNIFORM_WORKGROUP;
       return WIAnalysis::UNIFORM_THREAD;
+    case GenISAIntrinsic::GenISA_getKernelArgPtr:
+      // Same address in every thread, so a pulled argument stays as uniform as a pushed one
+      return WIAnalysis::UNIFORM_GLOBAL;
     case GenISAIntrinsic::GenISA_GetImplicitBufferPtr:
     case GenISAIntrinsic::GenISA_GetLocalIdBufferPtr:
     case GenISAIntrinsic::GenISA_GetGlobalBufferArg:

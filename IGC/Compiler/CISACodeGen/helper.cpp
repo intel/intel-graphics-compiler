@@ -37,6 +37,8 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "helper.h"
 
+#include <algorithm>
+
 using namespace llvm;
 using namespace GenISAIntrinsic;
 
@@ -3433,17 +3435,13 @@ bool AllowRemovingUnusedImplicitLocalIDs(const CodeGenContext *ctx) {
   return ctx->platform.isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
+bool EmitsCrossThreadOffsetReloc(const CodeGenContext *ctx) {
+  return IGC_IS_FLAG_ENABLED(EnableGlobalStateBuffer) && ctx->type == ShaderType::OPENCL_SHADER &&
+         static_cast<const OpenCLProgramContext *>(ctx)->m_InternalOptions.AllowRelocAdd;
+}
+
 bool AllowPullingKernelArguments(const CodeGenContext *ctx) {
   if (IGC_IS_FLAG_DISABLED(PullKernelArgs) || ctx->type != ShaderType::OPENCL_SHADER) {
-    return false;
-  }
-
-  auto *OCLCtx = static_cast<const OpenCLProgramContext *>(ctx);
-  // Pulled argument loads rely on the cross-thread offset relocation (runtime may place implicit_args
-  // in front of cross-thread data). Until they emit it under the same condition as the prologue
-  // (-emitCrossThreadOffR0Reloc), keep pulling disabled when that relocation is off.
-  // TODO: remove once pulled loads handle the no-relocation case
-  if (!OCLCtx->m_InternalOptions.AllowRelocAdd || IGC_IS_FLAG_DISABLED(EnableGlobalStateBuffer)) {
     return false;
   }
 
@@ -3456,6 +3454,20 @@ uint64_t getKernelArgAllocSize(const llvm::Argument &Arg, const llvm::DataLayout
   return DL.getTypeAllocSize(ArgType);
 }
 
+// Alignment of the kernel arg: param align of byval arg if present, ABI of the type as a fallback
+llvm::Align getKernelArgAlign(const llvm::Argument &Arg, const llvm::DataLayout &DL) {
+  if (!Arg.hasByValAttr())
+    return DL.getABITypeAlign(Arg.getType());
+  if (llvm::MaybeAlign ParamAlign = Arg.getParamAlign())
+    return *ParamAlign;
+  return DL.getABITypeAlign(Arg.getParamByValType());
+}
+
+// Alignment of the arg slot in cross-thread memory
+llvm::Align getPulledKernelArgAlign(const llvm::Argument &Arg, const llvm::DataLayout &DL) {
+  return std::clamp(getKernelArgAlign(Arg, DL), llvm::Align(4), llvm::Align(32));
+}
+
 // Returns true if the kernel arg is pulled
 bool isPulledKernelArg(const llvm::Argument &Arg, const ModuleMetaData &ModMD) {
   auto It = ModMD.FuncMD.find(const_cast<llvm::Function *>(Arg.getParent()));
@@ -3463,6 +3475,12 @@ bool isPulledKernelArg(const llvm::Argument &Arg, const ModuleMetaData &ModMD) {
     return false;
   }
   return llvm::is_contained(It->second.pulledArgs, Arg.getArgNo());
+}
+
+// Returns true if the kernel has pulled arguments
+bool hasPulledKernelArgs(const llvm::Function &F, const ModuleMetaData &ModMD) {
+  auto It = ModMD.FuncMD.find(const_cast<llvm::Function *>(&F));
+  return It != ModMD.FuncMD.end() && !It->second.pulledArgs.empty();
 }
 
 // Returns VectorAlias regkey value. If not set (-1), returns default for current context.
