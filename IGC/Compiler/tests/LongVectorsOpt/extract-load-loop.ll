@@ -216,3 +216,32 @@ exit:
 }
 
 declare <64 x float> @llvm.genx.GenISA.ldrawvector.indexed.v64f32.p2490368(ptr addrspace(2490368), i32, i32, i1)
+
+; An extract in a loop whose index is available at the long load keeps its element load there, so that the load
+; isn't repeated in every iteration.
+; CHECK-LABEL: @const_index_in_loop(
+; CHECK:       entry:
+; CHECK-NEXT:    [[P:%.*]] = getelementptr <64 x float>, ptr addrspace(1) %a, i32 0, i32 5
+; CHECK-NEXT:    [[E:%.*]] = load float, ptr addrspace(1) [[P]], align 4
+; CHECK-NEXT:    br label %loop
+; CHECK:       loop:
+; CHECK-NOT:     load
+; CHECK:         %sum = fadd float %acc, [[E]]
+define void @const_index_in_loop(ptr addrspace(1) %a, ptr addrspace(1) noalias %out, i32 %n) {
+entry:
+  %va = load <64 x float>, ptr addrspace(1) %a, align 4
+  br label %loop
+
+loop:
+  %i = phi i32 [ 0, %entry ], [ %i.next, %loop ]
+  %acc = phi float [ 0.0, %entry ], [ %sum, %loop ]
+  %e = extractelement <64 x float> %va, i32 5
+  %sum = fadd float %acc, %e
+  %i.next = add i32 %i, 1
+  %cond = icmp ult i32 %i.next, %n
+  br i1 %cond, label %loop, label %exit
+
+exit:
+  store float %sum, ptr addrspace(1) %out, align 4
+  ret void
+}

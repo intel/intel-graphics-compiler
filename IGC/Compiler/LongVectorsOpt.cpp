@@ -448,30 +448,42 @@ bool LongVectorsOpt::resolveExtractElementToLoad(ExtractElementInst *Extract) {
   IGCLLVM::IRBuilder<> Builder(LoadInstr);
 
   bool IsReadOnly = isReadOnlyLoad(LoadInstr);
-  // The element load is created at the original load if the index must be available there.
-  // Otherwise, the index is hoisted to the load if it is cheap and safe to compute there.
-  // If the memory is readonly, or nothing can write it before the extract, the load may be moved to the extract.
+  // If the memory is readonly, or nothing can write it before the first use of the extract in its block, the element
+  // load is created right before that use, so that the element isn't live before it is needed. That position
+  // dominates all uses of the extract. If the index is available at the original load, the element load is moved only
+  // within the block of the original load, so that it isn't moved into a loop. Otherwise, the element load is created
+  // at the original load if the index is available there, or the index is hoisted to the load if it is cheap and safe
+  // to compute there.
   Value *Idx = Extract->getIndexOperand();
+  Instruction *IdxInst = dyn_cast<Instruction>(Idx);
+  bool IsIdxAvailableAtLoad = !IdxInst || DT->dominates(IdxInst, LoadInstr);
   SmallSetVector<Instruction *, 8> ToHoist;
-  if (Instruction *IdxInst = dyn_cast<Instruction>(Idx)) {
-    if (!DT->dominates(IdxInst, LoadInstr)) {
-      if (IsReadOnly || (isStateless(LoadInstr) && isLoadedMemoryUnchangedAt(cast<LoadInst>(LoadInstr), Extract))) {
-        Builder.SetInsertPoint(Extract);
-      } else if (collectHoistable(IdxInst, LoadInstr, ToHoist)) {
-        // The index is cheap and safe to compute at the load, so compute it again there.
-        ValueToValueMapTy HoistedValues;
-        for (Instruction *I : ToHoist) {
-          Instruction *Clone = I->clone();
-          IGCLLVM::insertBefore(Clone, LoadInstr);
-          RemapInstruction(Clone, HoistedValues, RF_IgnoreMissingLocals | RF_NoModuleLevelChanges);
-          HoistedValues[I] = Clone;
-        }
-        Idx = HoistedValues[IdxInst];
-      } else {
-        // TODO: if there are no aliasing stores between the index instruction and the load instruction, we can
-        // create the load at the index instruction.
-        return false;
+  Instruction *UsePos = Extract;
+  for (Instruction *I = Extract->getNextNode(); I; I = I->getNextNode()) {
+    if (is_contained(I->operands(), Extract)) {
+      UsePos = I;
+      break;
+    }
+  }
+  bool CanMove = !IsIdxAvailableAtLoad || UsePos->getParent() == LoadInstr->getParent();
+  if (CanMove &&
+      (IsReadOnly || (isStateless(LoadInstr) && isLoadedMemoryUnchangedAt(cast<LoadInst>(LoadInstr), UsePos)))) {
+    Builder.SetInsertPoint(UsePos);
+  } else if (!IsIdxAvailableAtLoad) {
+    if (collectHoistable(IdxInst, LoadInstr, ToHoist)) {
+      // The index is cheap and safe to compute at the load, so compute it again there.
+      ValueToValueMapTy HoistedValues;
+      for (Instruction *I : ToHoist) {
+        Instruction *Clone = I->clone();
+        IGCLLVM::insertBefore(Clone, LoadInstr);
+        RemapInstruction(Clone, HoistedValues, RF_IgnoreMissingLocals | RF_NoModuleLevelChanges);
+        HoistedValues[I] = Clone;
       }
+      Idx = HoistedValues[IdxInst];
+    } else {
+      // TODO: if there are no aliasing stores between the index instruction and the load instruction, we can
+      // create the load at the index instruction.
+      return false;
     }
   }
   // An out-of-range constant index yields poison; don't turn it into an out-of-bounds load.

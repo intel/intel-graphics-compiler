@@ -81,11 +81,11 @@ define float @store_and_extract(<64 x float> %v, float %a, i32 %i, i32 %j, ptr a
 ; CHECK-NEXT:    store <64 x float> %v, ptr [[V1]], align 4
 ; CHECK-NEXT:    [[V2:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 %i
 ; CHECK-NEXT:    store float %a, ptr [[V2]], align 4
-; CHECK-NEXT:    [[V3:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 %j
-; CHECK-NEXT:    [[V4:%.*]] = load float, ptr [[V3]], align 4
-; CHECK-NEXT:    [[V5:%.*]] = load <64 x float>, ptr [[V0]], align 256
-; CHECK-NEXT:    store float [[V4]], ptr addrspace(1) %q, align 4
-; CHECK-NEXT:    store <64 x float> [[V5]], ptr addrspace(1) %out, align 4
+; CHECK-NEXT:    [[V3:%.*]] = load <64 x float>, ptr [[V0]], align 256
+; CHECK-NEXT:    [[V4:%.*]] = getelementptr <64 x float>, ptr [[V0]], i32 0, i32 %j
+; CHECK-NEXT:    [[V5:%.*]] = load float, ptr [[V4]], align 4
+; CHECK-NEXT:    store float [[V5]], ptr addrspace(1) %q, align 4
+; CHECK-NEXT:    store <64 x float> [[V3]], ptr addrspace(1) %out, align 4
 ; CHECK-NEXT:    ret void
 define void @extract_used_before_store(<64 x float> %v, float %a, i32 %i, i32 %j, ptr addrspace(1) %out, ptr addrspace(1) %q) {
   %v1 = insertelement <64 x float> %v, float %a, i32 %i
