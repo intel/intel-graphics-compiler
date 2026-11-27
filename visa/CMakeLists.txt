@@ -128,9 +128,10 @@ endif()
 
 set(bison_output_file ${CMAKE_CURRENT_BINARY_DIR}/CISA.tab.cpp)
 set(flex_output_file ${CMAKE_CURRENT_BINARY_DIR}/lex.CISA.cpp)
+set(flex_header_file ${CMAKE_CURRENT_BINARY_DIR}/lex.CISA.hpp)
 
 BISON_TARGET(CISAParser CISA.y ${bison_output_file} COMPILE_FLAGS "-vt -p CISA")
-FLEX_TARGET(CISAScanner CISA.l ${flex_output_file} COMPILE_FLAGS "-PCISA ${WIN_FLEX_FLAG}")
+FLEX_TARGET(CISAScanner CISA.l ${flex_output_file} DEFINES_FILE ${flex_header_file} COMPILE_FLAGS "-PCISA ${WIN_FLEX_FLAG}")
 ADD_FLEX_BISON_DEPENDENCY(CISAScanner CISAParser)
 set(CISAScanner_dependencies)
 
