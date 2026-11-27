@@ -1201,9 +1201,10 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
       PM.addPass(createModuleToFunctionPassAdaptor(ReassociatePass()));
       PM.addPass(createModuleToFunctionPassAdaptor(
           createFunctionToLoopPassAdaptor(LoopRotatePass())));
-      // TODO: Check LICM-options
+      // Allow speculation: loops are already rotated, as in the LLVM default
+      // pipeline, and the legacy LICM always speculated.
       PM.addPass(createModuleToFunctionPassAdaptor(
-          createFunctionToLoopPassAdaptor(LICMPass(100, 250, false),
+          createFunctionToLoopPassAdaptor(LICMPass(100, 250, true),
 #if LLVM_VERSION_MAJOR >= 22
                                           /*UseMemorySSA=*/true)));
 #else
