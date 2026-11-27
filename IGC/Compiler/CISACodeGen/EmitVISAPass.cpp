@@ -11576,11 +11576,11 @@ bool EmitPass::isVectorIndexInBounds(Instruction *Inst, Value *Index, unsigned N
 
 // An out-of-bounds index makes extractelement/insertelement poison, but makes
 // the indirect GRF access it is lowered to undefined (documentation/visa/5_operands.md).
-CVariable *EmitPass::clampVectorIndex(CVariable *IndexVar, bool IsIndexUnpacked, unsigned NumElts) {
-  CVariable *Clamped = m_currShader->GetNewVariable(IndexVar->GetNumberElement() / (IsIndexUnpacked ? 2 : 1),
-                                                    ISA_TYPE_UW, EALIGN_WORD, IndexVar->IsUniform(), CName::NONE);
-  if (IsIndexUnpacked && !IndexVar->IsUniform())
-    m_encoder->SetSrcRegion(0, 2, 1, 0);
+CVariable *EmitPass::clampVectorIndex(CVariable *IndexVar, unsigned IndexStride, unsigned NumElts) {
+  CVariable *Clamped = m_currShader->GetNewVariable(IndexVar->GetNumberElement() / IndexStride, ISA_TYPE_UW, EALIGN_WORD,
+                                                    IndexVar->IsUniform(), CName::NONE);
+  if (IndexStride > 1 && !IndexVar->IsUniform())
+    m_encoder->SetSrcRegion(0, IndexStride, 1, 0);
   CVariable *LastElt = m_currShader->ImmToVariable(NumElts - 1, ISA_TYPE_UW);
   // An out-of-range index yields poison, so any in-range element will do.
   if (isPowerOf2_32(NumElts))
@@ -11654,8 +11654,10 @@ void EmitPass::emitExtract(llvm::Instruction *inst) {
     CVariable *pIndexVar = GetSymbol(pIndex);
     IGC_ASSERT(pIndex->getType()->getPrimitiveSizeInBits() <= 64);
 
-    bool IsIndexUnpacked = pIndex->getType()->getPrimitiveSizeInBits() >= 32;
-    if (IsIndexUnpacked) {
+    // A uw alias of an i32 index holds each lane's low word in every second word, of an i64 index in every fourth.
+    const unsigned IndexBits = pIndex->getType()->getPrimitiveSizeInBits();
+    unsigned IndexStride = IndexBits >= 32 ? IndexBits / 16 : 1;
+    if (IndexStride > 1) {
       pIndexVar = m_currShader->BitCast(pIndexVar, ISA_TYPE_UW);
     } else {
       // A negative narrow index must compare as out of range in the unsigned clamp.
@@ -11663,8 +11665,8 @@ void EmitPass::emitExtract(llvm::Instruction *inst) {
     }
     unsigned NumElts = int_cast<unsigned>(cast<IGCLLVM::FixedVectorType>(pVecType)->getNumElements());
     if (!isVectorIndexInBounds(inst, pIndex, NumElts)) {
-      pIndexVar = clampVectorIndex(pIndexVar, IsIndexUnpacked, NumElts);
-      IsIndexUnpacked = false;
+      pIndexVar = clampVectorIndex(pIndexVar, IndexStride, NumElts);
+      IndexStride = 1;
     }
 
     // size of vector entry
@@ -11683,8 +11685,8 @@ void EmitPass::emitExtract(llvm::Instruction *inst) {
                                                        pIndexVar->IsUniform(), CName::NONE);
 
     // We bitcast the address as uw so it is an "unpacked" uw
-    if (!pIndexVar->IsUniform() && IsIndexUnpacked) {
-      m_encoder->SetSrcRegion(0, 2, 1, 0);
+    if (!pIndexVar->IsUniform() && IndexStride > 1) {
+      m_encoder->SetSrcRegion(0, IndexStride, 1, 0);
     }
 
     m_encoder->Mul(pOffset2, pIndexVar, pOffset1);
@@ -13455,8 +13457,10 @@ void EmitPass::emitInsert(llvm::Instruction *inst) {
     CVariable *pIndexVar = GetSymbol(pIndex);
     IGC_ASSERT(pIndex->getType()->getPrimitiveSizeInBits() <= 64);
 
-    bool IsIndexUnpacked = pIndex->getType()->getPrimitiveSizeInBits() >= 32;
-    if (IsIndexUnpacked) {
+    // A uw alias of an i32 index holds each lane's low word in every second word, of an i64 index in every fourth.
+    const unsigned IndexBits = pIndex->getType()->getPrimitiveSizeInBits();
+    unsigned IndexStride = IndexBits >= 32 ? IndexBits / 16 : 1;
+    if (IndexStride > 1) {
       // Create a uw alias – the variable is wide enough for this to be safe.
       pIndexVar = m_currShader->BitCast(pIndexVar, ISA_TYPE_UW);
     } else {
@@ -13471,8 +13475,8 @@ void EmitPass::emitInsert(llvm::Instruction *inst) {
     }
     unsigned NumElts = int_cast<unsigned>(cast<IGCLLVM::FixedVectorType>(pVecType)->getNumElements());
     if (!isVectorIndexInBounds(inst, pIndex, NumElts)) {
-      pIndexVar = clampVectorIndex(pIndexVar, IsIndexUnpacked, NumElts);
-      IsIndexUnpacked = false;
+      pIndexVar = clampVectorIndex(pIndexVar, IndexStride, NumElts);
+      IndexStride = 1;
     }
     CVariable *pElemVar = GetSymbol(pElement);
 
@@ -13490,8 +13494,8 @@ void EmitPass::emitInsert(llvm::Instruction *inst) {
     CVariable *pOffset2 = m_currShader->GetNewVariable(pIndexVar->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize),
                                                        ISA_TYPE_UW, EALIGN_WORD, pIndexVar->IsUniform(), CName::NONE);
 
-    if (IsIndexUnpacked && !pIndexVar->IsUniform()) {
-      m_encoder->SetSrcRegion(0, 16, 8, 2);
+    if (IndexStride > 1 && !pIndexVar->IsUniform()) {
+      m_encoder->SetSrcRegion(0, 8 * IndexStride, 8, IndexStride);
     }
     m_encoder->Mul(pOffset2, pIndexVar, pOffset1);
     m_encoder->Push();
