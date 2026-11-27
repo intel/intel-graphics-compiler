@@ -232,6 +232,14 @@ inline Value *getInRangeIndex(IGCLLVM::IRBuilder<> &Builder, Value *Idx, uint32_
   return Builder.CreateSelect(Builder.CreateICmpULE(Idx, MaxIdx), Idx, MaxIdx);
 }
 
+// Vector element indices are unsigned, but GEP sign-extends its indices.
+inline Value *createElementGEP(IGCLLVM::IRBuilder<> &Builder, Type *VecTy, Value *Ptr, Value *Idx) {
+  if (Idx->getType()->getScalarSizeInBits() < 32) {
+    Idx = Builder.CreateZExt(Idx, Builder.getInt32Ty());
+  }
+  return Builder.CreateGEP(VecTy, Ptr, {Builder.getInt32(0), Idx});
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 inline AllocaInst *createAllocaAtEntry(Function &F, Type *Ty, const Twine &Name) {
   IGCIRBuilder<> Builder(&F.getEntryBlock().front());
@@ -248,7 +256,7 @@ inline Instruction *createLoad(IGCLLVM::IRBuilder<> &Builder, Instruction *OrigI
   uint64_t Alignment = MinAlign(getAlignment(OrigInst), ScalarSizeInBytes);
   if (isStateless(OrigInst)) {
     Value *Ptr = getPointerOperand(OrigInst);
-    Ptr = Builder.CreateGEP(LongVecTy, Ptr, {Builder.getInt32(0), Idx});
+    Ptr = createElementGEP(Builder, LongVecTy, Ptr, Idx);
     Ptr =
         Builder.CreatePointerCast(Ptr, IGCLLVM::PointerType::get(TypeToLoad, Ptr->getType()->getPointerAddressSpace()));
     return Builder.CreateAlignedLoad(TypeToLoad, Ptr, Align(Alignment));
@@ -276,7 +284,7 @@ inline Instruction *createStore(IGCLLVM::IRBuilder<> &Builder, Instruction *Orig
   uint64_t Alignment = MinAlign(getAlignment(OrigStoreOrStoreRaw), ScalarSizeInBytes);
   if (StoreInst *Store = dyn_cast<StoreInst>(OrigStoreOrStoreRaw)) {
     Value *Ptr = Store->getPointerOperand();
-    Ptr = Builder.CreateGEP(LongVecTy, Ptr, {Builder.getInt32(0), Idx});
+    Ptr = createElementGEP(Builder, LongVecTy, Ptr, Idx);
     Ptr = Builder.CreatePointerCast(
         Ptr, IGCLLVM::PointerType::get(Val->getType(), Ptr->getType()->getPointerAddressSpace()));
     return Builder.CreateAlignedStore(Val, Ptr, Align(Alignment));
@@ -529,7 +537,7 @@ bool LongVectorsOpt::resolveExtractElement(ExtractElementInst *Extract) {
   }
   IGCLLVM::IRBuilder<> Builder(Extract);
   Idx = getInRangeIndex(Builder, Idx, VecTy->getNumElements());
-  Value *Ptr = Builder.CreateGEP(VecTy, Alloca, {Builder.getInt32(0), Idx});
+  Value *Ptr = createElementGEP(Builder, VecTy, Alloca, Idx);
   Value *Elem = Builder.CreateLoad(Extract->getType(), Ptr);
   Extract->replaceAllUsesWith(Elem);
   Extract->eraseFromParent();
