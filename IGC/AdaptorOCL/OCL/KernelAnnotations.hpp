@@ -43,6 +43,7 @@ struct ThreadPayload {
   uint32_t PassInlineDataSize = 0;
   uint32_t OffsetToSkipPerThreadDataLoad = 0;
   uint32_t OffsetToSkipSetFFIDGP = 0;
+  uint32_t CrossThreadLoadSize = 0;
   bool HasRTStackID = false;
   bool generateLocalID = false;
   uint32_t emitLocalMask = 0;

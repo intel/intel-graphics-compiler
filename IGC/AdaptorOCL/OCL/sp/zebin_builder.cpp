@@ -496,6 +496,7 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo &annotations, zeI
   env.inline_data_payload_size = annotations.m_threadPayload.PassInlineDataSize;
   env.offset_to_skip_per_thread_data_load = annotations.m_threadPayload.OffsetToSkipPerThreadDataLoad;
   env.offset_to_skip_set_ffid_gp = annotations.m_threadPayload.OffsetToSkipSetFFIDGP;
+  env.cross_thread_load_size = annotations.m_threadPayload.CrossThreadLoadSize;
   env.generate_local_id = annotations.m_threadPayload.generateLocalID;
   env.has_lsc_stores_with_non_default_l1_cache_controls =
       annotations.m_executionEnvironment.HasLscStoresWithNonDefaultL1CacheControls;

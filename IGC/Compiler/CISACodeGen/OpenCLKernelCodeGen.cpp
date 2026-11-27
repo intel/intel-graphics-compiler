@@ -1677,6 +1677,9 @@ void COpenCLKernel::AllocatePulledArgs(SmallVectorImpl<KernelArg> &pulledArgs, u
     payloadEnd = std::max<uint64_t>(payloadEnd, zeArg.offset + zeArg.size);
   }
 
+  // payloadEnd here is the end of pushed args, all from this offset on is loaded from the memory where it is used
+  m_kernelInfo.m_threadPayload.CrossThreadLoadSize = int_cast<uint32_t>(payloadEnd);
+
   // Args are grouped by type in KernelArgs, so sort them back to declaration order for zeinfo readability
   llvm::sort(pulledArgs,
              [](const KernelArg &L, const KernelArg &R) { return L.getAssociatedArgNo() < R.getAssociatedArgNo(); });
