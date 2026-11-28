@@ -13,7 +13,6 @@ set(IGC_BIF_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
 set(IGC_BIF_CONFIG "${CMAKE_CURRENT_BINARY_DIR}/BiFBuildConfig-$<CONFIG>.cmake")
 include(BiFMCConst)
 include(BiFMCGetListFiles)
-include(BiFModuleBuild)
 get_bif_src_list("${opencl-header}" "${BiFModule_SRC}" BiFModule_SRC_LIST)
 
 if(NOT EXISTS ${IGC_BUILD__BIF_ROOT_DIR})
@@ -96,36 +95,18 @@ function(build_bif_bitcode)
   set(IGC_BIF_TOOL_SOURCES "${IGC_BIF_TOOL_SOURCES}" PARENT_SCOPE)
   set(bif-tool-deps "${bif-tool-deps}" PARENT_SCOPE)
 
-  # The modules and the state of the cache are outside of the BiF directory,
-  # which is replaced when the package is restored.
-  set(IGC_BIF_MODULE_DIR "${CMAKE_CURRENT_BINARY_DIR}/modules/${IGC_CMAKE_CFG_INTDIR}")
-  set(IGC_BIF_STATE "${IGC_BIF_MODULE_DIR}/BiFCache.state")
-  set(IGC_BIF_STAMP "${IGC_BIF_MODULE_DIR}/BiFCache.stamp")
-  if(TARGET "${LLVM_AS_EXE}")
-    set(IGC_BIF_LLVM_AS_DEP "${LLVM_AS_EXE}")
-  else()
-    set(IGC_BIF_LLVM_AS_DEP "${bif-llvm-as_exe}")
-  endif()
   add_custom_command(
-      OUTPUT "${IGC_BIF_STAMP}"
-      BYPRODUCTS "${IGC_BIF_STATE}"
-      COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BIF_MODULE_DIR}"
-      COMMAND "${CMAKE_COMMAND}" "-DIGC_BIF_CONFIG=${IGC_BIF_CONFIG}" "-DIGC_BIF_STATE=${IGC_BIF_STATE}"
-          "-DIGC_BIF_STAMP=${IGC_BIF_STAMP}" -P "${IGC_BIF_CMAKE_DIR}/BiFMCRestore.cmake"
-      DEPENDS "${BiFModule_SRC_SHA_PATH}" "${IGC_BIF_CONFIG}"
-      COMMENT "Checking the BiF prebuild cache"
+      OUTPUT ${IGC_BIF_OUTPUTS}
+      COMMAND "${CMAKE_COMMAND}" "-DIGC_BIF_CONFIG=${IGC_BIF_CONFIG}"
+          -P "${IGC_BIF_CMAKE_DIR}/BiFBuildBitcode.cmake"
+      DEPENDS "${BiFModule_SRC_SHA_PATH}" "${IGC_BIF_CONFIG}" ${bif-tool-deps}
+          IBiF_matrix_generator_run
+      COMMENT "Building BiF package"
       VERBATIM)
-  # A target of its own, so that the cache is checked before any build step
-  # also with generators that do not order the commands of a target.
-  set(check_target "${IGC_BUILD__PROJ_NAME_PREFIX}BiFModuleCacheCheck")
-  add_custom_target("${check_target}" DEPENDS "${IGC_BIF_STAMP}")
-  set_target_properties("${check_target}" PROPERTIES FOLDER "Misc/BiF")
-  set(IGC_BUILD__PROJ__BiFModuleCacheCheck_OCL "${check_target}" PARENT_SCOPE)
-  igc_bif_add_package_commands()
   set(target "${IGC_BUILD__PROJ_NAME_PREFIX}BiFModuleCache")
-  add_custom_target("${target}" DEPENDS ${IGC_BIF_OUTPUTS} ${IGC_BIF_UPDATE_IR_STAMP})
+  add_custom_target("${target}" DEPENDS ${IGC_BIF_OUTPUTS})
   set_target_properties("${target}" PROPERTIES FOLDER "Misc/BiF")
-  add_dependencies("${target}" "${check_target}" "${IGC_BUILD__PROJ_NAME_PREFIX}BiFManager-bin" IBiF_matrix_generator_run)
+  add_dependencies("${target}" "${IGC_BUILD__PROJ_NAME_PREFIX}BiFManager-bin")
   set(IGC_BUILD__PROJ__BiFModuleCache_OCL "${target}" PARENT_SCOPE)
 endfunction()
 
@@ -142,7 +123,6 @@ function(generate_bif_src_checksum bifModuleTgt)
   add_custom_target("${target}" DEPENDS "${BiFModule_SRC_SHA_PATH}")
   set_target_properties("${target}" PROPERTIES FOLDER "Misc/BiF")
   add_dependencies("${bifModuleTgt}" "${target}")
-  add_dependencies("${IGC_BUILD__PROJ__BiFModuleCacheCheck_OCL}" "${target}")
   set(IGC_BUILD__PROJ__BiFModuleCache_SRC_CHECKSUM_OCL "${target}" PARENT_SCOPE)
 endfunction()
 

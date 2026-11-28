@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024-2026 Intel Corporation
+Copyright (C) 2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -23,12 +23,22 @@ BiFManagerCommon::BiFManagerCommon(LLVMContext &Context) : Context(Context) {}
 
 BiFManagerCommon::~BiFManagerCommon() {}
 
-uint64_t BiFManagerCommon::getHash(StringRef Name) {
-  uint64_t Hash = 0xCBF29CE484222325ULL;
-  for (unsigned char C : Name) {
-    Hash ^= C;
-    Hash *= 0x100000001B3ULL;
+size_t BiFManagerCommon::getHash(const std::string &FlagName) { return std::hash<std::string>{}(FlagName); }
+
+CollectBuiltinsPass::CollectBuiltinsPass(TFunctionsVec &neededBuiltinsFunc,
+                                         const std::function<bool(llvm::Function *)> &predicate)
+    : neededBuiltinsFunc(neededBuiltinsFunc), predicate(predicate) {}
+
+CollectBuiltinsPass::~CollectBuiltinsPass() {}
+
+void CollectBuiltinsPass::visitCallInst(llvm::CallInst &callInst) {
+  auto pFunc = callInst.getCalledFunction();
+
+  if (pFunc != nullptr &&
+      std::find(neededBuiltinsFunc.begin(), neededBuiltinsFunc.end(), pFunc) == neededBuiltinsFunc.end()) {
+    if (predicate(pFunc)) {
+      neededBuiltinsFunc.push_back(pFunc);
+    }
   }
-  return Hash;
 }
 

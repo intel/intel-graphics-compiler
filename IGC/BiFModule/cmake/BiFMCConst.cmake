@@ -19,4 +19,8 @@ set(BiFModule_PreBuild_FileList
     BiFModule_PREB.sha
     OCLBiFImpl.h
     opencl_cth.h
-    OCLBiFImpl.bifbc)
+    OCLBiFImpl.bifbc
+    IBiF_Impl_int_spirv.bc
+    OCLBiFImpl.bc
+    IGCsize_t_32.bc
+    IGCsize_t_64.bc)

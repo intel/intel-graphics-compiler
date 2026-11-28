@@ -62,16 +62,10 @@ private:
   llvm::Module *builtinSizeModule();
   static bool isModulePtrSize32(llvm::Module *pMain);
 
-  // Function looks for the used built-in functions declared in user module
+  // Function looks for all calls of built-in function in user module
   // pModule : User module
   // neededBuiltinInstr [OUT] : List of needed built-in functions
   void findAllBuiltins(llvm::Module *pModule, TFunctionsVec &neededBuiltinInstr);
-
-  // Function returns the ID of the module which defines the built-in function
-  // or -1 if it is not a built-in function
-  // isPtrSize32 : Whether the user module has pointer size 32
-  // funcName : Name of the function
-  static BiFSectionID findModule(bool isPtrSize32, llvm::StringRef funcName);
 
   // Function loads and preapre built-in function modules for linking
   // pMainModule : User module
@@ -116,8 +110,8 @@ public:
   // Function which checks if BiFModule defines a function with this mangled name for the pointer size of
   // pModule, without loading BiFModule
   // pModule : User module
-  // funcName : Function name to be check
-  static bool IsBiFDefined(llvm::Module *pModule, llvm::StringRef funcName);
+  // FuncName : Function name to be check
+  static bool IsBiFDefined(llvm::Module *pModule, llvm::StringRef FuncName);
 };
 } // namespace BiFManager
 } // namespace IGC
