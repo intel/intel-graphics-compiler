@@ -108,6 +108,7 @@ private:
   void replaceLRint(IntrinsicInst *I);
   void replaceCountTheLeadingZeros(IntrinsicInst *I);
   void replaceCountTheTrailingZeros(IntrinsicInst *I);
+  void replaceCountPopulation(IntrinsicInst *I);
   void replaceMinMax(IntrinsicInst *I);
   void replaceI1MinMax(IntrinsicInst *I);
   void replaceI64MinMax(IntrinsicInst *I);
@@ -153,6 +154,7 @@ const std::map<Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t>
     { Intrinsic::llrint,                        &ReplaceUnsupportedIntrinsics::replaceLRint },
     { Intrinsic::ctlz,                          &ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros },
     { Intrinsic::cttz,                          &ReplaceUnsupportedIntrinsics::replaceCountTheTrailingZeros },
+    { Intrinsic::ctpop,                         &ReplaceUnsupportedIntrinsics::replaceCountPopulation },
     { Intrinsic::smax,                          &ReplaceUnsupportedIntrinsics::replaceMinMax },
     { Intrinsic::smin,                          &ReplaceUnsupportedIntrinsics::replaceMinMax },
     { Intrinsic::umax,                          &ReplaceUnsupportedIntrinsics::replaceMinMax },
@@ -1540,6 +1542,44 @@ void ReplaceUnsupportedIntrinsics::replaceCountTheTrailingZeros(IntrinsicInst *I
   I->replaceAllUsesWith(OutputVal);
   I->eraseFromParent();
 }
+
+// EmitPass only emits cbit with a destination of at most 32 bits. OpenCL
+// popcount(ulong) is split into halves in the BiF, but InstCombine also creates
+// llvm.ctpop.i64, e.g. from (x & (x - 1)) == 0, so split those the same way.
+void ReplaceUnsupportedIntrinsics::replaceCountPopulation(IntrinsicInst *I) {
+  IGC_ASSERT(I->getIntrinsicID() == Intrinsic::ctpop);
+
+  Type *DstType = I->getType();
+  IGC_ASSERT(DstType->getScalarSizeInBits() == 64);
+
+  Type *ElementType = DstType->getScalarType();
+  uint32_t NumElements = 1;
+  bool IsVector = DstType->isVectorTy();
+  if (IsVector)
+    NumElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(DstType)->getNumElements();
+
+  IGCLLVM::IRBuilder<> Builder(I);
+  Value *InputVal = I->getArgOperand(0);
+  Value *OutputVal = PoisonValue::get(DstType);
+
+  for (uint32_t Idx = 0; Idx < NumElements; ++Idx) {
+    Value *X = IsVector ? Builder.CreateExtractElement(InputVal, Idx) : InputVal;
+    Value *Lo = Builder.CreateTrunc(X, Builder.getInt32Ty());
+    Value *Hi = Builder.CreateTrunc(Builder.CreateLShr(X, 32), Builder.getInt32Ty());
+    Value *PopLo = Builder.CreateUnaryIntrinsic(Intrinsic::ctpop, Lo);
+    Value *PopHi = Builder.CreateUnaryIntrinsic(Intrinsic::ctpop, Hi);
+    Value *Result = Builder.CreateZExt(Builder.CreateAdd(PopLo, PopHi, "", true, true), ElementType);
+
+    if (IsVector)
+      OutputVal = Builder.CreateInsertElement(OutputVal, Result, Builder.getInt32(Idx));
+    else
+      OutputVal = Result;
+  }
+
+  I->replaceAllUsesWith(OutputVal);
+  I->eraseFromParent();
+}
+
 /*
   Replaces calls to @llvm.vector.reduce.OP with a sequence of extractelement and OP instructions.
   E.g. for vector_reduce_add:
@@ -1662,6 +1702,9 @@ void ReplaceUnsupportedIntrinsics::replaceLdexp(IntrinsicInst *I) {
 #endif
 
 void ReplaceUnsupportedIntrinsics::visitIntrinsicInst(IntrinsicInst &I) {
+  // Only 64-bit ctpop needs splitting
+  if (I.getIntrinsicID() == Intrinsic::ctpop && I.getType()->getScalarSizeInBits() != 64)
+    return;
   if (m_intrinsicToFunc.find(I.getIntrinsicID()) != m_intrinsicToFunc.end()) {
     m_instsToReplace.push_back(&I);
   }
